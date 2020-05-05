@@ -1,0 +1,12 @@
+routine p:
+    while True:
+        flags[self] := True;
+        while flags[1 - self]: end while
+        $cs: // critical section
+        flags[self] := False;
+    end while
+end routine
+
+flags := {< 0: False, 1: False >};
+spawn p, 0;
+spawn p, 1;

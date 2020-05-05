@@ -1,0 +1,31 @@
+routine P:
+    var blocked = True;
+    while blocked:
+        while tas(sema.slock): end while
+        if sema.count > 0:
+            sema.count := sema.count - 1;
+            blocked := False;
+        end if
+        sema.slock := False;
+    end while
+end routine
+
+routine V:
+    while tas(sema.slock): end while
+    sema.count := sema.count + 1;
+    sema.slock := False;
+end routine
+
+routine p:
+    while True:
+        call P(0);
+        $cs: // critical section
+        call V(0);
+    end while
+end routine
+
+sema := {< .count: 1, .slock: False >};
+spawn p, 0;
+spawn p, 1;
+spawn p, 2;
+spawn p, 3;

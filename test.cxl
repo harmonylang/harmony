@@ -1,0 +1,13 @@
+routine inc:
+    var x = 1;
+    sum := sum + x;
+end routine
+
+routine r:
+    call inc(choose({1, 2}));
+end routine
+
+sum := 0;
+
+spawn r, 4;
+spawn r, 4;

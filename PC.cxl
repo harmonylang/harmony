@@ -1,0 +1,64 @@
+const N = 2;         // size of bounded buffer
+
+routine lock:
+    while tas(mylock): end while
+end routine
+
+routine unlock:
+    mylock := False;
+end routine
+
+routine producer:
+    while True:
+        var full = True;
+        while full:
+            call lock(0);
+            if cnt < N:
+                full := False;
+            else:
+                assert cnt == N: cnt;
+                call unlock(0);
+            end if
+        end while
+
+        $room:
+            cnt := cnt + 1;
+            buf[in] := choose({ 10, 20 });
+            in := (in + 1) % N;
+
+        call unlock(0);
+    end while
+end routine
+
+routine consumer:
+    while True:
+        var empty = True;
+        while empty:
+            call lock(0);
+            if cnt > 0:
+                empty := False;
+            else:
+                assert cnt == 0: cnt;
+                call unlock(0);
+            end if
+        end while
+
+        $avail:
+            cnt := cnt - 1;
+            // self := buf[out];
+            out := (out + 1) % N;
+
+        call unlock(0);
+    end while
+end routine
+
+buf := {< 0: 0, 1: 0 >};
+in := 0;
+out := 0;
+cnt := 0;
+mylock := False;
+
+spawn producer, 0;
+spawn producer, 1;
+spawn consumer, 0;
+spawn consumer, 1;
