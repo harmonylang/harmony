@@ -635,11 +635,9 @@ class ApplyOp(Op):
             context.pc += 1
         else:
             assert isinstance(func, PcValue)
-            (name, entry) = func.pc
-            assert isinstance(state.code[entry], FrameOp), func
             context.stack.append(context.pc + 1)
             context.stack.append(e)
-            context.pc = entry
+            context.pc = func.pc
 
 class AST:
     pass
@@ -1085,7 +1083,7 @@ class RoutineAST(AST):
         code.append(ReturnOp(arg))
         code[pc] = JumpOp(len(code))
         (lexeme, file, line, column) = self.name
-        scope.names[lexeme] = ("routine", (self.name, pc + 1))
+        scope.names[lexeme] = ("routine", pc + 1)
 
 class CallAST(AST):
     def __init__(self, expr):
