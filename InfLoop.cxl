@@ -1,6 +1,6 @@
-routine p:
+routine p():
     while True:
-        while self == 1: end while
+        while True: end while
         @cs: skip // critical section
     end while
 end routine

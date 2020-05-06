@@ -1,4 +1,4 @@
-routine p:
+routine p(self):
     while True:
         flags[self] := True;
         while flags[1 - self]: end while

@@ -1,13 +1,5 @@
-routine inc:
-    !(self) := !(self) + 1;
+routine inc(i):
+    i := i + 1;
 end routine
 
-routine other:
-    call inc&(!(self).a);
-end routine
-
-x := {< .a: 3 >};
-
-call other&(x);
-
-assert x.a == 4: x;
+assert inc(3) == 4: inc(3);

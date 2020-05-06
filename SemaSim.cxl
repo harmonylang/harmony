@@ -1,5 +1,4 @@
-routine P:
-    var sema = self;
+routine P(sema):
     var blocked = True;
     while blocked:
         while tas&(!(sema).slock): end while
@@ -11,14 +10,13 @@ routine P:
     end while
 end routine
 
-routine V:
-    var sema = self;
+routine V(sema):
     while tas&(!(sema).slock): end while
     !(sema).count := !(sema).count + 1;
     !(sema).slock := False;
 end routine
 
-routine p:
+routine p():
     while True:
         call P&(mysema);
         @cs: // critical section

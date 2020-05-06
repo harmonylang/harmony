@@ -1,14 +1,14 @@
 const N = 2;         // size of bounded buffer
 
-routine lock:
+routine lock():
     while tas&(mylock): end while
 end routine
 
-routine unlock:
+routine unlock():
     mylock := False;
 end routine
 
-routine producer:
+routine producer():
     while True:
         var full = True;
         while full:
@@ -30,7 +30,7 @@ routine producer:
     end while
 end routine
 
-routine consumer:
+routine consumer():
     while True:
         var empty = True;
         while empty:

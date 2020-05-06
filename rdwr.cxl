@@ -1,4 +1,4 @@
-routine reader:
+routine reader():
     while True:
         while tas&(rlock): end while
         if nreaders == 0:
@@ -18,7 +18,7 @@ routine reader:
     end while
 end routine
 
-routine writer:
+routine writer():
     while True:
         while tas&(wlock): end while
 

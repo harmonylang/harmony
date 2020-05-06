@@ -1,6 +1,6 @@
 const N = 2;         // size of bounded buffer
 
-routine produce:
+routine produce(item):
     var full = True;
     while full:
         while tas&(mylock): end while
@@ -15,13 +15,13 @@ routine produce:
     @room:
         cnt := cnt + 1;
         buf[in] := choose({ 10, 20 });
-        // buf[in] := self;
+        // buf[in] := item;
         in := (in + 1) % N;
 
     mylock := False;
 end routine
 
-routine consume:
+routine consume(self):
     var empty = True;
     while empty:
         while tas&(mylock): end while
@@ -41,14 +41,14 @@ routine consume:
     mylock := False;
 end routine
 
-routine producer:
+routine producer(self):
     while True:
         // call produce[choose({ 10, 20 })];
         call produce(self);
     end while
 end routine
 
-routine consumer:
+routine consumer(self):
     while True:
         call consume();
     end while

@@ -439,21 +439,33 @@ class RoutineOp(Op):
         context.pc = self.endpc + 1
 
 class FrameOp(Op):
+    def __init__(self, arg):
+        self.arg = arg
+
     def __repr__(self):
-        return "Frame"
+        return "Frame " + str(self.arg)
 
     def eval(self, state, context):
         arg = context.stack.pop()
         context.stack.append(context.vars)
-        context.vars = RecordValue({ "self": arg })
+        if self.arg == None:
+            context.vars = RecordValue({})
+        else:
+            context.vars = RecordValue({ self.arg: arg })
         context.pc += 1
 
 class ReturnOp(Op):
+    def __init__(self, arg):
+        self.arg = arg
+
     def __repr__(self):
         return "Return"
 
     def eval(self, state, context):
-        result = context.get("self")
+        if self.arg == None:
+            result = NoValue()
+        else:
+            result = context.get(self.arg)
         context.vars = context.stack.pop()
         context.pc = context.stack.pop()
         context.stack.append(result)
@@ -688,6 +700,24 @@ class RecordAST(AST):
             k.compile(scope, code)
         code.append(RecordOp(len(self.record)))
 
+class RecordComprehensionAST(AST):
+    def __init__(self, record, key, value, name, expr):
+        self.record = record
+        self.key = key
+        self.value = value
+        self.name = name
+        self.expr = expr
+
+    def __repr__(self):
+        return "RecordComprehension(" + str(self.name) + ")"
+
+    def compile(self, scope, code):
+        for (k, v) in self.record.items():
+            v.compile(scope, code)
+            k.compile(scope, code)
+        # self.expr.compile(scope, code)
+        code.append(RecordOp(len(self.record)))
+
 # N-ary operator
 class NaryAST(AST):
     def __init__(self, op, args):
@@ -747,6 +777,22 @@ class NaryRule(Rule):
         assert lexeme == self.closer, (t[0], self.closer)
         return (NaryAST(op, [ast, ast2]), t[1:])
 
+class RecordComprehensionRule(Rule):
+    def __init__(self, d, key, value):
+        self.d = d
+        self.key = key
+        self.value = value
+
+    def parse(self, t):
+        name = t[0]
+        (lexeme, file, line, column) = name
+        assert isname(lexeme), name
+        (lexeme, file, line, column) = t[1]
+        assert lexeme == "in", t[1]
+        (expr, t) = NaryRule(">}").parse(t[2:])
+        return (RecordComprehensionAST(
+                    self.d, self.key, self.value, name, expr), t)
+
 class RecordRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -758,7 +804,9 @@ class RecordRule(Rule):
             assert lexeme == ":", t[0]
             (value, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in { ",", ">}" }
+            assert lexeme in { ",", ">}", "|" }, t[0]
+            if lexeme == "|":
+                return RecordComprehensionRule(d, key, value).parse(t[1:])
             d[key] = value
         return (RecordAST(d), t[1:])
 
@@ -1013,8 +1061,9 @@ class AssertAST(AST):
         code.append(AssertOp())
 
 class RoutineAST(AST):
-    def __init__(self, name, stat):
+    def __init__(self, name, arg, stat):
         self.name = name
+        self.arg = arg
         self.stat = stat
 
     def __repr__(self):
@@ -1026,11 +1075,15 @@ class RoutineAST(AST):
         scope.names[lexeme] = ("routine", pc)
         code.append(None)
         ns = Scope(scope)
-        ns.names["self"] = ("variable", self.name)
-        code.append(FrameOp())
+        if self.arg == None:
+            arg = None
+        else:
+            (arg, file, line, column) = self.arg
+            ns.names[arg] = ("variable", self.arg)
+        code.append(FrameOp(arg))
         self.stat.compile(ns, code)
         code[pc] = RoutineOp(self.name, len(code))
-        code.append(ReturnOp())
+        code.append(ReturnOp(arg))
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -1202,11 +1255,22 @@ class StatementRule(Rule):
         if lexeme == "routine":
             name = t[1]
             (lexeme, file, line, column) = name
-            assert isname(lexeme), lv
-            (stat, t) = BlockRule({"end"}).parse(t[2:])
+            assert isname(lexeme), name
+            (lexeme, file, line, column) = t[2]
+            assert lexeme == "(", t[2]
+            arg = t[3]
+            (lexeme, file, line, column) = arg
+            if lexeme == ")":
+                arg = None
+                (stat, t) = BlockRule({"end"}).parse(t[4:])
+            else:
+                assert isname(lexeme), arg
+                (lexeme, file, line, column) = t[4]
+                assert lexeme == ")", t[4]
+                (stat, t) = BlockRule({"end"}).parse(t[5:])
             (lexeme, file, line, column) = t[1]
             assert lexeme == "routine", t[1]
-            return (RoutineAST(name, stat), t[2:])
+            return (RoutineAST(name, arg, stat), t[2:])
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]

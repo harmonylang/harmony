@@ -1,4 +1,4 @@
-routine p:
+routine p():
     while True:
         lock mylock;
         @cs: // critical section
