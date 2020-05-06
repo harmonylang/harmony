@@ -1,13 +1,11 @@
-routine inc:
-    var x = 1;
-    sum := sum + x;
+routine P:
+    $self.slock := 33;
 end routine
 
-routine r:
-    call inc(choose({1, 2}));
+routine x:
+    call P(self);
 end routine
 
-sum := 0;
-
-spawn r, 4;
-spawn r, 4;
+mysema := {< .count: 1, .slock: False >};
+call P(.mysema);
+assert mysema.slock == 33: mysema;
