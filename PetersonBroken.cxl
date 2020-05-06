@@ -4,7 +4,7 @@ routine p:
         flags[self] := True;
         while flags[1 - self] /\ (turn == (1 - self)):
         end while
-        $cs: // critical section
+        @cs: // critical section
         flags[self] := False;
     end while
 end routine

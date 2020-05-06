@@ -1,7 +1,7 @@
 routine p:
     while True:
         while tas(mylock): end while
-        $cs: // critical section
+        @cs: // critical section
         mylock := False;
     end while
 end routine

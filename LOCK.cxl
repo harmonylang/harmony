@@ -1,7 +1,7 @@
 routine p:
     while True:
         lock mylock;
-        $cs: // critical section
+        @cs: // critical section
         mylock := False;
     end while
 end routine

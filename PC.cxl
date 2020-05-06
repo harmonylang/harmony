@@ -12,21 +12,21 @@ routine producer:
     while True:
         var full = True;
         while full:
-            call lock(0);
+            call lock();
             if cnt < N:
                 full := False;
             else:
                 assert cnt == N: cnt;
-                call unlock(0);
+                call unlock();
             end if
         end while
 
-        $room:
+        @room:
             cnt := cnt + 1;
             buf[in] := choose({ 10, 20 });
             in := (in + 1) % N;
 
-        call unlock(0);
+        call unlock();
     end while
 end routine
 
@@ -34,21 +34,21 @@ routine consumer:
     while True:
         var empty = True;
         while empty:
-            call lock(0);
+            call lock();
             if cnt > 0:
                 empty := False;
             else:
                 assert cnt == 0: cnt;
-                call unlock(0);
+                call unlock();
             end if
         end while
 
-        $avail:
+        @avail:
             cnt := cnt - 1;
             // self := buf[out];
             out := (out + 1) % N;
 
-        call unlock(0);
+        call unlock();
     end while
 end routine
 

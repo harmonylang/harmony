@@ -12,7 +12,7 @@ routine produce:
         end if
     end while
 
-    $room:
+    @room:
         cnt := cnt + 1;
         buf[in] := choose({ 10, 20 });
         // buf[in] := self;
@@ -33,7 +33,7 @@ routine consume:
         end if
     end while
 
-    $avail:
+    @avail:
         cnt := cnt - 1;
         self := buf[out];
         out := (out + 1) % N;
@@ -50,7 +50,7 @@ end routine
 
 routine consumer:
     while True:
-        call consume(0);
+        call consume();
     end while
 end routine
 

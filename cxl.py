@@ -140,6 +140,16 @@ def lexer(s, file):
         column += 1
     return result
 
+class NoValue:
+    def __repr__(self):
+        return "NoValue()"
+
+    def __hash__(self):
+        return 0
+
+    def __eq__(self, other):
+        return isinstance(other, NoValue)
+
 class PcValue:
     def __init__(self, pc):
         self.pc = pc
@@ -266,10 +276,10 @@ class StoreOp:
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.v
-        indexes = []
+        indexes = [] if lexeme == "$" else [lexeme]
         for i in range(self.n):
             indexes.append(context.stack.pop())
-        state.set([lexeme] + indexes, context.stack.pop())
+        state.set(indexes, context.stack.pop())
         context.pc += 1
 
 class LockOp:
@@ -314,7 +324,7 @@ class TasOp:
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.v
-        indexes = [lexeme]
+        indexes = [] if lexeme == "$" else [lexeme]
         for i in range(self.n):
             indexes.append(context.stack.pop())
         context.stack.append(state.iget(indexes))
@@ -331,7 +341,7 @@ class LockOp:
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.v
-        indexes = [lexeme]
+        indexes = [] if lexeme == "$" else [lexeme]
         for i in range(self.n):
             indexes.append(context.stack.pop())
         state.set(indexes, True)
@@ -670,6 +680,8 @@ class BasicExpression:
             return (ConstantExpression((False, file, line, column)), t[1:])
         if lexeme == "True":
             return (ConstantExpression((True, file, line, column)), t[1:])
+        if lexeme == "$":
+            return (NameExpression(t[0]), t[1:])
         if isname(lexeme):
             return (NameExpression(t[0]), t[1:])
         if lexeme[0] == '"':
@@ -681,11 +693,7 @@ class BasicExpression:
         if lexeme == ".":
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
-            d = {}
-            for i in range(1, len(lexeme) + 1):
-                d[ConstantExpression((i, file, line, column + i))] = \
-                    ConstantExpression((lexeme[i-1], file, line, column + i))
-            return (RecordExpression(d), t[2:])
+            return (ConstantExpression((lexeme, file, line, column)), t[2:])
         if lexeme == "{":
             s = set()
             while lexeme != "}":
@@ -706,7 +714,12 @@ class BasicExpression:
                 d[key] = value
             return (RecordExpression(d), t[1:])
         if lexeme == "(" or lexeme == "[":
-            return Nary(")" if lexeme == "(" else "]").parse(t[1:])
+            closer = ")" if lexeme == "(" else "]"
+            (lexeme, file, line, column) = t[1]
+            if lexeme == closer:
+                return (ConstantExpression(
+                    (NoValue(), file, line, column)), t[2:])
+            return Nary(closer).parse(t[1:])
         if lexeme == "tas(":
             (ast, t) = LValue().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -957,7 +970,7 @@ class LValue:
     def parse(self, t):
         lv = t[0]
         (name, file, line, column) = lv
-        assert isname(name), lv
+        assert isname(name) or name == "$", lv
         t = t[1:]
         indexes = []
         while t != []:
@@ -1002,7 +1015,7 @@ class Block:
 class Statement:
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        if lexeme == "$":
+        if lexeme == "@":
             label = t[1]
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
@@ -1069,9 +1082,13 @@ class Statement:
         if lexeme == "spawn":
             (func, t) = Expression().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ",", t[0]
-            (expr, t) = Nary(";").parse(t[1:])
-            return (SpawnStatement(func, expr), t)
+            assert lexeme in [",", ";"], t[0]
+            if lexeme == ",":
+                (expr, t) = Nary(";").parse(t[1:])
+                return (SpawnStatement(func, expr), t)
+            else:
+                return (SpawnStatement(func, ConstantExpression(
+                    (NoValue(), file, line, column))), t[2:])
         if lexeme == "lock":
             (lv, t) = LValue().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1182,7 +1199,7 @@ class State:
         return s
 
     def get(self, var):
-        return self.vars.d[var]
+        return self.vars if var == "$" else self.vars.d[var]
 
     def iget(self, indexes):
         v = self.vars

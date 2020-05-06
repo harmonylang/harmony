@@ -1,7 +1,7 @@
 routine p:
     while True:
         while self == 1: end while
-        $cs: skip // critical section
+        @cs: skip // critical section
     end while
 end routine
 

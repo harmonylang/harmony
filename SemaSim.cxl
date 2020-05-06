@@ -1,26 +1,26 @@
 routine P:
     var blocked = True;
     while blocked:
-        while tas(sema.slock): end while
-        if sema.count > 0:
-            sema.count := sema.count - 1;
+        while tas($self.slock): end while
+        if $self.count > 0:
+            $self.count := $self.count - 1;
             blocked := False;
         end if
-        sema.slock := False;
+        $self.slock := False;
     end while
 end routine
 
 routine V:
-    while tas(sema.slock): end while
-    sema.count := sema.count + 1;
-    sema.slock := False;
+    while tas($self.slock): end while
+    $self.count := $self.count + 1;
+    $self.slock := False;
 end routine
 
 routine p:
     while True:
-        call P(0);
-        $cs: // critical section
-        call V(0);
+        call P(.sema);
+        @cs: // critical section
+        call V(.sema);
     end while
 end routine
 
