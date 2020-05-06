@@ -405,6 +405,9 @@ class ChooseOp(Op):
         return "Choose"
 
 class AssertOp(Op):
+    def __init__(self, token):
+        self.token = token
+
     def __repr__(self):
         return "Assert"
 
@@ -412,8 +415,11 @@ class AssertOp(Op):
         expr = context.stack.pop()
         cond = context.stack.pop()
         assert isinstance(cond, bool)
-        assert cond, expr           # TODO.  Should print trace instead
-        context.pc += 1
+        if not cond:
+            print("Assertion failed", self.token, expr)
+            state.assertFailure = True
+        else:
+            context.pc += 1
 
 class PopOp(Op):
     def __init__(self):
@@ -1134,17 +1140,18 @@ class WhileAST(AST):
         code[pc2] = JumpFalseOp(len(code))
 
 class AssertAST(AST):
-    def __init__(self, cond, expr):
+    def __init__(self, token, cond, expr):
+        self.token = token
         self.cond = cond
         self.expr = expr
 
     def __repr__(self):
-        return "Assert(" + str(self.cond) + ", " + str(self.expr) + ")"
+        return "Assert(" + str(self.token) + str(self.cond) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
         self.cond.compile(scope, code)
         self.expr.compile(scope, code)
-        code.append(AssertOp())
+        code.append(AssertOp(self.token))
 
 class RoutineAST(AST):
     def __init__(self, name, arg, stat):
@@ -1289,7 +1296,8 @@ class BlockRule(Rule):
 
 class StatementRule(Rule):
     def parse(self, t):
-        (lexeme, file, line, column) = t[0]
+        token = t[0]
+        (lexeme, file, line, column) = token
         if lexeme == "@":
             label = t[1]
             (lexeme, file, line, column) = t[1]
@@ -1383,7 +1391,7 @@ class StatementRule(Rule):
         if lexeme == "assert":
             (cond, t) = NaryRule(":").parse(t[1:])
             (expr, t) = NaryRule(";").parse(t)
-            return (AssertAST(cond, expr), t)
+            return (AssertAST(token, cond, expr), t)
         return AssignmentRule().parse(t)
 
 class Context:
@@ -1451,6 +1459,7 @@ class State:
         name = "__main__"
         id = 0
         self.contexts = { (name, id) : Context(name, id, 0, len(code)) }
+        self.assertFailure = False
 
     def __repr__(self):
         return "State(" + str(self.vars) + ", " + str(self.contexts) + ")"
@@ -1556,6 +1565,8 @@ globops = [
 ]
 
 def onestep(state, k, choice, visited, todo, node, infloop):
+    if state.assertFailure:
+        return False
     sc = state.copy()
     ctx = sc.contexts[k]
     if choice == None:
@@ -1574,7 +1585,7 @@ def onestep(state, k, choice, visited, todo, node, infloop):
         ctx.pc += 1
 
     localStates = { sc.copy() }
-    while True:
+    while not sc.assertFailure:
         # execute one step
         steps.append(ctx.pc)
         # print("PC", ctx.pc, sc.code[ctx.pc])
@@ -1631,6 +1642,9 @@ def run(invariant, pcs):
     while todo != []:
         cnt += 1
         state = todo[0]
+        if state.assertFailure:
+            bad.add(state)
+            break
         todo = todo[1:]
         node = visited[state]
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
