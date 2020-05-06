@@ -1,4 +1,5 @@
 import sys
+import traceback
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -25,8 +26,42 @@ def isprint(c):
 def isnumber(s):
     return all(isnumeral(c) for c in s)
 
+def isreserved(s):
+    return s in [
+        "assert",
+        "call",
+        "choose",
+        "const",
+        "else",
+        "end",
+        "False",
+        "if",
+        "in",
+        "lock",
+        "routine",
+        "skip",
+        "spawn",
+        "tas",
+        "True",
+        "unlock",
+        "var",
+        "while"
+    ]
+
 def isname(s):
-    return (isletter(s[0]) or s[0] == "_") and all(isnamechar(c) for c in s)
+    return (not isreserved(s)) and (isletter(s[0]) or s[0] == "_") and \
+                    all(isnamechar(c) for c in s)
+
+def isunaryop(s):
+    return s in [ "-", "not", "tas" ]
+
+def isbinaryop(s):
+    return s in [
+            "==", "!=", "..",
+            "-", "+", "*", "/", "%",
+            "<", "<=", ">", ">=",
+            "/\\", "and", "\\/", "or"
+    ];
 
 tokens = [ "{<", ">}", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
             "&(", "!(", "choose(" ]
@@ -587,6 +622,8 @@ class NaryOp(Op):
             e2 = context.stack.pop()
             if op == "==":
                 context.stack.append(e1 == e2)
+            elif op == "!=":
+                context.stack.append(e1 == e2)
             elif op == "+":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
@@ -865,6 +902,7 @@ class NaryRule(Rule):
         if lexeme == self.closer:
             return (ast, t[1:])
         op = t[0]
+        assert isbinaryop(op[0]), op
         (ast2, t) = ExpressionRule().parse(t[1:])
         (lexeme, file, line, column) = t[0]
         assert lexeme == self.closer, (t[0], self.closer)
@@ -1622,7 +1660,12 @@ def run(invariant, pcs):
     for line in sys.stdin:
        all += line
     tokens = lexer(all, "<stdin>")
-    (ast, rem) = StatListRule(set()).parse(tokens)
+    try:
+        (ast, rem) = StatListRule(set()).parse(tokens)
+    except IndexError as e:
+        print("Parsing hit EOF (usually missing ';')?", e)
+        print(traceback.format_exc())
+        sys.exit(1)
     code = []
     ast.compile(Scope(None), code)
 
