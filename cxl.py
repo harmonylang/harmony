@@ -839,6 +839,8 @@ class RecordComprehensionAST(AST):
         code.append(SetExpandOp())
 
         # Invoke the following for each element
+        # TODO: if there are duplicate keys it should raise an exception
+        #       because the result would be non-deterministic
         pc2 = len(code)
         code.append(None)
         code.append(TupleExpandOp())
@@ -1442,7 +1444,7 @@ class Context:
         self.vars = RecordValue({})
 
     def __repr__(self):
-        return "Context(" + str(self.name) + ", " + str(self.id) + ", " + str(self.stack) + ", " + str(self.vars) + ")"
+        return "Context(" + str(self.name) + ", " + str(self.id) + ", " + str(self.pc) + ", " + str(self.stack) + ", " + str(self.vars) + ")"
 
     def __hash__(self):
         h = (self.name, self.id, self.pc, self.end, self.vars).__hash__()
