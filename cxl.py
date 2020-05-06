@@ -1,5 +1,4 @@
 import sys
-import random
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -483,6 +482,8 @@ class SpawnOp(Op):
         id = context.stack.pop()
         name = "thread"
         ctx = Context(name, id, self.entry, self.exit)
+        ctx.stack = context.stack.copy()
+        ctx.vars = context.vars
         state.contexts[(name, id)] = ctx
         context.pc += 1
 
@@ -539,6 +540,20 @@ class RecordOp(Op):
             v = context.stack.pop()
             d[k] = v
         context.stack.append(RecordValue(d))
+        context.pc += 1
+
+class TupleOp(Op):
+    def __init__(self, nitems):
+        self.nitems = nitems
+
+    def __repr__(self):
+        return "Tuple " + str(self.nitems)
+
+    def eval(self, state, context):
+        t = []
+        for i in range(self.nitems):
+            t.append(context.stack.pop())
+        context.stack.append(tuple(t))
         context.pc += 1
 
 class NaryOp(Op):
@@ -639,6 +654,50 @@ class ApplyOp(Op):
             context.stack.append(e)
             context.pc = func.pc
 
+class SetExpandOp(Op):
+    def __repr__(self):
+        return "SetExpand"
+
+    def eval(self, state, context):
+        v = context.stack.pop()
+        assert isinstance(v, SetValue)
+        for e in v.s:
+            context.stack.append(e)
+        context.stack.append(len(v.s))
+        context.pc += 1
+
+class TupleExpandOp(Op):
+    def __repr__(self):
+        return "TupleExpand"
+
+    def eval(self, state, context):
+        v = context.stack.pop()
+        assert isinstance(v, tuple)
+        n = len(v)
+        for i in range(n):
+            context.stack.append(v[n - i - 1])
+        context.stack.append(n)
+        context.pc += 1
+
+class IterOp(Op):
+    def __init__(self, func, pc):
+        self.func = func
+        self.pc = pc
+
+    def __repr__(self):
+        return "Iter " + str(self.func) + " " + str(self.pc)
+
+    def eval(self, state, context):
+        cnt = context.stack.pop()
+        if cnt > 0:
+            v = context.stack.pop()
+            context.stack.append(cnt - 1)
+            context.stack.append(context.pc + 1)
+            context.stack.append(v)
+            context.pc = self.func
+        else:
+            context.pc = self.pc
+
 class AST:
     pass
 
@@ -701,22 +760,50 @@ class RecordAST(AST):
         code.append(RecordOp(len(self.record)))
 
 class RecordComprehensionAST(AST):
-    def __init__(self, record, key, value, name, expr):
-        self.record = record
+    def __init__(self, key, value, arg, expr):
         self.key = key
         self.value = value
-        self.name = name
+        self.arg = arg
         self.expr = expr
 
     def __repr__(self):
-        return "RecordComprehension(" + str(self.name) + ")"
+        return "RecordComprehension(" + str(self.arg) + ")"
 
     def compile(self, scope, code):
-        for (k, v) in self.record.items():
-            v.compile(scope, code)
-            k.compile(scope, code)
-        # self.expr.compile(scope, code)
-        code.append(RecordOp(len(self.record)))
+        (arg, file, line, column) = self.arg
+
+        # The record is going to be compiled in this temporary variable
+        scope.names["^"] = RecordValue({})
+        code.append(RecordOp(0))
+        code.append(StoreVarOp(("^", file, line, column), 0))
+
+        # The following code should be similar to RoutineAST
+        # It creates a routine to push tuples containing key and value
+        pc = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        ns = Scope(scope)
+        ns.names[arg] = ("variable", self.arg)
+        code.append(FrameOp(self.arg, arg))
+        self.value.compile(ns, code)
+        self.key.compile(ns, code)
+        code.append(TupleOp(2))
+        code.append(StoreVarOp(self.arg, 0))
+        code.append(ReturnOp(arg))
+        code[pc] = JumpOp(len(code))
+
+        # Evaluate the set
+        self.expr.compile(scope, code)
+        code.append(SetExpandOp())
+
+        # Invoke the following for each element
+        pc2 = len(code)
+        code.append(None)
+        code.append(TupleExpandOp())
+        code.append(PopOp())        # don't need count.  It's 2
+        code.append(StoreVarOp(("^", file, line, column), 1))
+        code.append(JumpOp(pc2))
+        code[pc2] = IterOp(pc + 1, len(code))
+        code.append(LoadVarOp(("^", file, line, column)))
 
 # N-ary operator
 class NaryAST(AST):
@@ -778,8 +865,7 @@ class NaryRule(Rule):
         return (NaryAST(op, [ast, ast2]), t[1:])
 
 class RecordComprehensionRule(Rule):
-    def __init__(self, d, key, value):
-        self.d = d
+    def __init__(self, key, value):
         self.key = key
         self.value = value
 
@@ -790,8 +876,7 @@ class RecordComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
         (expr, t) = NaryRule(">}").parse(t[2:])
-        return (RecordComprehensionAST(
-                    self.d, self.key, self.value, name, expr), t)
+        return (RecordComprehensionAST(self.key, self.value, name, expr), t)
 
 class RecordRule(Rule):
     def parse(self, t):
@@ -806,7 +891,8 @@ class RecordRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme in { ",", ">}", "|" }, t[0]
             if lexeme == "|":
-                return RecordComprehensionRule(d, key, value).parse(t[1:])
+                assert d == {}, d
+                return RecordComprehensionRule(key, value).parse(t[1:])
             d[key] = value
         return (RecordAST(d), t[1:])
 
@@ -1458,9 +1544,9 @@ class Scope:
             tv = ancestor.names.get(lexeme)
             if tv != None:
                 (t, v) = tv
-                if t != "variable":
-                    return tv
-                return None
+                # if t == "variable":
+                #    return None
+                return tv
             ancestor = ancestor.parent
         return None
 
