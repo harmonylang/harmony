@@ -1,7 +1,7 @@
 const N = 2;         // size of bounded buffer
 
 routine lock:
-    while tas(mylock): end while
+    while tas&(mylock): end while
 end routine
 
 routine unlock:

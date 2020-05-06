@@ -1,6 +1,6 @@
 routine p:
     while True:
-        while tas(&(mylock)): end while
+        while tas&(mylock): end while
         @cs: // critical section
         mylock := False;
     end while

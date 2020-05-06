@@ -30,7 +30,7 @@ def isname(s):
     return (isletter(s[0]) or s[0] == "_") and all(isnamechar(c) for c in s)
 
 tokens = [ "{<", ">}", ":=", "==", "!=", "<=", ">=", "/\\", "\\/",
-            "&(", "!(", "tas(", "choose(" ]
+            "&(", "!(", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -686,12 +686,18 @@ class Nary:
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        if lexeme in { "-", "not", "tas" }:     # unary expression
+        if lexeme in { "-", "not" }:     # unary expression
             op = t[0]
             (ast, t) = Expression().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryopExpression(op, [ast]), t[1:])
+        if lexeme == "tas":
+            op = t[0]
+            (ast, t) = Expression().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == self.closer, t[0]
+            return (TasExpression(ast), t[1:])
         (ast, t) = Expression().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
@@ -756,11 +762,6 @@ class BasicExpression:
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (AddressExpression(ast), t[1:])
-        if lexeme == "tas(":
-            (ast, t) = Expression().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme == ")", t[0]
-            return (TasExpression(ast), t[1:])
         if lexeme == "choose(":
             (ast, t) = Expression().parse(t[1:])
             (lexeme, file, line, column) = t[0]

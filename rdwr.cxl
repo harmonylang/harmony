@@ -1,15 +1,15 @@
 routine reader:
     while True:
-        while tas(rlock): end while
+        while tas&(rlock): end while
         if nreaders == 0:
-            while tas(wlock): end while
+            while tas&(wlock): end while
         end if
         nreaders := nreaders + 1;
         rlock := False;
 
         @rcs:    // reader critical section
 
-        while tas(rlock): end while
+        while tas&(rlock): end while
         nreaders := nreaders - 1;
         if nreaders == 0:
             wlock := False;
@@ -20,7 +20,7 @@ end routine
 
 routine writer:
     while True:
-        while tas(wlock): end while
+        while tas&(wlock): end while
 
         @wcs:   // writer critical section
 

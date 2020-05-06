@@ -3,7 +3,7 @@ const N = 2;         // size of bounded buffer
 routine produce:
     var full = True;
     while full:
-        while tas(mylock): end while
+        while tas&(mylock): end while
         if cnt < N:
             full := False;
         else:
@@ -24,7 +24,7 @@ end routine
 routine consume:
     var empty = True;
     while empty:
-        while tas(mylock): end while
+        while tas&(mylock): end while
         if cnt > 0:
             empty := False;
         else:

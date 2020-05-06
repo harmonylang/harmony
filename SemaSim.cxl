@@ -2,7 +2,7 @@ routine P:
     var sema = self;
     var blocked = True;
     while blocked:
-        while tas(&($sema.slock)): end while
+        while tas&($sema.slock): end while
         if $sema.count > 0:
             $sema.count := $sema.count - 1;
             blocked := False;
@@ -13,7 +13,7 @@ end routine
 
 routine V:
     var sema = self;
-    while tas(&($sema.slock)): end while
+    while tas&($sema.slock): end while
     $sema.count := $sema.count + 1;
     $sema.slock := False;
 end routine
