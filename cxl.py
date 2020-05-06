@@ -747,6 +747,21 @@ class NaryRule(Rule):
         assert lexeme == self.closer, (t[0], self.closer)
         return (NaryAST(op, [ast, ast2]), t[1:])
 
+class RecordRule(Rule):
+    def parse(self, t):
+        (lexeme, file, line, column) = t[0]
+        assert lexeme == "{<", t[0]
+        d = {}
+        while lexeme != ">}":
+            (key, t) = ExpressionRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == ":", t[0]
+            (value, t) = ExpressionRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme in { ",", ">}" }
+            d[key] = value
+        return (RecordAST(d), t[1:])
+
 class BasicExpressionRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -777,16 +792,7 @@ class BasicExpressionRule(Rule):
                 assert lexeme in { ",", "}" }
             return (SetAST(s), t[1:])
         if lexeme == "{<":
-            d = {}
-            while lexeme != ">}":
-                (key, t) = ExpressionRule().parse(t[1:])
-                (lexeme, file, line, column) = t[0]
-                assert lexeme == ":", t[0]
-                (value, t) = ExpressionRule().parse(t[1:])
-                (lexeme, file, line, column) = t[0]
-                assert lexeme in { ",", ">}" }
-                d[key] = value
-            return (RecordAST(d), t[1:])
+            return RecordRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (lexeme, file, line, column) = t[1]
@@ -811,7 +817,7 @@ class BasicExpressionRule(Rule):
             return (ChooseAST(ast), t[1:])
         return (False, t)
 
-class LValueExpression:
+class LValueAST(AST):
     def __init__(self, indexes):
         self.indexes = indexes
 
@@ -1105,7 +1111,7 @@ class LValueRule(Rule):
             if index == False:
                 break
             indexes.append(index)
-        return (LValueExpression(indexes), t)
+        return (LValueAST(indexes), t)
 
 class AssignmentRule(Rule):
     def parse(self, t):
