@@ -7,7 +7,7 @@ routine p():
 end routine
 
 mylock := False;
-spawn p, 0;
-spawn p, 1;
-spawn p, 2;
-spawn p, 4;
+spawn p(), 0;
+spawn p(), 1;
+spawn p(), 2;
+spawn p(), 3;

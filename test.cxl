@@ -1,5 +1,6 @@
 routine inc(i):
+    assert i == 3: i;
     i := i + 1;
 end routine
 
-assert inc(3) == 4: inc(3);
+spawn inc(3), 0;

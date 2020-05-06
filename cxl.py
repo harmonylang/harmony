@@ -161,7 +161,7 @@ class PcValue(Value):
         return "PC(" + str(self.pc) + ")"
 
     def __hash__(self):
-        return self.pc
+        return self.pc.__hash__()
 
     def __eq__(self, other):
         return isinstance(other, PcValue) and other.pc == self.pc
@@ -439,11 +439,12 @@ class RoutineOp(Op):
         context.pc = self.endpc + 1
 
 class FrameOp(Op):
-    def __init__(self, arg):
+    def __init__(self, name, arg):
+        self.name = name
         self.arg = arg
 
     def __repr__(self):
-        return "Frame " + str(self.arg)
+        return "Frame " + str(self.name) + " " + str(self.arg)
 
     def eval(self, state, context):
         arg = context.stack.pop()
@@ -471,18 +472,18 @@ class ReturnOp(Op):
         context.stack.append(result)
 
 class SpawnOp(Op):
+    def __init__(self, entry, exit):
+        self.entry = entry
+        self.exit = exit
+
     def __repr__(self):
-        return "Spawn"
+        return "Spawn " + str(self.entry) + " " + str(self.exit)
 
     def eval(self, state, context):
-        func = context.stack.pop()
-        assert isinstance(func, PcValue)
-        ro = state.code[func.pc]
-        assert isinstance(ro, RoutineOp), func
-        arg = context.stack.pop()
-        ctx = Context(ro.name[0], arg, func.pc + 1, ro.endpc)
-        ctx.stack.append(arg)
-        state.contexts[(ctx.name, ctx.id)] = ctx
+        id = context.stack.pop()
+        name = "thread"
+        ctx = Context(name, id, self.entry, self.exit)
+        state.contexts[(name, id)] = ctx
         context.pc += 1
 
 class JumpOp(Op):
@@ -634,10 +635,11 @@ class ApplyOp(Op):
             context.pc += 1
         else:
             assert isinstance(func, PcValue)
-            assert isinstance(state.code[func.pc], RoutineOp), func
+            (name, entry) = func.pc
+            assert isinstance(state.code[entry], FrameOp), func
             context.stack.append(context.pc + 1)
             context.stack.append(e)
-            context.pc = func.pc + 1
+            context.pc = entry
 
 class AST:
     pass
@@ -1070,20 +1072,20 @@ class RoutineAST(AST):
         return "Routine(" + str(self.name) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        (lexeme, file, line, column) = self.name
         pc = len(code)
-        scope.names[lexeme] = ("routine", pc)
-        code.append(None)
+        code.append(None)       # going to plug in a Jump op here
         ns = Scope(scope)
         if self.arg == None:
             arg = None
         else:
             (arg, file, line, column) = self.arg
             ns.names[arg] = ("variable", self.arg)
-        code.append(FrameOp(arg))
+        code.append(FrameOp(self.name, arg))
         self.stat.compile(ns, code)
-        code[pc] = RoutineOp(self.name, len(code))
         code.append(ReturnOp(arg))
+        code[pc] = JumpOp(len(code))
+        (lexeme, file, line, column) = self.name
+        scope.names[lexeme] = ("routine", (self.name, pc + 1))
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -1097,17 +1099,20 @@ class CallAST(AST):
         code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, func, arg):
-        self.func = func
-        self.arg = arg
+    def __init__(self, id, expr):
+        self.id = id
+        self.expr = expr
 
     def __repr__(self):
-        return "Spawn(" + str(self.func) + ", " + str(self.arg) + ")"
+        return "Spawn(" + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        self.arg.compile(scope, code)
-        self.func.compile(scope, code)
-        code.append(SpawnOp())
+        self.id.compile(scope, code)
+        pc = len(code)
+        code.append(None)    # we're going to jump over this code
+        self.expr.compile(scope, code)
+        code[pc] = JumpOp(len(code))
+        code.append(SpawnOp(pc + 1, len(code)))
 
 class LabelAST(AST):
     def __init__(self, label, ast):
@@ -1277,15 +1282,13 @@ class StatementRule(Rule):
             assert lexeme == ";", t[0]
             return (CallAST(expr), t[1:])
         if lexeme == "spawn":
-            (func, t) = ExpressionRule().parse(t[1:])
+            (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in [",", ";"], t[0]
-            if lexeme == ",":
-                (expr, t) = NaryRule(";").parse(t[1:])
-                return (SpawnAST(func, expr), t)
-            else:
-                return (SpawnAST(func, ConstantAST(
-                    (NoValue(), file, line, column))), t[2:])
+            assert lexeme == ",", t[0]
+            (id, t) = ExpressionRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == ";", t[0]
+            return (SpawnAST(id, expr), t[1:])
         if lexeme == "lock":
             (lv, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1312,7 +1315,7 @@ class Context:
         return "Context(" + str(self.name) + ", " + str(self.id) + ", " + str(self.stack) + ", " + str(self.vars) + ")"
 
     def __hash__(self):
-        h = self.name.__hash__() ^ self.id ^ self.pc ^ self.end ^ self.vars.__hash__()
+        h = (self.name, self.id, self.pc, self.end, self.vars).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h

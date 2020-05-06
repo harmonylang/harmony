@@ -25,7 +25,7 @@ routine p():
 end routine
 
 mysema := {< .count: 1, .slock: False >};
-spawn p, 0;
-spawn p, 1;
-spawn p, 2;
-spawn p, 3;
+spawn p(), 0;
+spawn p(), 1;
+spawn p(), 2;
+spawn p(), 3;

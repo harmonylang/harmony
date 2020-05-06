@@ -58,7 +58,7 @@ out := 0;
 cnt := 0;
 mylock := False;
 
-spawn producer, 0;
-spawn producer, 1;
-spawn consumer, 0;
-spawn consumer, 1;
+spawn producer(), 0;
+spawn producer(), 1;
+spawn consumer(), 2;
+spawn consumer(), 3;

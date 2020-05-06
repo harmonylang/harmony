@@ -8,5 +8,5 @@ routine p(self):
 end routine
 
 flags := {< 0: False, 1: False >};
-spawn p, 0;
-spawn p, 1;
+spawn p(0), 0;
+spawn p(1), 1;
