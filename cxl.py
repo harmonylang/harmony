@@ -1,5 +1,6 @@
 import sys
 import traceback
+import collections
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -287,7 +288,7 @@ class LoadOp(Op):
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
-        context.stack.append(state.get(lexeme))
+        context.push(state.get(lexeme))
         context.pc += 1
 
 class LoadVarOp(Op):
@@ -299,7 +300,7 @@ class LoadVarOp(Op):
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
-        context.stack.append(context.get(lexeme))
+        context.push(context.get(lexeme))
         context.pc += 1
 
 class ConstantOp(Op):
@@ -311,7 +312,7 @@ class ConstantOp(Op):
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.constant
-        context.stack.append(lexeme)
+        context.push(lexeme)
         context.pc += 1
 
 class LabelOp(Op):
@@ -334,8 +335,8 @@ class StoreOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
-        state.set(indexes, context.stack.pop())
+            indexes.append(context.pop())
+        state.set(indexes, context.pop())
         context.pc += 1
 
 class StoreIndOp(Op):
@@ -348,10 +349,10 @@ class StoreIndOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
+            indexes.append(context.pop())
         av = indexes[0]
         assert isinstance(av, AddressValue)
-        state.set(av.indexes + indexes[1:], context.stack.pop())
+        state.set(av.indexes + indexes[1:], context.pop())
         context.pc += 1
 
 class AddressOp(Op):
@@ -364,8 +365,8 @@ class AddressOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
-        context.stack.append(AddressValue(indexes))
+            indexes.append(context.pop())
+        context.push(AddressValue(indexes))
         context.pc += 1
 
 class AddressIndOp(Op):
@@ -378,10 +379,10 @@ class AddressIndOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
+            indexes.append(context.pop())
         av = indexes[0]
         assert isinstance(av, AddressValue), av
-        context.stack.append(AddressValue(av.indexes + indexes[1:]))
+        context.push(AddressValue(av.indexes + indexes[1:]))
         context.pc += 1
 
 class LockOp(Op):
@@ -394,7 +395,7 @@ class LockOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
+            indexes.append(context.pop())
         state.set(indexes, True)
         context.pc += 1
 
@@ -410,8 +411,8 @@ class StoreVarOp(Op):
         (lexeme, file, line, column) = self.v
         indexes = []
         for i in range(self.n):
-            indexes.append(context.stack.pop())
-        context.set([lexeme] + indexes, context.stack.pop())
+            indexes.append(context.pop())
+        context.set([lexeme] + indexes, context.pop())
         context.pc += 1
 
 class PointerOp(Op):
@@ -419,9 +420,9 @@ class PointerOp(Op):
         return "Pointer"
 
     def eval(self, state, context):
-        av = context.stack.pop()
+        av = context.pop()
         assert isinstance(av, AddressValue), av
-        context.stack.append(state.iget(av.indexes))
+        context.push(state.iget(av.indexes))
         context.pc += 1
 
 class TasOp(Op):
@@ -429,9 +430,9 @@ class TasOp(Op):
         return "TAS"
 
     def eval(self, state, context):
-        av = context.stack.pop()
+        av = context.pop()
         assert isinstance(av, AddressValue), av
-        context.stack.append(state.iget(av.indexes))
+        context.push(state.iget(av.indexes))
         state.set(av.indexes, True)
         context.pc += 1
 
@@ -447,8 +448,8 @@ class AssertOp(Op):
         return "Assert"
 
     def eval(self, state, context):
-        expr = context.stack.pop()
-        cond = context.stack.pop()
+        expr = context.pop()
+        cond = context.pop()
         assert isinstance(cond, bool)
         if not cond:
             print("Assertion failed", self.token, expr)
@@ -464,7 +465,7 @@ class PopOp(Op):
         return "Pop"
 
     def eval(self, state, context):
-        context.stack.pop()
+        context.pop()
         context.pc += 1
 
 class RoutineOp(Op):
@@ -487,8 +488,8 @@ class FrameOp(Op):
         return "Frame " + str(self.name) + " " + str(self.arg)
 
     def eval(self, state, context):
-        arg = context.stack.pop()
-        context.stack.append(context.vars)
+        arg = context.pop()
+        context.push(context.vars)
         if self.arg == None:
             context.vars = RecordValue({})
         else:
@@ -507,9 +508,9 @@ class ReturnOp(Op):
             result = NoValue()
         else:
             result = context.get(self.arg)
-        context.vars = context.stack.pop()
-        context.pc = context.stack.pop()
-        context.stack.append(result)
+        context.vars = context.pop()
+        context.pc = context.pop()
+        context.push(result)
 
 class SpawnOp(Op):
     def __init__(self, entry, exit):
@@ -520,7 +521,7 @@ class SpawnOp(Op):
         return "Spawn " + str(self.entry) + " " + str(self.exit)
 
     def eval(self, state, context):
-        id = context.stack.pop()
+        id = context.pop()
         name = "thread"
         ctx = Context(name, id, self.entry, self.exit)
         ctx.stack = context.stack.copy()
@@ -546,7 +547,7 @@ class JumpFalseOp(Op):
         return "JumpFalse " + str(self.pc)
 
     def eval(self, state, context):
-        c = context.stack.pop()
+        c = context.pop()
         assert isinstance(c, bool), c
         if c:
             context.pc += 1
@@ -563,8 +564,8 @@ class SetOp(Op):
     def eval(self, state, context):
         s = set()
         for i in range(self.nitems):
-            s.add(context.stack.pop())
-        context.stack.append(SetValue(s))
+            s.add(context.pop())
+        context.push(SetValue(s))
         context.pc += 1
 
 class RecordOp(Op):
@@ -577,10 +578,10 @@ class RecordOp(Op):
     def eval(self, state, context):
         d = {}
         for i in range(self.nitems):
-            k = context.stack.pop()
-            v = context.stack.pop()
+            k = context.pop()
+            v = context.pop()
             d[k] = v
-        context.stack.append(RecordValue(d))
+        context.push(RecordValue(d))
         context.pc += 1
 
 class TupleOp(Op):
@@ -593,8 +594,8 @@ class TupleOp(Op):
     def eval(self, state, context):
         t = []
         for i in range(self.nitems):
-            t.append(context.stack.pop())
-        context.stack.append(tuple(t))
+            t.append(context.pop())
+        context.push(tuple(t))
         context.pc += 1
 
 class NaryOp(Op):
@@ -608,70 +609,70 @@ class NaryOp(Op):
     def eval(self, state, context):
         (op, file, line, column) = self.op
         if self.n == 1:
-            e = context.stack.pop()
+            e = context.pop()
             if op == "-":
                 assert isinstance(e, int)
-                context.stack.append(-e)
+                context.push(-e)
             elif op == "not":
                 assert isinstance(e, bool)
-                context.stack.append(not e)
+                context.push(not e)
             else:
                 assert False, self
         elif self.n == 2:
-            e1 = context.stack.pop()
-            e2 = context.stack.pop()
+            e1 = context.pop()
+            e2 = context.pop()
             if op == "==":
-                context.stack.append(e1 == e2)
+                context.push(e1 == e2)
             elif op == "!=":
-                context.stack.append(e1 == e2)
+                context.push(e1 == e2)
             elif op == "+":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 + e2)
+                context.push(e1 + e2)
             elif op == "-":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 - e2)
+                context.push(e1 - e2)
             elif op == "*":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 * e2)
+                context.push(e1 * e2)
             elif op == "/":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 // e2)
+                context.push(e1 // e2)
             elif op == "%":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 % e2)
+                context.push(e1 % e2)
             elif op == "<":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 < e2)
+                context.push(e1 < e2)
             elif op == "<=":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 <= e2)
+                context.push(e1 <= e2)
             elif op == ">":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 > e2)
+                context.push(e1 > e2)
             elif op == ">=":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(e1 >= e2)
+                context.push(e1 >= e2)
             elif op == "..":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
-                context.stack.append(SetValue(set(range(e1, e2+1))))
+                context.push(SetValue(set(range(e1, e2+1))))
             elif op == "/\\" or op == "and":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
-                context.stack.append(e1 and e2)
+                context.push(e1 and e2)
             elif op == "\\/" or op == "or":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
-                context.stack.append(e1 or e2)
+                context.push(e1 or e2)
             else:
                 assert False, self
         else:
@@ -686,15 +687,15 @@ class ApplyOp(Op):
         return "Apply"
 
     def eval(self, state, context):
-        func = context.stack.pop()
-        e = context.stack.pop()
+        func = context.pop()
+        e = context.pop()
         if isinstance(func, RecordValue):
-            context.stack.append(func.d[e])
+            context.push(func.d[e])
             context.pc += 1
         else:
             assert isinstance(func, PcValue)
-            context.stack.append(context.pc + 1)
-            context.stack.append(e)
+            context.push(context.pc + 1)
+            context.push(e)
             context.pc = func.pc
 
 class SetExpandOp(Op):
@@ -702,11 +703,11 @@ class SetExpandOp(Op):
         return "SetExpand"
 
     def eval(self, state, context):
-        v = context.stack.pop()
+        v = context.pop()
         assert isinstance(v, SetValue)
         for e in v.s:
-            context.stack.append(e)
-        context.stack.append(len(v.s))
+            context.push(e)
+        context.push(len(v.s))
         context.pc += 1
 
 class TupleExpandOp(Op):
@@ -714,12 +715,12 @@ class TupleExpandOp(Op):
         return "TupleExpand"
 
     def eval(self, state, context):
-        v = context.stack.pop()
+        v = context.pop()
         assert isinstance(v, tuple)
         n = len(v)
         for i in range(n):
-            context.stack.append(v[n - i - 1])
-        context.stack.append(n)
+            context.push(v[n - i - 1])
+        context.push(n)
         context.pc += 1
 
 class IterOp(Op):
@@ -731,12 +732,12 @@ class IterOp(Op):
         return "Iter " + str(self.func) + " " + str(self.pc)
 
     def eval(self, state, context):
-        cnt = context.stack.pop()
+        cnt = context.pop()
         if cnt > 0:
-            v = context.stack.pop()
-            context.stack.append(cnt - 1)
-            context.stack.append(context.pc + 1)
-            context.stack.append(v)
+            v = context.pop()
+            context.push(cnt - 1)
+            context.push(context.pc + 1)
+            context.push(v)
             context.pc = self.func
         else:
             context.pc = self.pc
@@ -1440,7 +1441,7 @@ class Context:
         self.id = id
         self.pc = pc
         self.end = end
-        self.stack = []
+        self.stack = []     # collections.deque() seems slightly slower
         self.vars = RecordValue({})
 
     def __repr__(self):
@@ -1491,6 +1492,12 @@ class Context:
 
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
+
+    def push(self, val):
+        self.stack.append(val)
+
+    def pop(self):
+        return self.stack.pop()
 
 class State:
     def __init__(self, code):
@@ -1679,18 +1686,17 @@ def run(invariant, pcs):
 
     # For traversing Kripke graph
     visited = { state: Node(None, None, None, None, 0) }
-    todo = [state]
+    todo = collections.deque([state])
     bad = set()
     infloop = set()
 
     cnt = 0
-    while todo != []:
+    while todo:
         cnt += 1
-        state = todo[0]
+        state = todo.popleft()
         if state.assertFailure:
             bad.add(state)
             break
-        todo = todo[1:]
         node = visited[state]
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
 

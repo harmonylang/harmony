@@ -23,8 +23,8 @@ routine producer():
 
         @room:
             cnt := cnt + 1;
-            buf[in] := choose({ 10, 20 });
-            in := (in + 1) % N;
+            buf[myin] := choose({ 10, 20 });
+            myin := (myin + 1) % N;
 
         call unlock();
     end while
@@ -45,16 +45,16 @@ routine consumer():
 
         @avail:
             cnt := cnt - 1;
-            // self := buf[out];
-            out := (out + 1) % N;
+            // self := buf[myout];
+            myout := (myout + 1) % N;
 
         call unlock();
     end while
 end routine
 
 buf := {< x:0 | x in 0..(N-1) >};
-in := 0;
-out := 0;
+myin := 0;
+myout := 0;
 cnt := 0;
 mylock := False;
 
