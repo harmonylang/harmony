@@ -15,8 +15,8 @@ def mutex(state):
     return (nrds == 0 and nwrs <= 1) or nwrs == 0
 
 def main():
-    cxl.run(mutex, [ (("reader", 0), "rcs"), (("reader", 1), "rcs"),
-                   (("writer", 0), "wcs"), (("writer", 1), "wcs") ])
+    cxl.run(mutex, [ (("thread", 0), "rcs"), (("thread", 1), "rcs"),
+                   (("thread", 2), "wcs"), (("thread", 3), "wcs") ])
 
 if __name__ == "__main__":
     main()
