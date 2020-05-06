@@ -29,7 +29,7 @@ def isnumber(s):
 def isname(s):
     return (isletter(s[0]) or s[0] == "_") and all(isnamechar(c) for c in s)
 
-tokens = [ "{<", ">}", ":=", "==", "!=", "<=", ">=", "/\\", "\\/",
+tokens = [ "{<", ">}", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
             "&(", "!(", "choose(" ]
 
 def lexer(s, file):
@@ -298,6 +298,52 @@ class StoreOp:
         state.set(indexes, context.stack.pop())
         context.pc += 1
 
+class StoreIndOp:
+    def __init__(self, n):
+        self.n = n                  # #indexes
+
+    def __repr__(self):
+        return "StoreInd " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.stack.pop())
+        av = indexes[0]
+        assert isinstance(av, AddressValue)
+        state.set(av.indexes + indexes[1:], context.stack.pop())
+        context.pc += 1
+
+class AddressOp:
+    def __init__(self, n):
+        self.n = n          # #indexes in LValue
+
+    def __repr__(self):
+        return "Address " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.stack.pop())
+        context.stack.append(AddressValue(indexes))
+        context.pc += 1
+
+class AddressIndOp:
+    def __init__(self, n):
+        self.n = n          # #indexes in LValue
+
+    def __repr__(self):
+        return "Address " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.stack.pop())
+        av = indexes[0]
+        assert isinstance(av, AddressValue), av
+        context.stack.append(AddressValue(av.indexes + indexes[1:]))
+        context.pc += 1
+
 class LockOp:
     def __init__(self, n):
         self.n = n
@@ -328,18 +374,14 @@ class StoreVarOp:
         context.set([lexeme] + indexes, context.stack.pop())
         context.pc += 1
 
-class AddressOp:
-    def __init__(self, n):
-        self.n = n          # #indexes in LValue
-
+class PointerOp:
     def __repr__(self):
-        return "Address " + str(self.n)
+        return "Pointer"
 
     def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.stack.pop())
-        context.stack.append(AddressValue(indexes))
+        av = context.stack.pop()
+        assert isinstance(av, AddressValue), av
+        context.stack.append(state.iget(av.indexes))
         context.pc += 1
 
 class TasOp:
@@ -541,11 +583,15 @@ class NaryOp:
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
                 context.stack.append(e1 >= e2)
-            elif op == "/\\":
+            elif op == "..":
+                assert isinstance(e1, int), e1
+                assert isinstance(e2, int), e2
+                context.stack.append(SetValue(set(range(e1, e2+1))))
+            elif op == "/\\" or op == "and":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
                 context.stack.append(e1 and e2)
-            elif op == "\\/":
+            elif op == "\\/" or op == "or":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
                 context.stack.append(e1 or e2)
@@ -686,7 +732,7 @@ class Nary:
         op = t[0]
         (ast2, t) = Expression().parse(t[1:])
         (lexeme, file, line, column) = t[0]
-        assert lexeme == self.closer, t[0]
+        assert lexeme == self.closer, (t[0], self.closer)
         return (NaryopExpression(op, [ast, ast2]), t[1:])
 
 class BasicExpression:
@@ -698,8 +744,6 @@ class BasicExpression:
             return (ConstantExpression((False, file, line, column)), t[1:])
         if lexeme == "True":
             return (ConstantExpression((True, file, line, column)), t[1:])
-        if lexeme == "$":
-            return (NameExpression(t[0]), t[1:])
         if isname(lexeme):
             return (NameExpression(t[0]), t[1:])
         if lexeme[0] == '"':
@@ -743,6 +787,11 @@ class BasicExpression:
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (AddressExpression(ast), t[1:])
+        if lexeme == "!(":
+            (ast, t) = Expression().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == ")", t[0]
+            return (PointerExpression(ast), t[1:])
         if lexeme == "choose(":
             (ast, t) = Expression().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -757,28 +806,6 @@ class LValueExpression:
     def __repr__(self):
         return "LValue(" + str(self.indexes) + ")"
 
-class AddressExpression:
-    def __init__(self, lv):
-        self.lv = lv
-
-    def __repr__(self):
-        return "Address(" + str(self.lv) + ")"
-
-    def compile(self, scope, code):
-        n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
-        lv = self.lv.indexes[0]
-        assert isinstance(lv, NameExpression), lv
-        tv = scope.lookup(lv.name)
-        assert tv == None, tv   # can't take address of local var
-        (lexeme, file, line, column) = lv.name
-        if lexeme == "$":
-            code.append(AddressOp(n - 1))
-        else:
-            code.append(ConstantOp(lv.name))
-            code.append(AddressOp(n))
-
 class TasExpression:
     def __init__(self, expr):
         self.expr = expr
@@ -789,6 +816,17 @@ class TasExpression:
     def compile(self, scope, code):
         self.expr.compile(scope, code)
         code.append(TasOp())
+
+class PointerExpression:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __repr__(self):
+        return "Pointer(" + str(self.expr) + ")"
+
+    def compile(self, scope, code):
+        self.expr.compile(scope, code)
+        code.append(PointerOp())
 
 class ChooseExpression:
     def __init__(self, expr):
@@ -825,21 +863,45 @@ class AssignmentStatement:
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
-        assert isinstance(lv, NameExpression), lv
-        tv = scope.lookup(lv.name)
-        if tv == None:
-            (lexeme, file, line, column) = lv.name
-            if lexeme == "$":
-                code.append(StoreOp(n - 1))
-            else:
+        if isinstance(lv, NameExpression):
+            tv = scope.lookup(lv.name)
+            if tv == None:
+                (lexeme, file, line, column) = lv.name
                 code.append(ConstantOp(lv.name))
                 code.append(StoreOp(n))
-        else:
-            (t, v) = tv
-            if t == "variable":
-                code.append(StoreVarOp(v, n - 1))
             else:
-                assert False, tv
+                (t, v) = tv
+                if t == "variable":
+                    code.append(StoreVarOp(v, n - 1))
+                else:
+                    assert False, tv
+        else:
+            assert isinstance(lv, PointerExpression), lv
+            lv.expr.compile(scope, code)
+            code.append(StoreIndOp(n))
+
+class AddressExpression:
+    def __init__(self, lv):
+        self.lv = lv
+
+    def __repr__(self):
+        return "Address(" + str(self.lv) + ")"
+
+    def compile(self, scope, code):
+        n = len(self.lv.indexes)
+        for i in range(1, n):
+            self.lv.indexes[n - i].compile(scope, code)
+        lv = self.lv.indexes[0]
+        if isinstance(lv, NameExpression):
+            tv = scope.lookup(lv.name)
+            assert tv == None, tv   # can't take address of local var
+            (lexeme, file, line, column) = lv.name
+            code.append(ConstantOp(lv.name))
+            code.append(AddressOp(n))
+        else:
+            assert isinstance(lv, PointerExpression), lv
+            lv.expr.compile(scope, code)
+            code.append(AddressIndOp(n))
 
 class LockStatement:
     def __init__(self, lv):
@@ -857,12 +919,8 @@ class LockStatement:
         tv = scope.lookup(lv.name)
         assert tv == None, tv       # can't lock local variables
         (lexeme, file, line, column) = lv.name
-        if lexeme == "$":
-            code.append(StoreOp(n - 1))
-            code.append(LockOp(n - 1))
-        else:
-            code.append(ConstantOp(lv.name))
-            code.append(LockOp(n))
+        code.append(ConstantOp(lv.name))
+        code.append(LockOp(n))
 
 class SkipStatement:
     def __repr__(self):
@@ -1021,8 +1079,14 @@ class ConstStatement:
 class LValue:
     def parse(self, t):
         (name, file, line, column) = t[0]
-        assert isname(name) or name == "$", t[0]
-        indexes = [NameExpression(t[0])]
+        if isname(name):
+            indexes = [NameExpression(t[0])]
+        else:
+            assert name == "!(", t[0]
+            (ast, t) = Expression().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == ")"
+            indexes = [PointerExpression(ast)]
         t = t[1:]
         while t != []:
             (index, t) = BasicExpression().parse(t)
@@ -1250,7 +1314,7 @@ class State:
         return s
 
     def get(self, var):
-        return self.vars if var == "$" else self.vars.d[var]
+        return self.vars.d[var]
 
     def iget(self, indexes):
         v = self.vars
