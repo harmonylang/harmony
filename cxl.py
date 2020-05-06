@@ -140,7 +140,10 @@ def lexer(s, file):
         column += 1
     return result
 
-class NoValue:
+class Value:
+    pass
+
+class NoValue(Value):
     def __repr__(self):
         return "NoValue()"
 
@@ -150,7 +153,7 @@ class NoValue:
     def __eq__(self, other):
         return isinstance(other, NoValue)
 
-class PcValue:
+class PcValue(Value):
     def __init__(self, pc):
         self.pc = pc
 
@@ -163,7 +166,7 @@ class PcValue:
     def __eq__(self, other):
         return isinstance(other, PcValue) and other.pc == self.pc
 
-class RecordValue:
+class RecordValue(Value):
     def __init__(self, d):
         self.d = d
 
@@ -190,7 +193,7 @@ class RecordValue:
     def __len__(self):
         return len(self.d.keys())
 
-class NameValue:
+class NameValue(Value):
     def __init__(self, name):
         self.name = name
 
@@ -205,7 +208,7 @@ class NameValue:
             return False
         return self.name == other.name
 
-class SetValue:
+class SetValue(Value):
     def __init__(self, s):
         self.s = s
 
@@ -220,7 +223,7 @@ class SetValue:
             return False
         return self.s == other.s
 
-class AddressValue:
+class AddressValue(Value):
     def __init__(self, indexes):
         self.indexes = indexes
 
@@ -238,7 +241,10 @@ class AddressValue:
             return False
         return self.indexes == other.indexes
 
-class LoadOp:
+class Op:
+    pass
+
+class LoadOp(Op):
     def __init__(self, name):
         self.name = name
 
@@ -250,7 +256,7 @@ class LoadOp:
         context.stack.append(state.get(lexeme))
         context.pc += 1
 
-class LoadVarOp:
+class LoadVarOp(Op):
     def __init__(self, name):
         self.name = name
 
@@ -262,7 +268,7 @@ class LoadVarOp:
         context.stack.append(context.get(lexeme))
         context.pc += 1
 
-class ConstantOp:
+class ConstantOp(Op):
     def __init__(self, constant):
         self.constant = constant
 
@@ -274,7 +280,7 @@ class ConstantOp:
         context.stack.append(lexeme)
         context.pc += 1
 
-class LabelOp:
+class LabelOp(Op):
     def __init__(self, label):
         self.label = label
 
@@ -284,7 +290,7 @@ class LabelOp:
     def eval(self, state, context):
         context.pc += 1
 
-class StoreOp:
+class StoreOp(Op):
     def __init__(self, n):
         self.n = n                  # #indexes
 
@@ -298,7 +304,7 @@ class StoreOp:
         state.set(indexes, context.stack.pop())
         context.pc += 1
 
-class StoreIndOp:
+class StoreIndOp(Op):
     def __init__(self, n):
         self.n = n                  # #indexes
 
@@ -314,7 +320,7 @@ class StoreIndOp:
         state.set(av.indexes + indexes[1:], context.stack.pop())
         context.pc += 1
 
-class AddressOp:
+class AddressOp(Op):
     def __init__(self, n):
         self.n = n          # #indexes in LValue
 
@@ -328,7 +334,7 @@ class AddressOp:
         context.stack.append(AddressValue(indexes))
         context.pc += 1
 
-class AddressIndOp:
+class AddressIndOp(Op):
     def __init__(self, n):
         self.n = n          # #indexes in LValue
 
@@ -344,7 +350,7 @@ class AddressIndOp:
         context.stack.append(AddressValue(av.indexes + indexes[1:]))
         context.pc += 1
 
-class LockOp:
+class LockOp(Op):
     def __init__(self, n):
         self.n = n
 
@@ -358,7 +364,7 @@ class LockOp:
         state.set(indexes, True)
         context.pc += 1
 
-class StoreVarOp:
+class StoreVarOp(Op):
     def __init__(self, v, n):
         self.v = v
         self.n = n
@@ -374,7 +380,7 @@ class StoreVarOp:
         context.set([lexeme] + indexes, context.stack.pop())
         context.pc += 1
 
-class PointerOp:
+class PointerOp(Op):
     def __repr__(self):
         return "Pointer"
 
@@ -384,7 +390,7 @@ class PointerOp:
         context.stack.append(state.iget(av.indexes))
         context.pc += 1
 
-class TasOp:
+class TasOp(Op):
     def __repr__(self):
         return "TAS"
 
@@ -395,11 +401,11 @@ class TasOp:
         state.set(av.indexes, True)
         context.pc += 1
 
-class ChooseOp:
+class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
 
-class AssertOp:
+class AssertOp(Op):
     def __repr__(self):
         return "Assert"
 
@@ -410,7 +416,7 @@ class AssertOp:
         assert cond, expr           # TODO.  Should print trace instead
         context.pc += 1
 
-class PopOp:
+class PopOp(Op):
     def __init__(self):
         pass
 
@@ -421,7 +427,7 @@ class PopOp:
         context.stack.pop()
         context.pc += 1
 
-class RoutineOp:
+class RoutineOp(Op):
     def __init__(self, name, endpc):
         self.name = name
         self.endpc = endpc      # points to return code
@@ -432,7 +438,7 @@ class RoutineOp:
     def eval(self, state, context):
         context.pc = self.endpc + 1
 
-class FrameOp:
+class FrameOp(Op):
     def __repr__(self):
         return "Frame"
 
@@ -442,7 +448,7 @@ class FrameOp:
         context.vars = RecordValue({ "self": arg })
         context.pc += 1
 
-class ReturnOp:
+class ReturnOp(Op):
     def __repr__(self):
         return "Return"
 
@@ -452,7 +458,7 @@ class ReturnOp:
         context.pc = context.stack.pop()
         context.stack.append(result)
 
-class SpawnOp:
+class SpawnOp(Op):
     def __repr__(self):
         return "Spawn"
 
@@ -467,7 +473,7 @@ class SpawnOp:
         state.contexts[(ctx.name, ctx.id)] = ctx
         context.pc += 1
 
-class JumpOp:
+class JumpOp(Op):
     def __init__(self, pc):
         self.pc = pc
 
@@ -477,7 +483,7 @@ class JumpOp:
     def eval(self, state, context):
         context.pc = self.pc
 
-class JumpFalseOp:
+class JumpFalseOp(Op):
     def __init__(self, pc):
         self.pc = pc
 
@@ -492,7 +498,7 @@ class JumpFalseOp:
         else:
             context.pc = self.pc
 
-class SetOp:
+class SetOp(Op):
     def __init__(self, nitems):
         self.nitems = nitems
 
@@ -506,7 +512,7 @@ class SetOp:
         context.stack.append(SetValue(s))
         context.pc += 1
 
-class RecordOp:
+class RecordOp(Op):
     def __init__(self, nitems):
         self.nitems = nitems
 
@@ -522,7 +528,7 @@ class RecordOp:
         context.stack.append(RecordValue(d))
         context.pc += 1
 
-class NaryOp:
+class NaryOp(Op):
     def __init__(self, op, n):
         self.op = op
         self.n = n
@@ -601,7 +607,7 @@ class NaryOp:
             assert False, self
         context.pc += 1
 
-class ApplyOp:
+class ApplyOp(Op):
     def __init__(self):
         pass
 
@@ -621,7 +627,10 @@ class ApplyOp:
             context.stack.append(e)
             context.pc = func.pc + 1
 
-class ConstantExpression:
+class AST:
+    pass
+
+class ConstantAST(AST):
     def __init__(self, const):
         self.const = const
 
@@ -631,7 +640,7 @@ class ConstantExpression:
     def compile(self, scope, code):
         code.append(ConstantOp(self.const))
 
-class NameExpression:
+class NameAST(AST):
     def __init__(self, name):
         self.name = name
 
@@ -654,7 +663,7 @@ class NameExpression:
             else:
                 assert False, tv
 
-class SetExpression:
+class SetAST(AST):
     def __init__(self, collection):
         self.collection = collection
 
@@ -666,7 +675,7 @@ class SetExpression:
             e.compile(scope, code)
         code.append(SetOp(len(self.collection)))
 
-class RecordExpression:
+class RecordAST(AST):
     def __init__(self, record):
         self.record = record
 
@@ -680,7 +689,7 @@ class RecordExpression:
         code.append(RecordOp(len(self.record)))
 
 # N-ary operator
-class NaryopExpression:
+class NaryAST(AST):
     def __init__(self, op, args):
         self.op = op
         self.args = args
@@ -694,7 +703,7 @@ class NaryopExpression:
             self.args[n - a - 1].compile(scope, code)
         code.append(NaryOp(self.op, n))
 
-class ApplyExpression:
+class ApplyAST(AST):
     def __init__(self, func, arg):
         self.func = func
         self.arg = arg
@@ -707,7 +716,10 @@ class ApplyExpression:
         self.func.compile(scope, code)
         code.append(ApplyOp())
 
-class Nary:
+class Rule:
+    pass
+
+class NaryRule(Rule):
     def __init__(self, closer):
         self.closer = closer
 
@@ -715,88 +727,88 @@ class Nary:
         (lexeme, file, line, column) = t[0]
         if lexeme in { "-", "not" }:     # unary expression
             op = t[0]
-            (ast, t) = Expression().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
-            return (NaryopExpression(op, [ast]), t[1:])
+            return (NaryAST(op, [ast]), t[1:])
         if lexeme == "tas":
             op = t[0]
-            (ast, t) = Expression().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
-            return (TasExpression(ast), t[1:])
-        (ast, t) = Expression().parse(t)
+            return (TasAST(ast), t[1:])
+        (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
             return (ast, t[1:])
         op = t[0]
-        (ast2, t) = Expression().parse(t[1:])
+        (ast2, t) = ExpressionRule().parse(t[1:])
         (lexeme, file, line, column) = t[0]
         assert lexeme == self.closer, (t[0], self.closer)
-        return (NaryopExpression(op, [ast, ast2]), t[1:])
+        return (NaryAST(op, [ast, ast2]), t[1:])
 
-class BasicExpression:
+class BasicExpressionRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         if isnumber(lexeme):
-            return (ConstantExpression((int(lexeme), file, line, column)), t[1:])
+            return (ConstantAST((int(lexeme), file, line, column)), t[1:])
         if lexeme == "False":
-            return (ConstantExpression((False, file, line, column)), t[1:])
+            return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
-            return (ConstantExpression((True, file, line, column)), t[1:])
+            return (ConstantAST((True, file, line, column)), t[1:])
         if isname(lexeme):
-            return (NameExpression(t[0]), t[1:])
+            return (NameAST(t[0]), t[1:])
         if lexeme[0] == '"':
             d = {}
             for i in range(1, len(lexeme) - 1):
-                d[ConstantExpression((i, file, line, column + i))] = \
-                    ConstantExpression((lexeme[i], file, line, column + i))
-            return (RecordExpression(d), t[1:])
+                d[ConstantAST((i, file, line, column + i))] = \
+                    ConstantAST((lexeme[i], file, line, column + i))
+            return (RecordAST(d), t[1:])
         if lexeme == ".":
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
-            return (ConstantExpression((lexeme, file, line, column)), t[2:])
+            return (ConstantAST((lexeme, file, line, column)), t[2:])
         if lexeme == "{":
             s = set()
             while lexeme != "}":
-                (next, t) = Expression().parse(t[1:])
+                (next, t) = ExpressionRule().parse(t[1:])
                 s.add(next)
                 (lexeme, file, line, column) = t[0]
                 assert lexeme in { ",", "}" }
-            return (SetExpression(s), t[1:])
+            return (SetAST(s), t[1:])
         if lexeme == "{<":
             d = {}
             while lexeme != ">}":
-                (key, t) = Expression().parse(t[1:])
+                (key, t) = ExpressionRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 assert lexeme == ":", t[0]
-                (value, t) = Expression().parse(t[1:])
+                (value, t) = ExpressionRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 assert lexeme in { ",", ">}" }
                 d[key] = value
-            return (RecordExpression(d), t[1:])
+            return (RecordAST(d), t[1:])
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (lexeme, file, line, column) = t[1]
             if lexeme == closer:
-                return (ConstantExpression(
+                return (ConstantAST(
                     (NoValue(), file, line, column)), t[2:])
-            return Nary(closer).parse(t[1:])
+            return NaryRule(closer).parse(t[1:])
         if lexeme == "&(":
-            (ast, t) = LValue().parse(t[1:])
+            (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
-            return (AddressExpression(ast), t[1:])
+            return (AddressAST(ast), t[1:])
         if lexeme == "!(":
-            (ast, t) = Expression().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
-            return (PointerExpression(ast), t[1:])
+            return (PointerAST(ast), t[1:])
         if lexeme == "choose(":
-            (ast, t) = Expression().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
-            return (ChooseExpression(ast), t[1:])
+            return (ChooseAST(ast), t[1:])
         return (False, t)
 
 class LValueExpression:
@@ -804,9 +816,9 @@ class LValueExpression:
         self.indexes = indexes
 
     def __repr__(self):
-        return "LValue(" + str(self.indexes) + ")"
+        return "LValueRule(" + str(self.indexes) + ")"
 
-class TasExpression:
+class TasAST(AST):
     def __init__(self, expr):
         self.expr = expr
 
@@ -817,7 +829,7 @@ class TasExpression:
         self.expr.compile(scope, code)
         code.append(TasOp())
 
-class PointerExpression:
+class PointerAST(AST):
     def __init__(self, expr):
         self.expr = expr
 
@@ -828,7 +840,7 @@ class PointerExpression:
         self.expr.compile(scope, code)
         code.append(PointerOp())
 
-class ChooseExpression:
+class ChooseAST(AST):
     def __init__(self, expr):
         self.expr = expr
 
@@ -839,17 +851,17 @@ class ChooseExpression:
         self.expr.compile(scope, code)
         code.append(ChooseOp())
 
-class Expression:
+class ExpressionRule(Rule):
     def parse(self, t):
-        (ast, t) = BasicExpression().parse(t)
+        (ast, t) = BasicExpressionRule().parse(t)
         while t != []:
-            (arg, t) = BasicExpression().parse(t)
+            (arg, t) = BasicExpressionRule().parse(t)
             if arg == False:
                 break
-            (ast, t) = (ApplyExpression(ast, arg), t)
+            (ast, t) = (ApplyAST(ast, arg), t)
         return (ast, t)
 
-class AssignmentStatement:
+class AssignmentAST(AST):
     def __init__(self, lv, rv):
         self.lv = lv
         self.rv = rv
@@ -863,7 +875,7 @@ class AssignmentStatement:
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
-        if isinstance(lv, NameExpression):
+        if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
                 (lexeme, file, line, column) = lv.name
@@ -876,11 +888,11 @@ class AssignmentStatement:
                 else:
                     assert False, tv
         else:
-            assert isinstance(lv, PointerExpression), lv
+            assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
             code.append(StoreIndOp(n))
 
-class AddressExpression:
+class AddressAST(AST):
     def __init__(self, lv):
         self.lv = lv
 
@@ -892,18 +904,18 @@ class AddressExpression:
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
-        if isinstance(lv, NameExpression):
+        if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             assert tv == None, tv   # can't take address of local var
             (lexeme, file, line, column) = lv.name
             code.append(ConstantOp(lv.name))
             code.append(AddressOp(n))
         else:
-            assert isinstance(lv, PointerExpression), lv
+            assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
             code.append(AddressIndOp(n))
 
-class LockStatement:
+class LockAST(AST):
     def __init__(self, lv):
         self.lv = lv
 
@@ -915,32 +927,32 @@ class LockStatement:
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
-        assert isinstance(lv, NameExpression), lv
+        assert isinstance(lv, NameAST), lv
         tv = scope.lookup(lv.name)
         assert tv == None, tv       # can't lock local variables
         (lexeme, file, line, column) = lv.name
         code.append(ConstantOp(lv.name))
         code.append(LockOp(n))
 
-class SkipStatement:
+class SkipAST(AST):
     def __repr__(self):
         return "Skip"
 
     def compile(self, scope, code):
         pass
 
-class BlockStatement:
+class BlockAST(AST):
     def __init__(self, b):
         self.b = b
 
     def __repr__(self):
-        return "Block(" + str(self.b) + ")"
+        return "BlockRule(" + str(self.b) + ")"
 
     def compile(self, scope, code):
         for s in self.b:
             s.compile(scope, code)
 
-class IfStatement:
+class IfAST(AST):
     def __init__(self, alts, stat):
         self.alts = alts        # alternatives
         self.stat = stat        # else statement
@@ -964,7 +976,7 @@ class IfStatement:
         for pc in jumps:
             code[pc] = JumpOp(len(code))
 
-class WhileStatement:
+class WhileAST(AST):
     def __init__(self, cond, stat):
         self.cond = cond
         self.stat = stat
@@ -981,7 +993,7 @@ class WhileStatement:
         code.append(JumpOp(pc1))
         code[pc2] = JumpFalseOp(len(code))
 
-class AssertStatement:
+class AssertAST(AST):
     def __init__(self, cond, expr):
         self.cond = cond
         self.expr = expr
@@ -994,7 +1006,7 @@ class AssertStatement:
         self.expr.compile(scope, code)
         code.append(AssertOp())
 
-class RoutineStatement:
+class RoutineAST(AST):
     def __init__(self, name, stat):
         self.name = name
         self.stat = stat
@@ -1014,7 +1026,7 @@ class RoutineStatement:
         code[pc] = RoutineOp(self.name, len(code))
         code.append(ReturnOp())
 
-class CallStatement:
+class CallAST(AST):
     def __init__(self, expr):
         self.expr = expr
 
@@ -1025,7 +1037,7 @@ class CallStatement:
         self.expr.compile(scope, code)
         code.append(PopOp())
 
-class SpawnStatement:
+class SpawnAST(AST):
     def __init__(self, func, arg):
         self.func = func
         self.arg = arg
@@ -1038,7 +1050,7 @@ class SpawnStatement:
         self.func.compile(scope, code)
         code.append(SpawnOp())
 
-class LabelStatement:
+class LabelAST(AST):
     def __init__(self, label, ast):
         self.label = label
         self.ast = ast
@@ -1050,7 +1062,7 @@ class LabelStatement:
         code.append(LabelOp(self.label))
         self.ast.compile(scope, code)
 
-class VarStatement:
+class VarAST(AST):
     def __init__(self, var, expr):
         self.var = var
         self.expr = expr
@@ -1064,7 +1076,7 @@ class VarStatement:
         scope.names[lexeme] = ("variable", self.var)
         code.append(StoreVarOp(self.var, 0))
 
-class ConstStatement:
+class ConstAST(AST):
     def __init__(self, const, value):
         self.const = const
         self.value = value
@@ -1076,34 +1088,34 @@ class ConstStatement:
         (lexeme, file, line, column) = self.const
         scope.names[lexeme] = ("constant", self.value)
 
-class LValue:
+class LValueRule(Rule):
     def parse(self, t):
         (name, file, line, column) = t[0]
         if isname(name):
-            indexes = [NameExpression(t[0])]
+            indexes = [NameAST(t[0])]
         else:
             assert name == "!(", t[0]
-            (ast, t) = Expression().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")"
-            indexes = [PointerExpression(ast)]
+            indexes = [PointerAST(ast)]
         t = t[1:]
         while t != []:
-            (index, t) = BasicExpression().parse(t)
+            (index, t) = BasicExpressionRule().parse(t)
             if index == False:
                 break
             indexes.append(index)
         return (LValueExpression(indexes), t)
 
-class Assignment:
+class AssignmentRule(Rule):
     def parse(self, t):
-        (lv, t) = LValue().parse(t)
+        (lv, t) = LValueRule().parse(t)
         (lexeme, file, line, column) = t[0]
         assert lexeme == ":=", t[0]
-        (rv, t) = Nary(";").parse(t[1:])
-        return (AssignmentStatement(lv, rv), t)
+        (rv, t) = NaryRule(";").parse(t[1:])
+        return (AssignmentAST(lv, rv), t)
 
-class StatList:
+class StatListRule(Rule):
     def __init__(self, delim):
         self.delim = delim
 
@@ -1111,23 +1123,23 @@ class StatList:
         b = []
         (lexeme, file, line, column) = t[0]
         while lexeme not in self.delim:
-            (ast, t) = Statement().parse(t)
+            (ast, t) = StatementRule().parse(t)
             b.append(ast)
             if t == [] and self.delim == set():
                 break
             (lexeme, file, line, column) = t[0]
-        return (BlockStatement(b), t)
+        return (BlockAST(b), t)
 
-class Block:
+class BlockRule(Rule):
     def __init__(self, delim):
         self.delim = delim
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         assert lexeme == ":", t[0]
-        return StatList(self.delim).parse(t[1:])
+        return StatListRule(self.delim).parse(t[1:])
 
-class Statement:
+class StatementRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         if lexeme == "@":
@@ -1136,30 +1148,30 @@ class Statement:
             assert isname(lexeme), t[1]
             (lexeme, file, line, column) = t[2]
             assert lexeme == ":", t[2]
-            (ast, t) = Statement().parse(t[3:])
-            return (LabelStatement(label, ast), t)
+            (ast, t) = StatementRule().parse(t[3:])
+            return (LabelAST(label, ast), t)
         if lexeme == "var":
             var = t[1]
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
-            (ast, t) = Nary(";").parse(t[3:])
-            return (VarStatement(var, ast), t)
+            (ast, t) = NaryRule(";").parse(t[3:])
+            return (VarAST(var, ast), t)
         if lexeme == "const":
             const = t[1]
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
-            (ast, t) = Nary(";").parse(t[3:])
-            assert isinstance(ast, ConstantExpression), ast
-            return (ConstStatement(const, ast.const), t)
+            (ast, t) = NaryRule(";").parse(t[3:])
+            assert isinstance(ast, ConstantAST), ast
+            return (ConstAST(const, ast.const), t)
         if lexeme == "if":
             alts = []
             while True:
-                (cond, t) = Nary(":").parse(t[1:])
-                (stat, t) = StatList({ "else", "elif", "end" }).parse(t)
+                (cond, t) = NaryRule(":").parse(t[1:])
+                (stat, t) = StatListRule({ "else", "elif", "end" }).parse(t)
                 alts += [(cond, stat)]
                 (lexeme, file, line, column) = t[0]
                 if lexeme in { "else", "end" }:
@@ -1167,55 +1179,55 @@ class Statement:
                 assert lexeme == "elif", t[0]
                 t = t[1:]
             if lexeme == "else":
-                (stat, t) = Block({"end"}).parse(t[1:])
+                (stat, t) = BlockRule({"end"}).parse(t[1:])
                 (lexeme, file, line, column) = t[0]
             else:
                 stat = None
             assert lexeme == "end", t[0]
             (lexeme, file, line, column) = t[1]
             assert lexeme == "if", t[1]
-            return (IfStatement(alts, stat), t[2:])
+            return (IfAST(alts, stat), t[2:])
         if lexeme == "while":
-            (cond, t) = Nary(":").parse(t[1:])
-            (stat, t) = StatList({"end"}).parse(t)
+            (cond, t) = NaryRule(":").parse(t[1:])
+            (stat, t) = StatListRule({"end"}).parse(t)
             (lexeme, file, line, column) = t[1]
             assert lexeme == "while", t[1]
-            return (WhileStatement(cond, stat), t[2:])
+            return (WhileAST(cond, stat), t[2:])
         if lexeme == "routine":
             name = t[1]
             (lexeme, file, line, column) = name
             assert isname(lexeme), lv
-            (stat, t) = Block({"end"}).parse(t[2:])
+            (stat, t) = BlockRule({"end"}).parse(t[2:])
             (lexeme, file, line, column) = t[1]
             assert lexeme == "routine", t[1]
-            return (RoutineStatement(name, stat), t[2:])
+            return (RoutineAST(name, stat), t[2:])
         if lexeme == "call":
-            (expr, t) = Expression().parse(t[1:])
+            (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (CallStatement(expr), t[1:])
+            return (CallAST(expr), t[1:])
         if lexeme == "spawn":
-            (func, t) = Expression().parse(t[1:])
+            (func, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme in [",", ";"], t[0]
             if lexeme == ",":
-                (expr, t) = Nary(";").parse(t[1:])
-                return (SpawnStatement(func, expr), t)
+                (expr, t) = NaryRule(";").parse(t[1:])
+                return (SpawnAST(func, expr), t)
             else:
-                return (SpawnStatement(func, ConstantExpression(
+                return (SpawnAST(func, ConstantAST(
                     (NoValue(), file, line, column))), t[2:])
         if lexeme == "lock":
-            (lv, t) = LValue().parse(t[1:])
+            (lv, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (LockStatement(lv), t[1:])
+            return (LockAST(lv), t[1:])
         if lexeme == "skip":
-            return (SkipStatement(), t[1:])
+            return (SkipAST(), t[1:])
         if lexeme == "assert":
-            (cond, t) = Nary(":").parse(t[1:])
-            (expr, t) = Nary(";").parse(t)
-            return (AssertStatement(cond, expr), t)
-        return Assignment().parse(t)
+            (cond, t) = NaryRule(":").parse(t[1:])
+            (expr, t) = NaryRule(";").parse(t)
+            return (AssertAST(cond, expr), t)
+        return AssignmentRule().parse(t)
 
 class Context:
     def __init__(self, name, id, pc, end):
@@ -1442,7 +1454,7 @@ def run(invariant, pcs):
     for line in sys.stdin:
        all += line
     tokens = lexer(all, "<stdin>")
-    (ast, rem) = StatList(set()).parse(tokens)
+    (ast, rem) = StatListRule(set()).parse(tokens)
     code = []
     ast.compile(Scope(None), code)
 
