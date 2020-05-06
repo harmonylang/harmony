@@ -1,11 +1,2 @@
-routine P:
-    $self.slock := 33;
-end routine
-
-routine x:
-    call P(self);
-end routine
-
-mysema := {< .count: 1, .slock: False >};
-call P(.mysema);
-assert mysema.slock == 33: mysema;
+var x = -3;
+assert not False: x;

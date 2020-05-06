@@ -511,7 +511,7 @@ class NaryOp:
         (op, file, line, column) = self.op
         if self.n == 1:
             e = context.stack.pop()
-            if op == "neg":
+            if op == "-":
                 assert isinstance(e, int)
                 context.stack.append(-e)
             elif op == "not":
@@ -685,6 +685,13 @@ class Nary:
         self.closer = closer
 
     def parse(self, t):
+        (lexeme, file, line, column) = t[0]
+        if lexeme in { "-", "not", "tas" }:     # unary expression
+            op = t[0]
+            (ast, t) = Expression().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == self.closer, t[0]
+            return (NaryopExpression(op, [ast]), t[1:])
         (ast, t) = Expression().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
