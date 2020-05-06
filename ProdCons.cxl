@@ -14,9 +14,9 @@ routine produce(item):
 
     @room:
         cnt := cnt + 1;
-        // buf[in] := choose({ 10, 20 });
-        buf[in] := item;
-        in := (in + 1) % N;
+        // buf[myin] := choose({ 10, 20 });
+        buf[myin] := item;
+        myin := (myin + 1) % N;
 
     mylock := False;
 end routine
@@ -35,8 +35,8 @@ routine consume(self):
 
     @avail:
         cnt := cnt - 1;
-        self := buf[out];
-        out := (out + 1) % N;
+        self := buf[myout];
+        myout := (myout + 1) % N;
 
     mylock := False;
 end routine
@@ -44,7 +44,6 @@ end routine
 routine producer(self):
     while True:
         call produce[choose({ 10, 20 })];
-        call produce(self);
     end while
 end routine
 
@@ -55,8 +54,8 @@ routine consumer():
 end routine
 
 buf := {< x:0 | x in 0..(N-1) >};
-in := 0;
-out := 0;
+myin := 0;
+myout := 0;
 cnt := 0;
 mylock := False;
 
