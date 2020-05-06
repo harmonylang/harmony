@@ -299,19 +299,17 @@ class StoreOp:
         context.pc += 1
 
 class LockOp:
-    def __init__(self, v, n):
-        self.v = v
+    def __init__(self, n):
         self.n = n
 
     def __repr__(self):
-        return "Lock " + str(self.v) + " " + str(self.n)
+        return "Lock " + str(self.n)
 
     def eval(self, state, context):
-        (lexeme, file, line, column) = self.v
         indexes = []
         for i in range(self.n):
             indexes.append(context.stack.pop())
-        state.set([lexeme] + indexes, True)
+        state.set(indexes, True)
         context.pc += 1
 
 class StoreVarOp:
@@ -355,23 +353,6 @@ class TasOp:
         state.set(av.indexes, True)
         context.pc += 1
 
-class LockOp:
-    def __init__(self, v, n):
-        self.v = v
-        self.n = n
-
-    def __repr__(self):
-        return "Lock " + str(self.v) + " " + str(self.n)
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.v
-        indexes = [] if lexeme == "$" else [lexeme]
-        for i in range(self.n):
-            indexes.append(context.stack.pop())
-        state.set(indexes, True)
-        context.pc += 1
-        assert len(context.stack) < 5, context.stack
-
 class ChooseOp:
     def __repr__(self):
         return "Choose"
@@ -384,7 +365,7 @@ class AssertOp:
         expr = context.stack.pop()
         cond = context.stack.pop()
         assert isinstance(cond, bool)
-        assert cond, expr                   # TODO.  Should print trace instead
+        assert cond, expr           # TODO.  Should print trace instead
         context.pc += 1
 
 class PopOp:
@@ -869,11 +850,19 @@ class LockStatement:
 
     def compile(self, scope, code):
         n = len(self.lv.indexes)
-        for i in range(n):
-            self.lv.indexes[n - i - 1].compile(scope, code)
-        tv = scope.lookup(self.lv.var)
-        assert tv == None, tv
-        code.append(LockOp(self.lv.var, n))
+        for i in range(1, n):
+            self.lv.indexes[n - i].compile(scope, code)
+        lv = self.lv.indexes[0]
+        assert isinstance(lv, NameExpression), lv
+        tv = scope.lookup(lv.name)
+        assert tv == None, tv       # can't lock local variables
+        (lexeme, file, line, column) = lv.name
+        if lexeme == "$":
+            code.append(StoreOp(n - 1))
+            code.append(LockOp(n - 1))
+        else:
+            code.append(ConstantOp(lv.name))
+            code.append(LockOp(n))
 
 class SkipStatement:
     def __repr__(self):
@@ -1339,9 +1328,9 @@ def onestep(state, k, choice, visited, todo, node, infloop):
     if choice == None:
         op = sc.code[ctx.pc]
         if isinstance(op, LockOp):
-            assert op.n == 0, op
-            (lexeme, file, line, column) = op.v
-            v = sc.get(lexeme)
+            assert op.n == 1, op        # TODO.  Generalize
+            top = ctx.stack[-1]
+            v = sc.iget([top])
             assert isinstance(v, bool)
             if v:
                 return False
