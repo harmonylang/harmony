@@ -40,6 +40,7 @@ def isreserved(s):
         "if",
         "in",
         "lock",
+        "not",
         "routine",
         "skip",
         "spawn",
@@ -683,7 +684,7 @@ class ApplyOp(Op):
             context.push(func.d[e])
             context.pc += 1
         else:
-            assert isinstance(func, PcValue)
+            assert isinstance(func, PcValue), func
             context.push(context.pc + 1)
             context.push(e)
             context.pc = func.pc

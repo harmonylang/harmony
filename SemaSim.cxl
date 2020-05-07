@@ -1,27 +1,19 @@
-routine tas(self):
-    atomic:
-        var oldval = !(self);
-        !(self) := True;
-        self := oldval;
-    end atomic
-end routine
-
 routine P(sema):
     var blocked = True;
     while blocked:
-        while tas&(!(sema).slock): end while
-        if !(sema).count > 0:
-            !(sema).count := !(sema).count - 1;
-            blocked := False;
-        end if
-        !(sema).slock := False;
+        atomic:
+            if !(sema) > 0:
+                !(sema) := !(sema) - 1;
+                blocked := False;
+            end if
+        end atomic
     end while
 end routine
 
 routine V(sema):
-    while tas&(!(sema).slock): end while
-    !(sema).count := !(sema).count + 1;
-    !(sema).slock := False;
+    atomic:
+        !(sema) := !(sema) + 1;
+    end atomic
 end routine
 
 routine p():
@@ -32,7 +24,7 @@ routine p():
     end while
 end routine
 
-mysema := {< .count: 1, .slock: False >};
+mysema := 1;
 spawn p(), 0;
 spawn p(), 1;
 spawn p(), 2;
