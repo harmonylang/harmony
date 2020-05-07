@@ -3,7 +3,7 @@ import cxl
 # check to see if this state is bad
 def mutex(state):
     x = 0
-    for ctx in state.contexts.values():
+    for ctx in state.ctxbag.keys():
         if ctx.pc > 0:
             op = state.code[ctx.pc - 1]
             if isinstance(op, cxl.LabelOp) and op.label[0] == "cs":

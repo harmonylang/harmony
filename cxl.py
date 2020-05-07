@@ -478,12 +478,12 @@ class SpawnOp(Op):
         return "Spawn " + str(self.entry) + " " + str(self.exit)
 
     def eval(self, state, context):
-        id = context.pop()
+        tag = context.pop()
         name = "thread"
-        ctx = Context(name, id, self.entry, self.exit)
+        ctx = Context(name, tag, self.entry, self.exit)
         ctx.stack = context.stack.copy()
         ctx.vars = context.vars
-        state.contexts[(name, id)] = ctx
+        state.add(ctx)
         context.pc += 1
 
 class AtomicIncOp(Op):
@@ -1187,15 +1187,15 @@ class CallAST(AST):
         code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, id, expr):
-        self.id = id
+    def __init__(self, tag, expr):
+        self.tag = tag
         self.expr = expr
 
     def __repr__(self):
         return "Spawn(" + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        self.id.compile(scope, code)
+        self.tag.compile(scope, code)
         pc = len(code)
         code.append(None)    # we're going to jump over this code
         self.expr.compile(scope, code)
@@ -1379,10 +1379,10 @@ class StatementRule(Rule):
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ",", t[0]
-            (id, t) = ExpressionRule().parse(t[1:])
+            (tag, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (SpawnAST(id, expr), t[1:])
+            return (SpawnAST(tag, expr), t[1:])
         if lexeme == "skip":
             return (SkipAST(), t[1:])
         if lexeme == "assert":
@@ -1392,9 +1392,9 @@ class StatementRule(Rule):
         return AssignmentRule().parse(t)
 
 class Context:
-    def __init__(self, name, id, pc, end):
+    def __init__(self, name, tag, pc, end):
         self.name = name
-        self.id = id
+        self.tag = tag
         self.pc = pc
         self.end = end
         self.atomic = 0
@@ -1402,10 +1402,10 @@ class Context:
         self.vars = RecordValue({})
 
     def __repr__(self):
-        return "Context(" + str(self.name) + ", " + str(self.id) + ", " + str(self.pc) + ", " + str(self.stack) + ", " + str(self.vars) + ")"
+        return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
 
     def __hash__(self):
-        h = (self.name, self.id, self.pc, self.end, self.vars).__hash__()
+        h = (self.name, self.tag, self.pc, self.end, self.atomic, self.vars).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -1415,15 +1415,18 @@ class Context:
             return False
         if self.name != other.name:
             return False
-        if self.id != other.id:
+        if self.tag != other.tag:
             return False
         if self.pc != other.pc:
+            return False
+        if self.atomic != other.atomic:
             return False
         assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = Context(self.name, self.id, self.pc, self.end)
+        c = Context(self.name, self.tag, self.pc, self.end)
+        c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
         return c
@@ -1460,17 +1463,15 @@ class State:
     def __init__(self, code):
         self.code = code
         self.vars = RecordValue({})
-        name = "__main__"
-        id = 0
-        self.contexts = { (name, id) : Context(name, id, 0, len(code)) }
+        self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
         self.assertFailure = False
 
     def __repr__(self):
-        return "State(" + str(self.vars) + ", " + str(self.contexts) + ")"
+        return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ")"
 
     def __hash__(self):
         h = self.vars.__hash__()
-        for c in self.contexts.values():
+        for c in self.ctxbag.items():
             h ^= c.__hash__()
         return h
 
@@ -1480,19 +1481,19 @@ class State:
         assert self.code == other.code
         if self.vars != other.vars:
             return False
-        if self.contexts.keys() != other.contexts.keys():
+        if self.ctxbag != other.ctxbag:
             return False
-        for (k, v) in self.contexts.items():
-            if v != other.contexts[k]:
-                return False
+        if self.assertFailure != other.assertFailure:
+            return False
         return True
 
     def copy(self):
         s = State(self.code)
         s.vars = self.vars      # no need to copy as store operations do it
-        s.contexts = {}
-        for (k, v) in self.contexts.items():
-            s.contexts[k] = v.copy()
+        s.ctxbag = {}
+        for (ctx, cnt) in self.ctxbag.items():
+            s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
+        s.assertFailure = self.assertFailure
         return s
 
     def get(self, var):
@@ -1516,6 +1517,22 @@ class State:
 
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
+
+    def add(self, ctx):
+        cnt = self.ctxbag.get(ctx)
+        if cnt == None:
+            self.ctxbag[ctx] = 1
+        else:
+            assert False
+            self.ctxbag[ctx] = cnt + 1
+
+    def remove(self, ctx):
+        cnt = self.ctxbag[ctx]
+        assert cnt > 0
+        if cnt == 1:
+            del self.ctxbag[ctx]
+        else:
+            self.ctxbag[ctx] = cnt - 1
 
 class Node:
     def __init__(self, parent, ctx, choice, steps, len):
@@ -1568,9 +1585,16 @@ globops = [
     AtomicIncOp, LabelOp, LoadOp, SpawnOp, StoreOp
 ]
 
-def onestep(state, k, choice, visited, todo, node, infloop):
+def onestep(state, ctx, choice, visited, todo, node, infloop):
+    # Copy the state (TODO.  Should not have to copy contexts)
     sc = state.copy()
-    ctx = sc.contexts[k]
+
+    # Remove context from bag
+    sc.remove(ctx)
+
+    # Make a copy of the context before modifying it.
+    ctx = ctx.copy()
+
     if choice == None:
         steps = []
     else:
@@ -1578,7 +1602,8 @@ def onestep(state, k, choice, visited, todo, node, infloop):
         ctx.stack[-1] = choice
         ctx.pc += 1
 
-    localStates = { sc.copy() }
+    localStates = { ctx.copy() }
+    foundInfLoop = False
     while not sc.assertFailure:
         # execute one step
         steps.append(ctx.pc)
@@ -1587,30 +1612,36 @@ def onestep(state, k, choice, visited, todo, node, infloop):
 
         # if we reached the end, remove the context
         if ctx.pc == ctx.end:
-            del sc.contexts[k]
             break
 
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if ctx.atomic == 0 and len(sc.contexts) > 1 and \
-                            type(sc.code[ctx.pc]) in globops:
+        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops:
+                            # TODO   and len(sc.ctxbag) > 1
             break
         if isinstance(sc.code[ctx.pc], ChooseOp):
             break
 
         # Detect infinite loops
-        if sc in localStates:
-            infloop.add(sc.copy())
+        if ctx in localStates:
+            foundInfLoop = True
             break
-        localStates.add(sc.copy())
+        localStates.add(ctx.copy())
+
+    # Put the resulting context into the bag unless it's done
+    if ctx.pc != ctx.end:
+        sc.add(ctx)
 
     next = visited.get(sc)
     if next == None:
-        next = Node(state, k, choice, steps, node.len + 1)
+        next = Node(state, ctx, choice, steps, node.len + 1)
         visited[sc] = next
         todo.append(sc)
     node.edges.append(sc)
+
+    if foundInfLoop:
+        infloop.add(sc)
 
 def optjump(code, pc):
     while pc < len(code):
@@ -1668,20 +1699,21 @@ def run(invariant, pcs):
         if not invariant(state):
             bad.add(state)
 
-        for (k, c) in state.contexts.items():
-            if c.pc < c.end and isinstance(code[c.pc], ChooseOp):
-                choices = c.stack[-1]
+        for (ctx, cnt) in state.ctxbag.items():
+            if ctx.pc < ctx.end and isinstance(code[ctx.pc], ChooseOp):
+                choices = ctx.stack[-1]
                 assert isinstance(choices, SetValue), choices
                 assert len(choices.s) > 0
                 for choice in choices.s:
-                    onestep(state, k, choice, visited, todo, node, infloop)
+                    onestep(state, ctx, choice, visited, todo, node, infloop)
             else:
-                onestep(state, k, None, visited, todo, node, infloop)
+                onestep(state, ctx, None, visited, todo, node, infloop)
     print()
 
     # See if there has been a safety violation
     if len(bad) > 0:
         print("==== Safety violation ====")
+        # TODO.  First one added to bad should have shortest path
         print_shortest(visited, bad)
 
     # See if there are processes stuck in infinite loops without accessing
@@ -1698,13 +1730,11 @@ def run(invariant, pcs):
         # critical region
         good = set()
         for s in visited.keys():
-            # for ctx in s.contexts.values():
-            ctx = s.contexts.get(p)
-            if ctx == None or ctx.pc == 0:
-                continue
-            op = s.code[ctx.pc]
-            if isinstance(op, LabelOp) and op.label[0] == cs:
-                good.add(s)
+            for ctx in s.ctxbag.keys():
+                if (ctx.name, ctx.tag) == p:
+                    op = s.code[ctx.pc]
+                    if isinstance(op, LabelOp) and op.label[0] == cs:
+                        good.add(s)
         progress = True
         while progress:
             progress = False

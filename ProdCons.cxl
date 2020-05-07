@@ -57,7 +57,7 @@ routine consume(self):
     call unlock &(mylock);
 end routine
 
-routine producer(self):
+routine producer():
     while True:
         call produce[choose({ 10, 20 })];
     end while
@@ -75,7 +75,7 @@ myout := 0;
 cnt := 0;
 mylock := False;
 
-spawn producer(0), 0;
-spawn producer(1), 1;
-spawn consumer(), 2;
-spawn consumer(), 3;
+spawn producer(), 0;
+spawn producer(), 0;
+spawn consumer(), 1;
+spawn consumer(), 1;

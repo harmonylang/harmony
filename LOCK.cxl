@@ -1,13 +1,30 @@
-routine p():
+routine tas(self):
+    atomic:
+        var oldval = !(self);
+        !(self) := True;
+        self := oldval;
+    end atomic
+end routine
+
+routine lock(lk):
+    while tas(lk): end while
+end routine
+
+routine unlock(lk):
+    !(lk) := False;
+end routine
+
+routine p(arg):
     while True:
-        lock mylock;
-        @cs: // critical section
-        mylock := False;
+        call lock&(mylock);
+        @cs: skip // critical section
+        call unlock&(mylock);
     end while
 end routine
 
 mylock := False;
-spawn p(), 0;
-spawn p(), 1;
-spawn p(), 2;
-spawn p(), 3;
+
+spawn p(0), 0;
+spawn p(0), 0;
+spawn p(0), 0;
+spawn p(0), 0;
