@@ -39,7 +39,6 @@ def isreserved(s):
         "False",
         "if",
         "in",
-        "lock",
         "not",
         "routine",
         "skip",
@@ -367,22 +366,6 @@ class AddressOp(Op):
         av = indexes[0]
         assert isinstance(av, AddressValue), av
         context.push(AddressValue(av.indexes + indexes[1:]))
-        context.pc += 1
-
-class LockOp(Op):
-    def __init__(self, n):
-        self.n = n
-
-    def __repr__(self):
-        return "Lock " + str(self.n)
-
-    def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        av = indexes[0]
-        assert isinstance(av, AddressValue), av
-        state.set(av.indexes + indexes[1:], True)
         context.pc += 1
 
 class StoreVarOp(Op):
@@ -1083,28 +1066,6 @@ class AddressAST(AST):
             lv.expr.compile(scope, code)
         code.append(AddressOp(n))
 
-class LockAST(AST):
-    def __init__(self, lv):
-        self.lv = lv
-
-    def __repr__(self):
-        return "Lock(" + str(self.lv) + ")"
-
-    def compile(self, scope, code):
-        n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
-        lv = self.lv.indexes[0]
-        if isinstance(lv, NameAST):
-            tv = scope.lookup(lv.name)
-            assert tv == None, tv       # can't lock local variables
-            (lexeme, file, line, column) = lv.name
-            code.append(NameOp(lexeme))
-        else:
-            assert isinstance(lv, PointerAST), lv
-            lv.expr.compile(scope, code)
-        code.append(LockOp(n))
-
 class SkipAST(AST):
     def __repr__(self):
         return "Skip"
@@ -1423,11 +1384,6 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
             return (SpawnAST(id, expr), t[1:])
-        if lexeme == "lock":
-            (lv, t) = LValueRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme == ";", t[0]
-            return (LockAST(lv), t[1:])
         if lexeme == "skip":
             return (SkipAST(), t[1:])
         if lexeme == "assert":
@@ -1610,26 +1566,13 @@ class Scope:
 
 # These operations cause global state changes
 globops = [
-    AtomicIncOp, LabelOp, LoadOp, LockOp, LockOp, SpawnOp, StoreOp
+    AtomicIncOp, LabelOp, LoadOp, SpawnOp, StoreOp
 ]
 
 def onestep(state, k, choice, visited, todo, node, infloop):
-    if state.assertFailure:
-        return False
     sc = state.copy()
     ctx = sc.contexts[k]
     if choice == None:
-        op = sc.code[ctx.pc]
-        if isinstance(op, LockOp):
-            indexes = []
-            for i in range(op.n):
-                indexes.append(ctx.stack[len(ctx.stack) - i - 1])
-            av = indexes[0]
-            assert isinstance(av, AddressValue), av
-            v = sc.iget(av.indexes + indexes[1:])
-            assert isinstance(v, bool)
-            if v:
-                return False
         steps = []
     else:
         steps = [ctx.pc]
@@ -1669,7 +1612,6 @@ def onestep(state, k, choice, visited, todo, node, infloop):
         visited[sc] = next
         todo.append(sc)
     node.edges.append(sc)
-    return True
 
 def optjump(code, pc):
     while pc < len(code):
@@ -1727,18 +1669,15 @@ def run(invariant, pcs):
         if not invariant(state):
             bad.add(state)
 
-        deadlock = len(state.contexts.items()) > 0
         for (k, c) in state.contexts.items():
             if c.pc < c.end and isinstance(code[c.pc], ChooseOp):
                 choices = c.stack[-1]
                 assert isinstance(choices, SetValue), choices
                 assert len(choices.s) > 0
                 for choice in choices.s:
-                    if onestep(state, k, choice, visited, todo, node, infloop):
-                        deadlock = False
-            elif onestep(state, k, None, visited, todo, node, infloop):
-                deadlock = False
-        assert not deadlock
+                    onestep(state, k, choice, visited, todo, node, infloop)
+            else:
+                onestep(state, k, None, visited, todo, node, infloop)
     print()
 
     # See if there has been a safety violation
