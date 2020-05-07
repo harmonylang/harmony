@@ -1654,6 +1654,21 @@ def onestep(state, k, choice, visited, todo, node, infloop):
     node.edges.append(sc)
     return True
 
+def optjump(code, pc):
+    while pc < len(code):
+        op = code[pc]
+        if not isinstance(op, JumpOp):
+            return pc
+        pc = op.pc
+
+def optimize(code):
+    for i in range(len(code)):
+        op = code[i]
+        if isinstance(op, JumpOp):
+            code[i] = JumpOp(optjump(code, op.pc))
+        elif isinstance(op, JumpFalseOp):
+            code[i] = JumpFalseOp(optjump(code, op.pc))
+
 def run(invariant, pcs):
     all = ""
     for line in sys.stdin:
@@ -1667,6 +1682,8 @@ def run(invariant, pcs):
         sys.exit(1)
     code = []
     ast.compile(Scope(None), code)
+
+    optimize(code)
 
     for pc in range(len(code)):
         print(pc, code[pc])

@@ -1,2 +1,1 @@
-var buf = {< x: (2*x) | x in 0..3 >};
-assert buf == {< 0:0, 1:2, 2:4, 3:7 >}: buf
+x := y;
