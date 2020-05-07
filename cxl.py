@@ -63,7 +63,7 @@ def isbinaryop(s):
             "/\\", "and", "\\/", "or"
     ];
 
-tokens = [ "{<", ">}", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
+tokens = [ "R{", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
             "&(", "!(", "choose(" ]
 
 def lexer(s, file):
@@ -897,21 +897,21 @@ class RecordComprehensionRule(Rule):
         assert isname(lexeme), name
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
-        (expr, t) = NaryRule(">}").parse(t[2:])
+        (expr, t) = NaryRule("}").parse(t[2:])
         return (RecordComprehensionAST(self.key, self.value, name, expr), t)
 
 class RecordRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        assert lexeme == "{<", t[0]
+        assert lexeme == "R{", t[0]
         d = {}
-        while lexeme != ">}":
+        while lexeme != "}":
             (key, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ":", t[0]
             (value, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in { ",", ">}", "|" }, t[0]
+            assert lexeme in { ",", "}", "|" }, t[0]
             if lexeme == "|":
                 assert d == {}, d
                 return RecordComprehensionRule(key, value).parse(t[1:])
@@ -947,7 +947,7 @@ class BasicExpressionRule(Rule):
                 (lexeme, file, line, column) = t[0]
                 assert lexeme in { ",", "}" }
             return (SetAST(s), t[1:])
-        if lexeme == "{<":
+        if lexeme == "R{":
             return RecordRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"

@@ -60,7 +60,7 @@ routine consumer():
     end while
 end routine
 
-buf := {< x:0 | x in 0..(N-1) >};
+buf := R{ x:0 | x in 0..(N-1) };
 myin := 0;
 myout := 0;
 cnt := 0;

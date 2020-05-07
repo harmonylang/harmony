@@ -5,6 +5,6 @@ routine p():
     end while
 end routine
 
-flags := {< 0: False, 1: False >};
+flags := R{ 0: False, 1: False };
 spawn p(), 0;
 spawn p(), 1;
