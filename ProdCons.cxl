@@ -8,15 +8,23 @@ routine tas(self):
     end atomic
 end routine
 
+routine lock(lk):
+    while tas(lk): end while
+end routine
+
+routine unlock(lk):
+    !(lk) := False;
+end routine
+
 routine produce(item):
     var full = True;
     while full:
-        while tas&(mylock): end while
+        call lock &(mylock);
         if cnt < N:
             full := False;
         else:
             assert cnt == N: cnt;
-            mylock := False;
+            call unlock &(mylock);
         end if
     end while
 
@@ -26,18 +34,18 @@ routine produce(item):
         buf[myin] := item;
         myin := (myin + 1) % N;
 
-    mylock := False;
+    call unlock &(mylock);
 end routine
 
 routine consume(self):
     var empty = True;
     while empty:
-        while tas&(mylock): end while
+        call lock &(mylock);
         if cnt > 0:
             empty := False;
         else:
             assert cnt == 0: cnt;
-            mylock := False;
+            call unlock &(mylock);
         end if
     end while
 
@@ -46,7 +54,7 @@ routine consume(self):
         self := buf[myout];
         myout := (myout + 1) % N;
 
-    mylock := False;
+    call unlock &(mylock);
 end routine
 
 routine producer(self):

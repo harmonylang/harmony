@@ -44,7 +44,6 @@ def isreserved(s):
         "skip",
         "spawn",
         "True",
-        "unlock",
         "var",
         "while"
     ]
