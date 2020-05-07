@@ -30,6 +30,7 @@ def isnumber(s):
 def isreserved(s):
     return s in [
         "assert",
+        "atomic",
         "call",
         "choose",
         "const",
@@ -42,7 +43,6 @@ def isreserved(s):
         "routine",
         "skip",
         "spawn",
-        "tas",
         "True",
         "unlock",
         "var",
@@ -54,7 +54,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "-", "not", "tas" ]
+    return s in [ "-", "not" ]
 
 def isbinaryop(s):
     return s in [
@@ -410,17 +410,6 @@ class PointerOp(Op):
         context.push(state.iget(av.indexes))
         context.pc += 1
 
-class TasOp(Op):
-    def __repr__(self):
-        return "TAS"
-
-    def eval(self, state, context):
-        av = context.pop()
-        assert isinstance(av, AddressValue), av
-        context.push(state.iget(av.indexes))
-        state.set(av.indexes, True)
-        context.pc += 1
-
 class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
@@ -512,6 +501,22 @@ class SpawnOp(Op):
         ctx.stack = context.stack.copy()
         ctx.vars = context.vars
         state.contexts[(name, id)] = ctx
+        context.pc += 1
+
+class AtomicIncOp(Op):
+    def __repr__(self):
+        return "AtomicInc"
+
+    def eval(self, state, context):
+        context.atomic += 1
+        context.pc += 1
+
+class AtomicDecOp(Op):
+    def __repr__(self):
+        return "AtomicDec"
+
+    def eval(self, state, context):
+        context.atomic -= 1
         context.pc += 1
 
 class JumpOp(Op):
@@ -879,12 +884,14 @@ class NaryRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryAST(op, [ast]), t[1:])
-        if lexeme == "tas":
+        # TODO.  Experimenting with an alternative syntax for "!()".
+        #        But it doesn't work well for LValues
+        if lexeme == "!":
             op = t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
-            return (TasAST(ast), t[1:])
+            return (PointerAST(ast), t[1:])
         (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
@@ -989,17 +996,6 @@ class LValueAST(AST):
 
     def __repr__(self):
         return "LValueRule(" + str(self.indexes) + ")"
-
-class TasAST(AST):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __repr__(self):
-        return "TAS(" + str(self.expr) + ")"
-
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(TasOp())
 
 class PointerAST(AST):
     def __init__(self, expr):
@@ -1166,6 +1162,18 @@ class WhileAST(AST):
         self.stat.compile(scope, code)
         code.append(JumpOp(pc1))
         code[pc2] = JumpFalseOp(len(code))
+
+class AtomicAST(AST):
+    def __init__(self, stat):
+        self.stat = stat
+
+    def __repr__(self):
+        return "Atomic(" + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        code.append(AtomicIncOp())
+        self.stat.compile(scope, code)
+        code.append(AtomicDecOp())
 
 class AssertAST(AST):
     def __init__(self, token, cond, expr):
@@ -1377,6 +1385,11 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[1]
             assert lexeme == "while", t[1]
             return (WhileAST(cond, stat), t[2:])
+        if lexeme == "atomic":
+            (stat, t) = BlockRule({"end"}).parse(t[1:])
+            (lexeme, file, line, column) = t[1]
+            assert lexeme == "atomic", t[1]
+            return (AtomicAST(stat), t[2:])
         if lexeme == "routine":
             name = t[1]
             (lexeme, file, line, column) = name
@@ -1428,6 +1441,7 @@ class Context:
         self.id = id
         self.pc = pc
         self.end = end
+        self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
         self.vars = RecordValue({})
 
@@ -1595,7 +1609,7 @@ class Scope:
 
 # These operations cause global state changes
 globops = [
-    LabelOp, LoadOp, LockOp, LockOp, SpawnOp, StoreOp, TasOp
+    AtomicIncOp, LabelOp, LoadOp, LockOp, LockOp, SpawnOp, StoreOp
 ]
 
 def onestep(state, k, choice, visited, todo, node, infloop):
@@ -1634,8 +1648,10 @@ def onestep(state, k, choice, visited, todo, node, infloop):
             break
 
         # if we're about to do a state change, let other processes
-        # go first assuming there are other processes
-        if type(sc.code[ctx.pc]) in globops and len(sc.contexts) > 1:
+        # go first assuming there are other processes and we're not
+        # in "atomic" mode
+        if ctx.atomic == 0 and len(sc.contexts) > 1 and \
+                            type(sc.code[ctx.pc]) in globops:
             break
         if isinstance(sc.code[ctx.pc], ChooseOp):
             break

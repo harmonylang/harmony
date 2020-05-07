@@ -1,5 +1,13 @@
 const N = 2;         // size of bounded buffer
 
+routine tas(self):
+    atomic:
+        var oldval = !(self);
+        !(self) := True;
+        self := oldval;
+    end atomic
+end routine
+
 routine produce(item):
     var full = True;
     while full:

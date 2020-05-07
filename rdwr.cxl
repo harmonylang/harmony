@@ -1,3 +1,11 @@
+routine tas(self):
+    atomic:
+        var oldval = !(self);
+        !(self) := True;
+        self := oldval;
+    end atomic
+end routine
+
 routine reader():
     while True:
         while tas&(rlock): end while
