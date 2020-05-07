@@ -325,6 +325,17 @@ class LabelOp(Op):
     def eval(self, state, context):
         context.pc += 1
 
+class NameOp(Op):
+    def __init__(self, name):
+        self.name = name 
+
+    def __repr__(self):
+        return "Name " + str(self.name)
+
+    def eval(self, state, context):
+        context.push(AddressValue([self.name]))
+        context.pc += 1
+
 class StoreOp(Op):
     def __init__(self, n):
         self.n = n                  # #indexes
@@ -336,40 +347,12 @@ class StoreOp(Op):
         indexes = []
         for i in range(self.n):
             indexes.append(context.pop())
-        state.set(indexes, context.pop())
-        context.pc += 1
-
-class StoreIndOp(Op):
-    def __init__(self, n):
-        self.n = n                  # #indexes
-
-    def __repr__(self):
-        return "StoreInd " + str(self.n)
-
-    def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
         av = indexes[0]
         assert isinstance(av, AddressValue)
         state.set(av.indexes + indexes[1:], context.pop())
         context.pc += 1
 
 class AddressOp(Op):
-    def __init__(self, n):
-        self.n = n          # #indexes in LValue
-
-    def __repr__(self):
-        return "Address " + str(self.n)
-
-    def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        context.push(AddressValue(indexes))
-        context.pc += 1
-
-class AddressIndOp(Op):
     def __init__(self, n):
         self.n = n          # #indexes in LValue
 
@@ -396,7 +379,9 @@ class LockOp(Op):
         indexes = []
         for i in range(self.n):
             indexes.append(context.pop())
-        state.set(indexes, True)
+        av = indexes[0]
+        assert isinstance(av, AddressValue), av
+        state.set(av.indexes + indexes[1:], True)
         context.pc += 1
 
 class StoreVarOp(Op):
@@ -1066,7 +1051,7 @@ class AssignmentAST(AST):
             tv = scope.lookup(lv.name)
             if tv == None:
                 (lexeme, file, line, column) = lv.name
-                code.append(ConstantOp(lv.name))
+                code.append(NameOp(lexeme))
                 code.append(StoreOp(n))
             else:
                 (t, v) = tv
@@ -1077,7 +1062,7 @@ class AssignmentAST(AST):
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(StoreIndOp(n))
+            code.append(StoreOp(n))
 
 class AddressAST(AST):
     def __init__(self, lv):
@@ -1095,12 +1080,11 @@ class AddressAST(AST):
             tv = scope.lookup(lv.name)
             assert tv == None, tv   # can't take address of local var
             (lexeme, file, line, column) = lv.name
-            code.append(ConstantOp(lv.name))
-            code.append(AddressOp(n))
+            code.append(NameOp(lexeme))
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(AddressIndOp(n))
+        code.append(AddressOp(n))
 
 class LockAST(AST):
     def __init__(self, lv):
@@ -1114,11 +1098,14 @@ class LockAST(AST):
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
-        assert isinstance(lv, NameAST), lv
-        tv = scope.lookup(lv.name)
-        assert tv == None, tv       # can't lock local variables
-        (lexeme, file, line, column) = lv.name
-        code.append(ConstantOp(lv.name))
+        if isinstance(lv, NameAST):
+            tv = scope.lookup(lv.name)
+            assert tv == None, tv       # can't lock local variables
+            (lexeme, file, line, column) = lv.name
+            code.append(NameOp(lexeme))
+        else:
+            assert isinstance(lv, PointerAST), lv
+            lv.expr.compile(scope, code)
         code.append(LockOp(n))
 
 class SkipAST(AST):
@@ -1619,9 +1606,12 @@ def onestep(state, k, choice, visited, todo, node, infloop):
     if choice == None:
         op = sc.code[ctx.pc]
         if isinstance(op, LockOp):
-            assert op.n == 1, op        # TODO.  Generalize
-            top = ctx.stack[-1]
-            v = sc.iget([top])
+            indexes = []
+            for i in range(op.n):
+                indexes.append(ctx.stack[len(ctx.stack) - i - 1])
+            av = indexes[0]
+            assert isinstance(av, AddressValue), av
+            v = sc.iget(av.indexes + indexes[1:])
             assert isinstance(v, bool)
             if v:
                 return False
