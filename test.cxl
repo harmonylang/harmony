@@ -1,1 +1,6 @@
-x := y;
+routine p(self):
+    v := self;
+end routine
+
+spawn p(1), 1;
+spawn p(1), 1;

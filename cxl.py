@@ -437,12 +437,13 @@ class RoutineOp(Op):
         context.pc = self.endpc + 1
 
 class FrameOp(Op):
-    def __init__(self, name, arg):
+    def __init__(self, name, arg, end):
         self.name = name
         self.arg = arg
+        self.end = end
 
     def __repr__(self):
-        return "Frame " + str(self.name) + " " + str(self.arg)
+        return "Frame " + str(self.name) + " " + str(self.arg) + " " + str(self.end)
 
     def eval(self, state, context):
         arg = context.pop()
@@ -470,19 +471,20 @@ class ReturnOp(Op):
         context.push(result)
 
 class SpawnOp(Op):
-    def __init__(self, entry, exit):
+    def __init__(self, entry):
         self.entry = entry
-        self.exit = exit
 
     def __repr__(self):
-        return "Spawn " + str(self.entry) + " " + str(self.exit)
+        return "Spawn " + str(self.entry)
 
     def eval(self, state, context):
         tag = context.pop()
+        arg = context.pop()
+        frame = state.code[self.entry]
+        assert isinstance(frame, FrameOp)
         name = "thread"
-        ctx = Context(name, tag, self.entry, self.exit)
-        ctx.stack = context.stack.copy()
-        ctx.vars = context.vars
+        ctx = Context(name, tag, self.entry, frame.end)
+        ctx.push(arg)
         state.add(ctx)
         context.pc += 1
 
@@ -945,7 +947,7 @@ class BasicExpressionRule(Rule):
                 (next, t) = ExpressionRule().parse(t[1:])
                 s.add(next)
                 (lexeme, file, line, column) = t[0]
-                assert lexeme in { ",", "}" }
+                assert lexeme in { ",", "}" }, t[0]
             return (SetAST(s), t[1:])
         if lexeme == "R{":
             return RecordRule().parse(t)
@@ -1168,10 +1170,11 @@ class RoutineAST(AST):
         else:
             (arg, file, line, column) = self.arg
             ns.names[arg] = ("variable", self.arg)
-        code.append(FrameOp(self.name, arg))
+        code.append(None)
         self.stat.compile(ns, code)
         code.append(ReturnOp(arg))
         code[pc] = JumpOp(len(code))
+        code[pc+1] = FrameOp(self.name, arg, len(code) - 1)
         (lexeme, file, line, column) = self.name
         scope.names[lexeme] = ("routine", pc + 1)
 
@@ -1187,20 +1190,20 @@ class CallAST(AST):
         code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, tag, expr):
+    def __init__(self, tag, func, expr):
         self.tag = tag
+        self.func = func
         self.expr = expr
 
     def __repr__(self):
-        return "Spawn(" + str(self.expr) + ")"
+        return "Spawn(" + str(self.tag) + ", " + str(self.func) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
+        (t, v) = scope.lookup(self.func)
+        assert t == "routine"
         self.tag.compile(scope, code)
-        pc = len(code)
-        code.append(None)    # we're going to jump over this code
         self.expr.compile(scope, code)
-        code[pc] = JumpOp(len(code))
-        code.append(SpawnOp(pc + 1, len(code)))
+        code.append(SpawnOp(v))
 
 class LabelAST(AST):
     def __init__(self, label, ast):
@@ -1376,13 +1379,16 @@ class StatementRule(Rule):
             assert lexeme == ";", t[0]
             return (CallAST(expr), t[1:])
         if lexeme == "spawn":
-            (expr, t) = ExpressionRule().parse(t[1:])
+            func = t[1]
+            (lexeme, file, line, column) = func
+            assert isname(lexeme), func
+            (expr, t) = ExpressionRule().parse(t[2:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ",", t[0]
             (tag, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (SpawnAST(tag, expr), t[1:])
+            return (SpawnAST(tag, func, expr), t[1:])
         if lexeme == "skip":
             return (SkipAST(), t[1:])
         if lexeme == "assert":
@@ -1523,7 +1529,6 @@ class State:
         if cnt == None:
             self.ctxbag[ctx] = 1
         else:
-            assert False
             self.ctxbag[ctx] = cnt + 1
 
     def remove(self, ctx):
@@ -1647,8 +1652,9 @@ def optjump(code, pc):
     while pc < len(code):
         op = code[pc]
         if not isinstance(op, JumpOp):
-            return pc
+            break
         pc = op.pc
+    return pc
 
 def optimize(code):
     for i in range(len(code)):
@@ -1750,8 +1756,5 @@ def run(invariant, pcs):
     if len(bad) > 0:
         print("==== Livelock ====")
         print_shortest(visited, bad)
-        # for (s, n) in visited.items():
-        #     print(">>>>>>>>")
-        #     print_path(visited, s)
 
     return visited
