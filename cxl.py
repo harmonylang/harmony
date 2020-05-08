@@ -66,7 +66,7 @@ def isbinaryop(s):
     ];
 
 tokens = [ "dict{", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
-            "&(", "!(", "choose(" ]
+            "&(", "^(", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -893,9 +893,9 @@ class NaryRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryAST(op, [ast]), t[1:])
-        # TODO.  Experimenting with an alternative syntax for "!()".
+        # TODO.  Experimenting with an alternative syntax for "^()".
         #        But it doesn't work well for LValues
-        if lexeme == "!":
+        if lexeme == "^":
             op = t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -987,7 +987,7 @@ class BasicExpressionRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (AddressAST(ast), t[1:])
-        if lexeme == "!(":
+        if lexeme == "^(":
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
@@ -1273,7 +1273,7 @@ class LValueRule(Rule):
         if isname(name):
             indexes = [NameAST(t[0])]
         else:
-            assert name == "!(", t[0]
+            assert name == "^(", t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")"

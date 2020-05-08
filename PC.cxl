@@ -2,8 +2,8 @@ const N = 2;         # size of bounded buffer
 
 def tas(self):
     atomic:
-        var oldval = !(self);
-        !(self) := True;
+        var oldval = ^(self);
+        ^(self) := True;
         self := oldval;
     .
 .
