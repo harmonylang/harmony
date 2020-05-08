@@ -11,7 +11,7 @@ def mutex(state):
     return x <= 1
 
 def main():
-    cxl.run(mutex, [ (("thread", 0), "cs") ])
+    cxl.run(mutex, [ (("p", 0), "cs"), (("p", 1), "cs") ])
 
 if __name__ == "__main__":
     main()

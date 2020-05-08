@@ -41,6 +41,6 @@ wlock := False;
 nreaders := 0;
 
 spawn reader(), 0;
-spawn reader(), 0;
-spawn writer(), 1;
+spawn reader(), 1;
+spawn writer(), 0;
 spawn writer(), 1;

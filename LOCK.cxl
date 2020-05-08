@@ -14,7 +14,7 @@ def unlock(lk):
     !(lk) := False;
 end def
 
-def p(arg):
+def p():
     while True:
         call lock&(mylock);
         @cs: skip   # critical section
@@ -24,7 +24,5 @@ end def
 
 mylock := False;
 
-spawn p(0), 0;
-spawn p(0), 0;
-spawn p(0), 0;
-spawn p(0), 0;
+spawn p(), 0;
+spawn p(), 1;

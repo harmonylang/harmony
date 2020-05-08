@@ -17,5 +17,3 @@ end def
 mylock := False;
 spawn p(), 0;
 spawn p(), 1;
-spawn p(), 2;
-spawn p(), 3;

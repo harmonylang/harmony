@@ -471,19 +471,20 @@ class ReturnOp(Op):
         context.push(result)
 
 class SpawnOp(Op):
-    def __init__(self, entry):
-        self.entry = entry
+    def __init__(self, method, pc):
+        self.method = method
+        self.pc = pc
 
     def __repr__(self):
-        return "Spawn " + str(self.entry)
+        return "Spawn " + str(self.pc)
 
     def eval(self, state, context):
-        tag = context.pop()
         arg = context.pop()
-        frame = state.code[self.entry]
+        tag = context.pop()
+        frame = state.code[self.pc]
         assert isinstance(frame, FrameOp)
-        name = "thread"
-        ctx = Context(name, tag, self.entry, frame.end)
+        (lexeme, file, line, column) = self.method
+        ctx = Context(lexeme, tag, self.pc, frame.end)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -1203,7 +1204,7 @@ class SpawnAST(AST):
         assert t == "method"
         self.tag.compile(scope, code)
         self.expr.compile(scope, code)
-        code.append(SpawnOp(v))
+        code.append(SpawnOp(self.method, v))
 
 class LabelAST(AST):
     def __init__(self, label, ast):
@@ -1754,7 +1755,7 @@ def run(invariant, pcs):
         livelocked = set(visited.keys()).difference(good)
         bad = bad.union(livelocked)
     if len(bad) > 0:
-        print("==== Livelock ====")
+        print("==== Livelock ====", len(bad))
         print_shortest(visited, bad)
 
     return visited
