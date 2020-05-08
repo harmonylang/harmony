@@ -278,6 +278,21 @@ class AddressValue(Value):
 class Op:
     pass
 
+# Splits a non-empty set in an element and its remainder
+# TODO.  The element should be deterministically chosen, like minimum
+class SplitOp(Op):
+    def __repr__(self):
+        return "Split"
+
+    def eval(self, state, context):
+        v = context.pop()
+        assert isinstance(v, SetValue)
+        assert v.s != set()
+        lst = list(v.s)
+        context.push(lst[0])
+        context.push(SetValue(set(lst[1:])))
+        context.pc += 1
+
 class LoadOp(Op):
     def __init__(self, name):
         self.name = name
@@ -545,15 +560,13 @@ class SetOp(Op):
         context.pc += 1
 
 class RecordOp(Op):
-    def __init__(self, nitems):
-        self.nitems = nitems
-
     def __repr__(self):
-        return "Record " + str(self.nitems)
+        return "Record"
 
     def eval(self, state, context):
+        nitems = context.pop()
         d = {}
-        for i in range(self.nitems):
+        for i in range(nitems):
             k = context.pop()
             v = context.pop()
             d[k] = v
@@ -580,7 +593,7 @@ class NaryOp(Op):
         self.n = n
 
     def __repr__(self):
-        return "NaryOp " + str(self.op) + " " + str(self.n)
+        return "Nary " + str(self.op) + " " + str(self.n)
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
@@ -592,6 +605,9 @@ class NaryOp(Op):
             elif op == "not":
                 assert isinstance(e, bool)
                 context.push(not e)
+            elif op == "setsize":
+                assert isinstance(e, SetValue)
+                context.push(len(e.s))
             else:
                 assert False, self
         elif self.n == 2:
@@ -600,7 +616,7 @@ class NaryOp(Op):
             if op == "==":
                 context.push(e1 == e2)
             elif op == "!=":
-                context.push(e1 == e2)
+                context.push(e1 != e2)
             elif op == "+":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
@@ -777,7 +793,8 @@ class RecordAST(AST):
         for (k, v) in self.record.items():
             v.compile(scope, code)
             k.compile(scope, code)
-        code.append(RecordOp(len(self.record)))
+        code.append(ConstantOp((len(self.record), None, None, None)))
+        code.append(RecordOp())
 
 class RecordComprehensionAST(AST):
     def __init__(self, key, value, arg, expr):
@@ -792,40 +809,44 @@ class RecordComprehensionAST(AST):
     def compile(self, scope, code):
         (arg, file, line, column) = self.arg
 
-        # The record is going to be compiled in this temporary variable
-        scope.names["^"] = RecordValue({})
-        code.append(RecordOp(0))
-        code.append(StoreVarOp(("^", file, line, column), 0))
-
-        # The following code should be similar to MethodAST
-        # It creates a method to push tuples containing key and value
-        pc = len(code)
-        code.append(None)       # going to plug in a Jump op here
+        # TODO.  Figure out how to do this better
         ns = Scope(scope)
         ns.names[arg] = ("variable", self.arg)
-        code.append(FrameOp(self.arg, arg))
+
+        # Evaluate the set and store in a temporary variable
+        # TODO.  Should store as sorted list for determinism
+        self.expr.compile(ns, code)
+        S = ("%set", file, line, column)
+        code.append(StoreVarOp(S, 0))
+
+        # Also store the size
+        N = ("%size", file, line, column)
+        code.append(LoadVarOp(S))
+        code.append(NaryOp(("setsize", file, line, column), 1))
+        code.append(StoreVarOp(N, 0))
+
+        # Now generate the code:
+        #   while X != {}:
+        #       arg := oneof X
+        #       X := X - arg
+        #       push value
+        #       push key
+        pc = len(code)
+        code.append(LoadVarOp(S))
+        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
+        tst = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(LoadVarOp(S))
+        code.append(SplitOp())  
+        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(self.arg, 0))
         self.value.compile(ns, code)
         self.key.compile(ns, code)
-        code.append(TupleOp(2))
-        code.append(StoreVarOp(self.arg, 0))
-        code.append(ReturnOp(arg))
-        code[pc] = JumpOp(len(code))
-
-        # Evaluate the set
-        self.expr.compile(scope, code)
-        code.append(SetExpandOp())
-
-        # Invoke the following for each element
-        # TODO: if there are duplicate keys it should raise an exception
-        #       because the result would be non-deterministic
-        pc2 = len(code)
-        code.append(None)
-        code.append(TupleExpandOp())
-        code.append(PopOp())        # don't need count.  It's 2
-        code.append(StoreVarOp(("^", file, line, column), 1))
-        code.append(JumpOp(pc2))
-        code[pc2] = IterOp(pc + 1, len(code))
-        code.append(LoadVarOp(("^", file, line, column)))
+        code.append(JumpOp(pc))
+        code[tst] = JumpFalseOp(len(code))
+        code.append(LoadVarOp(N))
+        code.append(RecordOp())
 
 # N-ary operator
 class NaryAST(AST):
@@ -1393,7 +1414,7 @@ class StatementRule(Rule):
         if lexeme == "skip":
             return (SkipAST(), t[1:])
         if lexeme == "assert":
-            (cond, t) = NaryRule(":").parse(t[1:])
+            (cond, t) = NaryRule(",").parse(t[1:])
             (expr, t) = NaryRule(";").parse(t)
             return (AssertAST(token, cond, expr), t)
         return AssignmentRule().parse(t)
@@ -1461,6 +1482,7 @@ class Context:
         self.vars = self.update(self.vars, indexes, val)
 
     def push(self, val):
+        assert val != None
         self.stack.append(val)
 
     def pop(self):

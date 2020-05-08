@@ -1,6 +1,1 @@
-def p(self):
-    v := self;
-end def
-
-spawn p(1), 1;
-spawn p(1), 1;
+var buf = dict{ x:(2*x) | x in 0..2 };

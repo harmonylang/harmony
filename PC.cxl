@@ -24,7 +24,7 @@ def producer():
             if cnt < N:
                 full := False;
             else:
-                assert cnt == N: cnt;
+                assert cnt == N, cnt;
                 call unlock();
             end if
         end while
@@ -46,7 +46,7 @@ def consumer():
             if cnt > 0:
                 empty := False;
             else:
-                assert cnt == 0: cnt;
+                assert cnt == 0, cnt;
                 call unlock();
             end if
         end while
