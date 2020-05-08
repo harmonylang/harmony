@@ -70,7 +70,7 @@ def consumer():
 end def
 
 # buf := dict{ x:0 | x in 0..(N-1) };
-buf := R{ 0:0, 1:0 };
+buf := dict{ 0:0, 1:0 };
 myin := 0;
 myout := 0;
 cnt := 0;
