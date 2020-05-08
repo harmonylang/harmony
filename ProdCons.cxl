@@ -1,22 +1,22 @@
-const N = 2;         // size of bounded buffer
+const N = 2;         # size of bounded buffer
 
-routine tas(self):
+def tas(self):
     atomic:
         var oldval = !(self);
         !(self) := True;
         self := oldval;
     end atomic
-end routine
+end def
 
-routine lock(lk):
+def lock(lk):
     while tas(lk): end while
-end routine
+end def
 
-routine unlock(lk):
+def unlock(lk):
     !(lk) := False;
-end routine
+end def
 
-routine produce(item):
+def produce(item):
     var full = True;
     while full:
         call lock &(mylock);
@@ -30,14 +30,14 @@ routine produce(item):
 
     @room:
         cnt := cnt + 1;
-        // buf[myin] := choose({ 10, 20 });
+        # buf[myin] := choose({ 10, 20 });
         buf[myin] := item;
         myin := (myin + 1) % N;
 
     call unlock &(mylock);
-end routine
+end def
 
-routine consume(self):
+def consume(self):
     var empty = True;
     while empty:
         call lock &(mylock);
@@ -55,21 +55,21 @@ routine consume(self):
         myout := (myout + 1) % N;
 
     call unlock &(mylock);
-end routine
+end def
 
-routine producer():
+def producer():
     while True:
         call produce[choose({ 10, 20 })];
     end while
-end routine
+end def
 
-routine consumer():
+def consumer():
     while True:
         call consume();
     end while
-end routine
+end def
 
-// buf := R{ x:0 | x in 0..(N-1) };
+# buf := R{ x:0 | x in 0..(N-1) };
 buf := R{ 0:0, 1:0 };
 myin := 0;
 myout := 0;

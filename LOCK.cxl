@@ -1,26 +1,26 @@
-routine tas(self):
+def tas(self):
     atomic:
         var oldval = !(self);
         !(self) := True;
         self := oldval;
     end atomic
-end routine
+end def
 
-routine lock(lk):
+def lock(lk):
     while tas(lk): end while
-end routine
+end def
 
-routine unlock(lk):
+def unlock(lk):
     !(lk) := False;
-end routine
+end def
 
-routine p(arg):
+def p(arg):
     while True:
         call lock&(mylock);
-        @cs: skip // critical section
+        @cs: skip   # critical section
         call unlock&(mylock);
     end while
-end routine
+end def
 
 mylock := False;
 

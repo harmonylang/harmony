@@ -1,9 +1,9 @@
-routine p():
+def p():
     while True:
         while True: end while
-        @cs: skip // critical section
+        @cs: skip    # critical section
     end while
-end routine
+end def
 
 flags := R{ 0: False, 1: False };
 spawn p(), 0;

@@ -40,7 +40,7 @@ def isreserved(s):
         "if",
         "in",
         "not",
-        "routine",
+        "method",
         "skip",
         "spawn",
         "True",
@@ -84,8 +84,8 @@ def lexer(s, file):
             continue
 
         # skip over line comments
-        if s.startswith("//"):
-            s = s[2:]
+        if s.startswith("#"):
+            s = s[1:]
             while len(s) > 0 and s[0] != '\n':
                 s = s[1:]
             continue
@@ -425,13 +425,13 @@ class PopOp(Op):
         context.pop()
         context.pc += 1
 
-class RoutineOp(Op):
+class MethodOp(Op):
     def __init__(self, name, endpc):
         self.name = name
         self.endpc = endpc      # points to return code
 
     def __repr__(self):
-        return "Routine " + str(self.name) + " " + str(self.endpc)
+        return "Method " + str(self.name) + " " + str(self.endpc)
 
     def eval(self, state, context):
         context.pc = self.endpc + 1
@@ -662,16 +662,16 @@ class ApplyOp(Op):
         return "Apply"
 
     def eval(self, state, context):
-        func = context.pop()
+        method = context.pop()
         e = context.pop()
-        if isinstance(func, RecordValue):
-            context.push(func.d[e])
+        if isinstance(method, RecordValue):
+            context.push(method.d[e])
             context.pc += 1
         else:
-            assert isinstance(func, PcValue), func
+            assert isinstance(method, PcValue), method
             context.push(context.pc + 1)
             context.push(e)
-            context.pc = func.pc
+            context.pc = method.pc
 
 class SetExpandOp(Op):
     def __repr__(self):
@@ -699,12 +699,12 @@ class TupleExpandOp(Op):
         context.pc += 1
 
 class IterOp(Op):
-    def __init__(self, func, pc):
-        self.func = func
+    def __init__(self, method, pc):
+        self.method = method
         self.pc = pc
 
     def __repr__(self):
-        return "Iter " + str(self.func) + " " + str(self.pc)
+        return "Iter " + str(self.method) + " " + str(self.pc)
 
     def eval(self, state, context):
         cnt = context.pop()
@@ -713,7 +713,7 @@ class IterOp(Op):
             context.push(cnt - 1)
             context.push(context.pc + 1)
             context.push(v)
-            context.pc = self.func
+            context.pc = self.method
         else:
             context.pc = self.pc
 
@@ -747,7 +747,7 @@ class NameAST(AST):
                 code.append(LoadVarOp(self.name))
             elif t == "constant":
                 code.append(ConstantOp(v))
-            elif t == "routine":
+            elif t == "method":
                 (lexeme, file, line, column) = self.name
                 code.append(ConstantOp((PcValue(v), file, line, column)))
             else:
@@ -796,8 +796,8 @@ class RecordComprehensionAST(AST):
         code.append(RecordOp(0))
         code.append(StoreVarOp(("^", file, line, column), 0))
 
-        # The following code should be similar to RoutineAST
-        # It creates a routine to push tuples containing key and value
+        # The following code should be similar to MethodAST
+        # It creates a method to push tuples containing key and value
         pc = len(code)
         code.append(None)       # going to plug in a Jump op here
         ns = Scope(scope)
@@ -842,16 +842,16 @@ class NaryAST(AST):
         code.append(NaryOp(self.op, n))
 
 class ApplyAST(AST):
-    def __init__(self, func, arg):
-        self.func = func
+    def __init__(self, method, arg):
+        self.method = method
         self.arg = arg
 
     def __repr__(self):
-        return "Apply(" + str(self.func) + ", " + str(self.arg) + ")"
+        return "Apply(" + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
         self.arg.compile(scope, code)
-        self.func.compile(scope, code)
+        self.method.compile(scope, code)
         code.append(ApplyOp())
 
 class Rule:
@@ -1152,14 +1152,14 @@ class AssertAST(AST):
         self.expr.compile(scope, code)
         code.append(AssertOp(self.token))
 
-class RoutineAST(AST):
+class MethodAST(AST):
     def __init__(self, name, arg, stat):
         self.name = name
         self.arg = arg
         self.stat = stat
 
     def __repr__(self):
-        return "Routine(" + str(self.name) + ", " + str(self.stat) + ")"
+        return "Method(" + str(self.name) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         pc = len(code)
@@ -1176,7 +1176,7 @@ class RoutineAST(AST):
         code[pc] = JumpOp(len(code))
         code[pc+1] = FrameOp(self.name, arg, len(code) - 1)
         (lexeme, file, line, column) = self.name
-        scope.names[lexeme] = ("routine", pc + 1)
+        scope.names[lexeme] = ("method", pc + 1)
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -1190,17 +1190,17 @@ class CallAST(AST):
         code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, tag, func, expr):
+    def __init__(self, tag, method, expr):
         self.tag = tag
-        self.func = func
+        self.method = method
         self.expr = expr
 
     def __repr__(self):
-        return "Spawn(" + str(self.tag) + ", " + str(self.func) + ", " + str(self.expr) + ")"
+        return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        (t, v) = scope.lookup(self.func)
-        assert t == "routine"
+        (t, v) = scope.lookup(self.method)
+        assert t == "method"
         self.tag.compile(scope, code)
         self.expr.compile(scope, code)
         code.append(SpawnOp(v))
@@ -1354,7 +1354,7 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[1]
             assert lexeme == "atomic", t[1]
             return (AtomicAST(stat), t[2:])
-        if lexeme == "routine":
+        if lexeme == "def":
             name = t[1]
             (lexeme, file, line, column) = name
             assert isname(lexeme), name
@@ -1371,24 +1371,24 @@ class StatementRule(Rule):
                 assert lexeme == ")", t[4]
                 (stat, t) = BlockRule({"end"}).parse(t[5:])
             (lexeme, file, line, column) = t[1]
-            assert lexeme == "routine", t[1]
-            return (RoutineAST(name, arg, stat), t[2:])
+            assert lexeme == "def", t[1]
+            return (MethodAST(name, arg, stat), t[2:])
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
             return (CallAST(expr), t[1:])
         if lexeme == "spawn":
-            func = t[1]
-            (lexeme, file, line, column) = func
-            assert isname(lexeme), func
+            method = t[1]
+            (lexeme, file, line, column) = method
+            assert isname(lexeme), method
             (expr, t) = ExpressionRule().parse(t[2:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ",", t[0]
             (tag, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (SpawnAST(tag, func, expr), t[1:])
+            return (SpawnAST(tag, method, expr), t[1:])
         if lexeme == "skip":
             return (SkipAST(), t[1:])
         if lexeme == "assert":

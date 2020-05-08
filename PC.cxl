@@ -1,22 +1,22 @@
-const N = 2;         // size of bounded buffer
+const N = 2;         # size of bounded buffer
 
-routine tas(self):
+def tas(self):
     atomic:
         var oldval = !(self);
         !(self) := True;
         self := oldval;
     end atomic
-end routine
+end def
 
-routine lock():
+def lock():
     while tas&(mylock): end while
-end routine
+end def
 
-routine unlock():
+def unlock():
     mylock := False;
-end routine
+end def
 
-routine producer():
+def producer():
     while True:
         var full = True;
         while full:
@@ -36,9 +36,9 @@ routine producer():
 
         call unlock();
     end while
-end routine
+end def
 
-routine consumer():
+def consumer():
     while True:
         var empty = True;
         while empty:
@@ -53,12 +53,12 @@ routine consumer():
 
         @avail:
             cnt := cnt - 1;
-            // self := buf[myout];
+            # self := buf[myout];
             myout := (myout + 1) % N;
 
         call unlock();
     end while
-end routine
+end def
 
 buf := R{ x:0 | x in 0..(N-1) };
 myin := 0;

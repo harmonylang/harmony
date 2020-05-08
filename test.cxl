@@ -1,6 +1,6 @@
-routine p(self):
+def p(self):
     v := self;
-end routine
+end def
 
 spawn p(1), 1;
 spawn p(1), 1;

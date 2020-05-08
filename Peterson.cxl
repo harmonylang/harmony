@@ -1,13 +1,13 @@
-routine p(self):
+def p(self):
     while True:
         flags[self] := True;
         turn := 1 - self;
         while flags[1 - self] /\ (turn == (1 - self)):
         end while
-        @cs: // critical section
+        @cs:    # critical section
         flags[self] := False;
     end while
-end routine
+end def
 
 flags := R{ 0: False, 1: False };
 turn := 0;
