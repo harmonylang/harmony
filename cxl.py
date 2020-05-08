@@ -29,6 +29,7 @@ def isnumber(s):
 
 def isreserved(s):
     return s in [
+        "and",
         "assert",
         "atomic",
         "call",
@@ -41,6 +42,8 @@ def isreserved(s):
         "in",
         "not",
         "method",
+        "or",
+        "setsize",
         "skip",
         "spawn",
         "True",

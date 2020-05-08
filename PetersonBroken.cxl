@@ -2,7 +2,7 @@ def p(self):
     while True:
         turn := 1 - self;
         flags[self] := True;
-        while flags[1 - self] /\ (turn == (1 - self)):
+        while flags[1 - self] and (turn == (1 - self)):
         end while
         @cs:    # critical section
         flags[self] := False;
