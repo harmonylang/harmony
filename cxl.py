@@ -63,7 +63,7 @@ def isbinaryop(s):
             "/\\", "and", "\\/", "or"
     ];
 
-tokens = [ "R{", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
+tokens = [ "dict{", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
             "&(", "!(", "choose(" ]
 
 def lexer(s, file):
@@ -905,7 +905,7 @@ class RecordComprehensionRule(Rule):
 class RecordRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        assert lexeme == "R{", t[0]
+        assert lexeme == "dict{", t[0]
         d = {}
         while lexeme != "}":
             (key, t) = ExpressionRule().parse(t[1:])
@@ -949,7 +949,7 @@ class BasicExpressionRule(Rule):
                 (lexeme, file, line, column) = t[0]
                 assert lexeme in { ",", "}" }, t[0]
             return (SetAST(s), t[1:])
-        if lexeme == "R{":
+        if lexeme == "dict{":
             return RecordRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"

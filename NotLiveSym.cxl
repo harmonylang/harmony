@@ -7,6 +7,6 @@ def p(self):
     end while
 end def
 
-flags := R{ 0: False, 1: False };
+flags := dict{ 0: False, 1: False };
 spawn p(0), 0;
 spawn p(1), 1;
