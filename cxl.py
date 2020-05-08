@@ -36,15 +36,14 @@ def isreserved(s):
         "choose",
         "const",
         "else",
-        "end",
         "False",
         "if",
         "in",
         "not",
         "method",
         "or",
+        "pass",
         "setsize",
-        "skip",
         "spawn",
         "True",
         "var",
@@ -1092,9 +1091,9 @@ class AddressAST(AST):
             lv.expr.compile(scope, code)
         code.append(AddressOp(n))
 
-class SkipAST(AST):
+class PassAST(AST):
     def __repr__(self):
-        return "Skip"
+        return "Pass"
 
     def compile(self, scope, code):
         pass
@@ -1352,33 +1351,27 @@ class StatementRule(Rule):
             alts = []
             while True:
                 (cond, t) = NaryRule(":").parse(t[1:])
-                (stat, t) = StatListRule({ "else", "elif", "end" }).parse(t)
+                (stat, t) = StatListRule({ "else", "elif", "." }).parse(t)
                 alts += [(cond, stat)]
                 (lexeme, file, line, column) = t[0]
-                if lexeme in { "else", "end" }:
+                if lexeme in { "else", "." }:
                     break
                 assert lexeme == "elif", t[0]
                 t = t[1:]
             if lexeme == "else":
-                (stat, t) = BlockRule({"end"}).parse(t[1:])
+                (stat, t) = BlockRule({"."}).parse(t[1:])
                 (lexeme, file, line, column) = t[0]
             else:
                 stat = None
-            assert lexeme == "end", t[0]
-            (lexeme, file, line, column) = t[1]
-            assert lexeme == "if", t[1]
-            return (IfAST(alts, stat), t[2:])
+            assert lexeme == ".", t[0]
+            return (IfAST(alts, stat), t[1:])
         if lexeme == "while":
             (cond, t) = NaryRule(":").parse(t[1:])
-            (stat, t) = StatListRule({"end"}).parse(t)
-            (lexeme, file, line, column) = t[1]
-            assert lexeme == "while", t[1]
-            return (WhileAST(cond, stat), t[2:])
+            (stat, t) = StatListRule({"."}).parse(t)
+            return (WhileAST(cond, stat), t[1:])
         if lexeme == "atomic":
-            (stat, t) = BlockRule({"end"}).parse(t[1:])
-            (lexeme, file, line, column) = t[1]
-            assert lexeme == "atomic", t[1]
-            return (AtomicAST(stat), t[2:])
+            (stat, t) = BlockRule({"."}).parse(t[1:])
+            return (AtomicAST(stat), t[1:])
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, column) = name
@@ -1389,15 +1382,13 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = arg
             if lexeme == ")":
                 arg = None
-                (stat, t) = BlockRule({"end"}).parse(t[4:])
+                (stat, t) = BlockRule({"."}).parse(t[4:])
             else:
                 assert isname(lexeme), arg
                 (lexeme, file, line, column) = t[4]
                 assert lexeme == ")", t[4]
-                (stat, t) = BlockRule({"end"}).parse(t[5:])
-            (lexeme, file, line, column) = t[1]
-            assert lexeme == "def", t[1]
-            return (MethodAST(name, arg, stat), t[2:])
+                (stat, t) = BlockRule({"."}).parse(t[5:])
+            return (MethodAST(name, arg, stat), t[1:])
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1414,8 +1405,8 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
             return (SpawnAST(tag, method, expr), t[1:])
-        if lexeme == "skip":
-            return (SkipAST(), t[1:])
+        if lexeme == "pass":
+            return (PassAST(), t[1:])
         if lexeme == "assert":
             (cond, t) = NaryRule(",").parse(t[1:])
             (expr, t) = NaryRule(";").parse(t)

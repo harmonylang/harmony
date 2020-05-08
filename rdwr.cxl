@@ -3,39 +3,34 @@ def tas(self):
         var oldval = !(self);
         !(self) := True;
         self := oldval;
-    end atomic
-end def
-
+    .
+.
 def reader():
     while True:
-        while tas&(rlock): end while
+        while tas&(rlock): pass.
         if nreaders == 0:
-            while tas&(wlock): end while
-        end if
+            while tas&(wlock): pass.
+        .
         nreaders := nreaders + 1;
         rlock := False;
 
         @rcs:    # reader critical section
 
-        while tas&(rlock): end while
+        while tas&(rlock): pass.
         nreaders := nreaders - 1;
         if nreaders == 0:
             wlock := False;
-        end if
+        .
         rlock := False;
-    end while
-end def
-
+    .
+.
 def writer():
     while True:
-        while tas&(wlock): end while
-
+        while tas&(wlock): pass.
         @wcs:   # writer critical section
-
         wlock := False;
-    end while
-end def
-
+    .
+.
 rlock := False;
 wlock := False;
 nreaders := 0;

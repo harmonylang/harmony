@@ -7,17 +7,15 @@ def P(sema):
             if !(sema) > 0:
                 !(sema) := !(sema) - 1;
                 blocked := False;
-            end if
-        end atomic
-    end while
-end def
-
+            .
+        .
+    .
+.
 def V(sema):
     atomic:
         !(sema) := !(sema) + 1;
-    end atomic
-end def
-
+    .
+.
 def produce(item):
     call P&(nempty);
     call P&(mylock);
@@ -25,8 +23,7 @@ def produce(item):
     myin := (myin + 1) % N;
     call V&(mylock);
     call V&(nfull);
-end def
-
+.
 def consume(self):
     call P&(nfull);
     call P&(mylock);
@@ -34,20 +31,17 @@ def consume(self):
     myout := (myout + 1) % N;
     call V&(mylock);
     call V&(nempty);
-end def
-
+.
 def producer():
     while True:
         call produce[choose({ 10, 20 })];
-    end while
-end def
-
+    .
+.
 def consumer():
     while True:
         call consume();
-    end while
-end def
-
+    .
+.
 # Bounded buffer:
 buf := dict{ x:0 | x in 0..(N-1) };
 myin := 0;

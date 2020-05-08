@@ -3,17 +3,16 @@ def tas(self):
         var oldval = !(self);
         !(self) := True;
         self := oldval;
-    end atomic
-end def
+    .
+.
 
 def p():
     while True:
-        while tas&(mylock): end while
+        while tas&(mylock): pass.
         @cs:    # critical section
         mylock := False;
-    end while
-end def
-
+    .
+.
 mylock := False;
 spawn p(), 0;
 spawn p(), 1;

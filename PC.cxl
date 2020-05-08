@@ -5,17 +5,14 @@ def tas(self):
         var oldval = !(self);
         !(self) := True;
         self := oldval;
-    end atomic
-end def
-
+    .
+.
 def lock():
-    while tas&(mylock): end while
-end def
-
+    while tas&(mylock): pass.
+.
 def unlock():
     mylock := False;
-end def
-
+.
 def producer():
     while True:
         var full = True;
@@ -26,18 +23,16 @@ def producer():
             else:
                 assert cnt == N, cnt;
                 call unlock();
-            end if
-        end while
-
+            .
+        .
         @room:
             cnt := cnt + 1;
             buf[myin] := choose({ 10, 20 });
             myin := (myin + 1) % N;
 
         call unlock();
-    end while
-end def
-
+    .
+.
 def consumer():
     while True:
         var empty = True;
@@ -48,18 +43,16 @@ def consumer():
             else:
                 assert cnt == 0, cnt;
                 call unlock();
-            end if
-        end while
-
+            .
+        .
         @avail:
             cnt := cnt - 1;
             # self := buf[myout];
             myout := (myout + 1) % N;
 
         call unlock();
-    end while
-end def
-
+    .
+.
 buf := dict{ x:0 | x in 0..(N-1) };
 myin := 0;
 myout := 0;
@@ -67,6 +60,6 @@ cnt := 0;
 mylock := False;
 
 spawn producer(), 0;
-spawn producer(), 1;
-spawn consumer(), 2;
-spawn consumer(), 3;
+spawn producer(), 0;
+spawn consumer(), 1;
+spawn consumer(), 1;

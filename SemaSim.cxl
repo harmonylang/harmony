@@ -5,25 +5,22 @@ def P(sema):
             if !(sema) > 0:
                 !(sema) := !(sema) - 1;
                 blocked := False;
-            end if
-        end atomic
-    end while
-end def
-
+            .
+        .
+    .
+.
 def V(sema):
     atomic:
         !(sema) := !(sema) + 1;
-    end atomic
-end def
-
+    .
+.
 def p():
     while True:
         call P&(mysema);
         @cs:    # critical section
         call V&(mysema);
-    end while
-end def
-
+    .
+.
 mysema := 1;
 spawn p(), 0;
 spawn p(), 1;
