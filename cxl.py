@@ -1555,11 +1555,28 @@ class Node:
         self.len = len
         self.edges = []
 
+    def strsteps(self):
+        if self.steps == None:
+            return "[]"
+        result = ""
+        i = 0
+        while i < len(self.steps):
+            if result != "":
+                result += ","
+            result += str(self.steps[i])
+            j = i + 1
+            while j < len(self.steps) and self.steps[j] == self.steps[j - 1] + 1:
+                j += 1
+            if j > i + 1:
+                result += "-" + str(self.steps[j - 1])
+            i = j
+        return "[" + result + "]"
+
 def print_path(visited, state):
     if state != None:
         node = visited[state]
         print_path(visited, node.parent)
-        print(node.ctx, node.steps, state.vars)
+        print(node.ctx, node.strsteps(), state.vars)
 
 def print_shortest(visited, bad):
     best_state = None
