@@ -33,6 +33,7 @@ def isreserved(s):
         "assert",
         "atomic",
         "call",
+        "cardinality",
         "choose",
         "const",
         "else",
@@ -44,7 +45,6 @@ def isreserved(s):
         "method",
         "or",
         "pass",
-        "setsize",
         "spawn",
         "True",
         "var",
@@ -350,7 +350,8 @@ class NameOp(Op):
         return "Name " + str(self.name)
 
     def eval(self, state, context):
-        context.push(AddressValue([self.name]))
+        (lexeme, file, line, column) = self.name
+        context.push(AddressValue([lexeme]))
         context.pc += 1
 
 class StoreOp(Op):
@@ -469,7 +470,8 @@ class FrameOp(Op):
         if self.arg == None:
             context.vars = RecordValue({})
         else:
-            context.vars = RecordValue({ self.arg: arg })
+            (lexeme, file, line, column) = self.arg
+            context.vars = RecordValue({ lexeme: arg })
         context.pc += 1
 
 class ReturnOp(Op):
@@ -608,7 +610,7 @@ class NaryOp(Op):
             elif op == "not":
                 assert isinstance(e, bool)
                 context.push(not e)
-            elif op == "setsize":
+            elif op == "cardinality":
                 assert isinstance(e, SetValue)
                 context.push(len(e.s))
             else:
@@ -825,7 +827,7 @@ class RecordComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(NaryOp(("setsize", file, line, column), 1))
+        code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         # Now generate the code:
@@ -894,8 +896,6 @@ class NaryRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryAST(op, [ast]), t[1:])
-        # TODO.  Experimenting with an alternative syntax for "^()".
-        #        But it doesn't work well for LValues
         if lexeme == "^":
             op = t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
@@ -1047,8 +1047,7 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                (lexeme, file, line, column) = lv.name
-                code.append(NameOp(lexeme))
+                code.append(NameOp(lv.name))
                 code.append(StoreOp(n))
             else:
                 (t, v) = tv
@@ -1076,8 +1075,7 @@ class AddressAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             assert tv == None, tv   # can't take address of local var
-            (lexeme, file, line, column) = lv.name
-            code.append(NameOp(lexeme))
+            code.append(NameOp(lv.name))
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
@@ -1190,7 +1188,7 @@ class MethodAST(AST):
         self.stat.compile(ns, code)
         code.append(ReturnOp(arg))
         code[pc] = JumpOp(len(code))
-        code[pc+1] = FrameOp(self.name, arg, len(code) - 1)
+        code[pc+1] = FrameOp(self.name, self.arg, len(code) - 1)
         (lexeme, file, line, column) = self.name
         scope.names[lexeme] = ("method", pc + 1)
 
@@ -1695,7 +1693,7 @@ def run(invariant, pcs):
     try:
         (ast, rem) = StatListRule(set()).parse(tokens)
     except IndexError as e:
-        print("Parsing hit EOF (usually missing ';')?", e)
+        print("Parsing hit EOF (usually missing ';' at end of last line)?", e)
         print(traceback.format_exc())
         sys.exit(1)
     code = []
