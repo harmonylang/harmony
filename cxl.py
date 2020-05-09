@@ -1687,6 +1687,8 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             break
         if isinstance(sc.code[ctx.pc], ChooseOp):
             break
+        if isinstance(sc.code[ctx.pc], LabelOp):
+            break
 
         # Detect infinite loops
         if ctx in localStates:
