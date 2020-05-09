@@ -1,1 +1,1 @@
-var buf = dict{ x:(2*x) | x in 0..2 };
+assert "abc" == .abc, 0;

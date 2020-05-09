@@ -1,8 +1,6 @@
 def p():
-    while True:
-        while True: pass.
-        @cs: pass    # critical section
-    .
+    while True: pass.
+    @cs: pass    # critical section
 .
 flags := dict{ 0: False, 1: False };
 spawn p(), 0;

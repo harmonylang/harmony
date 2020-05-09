@@ -37,6 +37,7 @@ def isreserved(s):
         "const",
         "else",
         "False",
+        "for",
         "if",
         "in",
         "not",
@@ -953,18 +954,14 @@ class BasicExpressionRule(Rule):
             return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
             return (ConstantAST((True, file, line, column)), t[1:])
-        if isname(lexeme):
-            return (NameAST(t[0]), t[1:])
         if lexeme[0] == '"':
-            d = {}
-            for i in range(1, len(lexeme) - 1):
-                d[ConstantAST((i, file, line, column + i))] = \
-                    ConstantAST((lexeme[i], file, line, column + i))
-            return (RecordAST(d), t[1:])
+            return (ConstantAST((lexeme[1:-1], file, line, column)), t[1:])
         if lexeme == ".":
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
             return (ConstantAST((lexeme, file, line, column)), t[2:])
+        if isname(lexeme):
+            return (NameAST(t[0]), t[1:])
         if lexeme == "{":
             s = set()
             while lexeme != "}":
