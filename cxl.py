@@ -895,23 +895,23 @@ class NaryRule(Rule):
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
-            return (NaryAST(op, [ast]), t[1:])
+            return (NaryAST(op, [ast]), t)
         if lexeme == "^":
             op = t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
-            return (PointerAST(ast), t[1:])
+            return (PointerAST(ast), t)
         (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
-            return (ast, t[1:])
+            return (ast, t)
         op = t[0]
         assert isbinaryop(op[0]), op
         (ast2, t) = ExpressionRule().parse(t[1:])
         (lexeme, file, line, column) = t[0]
         assert lexeme == self.closer, (t[0], self.closer)
-        return (NaryAST(op, [ast, ast2]), t[1:])
+        return (NaryAST(op, [ast, ast2]), t)
 
 class RecordComprehensionRule(Rule):
     def __init__(self, key, value):
@@ -925,7 +925,7 @@ class RecordComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
         (expr, t) = NaryRule("}").parse(t[2:])
-        return (RecordComprehensionAST(self.key, self.value, name, expr), t)
+        return (RecordComprehensionAST(self.key, self.value, name, expr), t[1:])
 
 class RecordRule(Rule):
     def parse(self, t):
@@ -978,7 +978,8 @@ class BasicExpressionRule(Rule):
             if lexeme == closer:
                 return (ConstantAST(
                     (NoValue(), file, line, column)), t[2:])
-            return NaryRule(closer).parse(t[1:])
+            (ast, t) = NaryRule(closer).parse(t[1:])
+            return (ast, t[1:])
         if lexeme == "&(":
             (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1219,16 +1220,20 @@ class SpawnAST(AST):
         self.expr.compile(scope, code)
         code.append(SpawnOp(self.method, v))
 
-class LabelAST(AST):
-    def __init__(self, label, ast):
-        self.label = label
+class LabelStatAST(AST):
+    def __init__(self, labels, ast, file, line):
+        self.labels = labels
         self.ast = ast
+        self.file = file
+        self.line = line
 
     def __repr__(self):
-        return "Label(" + str(self.label) + ", " + str(self.ast) + ")"
+        return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     def compile(self, scope, code):
-        code.append(LabelOp(self.label))
+        scope.location(len(code), self.file, self.line)
+        for label in self.labels:
+            code.append(LabelOp(label))
         self.ast.compile(scope, code)
 
 class VarAST(AST):
@@ -1280,7 +1285,27 @@ class AssignmentRule(Rule):
         (lexeme, file, line, column) = t[0]
         assert lexeme == ":=", t[0]
         (rv, t) = NaryRule(";").parse(t[1:])
-        return (AssignmentAST(lv, rv), t)
+        return (AssignmentAST(lv, rv), t[1:])
+
+# Zero or more labels, then a statement, then a semicolon
+class LabelStatRule(Rule):
+    def parse(self, t):
+        (lexeme, thefile, theline, column) = t[0]
+        labels = []
+        while True:
+            (lexeme, file, line, column) = t[0]
+            if lexeme != "@":
+                break
+            label = t[1]
+            (lexeme, file, line, column) = label
+            assert isname(lexeme), t[1]
+            labels.append(label)
+            (lexeme, file, line, column) = t[2]
+            assert lexeme == ":", t[2]
+            t = t[3:]
+
+        (ast, t) = StatementRule().parse(t)
+        return (LabelStatAST(labels, ast, thefile, theline), t)
 
 class StatListRule(Rule):
     def __init__(self, delim):
@@ -1290,7 +1315,7 @@ class StatListRule(Rule):
         b = []
         (lexeme, file, line, column) = t[0]
         while lexeme not in self.delim:
-            (ast, t) = StatementRule().parse(t)
+            (ast, t) = LabelStatRule().parse(t)
             b.append(ast)
             if t == [] and self.delim == set():
                 break
@@ -1310,14 +1335,6 @@ class StatementRule(Rule):
     def parse(self, t):
         token = t[0]
         (lexeme, file, line, column) = token
-        if lexeme == "@":
-            label = t[1]
-            (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
-            (lexeme, file, line, column) = t[2]
-            assert lexeme == ":", t[2]
-            (ast, t) = StatementRule().parse(t[3:])
-            return (LabelAST(label, ast), t)
         if lexeme == "var":
             var = t[1]
             (lexeme, file, line, column) = t[1]
@@ -1325,7 +1342,7 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
             (ast, t) = NaryRule(";").parse(t[3:])
-            return (VarAST(var, ast), t)
+            return (VarAST(var, ast), t[1:])
         if lexeme == "const":
             const = t[1]
             (lexeme, file, line, column) = t[1]
@@ -1334,12 +1351,12 @@ class StatementRule(Rule):
             assert lexeme == "=", t[2]
             (ast, t) = NaryRule(";").parse(t[3:])
             assert isinstance(ast, ConstantAST), ast
-            return (ConstAST(const, ast.const), t)
+            return (ConstAST(const, ast.const), t[1:])
         if lexeme == "if":
             alts = []
             while True:
                 (cond, t) = NaryRule(":").parse(t[1:])
-                (stat, t) = StatListRule({ "else", "elif", "." }).parse(t)
+                (stat, t) = StatListRule({ "else", "elif", "." }).parse(t[1:])
                 alts += [(cond, stat)]
                 (lexeme, file, line, column) = t[0]
                 if lexeme in { "else", "." }:
@@ -1348,14 +1365,12 @@ class StatementRule(Rule):
                 t = t[1:]
             if lexeme == "else":
                 (stat, t) = BlockRule({"."}).parse(t[1:])
-                (lexeme, file, line, column) = t[0]
             else:
                 stat = None
-            assert lexeme == ".", t[0]
             return (IfAST(alts, stat), t[1:])
         if lexeme == "while":
             (cond, t) = NaryRule(":").parse(t[1:])
-            (stat, t) = StatListRule({"."}).parse(t)
+            (stat, t) = StatListRule({"."}).parse(t[1:])
             return (WhileAST(cond, stat), t[1:])
         if lexeme == "atomic":
             (stat, t) = BlockRule({"."}).parse(t[1:])
@@ -1397,8 +1412,8 @@ class StatementRule(Rule):
             return (PassAST(), t[1:])
         if lexeme == "assert":
             (cond, t) = NaryRule(",").parse(t[1:])
-            (expr, t) = NaryRule(";").parse(t)
-            return (AssertAST(token, cond, expr), t)
+            (expr, t) = NaryRule(";").parse(t[1:])
+            return (AssertAST(token, cond, expr), t[1:])
         return AssignmentRule().parse(t)
 
 class Context:
@@ -1590,6 +1605,7 @@ class Scope:
     def __init__(self, parent):
         self.parent = parent
         self.names = {}
+        self.locations = {}
 
     def lookup(self, name):
         (lexeme, file, line, column) = name
@@ -1606,6 +1622,12 @@ class Scope:
                 return tv
             ancestor = ancestor.parent
         return None
+
+    def location(self, pc, file, line):
+        if self.parent == None:
+            self.locations[pc] = (file, line)
+        else:
+            self.parent.location(pc, file, line)
 
 # These operations cause global state changes
 globops = [
@@ -1697,12 +1719,19 @@ def run(invariant, pcs):
         print(traceback.format_exc())
         sys.exit(1)
     code = []
-    ast.compile(Scope(None), code)
+    scope = Scope(None)
+    ast.compile(scope, code)
 
     optimize(code)
 
+    lastloc = None
     for pc in range(len(code)):
-        print(pc, code[pc])
+        if scope.locations.get(pc) != None:
+            (file, line) = scope.locations[pc]
+            if (file, line) != lastloc:
+                print(file, ":", line)
+            lastloc = (file, line)
+        print("  ", pc, code[pc])
 
     # Initial state
     state = State(code)
