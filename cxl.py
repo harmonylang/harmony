@@ -340,6 +340,7 @@ class LabelOp(Op):
         return "Label " + str(self.label)
 
     def eval(self, state, context):
+        assert context.atomic == 0
         context.pc += 1
 
 class NameOp(Op):
@@ -1629,6 +1630,22 @@ class Scope:
         else:
             self.parent.location(pc, file, line)
 
+def optjump(code, pc):
+    while pc < len(code):
+        op = code[pc]
+        if not isinstance(op, JumpOp):
+            break
+        pc = op.pc
+    return pc
+
+def optimize(code):
+    for i in range(len(code)):
+        op = code[i]
+        if isinstance(op, JumpOp):
+            code[i] = JumpOp(optjump(code, op.pc))
+        elif isinstance(op, JumpFalseOp):
+            code[i] = JumpFalseOp(optjump(code, op.pc))
+
 # These operations cause global state changes
 globops = [
     AtomicIncOp, LabelOp, LoadOp, SpawnOp, StoreOp
@@ -1690,22 +1707,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
     if foundInfLoop:
         infloop.add(sc)
-
-def optjump(code, pc):
-    while pc < len(code):
-        op = code[pc]
-        if not isinstance(op, JumpOp):
-            break
-        pc = op.pc
-    return pc
-
-def optimize(code):
-    for i in range(len(code)):
-        op = code[i]
-        if isinstance(op, JumpOp):
-            code[i] = JumpOp(optjump(code, op.pc))
-        elif isinstance(op, JumpFalseOp):
-            code[i] = JumpFalseOp(optjump(code, op.pc))
 
 def run(invariant, pcs):
     all = ""
