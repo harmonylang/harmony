@@ -1629,8 +1629,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops:
-                            # TODO   and len(sc.ctxbag) > 1
+        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
             break
         if isinstance(sc.code[ctx.pc], ChooseOp):
             break

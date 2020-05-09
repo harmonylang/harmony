@@ -1,11 +1,14 @@
 const N = 2;         # size of bounded buffer
 
+def Semaphore(cnt):
+    pass
+.
 def P(sema):
     var blocked = True;
     while blocked:
         atomic:
-            if ^sema > 0:
-                ^sema := ^sema - 1;
+            if (^sema) > 0:
+                ^sema := (^sema) - 1;
                 blocked := False;
             .
         .
@@ -13,7 +16,7 @@ def P(sema):
 .
 def V(sema):
     atomic:
-        ^sema := ^sema + 1;
+        ^sema := (^sema) + 1;
     .
 .
 def produce(item):
@@ -42,15 +45,12 @@ def consumer():
         call consume();
     .
 .
-# Bounded buffer:
 buf := dict{ x:0 | x in 0..(N-1) };
 myin := 0;
 myout := 0;
-
-# Semaphores:
-nfull := 0;
-nempty := N;
-mylock := 1;
+nfull := Semaphore(0);
+nempty := Semaphore(N);
+mylock := Semaphore(1);
 
 spawn producer(), 0;
 spawn producer(), 0;

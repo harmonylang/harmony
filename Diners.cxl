@@ -1,5 +1,8 @@
 const N = 5;
 
+def Semaphore(cnt):
+    pass
+.
 def P(sema):
     var blocked = True;
     while blocked:
@@ -20,19 +23,14 @@ def diner(which):
     while True:
         var left = which;
         var right = (which + 1) % N;
-        if left < right:
-            call P&(forks[left]);
-            call P&(forks[right]);
-        else:
-            call P&(forks[right]);
-            call P&(forks[left]);
-        .
+        call P&(forks[left]);
+        call P&(forks[right]);
         @dine:
         call V&(forks[left]);
         call V&(forks[right]);
     .
 .
-forks := dict{ sema:1 | sema in 0..(N-1) };
+forks := dict{ sema:Semaphore(1) | sema in 0..(N-1) };
 var i = 0;
 while i < N:
     spawn diner(i), i;
