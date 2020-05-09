@@ -1,7 +1,7 @@
 def tas(self):
     atomic:
-        var oldval = ^(self);
-        ^(self) := True;
+        var oldval = ^self;
+        ^self := True;
         self := oldval;
     .
 .
@@ -9,7 +9,7 @@ def lock(lk):
     while tas(lk): pass.
 .
 def unlock(lk):
-    ^(lk) := False;
+    ^lk := False;
 .
 def p():
     while True:

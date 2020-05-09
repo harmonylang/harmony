@@ -65,8 +65,8 @@ def isbinaryop(s):
             "/\\", "and", "\\/", "or"
     ];
 
-tokens = [ "dict{", ":=", "==", "!=", "<=", ">=", "..", "/\\", "\\/",
-            "&(", "^(", "choose(" ]
+tokens = [ "dict{", ":=", "==", "!=", "<=", ">=",
+                "..", "/\\", "\\/", "&(", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -987,11 +987,6 @@ class BasicExpressionRule(Rule):
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (AddressAST(ast), t[1:])
-        if lexeme == "^(":
-            (ast, t) = ExpressionRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme == ")", t[0]
-            return (PointerAST(ast), t[1:])
         if lexeme == "choose(":
             (ast, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1272,13 +1267,11 @@ class LValueRule(Rule):
         (name, file, line, column) = t[0]
         if isname(name):
             indexes = [NameAST(t[0])]
+            t = t[1:]
         else:
-            assert name == "^(", t[0]
+            assert name == "^", t[0]
             (ast, t) = ExpressionRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme == ")"
             indexes = [PointerAST(ast)]
-        t = t[1:]
         while t != []:
             (index, t) = BasicExpressionRule().parse(t)
             if index == False:
