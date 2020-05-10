@@ -23,7 +23,7 @@ def produce(item):
     call P&(nempty);
     call P&(mylock);
     buf[myin] := item;
-    myin := (myin + 1) % N;
+    myin := (myin % N) + 1;
     call V&(mylock);
     call V&(nfull);
 ;
@@ -31,7 +31,7 @@ def consume(self):
     call P&(nfull);
     call P&(mylock);
     self := buf[myout];
-    myout := (myout + 1) % N;
+    myout := (myout % N) + 1;
     call V&(mylock);
     call V&(nempty);
 ;
@@ -47,9 +47,9 @@ def consumer():
         @consumed: pass;
     ;
 ;
-buf := dict{ x:0 for x in 0..(N-1) };
-myin := 0;
-myout := 0;
+buf := dict{ 0 for x in 1..N };
+myin := 1;
+myout := 1;
 nfull := Semaphore(0);
 nempty := Semaphore(N);
 mylock := Semaphore(1);

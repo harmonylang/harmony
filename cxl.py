@@ -803,8 +803,7 @@ class RecordAST(AST):
         code.append(RecordOp())
 
 class RecordComprehensionAST(AST):
-    def __init__(self, key, value, var, expr):
-        self.key = key
+    def __init__(self, value, var, expr):
         self.value = value
         self.var = var
         self.expr = expr
@@ -849,7 +848,7 @@ class RecordComprehensionAST(AST):
         ns.names[var] = ("variable", self.var)
 
         self.value.compile(ns, code)
-        self.key.compile(ns, code)
+        code.append(LoadVarOp(self.var))
         code.append(JumpOp(pc))
         code[tst] = JumpFalseOp(len(code))
         code.append(LoadVarOp(N))
@@ -916,8 +915,7 @@ class NaryRule(Rule):
         return (NaryAST(op, [ast, ast2]), t)
 
 class RecordComprehensionRule(Rule):
-    def __init__(self, key, value):
-        self.key = key
+    def __init__(self, value):
         self.value = value
 
     def parse(self, t):
@@ -927,7 +925,7 @@ class RecordComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
         (expr, t) = NaryRule("}").parse(t[2:])
-        return (RecordComprehensionAST(self.key, self.value, name, expr), t[1:])
+        return (RecordComprehensionAST(self.value, name, expr), t[1:])
 
 class RecordRule(Rule):
     def parse(self, t):
@@ -937,13 +935,13 @@ class RecordRule(Rule):
         while lexeme != "}":
             (key, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
+            if lexeme == "for":
+                assert d == {}, d
+                return RecordComprehensionRule(key).parse(t[1:])
             assert lexeme == ":", t[0]
             (value, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in { ",", "}", "for" }, t[0]
-            if lexeme == "for":
-                assert d == {}, d
-                return RecordComprehensionRule(key, value).parse(t[1:])
+            assert lexeme in { ",", "}" }, t[0]
             d[key] = value
         return (RecordAST(d), t[1:])
 

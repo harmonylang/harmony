@@ -28,7 +28,7 @@ def produce(item):
         cnt := cnt + 1;
         # buf[myin] := choose({ 10, 20 });
         buf[myin] := item;
-        myin := (myin + 1) % N;
+        myin := (myin % N) + 1;
 
     call unlock &(mylock);
 ;
@@ -46,7 +46,7 @@ def consume(self):
     @avail:
         cnt := cnt - 1;
         self := buf[myout];
-        myout := (myout + 1) % N;
+        myout := (myout % N) + 1;
     call unlock &(mylock);
 ;
 def producer():
@@ -61,9 +61,9 @@ def consumer():
         @consumed: pass;
     ;
 ;
-buf := dict{ x:0 for x in 0..(N-1) };
-myin := 0;
-myout := 0;
+buf := dict{ 0 for x in 1..N };
+myin := 1;
+myout := 1;
 cnt := 0;
 mylock := False;
 

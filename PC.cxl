@@ -28,7 +28,7 @@ def producer():
         @room:
             cnt := cnt + 1;
             buf[myin] := choose({ 10, 20 });
-            myin := (myin + 1) % N;
+            myin := (myin % N) + 1;
         @produced:
 
         call unlock();
@@ -49,15 +49,15 @@ def consumer():
         @avail:
             cnt := cnt - 1;
             # self := buf[myout];
-            myout := (myout + 1) % N;
+            myout := (myout % N) + 1;
         @consumed:
 
         call unlock();
     ;
 ;
-buf := dict{ x:0 for x in 0..(N-1) };
-myin := 0;
-myout := 0;
+buf := dict{ 0 for x in 1..N };
+myin := 1;
+myout := 1;
 cnt := 0;
 mylock := False;
 
