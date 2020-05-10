@@ -1,7 +1,9 @@
 def p(self):
     while True:
         flags[self] := True;
-        while flags[1 - self]: pass;;
+        while flags[1 - self]:
+            pass;
+        ;
         @cs:    # critical section
         flags[self] := False;
     ;

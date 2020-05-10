@@ -7,7 +7,9 @@ def tas(self):
 ;
 def p():
     while True:
-        while tas&(mylock): pass;;
+        while tas&(mylock):
+            pass;
+        ;
         @cs:    # critical section
         mylock := False;
     ;
