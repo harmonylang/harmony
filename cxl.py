@@ -1586,11 +1586,11 @@ class Node:
             i = j
         return "[" + result + "]"
 
-def print_path(visited, state):
-    if state != None:
-        node = visited[state]
-        print_path(visited, node.parent)
-        print(node.ctx, node.strsteps(), state.vars)
+def get_path(visited, state):
+    if state == None:
+        return []
+    node = visited[state]
+    return get_path(visited, node.parent) + [(node, state.vars)]
 
 def print_shortest(visited, bad):
     best_state = None
@@ -1600,7 +1600,9 @@ def print_shortest(visited, bad):
         if best_state == None or node.len < best_len:
             best_state = s
             best_len = node.len
-    print_path(visited, best_state)
+    path = get_path(visited, best_state)
+    for (node, vars) in path:
+        print(node.ctx, node.strsteps(), vars)
 
 class Scope:
     def __init__(self, parent):
