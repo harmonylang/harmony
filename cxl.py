@@ -1569,22 +1569,22 @@ class Node:
         self.len = len
         self.edges = []
 
-    def strsteps(self):
-        if self.steps == None:
-            return "[]"
-        result = ""
-        i = 0
-        while i < len(self.steps):
-            if result != "":
-                result += ","
-            result += str(self.steps[i])
-            j = i + 1
-            while j < len(self.steps) and self.steps[j] == self.steps[j - 1] + 1:
-                j += 1
-            if j > i + 1:
-                result += "-" + str(self.steps[j - 1])
-            i = j
-        return "[" + result + "]"
+def strsteps(steps):
+    if steps == None:
+        return "[]"
+    result = ""
+    i = 0
+    while i < len(steps):
+        if result != "":
+            result += ","
+        result += str(steps[i])
+        j = i + 1
+        while j < len(steps) and steps[j] == steps[j - 1] + 1:
+            j += 1
+        if j > i + 1:
+            result += "-" + str(steps[j - 1])
+        i = j
+    return "[" + result + "]"
 
 def get_path(visited, state):
     if state == None:
@@ -1600,9 +1600,19 @@ def print_shortest(visited, bad):
         if best_state == None or node.len < best_len:
             best_state = s
             best_len = node.len
-    path = get_path(visited, best_state)
+    path = get_path(visited, best_state)[1:]
+    last = None
     for (node, vars) in path:
-        print(node.ctx, node.strsteps(), vars)
+        if last == None:
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
+        elif node.ctx.name == last[0] and node.ctx.tag == last[1] and \
+                                            node.steps[0] == last[2]:
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.steps, vars)
+        else:
+            print(last[0], last[1], strsteps(last[3] + [last[2]]), last[4])
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
+    if last != None:
+        print(last[0], last[1], strsteps(last[3] + [last[2]]), last[4])
 
 class Scope:
     def __init__(self, parent):
