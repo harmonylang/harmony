@@ -1,0 +1,75 @@
+def tas(self):
+    atomic:
+        var oldval = ^self;
+        ^self := True;
+        self := oldval;
+    ;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk := False;
+;
+def Condition(self):
+    self := dict{ .lock: self, .waiters: {} };
+;
+def wait(c):
+    var pid = getpid();
+    ^c.waiters := (^c).waiters union { pid };
+    while pid in (^c).waiters:
+        call unlock&(^c.lock);
+        call lock&(^c.lock);
+    ;
+;
+def notify(c):
+    ^c.waiters := {};       # TODO
+;
+def notifyAll(c):
+    ^c.waiters := {};
+;
+def reader():
+    while True:
+        call lock&(rwlock);
+        while nwriters > 0:
+            call wait&(cond);
+        ;
+        nreaders := nreaders + 1;
+        call unlock&(rwlock);
+
+        @rcs:    # reader critical section
+
+        call lock&(rwlock);
+        nreaders := nreaders - 1;
+        call notifyAll&(cond);
+        call unlock&(rwlock);
+    ;
+;
+def writer():
+    while True:
+        call lock&(rwlock);
+        while (nreaders + nwriters) > 0:
+            call wait&(cond);
+        ;
+        nwriters := nwriters + 1;
+        call unlock&(rwlock);
+
+        @wcs:    # writer critical section
+
+        call lock&(rwlock);
+        nwriters := nwriters - 1;
+        call notifyAll&(cond);
+        call unlock&(rwlock);
+    ;
+;
+rwlock := False;
+cond := Condition&(rwlock);
+nreaders := 0;
+nwriters := 0;
+
+spawn reader(), 0;
+spawn reader(), 1;
+spawn writer(), 0;
+spawn writer(), 1;
