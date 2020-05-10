@@ -1626,7 +1626,8 @@ class Node:
         self.choice = choice    # 
         self.steps = steps
         self.len = len
-        self.edges = []
+        self.edges = []         # forward edges to next states (TODO: why list, not set?)
+        self.sources = set()    # backward edges
 
 def strsteps(steps):
     if steps == None:
@@ -1787,7 +1788,8 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.ctx = ctx
         next.steps = steps
         next.choice = choice
-    node.edges.append(sc)
+    node.edges.append(sc)           # TODO.  Maybe should be (ctx, sc)
+    next.sources.add(state)
 
     if foundInfLoop:
         infloop.add(sc)
@@ -1884,16 +1886,16 @@ def run(invariant, pcs):
                     op = s.code[ctx.pc]
                     if isinstance(op, LabelOp) and op.label[0] == cs:
                         good.add(s)
-        progress = True
-        while progress:
-            progress = False
-            for (s, node) in visited.items():
-                if s not in good:
-                    for reachable in node.edges:
-                        if reachable in good:
-                            progress = True
-                            good.add(s)
-                            break
+
+        # All the states reachable from good are good too
+        nextgood = good
+        while nextgood != set():
+            newgood = set()
+            for s in nextgood:
+                for s2 in visited[s].sources.difference(good):
+                    newgood.add(s2)
+            good = good.union(newgood)
+            nextgood = newgood
         livelocked = set(visited.keys()).difference(good)
         bad = bad.union(livelocked)
     if len(bad) > 0:
