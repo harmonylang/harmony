@@ -16,6 +16,20 @@ def unlock(lk):
 def Condition(self):
     self := dict{ .lock: self, .waiters: {} };
 ;
+def wait(c):
+    var pid = getpid()
+    ^c.waiters := ^c.waiters union { pid };
+    while pid in ^c.waiters:
+        call unlock&(^c.lock)
+        call lock&(^c.lock)
+    ;
+;
+def notify(c):
+    ^c.waiters := {};       # TODO
+;
+def notifyAll(c):
+    ^c.waiters := {};
+;
 def p():
     while True:
         call lock&(mylock);
