@@ -1609,10 +1609,10 @@ def print_shortest(visited, bad):
                                             node.steps[0] == last[2]:
             last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.steps, vars)
         else:
-            print(last[0], last[1], strsteps(last[3] + [last[2]]), last[4])
+            print(last[0], last[1], strsteps(last[3]), last[2], last[4])
             last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
     if last != None:
-        print(last[0], last[1], strsteps(last[3] + [last[2]]), last[4])
+        print(last[0], last[1], strsteps(last[3]), last[2], last[4])
 
 class Scope:
     def __init__(self, parent):
