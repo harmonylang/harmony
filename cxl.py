@@ -939,8 +939,8 @@ class RecordRule(Rule):
             assert lexeme == ":", t[0]
             (value, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in { ",", "}", "|" }, t[0]
-            if lexeme == "|":
+            assert lexeme in { ",", "}", "for" }, t[0]
+            if lexeme == "for":
                 assert d == {}, d
                 return RecordComprehensionRule(key, value).parse(t[1:])
             d[key] = value
