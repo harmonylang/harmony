@@ -1,1 +1,1 @@
-assert getpid() == 1, getpid();
+assert ({ 1 } union { }) == { 1 }, "blah";

@@ -803,7 +803,6 @@ class SetAST(AST):
         return str(self.collection)
 
     def compile(self, scope, code):
-        print("SET", self.collection)
         for e in self.collection:
             e.compile(scope, code)
         code.append(SetOp(len(self.collection)))
@@ -983,15 +982,17 @@ class BasicExpressionRule(Rule):
         if isname(lexeme):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
+            (lexeme, file, line, column) = t[1]
+            if lexeme == "}":
+                return (SetAST([]), t[2:])
             s = []
-            t = t[1:]
-            (lexeme, file, line, column) = t[0]
-            while lexeme != "}":
-                (next, t) = ExpressionRule().parse(t)
+            while True:
+                (next, t) = ExpressionRule().parse(t[1:])
                 s.append(next)
                 (lexeme, file, line, column) = t[0]
-                assert lexeme in { ",", "}" }, t[0]
-            return (SetAST(s), t[1:])
+                if lexeme == "}":
+                    return (SetAST(s), t[1:])
+                assert lexeme == ",", t[0]
         if lexeme == "dict{":
             return RecordRule().parse(t)
         if lexeme == "(" or lexeme == "[":
