@@ -281,6 +281,17 @@ class AddressValue(Value):
 class Op:
     pass
 
+class GetpidOp(Op):
+    def __repr__(self):
+        return "Getpid"
+
+    def eval(self, state, context):
+        if context.pid == None:
+            state.pidgen += 1
+            context.pid = state.pidgen
+        context.push(RecordValue({ NoValue(): context.pid }))
+        context.pc += 1
+
 # Splits a non-empty set in an element and its remainder
 # TODO.  The element should be deterministically chosen, like minimum
 class SplitOp(Op):
@@ -761,20 +772,23 @@ class NameAST(AST):
         return str(self.name)
 
     def compile(self, scope, code):
-        tv = scope.lookup(self.name)
-        if tv == None:
-            code.append(LoadOp(self.name))
+        (lexeme, file, line, column) = self.name
+        if lexeme == "getpid":
+            code.append(GetpidOp())
         else:
-            (t, v) = tv
-            if t == "variable":
-                code.append(LoadVarOp(self.name))
-            elif t == "constant":
-                code.append(ConstantOp(v))
-            elif t == "method":
-                (lexeme, file, line, column) = self.name
-                code.append(ConstantOp((PcValue(v), file, line, column)))
+            tv = scope.lookup(self.name)
+            if tv == None:
+                code.append(LoadOp(self.name))
             else:
-                assert False, tv
+                (t, v) = tv
+                if t == "variable":
+                    code.append(LoadVarOp(self.name))
+                elif t == "constant":
+                    code.append(ConstantOp(v))
+                elif t == "method":
+                    code.append(ConstantOp((PcValue(v), file, line, column)))
+                else:
+                    assert False, tv
 
 class SetAST(AST):
     def __init__(self, collection):
@@ -1483,6 +1497,7 @@ class Context:
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
         self.vars = RecordValue({})
+        self.pid = None      # assigned lazily
 
     def __repr__(self):
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
@@ -1549,6 +1564,7 @@ class State:
         self.vars = RecordValue({})
         self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
         self.assertFailure = False
+        self.pidgen = 0     # to generate pids
 
     def __repr__(self):
         return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ")"
@@ -1569,6 +1585,8 @@ class State:
             return False
         if self.assertFailure != other.assertFailure:
             return False
+        if self.pidgen != other.pidgen:
+            return False
         return True
 
     def copy(self):
@@ -1578,6 +1596,7 @@ class State:
         for (ctx, cnt) in self.ctxbag.items():
             s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
         s.assertFailure = self.assertFailure
+        s.pidgen = self.pidgen
         return s
 
     def get(self, var):
