@@ -14,7 +14,7 @@ def unlock(lk):
 def p():
     while True:
         call lock&(mylock);
-        @cs: pass   # critical section
+        @cs: pass;   # critical section
         call unlock&(mylock);
     ;
 ;
