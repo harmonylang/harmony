@@ -1,0 +1,30 @@
+def tas(self):
+    atomic:
+        var oldval = ^self;
+        ^self := True;
+        self := oldval;
+    ;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk := False;
+;
+def Condition(self):
+    self := dict{ .lock: self, .waiters: {} };
+;
+def p():
+    while True:
+        call lock&(mylock);
+        @cs: pass;   # critical section
+        call unlock&(mylock);
+    ;
+;
+mylock := False;
+c1 := Condition&(mylock);
+c2 := Condition&(mylock);
+spawn p(), 0;
+spawn p(), 1;
