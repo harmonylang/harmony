@@ -3,12 +3,12 @@ def p(self):
         flags[self] := True;
         turn := 1 - self;
         while flags[1 - self] and (turn == (1 - self)):
-            pass
-        .
+            pass;
+        ;
         @cs:    # critical section
         flags[self] := False;
-    .
-.
+    ;
+;
 flags := dict{ 0: False, 1: False };
 turn := 0;
 spawn p(0), 0;

@@ -1,8 +1,8 @@
 const N = 5;
 
 def Semaphore(cnt):
-    pass
-.
+    pass;
+;
 def P(sema):
     var blocked = True;
     while blocked:
@@ -10,15 +10,15 @@ def P(sema):
             if (^sema) > 0:
                 ^sema := (^sema) - 1;
                 blocked := False;
-            .
-        .
-    .
-.
+            ;
+        ;
+    ;
+;
 def V(sema):
     atomic:
         ^sema := (^sema) + 1;
-    .
-.
+    ;
+;
 def diner(which):
     while True:
         var left = which;
@@ -29,15 +29,15 @@ def diner(which):
         else:
             call P&(forks[right]);
             call P&(forks[left]);
-        .
+        ;
         @dine:
         call V&(forks[left]);
         call V&(forks[right]);
-    .
-.
+    ;
+;
 forks := dict{ sema:Semaphore(1) | sema in 0..(N-1) };
 var i = 0;
 while i < N:
     spawn diner(i), i;
     i := i + 1;
-.
+;

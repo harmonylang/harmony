@@ -1,6 +1,6 @@
 def Semaphore(cnt):
-    pass
-.
+    pass;
+;
 def P(sema):
     var blocked = True;
     while blocked:
@@ -8,22 +8,22 @@ def P(sema):
             if (^sema) > 0:
                 ^sema := (^sema) - 1;
                 blocked := False;
-            .
-        .
-    .
-.
+            ;
+        ;
+    ;
+;
 def V(sema):
     atomic:
         ^sema := (^sema) + 1;
-    .
-.
+    ;
+;
 def p():
     while True:
         call P&(mysema);
         @cs:    # critical section
         call V&(mysema);
-    .
-.
+    ;
+;
 mysema := Semaphore(1);
 spawn p(), 0;
 spawn p(), 1;

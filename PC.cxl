@@ -5,14 +5,14 @@ def tas(self):
         var oldval = ^self;
         ^self := True;
         self := oldval;
-    .
-.
+    ;
+;
 def lock():
-    while tas&(mylock): pass.
-.
+    while tas&(mylock): pass;;
+;
 def unlock():
     mylock := False;
-.
+;
 def producer():
     while True:
         var full = True;
@@ -23,16 +23,16 @@ def producer():
             else:
                 assert cnt == N, cnt;
                 call unlock();
-            .
-        .
+            ;
+        ;
         @room:
             cnt := cnt + 1;
             buf[myin] := choose({ 10, 20 });
             myin := (myin + 1) % N;
 
         call unlock();
-    .
-.
+    ;
+;
 def consumer():
     while True:
         var empty = True;
@@ -43,16 +43,16 @@ def consumer():
             else:
                 assert cnt == 0, cnt;
                 call unlock();
-            .
-        .
+            ;
+        ;
         @avail:
             cnt := cnt - 1;
             # self := buf[myout];
             myout := (myout + 1) % N;
 
         call unlock();
-    .
-.
+    ;
+;
 buf := dict{ x:0 | x in 0..(N-1) };
 myin := 0;
 myout := 0;

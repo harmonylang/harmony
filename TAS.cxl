@@ -3,16 +3,15 @@ def tas(self):
         var oldval = ^self;
         ^self := True;
         self := oldval;
-    .
-.
-
+    ;
+;
 def p():
     while True:
-        while tas&(mylock): pass.
+        while tas&(mylock): pass;;
         @cs:    # critical section
         mylock := False;
-    .
-.
+    ;
+;
 mylock := False;
 spawn p(), 0;
 spawn p(), 1;

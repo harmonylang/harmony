@@ -1,11 +1,11 @@
 def p(self):
     while True:
         flags[self] := True;
-        while flags[1 - self]: pass.
+        while flags[1 - self]: pass;;
         @cs:    # critical section
         flags[self] := False;
-    .
-.
+    ;
+;
 flags := dict{ 0: False, 1: False };
 spawn p(0), 0;
 spawn p(1), 1;
