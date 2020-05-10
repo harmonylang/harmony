@@ -38,11 +38,13 @@ def consume(self):
 def producer():
     while True:
         call produce[choose({ 10, 20 })];
+        @produced: pass;
     ;
 ;
 def consumer():
     while True:
         call consume();
+        @consumed: pass;
     ;
 ;
 buf := dict{ x:0 for x in 0..(N-1) };

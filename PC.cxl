@@ -29,6 +29,7 @@ def producer():
             cnt := cnt + 1;
             buf[myin] := choose({ 10, 20 });
             myin := (myin + 1) % N;
+        @produced:
 
         call unlock();
     ;
@@ -49,6 +50,7 @@ def consumer():
             cnt := cnt - 1;
             # self := buf[myout];
             myout := (myout + 1) % N;
+        @consumed:
 
         call unlock();
     ;
