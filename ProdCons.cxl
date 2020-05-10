@@ -8,7 +8,7 @@ def tas(self):
     ;
 ;
 def lock(lk):
-    while tas(lk): pass;
+    while tas(lk): pass;;
 ;
 def unlock(lk):
     ^lk := False;
