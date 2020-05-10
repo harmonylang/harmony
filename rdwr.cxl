@@ -35,7 +35,9 @@ def reader():
 def writer():
     while True:
         call lock&(wlock);
+
         @wcs:   # writer critical section
+
         call unlock&(wlock);
     ;
 ;
