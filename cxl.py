@@ -978,6 +978,8 @@ class BasicExpressionRule(Rule):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
             s = set()
+            t = t[1:]
+            (lexeme, file, line, column) = t[0]
             while lexeme != "}":
                 (next, t) = ExpressionRule().parse(t[1:])
                 s.add(next)
