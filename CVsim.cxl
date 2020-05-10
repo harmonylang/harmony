@@ -17,11 +17,11 @@ def Condition(self):
     self := dict{ .lock: self, .waiters: {} };
 ;
 def wait(c):
-    var pid = getpid()
-    ^c.waiters := ^c.waiters union { pid };
-    while pid in ^c.waiters:
-        call unlock&(^c.lock)
-        call lock&(^c.lock)
+    var pid = getpid();
+    ^c.waiters := (^c).waiters union { pid };
+    while pid in (^c).waiters:
+        call unlock&(^c.lock);
+        call lock&(^c.lock);
     ;
 ;
 def notify(c):

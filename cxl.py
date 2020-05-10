@@ -47,6 +47,7 @@ def isreserved(s):
         "pass",
         "spawn",
         "True",
+        "union",
         "var",
         "while"
     ]
@@ -60,7 +61,7 @@ def isunaryop(s):
 
 def isbinaryop(s):
     return s in [
-            "==", "!=", "..",
+            "==", "!=", "..", "union", "in",
             "-", "+", "*", "/", "%",
             "<", "<=", ">", ">=",
             "/\\", "and", "\\/", "or"
@@ -674,14 +675,18 @@ class NaryOp(Op):
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
                 context.push(SetValue(set(range(e1, e2+1))))
-            elif op == "/\\" or op == "and":
+            elif op == "and":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
                 context.push(e1 and e2)
-            elif op == "\\/" or op == "or":
+            elif op == "or":
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
                 context.push(e1 or e2)
+            elif op == "union":
+                assert isinstance(e1, SetValue), e1
+                assert isinstance(e2, SetValue), e2
+                context.push(SetValue(e1.s.union(e2.s)))
             else:
                 assert False, self
         else:
@@ -798,6 +803,7 @@ class SetAST(AST):
         return str(self.collection)
 
     def compile(self, scope, code):
+        print("SET", self.collection)
         for e in self.collection:
             e.compile(scope, code)
         code.append(SetOp(len(self.collection)))
@@ -977,12 +983,12 @@ class BasicExpressionRule(Rule):
         if isname(lexeme):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
-            s = set()
+            s = []
             t = t[1:]
             (lexeme, file, line, column) = t[0]
             while lexeme != "}":
-                (next, t) = ExpressionRule().parse(t[1:])
-                s.add(next)
+                (next, t) = ExpressionRule().parse(t)
+                s.append(next)
                 (lexeme, file, line, column) = t[0]
                 assert lexeme in { ",", "}" }, t[0]
             return (SetAST(s), t[1:])
