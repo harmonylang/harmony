@@ -1562,9 +1562,9 @@ class State:
 
 class Node:
     def __init__(self, parent, ctx, choice, steps, len):
-        self.parent = parent
-        self.ctx = ctx
-        self.choice = choice
+        self.parent = parent    # next hop on way to initial state
+        self.ctx = ctx          # the context that made the hop from the parent state
+        self.choice = choice    # 
         self.steps = steps
         self.len = len
         self.edges = []
@@ -1652,6 +1652,8 @@ globops = [
 ]
 
 def onestep(state, ctx, choice, visited, todo, node, infloop):
+    samectx = ctx == node.ctx
+
     # Copy the state (TODO.  Should not have to copy contexts)
     sc = state.copy()
 
@@ -1680,14 +1682,16 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         if ctx.pc == ctx.end:
             break
 
+        # take "checkpoints" at labels
+        if isinstance(sc.code[ctx.pc], LabelOp):
+            break
+
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
-            break
         if isinstance(sc.code[ctx.pc], ChooseOp):
             break
-        if isinstance(sc.code[ctx.pc], LabelOp):
+        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
             break
 
         # Detect infinite loops
@@ -1700,11 +1704,18 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     if ctx.pc != ctx.end:
         sc.add(ctx)
 
+    length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, ctx, choice, steps, node.len + 1)
+        next = Node(state, ctx, choice, steps, length)
         visited[sc] = next
         todo.append(sc)
+    elif next.len > length:
+        next.len = length
+        next.parent = state
+        next.ctx = ctx
+        next.steps = steps
+        next.choice = choice
     node.edges.append(sc)
 
     if foundInfLoop:
