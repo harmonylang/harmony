@@ -1735,9 +1735,13 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
 def run(invariant, pcs):
     all = ""
+    d = {}
+    file = "<stdin>"
+    d[file] = []
     for line in sys.stdin:
-       all += line
-    tokens = lexer(all, "<stdin>")
+        d[file] += [line]
+        all += line
+    tokens = lexer(all, file)
     try:
         (ast, rem) = StatListRule(set()).parse(tokens)
     except IndexError as e:
@@ -1755,7 +1759,11 @@ def run(invariant, pcs):
         if scope.locations.get(pc) != None:
             (file, line) = scope.locations[pc]
             if (file, line) != lastloc:
-                print(file, ":", line)
+                lines = d.get(file)
+                if lines != None and line <= len(lines):
+                    print(file, ":", line, lines[line - 1][0:-1])
+                else:
+                    print(file, ":", line)
             lastloc = (file, line)
         print("  ", pc, code[pc])
 
