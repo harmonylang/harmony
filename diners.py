@@ -5,7 +5,7 @@ def invariant(state):
     return True
 
 def main():
-    cxl.run(invariant, [ (("diner", p), "dine") for p in range(0, 5) ])
+    cxl.run(invariant, [ (("diner", p), "dine") for p in range(1, 6) ])
 
 if __name__ == "__main__":
     main()

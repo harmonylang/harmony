@@ -22,7 +22,7 @@ def V(sema):
 def diner(which):
     while True:
         var left = which;
-        var right = (which + 1) % N;
+        var right = (which % N) + 1;
         if left < right:
             call P&(forks[left]);
             call P&(forks[right]);
@@ -35,9 +35,7 @@ def diner(which):
         call V&(forks[right]);
     ;
 ;
-forks := dict{ sema:Semaphore(1) for sema in 0..(N-1) };
-var i = 0;
-while i < N:
+forks := dict{ sema:Semaphore(1) for sema in 1..N };
+for i in 1..N:
     spawn diner(i), i;
-    i := i + 1;
 ;

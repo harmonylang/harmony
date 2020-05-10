@@ -803,25 +803,21 @@ class RecordAST(AST):
         code.append(RecordOp())
 
 class RecordComprehensionAST(AST):
-    def __init__(self, key, value, arg, expr):
+    def __init__(self, key, value, var, expr):
         self.key = key
         self.value = value
-        self.arg = arg
+        self.var = var
         self.expr = expr
 
     def __repr__(self):
-        return "RecordComprehension(" + str(self.arg) + ")"
+        return "RecordComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
-        (arg, file, line, column) = self.arg
-
-        # TODO.  Figure out how to do this better
-        ns = Scope(scope)
-        ns.names[arg] = ("variable", self.arg)
+        (var, file, line, column) = self.var
 
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
-        self.expr.compile(ns, code)
+        self.expr.compile(scope, code)
         S = ("%set", file, line, column)
         code.append(StoreVarOp(S, 0))
 
@@ -833,8 +829,8 @@ class RecordComprehensionAST(AST):
 
         # Now generate the code:
         #   while X != {}:
-        #       arg := oneof X
-        #       X := X - arg
+        #       var := oneof X
+        #       X := X - var
         #       push value
         #       push key
         pc = len(code)
@@ -846,7 +842,12 @@ class RecordComprehensionAST(AST):
         code.append(LoadVarOp(S))
         code.append(SplitOp())  
         code.append(StoreVarOp(S, 0))
-        code.append(StoreVarOp(self.arg, 0))
+        code.append(StoreVarOp(self.var, 0))
+
+        # TODO.  Figure out how to do this better
+        ns = Scope(scope)
+        ns.names[var] = ("variable", self.var)
+
         self.value.compile(ns, code)
         self.key.compile(ns, code)
         code.append(JumpOp(pc))
@@ -1142,6 +1143,47 @@ class WhileAST(AST):
         code.append(JumpOp(pc1))
         code[pc2] = JumpFalseOp(len(code))
 
+class ForAST(AST):
+    def __init__(self, var, expr, stat):
+        self.var = var
+        self.expr = expr
+        self.stat = stat
+
+    def __repr__(self):
+        return "For(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        (var, file, line, column) = self.var
+
+        self.expr.compile(scope, code)     # first push the set
+        S = ("%set", file, line, column)   # save in variable "%set"
+        code.append(StoreVarOp(S, 0))
+
+        # Also store the size
+        N = ("%size", file, line, column)
+        code.append(LoadVarOp(S))
+        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(StoreVarOp(N, 0))
+
+        pc = len(code)      # top of loop
+        code.append(LoadVarOp(S))
+        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
+        tst = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(LoadVarOp(S))
+        code.append(SplitOp())  
+        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(self.var, 0))
+
+        # TODO.  Figure out how to do this better
+        ns = Scope(scope)
+        ns.names[var] = ("variable", self.var)
+
+        self.stat.compile(ns, code)
+        code.append(JumpOp(pc))
+        code[tst] = JumpFalseOp(len(code))
+
 class AtomicAST(AST):
     def __init__(self, stat):
         self.stat = stat
@@ -1381,6 +1423,15 @@ class StatementRule(Rule):
             (cond, t) = NaryRule(":").parse(t[1:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (WhileAST(cond, stat), self.skip(token, t))
+        if lexeme == "for":
+            var = t[1]
+            (lexeme, file, line, column) = var
+            assert isname(lexeme), var
+            (lexeme, file, line, column) = t[2]
+            assert lexeme == "in", t[2]
+            (s, t) = NaryRule(":").parse(t[3:])
+            (stat, t) = StatListRule({";"}).parse(t[1:])
+            return (ForAST(var, s, stat), self.skip(token, t))
         if lexeme == "atomic":
             (stat, t) = BlockRule({";"}).parse(t[1:])
             return (AtomicAST(stat), self.skip(token, t))

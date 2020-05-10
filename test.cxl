@@ -1,1 +1,1 @@
-assert "abc" == .abc, 0;
+assert 0/0, 0;
