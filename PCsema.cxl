@@ -1,24 +1,7 @@
+import synch;
+
 const N = 2;         # size of bounded buffer
 
-def Semaphore(cnt):
-    pass;
-;
-def P(sema):
-    var blocked = True;
-    while blocked:
-        atomic:
-            if (^sema) > 0:
-                ^sema := (^sema) - 1;
-                blocked := False;
-            ;
-        ;
-    ;
-;
-def V(sema):
-    atomic:
-        ^sema := (^sema) + 1;
-    ;
-;
 def produce(item):
     call P&(nempty);
     call P&(mylock);

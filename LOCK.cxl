@@ -1,18 +1,5 @@
-def tas(self):
-    atomic:
-        var oldval = ^self;
-        ^self := True;
-        self := oldval;
-    ;
-;
-def lock(lk):
-    while tas(lk):
-        pass;
-    ;
-;
-def unlock(lk):
-    ^lk := False;
-;
+import synch;
+
 def p():
     while True:
         call lock&(mylock);
@@ -20,6 +7,6 @@ def p():
         call unlock&(mylock);
     ;
 ;
-mylock := False;
+mylock := Lock();
 spawn p(), 0;
 spawn p(), 1;

@@ -2,6 +2,24 @@ import sys
 import traceback
 import collections
 
+# TODO.  This should not be global ideally
+files = {}
+
+def load(f, filename, scope, code):
+    files[filename] = []
+    all = ""
+    for line in f:
+        files[filename] += [line]
+        all += line
+    tokens = lexer(all, filename)
+    try:
+        (ast, rem) = StatListRule(set()).parse(tokens)
+    except IndexError as e:
+        print("Parsing", filename, "hit EOF (usually missing ';' at end of last line)?", e)
+        print(traceback.format_exc())
+        sys.exit(1)
+    ast.compile(scope, code)
+
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
 
@@ -1283,6 +1301,19 @@ class SpawnAST(AST):
         self.expr.compile(scope, code)
         code.append(SpawnOp(self.method, v))
 
+class ImportAST(AST):
+    def __init__(self, module):
+        self.module = module
+
+    def __repr__(self):
+        return "Import(" + str(self.module) + ")"
+
+    def compile(self, scope, code):
+        (lexeme, file, line, column) = self.module
+        filename = lexeme + ".cxl"
+        with open(filename) as f:
+            load(f, filename, scope, code)
+
 class LabelStatAST(AST):
     def __init__(self, labels, ast, file, line):
         self.labels = labels
@@ -1498,6 +1529,10 @@ class StatementRule(Rule):
             return (SpawnAST(tag, method, expr), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))
+        if lexeme == "import":
+            (lexeme, file, line, column) = t[1]
+            assert isname(lexeme), t[1]
+            return (ImportAST(t[1]), self.skip(token, t[2:]))
         if lexeme == "assert":
             (cond, t) = NaryRule(",").parse(t[1:])
             (expr, t) = NaryRule(";").parse(t[1:])
@@ -1828,24 +1863,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         infloop.add(sc)
 
 def run(invariant, pcs):
-    all = ""
-    d = {}
-    file = "<stdin>"
-    d[file] = []
-    for line in sys.stdin:
-        d[file] += [line]
-        all += line
-    tokens = lexer(all, file)
-    try:
-        (ast, rem) = StatListRule(set()).parse(tokens)
-    except IndexError as e:
-        print("Parsing hit EOF (usually missing ';' at end of last line)?", e)
-        print(traceback.format_exc())
-        sys.exit(1)
-    code = []
     scope = Scope(None)
-    ast.compile(scope, code)
-
+    code = []
+    load(sys.stdin, "<stdin>", scope, code)
     optimize(code)
 
     lastloc = None
@@ -1853,7 +1873,7 @@ def run(invariant, pcs):
         if scope.locations.get(pc) != None:
             (file, line) = scope.locations[pc]
             if (file, line) != lastloc:
-                lines = d.get(file)
+                lines = files.get(file)
                 if lines != None and line <= len(lines):
                     print(file, ":", line, lines[line - 1][0:-1])
                 else:

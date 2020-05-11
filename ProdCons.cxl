@@ -1,20 +1,7 @@
+import synch;
+
 const N = 2;         # size of bounded buffer
 
-def tas(self):
-    atomic:
-        var oldval = ^self;
-        ^self := True;
-        self := oldval;
-    ;
-;
-def lock(lk):
-    while tas(lk):
-        pass;
-    ;
-;
-def unlock(lk):
-    ^lk := False;
-;
 def produce(item):
     var full = True;
     while full:
@@ -67,7 +54,7 @@ buf := dict{ 0 for x in 1..N };
 myin := 1;
 myout := 1;
 cnt := 0;
-mylock := False;
+mylock := Lock();
 
 spawn producer(), 0;
 spawn producer(), 0;

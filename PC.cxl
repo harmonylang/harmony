@@ -1,30 +1,17 @@
+import synch;
+
 const N = 2;         # size of bounded buffer
 
-def tas(self):
-    atomic:
-        var oldval = ^self;
-        ^self := True;
-        self := oldval;
-    ;
-;
-def lock():
-    while tas&(mylock):
-        pass;
-    ;
-;
-def unlock():
-    mylock := False;
-;
 def producer():
     while True:
         var full = True;
         while full:
-            call lock();
+            call lock&(mylock);
             if cnt < N:
                 full := False;
             else:
                 assert cnt == N, cnt;
-                call unlock();
+                call unlock&(mylock);
             ;
         ;
         @room:
@@ -33,19 +20,19 @@ def producer():
             myin := (myin % N) + 1;
         @produced:
 
-        call unlock();
+        call unlock&(mylock);
     ;
 ;
 def consumer():
     while True:
         var empty = True;
         while empty:
-            call lock();
+            call lock&(mylock);
             if cnt > 0:
                 empty := False;
             else:
                 assert cnt == 0, cnt;
-                call unlock();
+                call unlock&(mylock);
             ;
         ;
         @avail:
@@ -54,14 +41,14 @@ def consumer():
             myout := (myout % N) + 1;
         @consumed:
 
-        call unlock();
+        call unlock&(mylock);
     ;
 ;
 buf := dict{ 0 for x in 1..N };
 myin := 1;
 myout := 1;
 cnt := 0;
-mylock := False;
+mylock := Lock();
 
 spawn producer(), 0;
 spawn producer(), 0;

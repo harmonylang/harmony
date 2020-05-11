@@ -2,13 +2,13 @@ import synch;
 
 def p():
     while True:
-        while tas&(mylock):
-            pass;
-        ;
+        call P&(mysema);
         @cs:    # critical section
-        mylock := False;
+        call V&(mysema);
     ;
 ;
-mylock := Lock();
+mysema := Semaphore(1);
 spawn p(), 0;
 spawn p(), 1;
+spawn p(), 2;
+spawn p(), 3;

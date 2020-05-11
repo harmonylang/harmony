@@ -1,18 +1,5 @@
-def tas(self):
-    atomic:
-        var oldval = ^self;
-        ^self := True;
-        self := oldval;
-    ;
-;
-def lock(lk):
-    while tas(lk):
-        pass;
-    ;
-;
-def unlock(lk):
-    ^lk := False;
-;
+import synch;
+
 def reader():
     while True:
         call lock&(rlock);
@@ -41,8 +28,8 @@ def writer():
         call unlock&(wlock);
     ;
 ;
-rlock := False;
-wlock := False;
+rlock := Lock();
+wlock := Lock();
 nreaders := 0;
 
 spawn reader(), 0;
