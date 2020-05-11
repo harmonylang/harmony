@@ -379,7 +379,7 @@ class StoreOp(Op):
         for i in range(self.n):
             indexes.append(context.pop())
         av = indexes[0]
-        assert isinstance(av, AddressValue)
+        assert isinstance(av, AddressValue), indexes
         state.set(av.indexes + indexes[1:], context.pop())
         context.pc += 1
 
@@ -687,6 +687,9 @@ class NaryOp(Op):
                 assert isinstance(e1, SetValue), e1
                 assert isinstance(e2, SetValue), e2
                 context.push(SetValue(e1.s.union(e2.s)))
+            elif op == "in":
+                assert isinstance(e2, SetValue), e2
+                context.push(e1 in e2.s)
             else:
                 assert False, self
         else:
@@ -1064,6 +1067,7 @@ class AssignmentAST(AST):
 
     def compile(self, scope, code):
         self.rv.compile(scope, code)
+        assert isinstance(self.lv, LValueAST)
         n = len(self.lv.indexes)
         for i in range(1, n):
             self.lv.indexes[n - i].compile(scope, code)
@@ -1334,7 +1338,7 @@ class LValueRule(Rule):
             t = t[1:]
         else:
             assert name == "^", t[0]
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (ast, t) = BasicExpressionRule().parse(t[1:])
             indexes = [PointerAST(ast)]
         while t != []:
             (index, t) = BasicExpressionRule().parse(t)
@@ -1773,7 +1777,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     while not sc.assertFailure:
         # execute one step
         steps.append(ctx.pc)
-        # print("PC", ctx.pc, sc.code[ctx.pc])
         sc.code[ctx.pc].eval(sc, ctx)
 
         # if we reached the end, remove the context

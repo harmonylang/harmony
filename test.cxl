@@ -1,1 +1,7 @@
-assert ({ 1 } union { }) == { 1 }, "blah";
+def inc(self):
+    ^self.a := (^self).a + 1;
+;
+    
+xxx := dict{ .a: 1 };
+call inc&(xxx);
+assert xxx.a == 2, xxx.a;
