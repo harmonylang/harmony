@@ -20,8 +20,8 @@ def wait(c):
     var pid = getpid();
     ^c.waiters := (^c).waiters union { pid };
     while pid in (^c).waiters:
-        call unlock&(^c.lock);
-        call lock&(^c.lock);
+        call unlock((^c).lock);
+        call lock((^c).lock);
     ;
 ;
 def notify(c):

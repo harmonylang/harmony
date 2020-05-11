@@ -1540,6 +1540,7 @@ class Context:
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
+        c.pid = self.pid
         return c
 
     def get(self, var):
