@@ -1912,7 +1912,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     if next == None:
         next = Node(state, ctx, choice, steps, length)
         visited[sc] = next
-        todo.append(sc)
+        if samectx:
+            todo.insert(0, sc)
+        else:
+            todo.append(sc)
     elif next.len > length:
         next.len = length
         next.parent = state
