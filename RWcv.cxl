@@ -25,7 +25,10 @@ def wait(c):
     ;
 ;
 def notify(c):
-    ^c.waiters := {};       # TODO
+    if (^c).waiters != {}:
+        var x = choose((^c).waiters);
+        ^c.waiters := (^c).waiters \ {x};
+    ;
 ;
 def notifyAll(c):
     ^c.waiters := {};

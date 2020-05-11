@@ -61,7 +61,7 @@ def isunaryop(s):
 
 def isbinaryop(s):
     return s in [
-            "==", "!=", "..", "union", "in",
+            "==", "!=", "..", "union", "\\", "in",
             "-", "+", "*", "/", "%",
             "<", "<=", ">", ">=",
             "/\\", "and", "\\/", "or"
