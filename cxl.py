@@ -682,6 +682,10 @@ class NaryOp(Op):
                 assert isinstance(e1, SetValue), e1
                 assert isinstance(e2, SetValue), e2
                 context.push(SetValue(e1.s.union(e2.s)))
+            elif op == "\\":
+                assert isinstance(e1, SetValue), e1
+                assert isinstance(e2, SetValue), e2
+                context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "in":
                 assert isinstance(e2, SetValue), e2
                 context.push(e1 in e2.s)
