@@ -1,2 +1,1 @@
-xxx := { (2*x) for x in 0..3 };
-assert False, xxx;
+xxx := 0 / 0;

@@ -438,7 +438,7 @@ class AssertOp(Op):
         assert isinstance(cond, bool)
         if not cond:
             print("Assertion failed", self.token, expr)
-            state.assertFailure = True
+            state.failure = True
         else:
             context.pc += 1
 
@@ -1671,7 +1671,7 @@ class State:
         self.code = code
         self.vars = RecordValue({})
         self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
-        self.assertFailure = False
+        self.failure = False
         self.pidgen = 0     # to generate pids
 
     def __repr__(self):
@@ -1691,7 +1691,7 @@ class State:
             return False
         if self.ctxbag != other.ctxbag:
             return False
-        if self.assertFailure != other.assertFailure:
+        if self.failure != other.failure:
             return False
         if self.pidgen != other.pidgen:
             return False
@@ -1703,7 +1703,7 @@ class State:
         s.ctxbag = {}
         for (ctx, cnt) in self.ctxbag.items():
             s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
-        s.assertFailure = self.assertFailure
+        s.failure = self.failure
         s.pidgen = self.pidgen
         return s
 
@@ -1869,10 +1869,18 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
     localStates = { ctx.copy() }
     foundInfLoop = False
-    while not sc.assertFailure:
+    while True:
         # execute one step
         steps.append(ctx.pc)
-        sc.code[ctx.pc].eval(sc, ctx)
+
+        try:
+            sc.code[ctx.pc].eval(sc, ctx)
+        except:
+            print("Failure: ", str(sys.exc_info()))
+            sc.failure = True
+
+        if sc.failure:
+            break
 
         # if we reached the end, remove the context
         if ctx.pc == ctx.end:
@@ -1950,7 +1958,7 @@ def run(invariant, pcs):
     while todo:
         cnt += 1
         state = todo.popleft()
-        if state.assertFailure:
+        if state.failure:
             bad.add(state)
             break
         node = visited[state]
