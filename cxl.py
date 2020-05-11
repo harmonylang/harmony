@@ -58,7 +58,9 @@ def isreserved(s):
         "False",
         "for",
         "if",
+        "import",
         "in",
+        "keys",
         "not",
         "method",
         "or",
@@ -75,18 +77,15 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "-", "not", "cardinality", "getpid" ]
+    return s in [ "^", "-", "cardinality", "getpid", "not", "keys" ]
 
 def isbinaryop(s):
     return s in [
-            "==", "!=", "..", "union", "\\", "in",
-            "-", "+", "*", "/", "%",
-            "<", "<=", ">", ">=",
-            "/\\", "and", "\\/", "or"
+        "==", "!=", "..", "union", "\\", "in", "and", "or",
+        "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "dict{", ":=", "==", "!=", "<=", ">=",
-                "..", "/\\", "\\/", "&(", "choose(" ]
+tokens = [ "dict{", ":=", "==", "!=", "<=", ">=", "..", "&(", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -422,16 +421,6 @@ class StoreVarOp(Op):
         context.set([lexeme] + indexes, context.pop())
         context.pc += 1
 
-class PointerOp(Op):
-    def __repr__(self):
-        return "Pointer"
-
-    def eval(self, state, context):
-        av = context.pop()
-        assert isinstance(av, AddressValue), av
-        context.push(state.iget(av.indexes))
-        context.pc += 1
-
 class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
@@ -624,21 +613,27 @@ class NaryOp(Op):
         (op, file, line, column) = self.op
         if self.n == 1:
             e = context.pop()
-            if op == "-":
-                assert isinstance(e, int)
+            if op == "^":
+                assert isinstance(e, AddressValue), e
+                context.push(state.iget(e.indexes))
+            elif op == "-":
+                assert isinstance(e, int), e
                 context.push(-e)
             elif op == "not":
-                assert isinstance(e, bool)
+                assert isinstance(e, bool), e
                 context.push(not e)
             elif op == "cardinality":
-                assert isinstance(e, SetValue)
+                assert isinstance(e, SetValue), e
                 context.push(len(e.s))
             elif op == "getpid":
-                assert isinstance(e, NoValue)
+                assert isinstance(e, NoValue), e
                 if context.pid == None:
                     state.pidgen += 1
                     context.pid = state.pidgen
                 context.push(context.pid)
+            elif op == "keys":
+                assert isinstance(e, RecordValue), e
+                context.push(SetValue(set(e.d.keys())))
             else:
                 assert False, self
         elif self.n == 2:
@@ -927,18 +922,12 @@ class NaryRule(Rule):
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        if lexeme in { "-", "not", "cardinality", "getpid" }:     # unary expression
+        if isunaryop(lexeme):
             op = t[0]
             (ast, t) = BasicExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryAST(op, [ast]), t)
-        if lexeme == "^":
-            op = t[0]
-            (ast, t) = ExpressionRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme == self.closer, t[0]
-            return (PointerAST(ast), t)
         (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == self.closer:
@@ -1045,10 +1034,6 @@ class PointerAST(AST):
 
     def __repr__(self):
         return "Pointer(" + str(self.expr) + ")"
-
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(PointerOp())
 
 class ChooseAST(AST):
     def __init__(self, expr):
