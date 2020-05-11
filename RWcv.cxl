@@ -18,7 +18,7 @@ def Condition(self):
 ;
 def wait(c):
     var pid = getpid();
-    ^c.waiters := (^c).waiters union { pid };
+    (^c).waiters := (^c).waiters union { pid };
     while pid in (^c).waiters:
         call unlock((^c).lock);
         call lock((^c).lock);
@@ -27,11 +27,11 @@ def wait(c):
 def notify(c):
     if (^c).waiters != {}:
         var x = choose((^c).waiters);
-        ^c.waiters := (^c).waiters \ {x};
+        (^c).waiters := (^c).waiters \ {x};
     ;
 ;
 def notifyAll(c):
-    ^c.waiters := {};
+    (^c).waiters := {};
 ;
 def reader():
     while True:

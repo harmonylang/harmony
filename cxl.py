@@ -57,7 +57,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "-", "not" ]
+    return s in [ "-", "not", "cardinality", "getpid" ]
 
 def isbinaryop(s):
     return s in [
@@ -281,17 +281,6 @@ class AddressValue(Value):
 
 class Op:
     pass
-
-class GetpidOp(Op):
-    def __repr__(self):
-        return "Getpid"
-
-    def eval(self, state, context):
-        if context.pid == None:
-            state.pidgen += 1
-            context.pid = state.pidgen
-        context.push(RecordValue({ NoValue(): context.pid }))
-        context.pc += 1
 
 # Splits a non-empty set in an element and its remainder
 # TODO.  The element should be deterministically chosen, like minimum
@@ -626,6 +615,12 @@ class NaryOp(Op):
             elif op == "cardinality":
                 assert isinstance(e, SetValue)
                 context.push(len(e.s))
+            elif op == "getpid":
+                assert isinstance(e, NoValue)
+                if context.pid == None:
+                    state.pidgen += 1
+                    context.pid = state.pidgen
+                context.push(context.pid)
             else:
                 assert False, self
         elif self.n == 2:
@@ -781,22 +776,19 @@ class NameAST(AST):
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.name
-        if lexeme == "getpid":
-            code.append(GetpidOp())
+        tv = scope.lookup(self.name)
+        if tv == None:
+            code.append(LoadOp(self.name))
         else:
-            tv = scope.lookup(self.name)
-            if tv == None:
-                code.append(LoadOp(self.name))
+            (t, v) = tv
+            if t == "variable":
+                code.append(LoadVarOp(self.name))
+            elif t == "constant":
+                code.append(ConstantOp(v))
+            elif t == "method":
+                code.append(ConstantOp((PcValue(v), file, line, column)))
             else:
-                (t, v) = tv
-                if t == "variable":
-                    code.append(LoadVarOp(self.name))
-                elif t == "constant":
-                    code.append(ConstantOp(v))
-                elif t == "method":
-                    code.append(ConstantOp((PcValue(v), file, line, column)))
-                else:
-                    assert False, tv
+                assert False, tv
 
 class SetAST(AST):
     def __init__(self, collection):
@@ -913,9 +905,9 @@ class NaryRule(Rule):
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        if lexeme in { "-", "not" }:     # unary expression
+        if lexeme in { "-", "not", "cardinality", "getpid" }:     # unary expression
             op = t[0]
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (ast, t) = BasicExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == self.closer, t[0]
             return (NaryAST(op, [ast]), t)
@@ -1331,14 +1323,22 @@ class ConstAST(AST):
 
 class LValueRule(Rule):
     def parse(self, t):
-        (name, file, line, column) = t[0]
-        if isname(name):
+        (lexeme, file, line, column) = t[0]
+        if isname(lexeme):
             indexes = [NameAST(t[0])]
             t = t[1:]
+        elif lexeme == "^":
+            (lexeme, file, line, column) = t[1]
+            assert isname(lexeme), t[1]
+            return (LValueAST([PointerAST(NameAST(t[1]))]), t[2:])
         else:
-            assert name == "^", t[0]
-            (ast, t) = BasicExpressionRule().parse(t[1:])
+            assert lexeme == "(", t[0]
+            (lexeme, file, line, column) = t[1]
+            (ast, t) = BasicExpressionRule().parse(t[2:])
+            (lexeme, file, line, column) = t[0]
+            assert lexeme == ")", t[0]
             indexes = [PointerAST(ast)]
+            t = t[1:]
         while t != []:
             (index, t) = BasicExpressionRule().parse(t)
             if index == False:
