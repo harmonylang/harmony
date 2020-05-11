@@ -560,15 +560,13 @@ class JumpFalseOp(Op):
             context.pc = self.pc
 
 class SetOp(Op):
-    def __init__(self, nitems):
-        self.nitems = nitems
-
     def __repr__(self):
-        return "Set " + str(self.nitems)
+        return "Set"
 
     def eval(self, state, context):
+        nitems = context.pop()
         s = set()
-        for i in range(self.nitems):
+        for i in range(nitems):
             s.add(context.pop())
         context.push(SetValue(s))
         context.pc += 1
@@ -817,7 +815,8 @@ class SetAST(AST):
     def compile(self, scope, code):
         for e in self.collection:
             e.compile(scope, code)
-        code.append(SetOp(len(self.collection)))
+        code.append(ConstantOp((len(self.collection), None, None, None)))
+        code.append(SetOp())
 
 class RecordAST(AST):
     def __init__(self, record):
@@ -832,6 +831,56 @@ class RecordAST(AST):
             k.compile(scope, code)
         code.append(ConstantOp((len(self.record), None, None, None)))
         code.append(RecordOp())
+
+class SetComprehensionAST(AST):
+    def __init__(self, value, var, expr):
+        self.value = value
+        self.var = var
+        self.expr = expr
+
+    def __repr__(self):
+        return "SetComprehension(" + str(self.var) + ")"
+
+    def compile(self, scope, code):
+        (var, file, line, column) = self.var
+
+        # Evaluate the set and store in a temporary variable
+        # TODO.  Should store as sorted list for determinism
+        self.expr.compile(scope, code)
+        S = ("%set", file, line, column)
+        code.append(StoreVarOp(S, 0))
+
+        # Also store the size
+        N = ("%size", file, line, column)
+        code.append(LoadVarOp(S))
+        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(StoreVarOp(N, 0))
+
+        # Now generate the code:
+        #   while X != {}:
+        #       var := oneof X
+        #       X := X - var
+        #       push value
+        pc = len(code)
+        code.append(LoadVarOp(S))
+        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
+        tst = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(LoadVarOp(S))
+        code.append(SplitOp())  
+        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(self.var, 0))
+
+        # TODO.  Figure out how to do this better
+        ns = Scope(scope)
+        ns.names[var] = ("variable", self.var)
+
+        self.value.compile(ns, code)
+        code.append(JumpOp(pc))
+        code[tst] = JumpFalseOp(len(code))
+        code.append(LoadVarOp(N))
+        code.append(SetOp())
 
 class RecordComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -939,6 +988,19 @@ class NaryRule(Rule):
         assert lexeme == self.closer, (t[0], self.closer)
         return (NaryAST(op, [ast, ast2]), t)
 
+class SetComprehensionRule(Rule):
+    def __init__(self, value):
+        self.value = value
+
+    def parse(self, t):
+        name = t[0]
+        (lexeme, file, line, column) = name
+        assert isname(lexeme), name
+        (lexeme, file, line, column) = t[1]
+        assert lexeme == "in", t[1]
+        (expr, t) = NaryRule("}").parse(t[2:])
+        return (SetComprehensionAST(self.value, name, expr), t[1:])
+
 class RecordComprehensionRule(Rule):
     def __init__(self, value):
         self.value = value
@@ -951,6 +1013,25 @@ class RecordComprehensionRule(Rule):
         assert lexeme == "in", t[1]
         (expr, t) = NaryRule("}").parse(t[2:])
         return (RecordComprehensionAST(self.value, name, expr), t[1:])
+
+class SetRule(Rule):
+    def parse(self, t):
+        (lexeme, file, line, column) = t[0]
+        assert lexeme == "{", t[0]
+        (lexeme, file, line, column) = t[1]
+        if lexeme == "}":
+            return (SetAST([]), t[2:])
+        s = []
+        while True:
+            (next, t) = ExpressionRule().parse(t[1:])
+            s.append(next)
+            (lexeme, file, line, column) = t[0]
+            if lexeme == "for":
+                assert len(s) == 1, s
+                return SetComprehensionRule(s[0]).parse(t[1:])
+            if lexeme == "}":
+                return (SetAST(s), t[1:])
+            assert lexeme == ",", t[0]
 
 class RecordRule(Rule):
     def parse(self, t):
@@ -988,17 +1069,7 @@ class BasicExpressionRule(Rule):
         if isname(lexeme):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
-            (lexeme, file, line, column) = t[1]
-            if lexeme == "}":
-                return (SetAST([]), t[2:])
-            s = []
-            while True:
-                (next, t) = ExpressionRule().parse(t[1:])
-                s.append(next)
-                (lexeme, file, line, column) = t[0]
-                if lexeme == "}":
-                    return (SetAST(s), t[1:])
-                assert lexeme == ",", t[0]
+            return SetRule().parse(t)
         if lexeme == "dict{":
             return RecordRule().parse(t)
         if lexeme == "(" or lexeme == "[":

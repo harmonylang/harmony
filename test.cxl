@@ -1,3 +1,2 @@
-xxx := dict{ .a: 1 };
-var k = keys(xxx);
-assert k == { .a }, k;
+xxx := { (2*x) for x in 0..3 };
+assert False, xxx;
