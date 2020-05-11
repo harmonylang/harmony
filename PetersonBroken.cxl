@@ -1,15 +1,15 @@
 def p(self):
     while True:
-        turn := 1 - self;
-        flags[self] := True;
+        turn = 1 - self;
+        flags[self] = True;
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
         @cs:    # critical section
-        flags[self] := False;
+        flags[self] = False;
     ;
 ;
-flags := dict{ 0: False, 1: False };
-turn := 0;
+flags = dict{ 0: False, 1: False };
+turn = 0;
 spawn p(0), 0;
 spawn p(1), 1;

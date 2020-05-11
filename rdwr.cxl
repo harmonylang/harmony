@@ -6,13 +6,13 @@ def reader():
         if nreaders == 0:
             call lock&(wlock);
         ;
-        nreaders := nreaders + 1;
+        nreaders = nreaders + 1;
         call unlock&(rlock);
 
         @rcs:    # reader critical section
 
         call lock&(rlock);
-        nreaders := nreaders - 1;
+        nreaders = nreaders - 1;
         if nreaders == 0:
             call unlock&(wlock);
         ;
@@ -28,9 +28,9 @@ def writer():
         call unlock&(wlock);
     ;
 ;
-rlock := Lock();
-wlock := Lock();
-nreaders := 0;
+rlock = Lock();
+wlock = Lock();
+nreaders = 0;
 
 spawn reader(), 0;
 spawn reader(), 1;

@@ -1,12 +1,12 @@
 def tas(self):
     atomic:
         var oldval = ^self;
-        ^self := True;
-        self := oldval;
+        ^self = True;
+        self = oldval;
     ;
 ;
 def Lock(self):
-    self := False;
+    self = False;
 ;
 def lock(lk):
     while tas(lk):
@@ -14,14 +14,14 @@ def lock(lk):
     ;
 ;
 def unlock(lk):
-    ^lk := False;
+    ^lk = False;
 ;
 def Condition(self):
-    self := dict{ .lock: self, .waiters: {} };
+    self = dict{ .lock: self, .waiters: {} };
 ;
 def wait(c):
     var pid = getpid();
-    (^c).waiters := (^c).waiters union { pid };
+    (^c).waiters = (^c).waiters + { pid };
     while pid in (^c).waiters:
         call unlock((^c).lock);
         call lock((^c).lock);
@@ -29,12 +29,12 @@ def wait(c):
 ;
 def notify(c):
     if (^c).waiters != {}:
-        var x = choose((^c).waiters);
-        (^c).waiters := (^c).waiters \ {x};
+        var pid = choose((^c).waiters);
+        (^c).waiters = (^c).waiters - { pid };
     ;
 ;
 def notifyAll(c):
-    (^c).waiters := {};
+    (^c).waiters = {};
 ;
 def Semaphore(cnt):
     pass;
@@ -44,14 +44,14 @@ def P(sema):
     while blocked:
         atomic:
             if (^sema) > 0:
-                ^sema := (^sema) - 1;
-                blocked := False;
+                ^sema = (^sema) - 1;
+                blocked = False;
             ;
         ;
     ;
 ;
 def V(sema):
     atomic:
-        ^sema := (^sema) + 1;
+        ^sema = (^sema) + 1;
     ;
 ;

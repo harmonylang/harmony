@@ -67,7 +67,6 @@ def isreserved(s):
         "pass",
         "spawn",
         "True",
-        "union",
         "var",
         "while"
     ]
@@ -81,11 +80,11 @@ def isunaryop(s):
 
 def isbinaryop(s):
     return s in [
-        "==", "!=", "..", "union", "\\", "in", "and", "or",
+        "==", "!=", "..", "\\", "in", "and", "or",
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "dict{", ":=", "==", "!=", "<=", ">=", "..", "&(", "choose(" ]
+tokens = [ "dict{", "==", "!=", "<=", ">=", "..", "&(", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -642,13 +641,21 @@ class NaryOp(Op):
             elif op == "!=":
                 context.push(e1 != e2)
             elif op == "+":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 + e2)
+                if isinstance(e1, int):
+                    assert isinstance(e2, int), e2
+                    context.push(e1 + e2)
+                else:
+                    assert isinstance(e1, SetValue), e1
+                    assert isinstance(e2, SetValue), e2
+                    context.push(SetValue(e1.s.union(e2.s)))
             elif op == "-":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 - e2)
+                if isinstance(e1, int):
+                    assert isinstance(e2, int), e2
+                    context.push(e1 - e2)
+                else:
+                    assert isinstance(e1, SetValue), e1
+                    assert isinstance(e2, SetValue), e2
+                    context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "*":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
@@ -689,14 +696,6 @@ class NaryOp(Op):
                 assert isinstance(e1, bool), e1
                 assert isinstance(e2, bool), e2
                 context.push(e1 or e2)
-            elif op == "union":
-                assert isinstance(e1, SetValue), e1
-                assert isinstance(e2, SetValue), e2
-                context.push(SetValue(e1.s.union(e2.s)))
-            elif op == "\\":
-                assert isinstance(e1, SetValue), e1
-                assert isinstance(e2, SetValue), e2
-                context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "in":
                 assert isinstance(e2, SetValue), e2
                 context.push(e1 in e2.s)
@@ -1441,7 +1440,7 @@ class AssignmentRule(Rule):
     def parse(self, t):
         (lv, t) = LValueRule().parse(t)
         (lexeme, file, line, column) = t[0]
-        assert lexeme == ":=", t[0]
+        assert lexeme == "=", t[0]
         (rv, t) = NaryRule(";").parse(t[1:])
         return (AssignmentAST(lv, rv), t[1:])
 

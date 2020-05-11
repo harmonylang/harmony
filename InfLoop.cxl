@@ -4,6 +4,6 @@ def p():
     ;
     @cs: pass;    # critical section
 ;
-flags := dict{ 0: False, 1: False };
+flags = dict{ 0: False, 1: False };
 spawn p(), 0;
 spawn p(), 1;

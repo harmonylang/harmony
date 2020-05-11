@@ -7,6 +7,6 @@ def p():
         call unlock&(mylock);
     ;
 ;
-mylock := Lock();
+mylock = Lock();
 spawn p(), 0;
 spawn p(), 1;

@@ -6,9 +6,9 @@ def p():
             pass;
         ;
         @cs:    # critical section
-        mylock := False;
+        mylock = False;
     ;
 ;
-mylock := Lock();
+mylock = Lock();
 spawn p(), 0;
 spawn p(), 1;

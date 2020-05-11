@@ -5,22 +5,22 @@ const N = 2;         # size of bounded buffer
 def produce(item):
     call P&(nempty);
     call P&(mylock);
-    buf[myin] := item;
-    myin := (myin % N) + 1;
+    buf[myin] = item;
+    myin = (myin % N) + 1;
     call V&(mylock);
     call V&(nfull);
 ;
 def consume(self):
     call P&(nfull);
     call P&(mylock);
-    self := buf[myout];
-    myout := (myout % N) + 1;
+    self = buf[myout];
+    myout = (myout % N) + 1;
     call V&(mylock);
     call V&(nempty);
 ;
 def producer():
     while True:
-        call produce[choose({ 10, 20 })];
+        call produce(choose({ 10, 20 }));
         @produced: pass;
     ;
 ;
@@ -30,12 +30,12 @@ def consumer():
         @consumed: pass;
     ;
 ;
-buf := dict{ 0 for x in 1..N };
-myin := 1;
-myout := 1;
-nfull := Semaphore(0);
-nempty := Semaphore(N);
-mylock := Semaphore(1);
+buf = dict{ 0 for x in 1..N };
+myin = 1;
+myout = 1;
+nfull = Semaphore(0);
+nempty = Semaphore(N);
+mylock = Semaphore(1);
 
 spawn producer(), 0;
 spawn producer(), 0;

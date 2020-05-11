@@ -6,13 +6,13 @@ def reader():
         while nwriters > 0:
             call wait&(cond);
         ;
-        nreaders := nreaders + 1;
+        nreaders = nreaders + 1;
         call unlock&(rwlock);
 
         @rcs:    # reader critical section
 
         call lock&(rwlock);
-        nreaders := nreaders - 1;
+        nreaders = nreaders - 1;
         call notifyAll&(cond);
         call unlock&(rwlock);
     ;
@@ -23,21 +23,21 @@ def writer():
         while (nreaders + nwriters) > 0:
             call wait&(cond);
         ;
-        nwriters := nwriters + 1;
+        nwriters = nwriters + 1;
         call unlock&(rwlock);
 
         @wcs:    # writer critical section
 
         call lock&(rwlock);
-        nwriters := nwriters - 1;
+        nwriters = nwriters - 1;
         call notifyAll&(cond);
         call unlock&(rwlock);
     ;
 ;
-rwlock := False;
-cond := Condition&(rwlock);
-nreaders := 0;
-nwriters := 0;
+rwlock = False;
+cond = Condition&(rwlock);
+nreaders = 0;
+nwriters = 0;
 
 spawn reader(), 0;
 spawn reader(), 1;

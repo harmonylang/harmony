@@ -7,17 +7,17 @@ def produce(item):
     while full:
         call lock &(mylock);
         if cnt < N:
-            full := False;
+            full = False;
         else:
             assert cnt == N, cnt;
             call unlock &(mylock);
         ;
     ;
     @room:
-        cnt := cnt + 1;
-        # buf[myin] := choose({ 10, 20 });
-        buf[myin] := item;
-        myin := (myin % N) + 1;
+        cnt = cnt + 1;
+        # buf[myin] = choose({ 10, 20 });
+        buf[myin] = item;
+        myin = (myin % N) + 1;
 
     call unlock &(mylock);
 ;
@@ -26,16 +26,16 @@ def consume(self):
     while empty:
         call lock &(mylock);
         if cnt > 0:
-            empty := False;
+            empty = False;
         else:
             assert cnt == 0, cnt;
             call unlock &(mylock);
         ;
     ;
     @avail:
-        cnt := cnt - 1;
-        self := buf[myout];
-        myout := (myout % N) + 1;
+        cnt = cnt - 1;
+        self = buf[myout];
+        myout = (myout % N) + 1;
     call unlock &(mylock);
 ;
 def producer():
@@ -50,11 +50,11 @@ def consumer():
         @consumed: pass;
     ;
 ;
-buf := dict{ 0 for x in 1..N };
-myin := 1;
-myout := 1;
-cnt := 0;
-mylock := Lock();
+buf = dict{ 0 for x in 1..N };
+myin = 1;
+myout = 1;
+cnt = 0;
+mylock = Lock();
 
 spawn producer(), 0;
 spawn producer(), 0;

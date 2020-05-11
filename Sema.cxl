@@ -7,7 +7,7 @@ def p():
         call V&(mysema);
     ;
 ;
-mysema := Semaphore(1);
+mysema = Semaphore(1);
 spawn p(), 0;
 spawn p(), 1;
 spawn p(), 2;
