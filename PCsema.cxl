@@ -56,6 +56,5 @@ mylock := Semaphore(1);
 
 spawn producer(), 0;
 spawn producer(), 0;
-spawn producer(), 0;
 spawn consumer(), 1;
 spawn consumer(), 1;

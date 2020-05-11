@@ -1050,11 +1050,10 @@ class ChooseAST(AST):
 class ExpressionRule(Rule):
     def parse(self, t):
         (ast, t) = BasicExpressionRule().parse(t)
-        while t != []:
+        if t != []:
             (arg, t) = BasicExpressionRule().parse(t)
-            if arg == False:
-                break
-            (ast, t) = (ApplyAST(ast, arg), t)
+            if arg != False:
+                return (ApplyAST(ast, arg), t)
         return (ast, t)
 
 class AssignmentAST(AST):
