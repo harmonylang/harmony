@@ -194,6 +194,37 @@ def lexer(s, file):
         column += 1
     return result
 
+# Define a sorting order on all values
+# TODO.  Currently unused but should make for x in set constructions deterministic
+def key(v):
+    if isinstance(v, NoValue):
+        return (0, v)
+    if isinstance(v, bool):
+        return (1, v)
+    if isinstance(v, int):
+        return (2, v)
+    if isinstance(v, PcValue):
+        return (3, v.pc)
+    if isinstance(v, NameValue):
+        return (4, v.name)
+    if isinstance(v, str):
+        return (5, v)
+    if isinstance(v, tuple):
+        return (6, [key(x) for x in v])
+    if isinstance(v, SetValue):
+        lst = [key(x) for x in v.s]
+        return (7, sorted(lst))
+    if isinstance(v, frozenset):
+        lst = [key(x) for x in v]
+        return (8, sorted(lst))
+    if isinstance(v, AddressValue):
+        lst = [key(x) for x in v.indexes]
+        return (9, sorted(lst))
+    if isinstance(v, RecordValue):
+        lst = [(key(k), key(v)) for (k, v) in v.d.items()]
+        return (10, sorted(lst))
+    assert False, v
+
 class Value:
     pass
 
