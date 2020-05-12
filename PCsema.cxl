@@ -20,14 +20,17 @@ def consume(self):
 ;
 def producer():
     while True:
-        call produce(choose({ 10, 20 }));
-        @produced: pass;
+        var item = choose({ 10, 20 });
+        @before_produce:
+        call produce(item);
+        @after_produce: pass;
     ;
 ;
 def consumer():
     while True:
-        call consume();
-        @consumed: pass;
+        @before_consume:
+        var item = consume();
+        @after_consume: pass;
     ;
 ;
 buf = dict{ 0 for x in 1..N };

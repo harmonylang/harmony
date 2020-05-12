@@ -4,6 +4,7 @@ const N = 2;         # size of bounded buffer
 
 def producer():
     while True:
+        @produce:
         var full = True;
         while full:
             call lock&(mylock);
@@ -14,17 +15,16 @@ def producer():
                 call unlock&(mylock);
             ;
         ;
-        @room:
-            cnt = cnt + 1;
-            buf[myin] = choose({ 10, 20 });
-            myin = (myin % N) + 1;
-        @produced:
+        cnt = cnt + 1;
+        buf[myin] = choose({ 10, 20 });
+        myin = (myin % N) + 1;
 
         call unlock&(mylock);
     ;
 ;
 def consumer():
     while True:
+        @consume:
         var empty = True;
         while empty:
             call lock&(mylock);
@@ -35,11 +35,9 @@ def consumer():
                 call unlock&(mylock);
             ;
         ;
-        @avail:
-            cnt = cnt - 1;
-            # self = buf[myout];
-            myout = (myout % N) + 1;
-        @consumed:
+        cnt = cnt - 1;
+        # self = buf[myout];
+        myout = (myout % N) + 1;
 
         call unlock&(mylock);
     ;

@@ -657,9 +657,13 @@ class NaryOp(Op):
                     assert isinstance(e2, SetValue), e2
                     context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "*":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 * e2)
+                if isinstance(e1, int):
+                    assert isinstance(e2, int), e2
+                    context.push(e1 * e2)
+                else:
+                    assert isinstance(e1, SetValue), e1
+                    assert isinstance(e2, SetValue), e2
+                    context.push(SetValue(e1.s.intersection(e2.s)))
             elif op == "/":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
