@@ -20,7 +20,8 @@ def consume(self):
 ;
 def producer():
     while True:
-        var item = choose({ 10, 20 });
+        # var item = choose({ 10, 20 });
+        var item = 1;
         @before_produce:
         call produce(item);
         @after_produce: pass;

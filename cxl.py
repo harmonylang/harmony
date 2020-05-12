@@ -380,17 +380,6 @@ class ConstantOp(Op):
         context.push(lexeme)
         context.pc += 1
 
-class LabelOp(Op):
-    def __init__(self, label):
-        self.label = label
-
-    def __repr__(self):
-        return "Label " + str(self.label)
-
-    def eval(self, state, context):
-        assert context.atomic == 0
-        context.pc += 1
-
 class NameOp(Op):
     def __init__(self, name):
         self.name = name 
@@ -1415,9 +1404,7 @@ class LabelStatAST(AST):
         return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     def compile(self, scope, code):
-        scope.location(len(code), self.file, self.line)
-        for label in self.labels:
-            code.append(LabelOp(label))
+        scope.location(len(code), self.file, self.line, self.labels)
         self.ast.compile(scope, code)
 
 class VarAST(AST):
@@ -1629,16 +1616,19 @@ class StatementRule(Rule):
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
 
+# Encodes the state of a process
 class Context:
     def __init__(self, name, tag, pc, end):
-        self.name = name
-        self.tag = tag
-        self.pc = pc
-        self.end = end
-        self.atomic = 0
-        self.stack = []     # collections.deque() seems slightly slower
-        self.vars = RecordValue({})
-        self.pid = None      # assigned lazily
+        self.name = name            # name of starting method, specified in "spawn"
+        self.tag = tag              # tag specified in "spawn"
+        self.pc = pc                # program counter of next instruction to execute
+        self.end = end              # ending program counter
+        self.choice = None          # non-deterministic choice last made
+        self.steps = []             # micro steps to get here in last macro step
+        self.atomic = 0             # in "atomic" mode if > 0
+        self.stack = []             # process stack
+        self.vars = RecordValue({}) # local variables (registers)
+        self.pid = None             # process identifier assigned lazily
 
     def __repr__(self):
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
@@ -1654,15 +1644,20 @@ class Context:
             return False
         if self.name != other.name:
             return False
+        assert self.end == other.end
         if self.tag != other.tag:
             return False
         if self.pc != other.pc:
             return False
+        if self.choice != other.choice:
+            return False
+        if self.steps != other.steps:
+            return False
         if self.atomic != other.atomic:
             return False
-        assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
+    # Copy all except choice and steps
     def copy(self):
         c = Context(self.name, self.tag, self.pc, self.end)
         c.atomic = self.atomic
@@ -1701,8 +1696,9 @@ class Context:
         return self.stack.pop()
 
 class State:
-    def __init__(self, code):
+    def __init__(self, code, labels):
         self.code = code
+        self.labels = labels
         self.vars = RecordValue({})
         self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
         self.failure = False
@@ -1720,7 +1716,7 @@ class State:
     def __eq__(self, other):
         if not isinstance(other, State):
             return False
-        assert self.code == other.code
+        assert self.code == other.code and self.labels == other.labels
         if self.vars != other.vars:
             return False
         if self.ctxbag != other.ctxbag:
@@ -1732,7 +1728,7 @@ class State:
         return True
 
     def copy(self):
-        s = State(self.code)
+        s = State(self.code, self.labels)
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()   # shallow copy of contexts
         s.failure = self.failure
@@ -1777,12 +1773,10 @@ class State:
             self.ctxbag[ctx] = cnt - 1
 
 class Node:
-    def __init__(self, parent, ctx, choice, steps, len):
+    def __init__(self, parent, ctx, len):
         self.parent = parent    # next hop on way to initial state
+        self.len = len          # length of path to root
         self.ctx = ctx          # the context that made the hop from the parent state
-        self.choice = choice    # 
-        self.steps = steps
-        self.len = len
         self.edges = []         # forward edges to next states (TODO: why list, not set?)
         self.sources = set()    # backward edges
 
@@ -1821,13 +1815,13 @@ def print_shortest(visited, bad):
     last = None
     for (node, vars) in path:
         if last == None:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.ctx.steps, vars)
         elif node.ctx.name == last[0] and node.ctx.tag == last[1] and \
-                                            node.steps[0] == last[2]:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.steps, vars)
+                                            node.ctx.steps[0] == last[2]:
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.ctx.steps, vars)
         else:
             print(last[0], last[1], strsteps(last[3]), last[2], last[4])
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.ctx.steps, vars)
     if last != None:
         print(last[0], last[1], strsteps(last[3]), last[2], last[4])
 
@@ -1835,7 +1829,8 @@ class Scope:
     def __init__(self, parent):
         self.parent = parent
         self.names = {}
-        self.locations = {}
+        self.locations = {}         # maps pc to (file, line)
+        self.labels = {}            # maps label to pc
 
     def lookup(self, name):
         (lexeme, file, line, column) = name
@@ -1853,11 +1848,13 @@ class Scope:
             ancestor = ancestor.parent
         return None
 
-    def location(self, pc, file, line):
+    def location(self, pc, file, line, labels):
         if self.parent == None:
             self.locations[pc] = (file, line)
+            for (label, file, line, column) in labels:
+                self.labels[label] = pc
         else:
-            self.parent.location(pc, file, line)
+            self.parent.location(pc, file, line, labels)
 
 def optjump(code, pc):
     while pc < len(code):
@@ -1877,7 +1874,7 @@ def optimize(code):
 
 # These operations cause global state changes
 globops = [
-    AtomicIncOp, LabelOp, LoadOp, SpawnOp, StoreOp
+    AtomicIncOp, LoadOp, SpawnOp, StoreOp
 ]
 
 # Have context ctx make one (macro) step in the given state
@@ -1894,10 +1891,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Make a copy of the context before modifying it.
     ctx = ctx.copy()
 
-    if choice == None:
-        steps = []
-    else:
-        steps = [ctx.pc]
+    # If a non-deterministic choice is the first instruction, simulate it now
+    if choice != None:
+        ctx.choice = choice
+        ctx.steps = [ctx.pc]
         ctx.stack[-1] = choice
         ctx.pc += 1
 
@@ -1905,8 +1902,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     foundInfLoop = False
     while True:
         # execute one step
-        steps.append(ctx.pc)
-
+        ctx.steps.append(ctx.pc)
         try:
             sc.code[ctx.pc].eval(sc, ctx)
         except:
@@ -1918,10 +1914,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
         # if we reached the end, remove the context
         if ctx.pc == ctx.end:
-            break
-
-        # take "checkpoints" at labels
-        if isinstance(sc.code[ctx.pc], LabelOp):
             break
 
         # if we're about to do a state change, let other processes
@@ -1945,7 +1937,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, ctx, choice, steps, length)
+        next = Node(state, ctx, length)
         visited[sc] = next
         if samectx:
             todo.insert(0, sc)
@@ -1955,18 +1947,16 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.len = length
         next.parent = state
         next.ctx = ctx
-        next.steps = steps
-        next.choice = choice
     node.edges.append(sc)           # TODO.  Maybe should be (ctx, sc)
     next.sources.add(state)
 
     if foundInfLoop:
         infloop.add(sc)
 
-def run(invariant, pcs):
+def compile(fd, filename):
     scope = Scope(None)
     code = []
-    load(sys.stdin, "<stdin>", scope, code)
+    load(fd, filename, scope, code)
     optimize(code)
 
     lastloc = None
@@ -1982,11 +1972,14 @@ def run(invariant, pcs):
             lastloc = (file, line)
         print("  ", pc, code[pc])
 
+    return (code, scope.labels)
+
+def run(code, labels, invariant, pcs):
     # Initial state
-    state = State(code)
+    state = State(code, labels)
 
     # For traversing Kripke graph
-    visited = { state: Node(None, None, None, None, 0) }
+    visited = { state: Node(None, None, 0) }
     todo = collections.deque([state])
     bad = set()
     infloop = set()
@@ -2030,16 +2023,19 @@ def run(invariant, pcs):
     # See if there are livelocked states (states from which some process
     # cannot reach the reader or writer critical section)
     bad = set()
-    for (p, cs) in pcs:
-        # First collect all the states in which the process is in the
-        # critical region
+    for (p, pc) in pcs:
+        # First collect all states in which process p has reached program counter pc
         good = set()
         for s in visited.keys():
             for ctx in s.ctxbag.keys():
+                if ctx.pc == pc:
+                    good.add(s)
+                    break
                 if (ctx.name, ctx.tag) == p:
-                    op = s.code[ctx.pc]
-                    if isinstance(op, LabelOp) and op.label[0] == cs:
-                        good.add(s)
+                    for step in ctx.steps:
+                        if step == pc:
+                            good.add(s)
+                            break
 
         # All the states reachable from good are good too
         nextgood = good
