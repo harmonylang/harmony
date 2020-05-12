@@ -1634,7 +1634,10 @@ class Context:
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
 
     def __hash__(self):
-        h = (self.name, self.tag, self.pc, self.end, self.atomic, self.vars).__hash__()
+        h = (self.name, self.tag, self.pc, self.end,
+                self.choice, self.atomic, self.vars).__hash__()
+        for pc in self.steps:   # TODO.  Not a great way to hash this list
+            h ^= pc
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -1657,9 +1660,20 @@ class Context:
             return False
         return self.stack == other.stack and self.vars == other.vars
 
-    # Copy all except choice and steps
+    # copy all except choice and steps
     def copy(self):
         c = Context(self.name, self.tag, self.pc, self.end)
+        c.atomic = self.atomic
+        c.stack = self.stack.copy()
+        c.vars = self.vars
+        c.pid = self.pid
+        return c
+
+    # copy all including choice and steps
+    def copyAll(self):
+        c = Context(self.name, self.tag, self.pc, self.end)
+        c.choice = self.choice
+        c.steps = self.steps.copy()
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
@@ -1721,11 +1735,7 @@ class State:
             return False
         if self.ctxbag != other.ctxbag:
             return False
-        if self.failure != other.failure:
-            return False
-        if self.pidgen != other.pidgen:
-            return False
-        return True
+        return self.failure == other.failure and self.pidgen == other.pidgen
 
     def copy(self):
         s = State(self.code, self.labels)
@@ -1888,7 +1898,8 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Remove context from bag
     sc.remove(ctx)
 
-    # Make a copy of the context before modifying it.
+    # Make a copy of the context before modifying it.  Do not copy
+    # choice and steps as we're starting over
     ctx = ctx.copy()
 
     # If a non-deterministic choice is the first instruction, simulate it now
@@ -1898,7 +1909,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         ctx.stack[-1] = choice
         ctx.pc += 1
 
-    localStates = { ctx.copy() }
+    # TODO localStates = { ctx.copy() }
     foundInfLoop = False
     while True:
         # execute one step
@@ -1924,11 +1935,11 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
             break
 
-        # Detect infinite loops
-        if ctx in localStates:
-            foundInfLoop = True
-            break
-        localStates.add(ctx.copy())
+        # TODO Detect infinite loops
+        # if ctx in localStates:
+        #     foundInfLoop = True
+        #     break
+        # localStates.add(ctx.copy())
 
     # Put the resulting context into the bag unless it's done
     if ctx.pc != ctx.end:
