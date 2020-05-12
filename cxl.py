@@ -1703,9 +1703,7 @@ class State:
     def copy(self):
         s = State(self.code)
         s.vars = self.vars      # no need to copy as store operations do it
-        s.ctxbag = {}
-        for (ctx, cnt) in self.ctxbag.items():
-            s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
+        s.ctxbag = self.ctxbag.copy()   # shallow copy of contexts
         s.failure = self.failure
         s.pidgen = self.pidgen
         return s
@@ -1851,10 +1849,12 @@ globops = [
     AtomicIncOp, LabelOp, LoadOp, SpawnOp, StoreOp
 ]
 
+# Have context ctx make one (macro) step in the given state
 def onestep(state, ctx, choice, visited, todo, node, infloop):
+    # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
-    # Copy the state (TODO.  Should not have to copy contexts)
+    # (shallow) copy the state (contexts are not copied)
     sc = state.copy()
 
     # Remove context from bag
