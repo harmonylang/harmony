@@ -2001,10 +2001,12 @@ def run(code, labels, invariant, pcs):
         # First collect all the states in which the process is in the
         # critical region
         good = set()
-        for s in visited.keys():
-            for ctx in s.ctxbag.keys():
-                if (ctx.name, ctx.tag) == p and ctx.pc == cs:
-                    good.add(s)
+        for (s, node) in visited.items():
+            for (ctx, edge) in node.edges.items():
+                (next, steps) = edge
+                if (ctx.name, ctx.tag) == p and (cs in steps):
+                    good.add(next)
+                    good.add(s)     # might as well add this now
 
         # All the states reachable from good are good too
         nextgood = good
