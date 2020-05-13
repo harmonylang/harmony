@@ -1,0 +1,15 @@
+# symmetric but non-safe solution to mutual exclusion problem
+
+def p(self):
+    while True:
+        while mutex:
+            pass;
+        ;
+        mutex = True;
+        @cs: atomic: pass;;   # critical section
+        mutex = False;
+    ;
+;
+mutex = False;
+spawn p(0), 0;
+spawn p(1), 1;

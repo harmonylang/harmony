@@ -1,10 +1,12 @@
+# symmetric but non-live solution to mutual exclusion problem
+
 def p(self):
     while True:
         flags[self] = True;
         while flags[1 - self]:
             pass;
         ;
-        @cs:    # critical section
+        @cs: atomic: pass;;   # critical section
         flags[self] = False;
     ;
 ;

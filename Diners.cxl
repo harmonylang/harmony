@@ -1,3 +1,5 @@
+# Dining Philosophers -- deadlock-prone
+
 import synch;
 
 const N = 5;

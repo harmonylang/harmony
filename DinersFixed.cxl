@@ -1,3 +1,5 @@
+# Dining Philosophers -- fixed by introducing asymmetry
+
 import synch;
 
 const N = 5;

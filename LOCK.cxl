@@ -1,3 +1,5 @@
+# mutual exclusion using ordinary locks
+
 import synch;
 
 def p():

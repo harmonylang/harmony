@@ -1,3 +1,5 @@
+# mutual exclusion by infinite loop: safe but not live
+
 def p():
     while True:
         pass;
