@@ -5,6 +5,7 @@ const N = 2;         # size of bounded buffer
 def produce(item):
     call P&(nempty);
     call P&(mylock);
+    # buf[myin] = choose({ 10, 20 });
     buf[myin] = item;
     myin = (myin % N) + 1;
     call V&(mylock);
