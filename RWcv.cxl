@@ -32,7 +32,7 @@ def writer():
 
         call lock&(rwlock);
         nwriters = nwriters - 1;
-        call notify&(rcond);   # SHOULD BE notifyAll
+        call notifyAll&(rcond);
         call notify&(wcond);
         call unlock&(rwlock);
     # ;
