@@ -1913,7 +1913,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.ctx = cc
         next.steps = steps
         next.choice = choice
-    node.edges[ctx] = sc
+    node.edges[ctx] = (sc, steps)
     next.sources.add(state)
 
     if foundInfLoop:

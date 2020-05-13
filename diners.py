@@ -7,7 +7,7 @@ def invariant(state):
 
 def main():
     (code, labels) = cxl.compile(sys.stdin, "<stdin>")
-    pc = cxl.findbreak(code, labels["dine"])
+    pc = labels["dine"]
     cxl.run(code, labels, invariant, [ (("diner", p), pc) for p in range(1, 6) ])
 
 if __name__ == "__main__":
