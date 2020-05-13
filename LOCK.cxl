@@ -3,10 +3,14 @@ import synch;
 def p():
     while True:
         call lock&(mylock);
-        @cs: pass;   # critical section
+        @cs: atomic: pass;;   # critical section
         call unlock&(mylock);
     ;
 ;
 mylock = Lock();
-spawn p(), 0;
-spawn p(), 1;
+atomic:
+    spawn p(), 0;
+    spawn p(), 0;
+    spawn p(), 1;
+    spawn p(), 1;
+;

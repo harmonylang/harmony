@@ -3,12 +3,14 @@ import synch;
 def p():
     while True:
         call P&(mysema);
-        @cs:    # critical section
+        @cs: atomic: pass;;   # critical section
         call V&(mysema);
     ;
 ;
 mysema = Semaphore(1);
-spawn p(), 0;
-spawn p(), 1;
-spawn p(), 2;
-spawn p(), 3;
+atomic:
+    spawn p(), 0;
+    spawn p(), 0;
+    spawn p(), 1;
+    spawn p(), 1;
+;
