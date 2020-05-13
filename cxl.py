@@ -1405,20 +1405,20 @@ class ConstAST(AST):
 class LValueRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        if isname(lexeme):
-            indexes = [NameAST(t[0])]
-            t = t[1:]
-        elif lexeme == "^":
+        if lexeme == "^":
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
             return (LValueAST([PointerAST(NameAST(t[1]))]), t[2:])
-        else:
-            assert lexeme == "(", t[0]
+        elif lexeme == "(":
             (lexeme, file, line, column) = t[1]
             (ast, t) = BasicExpressionRule().parse(t[2:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             indexes = [PointerAST(ast)]
+            t = t[1:]
+        else:
+            assert isname(lexeme), t[0]
+            indexes = [NameAST(t[0])]
             t = t[1:]
         while t != []:
             (index, t) = BasicExpressionRule().parse(t)
