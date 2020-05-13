@@ -1,0 +1,56 @@
+import synch;
+
+const N = 2;         # size of bounded buffer
+
+def produce(item):
+    call lock &(mylock);
+    while cnt == N:
+        call wait&(prodcv);
+    ;
+    cnt = cnt + 1;
+    buf[myin] = item;
+    myin = (myin % N) + 1;
+    call notify&(conscv);
+    call unlock &(mylock);
+;
+def consume(self):
+    call lock &(mylock);
+    while cnt == 0:
+        call wait&(conscv);
+    ;
+    cnt = cnt - 1;
+    self = buf[myout];
+    myout = (myout % N) + 1;
+    call notify&(prodcv);
+    call unlock &(mylock);
+;
+def producer():
+    while True:
+        # var item = choose({ 10, 20 });
+        var item = 1;
+        @before_produce:
+        call produce(item);
+        @after_produce: pass;
+    ;
+;
+def consumer():
+    while True:
+        @before_consume:
+        var item = consume();
+        @after_consume: pass;
+    ;
+;
+buf = dict{ 0 for x in 1..N };
+myin = 1;
+myout = 1;
+cnt = 0;
+mylock = Lock();
+conscv = Condition&(mylock);
+prodcv = Condition&(mylock);
+
+atomic:
+    spawn producer(), 0;
+    spawn producer(), 0;
+    spawn consumer(), 1;
+    spawn consumer(), 1;
+;
