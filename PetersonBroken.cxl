@@ -1,3 +1,5 @@
+# Broken Peterson's algorithm by swapping first two assignments
+
 def p(self):
     while True:
         turn = 1 - self;

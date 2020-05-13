@@ -1,4 +1,4 @@
-# mutual exclusion using ordinary locks
+# correct mutual exclusion using ordinary locks
 
 import synch;
 

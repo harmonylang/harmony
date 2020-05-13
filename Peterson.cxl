@@ -1,3 +1,5 @@
+# Peterson's algorithm
+
 def p(self):
     while True:
         flags[self] = True;

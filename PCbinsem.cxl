@@ -1,3 +1,5 @@
+# split binary semaphore solution to producer/consumer bounded buffer
+
 import synch;
 
 const N = 2;         # size of bounded buffer

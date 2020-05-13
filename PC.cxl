@@ -1,3 +1,4 @@
+# busy waiting solution to producer/consumer bounded buffer just using a lock
 import synch;
 
 const N = 2;         # size of bounded buffer
