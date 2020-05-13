@@ -9,7 +9,7 @@ def reader():
         nreaders = nreaders + 1;
         call unlock&(rlock);
 
-        @rcs:    # reader critical section
+        @rcs: atomic: pass;;   # critical section
 
         call lock&(rlock);
         nreaders = nreaders - 1;
@@ -23,7 +23,7 @@ def writer():
     while True:
         call lock&(wlock);
 
-        @wcs:   # writer critical section
+        @wcs: atomic: pass;;   # critical section
 
         call unlock&(wlock);
     ;
@@ -32,7 +32,9 @@ rlock = Lock();
 wlock = Lock();
 nreaders = 0;
 
-spawn reader(), 0;
-spawn reader(), 1;
-spawn writer(), 0;
-spawn writer(), 1;
+atomic:
+    spawn reader(), 0;
+    spawn reader(), 1;
+    spawn writer(), 0;
+    spawn writer(), 1;
+;

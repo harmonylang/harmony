@@ -4,16 +4,18 @@ def reader():
     while True:
         call lock&(rwlock);
         while nwriters > 0:
-            call wait&(cond);
+            call wait&(rcond);
         ;
         nreaders = nreaders + 1;
         call unlock&(rwlock);
 
-        @rcs:    # reader critical section
+        @rcs: atomic: pass;;   # critical section
 
         call lock&(rwlock);
         nreaders = nreaders - 1;
-        call notifyAll&(cond);
+        if nreaders == 0:
+            call notify&(wcond);
+        ;
         call unlock&(rwlock);
     ;
 ;
@@ -21,25 +23,29 @@ def writer():
     while True:
         call lock&(rwlock);
         while (nreaders + nwriters) > 0:
-            call wait&(cond);
+            call wait&(wcond);
         ;
         nwriters = nwriters + 1;
         call unlock&(rwlock);
 
-        @wcs:    # writer critical section
+        @wcs: atomic: pass;;   # critical section
 
         call lock&(rwlock);
         nwriters = nwriters - 1;
-        call notifyAll&(cond);
+        call notifyAll&(rcond);
+        call notify&(wcond);
         call unlock&(rwlock);
     ;
 ;
 rwlock = False;
-cond = Condition&(rwlock);
+rcond = Condition&(rwlock);
+wcond = Condition&(rwlock);
 nreaders = 0;
 nwriters = 0;
 
-spawn reader(), 0;
-spawn reader(), 1;
-spawn writer(), 0;
-spawn writer(), 1;
+atomic:
+    spawn reader(), 0;
+    spawn reader(), 1;
+    spawn writer(), 0;
+    spawn writer(), 1;
+;

@@ -12,8 +12,8 @@ def mutex(state):
 
 def main():
     (code, labels) = cxl.compile(sys.stdin, "<stdin>")
-    pc = labels["cs"]
-    cxl.run(code, labels, mutex, [ (("p", 0), pc), (("p", 1), pc) ])
+    cs = labels["cs"]
+    cxl.run(code, labels, mutex, [ (("p", 0), cs), (("p", 1), cs) ])
 
 if __name__ == "__main__":
     main()
