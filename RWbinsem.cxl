@@ -1,0 +1,64 @@
+import synch;
+
+def vHat():
+    if (nwritersEntered == 0) and (nreadersWaiting > 0):
+        nreadersWaiting = nreadersWaiting - 1;
+        call V&(rsema);
+    elif ((nreadersEntered + nwritersEntered) == 0) and (nwritersWaiting > 0):
+        nwritersWaiting = nwritersWaiting - 1;
+        call V&(wsema);
+    else:
+        call V&(mutex);
+    ;
+;
+def reader():
+    while True:
+        call P&(mutex);
+        if nwritersEntered > 0:
+            nreadersWaiting = nreadersWaiting + 1;
+            call vHat();
+            call P&(rsema);
+        ;
+        nreadersEntered = nreadersEntered + 1;
+        call vHat();
+
+        @rcs: atomic: pass;;   # critical section
+
+        call P&(mutex);
+        nreadersEntered = nreadersEntered - 1;
+        call vHat();
+    ;
+;
+def writer():
+    while True:
+        call P&(mutex);
+        if (nreadersEntered + nwritersEntered) > 0:
+            nwritersWaiting = nwritersWaiting + 1;
+            call vHat();
+            call P&(wsema);
+        ;
+        nwritersEntered = nwritersEntered + 1;
+        call vHat();
+
+        @wcs: atomic: pass;;   # critical section
+
+        call P&(mutex);
+        nwritersEntered = nwritersEntered - 1;
+        call vHat();
+    ;
+;
+mutex = Semaphore(1);
+rsema = Semaphore(0);
+wsema = Semaphore(0);
+nreadersEntered = 0;
+nreadersWaiting = 0;
+nwritersEntered = 0;
+nwritersWaiting = 0;
+
+
+atomic:
+    spawn reader(), 0;
+    spawn reader(), 1;
+    spawn writer(), 0;
+    spawn writer(), 1;
+;
