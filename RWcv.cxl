@@ -1,7 +1,7 @@
 import synch;
 
 def reader():
-    while True:
+    # while True:
         call lock&(rwlock);
         while nwriters > 0:
             call wait&(rcond);
@@ -17,10 +17,10 @@ def reader():
             call notify&(wcond);
         ;
         call unlock&(rwlock);
-    ;
+    # ;
 ;
 def writer():
-    while True:
+    # while True:
         call lock&(rwlock);
         while (nreaders + nwriters) > 0:
             call wait&(wcond);
@@ -32,10 +32,10 @@ def writer():
 
         call lock&(rwlock);
         nwriters = nwriters - 1;
-        call notifyAll&(rcond);
+        call notify&(rcond);   # SHOULD BE notifyAll
         call notify&(wcond);
         call unlock&(rwlock);
-    ;
+    # ;
 ;
 rwlock = False;
 rcond = Condition&(rwlock);
