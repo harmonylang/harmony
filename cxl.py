@@ -1691,9 +1691,7 @@ class State:
     def copy(self):
         s = State(self.code, self.labels)
         s.vars = self.vars      # no need to copy as store operations do it
-        s.ctxbag = {}
-        for (ctx, cnt) in self.ctxbag.items():
-            s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
+        s.ctxbag = self.ctxbag.copy()
         s.failure = self.failure
         s.pidgen = self.pidgen
         return s
@@ -1742,7 +1740,7 @@ class Node:
         self.choice = choice    # 
         self.steps = steps
         self.len = len
-        self.edges = []         # forward edges to next states (TODO: why list, not set?)
+        self.edges = {}         # forward edges (ctx -> state)
         self.sources = set()    # backward edges
 
 def strsteps(steps):
@@ -1847,30 +1845,30 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
-    # Copy the state (TODO.  Should not have to copy contexts)
+    # Copy the state
     sc = state.copy()
 
-    # Remove context from bag
+    # Remove context from bag (sc is "state copy")
     sc.remove(ctx)
 
-    # Make a copy of the context before modifying it.
-    ctx = ctx.copy()
+    # Make a copy of the context before modifying it (cc is "context copy")
+    cc = ctx.copy()
 
     if choice == None:
         steps = []
     else:
-        steps = [ctx.pc]
-        ctx.stack[-1] = choice
-        ctx.pc += 1
+        steps = [cc.pc]
+        cc.stack[-1] = choice
+        cc.pc += 1
 
-    localStates = { ctx.copy() }
+    localStates = { cc.copy() }
     foundInfLoop = False
     while True:
         # execute one step
-        steps.append(ctx.pc)
+        steps.append(cc.pc)
 
         try:
-            sc.code[ctx.pc].eval(sc, ctx)
+            sc.code[cc.pc].eval(sc, cc)
         except:
             print("Failure: ", str(sys.exc_info()))
             sc.failure = True
@@ -1879,31 +1877,31 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             break
 
         # if we reached the end, remove the context
-        if ctx.pc == ctx.end:
+        if cc.pc == cc.end:
             break
 
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if isinstance(sc.code[ctx.pc], ChooseOp):
+        if isinstance(sc.code[cc.pc], ChooseOp):
             break
-        if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
+        if cc.atomic == 0 and type(sc.code[cc.pc]) in globops and len(sc.ctxbag) > 0:
             break
 
         # Detect infinite loops
-        if ctx in localStates:
+        if cc in localStates:
             foundInfLoop = True
             break
-        localStates.add(ctx.copy())
+        localStates.add(cc.copy())
 
     # Put the resulting context into the bag unless it's done
-    if ctx.pc != ctx.end:
-        sc.add(ctx)
+    if cc.pc != cc.end:
+        sc.add(cc)
 
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, ctx, choice, steps, length)
+        next = Node(state, cc, choice, steps, length)
         visited[sc] = next
         if samectx:
             todo.insert(0, sc)
@@ -1912,10 +1910,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     elif next.len > length:
         next.len = length
         next.parent = state
-        next.ctx = ctx
+        next.ctx = cc
         next.steps = steps
         next.choice = choice
-    node.edges.append(sc)           # TODO.  Maybe should be (ctx, sc)
+    node.edges[ctx] = sc
     next.sources.add(state)
 
     if foundInfLoop:
