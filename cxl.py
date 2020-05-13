@@ -194,37 +194,6 @@ def lexer(s, file):
         column += 1
     return result
 
-# Define a sorting order on all values
-# TODO.  Currently unused but should make for x in set constructions deterministic
-def key(v):
-    if isinstance(v, NoValue):
-        return (0, v)
-    if isinstance(v, bool):
-        return (1, v)
-    if isinstance(v, int):
-        return (2, v)
-    if isinstance(v, PcValue):
-        return (3, v.pc)
-    if isinstance(v, NameValue):
-        return (4, v.name)
-    if isinstance(v, str):
-        return (5, v)
-    if isinstance(v, tuple):
-        return (6, [key(x) for x in v])
-    if isinstance(v, SetValue):
-        lst = [key(x) for x in v.s]
-        return (7, sorted(lst))
-    if isinstance(v, frozenset):
-        lst = [key(x) for x in v]
-        return (8, sorted(lst))
-    if isinstance(v, AddressValue):
-        lst = [key(x) for x in v.indexes]
-        return (9, sorted(lst))
-    if isinstance(v, RecordValue):
-        lst = [(key(k), key(v)) for (k, v) in v.d.items()]
-        return (10, sorted(lst))
-    assert False, v
-
 class Value:
     pass
 
@@ -1616,28 +1585,22 @@ class StatementRule(Rule):
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
 
-# Encodes the state of a process
 class Context:
     def __init__(self, name, tag, pc, end):
-        self.name = name            # name of starting method, specified in "spawn"
-        self.tag = tag              # tag specified in "spawn"
-        self.pc = pc                # program counter of next instruction to execute
-        self.end = end              # ending program counter
-        self.choice = None          # non-deterministic choice last made
-        self.steps = []             # micro steps to get here in last macro step
-        self.atomic = 0             # in "atomic" mode if > 0
-        self.stack = []             # process stack
-        self.vars = RecordValue({}) # local variables (registers)
-        self.pid = None             # process identifier assigned lazily
+        self.name = name
+        self.tag = tag
+        self.pc = pc
+        self.end = end
+        self.atomic = 0
+        self.stack = []     # collections.deque() seems slightly slower
+        self.vars = RecordValue({})
+        self.pid = None      # assigned lazily
 
     def __repr__(self):
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
 
     def __hash__(self):
-        h = (self.name, self.tag, self.pc, self.end,
-                self.choice, self.atomic, self.vars).__hash__()
-        for pc in self.steps:   # TODO.  Not a great way to hash this list
-            h ^= pc
+        h = (self.name, self.tag, self.pc, self.end, self.atomic, self.vars).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -1647,33 +1610,17 @@ class Context:
             return False
         if self.name != other.name:
             return False
-        assert self.end == other.end
         if self.tag != other.tag:
             return False
         if self.pc != other.pc:
             return False
-        if self.choice != other.choice:
-            return False
-        if self.steps != other.steps:
-            return False
         if self.atomic != other.atomic:
             return False
+        assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
-    # copy all except choice and steps
     def copy(self):
         c = Context(self.name, self.tag, self.pc, self.end)
-        c.atomic = self.atomic
-        c.stack = self.stack.copy()
-        c.vars = self.vars
-        c.pid = self.pid
-        return c
-
-    # copy all including choice and steps
-    def copyAll(self):
-        c = Context(self.name, self.tag, self.pc, self.end)
-        c.choice = self.choice
-        c.steps = self.steps.copy()
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
@@ -1735,12 +1682,18 @@ class State:
             return False
         if self.ctxbag != other.ctxbag:
             return False
-        return self.failure == other.failure and self.pidgen == other.pidgen
+        if self.failure != other.failure:
+            return False
+        if self.pidgen != other.pidgen:
+            return False
+        return True
 
     def copy(self):
         s = State(self.code, self.labels)
         s.vars = self.vars      # no need to copy as store operations do it
-        s.ctxbag = self.ctxbag.copy()   # shallow copy of contexts
+        s.ctxbag = {}
+        for (ctx, cnt) in self.ctxbag.items():
+            s.ctxbag[ctx.copy()] = cnt     # TODO: can we avoid copy?
         s.failure = self.failure
         s.pidgen = self.pidgen
         return s
@@ -1783,10 +1736,12 @@ class State:
             self.ctxbag[ctx] = cnt - 1
 
 class Node:
-    def __init__(self, parent, ctx, len):
+    def __init__(self, parent, ctx, choice, steps, len):
         self.parent = parent    # next hop on way to initial state
-        self.len = len          # length of path to root
         self.ctx = ctx          # the context that made the hop from the parent state
+        self.choice = choice    # 
+        self.steps = steps
+        self.len = len
         self.edges = []         # forward edges to next states (TODO: why list, not set?)
         self.sources = set()    # backward edges
 
@@ -1825,13 +1780,13 @@ def print_shortest(visited, bad):
     last = None
     for (node, vars) in path:
         if last == None:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.ctx.steps, vars)
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
         elif node.ctx.name == last[0] and node.ctx.tag == last[1] and \
-                                            node.ctx.steps[0] == last[2]:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.ctx.steps, vars)
+                                            node.steps[0] == last[2]:
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.steps, vars)
         else:
             print(last[0], last[1], strsteps(last[3]), last[2], last[4])
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.ctx.steps, vars)
+            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
     if last != None:
         print(last[0], last[1], strsteps(last[3]), last[2], last[4])
 
@@ -1839,8 +1794,8 @@ class Scope:
     def __init__(self, parent):
         self.parent = parent
         self.names = {}
-        self.locations = {}         # maps pc to (file, line)
-        self.labels = {}            # maps label to pc
+        self.locations = {}
+        self.labels = {}
 
     def lookup(self, name):
         (lexeme, file, line, column) = name
@@ -1892,28 +1847,28 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
-    # (shallow) copy the state (contexts are not copied)
+    # Copy the state (TODO.  Should not have to copy contexts)
     sc = state.copy()
 
     # Remove context from bag
     sc.remove(ctx)
 
-    # Make a copy of the context before modifying it.  Do not copy
-    # choice and steps as we're starting over
+    # Make a copy of the context before modifying it.
     ctx = ctx.copy()
 
-    # If a non-deterministic choice is the first instruction, simulate it now
-    if choice != None:
-        ctx.choice = choice
-        ctx.steps = [ctx.pc]
+    if choice == None:
+        steps = []
+    else:
+        steps = [ctx.pc]
         ctx.stack[-1] = choice
         ctx.pc += 1
 
-    # TODO localStates = { ctx.copy() }
+    localStates = { ctx.copy() }
     foundInfLoop = False
     while True:
         # execute one step
-        ctx.steps.append(ctx.pc)
+        steps.append(ctx.pc)
+
         try:
             sc.code[ctx.pc].eval(sc, ctx)
         except:
@@ -1935,11 +1890,11 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         if ctx.atomic == 0 and type(sc.code[ctx.pc]) in globops and len(sc.ctxbag) > 0:
             break
 
-        # TODO Detect infinite loops
-        # if ctx in localStates:
-        #     foundInfLoop = True
-        #     break
-        # localStates.add(ctx.copy())
+        # Detect infinite loops
+        if ctx in localStates:
+            foundInfLoop = True
+            break
+        localStates.add(ctx.copy())
 
     # Put the resulting context into the bag unless it's done
     if ctx.pc != ctx.end:
@@ -1948,7 +1903,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, ctx, length)
+        next = Node(state, ctx, choice, steps, length)
         visited[sc] = next
         if samectx:
             todo.insert(0, sc)
@@ -1958,16 +1913,26 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.len = length
         next.parent = state
         next.ctx = ctx
+        next.steps = steps
+        next.choice = choice
     node.edges.append(sc)           # TODO.  Maybe should be (ctx, sc)
     next.sources.add(state)
 
     if foundInfLoop:
         infloop.add(sc)
 
-def compile(fd, filename):
+# TODO.  Imperfect way of finding context switch point
+def findbreak(code, pc):
+    while True:
+        if type(code[pc]) in globops:
+            return pc
+        assert not isinstance(code[pc], ReturnOp)
+        pc += 1
+
+def compile(f, filename):
     scope = Scope(None)
     code = []
-    load(fd, filename, scope, code)
+    load(f, filename, scope, code)
     optimize(code)
 
     lastloc = None
@@ -1990,7 +1955,7 @@ def run(code, labels, invariant, pcs):
     state = State(code, labels)
 
     # For traversing Kripke graph
-    visited = { state: Node(None, None, 0) }
+    visited = { state: Node(None, None, None, None, 0) }
     todo = collections.deque([state])
     bad = set()
     infloop = set()
@@ -2034,19 +1999,14 @@ def run(code, labels, invariant, pcs):
     # See if there are livelocked states (states from which some process
     # cannot reach the reader or writer critical section)
     bad = set()
-    for (p, pc) in pcs:
-        # First collect all states in which process p has reached program counter pc
+    for (p, cs) in pcs:
+        # First collect all the states in which the process is in the
+        # critical region
         good = set()
         for s in visited.keys():
             for ctx in s.ctxbag.keys():
-                if ctx.pc == pc:
+                if (ctx.name, ctx.tag) == p and ctx.pc == cs:
                     good.add(s)
-                    break
-                if (ctx.name, ctx.tag) == p:
-                    for step in ctx.steps:
-                        if step == pc:
-                            good.add(s)
-                            break
 
         # All the states reachable from good are good too
         nextgood = good
