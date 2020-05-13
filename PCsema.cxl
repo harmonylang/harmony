@@ -41,7 +41,9 @@ nfull = Semaphore(0);
 nempty = Semaphore(N);
 mylock = Semaphore(1);
 
-spawn producer(), 0;
-spawn producer(), 0;
-spawn consumer(), 1;
-spawn consumer(), 1;
+atomic:
+    spawn producer(), 0;
+    spawn producer(), 0;
+    spawn consumer(), 1;
+    spawn consumer(), 1;
+;
