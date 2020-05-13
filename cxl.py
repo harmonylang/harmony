@@ -1518,7 +1518,6 @@ class StatementRule(Rule):
                 if lexeme in { "else", ";" }:
                     break
                 assert lexeme == "elif", t[0]
-                t = t[1:]
             if lexeme == "else":
                 (stat, t) = BlockRule({";"}).parse(t[1:])
             else:
