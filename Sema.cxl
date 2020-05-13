@@ -1,3 +1,5 @@
+# correct mutual exclusion using a binary semaphore
+
 import synch;
 
 def p():

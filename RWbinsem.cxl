@@ -1,3 +1,5 @@
+# split binary semaphore solution to read/write locks
+
 import synch;
 
 def vHat():

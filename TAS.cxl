@@ -1,3 +1,5 @@
+# Correct mutual exclusion using Test-And-Set
+
 import synch;
 
 def p():

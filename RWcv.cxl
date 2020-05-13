@@ -1,3 +1,5 @@
+# condition variable solution to read/write locks
+
 import synch;
 
 def reader():
