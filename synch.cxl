@@ -23,12 +23,15 @@ def wait(c):
     var lk = (^c).lock;
     var pid = getpid();
     (^c).waiters = (^c).waiters + { pid };
+    ^lk = False;
     var blocked = True;
     while blocked:
         atomic:
-            if (not (^lk)) and (not(pid in (^c).waiters)):
-                ^lk = True;
-                blocked = False;
+            if not (^lk):
+                if not(pid in (^c).waiters):
+                    ^lk = True;
+                    blocked = False;
+                ;
             ;
         ;
     ;

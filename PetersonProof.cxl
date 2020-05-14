@@ -19,7 +19,8 @@ def p(self):
                         "other": flags[1 - self],
                         "turn": turn,
                         "gate": keys(atLabel("gate"))
-                    };
+                    }
+                ;
             ;
         flags[self] = False;
     ;

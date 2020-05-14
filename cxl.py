@@ -415,6 +415,14 @@ class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
 
+    def eval(self, state, context):
+        v = context.pop()
+        assert isinstance(v, SetValue), v
+        assert len(v.s) == 1, v
+        for e in v.s:
+            context.push(e)
+        context.pc += 1
+
 class AssertOp(Op):
     def __init__(self, token):
         self.token = token
@@ -1899,7 +1907,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         # go first assuming there are other processes and we're not
         # in "atomic" mode
         if isinstance(sc.code[cc.pc], ChooseOp):
-            break
+            v = cc.stack[-1]
+            assert isinstance(v, SetValue), v
+            if len(v.s) != 1:
+                break
         if cc.atomic == 0 and type(sc.code[cc.pc]) in globops and len(sc.ctxbag) > 0:
             break
 

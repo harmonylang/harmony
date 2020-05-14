@@ -10,8 +10,10 @@ def down():
 cnt = 0;
 upDone = False;
 downDone = False;
-spawn up(), 0;
-spawn down(), 0;
+atomic:
+    spawn up(), 0;
+    spawn down(), 0;
+;
 
 while not (upDone and downDone):
     pass;
