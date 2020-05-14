@@ -1316,9 +1316,11 @@ class AssertAST(AST):
         return "Assert(" + str(self.token) + str(self.cond) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
+        code.append(AtomicIncOp())
         self.cond.compile(scope, code)
         self.expr.compile(scope, code)
         code.append(AssertOp(self.token))
+        code.append(AtomicDecOp())
 
 class MethodAST(AST):
     def __init__(self, name, arg, stat):
