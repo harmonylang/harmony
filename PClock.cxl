@@ -42,7 +42,8 @@ def consume(self):
 ;
 def producer():
     while True:
-        call produce[choose({ 10, 20 })];
+        # call produce(choose({ 10, 20 }));
+        call produce(1);
         @produced: pass;
     ;
 ;
