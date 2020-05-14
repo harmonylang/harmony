@@ -2,7 +2,6 @@ def up():
     cnt = cnt + 1;
     upDone = True;
 ;
-
 def down():
     cnt = cnt - 1;
     downDone = True;
@@ -17,5 +16,4 @@ spawn down(), 0;
 while not (upDone and downDone):
     pass;
 ;
-
 assert cnt == 0, cnt;
