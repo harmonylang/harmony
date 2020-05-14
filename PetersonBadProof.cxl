@@ -14,7 +14,8 @@ def p(self):
                         "self": self,
                         "other": flags[1 - self],
                         "turn": turn
-                    };
+                    }
+                ;
             ;
         flags[self] = False;
     ;
