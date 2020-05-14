@@ -50,9 +50,7 @@ mylock = Lock();
 conscv = Condition&(mylock);
 prodcv = Condition&(mylock);
 
-atomic:
-    spawn producer(), 0;
-    spawn producer(), 0;
-    spawn consumer(), 1;
-    spawn consumer(), 1;
-;
+spawn producer(), 0;
+spawn producer(), 0;
+spawn consumer(), 1;
+spawn consumer(), 1;

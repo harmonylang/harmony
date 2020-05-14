@@ -1641,6 +1641,9 @@ class Context:
             return False
         if self.atomic != other.atomic:
             return False
+        # !!!
+        if self.pid != other.pid:
+            return False
         assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
@@ -1767,6 +1770,7 @@ class Node:
         self.steps = steps      # list of microsteps
         self.edges = {}         # forward edges (ctx -> state)
         self.sources = set()    # backward edges
+        self.expanded = False   # lazy deletion
 
 def strsteps(steps):
     if steps == None:
@@ -1936,11 +1940,14 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         else:
             todo.append(sc)
     elif next.len > length:
+        assert length == node.len and next.len == node.len + 1 and not next.expanded, (node.len, length, next.len, next.expanded)
+        # assert not next.expanded, (node.len, length, next.len, next.expanded)
         next.len = length
         next.parent = state
         next.ctx = cc
         next.steps = steps
         next.choice = choice
+        todo.insert(0, sc)
     node.edges[ctx] = (sc, steps)
     next.sources.add(state)
 
@@ -1981,19 +1988,25 @@ def run(code, labels, invariant, pcs):
     cnt = 0
     faultyState = False
     while todo:
-        cnt += 1
         state = todo.popleft()
         if state.failure:
             bad.add(state)
             faultyState = True
             break           # TODO: should this be a continue?
         node = visited[state]
+        cnt += 1
+        if cnt % 10000 == 0 :
+            print(state)
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
+        if node.expanded:
+            continue
+        node.expanded = True
+
 
         if not invariant(state):
             bad.add(state)
 
-        for (ctx, cnt) in state.ctxbag.items():
+        for (ctx, _) in state.ctxbag.items():
             if ctx.pc < ctx.end and isinstance(code[ctx.pc], ChooseOp):
                 choices = ctx.stack[-1]
                 assert isinstance(choices, SetValue), choices
