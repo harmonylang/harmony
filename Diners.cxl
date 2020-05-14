@@ -8,11 +8,11 @@ def diner(which):
     while True:
         var left = which;
         var right = (which % N) + 1;
-        call P&(forks[left]);
-        call P&(forks[right]);
+        call P &(forks[left]);
+        call P &(forks[right]);
         @dine:
-        call V&(forks[left]);
-        call V&(forks[right]);
+        call V &(forks[left]);
+        call V &(forks[right]);
     ;
 ;
 forks = dict{ Semaphore(1) for sema in 1..N };

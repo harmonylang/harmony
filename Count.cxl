@@ -1,0 +1,21 @@
+def up():
+    cnt = cnt + 1;
+    upDone = True;
+;
+
+def down():
+    cnt = cnt - 1;
+    downDone = True;
+;
+
+cnt = 0;
+upDone = False;
+downDone = False;
+spawn up(), 0;
+spawn down(), 0;
+
+while not (upDone and downDone):
+    pass;
+;
+
+assert cnt == 0, cnt;

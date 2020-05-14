@@ -13,7 +13,6 @@ def p(self):
 ;
 flags = dict{ 0: False, 1: False };
 turn = 0;
-atomic:
-    spawn p(0), 0;
-    spawn p(1), 1;
-;
+
+spawn p(0), 0;
+spawn p(1), 1;

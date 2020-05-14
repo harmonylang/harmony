@@ -9,15 +9,15 @@ def diner(which):
         var left = which;
         var right = (which % N) + 1;
         if left < right:
-            call P&(forks[left]);
-            call P&(forks[right]);
+            call P &(forks[left]);
+            call P &(forks[right]);
         else:
-            call P&(forks[right]);
-            call P&(forks[left]);
+            call P &(forks[right]);
+            call P &(forks[left]);
         ;
         @dine:
-        call V&(forks[left]);
-        call V&(forks[right]);
+        call V &(forks[left]);
+        call V &(forks[right]);
     ;
 ;
 forks = dict{ Semaphore(1) for sema in 1..N };
