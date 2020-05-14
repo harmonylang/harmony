@@ -16,7 +16,8 @@ def p(self):
                     dict{
                         "self": self,
                         "other": flags[1 - self],
-                        "turn": turn
+                        "turn": turn,
+                        "gate": atLabel("gate")
                     };
             ;
         flags[self] = False;

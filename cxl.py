@@ -49,20 +49,22 @@ def isreserved(s):
     return s in [
         "and",
         "assert",
+        "atLabel",
         "atomic",
         "call",
         "cardinality",
         "choose",
         "const",
+        "def",
         "else",
         "False",
         "for",
+        "getpid",
         "if",
         "import",
         "in",
         "keys",
         "not",
-        "method",
         "or",
         "pass",
         "spawn",
@@ -76,7 +78,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "cardinality", "getpid", "not", "keys" ]
+    return s in [ "^", "-", "atLabel", "cardinality", "getpid", "not", "keys" ]
 
 def isbinaryop(s):
     return s in [
@@ -608,6 +610,9 @@ class NaryOp(Op):
             elif op == "not":
                 assert isinstance(e, bool), e
                 context.push(not e)
+            elif op == "atLabel":
+                assert isinstance(e, str), e
+                context.push(len(e))
             elif op == "cardinality":
                 assert isinstance(e, SetValue), e
                 context.push(len(e.s))
@@ -958,8 +963,8 @@ class Rule:
     pass
 
 class NaryRule(Rule):
-    def __init__(self, closer):
-        self.closer = closer
+    def __init__(self, closers):
+        self.closers = closers
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -967,17 +972,17 @@ class NaryRule(Rule):
             op = t[0]
             (ast, t) = BasicExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == self.closer, t[0]
+            assert lexeme in self.closers, t[0]
             return (NaryAST(op, [ast]), t)
         (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
-        if lexeme == self.closer:
+        if lexeme in self.closers:
             return (ast, t)
         op = t[0]
         assert isbinaryop(op[0]), op
         (ast2, t) = ExpressionRule().parse(t[1:])
         (lexeme, file, line, column) = t[0]
-        assert lexeme == self.closer, (t[0], self.closer)
+        assert lexeme in self.closers, (t[0], self.closers)
         return (NaryAST(op, [ast, ast2]), t)
 
 class SetComprehensionRule(Rule):
@@ -990,7 +995,7 @@ class SetComprehensionRule(Rule):
         assert isname(lexeme), name
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
-        (expr, t) = NaryRule("}").parse(t[2:])
+        (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (SetComprehensionAST(self.value, name, expr), t[1:])
 
 class RecordComprehensionRule(Rule):
@@ -1003,7 +1008,7 @@ class RecordComprehensionRule(Rule):
         assert isname(lexeme), name
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
-        (expr, t) = NaryRule("}").parse(t[2:])
+        (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (RecordComprehensionAST(self.value, name, expr), t[1:])
 
 class SetRule(Rule):
@@ -1015,7 +1020,7 @@ class SetRule(Rule):
             return (SetAST([]), t[2:])
         s = []
         while True:
-            (next, t) = ExpressionRule().parse(t[1:])
+            (next, t) = NaryRule({"for", "}"}).parse(t[1:])
             s.append(next)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
@@ -1037,7 +1042,7 @@ class RecordRule(Rule):
                 assert d == {}, d
                 return RecordComprehensionRule(key).parse(t[1:])
             assert lexeme == ":", t[0]
-            (value, t) = ExpressionRule().parse(t[1:])
+            (value, t) = NaryRule({",", "}"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme in { ",", "}" }, t[0]
             d[key] = value
@@ -1070,7 +1075,7 @@ class BasicExpressionRule(Rule):
             if lexeme == closer:
                 return (ConstantAST(
                     (NoValue(), file, line, column)), t[2:])
-            (ast, t) = NaryRule(closer).parse(t[1:])
+            (ast, t) = NaryRule({closer}).parse(t[1:])
             return (ast, t[1:])
         if lexeme == "&(":
             (ast, t) = LValueRule().parse(t[1:])
@@ -1432,7 +1437,7 @@ class AssignmentRule(Rule):
         (lv, t) = LValueRule().parse(t)
         (lexeme, file, line, column) = t[0]
         assert lexeme == "=", t[0]
-        (rv, t) = NaryRule(";").parse(t[1:])
+        (rv, t) = NaryRule({";"}).parse(t[1:])
         return (AssignmentAST(lv, rv), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
@@ -1497,7 +1502,7 @@ class StatementRule(Rule):
             assert isname(lexeme), t[1]
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
-            (ast, t) = NaryRule(";").parse(t[3:])
+            (ast, t) = NaryRule({";"}).parse(t[3:])
             return (VarAST(var, ast), self.skip(token, t))
         if lexeme == "const":
             const = t[1]
@@ -1505,13 +1510,13 @@ class StatementRule(Rule):
             assert isname(lexeme), t[1]
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
-            (ast, t) = NaryRule(";").parse(t[3:])
+            (ast, t) = NaryRule({";"}).parse(t[3:])
             assert isinstance(ast, ConstantAST), ast
             return (ConstAST(const, ast.const), self.skip(token, t))
         if lexeme == "if":
             alts = []
             while True:
-                (cond, t) = NaryRule(":").parse(t[1:])
+                (cond, t) = NaryRule({":"}).parse(t[1:])
                 (stat, t) = StatListRule({ "else", "elif", ";" }).parse(t[1:])
                 alts += [(cond, stat)]
                 (lexeme, file, line, column) = t[0]
@@ -1524,7 +1529,7 @@ class StatementRule(Rule):
                 stat = None
             return (IfAST(alts, stat), self.skip(token, t))
         if lexeme == "while":
-            (cond, t) = NaryRule(":").parse(t[1:])
+            (cond, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (WhileAST(cond, stat), self.skip(token, t))
         if lexeme == "for":
@@ -1533,7 +1538,7 @@ class StatementRule(Rule):
             assert isname(lexeme), var
             (lexeme, file, line, column) = t[2]
             assert lexeme == "in", t[2]
-            (s, t) = NaryRule(":").parse(t[3:])
+            (s, t) = NaryRule({":"}).parse(t[3:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (ForAST(var, s, stat), self.skip(token, t))
         if lexeme == "atomic":
@@ -1579,8 +1584,8 @@ class StatementRule(Rule):
             assert isname(lexeme), t[1]
             return (ImportAST(t[1]), self.skip(token, t[2:]))
         if lexeme == "assert":
-            (cond, t) = NaryRule(",").parse(t[1:])
-            (expr, t) = NaryRule(";").parse(t[1:])
+            (cond, t) = NaryRule({","}).parse(t[1:])
+            (expr, t) = NaryRule({";"}).parse(t[1:])
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
 
