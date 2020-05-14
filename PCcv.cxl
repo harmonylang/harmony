@@ -15,13 +15,13 @@ def produce(item):
     call notify&(conscv);
     call unlock &(mylock);
 ;
-def consume(self):
+def consume():
     call lock &(mylock);
     while cnt == 0:
         call wait&(conscv);
     ;
     cnt = cnt - 1;
-    self = buf[myout];
+    result = buf[myout];
     myout = (myout % N) + 1;
     call notify&(prodcv);
     call unlock &(mylock);

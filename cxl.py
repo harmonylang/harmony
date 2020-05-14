@@ -475,24 +475,18 @@ class FrameOp(Op):
         arg = context.pop()
         context.push(context.vars)
         if self.arg == None:
-            context.vars = RecordValue({})
+            context.vars = RecordValue({ "result": NoValue() })
         else:
             (lexeme, file, line, column) = self.arg
-            context.vars = RecordValue({ lexeme: arg })
+            context.vars = RecordValue({ "result": NoValue(), lexeme: arg })
         context.pc += 1
 
 class ReturnOp(Op):
-    def __init__(self, arg):
-        self.arg = arg
-
     def __repr__(self):
         return "Return"
 
     def eval(self, state, context):
-        if self.arg == None:
-            result = NoValue()
-        else:
-            result = context.get(self.arg)
+        result = context.get("result")
         context.vars = context.pop()
         context.pc = context.pop()
         context.push(result)
@@ -1340,12 +1334,13 @@ class MethodAST(AST):
         else:
             (arg, file, line, column) = self.arg
             ns.names[arg] = ("variable", self.arg)
+        (lexeme, file, line, column) = self.name
+        ns.names["result"] = ("variable", ("result", file, line, column))
         code.append(None)
         self.stat.compile(ns, code)
-        code.append(ReturnOp(arg))
+        code.append(ReturnOp())
         code[pc] = JumpOp(len(code))
         code[pc+1] = FrameOp(self.name, self.arg, len(code) - 1)
-        (lexeme, file, line, column) = self.name
         scope.names[lexeme] = ("method", pc + 1)
 
 class CallAST(AST):

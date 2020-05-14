@@ -28,14 +28,14 @@ def produce(item):
     cnt = cnt + 1;
     call vHat();
 ;
-def consume(self):
+def consume():
     call P&(mutex);
     if cnt == 0:
         cwaiting = cwaiting + 1;
         call vHat();
         call P&(csema);
     ;
-    self = buf[myout];
+    result = buf[myout];
     myout = (myout % N) + 1;
     cnt = cnt - 1;
     call vHat();

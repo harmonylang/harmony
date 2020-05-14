@@ -13,10 +13,10 @@ def produce(item):
     call V&(mylock);
     call V&(nfull);
 ;
-def consume(self):
+def consume():
     call P&(nfull);
     call P&(mylock);
-    self = buf[myout];
+    result = buf[myout];
     myout = (myout % N) + 1;
     call V&(mylock);
     call V&(nempty);

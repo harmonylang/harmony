@@ -1,12 +1,11 @@
 def tas(self):
     atomic:
-        var oldval = ^self;
+        result = ^self;
         ^self = True;
-        self = oldval;
     ;
 ;
-def Lock(self):
-    self = False;
+def Lock():
+    result = False;
 ;
 def lock(lk):
     while tas(lk):
@@ -16,8 +15,8 @@ def lock(lk):
 def unlock(lk):
     ^lk = False;
 ;
-def Condition(self):
-    self = dict{ .lock: self, .waiters: {} };
+def Condition():
+    result = dict{ .lock: self, .waiters: {} };
 ;
 def wait(c):
     var lk = (^c).lock;
@@ -46,7 +45,7 @@ def notifyAll(c):
     (^c).waiters = {};
 ;
 def Semaphore(cnt):
-    pass;
+    result = cnt;
 ;
 def P(sema):
     var blocked = True;

@@ -23,7 +23,7 @@ def produce(item):
 
     call unlock &(mylock);
 ;
-def consume(self):
+def consume():
     var empty = True;
     while empty:
         call lock &(mylock);
@@ -36,7 +36,7 @@ def consume(self):
     ;
     @avail:
         cnt = cnt - 1;
-        self = buf[myout];
+        result = buf[myout];
         myout = (myout % N) + 1;
     call unlock &(mylock);
 ;
