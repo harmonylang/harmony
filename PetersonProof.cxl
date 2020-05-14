@@ -13,7 +13,11 @@ def p(self):
         @cs:
             atomic:
                 assert (not (flags[1 - self])) or (turn == self),
-                        dict{ 0: self, 1: flags[1 - self], 2: turn };
+                    dict{
+                        "self": self,
+                        "other": flags[1 - self],
+                        "turn": turn
+                    };
             ;
         flags[self] = False;
     ;

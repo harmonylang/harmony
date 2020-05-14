@@ -1870,7 +1870,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             sc.code[cc.pc].eval(sc, cc)
         except:
             print("Failure: ", str(sys.exc_info()))
-            sc.failure = True
+            sc.failure = True # TODO.  Perhaps should be attribute of step, not state
 
         if sc.failure:
             break
@@ -1958,11 +1958,13 @@ def run(code, labels, invariant, pcs):
     infloop = set()
 
     cnt = 0
+    faultyState = False
     while todo:
         cnt += 1
         state = todo.popleft()
         if state.failure:
             bad.add(state)
+            faultyState = True
             break
         node = visited[state]
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
@@ -1993,33 +1995,34 @@ def run(code, labels, invariant, pcs):
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
 
-    # See if there are livelocked states (states from which some process
-    # cannot reach the reader or writer critical section)
-    bad = set()
-    for (p, cs) in pcs:
-        # First collect all the states in which the process is in the
-        # critical region
-        good = set()
-        for (s, node) in visited.items():
-            for (ctx, edge) in node.edges.items():
-                (next, steps) = edge
-                if (ctx.name, ctx.tag) == p and (cs in steps):
-                    good.add(next)
-                    good.add(s)     # might as well add this now
+    if not faultyState:
+        # See if there are livelocked states (states from which some process
+        # cannot reach the reader or writer critical section)
+        bad = set()
+        for (p, cs) in pcs:
+            # First collect all the states in which the process is in the
+            # critical region
+            good = set()
+            for (s, node) in visited.items():
+                for (ctx, edge) in node.edges.items():
+                    (next, steps) = edge
+                    if (ctx.name, ctx.tag) == p and (cs in steps):
+                        good.add(next)
+                        good.add(s)     # might as well add this now
 
-        # All the states reachable from good are good too
-        nextgood = good
-        while nextgood != set():
-            newgood = set()
-            for s in nextgood:
-                for s2 in visited[s].sources.difference(good):
-                    newgood.add(s2)
-            good = good.union(newgood)
-            nextgood = newgood
-        livelocked = set(visited.keys()).difference(good)
-        bad = bad.union(livelocked)
-    if len(bad) > 0:
-        print("==== Livelock ====", len(bad))
-        print_shortest(visited, bad)
+            # All the states reachable from good are good too
+            nextgood = good
+            while nextgood != set():
+                newgood = set()
+                for s in nextgood:
+                    for s2 in visited[s].sources.difference(good):
+                        newgood.add(s2)
+                good = good.union(newgood)
+                nextgood = newgood
+            livelocked = set(visited.keys()).difference(good)
+            bad = bad.union(livelocked)
+        if len(bad) > 0:
+            print("==== Livelock ====", len(bad))
+            print_shortest(visited, bad)
 
     return visited
