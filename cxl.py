@@ -1625,7 +1625,8 @@ class Context:
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
 
     def __hash__(self):
-        h = (self.name, self.tag, self.pc, self.end, self.atomic, self.vars).__hash__()
+        h = (self.name, self.tag, self.pc, self.end,
+                    self.atomic, self.vars, self.pid).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
