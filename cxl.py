@@ -1039,7 +1039,7 @@ class SetRule(Rule):
             return (SetAST([]), t[2:])
         s = []
         while True:
-            (next, t) = NaryRule({"for", "}"}).parse(t[1:])
+            (next, t) = NaryRule({"for", ",", "}"}).parse(t[1:])
             s.append(next)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
@@ -1759,10 +1759,10 @@ class State:
 class Node:
     def __init__(self, parent, ctx, choice, steps, len):
         self.parent = parent    # next hop on way to initial state
+        self.len = len          # length of path to initial state
         self.ctx = ctx          # the context that made the hop from the parent state
-        self.choice = choice    # 
-        self.steps = steps
-        self.len = len
+        self.choice = choice    # maybe None if no choice was made
+        self.steps = steps      # list of microsteps
         self.edges = {}         # forward edges (ctx -> state)
         self.sources = set()    # backward edges
 
@@ -1887,7 +1887,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     localStates = { cc.copy() }
     foundInfLoop = False
     while True:
-        # execute one step
+        # execute one microstep
         steps.append(cc.pc)
 
         try:
@@ -1945,14 +1945,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     if foundInfLoop:
         infloop.add(sc)
 
-# TODO.  Imperfect way of finding context switch point
-def findbreak(code, pc):
-    while True:
-        if type(code[pc]) in globops:
-            return pc
-        assert not isinstance(code[pc], ReturnOp)
-        pc += 1
-
 def compile(f, filename):
     scope = Scope(None)
     code = []
@@ -1992,7 +1984,7 @@ def run(code, labels, invariant, pcs):
         if state.failure:
             bad.add(state)
             faultyState = True
-            break
+            break           # TODO: should this be a continue?
         node = visited[state]
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
 
