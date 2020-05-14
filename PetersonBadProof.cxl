@@ -1,0 +1,26 @@
+# Peterson's algorithm
+
+def p(self):
+    while True:
+        flags[self] = True;
+        turn = 1 - self;
+        while flags[1 - self] and (turn == (1 - self)):
+            pass;
+        ;
+        @cs:
+            atomic:
+                assert (not (flags[1 - self])) or (turn == self),
+                    dict{
+                        "self": self,
+                        "other": flags[1 - self],
+                        "turn": turn
+                    };
+            ;
+        flags[self] = False;
+    ;
+;
+flags = dict{ 0: False, 1: False };
+turn = 0;
+
+spawn p(0), 0;
+spawn p(1), 1;
