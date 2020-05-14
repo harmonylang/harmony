@@ -1995,8 +1995,8 @@ def run(code, labels, invariant, pcs):
             break           # TODO: should this be a continue?
         node = visited[state]
         cnt += 1
-        if cnt % 10000 == 0 :
-            print(state)
+        # if cnt % 10000 == 0 :
+        #    print(state)
         print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
         if node.expanded:
             continue
