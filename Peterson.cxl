@@ -7,7 +7,7 @@ def p(self):
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs: atomic: pass;;   # critical section
+        @cs: assert (atLabel "cs") == dict{ self: 1 }, atLabel("cs");
         flags[self] = False;
     ;
 ;

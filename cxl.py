@@ -1102,7 +1102,7 @@ class BasicExpressionRule(Rule):
             assert lexeme == ")", t[0]
             return (AddressAST(ast), t[1:])
         if lexeme == "choose(":
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (ast, t) = NaryRule({")"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (ChooseAST(ast), t[1:])
@@ -1875,10 +1875,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     samectx = ctx == node.ctx
 
     # Copy the state
-    sc = state.copy()
-
-    # Remove context from bag (sc is "state copy")
-    sc.remove(ctx)
+    sc = state.copy()   # sc is "state copy"
 
     # Make a copy of the context before modifying it (cc is "context copy")
     cc = ctx.copy()
@@ -1925,6 +1922,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             foundInfLoop = True
             break
         localStates.add(cc.copy())
+
+    # Remove original context from bag
+    sc.remove(ctx)
 
     # Put the resulting context into the bag unless it's done
     if cc.pc != cc.end:
