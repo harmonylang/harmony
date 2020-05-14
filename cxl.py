@@ -1102,7 +1102,7 @@ class BasicExpressionRule(Rule):
             assert lexeme == ")", t[0]
             return (AddressAST(ast), t[1:])
         if lexeme == "choose(":
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (ast, t) = NaryRule({")"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ")", t[0]
             return (ChooseAST(ast), t[1:])
