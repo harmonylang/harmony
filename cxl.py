@@ -597,6 +597,15 @@ class NaryOp(Op):
     def __repr__(self):
         return "Nary " + str(self.op) + " " + str(self.n)
 
+    def atLabel(self, state, label):
+        pc = state.labels[label]
+        d = {}
+        for (ctx, cnt) in state.ctxbag.items():
+            if ctx.pc == pc:
+                c = d.get(ctx.tag)
+                d[ctx.tag] = 1 if c == None else (c + 1)
+        return RecordValue(d)
+
     def eval(self, state, context):
         (op, file, line, column) = self.op
         if self.n == 1:
@@ -612,7 +621,7 @@ class NaryOp(Op):
                 context.push(not e)
             elif op == "atLabel":
                 assert isinstance(e, str), e
-                context.push(len(e))
+                context.push(self.atLabel(state, e))
             elif op == "cardinality":
                 assert isinstance(e, SetValue), e
                 context.push(len(e.s))
@@ -631,8 +640,10 @@ class NaryOp(Op):
             e1 = context.pop()
             e2 = context.pop()
             if op == "==":
+                assert type(e1) == type(e2), (type(e1), type(e2))
                 context.push(e1 == e2)
             elif op == "!=":
+                assert type(e1) == type(e2), (type(e1), type(e2))
                 context.push(e1 != e2)
             elif op == "+":
                 if isinstance(e1, int):
@@ -1873,9 +1884,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
         try:
             sc.code[cc.pc].eval(sc, cc)
-        except:
-            print("Failure: ", str(sys.exc_info()))
-            sc.failure = True # TODO.  Perhaps should be attribute of step, not state
+        except Exception as e:
+            traceback.print_exc()
+            sc.failure = True
 
         if sc.failure:
             break

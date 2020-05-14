@@ -12,12 +12,13 @@ def p(self):
         ;
         @cs:
             atomic:
-                assert (not (flags[1 - self])) or (turn == self),
+                assert (not (flags[1 - self])) or ((turn == self)
+                                or ((keys(atLabel("gate"))) == {1 - self})),
                     dict{
                         "self": self,
                         "other": flags[1 - self],
                         "turn": turn,
-                        "gate": atLabel("gate")
+                        "gate": keys(atLabel("gate"))
                     };
             ;
         flags[self] = False;
