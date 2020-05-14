@@ -8,14 +8,12 @@ def p(self):
             pass;
         ;
         @cs:
-            atomic:
-                assert (not (flags[1 - self])) or (turn == self),
-                    dict{
-                        "self": self,
-                        "other": flags[1 - self],
-                        "turn": turn
-                    }
-                ;
+            assert (not (flags[1 - self])) or (turn == self),
+                dict{
+                    "self": self,
+                    "other": flags[1 - self],
+                    "turn": turn
+                }
             ;
         flags[self] = False;
     ;
