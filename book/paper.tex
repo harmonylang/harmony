@@ -23,14 +23,14 @@
 \endtcolorbox
 }
 
-\title{Introduction Concurrent Programming with CXL}
+\title{Concurrent Programming with CXL}
 \author{RVR and others}
 
 \begin{document}
 
 \maketitle
 
-\chapter{Introduction to CXL}
+\chapter{Introduction to Programming with CXL}
 
 CXL is a concurrent programming language.  It was designed to teach
 the basics of concurrent programming, but it is also useful for
@@ -369,7 +369,37 @@ and storing \texttt{True} into \texttt{done[1]}.
 
 This makes precise the concurrency problem that we encountered.
 
-\chapter{Naive Solutions}
+\chapter{Naive Attempts at a Solution}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{UpLock.cxl}
+\end{code}
+\caption{Naive implementation of a lock.}
+\label{fig:uplock}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{UpFlags.cxl}
+\end{code}
+\caption{Naive use of flags to solve mutual exclusion.}
+\label{fig:upflags}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+==== Livelock ====
+__main__ 0 [0,35-63]    64 {'flags': {2: False, 1: False}, 'count': 0,
+                                'done': {2: False, 1: False}}
+up       1 [1-13,21-24] 25 {'flags': {2: False, 1: True}, 'count': 0,
+                                'done': {2: False, 1: False}}
+\end{verbatim}
+\end{code}
+\caption{Error output of Figure~\ref{fig:upflags}.}
+\label{fig:upflagsoutput}
+\end{figure}
 
 Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
@@ -379,5 +409,32 @@ the \texttt{count} variable is being updated that no other process is
 trying to do the same thing.  We call this a \emph{critical section}: a
 set of instructions where only one process is allowed to execute at a
 time.
+
+Figure~\ref{fig:uplock} presents a solution based on a \emph{lock}.
+The idea is that the lock is a baton that at most one process can own at
+a time.
+Initially the lock is not owned, indicated by lock being \texttt{False}.
+To enter the critical section, a process waits until lock is \texttt{False}
+and then sets it to \texttt{True} to indicate that the lock has been taken.
+The process then executes the critical section.  Finally the process
+releases the lock by setting it back to \texttt{False}.
+
+Unfortunately, if we run the program, we find that the assertion still
+fails.  Diagnosing the problem, we see that the \texttt{lock} variable
+suffers from the same problem as the \texttt{count} variable: operations
+on it consist of several instructions are divisible.  It is thus possible
+for both processes to believe the lock is available and obtain the lock
+at the same time.
+
+Figure~\ref{fig:upflags} presents a solution based on each process having
+a flag indicating that it is trying to enter the critical section.
+After setting the flag, the process waits until the other process is not
+trying to enter the critical section.
+If we run this program, the assertion does not fail.  In fact, this
+solution does prevent both processes being in the critical section at
+the same time.
+However, it has a different problem called livelock: if both try to
+enter the critical section at the same time, they may end up waiting for
+one another.
 
 \end{document}
