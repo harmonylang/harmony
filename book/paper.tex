@@ -212,6 +212,47 @@ if it works or not.
 
 \chapter{The CXL Machine}
 
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+Count.cxl:1 def up():
+    0 Jump 22
+    1 Frame ('up', 'Count.cxl', 1, 5) None 10
+Count.cxl:2     count = count + 1;
+    2 Constant (1, 'Count.cxl', 2, 21)
+    3 Load ('count', 'Count.cxl', 2, 13)
+    4 Nary ('+', 'Count.cxl', 2, 19) 2
+    5 Name ('count', 'Count.cxl', 2, 5)
+    6 Store 1
+Count.cxl:3     upDone = True;
+    7 Constant (True, 'Count.cxl', 3, 14)
+    8 Name ('upDone', 'Count.cxl', 3, 5)
+    9 Store 1
+   10 Return
+   11 ...
+\end{verbatim}
+\end{code}
+\caption{The first part of the machine code corresponding to Figure~\ref{fig:updown}.}
+\label{fig:updowncode}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+Assertion failed ('assert', 'Count.cxl', 17, 1) 1
+
+==== Safety violation ====
+__main__ 0 [0,22-36]     37 { 'count':  0, 'upDone': False, 'downDone': False }
+up       0 [1-5]          6 { 'count':  0, 'upDone': False, 'downDone': False }
+down     0 [12-20]       21 { 'count': -1, 'upDone': False, 'downDone': True  }
+up       0 [6-9]         10 { 'count':  1, 'upDone': True,  'downDone': True  }
+__main__ 0 [37-41,43-48] 48 { 'count':  1, 'upDone': True,  'downDone': True  }
+\end{verbatim}
+\end{code}
+\caption{The output of running Figure~\ref{fig:updown}.}
+\label{fig:updownoutput}
+\end{figure}
+
 Before we delve into how to solve synchronization problems, it is important
 to know a bit about the underlying machine.  A CXL program is translated
 into a list of machine instructions that the machine executes.
@@ -226,8 +267,8 @@ values.
 
 A CXL machine has the following components:
 \begin{itemize}
-\item Code:  This is an immutable list of CXL machine instructions.  The
-instructions will be described later.
+\item Code:  This is an immutable and finite list of CXL machine instructions,
+generated from a CXL program.  The types of instructions will be described later.
 \item Shared memory: A CXL machine has just one memory location containing
 a CXL.
 \item Processes:  Initially there is just the main process, but any process
@@ -247,7 +288,81 @@ process has only one register.  However, this is not a limitation because
 CXL values are unbounded trees.
 By convention, both the memory and the register of a process always contain
 a special type of CXL value in which the root is a dictionary
-that maps strings to CXL values.  It represents the state of a collection of
-variables named by the strings.
+that maps strings to CXL values.  We call this a \emph{directory}.
+A directory represents the state of a collection of variables named by the strings.
+
+Directories can be organized into a tree.  Each node in the tree is then identified
+by a sequence of strings, like a path name in the file system hierarchy.  We call
+such a sequence the \emph{address} of a CXL value.
+
+Compiling the code in Figure~\ref{fig:updown} results in the CXL machine code
+listed in Figure~\ref{fig:updowncode}.
+The CXL machine is predominantly a \emph{stack machine}.
+Most instructions pop values from the stack or push values onto the stack.
+Initially there is one process that starts executing at instruction 0.
+In this case, there is a \texttt{JUMP} instruction that sets the program
+counter to 22.  At program counter 1 is the code for the \texttt{up} method.
+All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
+instruction.
+
+The \texttt{Frame} instruction has three arguments:
+\begin{enumerate}
+\item A token containing the name of the method;
+\item A token containing the argument of the method (in this case the
+method has no named argument);
+\item A program counter of the method's \texttt{Return} instruction.
+\end{enumerate}
+
+A \emph{token} is a four-tuple containing a \emph{lexeme}, a file name, a
+line number in the file, and a column number in the file.  For example,
+\texttt{(’up’, ’Count.cxl’, 1, 5)} represents the lexeme \texttt{up} in
+file \texttt{Count.xcl}, line 1, column 5.  Tokens make it easy to relate
+the CXL machine instructions to the CXL source code.
+
+The code generated from \texttt{count := count + 1} in line 2 of
+\texttt{Count.cxl} is as follows:
+
+\begin{enumerate} \setcounter{enumi}{1}
+\item the \texttt{Constant} instruction pushes the constant 1
+onto the stack of the process.
+\item The \texttt{Load} instruction loads the shared variable
+\texttt{count} from the shared memory and pushes its value onto the
+stack.
+\item \texttt{Nary} stands for \texttt{n-ary}: in this case it is a \texttt{+}
+operation with 2 arguments.  It pops two values from the stack, adds them,
+and pushes the result back onto the stack.
+\item The \texttt{Name} instruction pushes the address of the \texttt{count}
+variable onto the stack.
+\item The \texttt{Store} instruction pops the address of a variable and pops
+a CXL value, and updates the memory by replacing the CXL value oat the given
+address with the new CXL value.
+\end{enumerate}
+
+Figure~\ref{fig:updownoutput} shows the output produced by running the
+\texttt{Count.cxl} program.
+It starts by reporting that the assertion on line 17 failed and that
+\texttt{count} has value 1 instead of 0:
+\texttt{Assertion failed (’assert’, ’Count.cxl’, 17, 1) 1}.
+Next it reports an execution that failed this assertion.  The output has
+five columns:
+\begin{enumerate}
+\item The entry point of the process (\texttt{\_\_main\_\_} for the main process);
+\item The tag of the process (in this case always 0);
+\item The sequence of program counters of the CXL machine instructions that the process executed;
+\item The current program counter of the process;
+\item The contents of the shared memory.
+\end{enumerate}
+
+If we look at the middle three rows, we see that:
+\begin{enumerate}
+\item \texttt{up} executed instructions 1 through 5, loading the value of
+\texttt{count} but stopping just before storing the value 1 into \texttt{count};
+\item \texttt{down} executed instructions 12 through 20, which is all of the
+\texttt{down} method, loading the value 0 from \texttt{count} and storing $-1$
+into \texttt{count};
+\item \texttt{up} continues execution, storing the value 1 into \texttt{count}.
+\end{enumerate}
+
+This makes precise the concurrency problem that we encountered.
 
 \end{document}
