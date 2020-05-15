@@ -369,6 +369,17 @@ and storing \texttt{True} into \texttt{done[1]}.
 
 This makes precise the concurrency problem that we encountered.
 
+\chapter{Critical Sections}
+
+Hopefully you have started thinking of how to solve the concurrency
+problem and you may already have prototyped some solutions.
+In this chapter we will go through a few reasonable but broken attempts.
+At the heart of the problem is that we would like make sure that when
+the \texttt{count} variable is being updated that no other process is
+trying to do the same thing.  We call this a \emph{critical section}: a
+set of instructions where only one process is allowed to execute at a
+time.
+
 \chapter{Naive Attempts at a Solution}
 
 \begin{figure}
@@ -400,15 +411,6 @@ up       1 [1-13,21-24] 25 {'flags': {2: False, 1: True}, 'count': 0,
 \caption{Error output of Figure~\ref{fig:upflags}.}
 \label{fig:upflagsoutput}
 \end{figure}
-
-Hopefully you have started thinking of how to solve the concurrency
-problem and you may already have prototyped some solutions.
-In this chapter we will go through a few reasonable but broken attempts.
-At the heart of the problem is that we would like make sure that when
-the \texttt{count} variable is being updated that no other process is
-trying to do the same thing.  We call this a \emph{critical section}: a
-set of instructions where only one process is allowed to execute at a
-time.
 
 Figure~\ref{fig:uplock} presents a solution based on a \emph{lock}.
 The idea is that the lock is a baton that at most one process can own at
