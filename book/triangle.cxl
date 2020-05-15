@@ -1,0 +1,10 @@
+const N = 5;
+
+def triangle(n):   # computes the n'th triangle number
+    result = 0;
+    for i in 1..n:
+        result = result + i;
+    ;
+;
+x = choose(0..N);
+assert triangle(x) == ((x * (x + 1)) / 2), x;

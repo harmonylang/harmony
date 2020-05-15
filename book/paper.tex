@@ -1,0 +1,238 @@
+\documentclass{book}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{framed}
+\usepackage{tcolorbox}
+\usepackage{verbatim}
+
+\widowpenalty 10000
+\clubpenalty 10000
+\tolerance=9999
+\newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
+
+% \renewcommand{\topfraction}{.99}
+% \renewcommand{\bottomfraction}{.99}
+% \renewcommand{\textfraction}{.01}
+% \renewcommand{\floatpagefraction}{.9}
+% \renewcommand{\dbltopfraction}{.99}
+% \renewcommand{\dblfloatpagefraction}{.9}
+
+\newenvironment{code}{
+\tcolorbox
+}{
+\endtcolorbox
+}
+
+\title{Introduction Concurrent Programming with CXL}
+\author{RVR and others}
+
+\begin{document}
+
+\maketitle
+
+\chapter{Introduction to CXL}
+
+CXL is a concurrent programming language.  It was designed to teach
+the basics of concurrent programming, but it is also useful for
+testing new concurrent algorithms or even sequential and distributed
+algorithms.  CXL programs are not intended to be ``run'' like programs
+in most other programming languages---instead CXL programs are
+``model checked'' to verify that the program has certain desirable
+properties and does not suffer from bugs.  Model checking is
+limited---it can only check programs that have ``finite state
+spaces.''  But even programs that have infinite state spaces can
+often be constrained (for example, by specifying a finite set of
+possible inputs) so that model checking is possible.  If, for
+example, a sorting algorithm is shown to work for any subset of
+some set of say, 10, different values, then one can hope that it
+will also work for sets that are larger than 10 values.
+
+The syntax and semantics of CXL is similar to that of Python.
+Python is familiar to many programmers and is easy to learn and
+use.  We will assume that the reader is familiar with the basics
+of Python programming.  We also will assume that the reader
+understand some basics of machine architecture and how programs
+are executed.
+
+Like Python, CXL is an imperative,
+dynamically typed and garbage collected programming language.
+There are also some important differences:
+\begin{itemize}
+\item Every statement in CXL must be terminated by a semicolon
+(even \textbf{while} statements and \textbf{def} statements);
+in Python semicolons are optional and rarely used;
+\item Correct indentation in CXL is encouraged but optional;
+\item Python is object-oriented; CXL is not;
+\item CXL does not support floating point or lists natively;
+\item CXL does not support I/O of any kind;
+\item CXL does not support operator precedence or associativity.  Use
+parentheses liberally to remove ambiguity.
+\end{itemize}
+There are also many unimportant ones that you will discover as
+you get more familiar with programming in CXL.
+
+\begin{figure}
+\begin{code}
+\verbatiminput{triangle.cxl}
+\end{code}
+\caption{Computing triangle numbers.}
+\label{fig:triangle}
+\end{figure}
+
+Figure~\ref{fig:triangle} gives a simple example of a CXL program.
+It is sequential and has a method \texttt{square} that takes
+an integer number as argument.  Each method has a variable called
+\texttt{result} that eventually contains the result of the
+method (there is no \texttt{return} statement in CXL).  The method
+also has a variable called \texttt{n} containing the value of the
+argument.  The $x..y$ notation generates a set containing the numbers
+from $x$ to $y$ (inclusive).  The last two lines in the program are
+the most interesting.
+They assign to $x$ some unspecified value in the range $0..N$, and then
+verifies the \texttt{assert} statement that $\mathtt{triangle}(x)$
+equals $x(x+1)/2$.
+If the verification fails, the value of $x$ is reported.
+(The syntax of a CXL \texttt{assert} statement is the same as in Python
+except that the ``,'' clause is not optional.)
+
+``Running'' this CXL program will try all possible executions, which
+includes all possible values for $x$.  Essentially, the $\texttt{choose}(S)$
+operator provides the input to the program by selecting some value from the
+set $S$, while the $\texttt{assert}$ statement checks that the output is
+correct.  If the program is correct, the output of CXL is the size of the
+``state graph'' and its diameter (more on this later).  If not, CXL also
+reports what went wrong, typically by displaying a summary of an execution in
+which something went wrong.
+
+\begin{quote}
+Try it out!
+\begin{itemize}
+\item See what happens if, instead of initializing \texttt{result} to 0,
+you initialize it to 1.
+\item Write a similar program that computes squares.
+\end{itemize}
+\end{quote}
+
+\chapter{The Problem of Concurrent Programming}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{Count.cxl}
+\end{code}
+\caption{Counting up and down.}
+\label{fig:updown}
+\end{figure}
+
+Concurrent programming, aka multithreaded programming, involves multiple
+processes running in parallel while sharing variables.
+Figure~\ref{fig:updown} presents a simple example.  The program defines two
+methods \texttt{up()} and \texttt{down()}.
+It also initializes three shared
+variables: \texttt{count}, \texttt{upDone}, and \texttt{downDone}.
+The \texttt{up()} method increments \texttt{count} and sets the \texttt{upDone}
+flag.  The \texttt{down()} method is similar.
+Next the program spawns two processes, one that invokes \texttt{up} and the
+other \texttt{down}.  Afterward there are three processes---after
+all, there was already one, and it spawned two new ones.  We will call
+the one that was already there the \emph{main process}.
+
+The main process waits for the two other processes to finish by checking
+the \texttt{upDone} and \texttt{downDone} flags, simply in a loop.
+Finally, it verifies that the value of \texttt{count} equals 0.  If not,
+it reports the actual value of \texttt{count}.
+
+\begin{quote}
+What will happen?
+\begin{itemize}
+\item Before you run the program, what do you think will happen?  Is the
+program correct in that \texttt{count} will end up 0 after executing
+\texttt{up} and \texttt{down} in parallel?
+\item What are the possible values of \texttt{count} at the time of the
+\texttt{assert} statement?
+(You may assume that \texttt{load} and \texttt{store} instructions of the
+underlying architecture are atomic---in fact they are.)
+\end{itemize}
+\end{quote}
+
+What is going on is that the CXL program is compiled to machine instructions,
+and it is the machine instructions that are executed by the underlying
+machine.  The machine has instructions that load values from memory and store
+values into memory, but it does not have instructions to atomically increment
+or decrement values in memory locations.  So to increment a value in memory,
+the machine must do at least three machine instructions.  Conceptually:
+\begin{enumerate}
+\item load the value from the memory location;
+\item add 1 to the value;
+\item store the value to the memory location.
+\end{enumerate}
+
+When running multiple processes, each essentially runs an instantiation of
+the machine, and they do so in parallel.  As they execute, their machine
+instructions are interleaved in unspecified and often random ways.
+In fact, CXL will try \emph{all possible interleavings} of the processes
+executing machine instructions.
+And thus, the following is a possible interleaving of
+the processes \texttt{up} and \texttt{down}:
+\begin{enumerate}
+\item \texttt{up} loads the value of \texttt{count}, which is 0;
+\item \texttt{down} loads the value of \texttt{count}, which is still 0;
+\item \texttt{down} subtracts one from the value that it loaded (0), and
+stores $-1$ into \texttt{count};
+\item \texttt{up} adds one to the value that it loaded (0), and
+stores $1$ into \texttt{count};
+\item \texttt{up} sets \texttt{upDone};
+\item \texttt{down} sets \texttt{downDone}.
+\end{enumerate}
+
+The result in this particular interleaving is that \texttt{count} ends up
+being 1.  Other interleavings can result in the value 0 or $-1$.  For the
+CXL machine, those are all possible results.  When running CXL, it will
+report the violations of the assertions.  It also provides an example
+of an interleaving, like the one above, of how exactly the assertion
+ended up failing.
+
+If one thinks of the assertion as providing the specification of the
+program, then clearly its implementation does not satisfy its specification.
+Either the specification or the implementation (or both) must have a bug.
+We could change the specification by changing the assertion as follows:
+
+\begin{code}
+\begin{verbatim}
+    assert ((-1) <= count) and (count <= 1), count;
+\end{verbatim}
+\end{code}
+
+This would fix the issue, but more likely it is the program that must
+be fixed.
+
+\begin{quote}
+Can you think of a fix to the program?  You can try it out and see
+if it works or not.
+\end{quote}
+
+\chapter{The CXL Machine}
+
+Before we delve into how to solve synchronization problems, it is important
+to know a bit about the underlying machine.  A CXL program is translated
+into a list of machine instructions that the machine executes.
+The CXL machine is not an ordinary virtual machine, but its architecture
+is nonetheless representative of conventional machines such as hardware CPUs
+and virtual machines such as the Java Virtual Machine.
+
+A CXL machine has the following components:
+\begin{itemize}
+\item The code.  This is an immutable list of CXL machine instructions.  The
+instructions will be described later.
+\item The memory.  This is a tree-shaped recursive data structure.  Each node
+in the tree, including the leaves and the root, are \emph{CXL values}.  CXL
+values include booleans, integers, strings, sets of CXL values, and, importantly
+\emph{dictionaries} that maps CXL values to other CXL values.
+The root of the tree is a dictionary that maps strings to CXL values.
+\item The set of processes.  Initially there is just the main process, but any process
+can spawn an unbounded number of other processes and processes may terminate.
+Each process has an immutable
+tag, a stack of CXL values, and a mutable \emph{register}, which contains a
+dictionary that maps strings to CXL values.
+\end{itemize}
+
+\end{document}

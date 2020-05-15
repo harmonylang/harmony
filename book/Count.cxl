@@ -1,0 +1,17 @@
+def up():
+    count = count + 1;
+    upDone = True;
+;
+def down():
+    count = count - 1;
+    downDone = True;
+;
+count = 0;
+upDone = False;
+downDone = False;
+spawn up(), 0;
+spawn down(), 0;
+while not (upDone and downDone):
+    pass;
+;
+assert count == 0, count;
