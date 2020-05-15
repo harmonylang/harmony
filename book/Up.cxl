@@ -1,0 +1,12 @@
+def up(self):
+    count = count + 1;
+    done[self] = True;
+;
+count = 0;
+done = dict{ 1: False, 2: False };
+spawn up(1), 1;
+spawn up(2), 2;
+while not (done[1] and done[2]):
+    pass;
+;
+assert count == 2, count;

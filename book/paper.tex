@@ -1,4 +1,4 @@
-\documentclass{book}
+\documentclass{report}
 \usepackage{fullpage}
 \usepackage{graphicx}
 \usepackage{framed}
@@ -117,36 +117,36 @@ you initialize it to 1.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{Count.cxl}
+\verbatiminput{Up.cxl}
 \end{code}
-\caption{Counting up and down.}
-\label{fig:updown}
+\caption{Incrementing twice in parallel.}
+\label{fig:inc}
 \end{figure}
 
 Concurrent programming, aka multithreaded programming, involves multiple
 processes running in parallel while sharing variables.
-Figure~\ref{fig:updown} presents a simple example.  The program defines two
-methods \texttt{up()} and \texttt{down()}.
-It also initializes three shared
-variables: \texttt{count}, \texttt{upDone}, and \texttt{downDone}.
-The \texttt{up()} method increments \texttt{count} and sets the \texttt{upDone}
-flag.  The \texttt{down()} method is similar.
-Next the program spawns two processes, one that invokes \texttt{up} and the
-other \texttt{down}.  Afterward there are three processes---after
+Figure~\ref{fig:inc} presents a simple example.  The program defines a
+method \texttt{up} that takes a parameter called \texttt{self}.
+It also initializes two shared variables \texttt{count} and \texttt{done}.
+Variable \texttt{done} is initialized with a dictionary that maps both 1 and 2
+to \texttt{False}.
+The \texttt{up()} method increments \texttt{count} and sets \texttt{done[self]}
+to \texttt{True}.
+Next the program spawns two processes, each invoking \texttt{up}.
+Afterward there are three processes---after
 all, there was already one, and it spawned two new ones.  We will call
 the one that was already there the \emph{main process}.
 
-The main process waits for the two other processes to finish by checking
-the \texttt{upDone} and \texttt{downDone} flags, simply in a loop.
-Finally, it verifies that the value of \texttt{count} equals 0.  If not,
+The main process waits for the two other processes to finish by polling
+both \texttt{done} flags.
+Finally, it verifies that the value of \texttt{count} equals 2.  If not,
 it reports the actual value of \texttt{count}.
 
 \begin{quote}
 What will happen?
 \begin{itemize}
 \item Before you run the program, what do you think will happen?  Is the
-program correct in that \texttt{count} will end up 0 after executing
-\texttt{up} and \texttt{down} in parallel?
+program correct in that \texttt{count} will end up being 2?
 \item What are the possible values of \texttt{count} at the time of the
 \texttt{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
@@ -156,9 +156,11 @@ underlying architecture are atomic---in fact they are.)
 
 What is going on is that the CXL program is compiled to machine instructions,
 and it is the machine instructions that are executed by the underlying
-machine.  The machine has instructions that load values from memory and store
-values into memory, but it does not have instructions to atomically increment
-or decrement values in memory locations.  So to increment a value in memory,
+machine.  The details of this appear in the next chapter, but suffice it to
+say that The machine has instructions that load values from memory and store
+values into memory.  Importantly, it does not have instructions to atomically
+increment or decrement values in memory locations.
+So to increment a value in memory,
 the machine must do at least three machine instructions.  Conceptually:
 \begin{enumerate}
 \item load the value from the memory location;
@@ -172,21 +174,20 @@ instructions are interleaved in unspecified and often random ways.
 In fact, CXL will try \emph{all possible interleavings} of the processes
 executing machine instructions.
 And thus, the following is a possible interleaving of
-the processes \texttt{up} and \texttt{down}:
+the processes 1 and 2:
 \begin{enumerate}
-\item \texttt{up} loads the value of \texttt{count}, which is 0;
-\item \texttt{down} loads the value of \texttt{count}, which is still 0;
-\item \texttt{down} subtracts one from the value that it loaded (0), and
-stores $-1$ into \texttt{count};
-\item \texttt{up} adds one to the value that it loaded (0), and
+\item Process 1 loads the value of \texttt{count}, which is 0;
+\item Process 2 loads the value of \texttt{count}, which is still 0;
+\item Process 2 adds one to the value that it loaded (0), and
 stores $1$ into \texttt{count};
-\item \texttt{up} sets \texttt{upDone};
-\item \texttt{down} sets \texttt{downDone}.
+\item Process 1 adds one to the value that it loaded (0), and
+stores $1$ into \texttt{count};
+\item Process 1 sets \texttt{upDone} to \texttt{True};
+\item Process 2 sets \texttt{upDone} to \texttt{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \texttt{count} ends up
-being 1.  Other interleavings can result in the value 0 or $-1$.  For the
-CXL machine, those are all possible results.  When running CXL, it will
+being 1.  When running CXL, it will
 report the violations of the assertions.  It also provides an example
 of an interleaving, like the one above, of how exactly the assertion
 ended up failing.
@@ -198,7 +199,7 @@ We could change the specification by changing the assertion as follows:
 
 \begin{code}
 \begin{verbatim}
-    assert ((-1) <= count) and (count <= 1), count;
+    assert (count == 0) or (count == 1), count;
 \end{verbatim}
 \end{code}
 
@@ -215,42 +216,46 @@ if it works or not.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Count.cxl:1 def up():
-    0 Jump 22
-    1 Frame ('up', 'Count.cxl', 1, 5) None 10
-Count.cxl:2     count = count + 1;
-    2 Constant (1, 'Count.cxl', 2, 21)
-    3 Load ('count', 'Count.cxl', 2, 13)
-    4 Nary ('+', 'Count.cxl', 2, 19) 2
-    5 Name ('count', 'Count.cxl', 2, 5)
-    6 Store 1
-Count.cxl:3     upDone = True;
-    7 Constant (True, 'Count.cxl', 3, 14)
-    8 Name ('upDone', 'Count.cxl', 3, 5)
-    9 Store 1
-   10 Return
-   11 ...
+Up.cxl:1 def up(self):
+   0 Jump 12
+   1 Frame ('up', 'Up.cxl', 1, 5) ('self', 'Up.cxl', 1, 8) 11
+Up.cxl:2     count = count + 1;
+   2 Constant (1, 'Up.cxl', 2, 21)
+   3 Load ('count', 'Up.cxl', 2, 13)
+   4 Nary ('+', 'Up.cxl', 2, 19) 2
+   5 Name ('count', 'Up.cxl', 2, 5)
+   6 Store 1
+Up.cxl:3     done[self] = True;
+   7 Constant (True, 'Up.cxl', 3, 18)
+   8 LoadVar ('self', 'Up.cxl', 3, 10)
+   9 Name ('done', 'Up.cxl', 3, 5)
+   10 Store 2
+   11 Return
+Up.cxl:5 count = 0;
+   12 Constant (0, 'Up.cxl', 5, 9)
+   13 Name ('count', 'Up.cxl', 5, 1)
+   14 Store 1
 \end{verbatim}
 \end{code}
-\caption{The first part of the machine code corresponding to Figure~\ref{fig:updown}.}
-\label{fig:updowncode}
+\caption{The first part of the machine code corresponding to Figure~\ref{fig:inc}.}
+\label{fig:inccode}
 \end{figure}
 
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Assertion failed ('assert', 'Count.cxl', 17, 1) 1
+Assertion failed ('assert', '<stdin>', 12, 1) 1
 
 ==== Safety violation ====
-__main__ 0 [0,22-36]     37 { 'count':  0, 'upDone': False, 'downDone': False }
-up       0 [1-5]          6 { 'count':  0, 'upDone': False, 'downDone': False }
-down     0 [12-20]       21 { 'count': -1, 'upDone': False, 'downDone': True  }
-up       0 [6-9]         10 { 'count':  1, 'upDone': True,  'downDone': True  }
-__main__ 0 [37-41,43-48] 48 { 'count':  1, 'upDone': True,  'downDone': True  }
+__main__ 0 [0,12-29]     30 { 'count': 0, 'done': { 1: False, 2: False } }
+up       1 [1-5]          6 { 'count': 0, 'done': { 1: False, 2: False } }
+up       2 [1-10]        11 { 'count': 1, 'done': { 1: False, 2: True  } }
+up       1 [6-10]        11 { 'count': 1, 'done': { 1: True,  2: True  } }
+__main__ 0 [30-37,39-44] 44 { 'count': 1, 'done': { 1: True,  2: True  } }
 \end{verbatim}
 \end{code}
-\caption{The output of running Figure~\ref{fig:updown}.}
-\label{fig:updownoutput}
+\caption{The output of running Figure~\ref{fig:inc}.}
+\label{fig:incoutput}
 \end{figure}
 
 Before we delve into how to solve synchronization problems, it is important
@@ -295,8 +300,8 @@ Directories can be organized into a tree.  Each node in the tree is then identif
 by a sequence of strings, like a path name in the file system hierarchy.  We call
 such a sequence the \emph{address} of a CXL value.
 
-Compiling the code in Figure~\ref{fig:updown} results in the CXL machine code
-listed in Figure~\ref{fig:updowncode}.
+Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
+listed in Figure~\ref{fig:inccode}.
 The CXL machine is predominantly a \emph{stack machine}.
 Most instructions pop values from the stack or push values onto the stack.
 Initially there is one process that starts executing at instruction 0.
@@ -308,19 +313,18 @@ instruction.
 The \texttt{Frame} instruction has three arguments:
 \begin{enumerate}
 \item A token containing the name of the method;
-\item A token containing the argument of the method (in this case the
-method has no named argument);
+\item A token containing the name of the argument of the method;
 \item A program counter of the method's \texttt{Return} instruction.
 \end{enumerate}
 
 A \emph{token} is a four-tuple containing a \emph{lexeme}, a file name, a
 line number in the file, and a column number in the file.  For example,
-\texttt{(’up’, ’Count.cxl’, 1, 5)} represents the lexeme \texttt{up} in
-file \texttt{Count.xcl}, line 1, column 5.  Tokens make it easy to relate
+\texttt{(’up’, ’Up.cxl’, 1, 5)} represents the lexeme \texttt{up} in
+file \texttt{Up.xcl}, line 1, column 5.  Tokens make it easy to relate
 the CXL machine instructions to the CXL source code.
 
 The code generated from \texttt{count := count + 1} in line 2 of
-\texttt{Count.cxl} is as follows:
+\texttt{Up.cxl} is as follows:
 
 \begin{enumerate} \setcounter{enumi}{1}
 \item the \texttt{Constant} instruction pushes the constant 1
@@ -338,11 +342,11 @@ a CXL value, and updates the memory by replacing the CXL value oat the given
 address with the new CXL value.
 \end{enumerate}
 
-Figure~\ref{fig:updownoutput} shows the output produced by running the
-\texttt{Count.cxl} program.
-It starts by reporting that the assertion on line 17 failed and that
+Figure~\ref{fig:incoutput} shows the output produced by running the
+\texttt{Up.cxl} program.
+It starts by reporting that the assertion on line 12 failed and that
 \texttt{count} has value 1 instead of 0:
-\texttt{Assertion failed (’assert’, ’Count.cxl’, 17, 1) 1}.
+\texttt{Assertion failed (’assert’, ’Up.cxl’, 12, 1) 1}.
 Next it reports an execution that failed this assertion.  The output has
 five columns:
 \begin{enumerate}
@@ -355,14 +359,25 @@ five columns:
 
 If we look at the middle three rows, we see that:
 \begin{enumerate}
-\item \texttt{up} executed instructions 1 through 5, loading the value of
-\texttt{count} but stopping just before storing the value 1 into \texttt{count};
-\item \texttt{down} executed instructions 12 through 20, which is all of the
-\texttt{down} method, loading the value 0 from \texttt{count} and storing $-1$
-into \texttt{count};
-\item \texttt{up} continues execution, storing the value 1 into \texttt{count}.
+\item Process 1 executed instructions 1 through 5, loading the value of
+\texttt{count} but stopping just before storing 1 into \texttt{count};
+\item Process 2 executed instructions 1 through 10, storing 1 into
+into \texttt{count} and storing \texttt{True} into \texttt{done[2]};
+\item Process 1 continues execution, storing value 1 into \texttt{count}
+and storing \texttt{True} into \texttt{done[1]}.
 \end{enumerate}
 
 This makes precise the concurrency problem that we encountered.
+
+\chapter{Naive Solutions}
+
+Hopefully you have started thinking of how to solve the concurrency
+problem and you may already have prototyped some solutions.
+In this chapter we will go through a few reasonable but broken attempts.
+At the heart of the problem is that we would like make sure that when
+the \texttt{count} variable is being updated that no other process is
+trying to do the same thing.  We call this a \emph{critical section}: a
+set of instructions where only one process is allowed to execute at a
+time.
 
 \end{document}
