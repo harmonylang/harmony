@@ -7,11 +7,11 @@ def mutex(state):
     wcs = state.labels["wcs"]
     nrds = 0
     nwrs = 0
-    for ctx in state.ctxbag.keys():
+    for (ctx, n) in state.ctxbag.items():
         if ctx.pc == rcs:
-            nrds += 1
+            nrds += n
         elif ctx.pc == wcs:
-            nwrs += 1
+            nwrs += n
     return (nrds == 0 and nwrs <= 1) or nwrs == 0
 
 def main():

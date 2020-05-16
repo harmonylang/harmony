@@ -5,9 +5,9 @@ import cxl
 def mutex(state):
     cs = state.labels["cs"]
     cnt = 0
-    for ctx in state.ctxbag.keys():
+    for (ctx, n) in state.ctxbag.items():
         if ctx.pc == cs:
-            cnt += 1
+            cnt += n
     return cnt <= 1
 
 def main():
