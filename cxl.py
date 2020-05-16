@@ -59,11 +59,11 @@ def isreserved(s):
         "else",
         "False",
         "for",
-        "getpid",
         "if",
         "import",
         "in",
         "keys",
+        "nametag",
         "not",
         "or",
         "pass",
@@ -78,7 +78,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "cardinality", "getpid", "not", "keys" ]
+    return s in [ "^", "-", "atLabel", "cardinality", "nametag", "not", "keys" ]
 
 def isbinaryop(s):
     return s in [
@@ -501,7 +501,7 @@ class SpawnOp(Op):
         frame = state.code[self.pc]
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = self.method
-        ctx = Context(lexeme, tag, self.pc, frame.end)
+        ctx = Context(RecordValue({"name": lexeme, "tag": tag}), self.pc, frame.end)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -601,8 +601,8 @@ class NaryOp(Op):
         d = {}
         for (ctx, cnt) in state.ctxbag.items():
             if ctx.pc == pc:
-                c = d.get(ctx.tag)
-                d[ctx.tag] = 1 if c == None else (c + 1)
+                c = d.get(ctx.nametag)
+                d[ctx.nametag] = 1 if c == None else (c + 1)
         return RecordValue(d)
 
     def eval(self, state, context):
@@ -624,10 +624,9 @@ class NaryOp(Op):
             elif op == "cardinality":
                 assert isinstance(e, SetValue), e
                 context.push(len(e.s))
-            elif op == "getpid":
+            elif op == "nametag":
                 assert isinstance(e, NoValue), e
-                # TODO.  Think about how to assign these
-                context.push(context.tag)
+                context.push(context.nametag)
             elif op == "keys":
                 assert isinstance(e, RecordValue), e
                 context.push(SetValue(set(e.d.keys())))
@@ -1054,7 +1053,7 @@ class RecordRule(Rule):
         assert lexeme == "dict{", t[0]
         d = {}
         while lexeme != "}":
-            (key, t) = ExpressionRule().parse(t[1:])
+            (key, t) = NaryRule({":", "for"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
                 assert d == {}, d
@@ -1611,9 +1610,8 @@ class StatementRule(Rule):
         return AssignmentRule().parse(t)
 
 class Context:
-    def __init__(self, name, tag, pc, end):
-        self.name = name
-        self.tag = tag
+    def __init__(self, nametag, pc, end):
+        self.nametag = nametag
         self.pc = pc
         self.end = end
         self.atomic = 0
@@ -1621,14 +1619,11 @@ class Context:
         self.vars = RecordValue({})
         self.pid = None      # assigned lazily
 
-    def print(self):
-        print(self.name, self.tag, self.pc, self.end, self.atomic, self.stack, self.vars, self.pid)
-
     def __repr__(self):
-        return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
+        return "Context(" + str(self.nametag) + ", " + str(self.pc) + ")"
 
     def __hash__(self):
-        h = (self.name, self.tag, self.pc, self.end,
+        h = (self.nametag, self.pc, self.end,
                     self.atomic, self.vars, self.pid).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -1637,9 +1632,7 @@ class Context:
     def __eq__(self, other):
         if not isinstance(other, Context):
             return False
-        if self.name != other.name:
-            return False
-        if self.tag != other.tag:
+        if self.nametag != other.nametag:
             return False
         if self.pc != other.pc:
             return False
@@ -1652,7 +1645,7 @@ class Context:
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = Context(self.name, self.tag, self.pc, self.end)
+        c = Context(self.nametag, self.pc, self.end)
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
@@ -1693,7 +1686,9 @@ class State:
         self.code = code
         self.labels = labels
         self.vars = RecordValue({})
-        self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
+        self.ctxbag = {
+            Context(RecordValue({"name": "__main__", "tag": 0}), 0, len(code)) : 1
+        }
         self.failure = False
 
     def __repr__(self):
@@ -1807,15 +1802,14 @@ def print_shortest(visited, bad):
     last = None
     for (node, vars) in path:
         if last == None:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
-        elif node.ctx.name == last[0] and node.ctx.tag == last[1] and \
-                                            node.steps[0] == last[2]:
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, last[3] + node.steps, vars)
+            last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
+        elif node.ctx.nametag == last[0] and node.steps[0] == last[1]:
+            last = (node.ctx.nametag, node.ctx.pc, last[2] + node.steps, vars)
         else:
-            print(last[0], last[1], strsteps(last[3]), last[2], last[4])
-            last = (node.ctx.name, node.ctx.tag, node.ctx.pc, node.steps, vars)
+            print(last[0], strsteps(last[2]), last[1], last[3])
+            last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
-        print(last[0], last[1], strsteps(last[3]), last[2], last[4])
+        print(last[0], strsteps(last[2]), last[1], last[3])
 
 class Scope:
     def __init__(self, parent):

@@ -19,14 +19,13 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: {} };
 ;
 def wait(c):
-    var pid = getpid();
     var lk = (^c).lock;
-    (^c).waiters = (^c).waiters + { pid };
+    (^c).waiters = (^c).waiters + { nametag() };
     ^lk = False;
     var blocked = True;
     while blocked:
         atomic:
-            if (not (^lk)) and (not (pid in (^c).waiters)):
+            if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
                 ^lk = True;
                 blocked = False;
             ;

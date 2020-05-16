@@ -7,7 +7,7 @@ def p(self):
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs: assert (atLabel "cs") == dict{ self: 1 }, atLabel("cs");
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
         flags[self] = False;
     ;
 ;

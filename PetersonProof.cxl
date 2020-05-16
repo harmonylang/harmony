@@ -11,13 +11,14 @@ def p(self):
             pass;
         ;
         @cs:
-            assert (not (flags[1 - self])) or ((turn == self)
-                            or ((keys(atLabel("gate"))) == {1 - self})),
+            assert (not (flags[1 - self])) or ((turn == self) or
+                        ((atLabel("gate")) == dict{nametags[1 - self] : 1})),
                 dict{
-                    "self": self,
-                    "other": flags[1 - self],
+                    "nametag": nametag(),
+                    "other": nametags[1 - self],
+                    "flags": flags,
                     "turn": turn,
-                    "gate": keys(atLabel("gate"))
+                    "gate": atLabel("gate")
                 }
             ;
         flags[self] = False;
@@ -26,5 +27,6 @@ def p(self):
 flags = dict{ 0: False, 1: False };
 turn = 0;
 
+nametags = dict{ dict{ .name: "p", .tag: tag } for tag in 0..1 };
 spawn p(0), 0;
 spawn p(1), 1;
