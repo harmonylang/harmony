@@ -235,16 +235,12 @@ class RecordValue(Value):
             hash ^= x.__hash__()
         return hash
 
-    # Two dictionaries are the same if they have the same (key, value) pairs
     def __eq__(self, other):
         if not isinstance(other, RecordValue):
             return False
-        if len(self.d.keys()) != len(other.d.keys()):
+        if len(self.d.keys()) != len(other.d.keys()):   # for efficiency
             return False
-        for (k, v) in self.d.items():
-            if v != other.d.get(k):
-                return False
-        return True
+        return self.d == other.d
 
     def __len__(self):
         return len(self.d.keys())
@@ -630,10 +626,8 @@ class NaryOp(Op):
                 context.push(len(e.s))
             elif op == "getpid":
                 assert isinstance(e, NoValue), e
-                if context.pid == None:
-                    state.pidgen += 1
-                    context.pid = state.pidgen
-                context.push(context.pid)
+                # TODO.  Think about how to assign these
+                context.push(context.tag)
             elif op == "keys":
                 assert isinstance(e, RecordValue), e
                 context.push(SetValue(set(e.d.keys())))
@@ -1627,6 +1621,9 @@ class Context:
         self.vars = RecordValue({})
         self.pid = None      # assigned lazily
 
+    def print(self):
+        print(self.name, self.tag, self.pc, self.end, self.atomic, self.stack, self.vars, self.pid)
+
     def __repr__(self):
         return "Context(" + str(self.name) + ", " + str(self.tag) + ", " + str(self.pc) + ")"
 
@@ -1698,7 +1695,6 @@ class State:
         self.vars = RecordValue({})
         self.ctxbag = { Context("__main__", 0, 0, len(code)) : 1 }
         self.failure = False
-        self.pidgen = 0     # to generate pids
 
     def __repr__(self):
         return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ")"
@@ -1719,8 +1715,6 @@ class State:
             return False
         if self.failure != other.failure:
             return False
-        if self.pidgen != other.pidgen:
-            return False
         return True
 
     def copy(self):
@@ -1728,7 +1722,6 @@ class State:
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()
         s.failure = self.failure
-        s.pidgen = self.pidgen
         return s
 
     def get(self, var):
@@ -2036,7 +2029,7 @@ def run(code, labels, invariant, pcs):
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
 
-    if not faultyState:
+    if False and not faultyState:
         # See if there are livelocked states (states from which some process
         # cannot reach the reader or writer critical section)
         bad = set()

@@ -48,6 +48,6 @@ nwriters = 0;
 atomic:
     spawn reader(), 0;
     spawn reader(), 1;
-    spawn writer(), 0;
-    spawn writer(), 1;
+    spawn writer(), 2;
+    spawn writer(), 3;
 ;

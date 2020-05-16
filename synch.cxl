@@ -20,11 +20,6 @@ def Condition(lk):
 ;
 def wait(c):
     var pid = getpid();
-    (*
-        var cond = ^c;
-        var lk = cond.lock;
-        (^c).waiters = cond.waiters + { pid };
-    *)
     var lk = (^c).lock;
     (^c).waiters = (^c).waiters + { pid };
     ^lk = False;
