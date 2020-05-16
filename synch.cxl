@@ -1,7 +1,7 @@
-def tas(self):
+def tas(lk):
     atomic:
-        result = ^self;
-        ^self = True;
+        result = ^lk;
+        ^lk = True;
     ;
 ;
 def Lock():
@@ -19,8 +19,13 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: {} };
 ;
 def wait(c):
-    var lk = (^c).lock;
     var pid = getpid();
+    (*
+        var cond = ^c;
+        var lk = cond.lock;
+        (^c).waiters = cond.waiters + { pid };
+    *)
+    var lk = (^c).lock;
     (^c).waiters = (^c).waiters + { pid };
     ^lk = False;
     var blocked = True;
@@ -36,9 +41,10 @@ def wait(c):
     ;
 ;
 def notify(c):
-    if (^c).waiters != {}:
-        var pid = choose((^c).waiters);
-        (^c).waiters = (^c).waiters - { pid };
+    var waiters = (^c).waiters;
+    if waiters != {}:
+        var pid = choose(waiters);
+        (^c).waiters = waiters - { pid };
     ;
 ;
 def notifyAll(c):
