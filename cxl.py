@@ -1687,7 +1687,7 @@ class State:
         self.labels = labels
         self.vars = RecordValue({})
         self.ctxbag = {
-            Context(RecordValue({"name": "__main__", "tag": 0}), 0, len(code)) : 1
+            Context(RecordValue({"name": "__main__", "tag": NoValue()}), 0, len(code)) : 1
         }
         self.failure = False
 

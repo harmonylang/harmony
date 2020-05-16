@@ -247,11 +247,11 @@ Up.cxl:5 count = 0;
 Assertion failed ('assert', '<stdin>', 12, 1) 1
 
 ==== Safety violation ====
-__main__ 0 [0,12-29]     30 { 'count': 0, 'done': { 1: False, 2: False } }
-up       1 [1-5]          6 { 'count': 0, 'done': { 1: False, 2: False } }
-up       2 [1-10]        11 { 'count': 1, 'done': { 1: False, 2: True  } }
-up       1 [6-10]        11 { 'count': 1, 'done': { 1: True,  2: True  } }
-__main__ 0 [30-37,39-44] 44 { 'count': 1, 'done': { 1: True,  2: True  } }
+__main__ () [0,12-29]     30 { 'count': 0, 'done': { 1: False, 2: False } }
+up       1  [1-5]          6 { 'count': 0, 'done': { 1: False, 2: False } }
+up       2  [1-10]        11 { 'count': 1, 'done': { 1: False, 2: True  } }
+up       1  [6-10]        11 { 'count': 1, 'done': { 1: True,  2: True  } }
+__main__ () [30-37,39-44] 44 { 'count': 1, 'done': { 1: True,  2: True  } }
 \end{verbatim}
 \end{code}
 \caption{The output of running Figure~\ref{fig:inc}.}
@@ -278,15 +278,25 @@ generated from a CXL program.  The types of instructions will be described later
 a CXL.
 \item Processes:  Initially there is just the main process, but any process
 can spawn an unbounded number of other processes and processes may terminate.
-Each process has an immutable tag, a program counter, a stack of CXL values,
-and a single mutable general purpose \emph{register} that contains a CXL.
+Each process has an immutable \emph{name tag} (specified when spawning the
+process), a program counter, a stack of CXL values, and a single mutable
+general purpose \emph{register} that contains a CXL.
 \end{itemize}
 
 The state of a process is called a \emph{context}: it contains the value of
-its program counter, stack, and register.  The state of the CXL machine
+its name tag, program counter, stack, and register.
+The state of the CXL machine
 consists of the value of its memory and the multiset (or \emph{bag}) of
 contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
+The initial state of the CXL memory is \texttt{dict\{\}}.
+The context bag has an initial context in it with name tag
+\texttt{dict\{ .name: "\_\_main\_\_", .tag: () \}}, pc 0,
+register \texttt{dict\{\}}, and an empty stack.
+Each machine instruction updates the state in some way.
+Figure~\ref{fig:incstate} shows an example of a reachable state for 
+the program in Figure~\ref{fig:inc}.
+
 
 It may seem strange that there is only one memory location and that each
 process has only one register.  However, this is not a limitation because
@@ -371,6 +381,14 @@ This makes precise the concurrency problem that we encountered.
 
 \chapter{Critical Sections}
 
+\begin{figure}
+\begin{code}
+\verbatiminput{cs.cxl}
+\end{code}
+\caption{A barebones critical section.}
+\label{fig:cs}
+\end{figure}
+
 Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
@@ -380,7 +398,37 @@ trying to do the same thing.  We call this a \emph{critical section}: a
 set of instructions where only one process is allowed to execute at a
 time.
 
-\chapter{Naive Attempts at a Solution}
+A critical section is often modeled as processes in an infinite loop
+entering and exiting the critical section.  In CXL:
+
+\begin{code}
+\begin{verbatim}
+while True:
+    # enter critical section
+    @cs: pass;  # in critical section
+    # exit critical section
+;
+\end{verbatim}
+\end{code}
+
+Here \texttt{@cs} is a \emph{label}, identifying a location in the
+CXL machine code.  The first thing we need to ensure is that there
+cannot be two processes at the critical section.  We would like to
+place an assertion at the \texttt{@cs} label that specifies that
+only the current process can be there.  CXL in fact supports this.
+It has a method \texttt{atLabel($L$)}, where $L$ is the string name
+of a label (in this case, \texttt{"cs"}).  The method returns a
+bag of name tags of processes executing at that label.  The bag is
+represented by a dictionary that maps each element in the bag to the
+number of times the element appears in the bag.
+
+Figure~\ref{fig:cs} shows the code.
+The assertion also makes use of the method \texttt{nametag()} that
+returns the name tag of the current process.
+If you run the code through CXL, the assertion should fail because
+there is no code yet for entering and exiting the critical section.
+
+\chapter{Naive Attempts at Implementing Critical Sections}
 
 \begin{figure}
 \begin{code}
@@ -402,9 +450,9 @@ time.
 \begin{code}
 \begin{verbatim}
 ==== Livelock ====
-__main__ 0 [0,35-63]    64 {'flags': {2: False, 1: False}, 'count': 0,
+__main__ () [0,35-63]    64 {'flags': {2: False, 1: False}, 'count': 0,
                                 'done': {2: False, 1: False}}
-up       1 [1-13,21-24] 25 {'flags': {2: False, 1: True}, 'count': 0,
+up       1  [1-13,21-24] 25 {'flags': {2: False, 1: True}, 'count': 0,
                                 'done': {2: False, 1: False}}
 \end{verbatim}
 \end{code}
