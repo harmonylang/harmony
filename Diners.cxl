@@ -4,6 +4,13 @@ import synch;
 
 const N = 5;
 
+const MustReach = {
+    dict{
+        .process: dict{ .name: "diner", .tag: tag },
+        .label: "dine"
+    } for tag in 1..N
+};
+
 def diner(which):
     while True:
         var left = which;

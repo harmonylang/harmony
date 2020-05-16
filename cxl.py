@@ -1973,7 +1973,15 @@ def compile(f, filename):
             lastloc = (file, line)
         print("  ", pc, code[pc])
 
-    return (code, scope.labels)
+    mr = scope.names.get("MustReach")
+    if mr == None:
+        pcs = SetValue()
+    else:
+        (t, v) = mr
+        assert t == "constant", t
+        (pcs, file, line, column) = v
+
+    return (code, scope.labels, pcs)
 
 def run(code, labels, invariant, pcs):
     # Initial state
@@ -2033,7 +2041,9 @@ def run(code, labels, invariant, pcs):
         # See if there are livelocked states (states from which some process
         # cannot reach the reader or writer critical section)
         bad = set()
-        for (p, cs) in pcs:
+        for proclabel in pcs.s:
+            p = proclabel.d["process"]
+            cs = labels[proclabel.d["label"]]
             # First collect all the states in which the process is in the
             # critical region
             good = set()
