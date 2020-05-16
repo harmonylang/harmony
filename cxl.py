@@ -536,20 +536,21 @@ class JumpOp(Op):
     def eval(self, state, context):
         context.pc = self.pc
 
-class JumpFalseOp(Op):
-    def __init__(self, pc):
+class JumpCondOp(Op):
+    def __init__(self, cond, pc):
+        self.cond = cond
         self.pc = pc
 
     def __repr__(self):
-        return "JumpFalse " + str(self.pc)
+        return "JumpCond " + str(self.cond) + " " + str(self.pc)
 
     def eval(self, state, context):
         c = context.pop()
         assert isinstance(c, bool), c
-        if c:
-            context.pc += 1
-        else:
+        if c == self.cond:
             context.pc = self.pc
+        else:
+            context.pc += 1
 
 class SetOp(Op):
     def __repr__(self):
@@ -888,7 +889,7 @@ class SetComprehensionAST(AST):
 
         self.value.compile(ns, code)
         code.append(JumpOp(pc))
-        code[tst] = JumpFalseOp(len(code))
+        code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
@@ -940,7 +941,7 @@ class RecordComprehensionAST(AST):
         self.value.compile(ns, code)
         code.append(LoadVarOp(self.var))
         code.append(JumpOp(pc))
-        code[tst] = JumpFalseOp(len(code))
+        code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
         code.append(RecordOp())
 
@@ -954,10 +955,20 @@ class NaryAST(AST):
         return "NaryOp(" + str(self.op) + ", " + str(self.args) + ")"
 
     def compile(self, scope, code):
+        (op, file, line, column) = self.op
         n = len(self.args)
-        for a in range(n):
-            self.args[n - a - 1].compile(scope, code)
-        code.append(NaryOp(self.op, n))
+        if n == 2 and (op == "and" or op == "or"):
+            self.args[0].compile(scope, code)
+            code.append(JumpCondOp(op == "and", len(code) + 3))
+            code.append(ConstantOp((op == "or", file, line, column)))
+            pc = len(code)
+            code.append(None)
+            self.args[1].compile(scope, code)
+            code[pc] = JumpOp(len(code))
+        else:
+            for a in range(n):
+                self.args[n - a - 1].compile(scope, code)
+            code.append(NaryOp(self.op, n))
 
 class ApplyAST(AST):
     def __init__(self, method, arg):
@@ -1224,7 +1235,7 @@ class IfAST(AST):
             stat.compile(scope, code)
             jumps += [len(code)]
             code.append(None)
-            code[pc] = JumpFalseOp(len(code))
+            code[pc] = JumpCondOp(False, len(code))
         if self.stat != None:
             self.stat.compile(scope, code)
         for pc in jumps:
@@ -1245,7 +1256,7 @@ class WhileAST(AST):
         code.append(None)
         self.stat.compile(scope, code)
         code.append(JumpOp(pc1))
-        code[pc2] = JumpFalseOp(len(code))
+        code[pc2] = JumpCondOp(False, len(code))
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
@@ -1286,7 +1297,7 @@ class ForAST(AST):
 
         self.stat.compile(ns, code)
         code.append(JumpOp(pc))
-        code[tst] = JumpFalseOp(len(code))
+        code[tst] = JumpCondOp(False, len(code))
 
 class AtomicAST(AST):
     def __init__(self, stat):
@@ -1857,8 +1868,8 @@ def optimize(code):
         op = code[i]
         if isinstance(op, JumpOp):
             code[i] = JumpOp(optjump(code, op.pc))
-        elif isinstance(op, JumpFalseOp):
-            code[i] = JumpFalseOp(optjump(code, op.pc))
+        elif isinstance(op, JumpCondOp):
+            code[i] = JumpCondOp(op.cond, optjump(code, op.pc))
 
 # These operations cause global state changes
 globops = [

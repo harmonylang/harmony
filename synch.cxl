@@ -31,11 +31,9 @@ def wait(c):
     var blocked = True;
     while blocked:
         atomic:
-            if not (^lk):
-                if not(pid in (^c).waiters):
-                    ^lk = True;
-                    blocked = False;
-                ;
+            if (not (^lk)) and (not (pid in (^c).waiters)):
+                ^lk = True;
+                blocked = False;
             ;
         ;
     ;
