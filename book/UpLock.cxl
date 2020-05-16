@@ -1,0 +1,24 @@
+def up(self):
+    # Enter critical section
+    while lock:
+        pass;
+    ;
+    lock = True;
+
+    # Critical section
+    count = count + 1;
+
+    # Leave critical section
+    @cs: lock = False;
+
+    done[self] = True;
+;
+lock = False;
+count = 0;
+done = dict{ 1: False, 2: False };
+spawn up(1), 1;
+spawn up(2), 2;
+while not (done[1] and done[2]):
+    pass;
+;
+assert count == 2, count;
