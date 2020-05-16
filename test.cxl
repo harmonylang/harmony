@@ -1,1 +1,2 @@
-assert True or False, "hi";
+const X = 3;
+const N = dict{ 1: 2, X: 4 };

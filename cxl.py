@@ -201,7 +201,7 @@ class Value:
 
 class NoValue(Value):
     def __repr__(self):
-        return "NoValue()"
+        return "()"
 
     def __hash__(self):
         return 0
@@ -1416,16 +1416,26 @@ class VarAST(AST):
         code.append(StoreVarOp(self.var, 0))
 
 class ConstAST(AST):
-    def __init__(self, const, value):
+    def __init__(self, const, expr):
         self.const = const
-        self.value = value
+        self.expr = expr
 
     def __repr__(self):
-        return "Const(" + str(self.const) + ", " + str(self.value) + ")"
+        return "Const(" + str(self.const) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
+        code2 = []
+        self.expr.compile(scope, code2)
+        state = State(code2, scope.labels)
+        contexts = list(state.ctxbag.keys())
+        assert len(contexts) == 1
+        ctx = contexts[0]
+        while ctx.pc != len(code2):
+            code2[ctx.pc].eval(state, ctx)
+        v = ctx.pop()
+        print("CONSTANT", self.const, v)
         (lexeme, file, line, column) = self.const
-        scope.names[lexeme] = ("constant", self.value)
+        scope.names[lexeme] = ("constant", (v, file, line, column))
 
 class LValueRule(Rule):
     def parse(self, t):
@@ -1531,8 +1541,7 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = t[2]
             assert lexeme == "=", t[2]
             (ast, t) = NaryRule({";"}).parse(t[3:])
-            assert isinstance(ast, ConstantAST), ast
-            return (ConstAST(const, ast.const), self.skip(token, t))
+            return (ConstAST(const, ast), self.skip(token, t))
         if lexeme == "if":
             alts = []
             while True:
@@ -1883,7 +1892,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
     localStates = { cc.copy() }
     foundInfLoop = False
-    while True:
+    while cc.pc != cc.end:
         # execute one microstep
         steps.append(cc.pc)
 
@@ -1893,11 +1902,8 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             traceback.print_exc()
             sc.failure = True
 
-        if sc.failure:
-            break
-
-        # if we reached the end, remove the context
-        if cc.pc == cc.end:
+        # TODO.  Checking for end twice in this loop seems wrong
+        if sc.failure or cc.pc == cc.end:
             break
 
         # if we're about to do a state change, let other processes
@@ -2023,7 +2029,7 @@ def run(code, labels, invariant, pcs):
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
 
-    if False and not faultyState:
+    if not faultyState:
         # See if there are livelocked states (states from which some process
         # cannot reach the reader or writer critical section)
         bad = set()
@@ -2034,7 +2040,7 @@ def run(code, labels, invariant, pcs):
             for (s, node) in visited.items():
                 for (ctx, edge) in node.edges.items():
                     (next, steps) = edge
-                    if (ctx.name, ctx.tag) == p and (cs in steps):
+                    if ctx.nametag == p and (cs in steps):
                         good.add(next)
                         good.add(s)     # might as well add this now
 

@@ -9,7 +9,7 @@ def main():
     (code, labels) = cxl.compile(sys.stdin, "<stdin>")
     dine = labels["dine"]
     cxl.run(code, labels, invariant,
-        [ (("diner", p), dine) for p in range(1, 6) ])
+        [ (cxl.RecordValue({ "name": "diner", "tag": p}), dine) for p in range(1, 6) ])
 
 if __name__ == "__main__":
     main()
