@@ -383,9 +383,17 @@ This makes precise the concurrency problem that we encountered.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{cs.cxl}
+\verbatiminput{csbarebones.cxl}
 \end{code}
 \caption{A barebones critical section.}
+\label{fig:csbarebones}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{cs.cxl}
+\end{code}
+\caption{CXL model of a critical section.}
 \label{fig:cs}
 \end{figure}
 
@@ -423,7 +431,7 @@ method returns a bag of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 
-Figure~\ref{fig:cs} shows the code.
+Figure~\ref{fig:csbarebones} shows the code.
 The assertion also makes use of the method \texttt{nametag()} that
 returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
@@ -456,9 +464,27 @@ intersection eventually leaves, even if no processes other than $S$ ever
 try to enter the critical section.
 We call this \emph{progress}.
 
-% from any state some process should be able to eventually enter the
-% critical section.  Without the help of any processes that reach ncs
-% (but don't start there).
+In order to detect violations of progress, and other liveness problems in
+algorithms in general, CXL requires that every execution must be
+able to reach a state in which all processes have terminated.
+Clearly, even if mutual exclusion holds in Figure~\ref{fig:csbarebones},
+the spawned processes never terminate.  In order to resolve this, we
+will model processes in critical regions using the framework in
+Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
+critical region more than once, but it can also choose to terminate, even
+without entering the critical region ever.
+Note also that we have dropped the \texttt{@ncs} label: it would serve no
+specific purpose.
+
+\begin{quote}
+Try it out!
+\begin{itemize}
+\item Plug \texttt{while True: pass;;} for entering the critical region
+in Figure~\ref{fig:cs} and run CXL.  It should print a trace
+to a state from which a terminating state cannot be reached.
+\end{itemize}
+\end{quote}
+
 
 \chapter{Naive Attempts at Implementing Critical Sections}
 

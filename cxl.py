@@ -1368,7 +1368,9 @@ class SpawnAST(AST):
         return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        (t, v) = scope.lookup(self.method)
+        tv = scope.lookup(self.method)
+        assert tv != None, ("can't find method", self.method)
+        (t, v) = tv
         assert t == "method"
         self.tag.compile(scope, code)
         self.expr.compile(scope, code)

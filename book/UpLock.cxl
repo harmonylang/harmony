@@ -1,24 +1,18 @@
-def up(self):
-    # Enter critical section
-    while turn == (1 - self):
-        pass;
+def process(self):
+    while choose({ False, True }):
+        # Enter critical section
+        while lock:
+            pass;
+        ;
+        lock = True;
+
+        # Critical section
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+
+        # Leave critical section
+        lock = False;
     ;
-
-    # Critical section
-    @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
-    count = count + 1;
-
-    # Leave critical section
-    turn = 1 - self;
-
-    done[self] = True;
 ;
-turn = 0;
-count = 0;
-done = dict{ 0: False, 1: False };
-spawn up(0), 0;
-spawn up(1), 1;
-while not (done[0] and done[1]):
-    pass;
-;
-assert count == 2, count;
+lock = False;
+spawn process(0), 0;
+spawn process(1), 1;

@@ -1,32 +1,18 @@
-def up(self):
-    # Enter critical section
-    flags[self] = True;
-    if self == 1:
-        while flags[2]:
+def process(self):
+    while choose({ False, True }):
+        # Enter critical section
+        flags[self] = True;
+        while flags[1 - self]:
             pass;
         ;
-    else:
-        while flags[1]:
-            pass;
-        ;
+
+        # Critical section
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+
+        # Leave critical section
+        flags[self] = False;
     ;
-
-    # Critical section
-    @cs: atomic: pass;;
-    count = count + 1;
-
-    # Leave critical section
-    flags[self] = False;
-
-    done[self] = True;
 ;
-flags = dict{ 1: False, 2: False };
-count = 0;
-done = dict{ 1: False, 2: False };
-spawn up(1), 1;
-spawn up(2), 2;
-while not (done[1] and done[2]):
-    pass;
-;
-@finish:
-    assert count == 2, count;
+flags = dict{ 0: False, 1: False };
+spawn process(0), 0;
+spawn process(1), 1;
