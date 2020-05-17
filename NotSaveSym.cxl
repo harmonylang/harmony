@@ -1,7 +1,7 @@
 # symmetric but non-safe solution to mutual exclusion problem
 
 def p(self):
-    while True:
+    while choose({ False, True }):
         @ncs: assert True, True;
         while mutex:
             pass;

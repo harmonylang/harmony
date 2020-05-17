@@ -1972,16 +1972,7 @@ def compile(f, filename):
                     print(file, ":", line)
             lastloc = (file, line)
         print("  ", pc, code[pc])
-
-    mr = scope.names.get("MustReach")
-    if mr == None:
-        pcs = SetValue(set())
-    else:
-        (t, v) = mr
-        assert t == "constant", t
-        (pcs, file, line, column) = v
-
-    return (code, scope.labels, pcs)
+    return (code, scope.labels)
 
 # See if some process other than ctx can reach cs
 def canReach(visited, s, ctx, cs, ncs, checked):
@@ -1996,7 +1987,7 @@ def canReach(visited, s, ctx, cs, ncs, checked):
         return True
     return canReach(visited, nextState, nextContext, pc, checked)
 
-def run(code, labels, invariant, pcs):
+def run(code, labels):
     # Initial state
     state = State(code, labels)
 
@@ -2023,10 +2014,6 @@ def run(code, labels, invariant, pcs):
             continue
         node.expanded = True
 
-
-        if not invariant(state):
-            bad.add(state)
-
         for (ctx, _) in state.ctxbag.items():
             if ctx.pc < ctx.end and isinstance(code[ctx.pc], ChooseOp):
                 choices = ctx.stack[-1]
@@ -2049,68 +2036,32 @@ def run(code, labels, invariant, pcs):
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
-
-    if not faultyState:
-        # See if there are livelocked states (states from which some process
-        # cannot reach the reader or writer critical section)
-        bad = set()
-        for proclabel in pcs.s:
-            p = proclabel.d["process"]
-            cs = labels[proclabel.d["label"]]
-            # First collect all the states in which the process is in the
-            # critical region
-            good = set()
-            for (s, node) in visited.items():
-                for (ctx, edge) in node.edges.items():
-                    (nextState, nextContext, steps) = edge
-                    if ctx.nametag == p and (cs in steps):
-                        good.add(nextState)
-                        good.add(s)     # might as well add this now
-
-            # All the states reachable from good are good too
-            nextgood = good
-            while nextgood != set():
-                newgood = set()
-                for s in nextgood:
-                    for s2 in visited[s].sources.difference(good):
-                        newgood.add(s2)
-                good = good.union(newgood)
-                nextgood = newgood
-            livelocked = set(visited.keys()).difference(good)
-            bad = bad.union(livelocked)
+    elif not faultyState:
+        # See if all processes "can" terminate.  First looks for states where
+        # there are no processes.
+        term = set()
+        for s in visited.keys():
+            if len(s.ctxbag) == 0:
+                term.add(s)
+        # Now find all the states that can reach terminating states.
+        nextgood = term
+        while nextgood != set():
+            newgood = set()
+            for s in nextgood:
+                for s2 in visited[s].sources.difference(term):
+                    newgood.add(s2)
+            term = term.union(newgood)
+            nextgood = newgood
+        bad = set(visited.keys()).difference(term)
         if len(bad) > 0:
-            print("==== Livelock ====", len(bad))
+            print("==== Non-terminating States ====", len(bad))
             print_shortest(visited, bad)
-
-    # Check progress property
-    # First look states where some process is in the critical section
-    # Also keep track of who is in the critical section
-    cs = labels["cs"]
-    incs = set()
-    for s in visited.keys():
-        for ctx in s.ctxbag.keys():
-            if ctx.pc == c:
-                incs.add((s, ctx))
-    # Make sure that from each such state some other process can
-    # eventually enter the critical section
-    bad = set()
-    ncs = labels["ncs"]
-    for (s, ctx) in incs:
-        if not canReach(visited, s, ctx, cs, ncs, set()):
-            bad.add(s)
-    if len(bad) > 0:
-        print("==== No Progress ====", len(bad))
-        print_shortest(visited, bad)
 
     return visited
 
-# check to see if this state is good
-def invariant(state):
-    return True
-
 def main():
-    (code, labels, pcs) = compile(sys.stdin, "<stdin>")
-    run(code, labels, invariant, pcs)
+    (code, labels) = compile(sys.stdin, "<stdin>")
+    run(code, labels)
 
 if __name__ == "__main__":
     main()

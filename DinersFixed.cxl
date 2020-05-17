@@ -12,7 +12,7 @@ const MustReach = {
 };
 
 def diner(which):
-    while True:
+    while choose({ False, True }):
         var left = which;
         var right = (which % N) + 1;
         if left < right:

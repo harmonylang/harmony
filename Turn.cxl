@@ -1,7 +1,6 @@
 def p(self):
-    while True:
-        @ncs: assert True, True;
-        # assert canReachLabel(dict{ .name: "p", .tag: 1 - self }, "cs")
+    while choose({ False, True }):
+        @ncs: pass;
 
         # Enter critical section
         while turn == (1 - self):

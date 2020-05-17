@@ -1,8 +1,7 @@
 # Broken Peterson's algorithm by swapping first two assignments
 
 def p(self):
-    while True:
-        @ncs: assert False, False;
+    while choose({ False, True }):
         turn = 1 - self;
         flags[self] = True;
         while flags[1 - self] and (turn == (1 - self)):

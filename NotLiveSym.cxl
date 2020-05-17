@@ -1,8 +1,7 @@
 # symmetric but non-live solution to mutual exclusion problem
 
 def p(self):
-    while True:
-        @ncs: assert True, True;
+    while choose({ False, True }):
         flags[self] = True;
         while flags[1 - self]:
             pass;

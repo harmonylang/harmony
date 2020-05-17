@@ -1,7 +1,7 @@
 # Peterson's algorithm
 
 def p(self):
-    while True:
+    while choose({ False, True }):
         @ncs: assert True, True;
         flags[self] = True;
         turn = 1 - self;
