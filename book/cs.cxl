@@ -1,3 +1,10 @@
+const MustReach = {
+    dict{
+        .process: dict{ .name: "process", .tag: tag },
+        .label: "cs"
+    } for tag in 0..1
+};
+
 def process(self):
     while True:
         #enter critical section

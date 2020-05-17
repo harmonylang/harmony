@@ -1975,7 +1975,7 @@ def compile(f, filename):
 
     mr = scope.names.get("MustReach")
     if mr == None:
-        pcs = SetValue()
+        pcs = SetValue(set())
     else:
         (t, v) = mr
         assert t == "constant", t
@@ -2070,3 +2070,14 @@ def run(code, labels, invariant, pcs):
             print_shortest(visited, bad)
 
     return visited
+
+# check to see if this state is good
+def invariant(state):
+    return True
+
+def main():
+    (code, labels, pcs) = compile(sys.stdin, "<stdin>")
+    run(code, labels, invariant, pcs)
+
+if __name__ == "__main__":
+    main()

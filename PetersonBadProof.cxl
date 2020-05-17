@@ -1,5 +1,12 @@
 # Peterson's algorithm
 
+const MustReach = {
+    dict{
+        .process: dict{ .name: "p", .tag: tag },
+        .label: "cs"
+    } for tag in 0..1
+};
+
 def p(self):
     while True:
         flags[self] = True;

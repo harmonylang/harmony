@@ -1,5 +1,12 @@
 # Broken Peterson's algorithm by swapping first two assignments
 
+const MustReach = {
+    dict{
+        .process: dict{ .name: "p", .tag: tag },
+        .label: "cs"
+    } for tag in 0..1
+};
+
 def p(self):
     while True:
         turn = 1 - self;
