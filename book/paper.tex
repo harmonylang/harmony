@@ -506,16 +506,10 @@ to a state from which a terminating state cannot be reached.
 
 \begin{figure}
 \begin{code}
-\begin{verbatim}
-==== Livelock ====
-__main__ () [0,35-63]    64 {'flags': {2: False, 1: False}, 'count': 0,
-                                'done': {2: False, 1: False}}
-up       1  [1-13,21-24] 25 {'flags': {2: False, 1: True}, 'count': 0,
-                                'done': {2: False, 1: False}}
-\end{verbatim}
+\verbatiminput{UpTurn.cxl}
 \end{code}
-\caption{Error output of Figure~\ref{fig:upflags}.}
-\label{fig:upflagsoutput}
+\caption{Naive use of turn variable to solve mutual exclusion.}
+\label{fig:upturn}
 \end{figure}
 
 Figure~\ref{fig:uplock} presents a solution based on a \emph{lock}.
@@ -536,8 +530,8 @@ at the same time.
 
 Figure~\ref{fig:upflags} presents a solution based on each process having
 a flag indicating that it is trying to enter the critical section.
-After setting the flag, the process waits until the other process is not
-trying to enter the critical section.
+After setting the flag, the process waits until the other process
+(\texttt{1 - self}) is not trying to enter the critical section.
 If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
 the same time.
