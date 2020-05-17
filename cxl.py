@@ -1983,8 +1983,8 @@ def compile(f, filename):
 
     return (code, scope.labels, pcs)
 
-# See if ctx can reach pc from s
-def canReach(visited, s, ctx, pc, checked):
+# See if some process other than ctx can reach cs
+def canReach(visited, s, ctx, cs, ncs, checked):
     if s in checked:        # check for loop
         return False
     checked.add(s)
@@ -2083,27 +2083,21 @@ def run(code, labels, invariant, pcs):
             print_shortest(visited, bad)
 
     # Check progress property
-    # First look for states where all "p" contexts but one are at label "@ncs".
-    ncs = labels["ncs"]
-    idle = set()
-    for (s, node) in visited.items():
-        notthere = 0
-        pick = None
-        for ctx in s.ctxbag.keys():
-            if ctx.nametag.d["name"] == "p" and ctx.pc != ncs:
-                notthere += 1
-                if notthere > 1:
-                    break
-                pick = ctx
-        if notthere == 1:
-            idle.add((s, pick))
-    bad = set()
+    # First look states where some process is in the critical section
+    # Also keep track of who is in the critical section
     cs = labels["cs"]
-    print("IDLE", len(idle))
-    if len(idle) > 0:
-        for (s, pick) in idle:
-            if not canReach(visited, s, pick, cs, set()):
-                bad.add(s)
+    incs = set()
+    for s in visited.keys():
+        for ctx in s.ctxbag.keys():
+            if ctx.pc == c:
+                incs.add((s, ctx))
+    # Make sure that from each such state some other process can
+    # eventually enter the critical section
+    bad = set()
+    ncs = labels["ncs"]
+    for (s, ctx) in incs:
+        if not canReach(visited, s, ctx, cs, ncs, set()):
+            bad.add(s)
     if len(bad) > 0:
         print("==== No Progress ====", len(bad))
         print_shortest(visited, bad)

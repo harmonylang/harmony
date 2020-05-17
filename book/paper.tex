@@ -449,11 +449,16 @@ two processes being in the critical section.
 What we need now a \emph{liveness property}: we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
-but here we will propose the following informally: if some process $p$ is
-in the critical section but eventually leaves, then some process that
-tries to enter the critical section should eventually be able to do so even
-if $p$ never tries to enter the critical section again.
+but here we will propose the following informally: if some set of processes
+$S$ are trying to enter the critical section, then eventually one process in
+$S$ will enter the critical section if any process already in the
+intersection eventually leaves, even if no processes other than $S$ ever
+try to enter the critical section.
 We call this \emph{progress}.
+
+% from any state some process should be able to eventually enter the
+% critical section.  Without the help of any processes that reach ncs
+% (but don't start there).
 
 \chapter{Naive Attempts at Implementing Critical Sections}
 
