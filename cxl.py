@@ -2083,29 +2083,30 @@ def run(code, labels, invariant, pcs):
             print_shortest(visited, bad)
 
     # Check progress property
-    # First look for states where all contexts are at label "@ncs".
-    print("LABELS", labels)
+    # First look for states where all "p" contexts but one are at label "@ncs".
     ncs = labels["ncs"]
     idle = set()
     for (s, node) in visited.items():
-        all = True
+        notthere = 0
+        pick = None
         for ctx in s.ctxbag.keys():
-            if ctx.pc != ncs:
-                all = False
-                break
-        if all:
-            idle.add(s)
+            if ctx.nametag.d["name"] == "p" and ctx.pc != ncs:
+                notthere += 1
+                if notthere > 1:
+                    break
+                pick = ctx
+        if notthere == 1:
+            idle.add((s, pick))
     bad = set()
     cs = labels["cs"]
+    print("IDLE", len(idle))
     if len(idle) > 0:
-        # Make sure that from each idle state each process can reach "cs"
-        for s in idle:
-            for ctx in s.ctxbag.keys():
-                if not canReach(visited, s, ctx, cs, set()):
-                    bad.add(s)
+        for (s, pick) in idle:
+            if not canReach(visited, s, pick, cs, set()):
+                bad.add(s)
     if len(bad) > 0:
-            print("==== No Progress ====", len(bad))
-            print_shortest(visited, bad)
+        print("==== No Progress ====", len(bad))
+        print_shortest(visited, bad)
 
     return visited
 
