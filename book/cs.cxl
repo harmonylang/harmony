@@ -1,12 +1,6 @@
-const MustReach = {
-    dict{
-        .process: dict{ .name: "process", .tag: tag },
-        .label: "cs"
-    } for tag in 0..1
-};
-
 def process(self):
     while True:
+        @ncs: pass;
         #enter critical section
         @cs: assert (atLabel("cs")) == dict{ nametag(): 1 }, atLabel("cs");
         #exit critical section

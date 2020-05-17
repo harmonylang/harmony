@@ -1,14 +1,7 @@
-const MustReach =
-    {
-        dict{
-            .process: dict{ .name: "p", .tag: tag },
-            .label: "cs"
-        } for tag in 0..1
-    }
-;
-
 def p(self):
     while True:
+        @ncs: assert CanReach(dict{ .name: "p", .tag: 1 - self }, "cs")
+
         # Enter critical section
         while turn == (1 - self):
             pass;

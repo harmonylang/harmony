@@ -404,6 +404,7 @@ entering and exiting the critical section.  In CXL:
 \begin{code}
 \begin{verbatim}
 while True:
+    @ncs: pass; # in non-critical section
     # enter critical section
     @cs: pass;  # in critical section
     # exit critical section
@@ -411,22 +412,46 @@ while True:
 \end{verbatim}
 \end{code}
 
-Here \texttt{@cs} is a \emph{label}, identifying a location in the
-CXL machine code.  The first thing we need to ensure is that there
-cannot be two processes at the critical section.  We would like to
-place an assertion at the \texttt{@cs} label that specifies that
-only the current process can be there.  CXL in fact supports this.
-It has a method \texttt{atLabel($L$)}, where $L$ is the string name
-of a label (in this case, \texttt{"cs"}).  The method returns a
-bag of name tags of processes executing at that label.  The bag is
-represented by a dictionary that maps each element in the bag to the
-number of times the element appears in the bag.
+Here \texttt{@ncs} and \texttt{@cs} are \emph{labels}, each identifying
+a location in the CXL machine code.  The first thing we need to
+ensure is that there cannot be two processes at the critical section.
+We would like to place an assertion at the \texttt{@cs} label that
+specifies that only the current process can be there.  CXL in fact
+supports this.  It has a method \texttt{atLabel($L$)}, where $L$
+is the string name of a label (in this case, \texttt{"cs"}).  The
+method returns a bag of name tags of processes executing at that
+label.  The bag is represented by a dictionary that maps each element
+in the bag to the number of times the element appears in the bag.
 
 Figure~\ref{fig:cs} shows the code.
 The assertion also makes use of the method \texttt{nametag()} that
 returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
 there is no code yet for entering and exiting the critical section.
+
+However, mutual exclusion by itself easy to ensure.
+For example, we could insert the following code to enter the
+critical section:
+\begin{code}
+\begin{verbatim}
+while True: pass;;
+\end{verbatim}
+\end{code}
+This code will surely prevent two or more processes from being
+at label \texttt{cs} at the same time.
+But it does so by preventing \emph{any} process from reaching
+the critical section.
+The point is that we need another property besides mutual exclusion.
+
+Mutual exclusion is an example of a \emph{safety property}, a
+property that ensures that \emph{nothing bad will happen}, in this case
+two processes being in the critical section. Now
+we need a \emph{liveness property}: we want to ensure that
+\emph{eventually something good will happen}.
+There are various way of specifying this,
+but here we will propose the following informally: when nobody is in the
+critical section, then any process should be able to move forward and
+enter the critical section.  We call this \emph{progress}.
 
 \chapter{Naive Attempts at Implementing Critical Sections}
 
