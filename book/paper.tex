@@ -486,13 +486,13 @@ to a state from which a terminating state cannot be reached.
 \end{quote}
 
 
-\chapter{Naive Attempts at Implementing Critical Sections}
+\chapter{Na\"{\i}ve Attempts at Implementing Critical Sections}
 
 \begin{figure}
 \begin{code}
 \verbatiminput{UpLock.cxl}
 \end{code}
-\caption{Naive implementation of a lock.}
+\caption{Na\"{\i}ve implementation of a lock.}
 \label{fig:uplock}
 \end{figure}
 
@@ -500,7 +500,7 @@ to a state from which a terminating state cannot be reached.
 \begin{code}
 \verbatiminput{UpFlags.cxl}
 \end{code}
-\caption{Naive use of flags to solve mutual exclusion.}
+\caption{Na\"{\i}ve use of flags to solve mutual exclusion.}
 \label{fig:upflags}
 \end{figure}
 
@@ -508,11 +508,12 @@ to a state from which a terminating state cannot be reached.
 \begin{code}
 \verbatiminput{UpTurn.cxl}
 \end{code}
-\caption{Naive use of turn variable to solve mutual exclusion.}
+\caption{Na\"{\i}ve use of turn variable to solve mutual exclusion.}
 \label{fig:upturn}
 \end{figure}
 
-Figure~\ref{fig:uplock} presents a solution based on a \emph{lock}.
+Figure~\ref{fig:uplock} presents a solution based on a na\"{\i}ve implementation
+of a \emph{lock}.
 The idea is that the lock is a baton that at most one process can own at
 a time.
 Initially the lock is not owned, indicated by lock being \texttt{False}.
@@ -523,14 +524,16 @@ releases the lock by setting it back to \texttt{False}.
 
 Unfortunately, if we run the program, we find that the assertion still
 fails.  Diagnosing the problem, we see that the \texttt{lock} variable
-suffers from the same problem as the \texttt{count} variable: operations
+suffers from the same problem as the \texttt{count} variable
+in Figure~\ref{fig:inc}: operations
 on it consist of several instructions are divisible.  It is thus possible
 for both processes to believe the lock is available and obtain the lock
 at the same time.
 
 Figure~\ref{fig:upflags} presents a solution based on each process having
 a flag indicating that it is trying to enter the critical section.
-After setting the flag, the process waits until the other process
+A process can write its own flag and read the flag of its peer.
+After setting its flag, the process waits until the other process
 (\texttt{1 - self}) is not trying to enter the critical section.
 If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
@@ -538,5 +541,30 @@ the same time.
 However, it has a different problem called livelock: if both try to
 enter the critical section at the same time, they may end up waiting for
 one another.
+
+The final na\"{\i}ve solution is based on a variable called \texttt{turn}
+that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
+enter the critical section, while process $1-i$ has to wait.  When done,
+process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
+opportunity to enter.
+The solution has the nice properties that it satifies mutual exclution and,
+moreover, processes 0 and 1 alternate entering the critical section.
+The problem with the solution is
+that it violates the \emph{progress} property:
+if process~$i$ terminates instead of entering the critical section when it
+is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
+turn.
+
+\chapter{Peterson's Algorithm}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{../Peterson.cxl}
+\end{code}
+\caption{Peterson's Algorithm}
+\label{fig:peterson}
+\end{figure}
+
+\chapter{Spinlock}
 
 \end{document}

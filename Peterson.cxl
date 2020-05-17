@@ -1,19 +1,23 @@
 # Peterson's algorithm
 
-def p(self):
+def process(self):
     while choose({ False, True }):
-        @ncs: assert True, True;
+        # Enter critical section
         flags[self] = True;
         turn = 1 - self;
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
+
+        # Critical section
         @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+
+        # Leave critical section
         flags[self] = False;
     ;
 ;
 flags = dict{ 0: False, 1: False };
 turn = 0;
 
-spawn p(0), 0;
-spawn p(1), 1;
+spawn process(0), 0;
+spawn process(1), 1;
