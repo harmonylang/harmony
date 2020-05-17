@@ -9,6 +9,7 @@ const MustReach = {
 
 def p(self):
     while True:
+        @ncs: assert True, True;
         flags[self] = True;
         turn = 1 - self;
         while flags[1 - self] and (turn == (1 - self)):

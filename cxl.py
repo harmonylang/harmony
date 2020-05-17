@@ -1772,7 +1772,7 @@ class Node:
         self.ctx = ctx          # the context that made the hop from the parent state
         self.choice = choice    # maybe None if no choice was made
         self.steps = steps      # list of microsteps
-        self.edges = {}         # forward edges (ctx -> state)
+        self.edges = {}         # forward edges (ctx -> <nextState, nextContext, steps>)
         self.sources = set()    # backward edges
         self.expanded = False   # lazy deletion
 
@@ -1948,7 +1948,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.steps = steps
         next.choice = choice
         todo.insert(0, sc)
-    node.edges[ctx] = (sc, steps)
+    node.edges[ctx] = (sc, cc, steps)
     next.sources.add(state)
 
     if foundInfLoop:
@@ -1982,6 +1982,19 @@ def compile(f, filename):
         (pcs, file, line, column) = v
 
     return (code, scope.labels, pcs)
+
+# See if ctx can reach pc from s
+def canReach(visited, s, ctx, pc, checked):
+    if s in checked:        # check for loop
+        return False
+    checked.add(s)
+    next = visited[s].edges.get(ctx)
+    if next == None:        # check for process termination
+        return False
+    (nextState, nextContext, steps) = next
+    if pc in steps:
+        return True
+    return canReach(visited, nextState, nextContext, pc, checked)
 
 def run(code, labels, invariant, pcs):
     # Initial state
@@ -2049,9 +2062,9 @@ def run(code, labels, invariant, pcs):
             good = set()
             for (s, node) in visited.items():
                 for (ctx, edge) in node.edges.items():
-                    (next, steps) = edge
+                    (nextState, nextContext, steps) = edge
                     if ctx.nametag == p and (cs in steps):
-                        good.add(next)
+                        good.add(nextState)
                         good.add(s)     # might as well add this now
 
             # All the states reachable from good are good too
@@ -2067,6 +2080,31 @@ def run(code, labels, invariant, pcs):
             bad = bad.union(livelocked)
         if len(bad) > 0:
             print("==== Livelock ====", len(bad))
+            print_shortest(visited, bad)
+
+    # Check progress property
+    # First look for states where all contexts are at label "@ncs".
+    print("LABELS", labels)
+    ncs = labels["ncs"]
+    idle = set()
+    for (s, node) in visited.items():
+        all = True
+        for ctx in s.ctxbag.keys():
+            if ctx.pc != ncs:
+                all = False
+                break
+        if all:
+            idle.add(s)
+    bad = set()
+    cs = labels["cs"]
+    if len(idle) > 0:
+        # Make sure that from each idle state each process can reach "cs"
+        for s in idle:
+            for ctx in s.ctxbag.keys():
+                if not canReach(visited, s, ctx, cs, set()):
+                    bad.add(s)
+    if len(bad) > 0:
+            print("==== No Progress ====", len(bad))
             print_shortest(visited, bad)
 
     return visited

@@ -1,20 +1,14 @@
 # Broken Peterson's algorithm by swapping first two assignments
 
-const MustReach = {
-    dict{
-        .process: dict{ .name: "p", .tag: tag },
-        .label: "cs"
-    } for tag in 0..1
-};
-
 def p(self):
     while True:
+        @ncs: assert False, False;
         turn = 1 - self;
         flags[self] = True;
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs: atomic: pass;;   # critical section
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
         flags[self] = False;
     ;
 ;
