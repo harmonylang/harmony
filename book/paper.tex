@@ -441,14 +441,14 @@ This code will surely prevent two or more processes from being
 at label \texttt{cs} at the same time.
 But it does so by preventing \emph{any} process from reaching
 the critical section.
-The point is that we need another property besides mutual exclusion.
+We clearly need another property besides mutual exclusion.
 
 Mutual exclusion is an example of a \emph{safety property}, a
 property that ensures that \emph{nothing bad will happen}, in this case
-two processes being in the critical section. Now
-we need a \emph{liveness property}: we want to ensure that
+two processes being in the critical section.
+What we need now a \emph{liveness property}: we want to ensure that
 \emph{eventually something good will happen}.
-There are various way of specifying this,
+There are various possible liveness properties we could use,
 but here we will propose the following informally: when nobody is in the
 critical section, then any process should be able to move forward and
 enter the critical section.  We call this \emph{progress}.
