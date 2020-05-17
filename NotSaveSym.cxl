@@ -2,11 +2,12 @@
 
 def p(self):
     while True:
+        @ncs: assert True, True;
         while mutex:
             pass;
         ;
         mutex = True;
-        @cs: atomic: pass;;   # critical section
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
         mutex = False;
     ;
 ;

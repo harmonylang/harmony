@@ -4,10 +4,11 @@ import synch;
 
 def p():
     while True:
+        @ncs: assert True, True;
         while tas&(mylock):
             pass;
         ;
-        @cs: atomic: pass;;   # critical section
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
         mylock = False;
     ;
 ;
