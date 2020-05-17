@@ -449,8 +449,8 @@ two processes being in the critical section.
 What we need now a \emph{liveness property}: we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
-but here we will propose the following informally: when nobody is in the
-critical section, then any process should be able to move forward and
+but here we will propose the following informally: when no process is in the
+critical section, then any process that tries should be able to
 enter the critical section.  We call this \emph{progress}.
 
 \chapter{Naive Attempts at Implementing Critical Sections}
