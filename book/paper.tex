@@ -86,13 +86,12 @@ an integer number as argument.  Each method has a variable called
 \texttt{result} that eventually contains the result of the
 method (there is no \texttt{return} statement in CXL).  The method
 also has a variable called \texttt{n} containing the value of the
-argument.  The $x..y$ notation generates a set containing the numbers
-from~$x$ to~$y$ (inclusive).  The last two lines in the program are
+argument.  The \texttt{x..y} notation generates a set containing the numbers
+from~\texttt{x} to~\texttt{y} (inclusive).  The last two lines in the program are
 the most interesting.
-They assign to $x$ some unspecified value in the range $0..N$, and then
-verifies the \texttt{assert} statement that $\mathtt{triangle}(x)$
+They assign to \texttt{x} some unspecified value in the range \texttt{0..N},
+and then verifies the \texttt{assert} statement that $\mathtt{triangle}(x)$
 equals $x(x+1)/2$.
-If the verification fails, the value of $x$ is reported.
 
 ``Running'' this CXL program will try all possible executions, which
 includes all possible values for $x$.  Essentially, the $\texttt{choose}(S)$
@@ -214,7 +213,7 @@ if it works or not.
 \begin{verbatim}
 Up.cxl:1 def process(self):
    0 Jump 12
-   1 Frame ('process', 'Up.cxl', 1, 5) [('self', '<stdin>', 1, 13)] 11
+   1 Frame ('process', 'Up.cxl', 1, 5) [('self', 'Up.cxl', 1, 13)] 11
 Up.cxl:2     count = count + 1;
    2 Constant (1, 'Up.cxl', 2, 21)
    3 Load ('count', 'Up.cxl', 2, 13)
@@ -242,9 +241,9 @@ Up.cxl:5 count = 0;
 \begin{verbatim}
 ==== Safety violation ====
 __main__/() [0,12-31]           32 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-process/0   [1-5]                6 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-process/1   [1-10]              11 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
-process/0   [6-10]              11 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+process /0  [1-5]                6 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+process /1  [1-10]              11 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
+process /0  [6-10]              11 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 __main__/() [32-34,37-42,44-48] 49 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 \end{verbatim}
 \end{code}
@@ -277,6 +276,12 @@ a program counter, a stack of CXL values,
 and a single mutable general purpose \emph{register} that contains a CXL.
 \end{itemize}
 
+A name tag consists of the name of the main method of the process,
+along with the tag specified in the \texttt{spawn} statement.
+In Figure~\ref{fig:inc}, the created processes have name tags
+\texttt{process/0} and \texttt{process/1}.  The main process that
+starts the execution has name tag \texttt{\_\_main\_\_/()}.
+
 The state of a process is called a \emph{context}: it contains the value of
 its name tag, program counter, stack, and register.
 The state of the CXL machine
@@ -285,8 +290,7 @@ contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
 The initial state of the CXL memory is the empty tuple, \texttt{()}.
 The context bag has an initial context in it with name tag
-\texttt{dict\{ .name: .\_\_main\_\_, .tag: () \}}, pc 0,
-register \texttt{()}, and an empty stack.
+\texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 (In CXL, dictionary values are enclosed by \texttt{dict\{} and \texttt{\}}.)
 Each machine instruction updates the state in some way.
 Figure~\ref{fig:incstate} shows an example of a reachable state for 
@@ -736,10 +740,60 @@ Bonus question!
 \end{itemize}
 \end{quote}
 
-\chapter{Using CXL Methods}
+\chapter{CXL Methods and Dictionaries}
+
+CXL methods look and feel much the same as Python methods, but there
+are some differences you should be aware of.
+First, as already noted, there is no \texttt{return} statement.
+A CXL method returns when the last statement in the method has
+completed.
+
+Like in Python, CXL methods have local variables.  You have already
+seen two types of local variables.
+First, the arguments to the method are variables, although read-only.
+Second, the variable \texttt{result} can be assigned to
+change the default return value of a method, which is \texttt{()}.
+You can declare additional local variables to hold intermediate
+results.  For example, you can
+declare a local variable $x$ with initial value 3 as follows:
+\begin{code}
+\begin{verbatim}
+var x = 3;
+\end{verbatim}
+\end{code}
+The initial value is mandatory.
+Unless a variable is declared this way, it will be considered
+a global shared variable.
+The local variables of a method cannot be accessed other than by
+the method itself.
+
+A method \texttt{m} with argument \texttt{a} is invoked in its
+most basic form as follows (assigning the result to \texttt{x}).
+\begin{code}
+\begin{verbatim}
+var x = m a;
+\end{verbatim}
+\end{code}
+That's right, no parentheses are required.  In fact, if you invoke
+\texttt{m(a)}, the argument is \texttt{(a)}, which is the same
+as \texttt{a}.
+If you invoke \texttt{m()}, the argument is \texttt{()},
+which is the empty tuple.  If you invoke
+If you invoke \texttt{m(a, b)}, the argument is \texttt{(a, b)},
+the tuple consisting of values \texttt{a} and \texttt{b}.
+You have already seen examples of this: the expression
+\texttt{atLabel.cs} invokes method \texttt{atLabel} with
+argument \texttt{.cs}.
+
+If you want to invoke a method but are not interested in its result,
+you have to use a \texttt{call} statement like so:
+\begin{code}
+\begin{verbatim}
+call m a;
+\end{verbatim}
+\end{code}
 
 \chapter{Spinlock}
-
 Figure~\ref{fig:uplock} showed a faulty attempt at solving mutual exclusion.
 
 \end{document}
