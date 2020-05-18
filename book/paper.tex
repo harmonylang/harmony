@@ -128,8 +128,6 @@ processes running in parallel while sharing variables.
 Figure~\ref{fig:inc} presents a simple example.  The program defines a
 method \texttt{process} that takes a parameter called \texttt{self}.
 It also initializes two shared variables \texttt{count} and \texttt{done}.
-Variable \texttt{done} is initialized with a dictionary that maps both 1 and 2
-to \texttt{False}.
 The \texttt{process()} method increments \texttt{count} and sets \texttt{done[self]}
 to \texttt{True}.
 Next the program spawns two processes, each invoking \texttt{process}.
@@ -294,6 +292,7 @@ The initial state of the CXL memory is the empty tuple, \texttt{()}.
 The context bag has an initial context in it with name tag
 \texttt{dict\{ .name: "\_\_main\_\_", .tag: () \}}, pc 0,
 register \texttt{()}, and an empty stack.
+(In CXL, dictionary values are enclosed by \texttt{dict\{} and \texttt{\}}.)
 Each machine instruction updates the state in some way.
 Figure~\ref{fig:incstate} shows an example of a reachable state for 
 the program in Figure~\ref{fig:inc}.
