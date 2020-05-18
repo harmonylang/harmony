@@ -218,7 +218,14 @@ class DictValue(Value):
         self.d = d
 
     def __repr__(self):
-        return str(self.d)
+        if len(self.d) == 0:
+            return "()"
+        result = ""
+        for (k, v) in self.d.items():
+            if result != "":
+                result += ", ";
+            result += str(k) + ":" + str(v)
+        return "dict{ " + result + " }"
 
     def __hash__(self):
         hash = 0
@@ -239,12 +246,13 @@ class DictValue(Value):
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
 
+# TODO.  Name values should just be strings (and strings should be DictValues)
 class NameValue(Value):
     def __init__(self, name):
         self.name = name
 
     def __repr__(self):
-        return self.name
+        return "." + self.name
 
     def __hash__(self):
         return self.name.__hash__()
@@ -1624,7 +1632,7 @@ class Context:
         self.end = end
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
-        self.vars = DictValue({})
+        self.vars = novalue
         self.pid = None      # assigned lazily
 
     def __repr__(self):
@@ -1693,7 +1701,7 @@ class State:
     def __init__(self, code, labels):
         self.code = code
         self.labels = labels
-        self.vars = DictValue({})
+        self.vars = novalue
         self.ctxbag = {
             Context(DictValue({"name": "__main__", "tag": novalue}), 0, len(code)) : 1
         }

@@ -1,32 +1,18 @@
 # Peterson's algorithm
 
-const MustReach = {
-    dict{
-        .process: dict{ .name: "p", .tag: tag },
-        .label: "cs"
-    } for tag in 0..1
-};
-
-def p(self):
+def process(self):
     while True:
         flags[self] = True;
         turn = 1 - self;
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs:
-            assert (not (flags[1 - self])) or (turn == self),
-                dict{
-                    "self": self,
-                    "other": flags[1 - self],
-                    "turn": turn
-                }
-            ;
+        @cs: assert (not (flags[1 - self])) or (turn == self);
         flags[self] = False;
     ;
 ;
 flags = [ False, False ];
 turn = 0;
 
-spawn p(0), 0;
-spawn p(1), 1;
+spawn process(0), 0;
+spawn process(1), 1;
