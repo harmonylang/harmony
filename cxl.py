@@ -79,7 +79,9 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
+    return s in [ "^",
+        # "-",
+        "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
 
 def isbinaryop(s):
     return s in [
@@ -212,6 +214,19 @@ class PcValue(Value):
 
     def __eq__(self, other):
         return isinstance(other, PcValue) and other.pc == self.pc
+
+class OpValue(Value):
+    def __init__(self, op):
+        self.op = op
+
+    def __repr__(self):
+        return "Op(" + str(self.op) + ")"
+
+    def __hash__(self):
+        return self.op.__hash__()
+
+    def __eq__(self, other):
+        return isinstance(other, OpValue) and other.op == self.op
 
 class DictValue(Value):
     def __init__(self, d):
@@ -562,6 +577,18 @@ class DictOp(Op):
         context.push(DictValue(d))
         context.pc += 1
 
+class UnaryOp(Op):
+    def __init__(self, op):
+        self.op = op
+
+    def __repr__(self):
+        return "Unary " + str(self.op)
+
+    def eval(self, state, context):
+        (lexeme, file, line, column) = self.op
+        context.push(OpValue(lexeme))
+        context.pc += 1
+
 class NaryOp(Op):
     def __init__(self, op, n):
         self.op = op
@@ -570,44 +597,13 @@ class NaryOp(Op):
     def __repr__(self):
         return "Nary " + str(self.op) + " " + str(self.n)
 
-    def atLabel(self, state, label):
-        pc = state.labels[label]
-        d = {}
-        for (ctx, cnt) in state.ctxbag.items():
-            if ctx.pc == pc:
-                c = d.get(ctx.nametag)
-                d[ctx.nametag] = 1 if c == None else (c + 1)
-        return DictValue(d)
-
     def eval(self, state, context):
         (op, file, line, column) = self.op
         if self.n == 1:
             e = context.pop()
-            if op == "^":
-                assert isinstance(e, AddressValue), e
-                context.push(state.iget(e.indexes))
-            elif op == "-":
+            if op == "-":
                 assert isinstance(e, int), e
                 context.push(-e)
-            elif op == "not":
-                assert isinstance(e, bool), e
-                context.push(not e)
-            elif op == "atLabel":
-                assert isinstance(e, str), e
-                context.push(self.atLabel(state, e))
-            elif op == "cardinality":
-                assert isinstance(e, SetValue), e
-                context.push(len(e.s))
-            elif op == "nametag":
-                assert isinstance(e, DictValue), e
-                assert len(e) == 0
-                context.push(context.nametag)
-            elif op == "len":
-                assert isinstance(e, DictValue), e
-                context.push(len(e.d))
-            elif op == "keys":
-                assert isinstance(e, DictValue), e
-                context.push(SetValue(set(e.d.keys())))
             else:
                 assert False, self
         elif self.n == 2:
@@ -695,11 +691,50 @@ class ApplyOp(Op):
     def __repr__(self):
         return "Apply"
 
+    def atLabel(self, state, label):
+        pc = state.labels[label]
+        d = {}
+        for (ctx, cnt) in state.ctxbag.items():
+            if ctx.pc == pc:
+                c = d.get(ctx.nametag)
+                d[ctx.nametag] = 1 if c == None else (c + 1)
+        return DictValue(d)
+
     def eval(self, state, context):
         method = context.pop()
         e = context.pop()
         if isinstance(method, DictValue):
             context.push(method.d[e])
+            context.pc += 1
+        elif isinstance(method, OpValue):
+            op = method.op
+            if op == "^":
+                assert isinstance(e, AddressValue), e
+                context.push(state.iget(e.indexes))
+            elif op == "-":
+                assert isinstance(e, int), e
+                context.push(-e)
+            elif op == "not":
+                assert isinstance(e, bool), e
+                context.push(not e)
+            elif op == "atLabel":
+                assert isinstance(e, str), e
+                context.push(self.atLabel(state, e))
+            elif op == "cardinality":
+                assert isinstance(e, SetValue), e
+                context.push(len(e.s))
+            elif op == "nametag":
+                assert isinstance(e, DictValue), e
+                assert len(e) == 0
+                context.push(context.nametag)
+            elif op == "len":
+                assert isinstance(e, DictValue), e
+                context.push(len(e.d))
+            elif op == "keys":
+                assert isinstance(e, DictValue), e
+                context.push(SetValue(set(e.d.keys())))
+            else:
+                assert False, self
             context.pc += 1
         else:
             assert isinstance(method, PcValue), method
@@ -750,6 +785,16 @@ class ConstantAST(AST):
 
     def compile(self, scope, code):
         code.append(ConstantOp(self.const))
+
+class UnaryAST(AST):
+    def __init__(self, op):
+        self.op = op
+
+    def __repr__(self):
+        return str(self.op)
+
+    def compile(self, scope, code):
+        code.append(UnaryOp(self.op))
 
 class NameAST(AST):
     def __init__(self, name):
@@ -1013,13 +1058,6 @@ class NaryRule(Rule):
         self.closers = closers
 
     def parse(self, t):
-        (lexeme, file, line, column) = t[0]
-        if isunaryop(lexeme):
-            op = t[0]
-            (ast, t) = BasicExpressionRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            assert lexeme in self.closers, t[0]
-            return (NaryAST(op, [ast]), t)
         (ast, t) = ExpressionRule().parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme in self.closers:
@@ -1132,6 +1170,8 @@ class BasicExpressionRule(Rule):
         (lexeme, file, line, column) = t[0]
         if isnumber(lexeme):
             return (ConstantAST((int(lexeme), file, line, column)), t[1:])
+        if isunaryop(lexeme):
+            return (UnaryAST(t[0]), t[1:])
         if lexeme == "False":
             return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
@@ -1199,7 +1239,12 @@ class ChooseAST(AST):
 
 class ExpressionRule(Rule):
     def parse(self, t):
-        (ast, t) = BasicExpressionRule().parse(t)
+        # Special treatment of unary minus
+        (lexeme, file, line, column) = t[0]
+        if lexeme == "-":
+            (ast, t) = (UnaryAST(t[0]), t[1:])
+        else:
+            (ast, t) = BasicExpressionRule().parse(t)
         if t != []:
             (arg, t) = BasicExpressionRule().parse(t)
             if arg != False:
