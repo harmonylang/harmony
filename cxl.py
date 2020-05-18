@@ -1161,6 +1161,9 @@ class TupleRule(Rule):
         d = { ConstantAST((0, file, line, column)): self.ast }
         i = 1
         while lexeme == ",":
+            (lexeme, file, line, column) = t[1]
+            if lexeme == self.closer:
+                return (DictAST(d), t[2:])
             (next, t) = NaryRule({ self.closer, "," }).parse(t[1:])
             d[ConstantAST((i, file, line, column))] = next
             i += 1
