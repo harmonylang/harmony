@@ -59,7 +59,7 @@ dynamically typed and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
 \item Every statement in CXL must be terminated by a semicolon
-(even \textbf{while} statements and \textbf{def} statements);
+(even \texttt{while} statements and \texttt{def} statements);
 in Python semicolons are optional and rarely used;
 \item Correct indentation in CXL is encouraged but optional;
 \item Python is object-oriented; CXL is not;
@@ -212,6 +212,7 @@ if it works or not.
 \end{quote}
 
 \chapter{The CXL Machine}
+\label{ch:cxlmachine}
 
 \begin{figure}
 \begin{code}
@@ -570,6 +571,62 @@ problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
 Figures~\ref{fig:upflags} and~\ref{fig:upturn}, and is presented
 in Figure~\ref{fig:peterson}.
+A process first indicates its interest in entering the critical section
+by setting its flag.
+It then politely gives way to the other process should it also want to
+enter the critical section---if both do so at the same time one will
+win because writes to memory in CXL are atomic.
+The process continues to be polite, waiting in a \texttt{while} loop
+until either the other process is no where near the critical section
+or has given way.
+Running the algorithm though CXL shows that it satisfies both mutual
+exclusion and progress.
+
+Why does it work?  We will focus here on how one might go about proving
+mutual exclusion for an algorithm such as Peterson's.
+For that, we have to understand a little bit more about how the CXL
+machine works.
+In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
+at any point of time the CXL machine is in a specific state.
+Everytime a process executes a CXL machine instruction, the
+state changes (if only because the program counter of the process is
+updated).  We call that a \emph{step}.  Steps in CXL are atomic.
+
+The CXL machine starts in an initial state in which there is only
+one process and its program counter is~0.  A \emph{trace} is a
+sequence of steps starting from the initial state.  When making a
+step, there are two sources of non-determinism in CXL.  One is when
+in some state more than one process can make a step.  The other is
+when a process executes a \texttt{choose} operation and there is
+more than one choice.
+
+A good way to prove mutual exclusion is through induction on
+the number of steps.
+In such a proof, we need a so-called
+\emph{inductive invariant} $I$, which is some predicate that holds
+over the state.  We need $I$ to satisfy the following:
+\begin{itemize}
+\item (ME1) $I$ should imply mutual exclusion.
+\item (ME2) $I$ should hold in the initial state.
+\item (ME3) If $I$ holds over some state $s$, and some process in the
+state takes a step, then $I$ should also hold in the resulting state.
+\end{itemize}
+
+One candidate for such an invariant is mutual exclusion itself.
+After all, it certainly satisfies ME1 and ME2.
+And as CXL has already determined, mutual exclusion is an invariant:
+it holds over every \emph{reachable state}.
+Unfortunately, it is not an \emph{inductive} invariant and therefore does
+not satisfy ME3.
+To see why, we need to consider an \emph{unreachable} state.
+It is easy to construct one: let process~0 be at label \texttt{@cs}
+and process~1 at the start of the \texttt{while} loop.
+Also imagine that in this particular state $\mathtt{turn} = 1$.  Now let
+process process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
+process~1 will break out of the while loop and also enter the critical
+section, violating mutual exclusion.
+Doing a inductive proof with an invariant that is not inductive is usually
+much harder than doing one with an invariant that is.
 
 \begin{figure}
 \begin{code}
@@ -578,6 +635,105 @@ in Figure~\ref{fig:peterson}.
 \caption{Peterson's Algorithm with Inductive Invariant}
 \label{fig:petersonproof}
 \end{figure}
+
+Let $C(\mathtt{self}) = \mathtt{flags}[1 - \mathtt{self}] \land
+\mathtt{turn} = 1 - \mathtt{self}$, that is, the condition on the \texttt{while} loop.
+For Peterson's Algorithm, an inductive invariant that works well is:
+if process $i$ is label \texttt{@cs} (i.e., process $i$ is in the critical section),
+then $C(i)$ does not hold or process $1-i$ is executing after setting
+$\mathtt{flags}[i]$ but still before setting \texttt{turn} to $1-i$.
+Let's call it $I_p(i)$.
+
+Figure~\ref{fig:petersonproof} formalizes $I_p(i)$ in CXL.
+The figure uses the CXL \texttt{atomic} statement for the first time.
+For now, all you need to know is that it turns the embedded statement into
+a single atomic step.  The label \texttt{@gate} thus refers exactly to
+this statement.  You can run Figure~\ref{fig:petersonproof} to determine
+that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
+
+To see that $I_p(i)$ implies mutual exclusion, suppose not.  Then
+when both process 0 and process 1 are in the critical section, the
+following must hold:
+$(\lnot C(0) \lor \mathtt{process}(1)@gate) \land
+ (\lnot C(1) \lor \mathtt{process}(0)@gate)$.
+We know that both flags are set.
+We also know that neither process 1 nor process 2 is at label \texttt{@gate}
+(because they are both at label \texttt{@cs}),
+so this simplifies to $(\lnot C(0)) \land (\lnot C(1))$.
+So we conclude that $\mathtt{turn} = 0 \land \mathtt{turn} = 1$, a
+logical impossibility.  Thus $I_p(i)$ satisfies ME1.
+
+$I_p(i)$ satisfies ME2 trivially, because in the initial state no process
+is in the critical section.
+
+Finally we have to show that $I_p(i)$ satisfies ME3. Without loss of
+generality, suppose $i=0$ (a benefit from the fact that the algorithm is
+symmetric for both processes).  We have to show that if we are in a state
+in which $I_p(0)$ holds, then any step will result in a state in which
+$I_p(0)$ continues to hold.
+Since $I_p(0)$ holds, process 0 is at label \texttt{@cs}.  If process 0
+were to take a step, then in the next state process 0 would be no longer
+at that label and $I_p(0)$ would hold trivially over the next state.
+Therefore we only need to consider a step by process 1.
+
+From $I_p(0)$ we know that one of the following cases must hold before
+process 1 takes a step:
+\begin{itemize}
+\item \texttt{flags[1] = False};
+\item \texttt{turn = 0};
+\item process 1 is at label \texttt{@gate}.
+\end{itemize}
+
+Let us consider each of these cases.
+In the first case, if process 1 takes a step, there are two possibilities:
+either $flags[1]$ will still be \texttt{False} (in which case the first case
+continues to hold), or $flags[1]$ will be \texttt{True}
+and process 1 will be at label \texttt{@gate} (in which case the third case
+will hold).
+We know that process 1 never sets \texttt{turn} to 1, so
+if the second case holds before the step, it will also hold after the step.
+Finally, if process 1 is at label \texttt{@gate} before the step, then after
+the step \texttt{turn} will equal 0, and therefore the second case will hold
+after the step.
+
+We have now demonstrated mutual exclusion in Peterson's Algorithm in two
+different ways: one by letting CXL explore all possible executions, the
+other using an inductive invariant and proof by induction.  The former
+is certainly easier, but it does not provide intuition for why the
+algorithm works.  The second provides much more insight.  We therefore
+encourage to include inductive invariants in your CXL code.
+
+A cool anecdote is the following.  When the author of CXL had to teach
+Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
+page.  The page claimed that the following predicate was invariant:
+if process $i$ is in the critical section, then $\lnot C(i)$ (i.e.,
+$I_p(i)$ without the disjunct that process $1-i$ is at label \texttt{gate}).
+To demonstrate that this predicate is not invariant, you can remove the
+disjunct from Figure~\ref{fig:petersonproof} and run it to get a
+counterexample.
+
+This anecdote suggests the following.  If you need to do an induction
+proof of an algorithm, you have to come up with an inductive invariant.
+Before trying to prove the algorithm, you can check that the predicate is
+at least invariant by testing it using CXL.  Doing so could potentially
+avoid wasting your time on a proof that will not work because the
+predicate is not invariant, and therefore not an inductive invariant either.
+
+To finish the story, the author of CXL fixed the Wikipedia page, but there
+is another cool story.  Years later a colleague of the author, teaching
+the same course, asked if the first two assignments (setting \texttt{flags[self]})
+to \texttt{True} and \texttt{turn} to \texttt{1 - self}) can be reversed.
+After all, they are different variables assigned independent values---in a
+sequential program one could surely swap the two assignments.
+
+\begin{quote}
+What do you think?
+\begin{itemize}
+\item See if you can figure out for yourself if the two assignments can be
+reversed.  Then run the program in Figure~\ref{fig:peterson} after reversing
+the two assignments and see what happens.
+\end{itemize}
+\end{quote}
 
 \chapter{Spinlock}
 
