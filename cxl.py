@@ -246,22 +246,6 @@ class DictValue(Value):
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
 
-# TODO.  Name values should just be strings (and strings should be DictValues)
-class NameValue(Value):
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        return "." + self.name
-
-    def __hash__(self):
-        return self.name.__hash__()
-
-    def __eq__(self, other):
-        if not isinstance(other, NameValue):
-            return False
-        return self.name == other.name
-
 class SetValue(Value):
     def __init__(self, s):
         self.s = s
