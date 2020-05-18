@@ -14,7 +14,7 @@ def vHat():
     ;
 ;
 def reader():
-    while True:
+    while choose({ False, True }):
         call P &(mutex);
         if nwritersEntered > 0:
             nreadersWaiting = nreadersWaiting + 1;
@@ -32,7 +32,7 @@ def reader():
     ;
 ;
 def writer():
-    while True:
+    while choose({ False, True }):
         call P &(mutex);
         if (nreadersEntered + nwritersEntered) > 0:
             nwritersWaiting = nwritersWaiting + 1;

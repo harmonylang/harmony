@@ -3,7 +3,7 @@
 import synch;
 
 def reader():
-    while True:
+    while choose({ False, True }):
         call lock&(rlock);
         if nreaders == 0:
             call lock&(wlock);
@@ -22,7 +22,7 @@ def reader():
     ;
 ;
 def writer():
-    while True:
+    while choose({ False, True }):
         call lock&(wlock);
 
         @wcs: atomic: pass;;   # critical section
