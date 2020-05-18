@@ -652,12 +652,12 @@ this statement.  You can run Figure~\ref{fig:petersonproof} to determine
 that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
 
 To see that $I_p(i)$ implies mutual exclusion, suppose not.  Then
-when both process 0 and process 1 are in the critical section, the
+when both process~0 and process~1 are in the critical section, the
 following must hold:
 $(\lnot C(0) \lor \mathtt{process}(1)@gate) \land
  (\lnot C(1) \lor \mathtt{process}(0)@gate)$.
 We know that both flags are set.
-We also know that neither process 1 nor process 2 is at label \texttt{@gate}
+We also know that neither process~0 nor process~1 is at label \texttt{@gate}
 (because they are both at label \texttt{@cs}),
 so this simplifies to $(\lnot C(0)) \land (\lnot C(1))$.
 So we conclude that $\mathtt{turn} = 0 \land \mathtt{turn} = 1$, a
@@ -671,28 +671,28 @@ generality, suppose $i=0$ (a benefit from the fact that the algorithm is
 symmetric for both processes).  We have to show that if we are in a state
 in which $I_p(0)$ holds, then any step will result in a state in which
 $I_p(0)$ continues to hold.
-Since $I_p(0)$ holds, process 0 is at label \texttt{@cs}.  If process 0
-were to take a step, then in the next state process 0 would be no longer
+Since $I_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
+were to take a step, then in the next state process~0 would be no longer
 at that label and $I_p(0)$ would hold trivially over the next state.
-Therefore we only need to consider a step by process 1.
+Therefore we only need to consider a step by process~1.
 
 From $I_p(0)$ we know that one of the following cases must hold before
-process 1 takes a step:
+process~1 takes a step:
 \begin{itemize}
 \item \texttt{flags[1] = False};
 \item \texttt{turn = 0};
-\item process 1 is at label \texttt{@gate}.
+\item process~1 is at label \texttt{@gate}.
 \end{itemize}
 
 Let us consider each of these cases.
-In the first case, if process 1 takes a step, there are two possibilities:
+In the first case, if process~1 takes a step, there are two possibilities:
 either $flags[1]$ will still be \texttt{False} (in which case the first case
 continues to hold), or $flags[1]$ will be \texttt{True}
-and process 1 will be at label \texttt{@gate} (in which case the third case
+and process~1 will be at label \texttt{@gate} (in which case the third case
 will hold).
-We know that process 1 never sets \texttt{turn} to 1, so
+We know that process~1 never sets \texttt{turn} to 1, so
 if the second case holds before the step, it will also hold after the step.
-Finally, if process 1 is at label \texttt{@gate} before the step, then after
+Finally, if process~1 is at label \texttt{@gate} before the step, then after
 the step \texttt{turn} will equal 0, and therefore the second case will hold
 after the step.
 
@@ -735,6 +735,15 @@ the two assignments and see what happens.
 \end{itemize}
 \end{quote}
 
+\begin{quote}
+Bonus question!
+\begin{itemize}
+\item Can you generalize Peterson's algorithm to more than two processes?
+\end{itemize}
+\end{quote}
+
 \chapter{Spinlock}
+
+Figure~\ref{fig:uplock} showed a faulty attempt at solving mutual exclusion.
 
 \end{document}
