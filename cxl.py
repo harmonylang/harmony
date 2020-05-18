@@ -206,6 +206,16 @@ def strValue(v):
         return "." + v
     assert False, v
 
+def keyValue(v):
+    if isinstance(v, bool):
+        return (0, v)
+    if isinstance(v, int):
+        return (1, v)
+    if isinstance(v, str):
+        return (2, v)
+    assert isinstance(v, Value)
+    return v.key()
+
 class Value:
     pass
 
@@ -222,6 +232,9 @@ class PcValue(Value):
     def __eq__(self, other):
         return isinstance(other, PcValue) and other.pc == self.pc
 
+    def key(self):
+        return (3, self.pc)
+
 class OpValue(Value):
     def __init__(self, op):
         self.op = op
@@ -235,6 +248,9 @@ class OpValue(Value):
     def __eq__(self, other):
         return isinstance(other, OpValue) and other.op == self.op
 
+    def key(self):
+        return (4, self.pc)
+
 class DictValue(Value):
     def __init__(self, d):
         self.d = d
@@ -243,10 +259,11 @@ class DictValue(Value):
         if len(self.d) == 0:
             return "()"
         result = ""
-        for (k, v) in self.d.items():
+        keys = sorted(self.d.keys(), key=lambda x: keyValue(x))
+        for k in keys:
             if result != "":
                 result += ", ";
-            result += strValue(k) + ":" + strValue(v)
+            result += strValue(k) + ":" + strValue(self.d[k])
         return "dict{ " + result + " }"
 
     def __hash__(self):
@@ -264,6 +281,9 @@ class DictValue(Value):
 
     def __len__(self):
         return len(self.d.keys())
+
+    def key(self):
+        return (5, self.d.__hash__())
 
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
@@ -290,6 +310,9 @@ class SetValue(Value):
             return False
         return self.s == other.s
 
+    def key(self):
+        return (6, self.s.__hash__())
+
 class AddressValue(Value):
     def __init__(self, indexes):
         self.indexes = indexes
@@ -307,6 +330,9 @@ class AddressValue(Value):
         if not isinstance(other, AddressValue):
             return False
         return self.indexes == other.indexes
+
+    def key(self):
+        return (7, self.indexes)
 
 class Op:
     pass
