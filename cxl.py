@@ -1183,8 +1183,10 @@ class BasicExpressionRule(Rule):
         if lexeme == "True":
             return (ConstantAST((True, file, line, column)), t[1:])
         if lexeme[0] == '"':
-            return (ConstantAST((lexeme[1:-1], file, line, column)), t[1:])
-        if lexeme == ".":
+            return (DictAST({ ConstantAST((i-1, file, line, column)):
+                        ConstantAST((lexeme[i:i+1], file, line, column))
+                                for i in range(1, len(lexeme) - 1) }), t[1:])
+        if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
             assert isname(lexeme), t[1]
             return (ConstantAST((lexeme, file, line, column)), t[2:])
