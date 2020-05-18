@@ -7,4 +7,4 @@ def triangle(n):   # computes the n'th triangle number
     ;
 ;
 x = choose(0..N);
-assert triangle(x) == ((x * (x + 1)) / 2), x;
+assert triangle(x) == ((x * (x + 1)) / 2);

@@ -1,5 +1,3 @@
-# Peterson's algorithm
-
 def process(self):
     while choose({ False, True }):
         # Enter critical section
@@ -10,7 +8,7 @@ def process(self):
         ;
 
         # Critical section
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 };
 
         # Leave critical section
         flags[self] = False;
@@ -18,6 +16,5 @@ def process(self):
 ;
 flags = dict{ 0: False, 1: False };
 turn = 0;
-
 spawn process(0), 0;
 spawn process(1), 1;

@@ -7,7 +7,7 @@ def process(self):
         lock = True;
 
         # Critical section
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+        @cs: assert (atLabel "cs") == dict{ nametag(): 1 };
 
         # Leave critical section
         lock = False;

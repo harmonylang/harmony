@@ -14,4 +14,4 @@ spawn down(), 0;
 while not (upDone and downDone):
     pass;
 ;
-assert count == 0, count;
+assert count == 0;

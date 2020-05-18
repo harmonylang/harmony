@@ -9,4 +9,4 @@ spawn up(2), 2;
 while not (done[1] and done[2]):
     pass;
 ;
-assert count == 2, count;
+assert count == 2;

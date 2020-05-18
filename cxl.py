@@ -420,21 +420,25 @@ class ChooseOp(Op):
         context.pc += 1
 
 class AssertOp(Op):
-    def __init__(self, token):
+    def __init__(self, token, exprthere):
         self.token = token
+        self.exprthere = exprthere
 
     def __repr__(self):
         return "Assert"
 
     def eval(self, state, context):
-        expr = context.pop()
+        if self.exprthere:
+            expr = context.pop()
         cond = context.pop()
         assert isinstance(cond, bool)
         if not cond:
-            print("Assertion failed", self.token, expr)
+            if self.exprthere:
+                print("Assertion failed", self.token, expr)
+            else:
+                print("Assertion failed", self.token)
             state.failure = True
-        else:
-            context.pc += 1
+        context.pc += 1
 
 class PopOp(Op):
     def __init__(self):
@@ -1316,8 +1320,9 @@ class AssertAST(AST):
     def compile(self, scope, code):
         code.append(AtomicIncOp())
         self.cond.compile(scope, code)
-        self.expr.compile(scope, code)
-        code.append(AssertOp(self.token))
+        if self.expr != None:
+            self.expr.compile(scope, code)
+        code.append(AssertOp(self.token, self.expr != None))
         code.append(AtomicDecOp())
 
 class MethodAST(AST):
@@ -1615,8 +1620,13 @@ class StatementRule(Rule):
             assert isname(lexeme), t[1]
             return (ImportAST(t[1]), self.skip(token, t[2:]))
         if lexeme == "assert":
-            (cond, t) = NaryRule({","}).parse(t[1:])
-            (expr, t) = NaryRule({";"}).parse(t[1:])
+            (cond, t) = NaryRule({",", ";"}).parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            if lexeme == ",":
+                (expr, t) = NaryRule({";"}).parse(t[1:])
+            else:
+                assert lexeme == ";", t[0]
+                expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
 
