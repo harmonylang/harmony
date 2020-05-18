@@ -3,8 +3,7 @@
 import synch;
 
 def p():
-    while True:
-        @ncs: assert True, True;
+    while choose({ False, True }):
         while tas&(mylock):
             pass;
         ;

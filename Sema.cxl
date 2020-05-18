@@ -3,9 +3,9 @@
 import synch;
 
 def p():
-    while True:
+    while choose({ False, True }):
         call P&(mysema);
-        @cs: atomic: pass;;   # critical section
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
         call V&(mysema);
     ;
 ;
