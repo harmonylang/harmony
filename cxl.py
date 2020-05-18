@@ -548,9 +548,9 @@ class SetOp(Op):
         context.push(SetValue(s))
         context.pc += 1
 
-class RecordOp(Op):
+class DictOp(Op):
     def __repr__(self):
-        return "Record"
+        return "Dict"
 
     def eval(self, state, context):
         nitems = context.pop()
@@ -785,7 +785,7 @@ class SetAST(AST):
         code.append(ConstantOp((len(self.collection), None, None, None)))
         code.append(SetOp())
 
-class RecordAST(AST):
+class DictAST(AST):
     def __init__(self, record):
         self.record = record
 
@@ -797,7 +797,7 @@ class RecordAST(AST):
             v.compile(scope, code)
             k.compile(scope, code)
         code.append(ConstantOp((len(self.record), None, None, None)))
-        code.append(RecordOp())
+        code.append(DictOp())
 
 class SetComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -849,14 +849,14 @@ class SetComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
-class RecordComprehensionAST(AST):
+class DictComprehensionAST(AST):
     def __init__(self, value, var, expr):
         self.value = value
         self.var = var
         self.expr = expr
 
     def __repr__(self):
-        return "RecordComprehension(" + str(self.var) + ")"
+        return "DictComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
         (var, file, line, column) = self.var
@@ -899,7 +899,73 @@ class RecordComprehensionAST(AST):
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
-        code.append(RecordOp())
+        code.append(DictOp())
+
+class TupleComprehensionAST(AST):
+    def __init__(self, value, var, expr):
+        self.value = value
+        self.var = var
+        self.expr = expr
+
+    def __repr__(self):
+        return "TupleComprehension(" + str(self.var) + ")"
+
+    def compile(self, scope, code):
+        (var, file, line, column) = self.var
+
+        # Evaluate the set and store in a temporary variable
+        # TODO.  Should store as sorted list for determinism
+        self.expr.compile(scope, code)
+        S = ("%set", file, line, column)
+        code.append(StoreVarOp(S, 0))
+
+        # Also store the size
+        N = ("%size", file, line, column)
+        code.append(LoadVarOp(S))
+        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(StoreVarOp(N, 0))
+
+        # Create an index variable, initialized to 0
+        code.append(ConstantOp((0, file, line, column)))
+        I = ("%index", file, line, column)
+        code.append(StoreVarOp(I, 0))
+
+        # Now generate the code:
+        #   while X != {}:
+        #       var := oneof X
+        #       X := X - var
+        #       push value
+        #       push index
+        #       increment index
+        pc = len(code)
+        code.append(LoadVarOp(S))
+        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
+        tst = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(LoadVarOp(S))
+        code.append(SplitOp())  
+        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(self.var, 0))
+
+        # TODO.  Figure out how to do this better
+        ns = Scope(scope)
+        ns.names[var] = ("variable", self.var)
+
+        # push value and index
+        self.value.compile(ns, code)
+        code.append(LoadVarOp(I))
+
+        # increment index
+        code.append(ConstantOp((1, file, line, column)))
+        code.append(LoadVarOp(I))
+        code.append(NaryOp(("+", file, line, column), 2))
+        code.append(StoreVarOp(I, 0))
+
+        code.append(JumpOp(pc))
+        code[tst] = JumpCondOp(False, len(code))
+        code.append(LoadVarOp(N))
+        code.append(DictOp())
 
 # N-ary operator
 class NaryAST(AST):
@@ -978,7 +1044,7 @@ class SetComprehensionRule(Rule):
         (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (SetComprehensionAST(self.value, name, expr), t[1:])
 
-class RecordComprehensionRule(Rule):
+class DictComprehensionRule(Rule):
     def __init__(self, value):
         self.value = value
 
@@ -989,7 +1055,21 @@ class RecordComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         assert lexeme == "in", t[1]
         (expr, t) = NaryRule({"}"}).parse(t[2:])
-        return (RecordComprehensionAST(self.value, name, expr), t[1:])
+        return (DictComprehensionAST(self.value, name, expr), t[1:])
+
+class TupleComprehensionRule(Rule):
+    def __init__(self, ast, closer):
+        self.ast = ast
+        self.closer = closer
+
+    def parse(self, t):
+        name = t[0]
+        (lexeme, file, line, column) = name
+        assert isname(lexeme), name
+        (lexeme, file, line, column) = t[1]
+        assert lexeme == "in", t[1]
+        (expr, t) = NaryRule({"]"}).parse(t[2:])
+        return (TupleComprehensionAST(self.ast, name, expr), t[1:])
 
 class SetRule(Rule):
     def parse(self, t):
@@ -1010,7 +1090,7 @@ class SetRule(Rule):
                 return (SetAST(s), t[1:])
             assert lexeme == ",", t[0]
 
-class RecordRule(Rule):
+class DictRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         assert lexeme == "dict{", t[0]
@@ -1020,13 +1100,13 @@ class RecordRule(Rule):
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
                 assert d == {}, d
-                return RecordComprehensionRule(key).parse(t[1:])
+                return DictComprehensionRule(key).parse(t[1:])
             assert lexeme == ":", t[0]
             (value, t) = NaryRule({",", "}"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme in { ",", "}" }, t[0]
             d[key] = value
-        return (RecordAST(d), t[1:])
+        return (DictAST(d), t[1:])
 
 class TupleRule(Rule):
     def __init__(self, ast, closer):
@@ -1036,7 +1116,7 @@ class TupleRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         if lexeme == "for":
-            return ListComprehensionRule(self.ast, closer).parse(t[1:])
+            return TupleComprehensionRule(self.ast, self.closer).parse(t[1:])
         d = { ConstantAST((0, file, line, column)): self.ast }
         i = 1
         while lexeme == ",":
@@ -1045,7 +1125,7 @@ class TupleRule(Rule):
             i += 1
             (lexeme, file, line, column) = t[0]
         assert lexeme == self.closer, t[0]
-        return (RecordAST(d), t[1:])
+        return (DictAST(d), t[1:])
 
 class BasicExpressionRule(Rule):
     def parse(self, t):
@@ -1067,7 +1147,7 @@ class BasicExpressionRule(Rule):
         if lexeme == "{":
             return SetRule().parse(t)
         if lexeme == "dict{":
-            return RecordRule().parse(t)
+            return DictRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (lexeme, file, line, column) = t[1]
