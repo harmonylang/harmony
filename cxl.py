@@ -296,7 +296,8 @@ class SetValue(Value):
         if len(self.s) == 0:
             return "{}"
         result = ""
-        for v in self.s:
+        vals = sorted(self.s, key=lambda x: keyValue(x))
+        for v in vals:
             if result != "":
                 result += ", ";
             result += strValue(v)
