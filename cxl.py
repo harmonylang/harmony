@@ -865,7 +865,8 @@ class SetComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(UnaryOp(("cardinality", file, line, column)))
+        code.append(ApplyOp())
         code.append(StoreVarOp(N, 0))
 
         # Now generate the code:
@@ -915,7 +916,8 @@ class DictComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(UnaryOp(("cardinality", file, line, column)))
+        code.append(ApplyOp())
         code.append(StoreVarOp(N, 0))
 
         # Now generate the code:
@@ -967,7 +969,8 @@ class TupleComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(UnaryOp(("cardinality", file, line, column)))
+        code.append(ApplyOp())
         code.append(StoreVarOp(N, 0))
 
         # Create an index variable, initialized to 0
@@ -1381,7 +1384,8 @@ class ForAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(UnaryOp(("cardinality", file, line, column)))
+        code.append(ApplyOp())
         code.append(StoreVarOp(N, 0))
 
         pc = len(code)      # top of loop
