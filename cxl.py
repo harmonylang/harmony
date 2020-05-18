@@ -477,9 +477,14 @@ class FrameOp(Op):
         context.push(context.vars)
         if self.args == []:
             context.vars = DictValue({ "result": novalue })
-        else:
+        elif len(self.args) == 1:
             (lexeme, file, line, column) = self.args[0]
             context.vars = DictValue({ "result": novalue, lexeme: arg })
+        else:
+            context.vars = DictValue({ "result": novalue })
+            for i in range(len(self.args)):
+                (lexeme, file, line, column) = self.args[i]
+                context.vars.d[lexeme] = arg.d[i]
         context.pc += 1
 
 class ReturnOp(Op):
@@ -1458,11 +1463,9 @@ class MethodAST(AST):
         scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
         ns = Scope(scope)
-        if self.args == []:
-            arg = None
-        else:
-            (arg, afile, aline, acolumn) = self.args[0]
-            ns.names[arg] = ("variable", self.args[0])
+        for arg in self.args:
+            (lexeme, afile, aline, acolumn) = arg
+            ns.names[lexeme] = ("variable", arg)
         ns.names["result"] = ("variable", ("result", file, line, column))
         self.stat.compile(ns, code)
         code.append(ReturnOp())
@@ -2143,7 +2146,7 @@ def run(code, labels):
         cnt += 1
         # if cnt % 10000 == 0 :
         #    print(state)
-        print(" ", cnt, "#states =", len(visited.keys()), "diameter =", node.len, "queue =", len(todo), end="     \r")
+        print(" ", "#states =", cnt, "diameter =", node.len, "queue =", len(todo), end="     \r")
         if node.expanded:
             continue
         node.expanded = True

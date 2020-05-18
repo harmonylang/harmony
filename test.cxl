@@ -1,4 +1,4 @@
 def sum(x, y):
-    result = x + y;
+    result = x - y;
 ;
-assert sum(1, 2) == 3;
+assert sum(1, 2) == -1;
