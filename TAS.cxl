@@ -8,7 +8,7 @@ def p():
         while tas&(mylock):
             pass;
         ;
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
         mylock = False;
     ;
 ;

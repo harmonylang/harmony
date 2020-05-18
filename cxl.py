@@ -63,6 +63,7 @@ def isreserved(s):
         "import",
         "in",
         "keys",
+        "len",
         "nametag",
         "not",
         "or",
@@ -78,7 +79,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "cardinality", "nametag", "not", "keys" ]
+    return s in [ "^", "-", "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
 
 def isbinaryop(s):
     return s in [
@@ -199,16 +200,6 @@ def lexer(s, file):
 class Value:
     pass
 
-class NoValue(Value):
-    def __repr__(self):
-        return "()"
-
-    def __hash__(self):
-        return 0
-
-    def __eq__(self, other):
-        return isinstance(other, NoValue)
-
 class PcValue(Value):
     def __init__(self, pc):
         self.pc = pc
@@ -222,7 +213,7 @@ class PcValue(Value):
     def __eq__(self, other):
         return isinstance(other, PcValue) and other.pc == self.pc
 
-class RecordValue(Value):
+class DictValue(Value):
     def __init__(self, d):
         self.d = d
 
@@ -236,7 +227,7 @@ class RecordValue(Value):
         return hash
 
     def __eq__(self, other):
-        if not isinstance(other, RecordValue):
+        if not isinstance(other, DictValue):
             return False
         if len(self.d.keys()) != len(other.d.keys()):   # for efficiency
             return False
@@ -244,6 +235,9 @@ class RecordValue(Value):
 
     def __len__(self):
         return len(self.d.keys())
+
+# TODO.  Is there a better way than making this global?
+novalue = DictValue({})
 
 class NameValue(Value):
     def __init__(self, name):
@@ -475,10 +469,10 @@ class FrameOp(Op):
         arg = context.pop()
         context.push(context.vars)
         if self.arg == None:
-            context.vars = RecordValue({ "result": NoValue() })
+            context.vars = DictValue({ "result": novalue })
         else:
             (lexeme, file, line, column) = self.arg
-            context.vars = RecordValue({ "result": NoValue(), lexeme: arg })
+            context.vars = DictValue({ "result": novalue, lexeme: arg })
         context.pc += 1
 
 class ReturnOp(Op):
@@ -503,7 +497,7 @@ class SpawnOp(Op):
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = frame.name
-        ctx = Context(RecordValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
+        ctx = Context(DictValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -573,21 +567,7 @@ class RecordOp(Op):
             k = context.pop()
             v = context.pop()
             d[k] = v
-        context.push(RecordValue(d))
-        context.pc += 1
-
-class TupleOp(Op):
-    def __init__(self, nitems):
-        self.nitems = nitems
-
-    def __repr__(self):
-        return "Tuple " + str(self.nitems)
-
-    def eval(self, state, context):
-        t = []
-        for i in range(self.nitems):
-            t.append(context.pop())
-        context.push(tuple(t))
+        context.push(DictValue(d))
         context.pc += 1
 
 class NaryOp(Op):
@@ -605,7 +585,7 @@ class NaryOp(Op):
             if ctx.pc == pc:
                 c = d.get(ctx.nametag)
                 d[ctx.nametag] = 1 if c == None else (c + 1)
-        return RecordValue(d)
+        return DictValue(d)
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
@@ -627,10 +607,14 @@ class NaryOp(Op):
                 assert isinstance(e, SetValue), e
                 context.push(len(e.s))
             elif op == "nametag":
-                assert isinstance(e, NoValue), e
+                assert isinstance(e, DictValue), e
+                assert len(e) == 0
                 context.push(context.nametag)
+            elif op == "len":
+                assert isinstance(e, DictValue), e
+                context.push(len(e.d))
             elif op == "keys":
-                assert isinstance(e, RecordValue), e
+                assert isinstance(e, DictValue), e
                 context.push(SetValue(set(e.d.keys())))
             else:
                 assert False, self
@@ -722,7 +706,7 @@ class ApplyOp(Op):
     def eval(self, state, context):
         method = context.pop()
         e = context.pop()
-        if isinstance(method, RecordValue):
+        if isinstance(method, DictValue):
             context.push(method.d[e])
             context.pc += 1
         else:
@@ -741,19 +725,6 @@ class SetExpandOp(Op):
         for e in v.s:
             context.push(e)
         context.push(len(v.s))
-        context.pc += 1
-
-class TupleExpandOp(Op):
-    def __repr__(self):
-        return "TupleExpand"
-
-    def eval(self, state, context):
-        v = context.pop()
-        assert isinstance(v, tuple)
-        n = len(v)
-        for i in range(n):
-            context.push(v[n - i - 1])
-        context.push(n)
         context.pc += 1
 
 class IterOp(Op):
@@ -1065,6 +1036,25 @@ class RecordRule(Rule):
             d[key] = value
         return (RecordAST(d), t[1:])
 
+class TupleRule(Rule):
+    def __init__(self, ast, closer):
+        self.ast = ast
+        self.closer = closer
+
+    def parse(self, t):
+        (lexeme, file, line, column) = t[0]
+        if lexeme == "for":
+            return ListComprehensionRule(self.ast, closer).parse(t[1:])
+        d = { ConstantAST((0, file, line, column)): self.ast }
+        i = 1
+        while lexeme == ",":
+            (next, t) = NaryRule({ self.closer, "," }).parse(t[1:])
+            d[ConstantAST((i, file, line, column))] = next
+            i += 1
+            (lexeme, file, line, column) = t[0]
+        assert lexeme == self.closer, t[0]
+        return (RecordAST(d), t[1:])
+
 class BasicExpressionRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -1091,9 +1081,13 @@ class BasicExpressionRule(Rule):
             (lexeme, file, line, column) = t[1]
             if lexeme == closer:
                 return (ConstantAST(
-                    (NoValue(), file, line, column)), t[2:])
-            (ast, t) = NaryRule({closer}).parse(t[1:])
-            return (ast, t[1:])
+                    (novalue, file, line, column)), t[2:])
+            (ast, t) = NaryRule({closer, ",", "for"}).parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            if lexeme != closer:
+                return TupleRule(ast, closer).parse(t)
+            else:
+                return (ast, t[1:])
         if lexeme == "&(":
             (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1630,7 +1624,7 @@ class Context:
         self.end = end
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
-        self.vars = RecordValue({})
+        self.vars = DictValue({})
         self.pid = None      # assigned lazily
 
     def __repr__(self):
@@ -1683,7 +1677,7 @@ class Context:
             v = val
         d = record.d.copy()
         d[indexes[0]] = v
-        return RecordValue(d)
+        return DictValue(d)
 
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
@@ -1699,9 +1693,9 @@ class State:
     def __init__(self, code, labels):
         self.code = code
         self.labels = labels
-        self.vars = RecordValue({})
+        self.vars = DictValue({})
         self.ctxbag = {
-            Context(RecordValue({"name": "__main__", "tag": NoValue()}), 0, len(code)) : 1
+            Context(DictValue({"name": "__main__", "tag": novalue}), 0, len(code)) : 1
         }
         self.failure = False
 
@@ -1750,7 +1744,7 @@ class State:
             v = val
         d = record.d.copy()
         d[indexes[0]] = v
-        return RecordValue(d)
+        return DictValue(d)
 
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)

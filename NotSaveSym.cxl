@@ -7,7 +7,7 @@ def p(self):
             pass;
         ;
         mutex = True;
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
         mutex = False;
     ;
 ;

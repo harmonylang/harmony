@@ -7,11 +7,11 @@ def process(self):
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 }, atLabel("cs");
+        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
         flags[self] = False;
     ;
 ;
-flags = dict{ 0: False, 1: False };
+flags = [ False, False ];
 turn = 0;
 atomic:
     spawn process(0), 0;

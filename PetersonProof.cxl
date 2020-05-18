@@ -11,14 +11,14 @@ def process(self):
 
         # Critical section
         @cs: assert (not (flags[1 - self] and (turn == (1 - self))))
-                    or ((atLabel "gate") == dict{nametags[1 - self] : 1})
+                    or ((atLabel.gate) == dict{nametags[1 - self] : 1})
              ;
 
         # Leave critical section
         flags[self] = False;
     ;
 ;
-flags = dict{ 0: False, 1: False };
+flags = [ False, False ];
 turn = 0;
 nametags = dict{ dict{ .name: "process", .tag: tag } for tag in 0..1 };
 spawn process(0), 0;

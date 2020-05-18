@@ -2,7 +2,7 @@ def process(self):
     while True:
         @ncs: pass;
         #enter critical section
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 };
+        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
         #exit critical section
     ;
 ;

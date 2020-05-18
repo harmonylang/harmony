@@ -25,7 +25,7 @@ def p(self):
         flags[self] = False;
     ;
 ;
-flags = dict{ 0: False, 1: False };
+flags = [ False, False ];
 turn = 0;
 
 spawn p(0), 0;

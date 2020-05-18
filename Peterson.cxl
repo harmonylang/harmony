@@ -8,13 +8,13 @@ def process(self):
         ;
 
         # Critical section
-        @cs: assert (atLabel "cs") == dict{ nametag(): 1 };
+        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
 
         # Leave critical section
         flags[self] = False;
     ;
 ;
-flags = dict{ 0: False, 1: False };
+flags = [ False, False ];
 turn = 0;
 spawn process(0), 0;
 spawn process(1), 1;
