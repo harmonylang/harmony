@@ -475,6 +475,7 @@ class FrameOp(Op):
     def eval(self, state, context):
         arg = context.pop()
         context.push(context.vars)
+        assert len(self.args) == 1 or len(self.args) == len(arg.d), (self.args, arg)
         if self.args == []:
             context.vars = DictValue({ "result": novalue })
         elif len(self.args) == 1:
