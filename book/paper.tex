@@ -207,6 +207,7 @@ if it works or not.
 \end{quote}
 
 \chapter{CXL Values}
+\label{ch:cxlvalues}
 
 CXL programs manipulates CXL values.
 CXL values are recursively defined:
@@ -840,6 +841,27 @@ the tuple consisting of values \texttt{a} and \texttt{b}.
 You have already seen examples of this: the expression
 \texttt{atLabel.cs} invokes method \texttt{atLabel} with
 argument \texttt{.cs}.
+
+You may note that all this looks familiar.  Indeed, the syntax
+is the same as that for dictionaries (see Chapter~\ref{ch:cxlvalues}).
+Both dictionaries and methods map CXL values to CXL values,
+and their syntax is indistinguishable.
+If \texttt{f} is either a method or a
+dictionary, and \texttt{x} is an arbitrary CXL value, then
+then \texttt{f x}, \texttt{f(x)}, and \texttt{f[x]} are all
+the same expression in CXL.
+
+CXL is not an object-oriented language like Python is.  In Python
+you can pass a reference to an object to a method, and that method
+can then update the object.  In CXL, it is also sometimes convenient
+to have a method update a shared variable specified as an argument.
+For this (as well as some other uses), CXL supports \emph{pointers}
+to shared variables.
+If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
+(the parentheses are mandatory) is a pointer to \texttt{x}
+(also known as the \emph{address} of \texttt{x}.
+Conversely, if \texttt{p} is a pointer to a shared variable, then the
+expression \texttt{\^{}p} is the value of the shared variable.
 
 If you want to invoke a method but are not interested in its result,
 you have to use a \texttt{call} statement like so:
