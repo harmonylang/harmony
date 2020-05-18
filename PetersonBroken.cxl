@@ -7,7 +7,7 @@ def process(self):
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;
-        @cs: assert (atLabel.cs) == dict{ nametag(): 1 };
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
         flags[self] = False;
     ;
 ;
