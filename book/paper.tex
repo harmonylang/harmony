@@ -152,7 +152,8 @@ underlying architecture are atomic---in fact they are.)
 
 What is going on is that the CXL program is compiled to machine instructions,
 and it is the machine instructions that are executed by the underlying
-machine.  The details of this appear in the next chapter, but suffice it to
+machine.  The details of this appear in the chapter~\ref{ch:cxlmachine},
+but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
 increment or decrement values in memory locations.
@@ -204,6 +205,66 @@ be fixed.
 Can you think of a fix to the program?  You can try it out and see
 if it works or not.
 \end{quote}
+
+\chapter{CXL Values}
+
+CXL programs manipulates CXL values.
+CXL values are recursively defined:
+they include booleans (\texttt{False} and \texttt{True}),
+integers (but not floating point numbers),
+strings (enclosed by double quotes),
+sets of CXL values,
+and dictionaries that map CXL values to other CXL values.
+
+Another type of CXL value is the \emph{atom}.  You have already
+seen them: the names of constants, variables, and methods are
+all atoms.  An atom is denoted using a period followed by the
+name.  For example, the atom for the \texttt{process} method
+is denoted \texttt{.process}.
+
+CXL makes extensive use of dictionaries.  Their syntax and properties
+are a little different from Python.
+A dictionary maps keys to values.
+Unlike Python, any CXL value can be a key, including another
+dictionary.
+If \texttt{d} is a dictionary, and \texttt{k} is a key, then the
+following expression retrieves the CXL value that $k$ maps to:
+\begin{code}
+\begin{verbatim}
+d k
+\end{verbatim}
+\end{code}
+This is unfamiliar, but in CXL square brackets can be used in the
+same way as parentheses, so you can express it in the more familiar
+form:
+\begin{code}
+\begin{verbatim}
+d[k]
+\end{verbatim}
+\end{code}
+However, if the key is an atom, say \texttt{.count}, then you
+can write \texttt{d.count} instead of having to write
+\texttt{d[.count]} (both will work).
+
+Tuples are special forms of dictionaries where the keys are
+the indexes into the tuple.  For example, the tuple
+\texttt{(5, False)} is the same CXL value as
+\texttt{dict\{ 0: 5, 1: False \}}.
+The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
+As in Python, you can create singleton tuples by adding an
+extra ",". For example, \texttt{(1,)}.
+
+Again, square brackets and parentheses work the same in CXL, so
+\texttt{[a, b, c]} (which looks like a Python list)
+is the same as \texttt{(a, b, c)} (which looks like a Python tuple),
+which in turn is the same as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
+So if \texttt{x == [ False, True ]},
+then \texttt{x[0] == False} and \texttt{x[1] == True}.
+
+Dictionaries have two handy unary operators.  If \texttt{d} is a
+dictionary, then \texttt{keys d} (or equivalently \texttt{keys(d)})
+returns the set of keys and \texttt{len d} returns the size of
+this set.
 
 \chapter{The CXL Machine}
 \label{ch:cxlmachine}
@@ -258,11 +319,7 @@ The CXL machine is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional machines such as hardware
 with memory and CPUs and virtual machines such as the Java Virtual Machine.
 
-Instead of bits and bytes, a CXL machine manipulates \emph{CXL values}.
-CXL values are recursively defined: they include booleans, integers, strings,
-sets of CXL values, and \emph{dictionaries} that map CXL values to other CXL
-values.
-
+Instead of bits and bytes, a CXL machine manipulates CXL values.
 A CXL machine has the following components:
 \begin{itemize}
 \item Code:  This is an immutable and finite list of CXL machine instructions,
@@ -291,7 +348,6 @@ be in the same state.
 The initial state of the CXL memory is the empty tuple, \texttt{()}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
-(In CXL, dictionary values are enclosed by \texttt{dict\{} and \texttt{\}}.)
 Each machine instruction updates the state in some way.
 Figure~\ref{fig:incstate} shows an example of a reachable state for 
 the program in Figure~\ref{fig:inc}.
@@ -424,8 +480,8 @@ a location in the CXL machine code.  The first thing we need to
 ensure is that there cannot be two processes at the critical section.
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.  CXL in fact
-supports this.  It has a method \texttt{atLabel($L$)}, where $L$
-is the string name of a label (in this case, \texttt{"cs"}).  The
+supports this.  It has a method \texttt{atLabel $L$}, where $L$
+is the atom of the label (in this case, \texttt{.cs}).  The
 method returns a bag of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
@@ -740,7 +796,7 @@ Bonus question!
 \end{itemize}
 \end{quote}
 
-\chapter{CXL Methods and Dictionaries}
+\chapter{CXL Methods and Pointers}
 
 CXL methods look and feel much the same as Python methods, but there
 are some differences you should be aware of.
