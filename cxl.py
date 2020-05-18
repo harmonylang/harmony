@@ -1334,21 +1334,21 @@ class MethodAST(AST):
         pc = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(None)       # going to plug in a Frame op here
+        (lexeme, file, line, column) = self.name
+        scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
         ns = Scope(scope)
         if self.arg == None:
             arg = None
         else:
-            (arg, file, line, column) = self.arg
+            (arg, afile, aline, acolumn) = self.arg
             ns.names[arg] = ("variable", self.arg)
-        (lexeme, file, line, column) = self.name
         ns.names["result"] = ("variable", ("result", file, line, column))
         self.stat.compile(ns, code)
         code.append(ReturnOp())
 
         code[pc+0] = JumpOp(len(code))
         code[pc+1] = FrameOp(self.name, self.arg, len(code) - 1)
-        scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
 class CallAST(AST):
     def __init__(self, expr):

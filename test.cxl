@@ -1,5 +1,9 @@
-import synch;
-
-sema = Semaphore(1);
-call P &(sema);
-call V &(sema);
+def fact(n):
+    if n == 0:
+        result = 1;
+    else:
+        result = n * fact(n - 1);
+    ;
+;
+x = fact(5);
+assert x == 120;
