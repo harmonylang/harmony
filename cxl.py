@@ -464,21 +464,21 @@ class MethodOp(Op):
         context.pc = self.endpc + 1
 
 class FrameOp(Op):
-    def __init__(self, name, arg, end):
+    def __init__(self, name, args, end):
         self.name = name
-        self.arg = arg
+        self.args = args
         self.end = end
 
     def __repr__(self):
-        return "Frame " + str(self.name) + " " + str(self.arg) + " " + str(self.end)
+        return "Frame " + str(self.name) + " " + str(self.args) + " " + str(self.end)
 
     def eval(self, state, context):
         arg = context.pop()
         context.push(context.vars)
-        if self.arg == None:
+        if self.args == []:
             context.vars = DictValue({ "result": novalue })
         else:
-            (lexeme, file, line, column) = self.arg
+            (lexeme, file, line, column) = self.args[0]
             context.vars = DictValue({ "result": novalue, lexeme: arg })
         context.pc += 1
 
@@ -1442,13 +1442,13 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
 
 class MethodAST(AST):
-    def __init__(self, name, arg, stat):
+    def __init__(self, name, args, stat):
         self.name = name
-        self.arg = arg
+        self.args = args
         self.stat = stat
 
     def __repr__(self):
-        return "Method(" + str(self.name) + ", " + str(self.stat) + ")"
+        return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         pc = len(code)
@@ -1458,17 +1458,17 @@ class MethodAST(AST):
         scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
         ns = Scope(scope)
-        if self.arg == None:
+        if self.args == []:
             arg = None
         else:
-            (arg, afile, aline, acolumn) = self.arg
-            ns.names[arg] = ("variable", self.arg)
+            (arg, afile, aline, acolumn) = self.args[0]
+            ns.names[arg] = ("variable", self.args[0])
         ns.names["result"] = ("variable", ("result", file, line, column))
         self.stat.compile(ns, code)
         code.append(ReturnOp())
 
         code[pc+0] = JumpOp(len(code))
-        code[pc+1] = FrameOp(self.name, self.arg, len(code) - 1)
+        code[pc+1] = FrameOp(self.name, self.args, len(code) - 1)
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -1704,14 +1704,23 @@ class StatementRule(Rule):
             arg = t[3]
             (lexeme, file, line, column) = arg
             if lexeme == ")":
-                arg = None
+                args = []
                 (stat, t) = BlockRule({";"}).parse(t[4:])
             else:
                 assert isname(lexeme), arg
-                (lexeme, file, line, column) = t[4]
-                assert lexeme == ")", t[4]
-                (stat, t) = BlockRule({";"}).parse(t[5:])
-            return (MethodAST(name, arg, stat), self.skip(token, t))
+                args = [arg]
+                t = t[4:]
+                (lexeme, file, line, column) = t[0]
+                while lexeme != ")":
+                    assert lexeme == ",", t[0]
+                    arg = t[1]
+                    (lexeme, file, line, column) = arg
+                    assert isname(lexeme), arg
+                    args.append(arg)
+                    t = t[2:]
+                    (lexeme, file, line, column) = t[0]
+                (stat, t) = BlockRule({";"}).parse(t[1:])
+            return (MethodAST(name, args, stat), self.skip(token, t))
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
