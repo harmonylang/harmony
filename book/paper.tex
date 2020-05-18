@@ -214,7 +214,7 @@ if it works or not.
 \begin{verbatim}
 Up.cxl:1 def process(self):
    0 Jump 12
-   1 Frame ('process', 'Up.cxl', 1, 5) ('self', 'Up.cxl', 1, 13) 11
+   1 Frame ('process', 'Up.cxl', 1, 5) [('self', '<stdin>', 1, 13)] 11
 Up.cxl:2     count = count + 1;
    2 Constant (1, 'Up.cxl', 2, 21)
    3 Load ('count', 'Up.cxl', 2, 13)
@@ -240,14 +240,12 @@ Up.cxl:5 count = 0;
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Assertion failed ('assert', 'Up.cxl', 12, 1) 1
-
 ==== Safety violation ====
-__main__ () [0,12-29]     30 { 'count': 0, 'done': { 1: False, 2: False } }
-up       1  [1-5]          6 { 'count': 0, 'done': { 1: False, 2: False } }
-up       2  [1-10]        11 { 'count': 1, 'done': { 1: False, 2: True  } }
-up       1  [6-10]        11 { 'count': 1, 'done': { 1: True,  2: True  } }
-__main__ () [30-37,39-44] 44 { 'count': 1, 'done': { 1: True,  2: True  } }
+__main__/() [0,12-31]           32 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+process/0   [1-5]                6 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+process/1   [1-10]              11 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
+process/0   [6-10]              11 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+__main__/() [32-34,37-42,44-48] 49 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 \end{verbatim}
 \end{code}
 \caption{The output of running Figure~\ref{fig:inc}.}

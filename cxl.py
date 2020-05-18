@@ -1968,6 +1968,9 @@ def get_path(visited, state):
     node = visited[state]
     return get_path(visited, node.parent) + [(node, state.vars)]
 
+def nametag(nt):
+    return str(nt.d["name"]) + "/" + str(nt.d["tag"])
+
 def print_shortest(visited, bad):
     best_state = None
     best_len = 0
@@ -1984,10 +1987,10 @@ def print_shortest(visited, bad):
         elif node.ctx.nametag == last[0] and node.steps[0] == last[1]:
             last = (node.ctx.nametag, node.ctx.pc, last[2] + node.steps, vars)
         else:
-            print(last[0], strsteps(last[2]), last[1], last[3])
+            print(nametag(last[0]), strsteps(last[2]), last[1], last[3])
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
-        print(last[0], strsteps(last[2]), last[1], last[3])
+        print(nametag(last[0]), strsteps(last[2]), last[1], last[3])
 
 class Scope:
     def __init__(self, parent):
