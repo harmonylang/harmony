@@ -45,7 +45,8 @@ often be constrained (for example, by specifying a finite set of
 possible inputs) so that model checking is possible.  If, for
 example, a sorting algorithm is shown to work for any subset of
 some set of say, 10, different values, then one can hope that it
-will also work for sets that are larger than 10 values.
+will also work for sets that are larger than 10 values or sets that
+use more than 10 values.
 
 The syntax and semantics of CXL is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
@@ -63,7 +64,7 @@ There are also some important differences:
 in Python semicolons are optional and rarely used;
 \item Correct indentation in CXL is encouraged but optional;
 \item Python is object-oriented; CXL is not;
-\item CXL does not support floating point or lists natively;
+\item CXL does not support floating point;
 \item CXL does not support I/O of any kind;
 \item CXL does not support operator precedence or associativity.  Use
 parentheses liberally to remove ambiguity.
@@ -86,19 +87,17 @@ an integer number as argument.  Each method has a variable called
 method (there is no \texttt{return} statement in CXL).  The method
 also has a variable called \texttt{n} containing the value of the
 argument.  The $x..y$ notation generates a set containing the numbers
-from $x$ to $y$ (inclusive).  The last two lines in the program are
+from~$x$ to~$y$ (inclusive).  The last two lines in the program are
 the most interesting.
 They assign to $x$ some unspecified value in the range $0..N$, and then
 verifies the \texttt{assert} statement that $\mathtt{triangle}(x)$
 equals $x(x+1)/2$.
 If the verification fails, the value of $x$ is reported.
-(The syntax of a CXL \texttt{assert} statement is the same as in Python
-except that the ``,'' clause is not optional.)
 
 ``Running'' this CXL program will try all possible executions, which
 includes all possible values for $x$.  Essentially, the $\texttt{choose}(S)$
 operator provides the input to the program by selecting some value from the
-set $S$, while the $\texttt{assert}$ statement checks that the output is
+set~$S$, while the $\texttt{assert}$ statement checks that the output is
 correct.  If the program is correct, the output of CXL is the size of the
 ``state graph'' and its diameter (more on this later).  If not, CXL also
 reports what went wrong, typically by displaying a summary of an execution in
@@ -155,7 +154,7 @@ underlying architecture are atomic---in fact they are.)
 What is going on is that the CXL program is compiled to machine instructions,
 and it is the machine instructions that are executed by the underlying
 machine.  The details of this appear in the next chapter, but suffice it to
-say that The machine has instructions that load values from memory and store
+say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
 increment or decrement values in memory locations.
 So to increment a value in memory,
@@ -171,8 +170,7 @@ the machine, and they do so in parallel.  As they execute, their machine
 instructions are interleaved in unspecified and often random ways.
 In fact, CXL will try \emph{all possible interleavings} of the processes
 executing machine instructions.
-And thus, the following is a possible interleaving of
-the processes 0 and 1:
+The following is a possible interleaving of processes~0 and~1:
 \begin{enumerate}
 \item Process 0 loads the value of \texttt{count}, which is 0;
 \item Process 1 loads the value of \texttt{count}, which is still 0;
@@ -186,9 +184,8 @@ stores $1$ into \texttt{count};
 
 The result in this particular interleaving is that \texttt{count} ends up
 being 1.  When running CXL, it will
-report the violations of the assertions.  It also provides an example
-of an interleaving, like the one above, of how exactly the assertion
-ended up failing.
+report violations of assertions.  It also provides an example
+of an interleaving, like the one above, in which an assertion fails.
 
 If one thinks of the assertion as providing the specification of the
 program, then clearly its implementation does not satisfy its specification.
@@ -197,7 +194,7 @@ We could change the specification by changing the assertion as follows:
 
 \begin{code}
 \begin{verbatim}
-    assert (count == 0) or (count == 1), count;
+    assert (count == 0) or (count == 1);
 \end{verbatim}
 \end{code}
 
@@ -277,9 +274,9 @@ generated from a CXL program.  The types of instructions will be described later
 a CXL.
 \item Processes:  Initially there is just the main process, but any process
 can spawn an unbounded number of other processes and processes may terminate.
-Each process has an immutable \emph{name tag} (specified when spawning the
-process), a program counter, a stack of CXL values, and a single mutable
-general purpose \emph{register} that contains a CXL.
+Each process has an immutable (but not necessarily unique) \emph{name tag},
+a program counter, a stack of CXL values,
+and a single mutable general purpose \emph{register} that contains a CXL.
 \end{itemize}
 
 The state of a process is called a \emph{context}: it contains the value of
@@ -290,7 +287,7 @@ contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
 The initial state of the CXL memory is the empty tuple, \texttt{()}.
 The context bag has an initial context in it with name tag
-\texttt{dict\{ .name: "\_\_main\_\_", .tag: () \}}, pc 0,
+\texttt{dict\{ .name: .\_\_main\_\_, .tag: () \}}, pc 0,
 register \texttt{()}, and an empty stack.
 (In CXL, dictionary values are enclosed by \texttt{dict\{} and \texttt{\}}.)
 Each machine instruction updates the state in some way.
