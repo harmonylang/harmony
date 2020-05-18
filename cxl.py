@@ -791,18 +791,6 @@ class ApplyOp(Op):
             context.push(e)
             context.pc = method.pc
 
-class SetExpandOp(Op):
-    def __repr__(self):
-        return "SetExpand"
-
-    def eval(self, state, context):
-        v = context.pop()
-        assert isinstance(v, SetValue)
-        for e in v.s:
-            context.push(e)
-        context.push(len(v.s))
-        context.pc += 1
-
 class IterOp(Op):
     def __init__(self, method, pc):
         self.method = method
