@@ -1,2 +1,5 @@
-const X = 3;
-const N = dict{ 1: 2, X: 4 };
+import synch;
+
+sema = Semaphore(1);
+call P &(sema);
+call V &(sema);

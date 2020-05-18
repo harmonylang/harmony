@@ -82,7 +82,7 @@ def isunaryop(s):
 
 def isbinaryop(s):
     return s in [
-        "==", "!=", "..", "\\", "in", "and", "or",
+        "==", "!=", "..", "in", "and", "or",
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
@@ -492,20 +492,18 @@ class ReturnOp(Op):
         context.push(result)
 
 class SpawnOp(Op):
-    def __init__(self, method, pc):
-        self.method = method
-        self.pc = pc
-
     def __repr__(self):
-        return "Spawn " + str(self.pc)
+        return "Spawn"
 
     def eval(self, state, context):
+        method = context.pop()
+        assert isinstance(method, PcValue)
         arg = context.pop()
         tag = context.pop()
-        frame = state.code[self.pc]
+        frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
-        (lexeme, file, line, column) = self.method
-        ctx = Context(RecordValue({"name": lexeme, "tag": tag}), self.pc, frame.end)
+        (lexeme, file, line, column) = frame.name
+        ctx = Context(RecordValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -808,8 +806,6 @@ class NameAST(AST):
                 code.append(LoadVarOp(self.name))
             elif t == "constant":
                 code.append(ConstantOp(v))
-            elif t == "method":
-                code.append(ConstantOp((PcValue(v), file, line, column)))
             else:
                 assert False, tv
 
@@ -1337,6 +1333,8 @@ class MethodAST(AST):
     def compile(self, scope, code):
         pc = len(code)
         code.append(None)       # going to plug in a Jump op here
+        code.append(None)       # going to plug in a Frame op here
+
         ns = Scope(scope)
         if self.arg == None:
             arg = None
@@ -1345,12 +1343,12 @@ class MethodAST(AST):
             ns.names[arg] = ("variable", self.arg)
         (lexeme, file, line, column) = self.name
         ns.names["result"] = ("variable", ("result", file, line, column))
-        code.append(None)
         self.stat.compile(ns, code)
         code.append(ReturnOp())
-        code[pc] = JumpOp(len(code))
+
+        code[pc+0] = JumpOp(len(code))
         code[pc+1] = FrameOp(self.name, self.arg, len(code) - 1)
-        scope.names[lexeme] = ("method", pc + 1)
+        scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -1364,22 +1362,19 @@ class CallAST(AST):
         code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, tag, method, expr):
+    def __init__(self, tag, method, arg):
         self.tag = tag
         self.method = method
-        self.expr = expr
+        self.arg = arg
 
     def __repr__(self):
-        return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.expr) + ")"
+        return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
-        tv = scope.lookup(self.method)
-        assert tv != None, ("can't find method", self.method)
-        (t, v) = tv
-        assert t == "method"
         self.tag.compile(scope, code)
-        self.expr.compile(scope, code)
-        code.append(SpawnOp(self.method, v))
+        self.arg.compile(scope, code)
+        self.method.compile(scope, code)
+        code.append(SpawnOp())
 
 class ImportAST(AST):
     def __init__(self, module):
@@ -1603,16 +1598,14 @@ class StatementRule(Rule):
             assert lexeme == ";", t[0]
             return (CallAST(expr), self.skip(token, t))
         if lexeme == "spawn":
-            method = t[1]
-            (lexeme, file, line, column) = method
-            assert isname(lexeme), method
-            (expr, t) = ExpressionRule().parse(t[2:])
+            (method, t) = BasicExpressionRule().parse(t[1:])
+            (arg, t) = BasicExpressionRule().parse(t)
             (lexeme, file, line, column) = t[0]
             assert lexeme == ",", t[0]
-            (tag, t) = ExpressionRule().parse(t[1:])
+            (tag, t) = NaryRule({";"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             assert lexeme == ";", t[0]
-            return (SpawnAST(tag, method, expr), self.skip(token, t))
+            return (SpawnAST(tag, method, arg), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))
         if lexeme == "import":

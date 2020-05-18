@@ -1,6 +1,6 @@
 # Broken Peterson's algorithm by swapping first two assignments
 
-def p(self):
+def process(self):
     while choose({ False, True }):
         turn = 1 - self;
         flags[self] = True;
@@ -14,6 +14,6 @@ def p(self):
 flags = dict{ 0: False, 1: False };
 turn = 0;
 atomic:
-    spawn p(0), 0;
-    spawn p(1), 1;
+    spawn process(0), 0;
+    spawn process(1), 1;
 ;
