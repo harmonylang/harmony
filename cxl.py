@@ -199,6 +199,13 @@ def lexer(s, file):
         column += 1
     return result
 
+def strValue(v):
+    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int):
+        return str(v)
+    if isinstance(v, str):
+        return "." + v
+    assert False, v
+
 class Value:
     pass
 
@@ -239,7 +246,7 @@ class DictValue(Value):
         for (k, v) in self.d.items():
             if result != "":
                 result += ", ";
-            result += str(k) + ":" + str(v)
+            result += strValue(k) + ":" + strValue(v)
         return "dict{ " + result + " }"
 
     def __hash__(self):
@@ -266,7 +273,14 @@ class SetValue(Value):
         self.s = s
 
     def __repr__(self):
-        return str(self.s)
+        if len(self.s) == 0:
+            return "{}"
+        result = ""
+        for v in self.s:
+            if result != "":
+                result += ", ";
+            result += strValue(v)
+        return "{ " + result + " }"
 
     def __hash__(self):
         return frozenset(self.s).__hash__()
