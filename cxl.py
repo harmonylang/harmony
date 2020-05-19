@@ -353,18 +353,6 @@ class SplitOp(Op):
         context.push(SetValue(set(lst[1:])))
         context.pc += 1
 
-class LoadOp(Op):
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        return "Load " + str(self.name)
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.name
-        context.push(state.get(lexeme))
-        context.pc += 1
-
 class LoadVarOp(Op):
     def __init__(self, name):
         self.name = name
@@ -401,9 +389,25 @@ class NameOp(Op):
         context.push(AddressValue([lexeme]))
         context.pc += 1
 
+class LoadOp(Op):
+    def __init__(self, n):
+        self.n = n                  # number of indexes
+
+    def __repr__(self):
+        return "Load " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.pop())
+        av = indexes[0]
+        assert isinstance(av, AddressValue), indexes
+        context.push(state.iget(av.indexes + indexes[1:]))
+        context.pc += 1
+
 class StoreOp(Op):
     def __init__(self, n):
-        self.n = n                  # #indexes
+        self.n = n                  # number of indexes
 
     def __repr__(self):
         return "Store " + str(self.n)
@@ -844,7 +848,8 @@ class NameAST(AST):
         (lexeme, file, line, column) = self.name
         tv = scope.lookup(self.name)
         if tv == None:
-            code.append(LoadOp(self.name))
+            code.append(NameOp(self.name))
+            code.append(LoadOp(1))
         else:
             (t, v) = tv
             if t == "variable":
@@ -1271,6 +1276,10 @@ class PointerAST(AST):
     def __repr__(self):
         return "Pointer(" + str(self.expr) + ")"
 
+    def compile(self, scope, code):
+        self.expr.compile(scope, code)
+        code.append(LoadOp(1))
+
 class ChooseAST(AST):
     def __init__(self, expr):
         self.expr = expr
@@ -1284,17 +1293,29 @@ class ChooseAST(AST):
 
 class ExpressionRule(Rule):
     def parse(self, t):
-        # Special treatment of unary minus
+        # Special treatment of unary minus and pointers
         (lexeme, file, line, column) = t[0]
-        if lexeme == "-":
+        if lexeme == "^":
+            (ast, t) = (None, t[1:])
+        elif lexeme == "-" :
             (ast, t) = (UnaryAST(t[0]), t[1:])
         else:
             (ast, t) = BasicExpressionRule().parse(t)
-        if t != []:
+        args = []
+        while t != []:
             (arg, t) = BasicExpressionRule().parse(t)
-            if arg != False:
-                return (ApplyAST(ast, arg), t)
-        return (ast, t)
+            if arg == False:
+                break
+            args.append(arg)
+        if ast == None:
+            assert len(args) > 0, args
+            ast = PointerAST(args[0])
+            args = args[1:]
+        if len(args) == 0:
+            return (ast, t)
+        else:
+            assert len(args) == 1, args # TODO
+            return (ApplyAST(ast, args[0]), t)
 
 class AssignmentAST(AST):
     def __init__(self, lv, rv):
