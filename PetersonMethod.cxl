@@ -1,16 +1,19 @@
-def P_mutex():
-    result = dict{ .turn: 0, .flags: [ False, False ] };
-;
-def P_enter(pm, self):
-    (^pm).flags[self] = True;
-    (^pm).turn = 1 - self;
-    while (^pm).flags[1 - self] and ((^pm).turn == (1 - self)):
+def P_enter(pm, pid):
+    (^pm).flags[pid] = True;
+    (^pm).turn = 1 - pid;
+    while (^pm).flags[1 - pid] and ((^pm).turn == (1 - pid)):
         pass;
     ;
 ;
-def P_exit(pm, self):
-    (^pm).flags[self] = False;
+def P_exit(pm, pid):
+    (^pm).flags[pid] = False;
 ;
+def P_mutex():
+    result = dict{ .turn: 0, .flags: [ False, False ] };
+;
+
+#### The code above can go into its own CXL module ####
+
 def process(self, pm):
     while choose({ False, True }):
         call P_enter(pm, self);

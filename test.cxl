@@ -1,2 +1,8 @@
-d = dict{ 1: 2 };
-assert keys d == { 1 }, d;
+def inc(ptr):
+    atomic:
+        ^ptr = ^ptr + 1;
+    ;
+;
+count = 0;
+call inc(&(count));
+assert count == 1;

@@ -4,6 +4,7 @@
 \usepackage{framed}
 \usepackage{tcolorbox}
 \usepackage{verbatim}
+\usepackage{comment}
 
 \widowpenalty 10000
 \clubpenalty 10000
@@ -808,36 +809,11 @@ Bonus question!
 
 \chapter{CXL Methods and Pointers}
 
-CXL methods look and feel much the same as Python methods, but there
-are some differences you should be aware of.
-First, as already noted, there is no \texttt{return} statement.
-A CXL method returns when the last statement in the method has
-completed.
-
-Like in Python, CXL methods have local variables.  You have already
-seen two types of local variables.
-First, the arguments to the method are variables, although read-only.
-Second, the variable \texttt{result} can be assigned to
-change the default return value of a method, which is \texttt{()}.
-You can declare additional local variables to hold intermediate
-results.  For example, you can
-declare a local variable $x$ with initial value 3 as follows:
-\begin{code}
-\begin{verbatim}
-var x = 3;
-\end{verbatim}
-\end{code}
-The initial value is mandatory.
-Unless a variable is declared this way, it will be considered
-a global shared variable.
-The local variables of a method cannot be accessed other than by
-the method itself.
-
 A method \texttt{m} with argument \texttt{a} is invoked in its
-most basic form as follows (assigning the result to \texttt{x}).
+most basic form as follows (assigning the result to \texttt{r}).
 \begin{code}
 \begin{verbatim}
-var x = m a;
+r = m a;
 \end{verbatim}
 \end{code}
 That's right, no parentheses are required.  In fact, if you invoke
@@ -857,8 +833,16 @@ Both dictionaries and methods map CXL values to CXL values,
 and their syntax is indistinguishable.
 If \texttt{f} is either a method or a
 dictionary, and \texttt{x} is an arbitrary CXL value, then
-then \texttt{f x}, \texttt{f(x)}, and \texttt{f[x]} are all
+\texttt{f x}, \texttt{f(x)}, and \texttt{f[x]} are all
 the same expression in CXL.
+
+\begin{figure}
+\begin{code}
+\verbatiminput{../PetersonMethod.cxl}
+\end{code}
+\caption{Peterson's Algorithm accessed through methods.}
+\label{fig:petersonmethods}
+\end{figure}
 
 CXL is not an object-oriented language like Python is.  In Python
 you can pass a reference to an object to a method, and that method
@@ -872,7 +856,10 @@ If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
 Conversely, if \texttt{p} is a pointer to a shared variable, then the
 expression \texttt{\^{}p} is the value of the shared variable.
 
-If you want to invoke a method but are not interested in its result,
+It is often the case that methods that update shared variables through
+pointers do not actually have to return a result to be useful.
+In CXL, if you want to invoke a method that does not return a result
+or if you are simply not interested in it,
 you have to use a \texttt{call} statement like so:
 \begin{code}
 \begin{verbatim}
@@ -880,16 +867,117 @@ call m a;
 \end{verbatim}
 \end{code}
 
-\begin{figure}
+Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
+but this time with methods defined to enter and exit the critical
+section.
+You can put the first three methods in its own CXL source file
+and include it using the CXL \texttt{import} statement.  This would
+make the code re-usable by other applications.  For those who are
+extra adventurous: you can add the \texttt{P\_enter} and
+\texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
+like so:
 \begin{code}
-\verbatiminput{../PetersonMethod.cxl}
+\begin{verbatim}
+dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
+\end{verbatim}
 \end{code}
-\caption{Peterson's Algorithm used to implement methods for
-mutual exclusion.}
-\label{fig:peterson}
-\end{figure}
+That would allow you to simulate object methods.
 
 \chapter{Spinlock}
-Figure~\ref{fig:uplock} showed a faulty attempt at solving mutual exclusion.
+
+\begin{figure}
+\begin{code}
+\verbatiminput{UpTAS.cxl}
+\end{code}
+\caption{Mutual Exclusion using a ``spinlock'' based on test-and-set.}
+\label{fig:tas}
+\end{figure}
+
+Figure~\ref{fig:uplock} showed a faulty attempt at solving mutual
+exclusion using a lock.  The problem with the implementation of the
+lock is that checking the lock and setting it if it is available is
+not \emph{atomic}.  Thus multiple processes contending for the lock
+can all ``grab the lock'' at the same time.  While Peterson's
+algorithm gets around the problem, it is not efficient, especially
+if generalized to multiple processes.  Instead, processors provide
+so-called \emph{interlock instructions}: special machine instructions
+that can read memory and then write it in an indivisible step.
+
+While the CXL machine does not have any built-in interlock instructions,
+it does have support for executing multiple instructions atomically.
+This feature is available in the CXL language through its \texttt{atomic}
+statement.
+You already saw an example of this in Figure~\ref{fig:petersonproof}.
+We can use \texttt{atomic} blocks to implement a wide variety of
+interlock operations.
+For example, we could fix the program in Figure~\ref{fig:inc} by
+constructing an atomic increment operation for a counter, like so:
+\begin{code}
+\begin{verbatim}
+def atomic_inc(ptr):
+    atomic:
+        ^ptr = ^ptr + 1;
+    ;
+;
+count = 0;
+call atomic_inc(&(count));
+\end{verbatim}
+\end{code}
+
+Many CPUs have an atomic ``test-and-set'' operation.
+Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
+Here \texttt{lk} points to a shared variable holding a
+boolean.  The operation assigns \texttt{True} to the
+variable but returns the value the variable had \emph{before}
+the assignment.
+Figure~\ref{fig:tas} goes on to show how the program
+in Figure~\ref{fig:uplock} can be made correct.
+Using \texttt{tas} a process can wait until \texttt{lock} is
+\texttt{False} and then set it to \texttt{True} before another
+process is able to see its old value.
+
+Compared to Peterson's Algorithm, this approach is general for
+any number of processes.  To make sure, you may want to try it
+for three or more processes.  In fact, you may want to replace
+the last two lines by:
+\begin{code}
+\begin{verbatim}
+for i in 1..5:
+    spawn process(), ();
+;
+\end{verbatim}
+\end{code}
+This creates 5 processes with the same name tag.  CXL can
+exploit their symmetry to do a much more efficient state
+search.  Try replacing it with the following code and see
+the difference:
+\begin{code}
+\begin{verbatim}
+for i in 1..5:
+    spawn process(), i;
+;
+\end{verbatim}
+\end{code}
+
+\chapter{Local Variables}
+
+Like in Python, CXL methods have local variables.  You have already
+seen two types of local variables.
+First, the arguments to the method are variables, although read-only.
+Second, the variable \texttt{result} can be assigned to
+change the default return value of a method, which is \texttt{()}.
+You can declare additional local variables to hold intermediate
+results.  For example, you can
+declare a local variable $x$ with initial value 3 as follows:
+\begin{code}
+\begin{verbatim}
+var x = 3;
+\end{verbatim}
+\end{code}
+The initial value is mandatory.
+Unless a variable is declared this way, it will be considered
+a global shared variable.
+The local variables of a method cannot be accessed other than by
+the method itself.
 
 \end{document}

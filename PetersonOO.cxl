@@ -1,12 +1,12 @@
-def P_enter(pm, self):
-    (^pm).flags[self] = True;
-    (^pm).turn = 1 - self;
-    while (^pm).flags[1 - self] and ((^pm).turn == (1 - self)):
+def P_enter(pm, pid):
+    (^pm).flags[pid] = True;
+    (^pm).turn = 1 - pid;
+    while (^pm).flags[1 - pid] and ((^pm).turn == (1 - pid)):
         pass;
     ;
 ;
-def P_exit(pm, self):
-    (^pm).flags[self] = False;
+def P_exit(pm, pid):
+    (^pm).flags[pid] = False;
 ;
 def P_mutex():
     result = dict{
