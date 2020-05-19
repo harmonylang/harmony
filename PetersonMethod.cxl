@@ -1,21 +1,21 @@
 def P_mutex():
     result = dict{ .turn: 0, .flags: [ False, False ] };
 ;
-def P_enter(self, pm):
+def P_enter(pm, self):
     (^pm).flags[self] = True;
     (^pm).turn = 1 - self;
     while (^pm).flags[1 - self] and ((^pm).turn == (1 - self)):
         pass;
     ;
 ;
-def P_exit(self, pm):
+def P_exit(pm, self):
     (^pm).flags[self] = False;
 ;
 def process(self, pm):
     while choose({ False, True }):
-        call P_enter(self, pm);
+        call P_enter(pm, self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        call P_exit(self, pm);
+        call P_exit(pm, self);
     ;
 ;
 mutex = P_mutex();
