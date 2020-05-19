@@ -42,18 +42,19 @@ properties and does not suffer from bugs.  Model checking is
 limited---it can only check programs that have ``finite state
 spaces.''  But even programs that have infinite state spaces can
 often be constrained (for example, by specifying a finite set of
-possible inputs) so that model checking is possible.  If, for
+test inputs) so that model checking is possible.  If, for
 example, a sorting algorithm is shown to work for any subset of
-some set of say, 10, different values, then one can hope that it
-will also work for sets that are larger than 10 values or sets that
-use more than 10 values.
+some set of say, 5, different values, then one can hope that it
+will also work for sets that are larger than 5 values or sets that
+use more than 5 different values.
 
 The syntax and semantics of CXL is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
 use.  We will assume that the reader is familiar with the basics
 of Python programming.  We also will assume that the reader
 understand some basics of machine architecture and how programs
-are executed.
+are executed.  For example, we assume that the reader is familiar
+with the concepts of CPU, memory, register, and stack.
 
 Like Python, CXL is an imperative,
 dynamically typed and garbage collected programming language.
@@ -64,7 +65,7 @@ There are also some important differences:
 in Python semicolons are optional and rarely used;
 \item Correct indentation in CXL is encouraged but optional;
 \item Python is object-oriented; CXL is not;
-\item CXL does not support floating point;
+\item CXL does not (currently) support floating point;
 \item CXL does not support I/O of any kind;
 \item CXL does not support operator precedence or associativity.  Use
 parentheses liberally to remove ambiguity.
@@ -89,9 +90,8 @@ also has a variable called \texttt{n} containing the value of the
 argument.  The \texttt{x..y} notation generates a set containing the numbers
 from~\texttt{x} to~\texttt{y} (inclusive).  The last two lines in the program are
 the most interesting.
-They assign to \texttt{x} some unspecified value in the range \texttt{0..N},
-and then verifies the \texttt{assert} statement that $\mathtt{triangle}(x)$
-equals $x(x+1)/2$.
+They assign to \texttt{x} some unspecified value in the range \texttt{0..N}
+and then verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
 ``Running'' this CXL program will try all possible executions, which
 includes all possible values for $x$.  Essentially, the $\texttt{choose}(S)$
@@ -107,7 +107,7 @@ Try it out!
 \begin{itemize}
 \item See what happens if, instead of initializing \texttt{result} to 0,
 you initialize it to 1.
-\item Write a similar program that computes squares.
+\item Write a similar program that computes squares or factorials.
 \end{itemize}
 \end{quote}
 
@@ -126,7 +126,7 @@ processes running in parallel while sharing variables.
 Figure~\ref{fig:inc} presents a simple example.  The program defines a
 method \texttt{process} that takes a parameter called \texttt{self}.
 It also initializes two shared variables \texttt{count} and \texttt{done}.
-The \texttt{process()} method increments \texttt{count} and sets \texttt{done[self]}
+The \texttt{process(self)} method increments \texttt{count} and sets \texttt{done[self]}
 to \texttt{True}.
 Next the program spawns two processes, each invoking \texttt{process}.
 Afterward there are three processes---after
@@ -142,7 +142,7 @@ it reports the actual value of \texttt{count}.
 What will happen?
 \begin{itemize}
 \item Before you run the program, what do you think will happen?  Is the
-program correct in that \texttt{count} will end up being 2?
+program correct in that \texttt{count} will always end up being 2?
 \item What are the possible values of \texttt{count} at the time of the
 \texttt{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
@@ -151,8 +151,8 @@ underlying architecture are atomic---in fact they are.)
 \end{quote}
 
 What is going on is that the CXL program is compiled to machine instructions,
-and it is the machine instructions that are executed by the underlying
-machine.  The details of this appear in the chapter~\ref{ch:cxlmachine},
+and it is the machine instructions that are executed by the underlying CXL
+machine.  The details of this appear in Chapter~\ref{ch:cxlmachine},
 but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
@@ -168,8 +168,10 @@ the machine must do at least three machine instructions.  Conceptually:
 When running multiple processes, each essentially runs an instantiation of
 the machine, and they do so in parallel.  As they execute, their machine
 instructions are interleaved in unspecified and often random ways.
-In fact, CXL will try \emph{all possible interleavings} of the processes
+A program is correct if it works for any interleaving.
+In fact, CXL will try all possible interleavings of the processes
 executing machine instructions.
+
 The following is a possible interleaving of processes~0 and~1:
 \begin{enumerate}
 \item Process 0 loads the value of \texttt{count}, which is 0;
@@ -194,7 +196,7 @@ We could change the specification by changing the assertion as follows:
 
 \begin{code}
 \begin{verbatim}
-    assert (count == 0) or (count == 1);
+    assert (count == 1) or (count == 2);
 \end{verbatim}
 \end{code}
 
@@ -243,28 +245,34 @@ form:
 d[k]
 \end{verbatim}
 \end{code}
-However, if the key is an atom, say \texttt{.count}, then you
-can write \texttt{d.count} instead of having to write
-\texttt{d[.count]} (both will work).
+However, if \texttt{d = dict\{ .count: 3 \}}, then you can write
+can write \texttt{d.count} (which has value 3) instead of having to write
+\texttt{d[.count]} (although both will work).
+The meaning of \texttt{d a b c ...} is \texttt{((((d a) b) c) ...)}.
 
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
 \texttt{(5, False)} is the same CXL value as
 \texttt{dict\{ 0: 5, 1: False \}}.
 The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
+Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by adding an
 extra ",". For example, \texttt{(1,)}.
 
 Again, square brackets and parentheses work the same in CXL, so
 \texttt{[a, b, c]} (which looks like a Python list)
-is the same as \texttt{(a, b, c)} (which looks like a Python tuple),
-which in turn is the same as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
+is the same CXL value as \texttt{(a, b, c)} (which looks like a Python tuple),
+which in turn is the same CXL value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
 So if \texttt{x == [ False, True ]},
-then \texttt{x[0] == False} and \texttt{x[1] == True}.
+then \texttt{x[0] == False} and \texttt{x[1] == True}, just like in Python.
 
-Dictionaries have two handy unary operators.  If \texttt{d} is a
-dictionary, then \texttt{keys d} (or equivalently \texttt{keys(d)})
-returns the set of keys and \texttt{len d} returns the size of
+CXL is not an object-oriented language, however, so objects don't have
+built-in methods.  However, CXL does have some powerful operators to
+make up for some of that.
+For example, dictionaries have two handy unary operators.
+If \texttt{d} is a
+dictionary, then \texttt{keys~d} (or equivalently \texttt{keys(d)})
+returns the set of keys and \texttt{len~d} returns the size of
 this set.
 
 \chapter{The CXL Machine}
@@ -315,7 +323,7 @@ __main__/() [32-34,37-42,44-48] 49 dict{ .count:1, .done:dict{ 0:True,  1:True  
 
 Before we delve into how to solve synchronization problems, it is important
 to know a bit about the underlying machine.  A CXL program is translated
-into a list of machine instructions that the machine executes.
+into a list of machine instructions that the CXL machine executes.
 The CXL machine is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional machines such as hardware
 with memory and CPUs and virtual machines such as the Java Virtual Machine.
@@ -326,12 +334,12 @@ A CXL machine has the following components:
 \item Code:  This is an immutable and finite list of CXL machine instructions,
 generated from a CXL program.  The types of instructions will be described later.
 \item Shared memory: A CXL machine has just one memory location containing
-a CXL.
+an CXL value.
 \item Processes:  Initially there is just the main process, but any process
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
 a program counter, a stack of CXL values,
-and a single mutable general purpose \emph{register} that contains a CXL.
+and a single mutable general purpose \emph{register} that contains a CXL value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
@@ -357,13 +365,15 @@ the program in Figure~\ref{fig:inc}.
 It may seem strange that there is only one memory location and that each
 process has only one register.  However, this is not a limitation because
 CXL values are unbounded trees.
-By convention, both the memory and the register of a process always contain
+Both the memory and the register of a process always contain
 a special type of CXL value in which the root is a dictionary
-that maps strings to CXL values.  We call this a \emph{directory}.
-A directory represents the state of a collection of variables named by the strings.
+that maps atoms to CXL values.  We call this a \emph{directory}.
+A directory represents the state of a collection of variables named by the atoms.
 
-Directories can be organized into a tree.  Each node in the tree is then identified
-by a sequence of strings, like a path name in the file system hierarchy.  We call
+Because directories are CXL values themselves,
+directories can be organized into a tree.
+Each node in the tree is then identified
+by a sequence of atoms, like a path name in the file system hierarchy.  We call
 such a sequence the \emph{address} of a CXL value.
 
 Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
@@ -379,14 +389,14 @@ instruction.
 The \texttt{Frame} instruction has three arguments:
 \begin{enumerate}
 \item A token containing the name of the method;
-\item A token containing the name of the argument of the method;
+\item A list of tokens containing the names of the arguments of the method;
 \item A program counter of the method's \texttt{Return} instruction.
 \end{enumerate}
 
 A \emph{token} is a four-tuple containing a \emph{lexeme}, a file name, a
 line number in the file, and a column number in the file.  For example,
 \texttt{(’up’, ’Up.cxl’, 1, 5)} represents the lexeme \texttt{up} in
-file \texttt{Up.xcl}, line 1, column 5.  Tokens make it easy to relate
+file \texttt{Up.xcl}, line~1, column~5.  Tokens make it easy to relate
 the CXL machine instructions to the CXL source code.
 
 The code generated from \texttt{count := count + 1} in line 2 of
@@ -414,10 +424,9 @@ It starts by reporting that the assertion on line 12 failed and that
 \texttt{count} has value 1 instead of 0:
 \texttt{Assertion failed (’assert’, ’Up.cxl’, 12, 1) 1}.
 Next it reports an execution that failed this assertion.  The output has
-five columns:
+four columns:
 \begin{enumerate}
-\item The entry point of the process (\texttt{\_\_main\_\_} for the main process);
-\item The tag of the process (in this case always 0);
+\item The name tag of the process;
 \item The sequence of program counters of the CXL machine instructions that the process executed;
 \item The current program counter of the process;
 \item The contents of the shared memory.
@@ -582,8 +591,8 @@ Unfortunately, if we run the program, we find that the assertion still
 fails.  Diagnosing the problem, we see that the \texttt{lock} variable
 suffers from the same problem as the \texttt{count} variable
 in Figure~\ref{fig:inc}: operations
-on it consist of several instructions are divisible.  It is thus possible
-for both processes to believe the lock is available and obtain the lock
+on it consist of several instructions.  It is thus possible
+for both processes to believe the lock is available and to obtain the lock
 at the same time.
 
 Figure~\ref{fig:upflags} presents a solution based on each process having
@@ -594,7 +603,7 @@ After setting its flag, the process waits until the other process
 If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
 the same time.
-However, it has a different problem called livelock: if both try to
+However, it has a different problem called \emph{livelock}: if both try to
 enter the critical section at the same time, they may end up waiting for
 one another.
 
