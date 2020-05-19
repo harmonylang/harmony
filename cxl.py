@@ -79,9 +79,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^",
-        # "-",
-        "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
+    return s in [ "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
 
 def isbinaryop(s):
     return s in [
@@ -761,10 +759,7 @@ class ApplyOp(Op):
             context.pc += 1
         elif isinstance(method, OpValue):
             op = method.op
-            if op == "^":
-                assert isinstance(e, AddressValue), e
-                context.push(state.iget(e.indexes))
-            elif op == "-":
+            if op == "-":
                 assert isinstance(e, int), e
                 context.push(-e)
             elif op == "not":
