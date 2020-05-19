@@ -1306,11 +1306,10 @@ class ExpressionRule(Rule):
             assert len(args) > 0, args
             ast = PointerAST(args[0])
             args = args[1:]
-        if len(args) == 0:
-            return (ast, t)
-        else:
-            assert len(args) == 1, args # TODO
-            return (ApplyAST(ast, args[0]), t)
+        while args != []:
+            ast = ApplyAST(ast, args[0])
+            args = args[1:]
+        return (ast, t)
 
 class AssignmentAST(AST):
     def __init__(self, lv, rv):

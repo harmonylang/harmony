@@ -1,0 +1,23 @@
+def P_mutex():
+    result = dict{ .turn: 0, .flags: [ False, False ] };
+;
+def P_enter(self, pm):
+    (^pm).flags[self] = True;
+    (^pm).turn = 1 - self;
+    while (^pm).flags[1 - self] and ((^pm).turn == (1 - self)):
+        pass;
+    ;
+;
+def P_exit(self, pm):
+    (^pm).flags[self] = False;
+;
+def process(self, pm):
+    while choose({ False, True }):
+        call P_enter(self, pm);
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        call P_exit(self, pm);
+    ;
+;
+mutex = P_mutex();
+spawn process(0, &(mutex)), 0;
+spawn process(1, &(mutex)), 1;
