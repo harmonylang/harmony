@@ -1,25 +1,36 @@
 const N = 1;
 
 def checkInvariant():
-    if shared:
-        var sum = 0;
-    else:
-        var sum = 1;
-    ;
-    for i in 0..(N-1):
-        if not private[i]:
-            sum = sum + 1;
+    let sum = 0:
+        if not shared:
+            sum = 1;
         ;
+        for i in 0..(N-1):
+            if not private[i]:
+                sum = sum + 1;
+            ;
+        ;
+        result = sum <= 1;
     ;
-    result = sum <= 1;
 ;
 def invariantChecker():
-    var running = True;
-    while running:
-        atomic:
-            assert checkInvariant();
-            if processes() == dict{ nametag(): 1 }:
-                running = False;
+    let running = True:
+        while running:
+            atomic:
+                let sum = 0:
+                    if not shared:
+                        sum = 1;
+                    ;
+                    for i in 0..(N-1):
+                        if not private[i]:
+                            sum = sum + 1;
+                        ;
+                    ;
+                    assert sum <= 1;
+                ;
+                if processes() == dict{ nametag(): 1 }:
+                    running = False;
+                ;
             ;
         ;
     ;

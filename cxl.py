@@ -1419,37 +1419,43 @@ class WhileAST(AST):
         code[pc2] = JumpCondOp(False, len(code))
 
 class LetAST(AST):
-    def __init__(self, var, expr, stat):
-        self.var = var
-        self.expr = expr
+    def __init__(self, vars, stat):
+        self.vars = vars
         self.stat = stat
 
     def __repr__(self):
-        return "Let(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+        return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        # See if we need to save an old value
-        tv = scope.lookup(self.var)
-        varsaved = False
-        if tv != None:
-            (t, v) = tv
-            if t == "variable":
-                code.append(LoadVarOp(self.var))   # save old value on stack
-                varsaved = True
-
-        # Run the code with the new variable
+        # Create a new scope
         ns = Scope(scope)
-        (lexeme, file, line, column) = self.var
-        ns.names[lexeme] = ("variable", self.var)
-        self.expr.compile(ns, code)
-        code.append(StoreVarOp(self.var, 0))
+
+        saved = []
+        for (var, expr) in self.vars:
+            # See if we need to save an old value
+            tv = scope.lookup(var)
+            if tv != None:
+                (t, v) = tv
+                if t == "variable":
+                    code.append(LoadVarOp(var))   # save old value on stack
+                    saved.append(var)
+
+            # Set the value of the new variable
+            (lexeme, file, line, column) = var
+            ns.names[lexeme] = ("variable", var)
+            expr.compile(ns, code)
+            code.append(StoreVarOp(var, 0))
+
+        # Run the body
         self.stat.compile(ns, code)
 
         # Restore the old variable state
-        if varsaved:
-            code.append(StoreVarOp(self.var, 0))  # restore old value from stack
-        else:
-            code.append(DelVarOp(self.var))  # remove variable
+        for (var, expr) in self.vars:
+            if var not in saved:
+                code.append(DelVarOp(var))  # remove variable
+        while saved != []:
+            var = saved.pop()
+            code.append(StoreVarOp(var, 0))  # restore old value from stack
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
@@ -1463,6 +1469,7 @@ class ForAST(AST):
     def compile(self, scope, code):
         (var, file, line, column) = self.var
 
+        # TODO.  What if for loop is nested?
         self.expr.compile(scope, code)     # first push the set
         S = ("%set", file, line, column)   # save in variable "%set"
         code.append(StoreVarOp(S, 0))
@@ -1491,6 +1498,10 @@ class ForAST(AST):
         self.stat.compile(ns, code)
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
+
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))        # TODO.  Do we need N?
 
 class AtomicAST(AST):
     def __init__(self, stat):
@@ -1770,14 +1781,21 @@ class StatementRule(Rule):
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (ForAST(var, s, stat), self.skip(token, t))
         if lexeme == "let":
-            var = t[1]
-            (lexeme, file, line, column) = var
-            assert isname(lexeme), var
-            (lexeme, file, line, column) = t[2]
-            assert lexeme == "=", t[2]
-            (s, t) = NaryRule({":"}).parse(t[3:])
+            vars = []
+            while True:
+                var = t[1]
+                (lexeme, file, line, column) = var
+                assert isname(lexeme), var
+                (lexeme, file, line, column) = t[2]
+                assert lexeme == "=", t[2]
+                (ast, t) = NaryRule({":", ","}).parse(t[3:])
+                vars.append((var, ast))
+                (lexeme, file, line, column) = t[0]
+                if lexeme == ":":
+                    break
+                assert lexeme == ","
             (stat, t) = StatListRule({";"}).parse(t[1:])
-            return (LetAST(var, s, stat), self.skip(token, t))
+            return (LetAST(vars, stat), self.skip(token, t))
         if lexeme == "atomic":
             (stat, t) = BlockRule({";"}).parse(t[1:])
             return (AtomicAST(stat), self.skip(token, t))

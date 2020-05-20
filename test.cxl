@@ -1,6 +1,7 @@
-var y = 4;
-var x = 5;
-let x = 3:
-    assert x == (y - 1);
+let x = 5, z = 0:
+    let x = 1+2, z = 5-1:
+        assert x == (z - 1);
+    ;
+    assert x == 5;
+    assert z == 0;
 ;
-assert x == 5;
