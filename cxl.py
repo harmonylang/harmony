@@ -2105,22 +2105,8 @@ globops = [
     AtomicIncOp, LoadOp, SpawnOp, StoreOp
 ]
 
-def checkInvariant(state, ctx, invariant):
-    assert isinstance(invariant, PcValue)
-    pc = invariant.pc
-    assert isinstance(state.code[pc], FrameOp)
-    end = state.code[pc].end
-    savepc = ctx.pc
-    ctx.pc = pc
-    ctx.push(novalue)
-    while ctx.pc != end:
-        state.code[ctx.pc].eval(state, ctx)
-    v = ctx.pop()
-    ctx.pc = savepc
-    assert v, v
-
 # Have context ctx make one (macro) step in the given state
-def onestep(state, ctx, choice, visited, todo, node, infloop, invariant):
+def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
@@ -2169,11 +2155,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop, invariant):
             foundInfLoop = True
             break
         localStates.add(cc.copy())
-
-    # Check the invariant if there is one
-    # TODO.  Invariant not checked in initial state.
-    if invariant != None:
-        checkInvariant(state, cc, invariant)
 
     # Remove original context from bag
     sc.remove(ctx)
@@ -2224,14 +2205,7 @@ def compile(f, filename):
                     print(file, ":", line)
             lastloc = (file, line)
         print("  ", pc, code[pc])
-
-    inv = scope.lookup(("invariant", None, None, None))
-    if inv != None:
-        (t, v) = inv
-        assert t == "constant"
-        (lexeme, file, line, column) = v
-        return (code, scope.labels, lexeme)
-    return (code, scope.labels, None)
+    return (code, scope.labels)
 
 # See if some process other than ctx can reach cs
 def canReach(visited, s, ctx, cs, ncs, checked):
@@ -2246,7 +2220,7 @@ def canReach(visited, s, ctx, cs, ncs, checked):
         return True
     return canReach(visited, nextState, nextContext, pc, checked)
 
-def run(code, labels, invariant):
+def run(code, labels):
     # Initial state
     state = State(code, labels)
 
@@ -2278,9 +2252,9 @@ def run(code, labels, invariant):
                 assert isinstance(choices, SetValue), choices
                 assert len(choices.s) > 0
                 for choice in choices.s:
-                    onestep(state, ctx, choice, visited, todo, node, infloop, invariant)
+                    onestep(state, ctx, choice, visited, todo, node, infloop)
             else:
-                onestep(state, ctx, None, visited, todo, node, infloop, invariant)
+                onestep(state, ctx, None, visited, todo, node, infloop)
     print()
 
     # See if there has been a safety violation
@@ -2318,8 +2292,8 @@ def run(code, labels, invariant):
     return visited
 
 def main():
-    (code, labels, invariant) = compile(sys.stdin, "<stdin>")
-    run(code, labels, invariant)
+    (code, labels) = compile(sys.stdin, "<stdin>")
+    run(code, labels)
 
 if __name__ == "__main__":
     main()
