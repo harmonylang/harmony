@@ -1,18 +1,13 @@
-# correct mutual exclusion using ordinary locks
-
 import synch;
 
-def p():
+def process(lk):
     while choose({ False, True }):
-        call lock&(mylock);
+        call lock(lk);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        call unlock&(mylock);
+        call unlock(lk);
     ;
 ;
 mylock = Lock();
-atomic:
-    spawn p(), 0;
-    spawn p(), 0;
-    spawn p(), 1;
-    spawn p(), 1;
+for i in 1..10:
+    spawn process &(mylock), ();
 ;

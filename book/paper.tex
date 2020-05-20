@@ -969,6 +969,48 @@ update Figure~\ref{fig:tas}, replacing \texttt{tas}.
 \end{itemize}
 \end{quote}
 
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+def tas(lk):
+    atomic:
+        result = ^lk;
+        ^lk = True;
+    ;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk = False;
+;
+def Lock():
+    result = False;
+;
+\end{verbatim}
+\end{code}
+\caption{The \texttt{Lock} interface in the \texttt{synch} module.}
+\label{fig:locks}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{../Lock.cxl}
+\end{code}
+\caption{Mutual Exclusion using the \texttt{Lock} interface of the \texttt{synch} module.}
+\label{fig:lockme}
+\end{figure}
+
+Locks are probably the most popular and basic form of synchronization
+in concurrent programs.  For this reason, CXL has a module called
+\texttt{synch} that includes support for locks.
+Figure~\ref{fig:locks} shows how they are implemented, and
+Figure~\ref{fig:lockme} gives an example of how they may be used.
+Notice that the module completely hides the implementation of the
+lock.
+
 \chapter{Local Variables}
 
 Like in Python, CXL methods have local variables.  You have already
