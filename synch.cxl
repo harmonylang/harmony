@@ -19,24 +19,24 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: {} };
 ;
 def wait(c):
-    var lk = (^c).lock;
-    (^c).waiters = (^c).waiters + { nametag() };
-    ^lk = False;
-    var blocked = True;
-    while blocked:
-        atomic:
-            if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
-                ^lk = True;
-                blocked = False;
+    let lk = (^c).lock, blocked = True:
+        (^c).waiters = (^c).waiters + { nametag() };
+        ^lk = False;
+        while blocked:
+            atomic:
+                if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
+                    ^lk = True;
+                    blocked = False;
+                ;
             ;
         ;
     ;
 ;
 def notify(c):
-    var waiters = (^c).waiters;
-    if waiters != {}:
-        var pid = choose(waiters);
-        (^c).waiters = waiters - { pid };
+    let waiters = (^c).waiters:
+        if waiters != {}:
+            (^c).waiters = waiters - { choose(waiters) };
+        ;
     ;
 ;
 def notifyAll(c):
@@ -46,12 +46,13 @@ def Semaphore(cnt):
     result = cnt;
 ;
 def P(sema):
-    var blocked = True;
-    while blocked:
-        atomic:
-            if (^sema) > 0:
-                ^sema = (^sema) - 1;
-                blocked = False;
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (^sema) > 0:
+                    ^sema = (^sema) - 1;
+                    blocked = False;
+                ;
             ;
         ;
     ;
