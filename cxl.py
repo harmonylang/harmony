@@ -72,7 +72,6 @@ def isreserved(s):
         "pass",
         "spawn",
         "True",
-        "var",
         "while"
     ]
 
@@ -1605,20 +1604,6 @@ class LabelStatAST(AST):
         scope.location(len(code), self.file, self.line, self.labels)
         self.ast.compile(scope, code)
 
-class VarAST(AST):
-    def __init__(self, var, expr):
-        self.var = var
-        self.expr = expr
-
-    def __repr__(self):
-        return "Var(" + str(self.var) + ", " + str(self.expr) + ")"
-
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        (lexeme, file, line, column) = self.var
-        scope.names[lexeme] = ("variable", self.var)
-        code.append(StoreVarOp(self.var, 0))
-
 class ConstAST(AST):
     def __init__(self, const, expr):
         self.const = const
@@ -1729,14 +1714,6 @@ class StatementRule(Rule):
     def parse(self, t):
         token = t[0]
         (lexeme, file, line, column) = token
-        if lexeme == "var":
-            var = t[1]
-            (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
-            (lexeme, file, line, column) = t[2]
-            assert lexeme == "=", t[2]
-            (ast, t) = NaryRule({";"}).parse(t[3:])
-            return (VarAST(var, ast), self.skip(token, t))
         if lexeme == "const":
             const = t[1]
             (lexeme, file, line, column) = t[1]
