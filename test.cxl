@@ -1,8 +1,1 @@
-def inc(ptr):
-    atomic:
-        ^ptr = ^ptr + 1;
-    ;
-;
-count = 0;
-call inc(&(count));
-assert count == 1;
+assert -1 == (1 - 2);

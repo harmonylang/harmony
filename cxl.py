@@ -79,7 +79,8 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "atLabel", "cardinality", "nametag", "not", "keys", "len" ]
+    return s in [ "^", "-", "atLabel", "cardinality",
+                        "nametag", "not", "keys", "len" ]
 
 def isbinaryop(s):
     return s in [
@@ -628,18 +629,6 @@ class DictOp(Op):
         context.push(DictValue(d))
         context.pc += 1
 
-class UnaryOp(Op):
-    def __init__(self, op):
-        self.op = op
-
-    def __repr__(self):
-        return "Unary " + str(self.op)
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.op
-        context.push(OpValue(lexeme))
-        context.pc += 1
-
 class NaryOp(Op):
     def __init__(self, op, n):
         self.op = op
@@ -648,6 +637,15 @@ class NaryOp(Op):
     def __repr__(self):
         return "Nary " + str(self.op) + " " + str(self.n)
 
+    def atLabel(self, state, label):
+        pc = state.labels[label]
+        d = {}
+        for (ctx, cnt) in state.ctxbag.items():
+            if ctx.pc == pc:
+                c = d.get(ctx.nametag)
+                d[ctx.nametag] = 1 if c == None else (c + 1)
+        return DictValue(d)
+
     def eval(self, state, context):
         (op, file, line, column) = self.op
         if self.n == 1:
@@ -655,6 +653,25 @@ class NaryOp(Op):
             if op == "-":
                 assert isinstance(e, int), e
                 context.push(-e)
+            elif op == "not":
+                assert isinstance(e, bool), e
+                context.push(not e)
+            elif op == "atLabel":
+                assert isinstance(e, str), e
+                context.push(self.atLabel(state, e))
+            elif op == "cardinality":
+                assert isinstance(e, SetValue), e
+                context.push(len(e.s))
+            elif op == "nametag":
+                assert isinstance(e, DictValue), e
+                assert len(e) == 0
+                context.push(context.nametag)
+            elif op == "len":
+                assert isinstance(e, DictValue), e
+                context.push(len(e.d))
+            elif op == "keys":
+                assert isinstance(e, DictValue), e
+                context.push(SetValue(set(e.d.keys())))
             else:
                 assert False, self
         elif self.n == 2:
@@ -742,15 +759,6 @@ class ApplyOp(Op):
     def __repr__(self):
         return "Apply"
 
-    def atLabel(self, state, label):
-        pc = state.labels[label]
-        d = {}
-        for (ctx, cnt) in state.ctxbag.items():
-            if ctx.pc == pc:
-                c = d.get(ctx.nametag)
-                d[ctx.nametag] = 1 if c == None else (c + 1)
-        return DictValue(d)
-
     def eval(self, state, context):
         method = context.pop()
         e = context.pop()
@@ -762,25 +770,6 @@ class ApplyOp(Op):
             if op == "-":
                 assert isinstance(e, int), e
                 context.push(-e)
-            elif op == "not":
-                assert isinstance(e, bool), e
-                context.push(not e)
-            elif op == "atLabel":
-                assert isinstance(e, str), e
-                context.push(self.atLabel(state, e))
-            elif op == "cardinality":
-                assert isinstance(e, SetValue), e
-                context.push(len(e.s))
-            elif op == "nametag":
-                assert isinstance(e, DictValue), e
-                assert len(e) == 0
-                context.push(context.nametag)
-            elif op == "len":
-                assert isinstance(e, DictValue), e
-                context.push(len(e.d))
-            elif op == "keys":
-                assert isinstance(e, DictValue), e
-                context.push(SetValue(set(e.d.keys())))
             else:
                 assert False, self
             context.pc += 1
@@ -821,16 +810,6 @@ class ConstantAST(AST):
 
     def compile(self, scope, code):
         code.append(ConstantOp(self.const))
-
-class UnaryAST(AST):
-    def __init__(self, op):
-        self.op = op
-
-    def __repr__(self):
-        return str(self.op)
-
-    def compile(self, scope, code):
-        code.append(UnaryOp(self.op))
 
 class NameAST(AST):
     def __init__(self, name):
@@ -902,8 +881,7 @@ class SetComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(UnaryOp(("cardinality", file, line, column)))
-        code.append(ApplyOp())
+        code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         # Now generate the code:
@@ -953,8 +931,7 @@ class DictComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(UnaryOp(("cardinality", file, line, column)))
-        code.append(ApplyOp())
+        code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         # Now generate the code:
@@ -1006,8 +983,7 @@ class TupleComprehensionAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(UnaryOp(("cardinality", file, line, column)))
-        code.append(ApplyOp())
+        code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         # Create an index variable, initialized to 0
@@ -1213,8 +1189,6 @@ class BasicExpressionRule(Rule):
         (lexeme, file, line, column) = t[0]
         if isnumber(lexeme):
             return (ConstantAST((int(lexeme), file, line, column)), t[1:])
-        if isunaryop(lexeme):
-            return (UnaryAST(t[0]), t[1:])
         if lexeme == "False":
             return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
@@ -1288,14 +1262,15 @@ class ChooseAST(AST):
 
 class ExpressionRule(Rule):
     def parse(self, t):
-        # Special treatment of unary minus and pointers
-        (lexeme, file, line, column) = t[0]
-        if lexeme == "^":
-            (ast, t) = (None, t[1:])
-        elif lexeme == "-" :
-            (ast, t) = (UnaryAST(t[0]), t[1:])
-        else:
-            (ast, t) = BasicExpressionRule().parse(t)
+        func = t[0]
+        (lexeme, file, line, column) = func
+        if isunaryop(lexeme):
+            (ast, t) = ExpressionRule().parse(t[1:])
+            if lexeme == "^":
+                return (PointerAST(args[0]), t)
+            else:
+                return (NaryAST(func, [ast]), t)
+        (ast, t) = BasicExpressionRule().parse(t)
         args = []
         while t != []:
             (arg, t) = BasicExpressionRule().parse(t)
@@ -1441,8 +1416,7 @@ class ForAST(AST):
         # Also store the size
         N = ("%size", file, line, column)
         code.append(LoadVarOp(S))
-        code.append(UnaryOp(("cardinality", file, line, column)))
-        code.append(ApplyOp())
+        code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         pc = len(code)      # top of loop
