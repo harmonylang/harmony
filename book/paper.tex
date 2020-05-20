@@ -604,19 +604,38 @@ After setting its flag, the process waits until the other process
 If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
 the same time.
-However, it has a different problem called \emph{livelock}: if both try to
-enter the critical section at the same time, they may end up waiting for
-one another.
+
+To see why, first note the invariant that if process $i$ is in the
+critical section, then flags[i] == True.
+Without loss of generality,
+suppose that process~0 sets \texttt{flags[0]} at time $t_0$.
+Process 0 can only reach the critical section if at some time $t_1$,
+$t_1 > t_0$, it finds that \texttt{flags[1] == False}.
+Because of the invariant, \texttt{flags[1] == False} implies that
+process~1 is not at the critical section at time $t_1$.
+Suppose that process~1 is at the critical section from $t_2$ until
+it clears its flag at time $t_3$.  Note $t_0 < t_1 < t_2 < t_3$.
+Process~1 can only reach the critical section between $(t_2, t_3)$
+if it finds \texttt{flags[0] == False} during $(t_1, t_3)$.  But
+during $(t_0, t_3)$ \texttt{flags[0] == True}.
+
+However, the solution has a different problem called \emph{livelock}:
+if both try to enter the critical section at the same time, they may
+end up waiting for one another indefinitely.  Thus the solution
+violated \emph{progress}.
 
 The final na\"{\i}ve solution is based on a variable called \texttt{turn}
 that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
 enter the critical section, while process $1-i$ has to wait.  When done,
 process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
 opportunity to enter.
-The solution has the nice properties that it satifies mutual exclution and,
-moreover, processes 0 and 1 alternate entering the critical section.
+An invariant of this solution is that while process $i$ is in the critical
+section, \texttt{turn} == $i$.  Since \texttt{turn} cannot be 0 and 1 at
+the same time, mutual exclusion is satisfied.
+The solution also has the nice property that
+processes 0 and 1 alternate entering the critical section.
 The problem with the solution is
-that it violates the \emph{progress} property:
+that it also violates the \emph{progress} property:
 if process~$i$ terminates instead of entering the critical section when it
 is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
 turn.
