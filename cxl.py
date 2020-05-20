@@ -899,11 +899,11 @@ class SetComprehensionAST(AST):
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
-        S = ("%set", file, line, column)
+        S = ("%set:"+str(uid), file, line, column)
         code.append(StoreVarOp(S, 0))
 
         # Also store the size
-        N = ("%size", file, line, column)
+        N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
@@ -934,6 +934,10 @@ class SetComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
+
 class DictComprehensionAST(AST):
     def __init__(self, value, var, expr):
         self.value = value
@@ -951,11 +955,11 @@ class DictComprehensionAST(AST):
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
-        S = ("%set", file, line, column)
+        S = ("%set:"+str(uid), file, line, column)
         code.append(StoreVarOp(S, 0))
 
         # Also store the size
-        N = ("%size", file, line, column)
+        N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
@@ -988,6 +992,10 @@ class DictComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
+
 class TupleComprehensionAST(AST):
     def __init__(self, value, var, expr):
         self.value = value
@@ -1005,18 +1013,18 @@ class TupleComprehensionAST(AST):
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
-        S = ("%set", file, line, column)
+        S = ("%set:"+str(uid), file, line, column)
         code.append(StoreVarOp(S, 0))
 
         # Also store the size
-        N = ("%size", file, line, column)
+        N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
 
         # Create an index variable, initialized to 0
         code.append(ConstantOp((0, file, line, column)))
-        I = ("%index", file, line, column)
+        I = ("%index:"+str(uid), file, line, column)
         code.append(StoreVarOp(I, 0))
 
         # Now generate the code:
@@ -1055,6 +1063,11 @@ class TupleComprehensionAST(AST):
         code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
         code.append(DictOp())
+
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
+        code.append(DelVarOp(I))
 
 # N-ary operator
 class NaryAST(AST):
@@ -1466,12 +1479,6 @@ class ForAST(AST):
         S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
         code.append(StoreVarOp(S, 0))
 
-        # Also store the size
-        N = ("%size:"+str(uid), file, line, column)
-        code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
-        code.append(StoreVarOp(N, 0))
-
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
         code.append(ConstantOp((SetValue(set()), file, line, column)))
@@ -1493,7 +1500,6 @@ class ForAST(AST):
 
         code.append(DelVarOp(self.var))
         code.append(DelVarOp(S))
-        code.append(DelVarOp(N))        # TODO.  Do we need N?
 
 class AtomicAST(AST):
     def __init__(self, stat):
