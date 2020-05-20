@@ -1432,13 +1432,11 @@ class LetAST(AST):
 
         saved = []
         for (var, expr) in self.vars:
-            # See if we need to save an old value
+            # See if the variable already exists.  That's an error.
             tv = scope.lookup(var)
             if tv != None:
                 (t, v) = tv
-                if t == "variable":
-                    code.append(LoadVarOp(var))   # save old value on stack
-                    saved.append(var)
+                assert t != "variable", tv
 
             # Set the value of the new variable
             (lexeme, file, line, column) = var
@@ -1451,11 +1449,7 @@ class LetAST(AST):
 
         # Restore the old variable state
         for (var, expr) in self.vars:
-            if var not in saved:
-                code.append(DelVarOp(var))  # remove variable
-        while saved != []:
-            var = saved.pop()
-            code.append(StoreVarOp(var, 0))  # restore old value from stack
+            code.append(DelVarOp(var))  # remove variable
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
