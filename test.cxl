@@ -1,1 +1,6 @@
-assert --1 == 1;
+var y = 4;
+var x = 5;
+let x = 3:
+    assert x == (y - 1);
+;
+assert x == 5;

@@ -56,6 +56,7 @@ def isreserved(s):
         "choose",
         "const",
         "def",
+        "del",
         "else",
         "False",
         "for",
@@ -64,6 +65,7 @@ def isreserved(s):
         "in",
         "keys",
         "len",
+        "let",
         "nametag",
         "not",
         "or",
@@ -80,7 +82,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in [ "^", "-", "atLabel", "cardinality",
-                        "nametag", "not", "keys", "len" ]
+                        "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
@@ -352,6 +354,18 @@ class SplitOp(Op):
         context.push(SetValue(set(lst[1:])))
         context.pc += 1
 
+class DelVarOp(Op):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return "DelVar " + str(self.name)
+
+    def eval(self, state, context):
+        (lexeme, file, line, column) = self.name
+        context.delete(lexeme)
+        context.pc += 1
+
 class LoadVarOp(Op):
     def __init__(self, name):
         self.name = name
@@ -479,9 +493,9 @@ class AssertOp(Op):
         assert isinstance(cond, bool)
         if not cond:
             if self.exprthere:
-                print("Assertion failed", self.token, expr)
+                print("CXL Assertion failed", self.token, expr)
             else:
-                print("Assertion failed", self.token)
+                print("CXL Assertion failed", self.token)
             state.failure = True
         context.pc += 1
 
@@ -666,6 +680,13 @@ class NaryOp(Op):
                 assert isinstance(e, DictValue), e
                 assert len(e) == 0
                 context.push(context.nametag)
+            elif op == "processes":
+                assert isinstance(e, DictValue), e
+                assert len(e) == 0
+                context.push(DictValue(
+                    { ctx.nametag:cnt
+                            for (ctx, cnt) in state.ctxbag.items()
+                    }))
             elif op == "len":
                 assert isinstance(e, DictValue), e
                 context.push(len(e.d))
@@ -1397,6 +1418,39 @@ class WhileAST(AST):
         code.append(JumpOp(pc1))
         code[pc2] = JumpCondOp(False, len(code))
 
+class LetAST(AST):
+    def __init__(self, var, expr, stat):
+        self.var = var
+        self.expr = expr
+        self.stat = stat
+
+    def __repr__(self):
+        return "Let(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        # See if we need to save an old value
+        tv = scope.lookup(self.var)
+        varsaved = False
+        if tv != None:
+            (t, v) = tv
+            if t == "variable":
+                code.append(LoadVarOp(self.var))   # save old value on stack
+                varsaved = True
+
+        # Run the code with the new variable
+        ns = Scope(scope)
+        (lexeme, file, line, column) = self.var
+        ns.names[lexeme] = ("variable", self.var)
+        self.expr.compile(ns, code)
+        code.append(StoreVarOp(self.var, 0))
+        self.stat.compile(ns, code)
+
+        # Restore the old variable state
+        if varsaved:
+            code.append(StoreVarOp(self.var, 0))  # restore old value from stack
+        else:
+            code.append(DelVarOp(self.var))  # remove variable
+
 class ForAST(AST):
     def __init__(self, var, expr, stat):
         self.var = var
@@ -1579,7 +1633,6 @@ class ConstAST(AST):
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
         v = ctx.pop()
-        print("CONSTANT", self.const, v)
         (lexeme, file, line, column) = self.const
         scope.names[lexeme] = ("constant", (v, file, line, column))
 
@@ -1716,9 +1769,21 @@ class StatementRule(Rule):
             (s, t) = NaryRule({":"}).parse(t[3:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (ForAST(var, s, stat), self.skip(token, t))
+        if lexeme == "let":
+            var = t[1]
+            (lexeme, file, line, column) = var
+            assert isname(lexeme), var
+            (lexeme, file, line, column) = t[2]
+            assert lexeme == "=", t[2]
+            (s, t) = NaryRule({":"}).parse(t[3:])
+            (stat, t) = StatListRule({";"}).parse(t[1:])
+            return (LetAST(var, s, stat), self.skip(token, t))
         if lexeme == "atomic":
             (stat, t) = BlockRule({";"}).parse(t[1:])
             return (AtomicAST(stat), self.skip(token, t))
+        if lexeme == "del":
+            (ast, t) = LValueRule().parse(t[1:])
+            return (DelAST(ast), self.skip(token, t))
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, column) = name
@@ -1840,6 +1905,12 @@ class Context:
 
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
+
+    def delete(self, var):
+        if var in self.vars.d:
+            copy = self.vars.d.copy()
+            del copy[var]
+            self.vars = DictValue(copy)
 
     def push(self, val):
         assert val != None
@@ -2033,8 +2104,22 @@ globops = [
     AtomicIncOp, LoadOp, SpawnOp, StoreOp
 ]
 
+def checkInvariant(state, ctx, invariant):
+    assert isinstance(invariant, PcValue)
+    pc = invariant.pc
+    assert isinstance(state.code[pc], FrameOp)
+    end = state.code[pc].end
+    savepc = ctx.pc
+    ctx.pc = pc
+    ctx.push(novalue)
+    while ctx.pc != end:
+        state.code[ctx.pc].eval(state, ctx)
+    v = ctx.pop()
+    ctx.pc = savepc
+    assert v, v
+
 # Have context ctx make one (macro) step in the given state
-def onestep(state, ctx, choice, visited, todo, node, infloop):
+def onestep(state, ctx, choice, visited, todo, node, infloop, invariant):
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
@@ -2083,6 +2168,11 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             foundInfLoop = True
             break
         localStates.add(cc.copy())
+
+    # Check the invariant if there is one
+    # TODO.  Invariant not checked in initial state.
+    if invariant != None:
+        checkInvariant(state, cc, invariant)
 
     # Remove original context from bag
     sc.remove(ctx)
@@ -2133,7 +2223,14 @@ def compile(f, filename):
                     print(file, ":", line)
             lastloc = (file, line)
         print("  ", pc, code[pc])
-    return (code, scope.labels)
+
+    inv = scope.lookup(("invariant", None, None, None))
+    if inv != None:
+        (t, v) = inv
+        assert t == "constant"
+        (lexeme, file, line, column) = v
+        return (code, scope.labels, lexeme)
+    return (code, scope.labels, None)
 
 # See if some process other than ctx can reach cs
 def canReach(visited, s, ctx, cs, ncs, checked):
@@ -2148,7 +2245,7 @@ def canReach(visited, s, ctx, cs, ncs, checked):
         return True
     return canReach(visited, nextState, nextContext, pc, checked)
 
-def run(code, labels):
+def run(code, labels, invariant):
     # Initial state
     state = State(code, labels)
 
@@ -2168,9 +2265,8 @@ def run(code, labels):
             break           # TODO: should this be a continue?
         node = visited[state]
         cnt += 1
-        # if cnt % 10000 == 0 :
-        #    print(state)
-        print(" ", "#states =", cnt, "diameter =", node.len, "queue =", len(todo), end="     \r")
+        print(" ", "#states =", cnt, "diameter =", node.len,
+                        "queue =", len(todo), end="     \r")
         if node.expanded:
             continue
         node.expanded = True
@@ -2181,9 +2277,9 @@ def run(code, labels):
                 assert isinstance(choices, SetValue), choices
                 assert len(choices.s) > 0
                 for choice in choices.s:
-                    onestep(state, ctx, choice, visited, todo, node, infloop)
+                    onestep(state, ctx, choice, visited, todo, node, infloop, invariant)
             else:
-                onestep(state, ctx, None, visited, todo, node, infloop)
+                onestep(state, ctx, None, visited, todo, node, infloop, invariant)
     print()
 
     # See if there has been a safety violation
@@ -2221,8 +2317,8 @@ def run(code, labels):
     return visited
 
 def main():
-    (code, labels) = compile(sys.stdin, "<stdin>")
-    run(code, labels)
+    (code, labels, invariant) = compile(sys.stdin, "<stdin>")
+    run(code, labels, invariant)
 
 if __name__ == "__main__":
     main()

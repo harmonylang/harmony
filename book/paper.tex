@@ -266,6 +266,8 @@ is the same CXL value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same CXL value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
 So if \texttt{x == [ False, True ]},
 then \texttt{x[0] == False} and \texttt{x[1] == True}, just like in Python.
+However, when creating a singleton list, make sure you include the
+comma, as in \texttt{[False,]}.
 
 CXL is not an object-oriented language, however, so objects don't have
 built-in methods.  However, CXL does have some powerful operators to

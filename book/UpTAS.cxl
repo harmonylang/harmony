@@ -1,5 +1,29 @@
-const N = 3;
+const N = 1;
 
+def checkInvariant():
+    if shared:
+        var sum = 0;
+    else:
+        var sum = 1;
+    ;
+    for i in 0..(N-1):
+        if not private[i]:
+            sum = sum + 1;
+        ;
+    ;
+    result = sum <= 1;
+;
+def invariantChecker():
+    var running = True;
+    while running:
+        atomic:
+            assert checkInvariant();
+            if processes() == dict{ nametag(): 1 }:
+                running = False;
+            ;
+        ;
+    ;
+;
 def tas(s, p):
     atomic:
         ^p = ^s;
@@ -14,8 +38,9 @@ def process(self):
         ;
 
         # Critical section
-        @cs: assert (not (private[self])) and
-             (atLabel.cs == dict{ nametag(): 1 });
+        @cs: assert (not private[self]) and
+                (atLabel.cs == dict{ nametag(): 1 })
+             ;
 
         # Leave critical section
         private[self] = True;
@@ -24,6 +49,7 @@ def process(self):
 ;
 shared = False;
 private = [ True for i in 0..(N-1) ];
+spawn invariantChecker(), ();
 for i in 0..(N-1):
     spawn process(i), i;
 ;
