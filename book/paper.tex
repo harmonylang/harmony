@@ -993,6 +993,23 @@ Figure~\ref{fig:tas2} shows a more straightforward implementation.
 Compared to Peterson's Algorithm, this approach is general for
 any number of processes.
 
+It is important to appreciate the difference between an
+\emph{atomic section} (the statements executed within an
+\texttt{atomic} statement) and a \emph{critical section}
+(protected by a lock of some sort).
+The former ensures that while the
+atomic statement is executing no other process can execute.
+The latter allows multiple processes to run concurrently,
+just not within the critical section.
+The former is rarely available to a programmer, while the latter
+is very common.
+
+In CXL, atomic statements allow you to implement your own
+low synchronization primites like test-and-set.  Atomic statements
+are not intended to replace locks or other synchonization primitives.
+By the way, CXL \texttt{assert} statements execute atomically
+as if they are nested within an atomic statement.
+
 \begin{quote}
 Try doing mutual exclusion with other interlock instructions!
 \begin{itemize}
@@ -1046,6 +1063,9 @@ Figure~\ref{fig:locks} shows how they are implemented, and
 Figure~\ref{fig:lockme} gives an example of how they may be used.
 Notice that the module completely hides the implementation of the
 lock.
+The \texttt{synch} module includes a variety of other useful
+synchronization primitives, which will be discussed in later
+chapters.
 
 \chapter{Semaphores}
 
