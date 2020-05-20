@@ -1,0 +1,18 @@
+import synch;
+
+def process(lk):
+    while choose({ False, True }):
+        # Enter critical section
+        call lock(lk);
+
+        # Critical section
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+
+        # Leave critical section
+        call unlock(lk);
+    ;
+;
+lock = Lock();
+for i in 1..5:
+    spawn process &(lk), ();
+:

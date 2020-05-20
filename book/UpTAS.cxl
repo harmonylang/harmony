@@ -1,0 +1,29 @@
+const N = 3;
+
+def tas(s, p):
+    atomic:
+        ^p = ^s;
+        ^s = True;
+    ;
+;
+def process(self):
+    while choose({ False, True }):
+        # Enter critical section
+        while private[self]:
+            call tas(&(shared), &(private[self]));
+        ;
+
+        # Critical section
+        @cs: assert (not (private[self])) and
+             (atLabel.cs == dict{ nametag(): 1 });
+
+        # Leave critical section
+        private[self] = True;
+        shared = False;
+    ;
+;
+shared = False;
+private = [ True for i in 0..(N-1) ];
+for i in 0..(N-1):
+    spawn process(i), i;
+;
