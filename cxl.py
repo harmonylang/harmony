@@ -671,6 +671,7 @@ class NaryOp(Op):
                 assert isinstance(e, bool), e
                 context.push(not e)
             elif op == "atLabel":
+                assert context.atomic > 0
                 assert isinstance(e, str), e
                 context.push(self.atLabel(state, e))
             elif op == "cardinality":
@@ -683,6 +684,7 @@ class NaryOp(Op):
             elif op == "processes":
                 assert isinstance(e, DictValue), e
                 assert len(e) == 0
+                assert context.atomic > 0
                 context.push(DictValue(
                     { ctx.nametag:cnt
                             for (ctx, cnt) in state.ctxbag.items()
@@ -891,6 +893,8 @@ class SetComprehensionAST(AST):
         return "SetComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
+        scope.checkUnused(self.var)
+        uid = len(code)
         (var, file, line, column) = self.var
 
         # Evaluate the set and store in a temporary variable
@@ -941,6 +945,8 @@ class DictComprehensionAST(AST):
         return "DictComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
+        scope.checkUnused(self.var)
+        uid = len(code)
         (var, file, line, column) = self.var
 
         # Evaluate the set and store in a temporary variable
@@ -993,6 +999,8 @@ class TupleComprehensionAST(AST):
         return "TupleComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
+        scope.checkUnused(self.var)
+        uid = len(code)
         (var, file, line, column) = self.var
 
         # Evaluate the set and store in a temporary variable
@@ -1427,25 +1435,15 @@ class LetAST(AST):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        # Create a new scope
-        ns = Scope(scope)
-
-        saved = []
         for (var, expr) in self.vars:
-            # See if the variable already exists.  That's an error.
-            tv = scope.lookup(var)
-            if tv != None:
-                (t, v) = tv
-                assert t != "variable", tv
-
-            # Set the value of the new variable
+            scope.checkUnused(var)
             (lexeme, file, line, column) = var
-            ns.names[lexeme] = ("variable", var)
-            expr.compile(ns, code)
+            scope.names[lexeme] = ("variable", var)
+            expr.compile(scope, code)
             code.append(StoreVarOp(var, 0))
 
         # Run the body
-        self.stat.compile(ns, code)
+        self.stat.compile(scope, code)
 
         # Restore the old variable state
         for (var, expr) in self.vars:
@@ -1461,15 +1459,16 @@ class ForAST(AST):
         return "For(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
+        scope.checkUnused(self.var)
+        uid = len(code)
         (var, file, line, column) = self.var
 
-        # TODO.  What if for loop is nested?
         self.expr.compile(scope, code)     # first push the set
-        S = ("%set", file, line, column)   # save in variable "%set"
+        S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
         code.append(StoreVarOp(S, 0))
 
         # Also store the size
-        N = ("%size", file, line, column)
+        N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
         code.append(StoreVarOp(N, 0))
@@ -2070,6 +2069,13 @@ class Scope:
         self.names = {}
         self.locations = {}
         self.labels = {}
+
+    def checkUnused(self, name):
+        (lexeme, file, line, column) = name
+        tv = self.names.get(lexeme)
+        if tv != None:
+            (t, v) = tv
+            assert t != "variable", ("variable name in use", name, v)
 
     def lookup(self, name):
         (lexeme, file, line, column) = name
