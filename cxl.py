@@ -1267,7 +1267,7 @@ class ExpressionRule(Rule):
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
             if lexeme == "^":
-                return (PointerAST(args[0]), t)
+                return (PointerAST(ast), t)
             else:
                 return (NaryAST(func, [ast]), t)
         (ast, t) = BasicExpressionRule().parse(t)
