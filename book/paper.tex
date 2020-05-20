@@ -558,7 +558,7 @@ to a state from which a terminating state cannot be reached.
 \begin{code}
 \verbatiminput{UpLock.cxl}
 \end{code}
-\caption{Na\"{\i}ve implementation of a lock.}
+\caption{Na\"{\i}ve implementation of a shared lock.}
 \label{fig:uplock}
 \end{figure}
 
@@ -630,7 +630,10 @@ enter the critical section, while process $1-i$ has to wait.  When done,
 process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
 opportunity to enter.
 An invariant of this solution is that while process $i$ is in the critical
-section, \texttt{turn} == $i$.  Since \texttt{turn} cannot be 0 and 1 at
+section, \texttt{turn} == $i$.
+(If you do not believe that, replace the assertion at the critical
+section with \texttt{assert turn == self} and run CXL.)
+Since \texttt{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that
 processes 0 and 1 alternate entering the critical section.
@@ -945,38 +948,50 @@ call atomic_inc &(count);
 
 Many CPUs have an atomic ``test-and-set'' operation.
 Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
-Here \texttt{lk} points to a shared variable holding a
-boolean.  The operation assigns \texttt{True} to the
-variable but returns the value the variable had \emph{before}
-the assignment.
-Figure~\ref{fig:tas} goes on to show how the program
-in Figure~\ref{fig:uplock} can be made correct.
-Using \texttt{tas} a process can wait until \texttt{lock} is
-\texttt{False} and then set it to \texttt{True} before another
-process is able to see its old value.
+Here \texttt{s} points to a shared boolean variable and \texttt{p}
+to a private boolean variable, belonging to some process.
+The operation copies the value of the shared variable to the
+private variable and then sets the shared variable to \texttt{True}.
 
+Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
+a set of $N$ processes.
+Variable \texttt{shared} is initialized to \texttt{False} while
+\texttt{private[$i$]} for each process $i$ is initialized to \texttt{True}.
+An important invariant, $I_1$, of the program is that at any time at most
+one of the variables is \texttt{False}.
+Another invariant, $I_2$, is that if process $i$ is in the critical section,
+then \texttt{private[$i$] == False}.
+Between the two, it is clear that only one process can be in the
+critical section at the same time.
+
+To see that invariant $I_1$ is maintained, note that
+\texttt{\^{}p == True} upon entry of \texttt{tas}.
+So there are two cases:
+\begin{enumerate}
+\item \texttt{\^{}s} is \texttt{False} upon entry to \texttt{tas}.
+Then upon exit \texttt{\^{}p == False} and \texttt{\^{}s == True}, maintaining
+the invariant.
+\item \texttt{\^{}s} is \texttt{True} upon entry to \texttt{tas}.
+Then upon exit nothing has changed, maintaining the invariant.
+\end{enumerate}
+Invariant $I_1$ is also easy to verify for exiting the critical section.
+
+\begin{figure}
+\begin{code}
+\verbatiminput{../TAS.cxl}
+\end{code}
+\caption{Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
+\label{fig:tas2}
+\end{figure}
+
+Invariant $I_2$ is obvious as process $i$ only proceeds to the critical
+section if \texttt{private[$i$] == False} and no other process modified
+\texttt{private[$i$]}.
+Indeed, there is no need to keep \texttt{private} as a shared
+variable---we only did so to be able to show the invariants.
+Figure~\ref{fig:tas2} shows a more straightforward implementation.
 Compared to Peterson's Algorithm, this approach is general for
-any number of processes.  To make sure, you may want to try it
-for three or more processes.  In fact, you may want to replace
-the last two lines by:
-\begin{code}
-\begin{verbatim}
-for i in 1..5:
-    spawn process(), ();
-;
-\end{verbatim}
-\end{code}
-This creates 5 processes with the same name tag.  CXL can
-exploit their symmetry to do a much more efficient state
-search.  Try replacing it with the following code and see
-the difference:
-\begin{code}
-\begin{verbatim}
-for i in 1..5:
-    spawn process(), i;
-;
-\end{verbatim}
-\end{code}
+any number of processes.
 
 \begin{quote}
 Try doing mutual exclusion with other interlock instructions!
