@@ -11,7 +11,7 @@ def reader():
         nreaders = nreaders + 1;
         call unlock&(rlock);
 
-        @rcs: atomic: pass;;   # critical section
+        @rcs: assert atLabel.wcs == dict{};
 
         call lock&(rlock);
         nreaders = nreaders - 1;
@@ -25,7 +25,9 @@ def writer():
     while choose({ False, True }):
         call lock&(wlock);
 
-        @wcs: atomic: pass;;   # critical section
+        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                     (atLabel.rcs == dict{})
+              ;
 
         call unlock&(wlock);
     ;
@@ -35,8 +37,8 @@ wlock = Lock();
 nreaders = 0;
 
 atomic:
-    spawn reader(), 0;
-    spawn reader(), 1;
-    spawn writer(), 0;
-    spawn writer(), 1;
+    spawn reader(), ();
+    spawn reader(), ();
+    spawn writer(), ();
+    spawn writer(), ();
 ;

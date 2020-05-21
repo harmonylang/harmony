@@ -24,7 +24,7 @@ def reader():
         nreadersEntered = nreadersEntered + 1;
         call vHat();
 
-        @rcs: atomic: pass;;   # critical section
+        @rcs: assert atLabel.wcs == dict{};
 
         call P &(mutex);
         nreadersEntered = nreadersEntered - 1;
@@ -42,7 +42,9 @@ def writer():
         nwritersEntered = nwritersEntered + 1;
         call vHat();
 
-        @wcs: atomic: pass;;   # critical section
+        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                     (atLabel.rcs == dict{})
+              ;
 
         call P &(mutex);
         nwritersEntered = nwritersEntered - 1;
@@ -58,8 +60,8 @@ nwritersEntered = 0;
 nwritersWaiting = 0;
 
 atomic:
-    spawn reader(), 0;
-    spawn reader(), 1;
-    spawn writer(), 0;
-    spawn writer(), 1;
+    spawn reader(), ();
+    spawn reader(), ();
+    spawn writer(), ();
+    spawn writer(), ();
 ;
