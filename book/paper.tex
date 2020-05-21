@@ -631,7 +631,7 @@ that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
 enter the critical section, while process $1-i$ has to wait.  When done,
 process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
 opportunity to enter.
-An invariant of this solution is that while process $i$ is in the critical
+An invariant of this solution is that while process~$i$ is in the critical
 section, \texttt{turn} == $i$.
 (If you do not believe that, replace the assertion at the critical
 section with \texttt{assert turn == self} and run CXL.)
@@ -957,10 +957,11 @@ private variable and then sets the shared variable to \texttt{True}.
 
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
 a set of $N$ processes.
+It uses $N+1$ variables.
 Variable \texttt{shared} is initialized to \texttt{False} while
 \texttt{private[$i$]} for each process $i$ is initialized to \texttt{True}.
 An important invariant, $I_1$, of the program is that at any time at most
-one of the variables is \texttt{False}.
+one of these variables is \texttt{False}.
 Another invariant, $I_2$, is that if process $i$ is in the critical section,
 then \texttt{private[$i$] == False}.
 Between the two, it is clear that only one process can be in the
@@ -987,7 +988,7 @@ Invariant $I_1$ is also easy to verify for exiting the critical section.
 \end{figure}
 
 Invariant $I_2$ is obvious as process $i$ only proceeds to the critical
-section if \texttt{private[$i$] == False} and no other process modified
+section if \texttt{private[$i$] == False} and no other process modifies
 \texttt{private[$i$]}.
 Indeed, there is no need to keep \texttt{private} as a shared
 variable---we only did so to be able to show the invariants.
@@ -1006,9 +1007,9 @@ just not within the critical section.
 The former is rarely available to a programmer, while the latter
 is very common.
 
-In CXL, atomic statements allow you to implement your own
-low synchronization primites like test-and-set.  Atomic statements
-are not intended to replace locks or other synchonization primitives.
+In CXL, atomic statements allow you to \emph{implement} your own
+low synchronization primitives like test-and-set.  Atomic statements
+are not intended to \emph{replace} locks or other synchonization primitives.
 By the way, CXL \texttt{assert} statements execute atomically
 as if they are nested within an atomic statement.
 

@@ -1,31 +1,5 @@
 const N = 3;
 
-def checkInvariant():
-    let sum = 0:
-        if not shared:
-            sum = 1;
-        ;
-        for i in 0..(N-1):
-            if not private[i]:
-                sum = sum + 1;
-            ;
-        ;
-        result = sum <= 1;
-    ;
-;
-def invariantChecker():
-    let running = True:
-        while running:
-            atomic:
-                __icstarted__ = True;
-                assert checkInvariant();
-                if processes() == dict{ nametag(): 1 }:
-                    running = False;
-                ;
-            ;
-        ;
-    ;
-;
 def tas(s, p):
     atomic:
         ^p = ^s;
@@ -51,13 +25,6 @@ def process(self):
 ;
 shared = False;
 private = [ True for i in 0..(N-1) ];
-
-__icstarted__ = False;
-spawn invariantChecker(), ();
-while not __icstarted__:
-    pass;
-;
-
 for i in 0..(N-1):
     spawn process(i), i;
 ;
