@@ -540,17 +540,17 @@ algorithms in general, CXL requires that every execution must be
 able to reach a state in which all processes have terminated.
 Clearly, even if mutual exclusion holds in Figure~\ref{fig:csbarebones},
 the spawned processes never terminate.  In order to resolve this, we
-will model processes in critical regions using the framework in
+will model processes in critical sections using the framework in
 Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
-critical region more than once, but it can also choose to terminate, even
-without entering the critical region ever.
+critical section more than once, but it can also choose to terminate, even
+without entering the critical section ever.
 Note also that we have dropped the \texttt{@ncs} label: it would serve no
 specific purpose.
 
 \begin{quote}
 Try it out!
 \begin{itemize}
-\item Plug \texttt{while True: pass;;} for entering the critical region
+\item Plug \texttt{while True: pass;;} for entering the critical section
 in Figure~\ref{fig:cs} and run CXL.  It should print a trace
 to a state from which a terminating state cannot be reached.
 \end{itemize}
@@ -649,6 +649,7 @@ is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
 turn.
 
 \chapter{Peterson's Algorithm}
+\label{ch:peterson}
 
 \begin{figure}
 \begin{code}
@@ -1138,6 +1139,7 @@ this chapter and future ones.
 Figure~\ref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
+The lock is used to protect access to those counters.
 The program shows two kinds of processes: \texttt{reader()} and
 \texttt{writer()}.  The critical section is spread between two
 labels: readers access \texttt{@rcs} and writers access \texttt{@wcs}.
@@ -1154,14 +1156,16 @@ process waits until there are no readers \emph{or} writers.
 If so, it increments the number of writers.
 The important invariants in this code are:
 \begin{itemize}
-\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} = n$,
-\item $n$ writers at \texttt{@rcs} $\Rightarrow \mathtt{nwriters} = n$,
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
+\item $n$ writers at \texttt{@rcs} $\Rightarrow \mathtt{nwriters} \ge n$,
 \item $(\mathtt{nreaders} \ge 0 \land \mathtt{nwriters} = 0) \lor
     (\mathtt{nreaders} = 0 \land 0 \le \mathtt{nwriters} \le 1)$.
 \end{itemize}
-It is easy to see that the invariants hold and imply the specification.
+It is easy to see that the invariants hold and imply the reader/writer
+specification.
 The solution also supports progress: if no process is in the critical
-section then any process can enter.
+section then any process can enter.  Better still: if any reader is in the
+critical section, any other reader is also able to enter.
 
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}:
@@ -1200,5 +1204,86 @@ Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
 It uses two locks: \texttt{rwlock} is used by both readers and writers,
 while \texttt{rlock} is only used by readers.
+\texttt{rwlock} is held either when readers are at label \texttt{@rcs}
+or when a writer is at label \texttt{@wcs}.
+\texttt{rlock} is used to protect the \texttt{nreaders} variable that
+counts the number of readers in the critical section. 
+
+The invariants that imply the reader/writer specification
+(which are again easy to verify) are as follows:
+
+\begin{itemize}
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
+\item $\exists$ writer at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} = 0$,
+\end{itemize}
+
+A writer simply acquires \texttt{rwlock} to enter the critical section
+and releases it to exit.  The \emph{first} reader to enter the critical
+section acquires \texttt{rwlock} and the \emph{last} reader to exit
+the critical section releases \texttt{rwlock}.
+The implementation satisfies progress: if no process is in the critical
+section than any process enter.
+
+It is instructive to see what happens when a writer is in the critical
+section and two readers try to enter.  The first reader successfully
+acquires \texttt{rlock} and but \emph{hangs} when trying to acquire
+\texttt{rwlock}, which is held by the writer.  The second reader hangs
+trying acquire \texttt{rlock} because it is held by the first reader.
+When the writer leaves the critical section, the first reader acquires
+\texttt{rwlock}, sets \texttt{nreaders} to 1, and releases \texttt{rlock}.
+\texttt{rwlock} is still held.
+Then the second reader acquires \texttt{rlock} and, assuming the first
+reader is still in the critical section, increments \texttt{nreaders} to 2
+and enter the critical section \emph{without} acquiring \texttt{rwlock}.
+\texttt{rwlock} is essentially jointly held by both readers.
+It does not matter in which order they leave: the second will release
+\texttt{rwlock}.
+
+\chapter{Starvation}
+
+So far we have pursued two properties: emph{mutual exclusion}
+and \emph{progress}.  The former is an example of
+\texttt{safety property}---it prevents something ``bad'' from
+happening, like a reader and writer process both entering the
+critical section.  The \emph{progress} property is an example
+of a liveness property---that something good eventually happens.
+Informally (and inexactly), progress states that if no processes
+are in the critical section, then some process that wants to enter
+can.
+
+Progress is a weak form of liveness.  It says that \emph{some}
+process can enter, but it does not prevent a scenario such as
+the following.  There are three processes repeatedly trying to
+enter a critical section using a spinlock.  Two of
+the processes successfully enter, alternating, but the third
+process never gets a turn.  This is an example of
+\texttt{starvation}.  With a spinlock, this scenario could
+even happen with two processes.  Initially both processes
+try to acquire the spinlock.  One of the processes is
+successful and enter.  After the process leaves, it immediately
+tries to re-enter.  This state is identical to the initial
+state, and there is nothing that prevents the same process
+from acquiring the lock yet again.
+
+It is worth noting that Peterson's Algorithm (Chapter~\ref{ch:peterson})
+does not suffer from starvation, thanks to the \texttt{turn} variable
+that alternates between 0 and 1 when two processes are contending for
+the critical section.
+
+While spinlocks suffer from starvation, it is a uniform random
+process and each process has an equal chance of entering the critical
+section.  Thus the probability of starvation is exponentially vanishing.
+Unfortunately, such is not the case for the
+reader/writer solution of Figure~\ref{fig:rw2lock}.
+Consider this scenario: there are two readers and one writer.  One reader
+is in the critical section while the writer is waiting.  Now the
+second reader tries to enter and is able to.  The first reader leaves.
+We are now in a similar situation as the initial state with one reader
+in the critical section and the writer waiting, but it is not the same
+reader.  Unfortunately for the writer, this scenario can repeat itself
+indefinitely.  So even if neiter reader was in the critical section
+for all of the time, the writer never had a chance.
+In this section we will present a version of a reader/writer lock
+implementation that solves this type of starvation.
 
 \end{document}
