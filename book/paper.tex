@@ -1160,5 +1160,9 @@ The important invariants in this code are:
     (\mathtt{nreaders} = 0 \land 0 \le \mathtt{nwriters} \le 1)$.
 \end{itemize}
 It is easy to see that the invariants hold and imply the specification.
+The solution also supports progress: if no process is in the critical
+section then any process can enter.
+
+While correct, it is not considered a good solution.
 
 \end{document}
