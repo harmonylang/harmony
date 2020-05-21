@@ -1242,11 +1242,12 @@ It does not matter in which order they leave: the second will release
 \chapter{Starvation}
 
 So far we have pursued two properties: \emph{mutual exclusion}
-and \emph{progress}.  The former is an example of
-\texttt{safety property}---it prevents something ``bad'' from
+and \emph{progress}.  The former is an example of a
+\emph{safety property}---it prevents something ``bad'' from
 happening, like a reader and writer process both entering the
 critical section.  The \emph{progress} property is an example
-of a liveness property---that something good eventually happens.
+of a \emph{liveness property}---guaranteeing that something good
+eventually happens.
 Informally (and inexactly), progress states that if no processes
 are in the critical section, then some process that wants to enter
 can.
@@ -1260,7 +1261,7 @@ process never gets a turn.  This is an example of
 \texttt{starvation}.  With a spinlock, this scenario could
 even happen with two processes.  Initially both processes
 try to acquire the spinlock.  One of the processes is
-successful and enter.  After the process leaves, it immediately
+successful and enters.  After the process leaves, it immediately
 tries to re-enter.  This state is identical to the initial
 state, and there is nothing that prevents the same process
 from acquiring the lock yet again.
