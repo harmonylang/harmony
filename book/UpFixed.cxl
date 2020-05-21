@@ -1,0 +1,17 @@
+import synch;
+
+def process(self):
+    call lock &(countlock);
+    count = count + 1;
+    call unlock &(countlock);
+    done[self] = True;
+;
+count = 0;
+countlock = Lock();
+done = [ False, False ];
+spawn process(0), 0;
+spawn process(1), 1;
+while not (done[0] and done[1]):
+    pass;
+;
+assert count == 2;
