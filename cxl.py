@@ -1921,6 +1921,7 @@ class State:
         self.ctxbag = {
             Context(DictValue({"name": "__main__", "tag": novalue}), 0, len(code)) : 1
         }
+        self.choosing = None
         self.failure = False
 
     def __repr__(self):
@@ -1939,6 +1940,8 @@ class State:
         if self.vars != other.vars:
             return False
         if self.ctxbag != other.ctxbag:
+            return False
+        if self.choosing != other.choosing:
             return False
         if self.failure != other.failure:
             return False
@@ -2139,14 +2142,19 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         if sc.failure or cc.pc == cc.end:
             break
 
-        # if we're about to do a state change, let other processes
-        # go first assuming there are other processes and we're not
-        # in "atomic" mode
+        # See if this process is making a nondeterministic choice.
+        # If so, we break out of the microstep loop.  However, only
+        # this process is scheduled from this state.
         if isinstance(sc.code[cc.pc], ChooseOp):
             v = cc.stack[-1]
             assert isinstance(v, SetValue), v
             if len(v.s) != 1:
+                sc.choosing = cc
                 break
+
+        # if we're about to do a state change, let other processes
+        # go first assuming there are other processes and we're not
+        # in "atomic" mode
         if cc.atomic == 0 and type(sc.code[cc.pc]) in globops and len(sc.ctxbag) > 0:
             break
 
@@ -2246,14 +2254,15 @@ def run(code, labels):
             continue
         node.expanded = True
 
-        for (ctx, _) in state.ctxbag.items():
-            if ctx.pc < ctx.end and isinstance(code[ctx.pc], ChooseOp):
-                choices = ctx.stack[-1]
-                assert isinstance(choices, SetValue), choices
-                assert len(choices.s) > 0
-                for choice in choices.s:
-                    onestep(state, ctx, choice, visited, todo, node, infloop)
-            else:
+        if state.choosing != None:
+            ctx = state.choosing
+            choices = ctx.stack[-1]
+            assert isinstance(choices, SetValue), choices
+            assert len(choices.s) > 0
+            for choice in choices.s:
+                onestep(state, ctx, choice, visited, todo, node, infloop)
+        else:
+            for (ctx, _) in state.ctxbag.items():
                 onestep(state, ctx, None, visited, todo, node, infloop)
     print()
 

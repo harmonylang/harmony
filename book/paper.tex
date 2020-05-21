@@ -1089,17 +1089,18 @@ def Lock():
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../Lock.cxl}
+\verbatiminput{UpFixed.cxl}
 \end{code}
-\caption{Mutual Exclusion using the \texttt{Lock} interface of the \texttt{synch} module.}
-\label{fig:lockme}
+\caption{Program of Figure~\ref{fig:inc} fixed with a lock.}
+\label{fig:incfixed}
 \end{figure}
 
 Locks are probably the most popular and basic form of synchronization
 in concurrent programs.  For this reason, CXL has a module called
 \texttt{synch} that includes support for locks.
 Figure~\ref{fig:locks} shows how they are implemented, and
-Figure~\ref{fig:lockme} gives an example of how they may be used.
+Figure~\ref{fig:figinc} gives an example of how they may be used,
+in this case to fix the program of Figure~\ref{fig:inc}.
 Notice that the module completely hides the implementation of the
 lock.
 The \texttt{synch} module includes a variety of other useful
