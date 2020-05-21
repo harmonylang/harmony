@@ -5,6 +5,7 @@
 \usepackage{tcolorbox}
 \usepackage{verbatim}
 \usepackage{comment}
+\usepackage{amsmath}
 
 \widowpenalty 10000
 \clubpenalty 10000
@@ -498,6 +499,8 @@ is the atom of the label (in this case, \texttt{.cs}).  The
 method returns a bag of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
+Method \texttt{atLabel} only exists for specification purposes---do not
+use it in normal code.
 
 Figure~\ref{fig:csbarebones} shows the code.
 The assertion also makes use of the method \texttt{nametag()} that
@@ -1107,7 +1110,55 @@ The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
 
-\chapter{Semaphores}
+\chapter{Reader/Writer Locks}
 
+\begin{figure}
+\begin{code}
+\verbatiminput{../RWbusy.cxl}
+\end{code}
+\caption{Busy-Waiting Reader/Writer Lock implementation.}
+\label{fig:rwbusy}
+\end{figure}
+
+Locks are useful when accessing a shared data structure.  By preventing
+more than one process from accessing the data structure at the same
+time, conflicting access are avoided.  However, not all concurrent
+accesses conflict, and opportunities for concurrency may be lost,
+hurting performance.  One important case is when multiple processes
+are simply reading the data structure.  There is no conflict, and
+all reads should be allowed to proceed concurrently.  In many
+applications, reads are the majority of all accesses.
+
+What we want is a special kind of lock that allows either one writer
+or one or more readers to be in the critical section.  This is called
+a \emph{reader/writer lock}.
+We will explore various ways of implementing reader/writer locks in
+this chapter and future ones.
+
+Figure~\ref{fig:rwbusy} presents a solution that uses a
+single (ordinary) lock and two counters: one that maintains the number
+of readers and one that maintains the number of writers.
+The program shows two kinds of processes: \texttt{reader()} and
+\texttt{writer()}.  The critical section is spread between two
+labels: readers access \texttt{@rcs} and writers access \texttt{@wcs}.
+The specification is that if a reader is at label \texttt{@rcs},
+no writer is allowed to be at label \texttt{@wcs}.  Vice versa, if
+a writer is at label \texttt{@wcs}, no reader is allowed to be at
+label \texttt{@rcs} \emph{and} there cannot be another writer at
+label \texttt{@wcs}.
+
+A reader process that wants to enter \texttt{@rcs} first waits
+until there are no writers: \texttt{nwriters == 0}.
+If so, it increments the number of readers.  Similarly, a writer
+process waits until there are no readers \emph{or} writers.
+If so, it increments the number of writers.
+The important invariants in this code are:
+\begin{itemize}
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} = n$,
+\item $n$ writers at \texttt{@rcs} $\Rightarrow \mathtt{nwriters} = n$,
+\item $(\mathtt{nreaders} \ge 0 \land \mathtt{nwriters} = 0) \lor
+    (\mathtt{nreaders} = 0 \land 0 \le \mathtt{nwriters} \le 1)$.
+\end{itemize}
+It is easy to see that the invariants hold and imply the specification.
 
 \end{document}
