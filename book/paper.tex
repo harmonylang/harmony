@@ -1131,7 +1131,7 @@ applications, reads are the majority of all accesses.
 
 What we want is a special kind of lock that allows either one writer
 or one or more readers to be in the critical section.  This is called
-a \emph{reader/writer lock}.
+a \emph{reader/writer lock}~\cite{courtois71}.
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
@@ -1164,5 +1164,28 @@ The solution also supports progress: if no process is in the critical
 section then any process can enter.
 
 While correct, it is not considered a good solution.
+The solution is an example of what is called \emph{busy waiting}:
+processes spin in a loop until some desirable condition is met.
+The astute reader might wonder if obtaining an ordinary lock itself is an
+example of busy waiting.  After all, the CXL \texttt{synch} implementation
+of \texttt{lock()} spins in a loop until the lock is available
+(see Figure~\ref{fig:locks}).
+
+In most operating systems and programming language runtimes, however,
+when a process acquires a lock, the process is placed on a scheduling
+queue and stops using CPU cycles until the lock becomes available.
+Moreover, if there are multiple processes waiting for a lock, there
+is a scheduler that decides which of the processes gets the lock.
+Busy waiting disables all this.
+
+But even when multiple processes each run on their own core, the solution
+is inefficient.  After all, when the lock becomes available, the process
+has to check other variables to see if it can continue.  In our case,
+the process may have to read \texttt{nreaders} and/or \texttt{nwriters}
+to decide if it can go on or has to try again, involving releasing
+the lock and re-acquiring it.
+
+So it is considered ok to have processes busy wait for a lock to become
+available, but not to busy wait for application-specific conditions.
 
 \end{document}
