@@ -1281,8 +1281,8 @@ second reader tries to enter and is able to.  The first reader leaves.
 We are now in a similar situation as the initial state with one reader
 in the critical section and the writer waiting, but it is not the same
 reader.  Unfortunately for the writer, this scenario can repeat itself
-indefinitely.  So even if neiter reader was in the critical section
-for all of the time, and the second reader arrived well after the writer,
+indefinitely.  So even if neither reader was in the critical section
+all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 In this chapter, we will present a version of a reader/writer lock
 implementation that solves this type of starvation, but won't eliminate
