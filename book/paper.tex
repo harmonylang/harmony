@@ -1164,10 +1164,10 @@ The solution also supports progress: if no process is in the critical
 section then any process can enter.
 
 While correct, it is not considered a good solution.
-The solution is an example of what is called \emph{busy waiting}:
+The solution is an example of what is called \emph{busy-waiting}:
 processes spin in a loop until some desirable condition is met.
 The astute reader might wonder if obtaining an ordinary lock itself is an
-example of busy waiting.  After all, the CXL \texttt{synch} implementation
+example of busy-waiting.  After all, the CXL \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the lock is available
 (see Figure~\ref{fig:locks}).
 
@@ -1185,7 +1185,20 @@ the process may have to read \texttt{nreaders} and/or \texttt{nwriters}
 to decide if it can go on or has to try again, involving releasing
 the lock and re-acquiring it.
 
-So it is considered ok to have processes busy wait for a lock to become
-available, but not to busy wait for application-specific conditions.
+\begin{figure}
+\begin{code}
+\verbatiminput{../RWlock.cxl}
+\end{code}
+\caption{Reader/Writer with Two Locks.}
+\label{fig:rw2lock}
+\end{figure}
+
+So it is considered ok to have processes using spinlock a implement a
+lock, but not to busy-wait for application-specific conditions.
+
+Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
+that does not busy-wait.
+It uses two locks: \texttt{rwlock} is used by both readers and writers,
+while \texttt{rlock} is only used by readers.
 
 \end{document}

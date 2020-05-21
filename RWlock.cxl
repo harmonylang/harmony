@@ -1,44 +1,38 @@
-# solution to read/write locks using two ordinary locks
-
 import synch;
 
 def reader():
     while choose({ False, True }):
-        call lock&(rlock);
+        call lock &(rlock);
         if nreaders == 0:
-            call lock&(wlock);
+            call lock &(rwlock);
         ;
         nreaders = nreaders + 1;
-        call unlock&(rlock);
+        call unlock &(rlock);
 
-        @rcs: assert atLabel.wcs == dict{};
+        @rcs: assert atLabel.wcs == dict{}
+              ;
 
-        call lock&(rlock);
+        call lock &(rlock);
         nreaders = nreaders - 1;
         if nreaders == 0:
-            call unlock&(wlock);
+            call unlock &(rwlock);
         ;
-        call unlock&(rlock);
+        call unlock &(rlock);
     ;
 ;
 def writer():
     while choose({ False, True }):
-        call lock&(wlock);
+        call lock &(rwlock);
 
         @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                      (atLabel.rcs == dict{})
               ;
 
-        call unlock&(wlock);
+        call unlock &(rwlock);
     ;
 ;
+rwlock = Lock();
 rlock = Lock();
-wlock = Lock();
 nreaders = 0;
-
-atomic:
-    spawn reader(), ();
-    spawn reader(), ();
-    spawn writer(), ();
-    spawn writer(), ();
-;
+spawn reader(), (); spawn reader(), ();
+spawn writer(), (); spawn writer(), ();
