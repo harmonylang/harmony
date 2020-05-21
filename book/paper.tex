@@ -978,6 +978,39 @@ the invariant.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $I_1$ is also easy to verify for exiting the critical section.
+Invariant $I_2$ is obvious as process $i$ only proceeds to the critical
+section if \texttt{private[$i$] == False} and no other process modifies
+\texttt{private[$i$]}.
+
+\begin{figure}
+\begin{code}
+\verbatiminput{UpTASinv.cxl}
+\end{code}
+\caption{Checking invariants.}
+\label{fig:tasinv}
+\end{figure}
+
+CXL can check these invariants as well.  Figure~\ref{fig:tas} already
+has the code to check $I_2$.  But how would one go about checking an
+invariant like $I_1$.  Invariants must hold for every state.
+For $I_2$ we only need an assertion at label \texttt{@cs} because the
+premisse is that there is a process at that label.  However, we would
+like to check $I_1$ in \emph{every state} (after the variables have
+been initialized).
+
+We can do this by adding another process that, in a loop,
+checks the invariant.  Figure~\ref{fig:tasinv} shows the code.
+Method \texttt{checkInvariant()} checks to see if the invariant holds
+in a state.  It introduces a new feature of CXL: the ability to have
+variables local to a method.  In this case, the variable \texttt{sum}
+is used to compute the number of variables that have value
+\texttt{False}.
+The function is invoked by in a loop by a process that runs alongside
+the other processes.
+Note that this process must be started after the variables are
+initialized---before that the invariant does not hold yet.
+Because CXL tries every possible execution, the process is guaranteed
+to find violations of the invariant if it does not hold.
 
 \begin{figure}
 \begin{code}
@@ -987,11 +1020,9 @@ Invariant $I_1$ is also easy to verify for exiting the critical section.
 \label{fig:tas2}
 \end{figure}
 
-Invariant $I_2$ is obvious as process $i$ only proceeds to the critical
-section if \texttt{private[$i$] == False} and no other process modifies
-\texttt{private[$i$]}.
-Indeed, there is no need to keep \texttt{private} as a shared
-variable---we only did so to be able to show the invariants.
+Because each \texttt{private[i]} is only access by process~$i$,
+there is no need to keep \texttt{private} as a shared
+variable---we only did so to be able to show and check the invariants.
 Figure~\ref{fig:tas2} shows a more straightforward implementation.
 Compared to Peterson's Algorithm, this approach is general for
 any number of processes.

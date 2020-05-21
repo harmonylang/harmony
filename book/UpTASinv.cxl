@@ -14,50 +14,16 @@ def checkInvariant():
     ;
 ;
 def invariantChecker():
-    let running = True:
-        while running:
-            atomic:
-                __icstarted__ = True;
-                assert checkInvariant();
-                if processes() == dict{ nametag(): 1 }:
-                    running = False;
-                ;
-            ;
-        ;
-    ;
-;
-def tas(s, p):
-    atomic:
-        ^p = ^s;
-        ^s = True;
-    ;
-;
-def process(self):
     while choose({ False, True }):
-        # Enter critical section
-        while private[self]:
-            call tas(&(shared), &(private[self]));
-        ;
-
-        # Critical section
-        @cs: assert (not private[self]) and
-                (atLabel.cs == dict{ nametag(): 1 })
-             ;
-
-        # Leave critical section
-        private[self] = True;
-        shared = False;
+        assert checkInvariant();
     ;
 ;
+
+# code eliminated here for saving space
+
 shared = False;
 private = [ True for i in 0..(N-1) ];
-
-__icstarted__ = False;
 spawn invariantChecker(), ();
-while not __icstarted__:
-    pass;
-;
-
 for i in 0..(N-1):
     spawn process(i), i;
 ;
