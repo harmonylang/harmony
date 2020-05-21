@@ -1012,6 +1012,18 @@ initialized---before that the invariant does not hold yet.
 Because CXL tries every possible execution, the process is guaranteed
 to find violations of the invariant if it does not hold.
 
+\begin{quote}
+Try doing mutual exclusion with other interlock instructions!
+\begin{itemize}
+\item Find a description for \texttt{compare-and-swap} on the internet and
+update Figure~\ref{fig:tas}, replacing \texttt{tas}.
+\item Other interesting interlock instructions include \texttt{swap} and
+\texttt{fetch-and-add}.
+\end{itemize}
+\end{quote}
+
+\chapter{Locks and the Synch Module}
+
 \begin{figure}
 \begin{code}
 \verbatiminput{../TAS.cxl}
@@ -1020,10 +1032,15 @@ to find violations of the invariant if it does not hold.
 \label{fig:tas2}
 \end{figure}
 
-Because each \texttt{private[i]} is only access by process~$i$,
-there is no need to keep \texttt{private} as a shared
+In Figure~\ref{fig:tas} we have shown a solution based on a shared
+variable and a private variable for each process.   The private
+variables themselves are implemented as shared variables as well,
+but they are accessed only by their respective processes.
+There is no need to keep \texttt{private} as a shared
 variable---we only did so to be able to show and check the invariants.
 Figure~\ref{fig:tas2} shows a more straightforward implementation.
+The solution is similar to the na\"{i}ve solution of Figure~\ref{fig:uplock},
+but uses test-and-set to check and set the lock variable atomically.
 Compared to Peterson's Algorithm, this approach is general for
 any number of processes.
 
@@ -1043,18 +1060,6 @@ low synchronization primitives like test-and-set.  Atomic statements
 are not intended to \emph{replace} locks or other synchonization primitives.
 By the way, CXL \texttt{assert} statements execute atomically
 as if they are nested within an atomic statement.
-
-\begin{quote}
-Try doing mutual exclusion with other interlock instructions!
-\begin{itemize}
-\item Find a description for \texttt{compare-and-swap} on the internet and
-update Figure~\ref{fig:tas}, replacing \texttt{tas}.
-\item Other interesting interlock instructions include \texttt{swap} and
-\texttt{fetch-and-add}.
-\end{itemize}
-\end{quote}
-
-\chapter{Locks and the Synch Module}
 
 \begin{figure}
 \begin{code}
@@ -1103,23 +1108,5 @@ chapters.
 
 \chapter{Semaphores}
 
-Like in Python, CXL methods have local variables.  You have already
-seen two types of local variables.
-First, the arguments to the method are variables, although read-only.
-Second, the variable \texttt{result} can be assigned to
-change the default return value of a method, which is \texttt{()}.
-You can declare additional local variables to hold intermediate
-results.  For example, you can
-declare a local variable $x$ with initial value 3 as follows:
-\begin{code}
-\begin{verbatim}
-var x = 3;
-\end{verbatim}
-\end{code}
-The initial value is mandatory.
-Unless a variable is declared this way, it will be considered
-a global shared variable.
-The local variables of a method cannot be accessed other than by
-the method itself.
 
 \end{document}

@@ -19,7 +19,7 @@ def invariantChecker():
     ;
 ;
 
-# code eliminated here for saving space
+# tas() and process() code eliminated to save space
 
 shared = False;
 private = [ True for i in 0..(N-1) ];
