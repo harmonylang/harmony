@@ -1189,6 +1189,9 @@ class DictRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         assert lexeme == "dict{", t[0]
+        (lexeme, file, line, column) = t[1]
+        if lexeme == "}":
+            return (DictAST({}), t[2:])
         d = {}
         while lexeme != "}":
             (key, t) = NaryRule({":", "for"}).parse(t[1:])
