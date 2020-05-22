@@ -4,6 +4,7 @@ import synch;
 
 const NSLOTS = 1;         # size of bounded buffer
 const NITEMS = 3;         # number of items to produce/consume
+const NPRODUCERS = 2;     # number of producers
 
 def produce(item):
     call P&(nempty);
@@ -22,27 +23,16 @@ def consume():
     call V&(mutex);
     call V&(nempty);
 ;
-def producer():
-    let producing = True, item = ():
-        while producing:
-            call lock &(producelock);
-            if nproduced == NITEMS:
-                producing = False;
-                call unlock &(producelock);
-            else:
-                item = nproduced;
-                nproduced = nproduced + 1;
-                call unlock &(producelock);
-                call produce(item);
-            ;
-        ;
+def producer(self):
+    for i in 0..(NITEMS-1):
+        call produce((i * NPRODUCERS) + self);
     ;
 ;
 def consumer():
     let consuming = True, item = ():
         while consuming:
             call lock &(consumelock);
-            if nconsumed == NITEMS:
+            if nconsumed == (NITEMS * NPRODUCERS):
                 consuming = False;
                 call unlock &(consumelock);
             else:
@@ -60,14 +50,13 @@ nfull = Semaphore(0);
 nempty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
 
-nproduced = 0;
 nconsumed = 0;
-producelock = Lock();
 consumelock = Lock();
 
 atomic:
-    spawn producer(), ();
-    spawn producer(), ();
+    for i in 0..(NPRODUCERS-1):
+        spawn producer(i), ();
+    ;
     spawn consumer(), ();
     spawn consumer(), ();
 ;
