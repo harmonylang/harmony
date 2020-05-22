@@ -1239,6 +1239,13 @@ and enter the critical section \emph{without} acquiring \texttt{rwlock}.
 It does not matter in which order they leave: the second will release
 \texttt{rwlock}.
 
+\chapter{Semaphores}
+
+So far we have looked at how to protect a single resource.  Sometimes
+we have multiple but a limited amount of resources that require
+protection.  That is, if there are only $n$ resources, no more than
+$n$ processes can access them at a time.
+
 \chapter{Starvation}
 
 So far we have pursued two properties: \emph{mutual exclusion}

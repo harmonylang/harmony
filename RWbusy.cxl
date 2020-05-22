@@ -25,7 +25,7 @@ def writer():
             while blocked:
                 call lock &(rwlock);
                 if (nreaders == 0) and (nwriters == 0):
-                    nwriters = nwriters + 1;
+                    nwriters = 1;
                     blocked = False;
                 ;
                 call unlock &(rwlock);
@@ -35,7 +35,7 @@ def writer():
                      (atLabel.rcs == dict{})
               ;
         call lock &(rwlock);
-        nwriters = nwriters - 1;
+        nwriters = 0;
         call unlock &(rwlock);
     ;
 ;

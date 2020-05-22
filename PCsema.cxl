@@ -2,51 +2,72 @@
 
 import synch;
 
-const N = 2;         # size of bounded buffer
+const NSLOTS = 1;         # size of bounded buffer
+const NITEMS = 3;         # number of items to produce/consume
 
 def produce(item):
     call P&(nempty);
-    call P&(mylock);
+    call P&(mutex);
     # buf[myin] = choose({ 10, 20 });
     buf[myin] = item;
-    myin = (myin % N) + 1;
-    call V&(mylock);
+    myin = (myin % NSLOTS) + 1;
+    call V&(mutex);
     call V&(nfull);
 ;
 def consume():
     call P&(nfull);
-    call P&(mylock);
+    call P&(mutex);
     result = buf[myout];
-    myout = (myout % N) + 1;
-    call V&(mylock);
+    myout = (myout % NSLOTS) + 1;
+    call V&(mutex);
     call V&(nempty);
 ;
 def producer():
-    while True:
-        # var item = choose({ 10, 20 });
-        var item = 1;
-        @before_produce:
-        call produce(item);
-        @after_produce: pass;
+    let producing = True, item = ():
+        while producing:
+            call lock &(producelock);
+            if nproduced == NITEMS:
+                producing = False;
+                call unlock &(producelock);
+            else:
+                item = nproduced;
+                nproduced = nproduced + 1;
+                call unlock &(producelock);
+                call produce(item);
+            ;
+        ;
     ;
 ;
 def consumer():
-    while True:
-        @before_consume:
-        var item = consume();
-        @after_consume: pass;
+    let consuming = True, item = ():
+        while consuming:
+            call lock &(consumelock);
+            if nconsumed == NITEMS:
+                consuming = False;
+                call unlock &(consumelock);
+            else:
+                nconsumed = nconsumed + 1;
+                call unlock &(consumelock);
+                item = consume();
+            ;
+        ;
     ;
 ;
-buf = dict{ 0 for x in 1..N };
+buf = dict{ 0 for x in 1..NSLOTS };
 myin = 1;
 myout = 1;
 nfull = Semaphore(0);
-nempty = Semaphore(N);
-mylock = Semaphore(1);
+nempty = Semaphore(NSLOTS);
+mutex = Semaphore(1);
+
+nproduced = 0;
+nconsumed = 0;
+producelock = Lock();
+consumelock = Lock();
 
 atomic:
-    spawn producer(), 0;
-    spawn producer(), 0;
-    spawn consumer(), 1;
-    spawn consumer(), 1;
+    spawn producer(), ();
+    spawn producer(), ();
+    spawn consumer(), ();
+    spawn consumer(), ();
 ;
