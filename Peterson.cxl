@@ -1,5 +1,7 @@
 def process(self):
     while True:
+        state[self] = .entering;
+
         # Enter critical section
         flags[self] = True;
         turn = 1 - self;
@@ -7,8 +9,10 @@ def process(self):
             pass;
         ;
 
-        # Critical section
-        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        state[self] = .critical;
+        # critical section is here
+
+        state[self] = .leaving;
 
         # Leave critical section
         flags[self] = False;
@@ -16,5 +20,7 @@ def process(self):
 ;
 flags = [ False, False ];
 turn = 0;
+
+state = [ .entering, .entering ];
 spawn process(0), 0;
 spawn process(1), 1;
