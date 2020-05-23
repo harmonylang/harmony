@@ -313,7 +313,7 @@ class SetValue(Value):
         return self.s == other.s
 
     def key(self):
-        return (6, self.s.__hash__())
+        return (6, sorted(self.s.keys(), key=lambda x: keyValue(x)))
 
 class AddressValue(Value):
     def __init__(self, indexes):
