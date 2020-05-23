@@ -66,6 +66,7 @@ def isreserved(s):
         "keys",
         "len",
         "let",
+        "map",
         "nametag",
         "not",
         "or",
@@ -283,7 +284,7 @@ class DictValue(Value):
         return len(self.d.keys())
 
     def key(self):
-        return (5, self.d.__hash__())
+        return (5, sorted(self.d.keys(), key=lambda x: keyValue(x)))
 
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
@@ -1534,10 +1535,11 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
 
 class MethodAST(AST):
-    def __init__(self, name, args, stat):
+    def __init__(self, name, args, stat, map):
         self.name = name
         self.args = args
         self.stat = stat
+        self.map = map
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1781,7 +1783,8 @@ class StatementRule(Rule):
         if lexeme == "del":
             (ast, t) = LValueRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
-        if lexeme == "def":
+        if lexeme == "def" or lexeme == "map":
+            map = lexeme == "map"
             name = t[1]
             (lexeme, file, line, column) = name
             assert isname(lexeme), name
@@ -1806,7 +1809,7 @@ class StatementRule(Rule):
                     t = t[2:]
                     (lexeme, file, line, column) = t[0]
                 (stat, t) = BlockRule({";"}).parse(t[1:])
-            return (MethodAST(name, args, stat), self.skip(token, t))
+            return (MethodAST(name, args, stat, map), self.skip(token, t))
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -2216,22 +2219,9 @@ def compile(f, filename):
                     print(file, ":", line)
             lastloc = (file, line)
         print("  ", pc, code[pc])
-    return (code, scope.labels)
+    return (code, scope)
 
-# See if some process other than ctx can reach cs
-def canReach(visited, s, ctx, cs, ncs, checked):
-    if s in checked:        # check for loop
-        return False
-    checked.add(s)
-    next = visited[s].edges.get(ctx)
-    if next == None:        # check for process termination
-        return False
-    (nextState, nextContext, steps) = next
-    if pc in steps:
-        return True
-    return canReach(visited, nextState, nextContext, pc, checked)
-
-def run(code, labels):
+def run(code, labels, map):
     # Initial state
     state = State(code, labels)
 
@@ -2301,11 +2291,38 @@ def run(code, labels):
             print("==== Non-terminating States ====", len(bad))
             print_shortest(visited, bad)
 
+    if map != None:
+        assert isinstance(map, PcValue)
+        frame = code[map.pc]
+        assert isinstance(frame, FrameOp)
+        high = {}
+        for s in visited.keys():
+            sc = s.copy()
+            ctx = Context("__map__", map.pc, frame.end)
+            ctx.push(novalue)
+            ctx.atomic = 1
+            while ctx.pc != frame.end:
+                sc.code[ctx.pc].eval(sc, ctx)
+            hs = ctx.vars.d["result"]
+            if hs in high:
+                high[hs] += 1
+            else:
+                high[hs] = 1
+        print("HIGH", high, len(visited))
+        assert False
+
     return visited
 
 def main():
-    (code, labels) = compile(sys.stdin, "<stdin>")
-    run(code, labels)
+    (code, scope) = compile(sys.stdin, "<stdin>")
+    m = scope.names.get("__mutex__")
+    if m == None:
+        pc = None
+    else:
+        (t, v) = m
+        assert t == "constant"
+        (pc, file, line, column) = v
+    run(code, scope.labels, pc)
 
 if __name__ == "__main__":
     main()
