@@ -1,6 +1,11 @@
+def init():
+    flags = [ False, False ];
+    turn = 0;
+    entering = [ False, False ];
+;
 def process(self):
     while True:
-        state[self] = .entering;
+        @ncs: atomic: entering[self] = True;;
 
         # Enter critical section
         flags[self] = True;
@@ -9,18 +14,12 @@ def process(self):
             pass;
         ;
 
-        state[self] = .critical;
         # critical section is here
-
-        state[self] = .leaving;
+        @cs: atomic: entering[self] = False;;
 
         # Leave critical section
         flags[self] = False;
     ;
 ;
-flags = [ False, False ];
-turn = 0;
-
-state = [ .entering, .entering ];
 spawn process(0), 0;
 spawn process(1), 1;

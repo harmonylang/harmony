@@ -59,6 +59,7 @@ def isreserved(s):
         "del",
         "else",
         "False",
+        "fun",
         "for",
         "if",
         "import",
@@ -66,7 +67,6 @@ def isreserved(s):
         "keys",
         "len",
         "let",
-        "map",
         "nametag",
         "not",
         "or",
@@ -1535,11 +1535,11 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
 
 class MethodAST(AST):
-    def __init__(self, name, args, stat, map):
+    def __init__(self, name, args, stat, fun):
         self.name = name
         self.args = args
         self.stat = stat
-        self.map = map
+        self.fun = fun          # TODO.  Make atomic
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1783,8 +1783,8 @@ class StatementRule(Rule):
         if lexeme == "del":
             (ast, t) = LValueRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
-        if lexeme == "def" or lexeme == "map":
-            map = lexeme == "map"
+        if lexeme == "def" or lexeme == "fun":
+            map = lexeme == "fun"
             name = t[1]
             (lexeme, file, line, column) = name
             assert isname(lexeme), name
@@ -2241,9 +2241,17 @@ def compile(f, filename):
         print("  ", pc, code[pc])
     return (code, scope)
 
-def run(code, labels, map, step):
+def run(code, labels, init, map, step):
     # Initial state
     state = State(code, labels)
+    assert isinstance(init, PcValue)
+    frame = code[init.pc]
+    assert isinstance(frame, FrameOp)
+    ctx = Context("__init__", init.pc, frame.end)
+    ctx.atomic = 1          # TODO.  Maybe map should be atomic
+    ctx.push(novalue)
+    while ctx.pc != frame.end:
+        code[ctx.pc].eval(state, ctx)
 
     # For traversing Kripke graph
     visited = { state: Node(None, None, None, None, 0) }
@@ -2327,7 +2335,7 @@ def run(code, labels, map, step):
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(novalue)
             while ctx.pc != frame.end:
-                sc.code[ctx.pc].eval(sc, ctx)
+                code[ctx.pc].eval(sc, ctx)
                 assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
             hs = ctx.vars.d["result"]
             mapping[s] = hs
@@ -2341,7 +2349,7 @@ def run(code, labels, map, step):
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(hs)
             while ctx.pc != frame.end:
-                sc.code[ctx.pc].eval(sc, ctx)
+                code[ctx.pc].eval(sc, ctx)
                 assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
             next = ctx.vars.d["result"]
             assert isinstance(next, SetValue)
@@ -2358,7 +2366,7 @@ def run(code, labels, map, step):
             hs = mapping[s]
             r = reach[s]
             if not steps[hs].issubset(r):
-                print("XXX", s, "YYY", steps[hs], "ZZZ", r)
+                print("LLL", s, "HHH", hs, "DES", steps[hs], "NXT", r)
                 bad.add(s)
         if len(bad) > 0:
             print("==== Non-Live States ====", len(visited), len(bad))
@@ -2368,6 +2376,13 @@ def run(code, labels, map, step):
 
 def main():
     (code, scope) = compile(sys.stdin, "<stdin>")
+    i = scope.names.get("init")
+    if i == None:
+        ipc = None
+    else:
+        (t, v) = i
+        assert t == "constant"
+        (ipc, file, line, column) = v
     m = scope.names.get("__mutex__")
     if m == None:
         mpc = None
@@ -2382,7 +2397,7 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    run(code, scope.labels, mpc, spc)
+    run(code, scope.labels, ipc, mpc, spc)
 
 if __name__ == "__main__":
     main()
