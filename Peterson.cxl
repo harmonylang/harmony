@@ -1,5 +1,5 @@
 def process(self):
-    while choose({ False, True }):
+    while True:
         # Enter critical section
         flags[self] = True;
         turn = 1 - self;

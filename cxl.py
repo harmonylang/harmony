@@ -284,7 +284,7 @@ class DictValue(Value):
         return len(self.d.keys())
 
     def key(self):
-        return (5, sorted(self.d.keys(), key=lambda x: keyValue(x)))
+        return (5, [ keyValue(v) for v in sorted(self.d.keys(), key=lambda x: keyValue(x))])
 
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
@@ -313,7 +313,7 @@ class SetValue(Value):
         return self.s == other.s
 
     def key(self):
-        return (6, sorted(self.s.keys(), key=lambda x: keyValue(x)))
+        return (6, [keyValue(v) for v in sorted(self.s, key=lambda x: keyValue(x))])
 
 class AddressValue(Value):
     def __init__(self, indexes):
@@ -2201,6 +2201,26 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     if foundInfLoop:
         infloop.add(sc)
 
+def explore(s, visited, mapping, reach):
+    reach[s] = None         # prevent infinite loops
+    hs = mapping[s]
+    n = visited[s]
+    result = set()
+    for (ctx, edge) in n.edges.items():
+        (nextState, nextContext, nextSteps) = edge
+        next = mapping[nextState]
+        if next == hs:
+            if nextState not in reach:
+                explore(nextState, visited, mapping, reach)
+            r = reach[nextState]
+            if r != None:
+                assert r != set()
+                result = result.union(r)
+        else:
+            result.add(next)
+    assert result != set()          # TODO
+    reach[s] = result
+
 def compile(f, filename):
     scope = Scope(None)
     code = []
@@ -2221,7 +2241,7 @@ def compile(f, filename):
         print("  ", pc, code[pc])
     return (code, scope)
 
-def run(code, labels, map):
+def run(code, labels, map, step):
     # Initial state
     state = State(code, labels)
 
@@ -2270,7 +2290,7 @@ def run(code, labels, map):
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
-    elif not faultyState:
+    elif False and not faultyState:
         # See if all processes "can" terminate.  First looks for states where
         # there are no processes.
         term = set()
@@ -2291,25 +2311,58 @@ def run(code, labels, map):
             print("==== Non-terminating States ====", len(bad))
             print_shortest(visited, bad)
 
+    # TODO.  Maybe should be done immediately after computing new state
     if map != None:
-        assert isinstance(map, PcValue)
-        frame = code[map.pc]
-        assert isinstance(frame, FrameOp)
-        high = {}
+        # Compute low -> high mapping
+        mapping = {}
+        steps = {}
         for s in visited.keys():
             sc = s.copy()
+
+            # Map low-level state to high-level state
+            assert isinstance(map, PcValue)
+            frame = code[map.pc]
+            assert isinstance(frame, FrameOp)
             ctx = Context("__map__", map.pc, frame.end)
+            ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(novalue)
-            ctx.atomic = 1
             while ctx.pc != frame.end:
                 sc.code[ctx.pc].eval(sc, ctx)
+                assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
             hs = ctx.vars.d["result"]
-            if hs in high:
-                high[hs] += 1
-            else:
-                high[hs] = 1
-        print("HIGH", high, len(visited))
-        assert False
+            mapping[s] = hs
+
+            # Map high-level step to desirable next states
+            # TODO.  Share code with __map__
+            assert isinstance(step, PcValue)
+            frame = code[step.pc]
+            assert isinstance(frame, FrameOp)
+            ctx = Context("__step__", step.pc, frame.end)
+            ctx.atomic = 1          # TODO.  Maybe map should be atomic
+            ctx.push(hs)
+            while ctx.pc != frame.end:
+                sc.code[ctx.pc].eval(sc, ctx)
+                assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
+            next = ctx.vars.d["result"]
+            assert isinstance(next, SetValue)
+            steps[hs] = next.s
+
+        # See which high level states can be reached from each low level state
+        reach = {}
+        for s in visited.keys():
+            explore(s, visited, mapping, reach)
+
+        # Now see if every low level state can reach every desirable high level state
+        bad = set()
+        for s in visited.keys():
+            hs = mapping[s]
+            r = reach[s]
+            if not steps[hs].issubset(r):
+                print("XXX", s, "YYY", steps[hs], "ZZZ", r)
+                bad.add(s)
+        if len(bad) > 0:
+            print("==== Non-Live States ====", len(visited), len(bad))
+            print_shortest(visited, bad)
 
     return visited
 
@@ -2317,12 +2370,19 @@ def main():
     (code, scope) = compile(sys.stdin, "<stdin>")
     m = scope.names.get("__mutex__")
     if m == None:
-        pc = None
+        mpc = None
     else:
         (t, v) = m
         assert t == "constant"
-        (pc, file, line, column) = v
-    run(code, scope.labels, pc)
+        (mpc, file, line, column) = v
+    s = scope.names.get("__step__")
+    if s == None:
+        spc = None
+    else:
+        (t, v) = s
+        assert t == "constant"
+        (spc, file, line, column) = v
+    run(code, scope.labels, mpc, spc)
 
 if __name__ == "__main__":
     main()
