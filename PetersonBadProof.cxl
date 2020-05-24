@@ -13,6 +13,5 @@ def process(self):
 ;
 flags = [ False, False ];
 turn = 0;
-
 spawn process(0), 0;
 spawn process(1), 1;

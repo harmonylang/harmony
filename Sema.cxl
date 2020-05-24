@@ -2,7 +2,7 @@
 
 import synch;
 
-def p():
+def process():
     while choose({ False, True }):
         call P&(mysema);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
@@ -10,9 +10,7 @@ def p():
     ;
 ;
 mysema = Semaphore(1);
-atomic:
-    spawn p(), 0;
-    spawn p(), 0;
-    spawn p(), 1;
-    spawn p(), 1;
-;
+spawn process(), 0;
+spawn process(), 0;
+spawn process(), 1;
+spawn process(), 1;

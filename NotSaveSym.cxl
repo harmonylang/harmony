@@ -1,8 +1,7 @@
 # symmetric but non-safe solution to mutual exclusion problem
 
-def p(self):
+def process(self):
     while choose({ False, True }):
-        @ncs: assert True, True;
         while mutex:
             pass;
         ;
@@ -12,5 +11,5 @@ def p(self):
     ;
 ;
 mutex = False;
-spawn p(0), 0;
-spawn p(1), 1;
+spawn process(0), 0;
+spawn process(1), 1;

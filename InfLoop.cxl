@@ -1,11 +1,11 @@
 # mutual exclusion by infinite loop: safe but not live
 
-def p():
+def process():
     while True:
         pass;
     ;
     @cs: pass;    # critical section
 ;
 flags = dict{ 0: False, 1: False };
-spawn p(), 0;
-spawn p(), 1;
+spawn process(), 0;
+spawn process(), 1;

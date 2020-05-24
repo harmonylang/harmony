@@ -15,9 +15,7 @@ def diner(which):
         ;
     # ;
 ;
-atomic:
-    forks = dict{ Semaphore(1) for sema in 1..N };
-    for i in 1..N:
-        spawn diner(i), i;
-    ;
+forks = dict{ Semaphore(1) for sema in 1..N };
+for i in 1..N:
+    spawn diner(i), i;
 ;

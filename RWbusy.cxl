@@ -41,5 +41,5 @@ def writer():
 ;
 rwlock = Lock();
 nreaders = 0; nwriters = 0;
-spawn reader(), (); spawn reader(), ();
-spawn writer(), (); spawn writer(), ();
+spawn reader(); spawn reader();
+spawn writer(); spawn writer();

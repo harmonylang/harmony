@@ -59,9 +59,7 @@ nreadersWaiting = 0;
 nwritersEntered = 0;
 nwritersWaiting = 0;
 
-atomic:
-    spawn reader(), ();
-    spawn reader(), ();
-    spawn writer(), ();
-    spawn writer(), ();
-;
+spawn reader();
+spawn reader();
+spawn writer();
+spawn writer();

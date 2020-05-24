@@ -47,9 +47,5 @@ wcond = Condition&(rwlock);
 nreaders = 0;
 nwriters = 0;
 
-atomic:
-    spawn reader(), ();
-    spawn reader(), ();
-    spawn writer(), ();
-    spawn writer(), ();
-;
+spawn reader(); spawn reader();
+spawn writer(); spawn writer();

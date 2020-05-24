@@ -1633,9 +1633,8 @@ class ConstAST(AST):
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
-        contexts = list(state.ctxbag.keys())
-        assert len(contexts) == 1
-        ctx = contexts[0]
+        ctx = Context("__const__", 0, len(code2))
+        ctx.atomic = 1
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
         v = ctx.pop()
