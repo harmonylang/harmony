@@ -2,9 +2,7 @@ def process(self):
     while choose({ False, True }):
         # Enter critical section
         flags[self] = True;
-        @gate: atomic:
-                   turn = 1 - self;
-               ;
+        @gate: turn = 1 - self;
         while flags[1 - self] and (turn == (1 - self)):
             pass;
         ;

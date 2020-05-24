@@ -1527,12 +1527,10 @@ class AssertAST(AST):
         return "Assert(" + str(self.token) + str(self.cond) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        code.append(AtomicIncOp())
         self.cond.compile(scope, code)
         if self.expr != None:
             self.expr.compile(scope, code)
         code.append(AssertOp(self.token, self.expr != None))
-        code.append(AtomicDecOp())
 
 class MethodAST(AST):
     def __init__(self, name, args, stat, fun):
@@ -1613,7 +1611,9 @@ class LabelStatAST(AST):
 
     def compile(self, scope, code):
         scope.location(len(code), self.file, self.line, self.labels)
+        code.append(AtomicIncOp())
         self.ast.compile(scope, code)
+        code.append(AtomicDecOp())
 
 class ConstAST(AST):
     def __init__(self, const, expr):
@@ -1687,7 +1687,10 @@ class LabelStatRule(Rule):
             t = t[3:]
 
         (ast, t) = StatementRule().parse(t)
-        return (LabelStatAST(labels, ast, thefile, theline), t)
+        if labels == []:
+            return (ast, t)
+        else:
+            return (LabelStatAST(labels, ast, thefile, theline), t)
 
 class StatListRule(Rule):
     def __init__(self, delim):
