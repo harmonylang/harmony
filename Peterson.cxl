@@ -1,12 +1,5 @@
-def init():
-    flags = [ False, False ];
-    turn = 0;
-    entering = [ False, False ];
-;
 def process(self):
-    while True:
-        @ncs: atomic: entering[self] = True;;
-
+    while choose({ False, True }):
         # Enter critical section
         flags[self] = True;
         turn = 1 - self;
@@ -15,11 +8,13 @@ def process(self):
         ;
 
         # critical section is here
-        @cs: atomic: entering[self] = False;;
+        @cs: assert atLabel.cs == dict{ nametag(): 1 }, atLabel.cs;
 
         # Leave critical section
         flags[self] = False;
     ;
 ;
+flags = [ False, False ];
+turn = 0;
 spawn process(0), 0;
 spawn process(1), 1;

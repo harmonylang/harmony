@@ -1924,9 +1924,7 @@ class State:
         self.code = code
         self.labels = labels
         self.vars = novalue
-        self.ctxbag = {
-            Context(DictValue({"name": "__main__", "tag": novalue}), 0, len(code)) : 1
-        }
+        self.ctxbag = {}
         self.choosing = None
         self.failure = False
 
@@ -2241,17 +2239,14 @@ def compile(f, filename):
         print("  ", pc, code[pc])
     return (code, scope)
 
-def run(code, labels, init, map, step):
-    # Initial state
+def run(code, labels, map, step):
+    # Initialize state
     state = State(code, labels)
-    assert isinstance(init, PcValue)
-    frame = code[init.pc]
-    assert isinstance(frame, FrameOp)
-    ctx = Context("__init__", init.pc, frame.end)
-    ctx.atomic = 1          # TODO.  Maybe map should be atomic
-    ctx.push(novalue)
-    while ctx.pc != frame.end:
+    ctx = Context("__init__", 0, len(code))
+    ctx.atomic = 1
+    while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
+    # print("INITIAL STATE", state)
 
     # For traversing Kripke graph
     visited = { state: Node(None, None, None, None, 0) }
@@ -2298,7 +2293,7 @@ def run(code, labels, init, map, step):
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
-    elif False and not faultyState:
+    elif not faultyState:
         # See if all processes "can" terminate.  First looks for states where
         # there are no processes.
         term = set()
@@ -2376,13 +2371,6 @@ def run(code, labels, init, map, step):
 
 def main():
     (code, scope) = compile(sys.stdin, "<stdin>")
-    i = scope.names.get("init")
-    if i == None:
-        ipc = None
-    else:
-        (t, v) = i
-        assert t == "constant"
-        (ipc, file, line, column) = v
     m = scope.names.get("__mutex__")
     if m == None:
         mpc = None
@@ -2397,7 +2385,7 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    run(code, scope.labels, ipc, mpc, spc)
+    run(code, scope.labels, mpc, spc)
 
 if __name__ == "__main__":
     main()

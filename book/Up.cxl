@@ -2,11 +2,14 @@ def process(self):
     count = count + 1;
     done[self] = True;
 ;
+def main(self):
+    while not (done[0] and done[1]):
+        pass;
+    ;
+    assert count == 2;
+}
 count = 0;
 done = [ False, False ];
 spawn process(0), 0;
 spawn process(1), 1;
-while not (done[0] and done[1]):
-    pass;
-;
-assert count == 2;
+spawn main(), ();

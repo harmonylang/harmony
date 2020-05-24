@@ -1,7 +1,7 @@
 # symmetric but non-live solution to mutual exclusion problem
 
 def process(self):
-    while True:
+    while choose({ False, True }):
         flags[self] = True;
         while flags[1 - self]:
             pass;
