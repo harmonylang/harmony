@@ -1583,7 +1583,11 @@ class SpawnAST(AST):
         return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
-        self.tag.compile(scope, code)
+        if self.tag == None:
+            code.append(ConstantOp((0, None, None, None)))
+            code.append(DictOp())
+        else:
+            self.tag.compile(scope, code)
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(SpawnOp())
@@ -1824,9 +1828,11 @@ class StatementRule(Rule):
             (method, t) = BasicExpressionRule().parse(t[1:])
             (arg, t) = BasicExpressionRule().parse(t)
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ",", t[0]
-            (tag, t) = NaryRule({";"}).parse(t[1:])
-            (lexeme, file, line, column) = t[0]
+            if lexeme == ",":
+                (tag, t) = NaryRule({";"}).parse(t[1:])
+                (lexeme, file, line, column) = t[0]
+            else:
+                tag = None
             assert lexeme == ";", t[0]
             return (SpawnAST(tag, method, arg), self.skip(token, t))
         if lexeme == "pass":

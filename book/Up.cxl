@@ -1,4 +1,4 @@
-def process(self):
+def incrementer(self):
     count = count + 1;
     done[self] = True;
 ;
@@ -7,9 +7,9 @@ def main(self):
         pass;
     ;
     assert count == 2;
-}
+;
 count = 0;
 done = [ False, False ];
-spawn process(0), 0;
-spawn process(1), 1;
-spawn main(), ();
+spawn incrementer(0);
+spawn incrementer(1);
+spawn main();
