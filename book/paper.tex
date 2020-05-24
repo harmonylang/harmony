@@ -125,20 +125,19 @@ you initialize it to 1.
 
 Concurrent programming, aka multithreaded programming, involves multiple
 processes running in parallel while sharing variables.
-Figure~\ref{fig:inc} presents a simple example.  The program defines a
-method \texttt{process} that takes a parameter called \texttt{self}.
-It also initializes two shared variables \texttt{count} and \texttt{done}.
-The \texttt{process(self)} method increments \texttt{count} and sets \texttt{done[self]}
-to \texttt{True}.
-Next the program spawns two processes, each invoking \texttt{process}.
-Afterward there are three processes---after
-all, there was already one, and it spawned two new ones.  We will call
-the one that was already there the \emph{main process}.
-
-The main process waits for the two other processes to finish by polling
+Figure~\ref{fig:inc} presents a simple example.
+The program
+initializes two shared variables: an integer \texttt{count} and
+an array \texttt{done} with two booleans.
+Method \texttt{incrementer} takes a parameter called \texttt{self}.
+It increments \texttt{count} and sets \texttt{done[self]} to \texttt{True}.
+Method \texttt{main} waits for the processes to finish by polling
 both \texttt{done} flags.
-Finally, it verifies that the value of \texttt{count} equals 2.  If not,
+After that, it verifies that the value of \texttt{count} equals 2.  If not,
 it reports the actual value of \texttt{count}.
+The program spawns three processes.
+The first runs \texttt{incrementer(0)}, the second runs
+\texttt{incrementer(1)}, and the last runs \texttt{main()}.
 
 \begin{quote}
 What will happen?
@@ -174,16 +173,16 @@ A program is correct if it works for any interleaving.
 In fact, CXL will try all possible interleavings of the processes
 executing machine instructions.
 
-The following is a possible interleaving of processes~0 and~1:
+The following is a possible interleaving of incrementers~0 and~1:
 \begin{enumerate}
-\item Process 0 loads the value of \texttt{count}, which is 0;
-\item Process 1 loads the value of \texttt{count}, which is still 0;
-\item Process 1 adds one to the value that it loaded (0), and
+\item incrementer 0 loads the value of \texttt{count}, which is 0;
+\item incrementer 1 loads the value of \texttt{count}, which is still 0;
+\item incrementer 1 adds one to the value that it loaded (0), and
 stores $1$ into \texttt{count};
-\item Process 0 adds one to the value that it loaded (0), and
+\item incrementer 0 adds one to the value that it loaded (0), and
 stores $1$ into \texttt{count};
-\item Process 0 sets \texttt{upDone} to \texttt{True};
-\item Process 1 sets \texttt{upDone} to \texttt{True}.
+\item incrementer 0 sets \texttt{upDone} to \texttt{True};
+\item incrementer 1 sets \texttt{upDone} to \texttt{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \texttt{count} ends up
@@ -221,17 +220,17 @@ strings (enclosed by double quotes),
 sets of CXL values,
 and dictionaries that map CXL values to other CXL values.
 
-Another type of CXL value is the \emph{atom}.  You have already
-seen them: the names of constants, variables, and methods are
-all atoms.  An atom is denoted using a period followed by the
-name.  For example, the atom for the \texttt{process} method
-is denoted \texttt{.process}.
+Another type of CXL value is the \emph{atom}.  It is essentially
+just a name.  An atom is denoted using a period followed by the
+name.  For example, \texttt{.main} is an atom.
 
 CXL makes extensive use of dictionaries.  Their syntax and properties
 are a little different from Python.
 A dictionary maps keys to values.
 Unlike Python, any CXL value can be a key, including another
 dictionary.
+CXL dictionaries are written as
+$\mathtt{dict}\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
 If \texttt{d} is a dictionary, and \texttt{k} is a key, then the
 following expression retrieves the CXL value that $k$ maps to:
 \begin{code}
@@ -285,25 +284,22 @@ this set.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Up.cxl:1 def process(self):
-   0 Jump 12
-   1 Frame ('process', 'Up.cxl', 1, 5) [('self', 'Up.cxl', 1, 13)] 11
+Up.cxl:1 def incrementer(self):
+   0 Jump 39
+   1 Frame ('incrementer', 'Up.cxl', 1, 5) [('self', 'Up.cxl', 1, 17)] 12
 Up.cxl:2     count = count + 1;
    2 Constant (1, 'Up.cxl', 2, 21)
-   3 Load ('count', 'Up.cxl', 2, 13)
-   4 Nary ('+', 'Up.cxl', 2, 19) 2
-   5 Name ('count', 'Up.cxl', 2, 5)
-   6 Store 1
+   3 Name ('count', 'Up.cxl', 2, 13)
+   4 Load 1
+   5 Nary ('+', 'Up.cxl', 2, 19) 2
+   6 Name ('count', 'Up.cxl', 2, 5)
+   7 Store 1
 Up.cxl:3     done[self] = True;
-   7 Constant (True, 'Up.cxl', 3, 18)
-   8 LoadVar ('self', 'Up.cxl', 3, 10)
-   9 Name ('done', 'Up.cxl', 3, 5)
-   10 Store 2
-   11 Return
-Up.cxl:5 count = 0;
-   12 Constant (0, 'Up.cxl', 5, 9)
-   13 Name ('count', 'Up.cxl', 5, 1)
-   14 Store 1
+   8 Constant (True, 'Up.cxl', 3, 18)
+   9 LoadVar ('self', 'Up.cxl', 3, 10)
+   10 Name ('done', 'Up.cxl', 3, 5)
+   11 Store 2
+   12 Return
 \end{verbatim}
 \end{code}
 \caption{The first part of the machine code corresponding to Figure~\ref{fig:inc}.}
@@ -314,11 +310,10 @@ Up.cxl:5 count = 0;
 \begin{code}
 \begin{verbatim}
 ==== Safety violation ====
-__main__/() [0,12-31]           32 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-process /0  [1-5]                6 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-process /1  [1-10]              11 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
-process /0  [6-10]              11 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
-__main__/() [32-34,37-42,44-48] 49 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+incrementer/0 [1-6]          7 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+incrementer/1 [1-11]        12 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
+incrementer/0 [7-11]        12 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+main/() [14-19,22-27,29-36] 37 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 \end{verbatim}
 \end{code}
 \caption{The output of running Figure~\ref{fig:inc}.}
@@ -339,7 +334,7 @@ A CXL machine has the following components:
 generated from a CXL program.  The types of instructions will be described later.
 \item Shared memory: A CXL machine has just one memory location containing
 an CXL value.
-\item Processes:  Initially there is just the main process, but any process
+\item Processes:  Any process
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
 a program counter, a stack of CXL values,
@@ -347,10 +342,10 @@ and a single mutable general purpose \emph{register} that contains a CXL value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
-along with the tag specified in the \texttt{spawn} statement.
+along with an optional tag specified in the \texttt{spawn} statement.
+The default tag is \texttt{()}.
 In Figure~\ref{fig:inc}, the created processes have name tags
-\texttt{process/0} and \texttt{process/1}.  The main process that
-starts the execution has name tag \texttt{\_\_main\_\_/()}.
+\texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
 The state of a process is called a \emph{context}: it contains the value of
 its name tag, program counter, stack, and register.

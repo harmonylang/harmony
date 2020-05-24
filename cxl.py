@@ -1617,9 +1617,12 @@ class LabelStatAST(AST):
 
     def compile(self, scope, code):
         scope.location(len(code), self.file, self.line, self.labels)
-        code.append(AtomicIncOp())
-        self.ast.compile(scope, code)
-        code.append(AtomicDecOp())
+        if self.labels == []:
+            self.ast.compile(scope, code)
+        else:
+            code.append(AtomicIncOp())
+            self.ast.compile(scope, code)
+            code.append(AtomicDecOp())
 
 class ConstAST(AST):
     def __init__(self, const, expr):
@@ -1692,10 +1695,7 @@ class LabelStatRule(Rule):
             t = t[3:]
 
         (ast, t) = StatementRule().parse(t)
-        if labels == []:
-            return (ast, t)
-        else:
-            return (LabelStatAST(labels, ast, thefile, theline), t)
+        return (LabelStatAST(labels, ast, thefile, theline), t)
 
 class StatListRule(Rule):
     def __init__(self, delim):

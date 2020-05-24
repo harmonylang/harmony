@@ -6,7 +6,7 @@ def main(self):
     while not (done[0] and done[1]):
         pass;
     ;
-    assert count == 2;
+    assert count == 2, count;
 ;
 count = 0;
 done = [ False, False ];
