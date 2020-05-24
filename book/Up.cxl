@@ -10,6 +10,6 @@ def main(self):
 ;
 count = 0;
 done = [ False, False ];
-spawn incrementer(0);
-spawn incrementer(1);
+spawn incrementer(0), 0;
+spawn incrementer(1), 1;
 spawn main();
