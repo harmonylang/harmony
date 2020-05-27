@@ -2226,7 +2226,6 @@ def explore(s, visited, mapping, reach):
                 result = result.union(r)
         else:
             result.add(next)
-    assert result != set()          # TODO
     reach[s] = result
 
 def compile(f, filename):
@@ -2329,6 +2328,7 @@ def run(code, labels, map, step):
         # Compute low -> high mapping
         mapping = {}
         steps = {}
+        desirable = set()
         for s in visited.keys():
             sc = s.copy()
 
@@ -2345,7 +2345,7 @@ def run(code, labels, map, step):
             hs = ctx.vars.d["result"]
             mapping[s] = hs
 
-            # Map high-level step to desirable next states
+            # Map high-level step to desirable next high-level states
             # TODO.  Share code with __map__
             assert isinstance(step, PcValue)
             frame = code[step.pc]
@@ -2359,23 +2359,19 @@ def run(code, labels, map, step):
             next = ctx.vars.d["result"]
             assert isinstance(next, SetValue)
             steps[hs] = next.s
+            desirable = desirable.union(next.s)
 
         # See which high level states can be reached from each low level state
         reach = {}
         for s in visited.keys():
             explore(s, visited, mapping, reach)
 
-        # Now see if every low level state can reach every desirable high level state
-        bad = set()
+        # Now see if every desirable high level state can be reached
         for s in visited.keys():
             hs = mapping[s]
-            r = reach[s]
-            if not steps[hs].issubset(r):
-                print("LLL", s, "HHH", hs, "DES", steps[hs], "NXT", r)
-                bad.add(s)
-        if len(bad) > 0:
-            print("==== Non-Live States ====", len(visited), len(bad))
-            print_shortest(visited, bad)
+            if hs in desirable:
+                desirable.remove(hs)
+        print("DESIRABLE", desirable)
 
     return visited
 
