@@ -13,42 +13,41 @@ def vHat():
         call V &(mutex);
     ;
 ;
-def reader():
+def process():
     while choose({ False, True }):
-        call P &(mutex);
-        if nwritersEntered > 0:
-            nreadersWaiting = nreadersWaiting + 1;
+        if choose({ .reader, .writer }) == .reader:
+            call P &(mutex);
+            if nwritersEntered > 0:
+                nreadersWaiting = nreadersWaiting + 1;
+                call vHat();
+                call P &(rsema);
+            ;
+            nreadersEntered = nreadersEntered + 1;
             call vHat();
-            call P &(rsema);
-        ;
-        nreadersEntered = nreadersEntered + 1;
-        call vHat();
 
-        @rcs: assert atLabel.wcs == dict{};
+            @rcs: assert atLabel.wcs == dict{};
 
-        call P &(mutex);
-        nreadersEntered = nreadersEntered - 1;
-        call vHat();
-    ;
-;
-def writer():
-    while choose({ False, True }):
-        call P &(mutex);
-        if (nreadersEntered + nwritersEntered) > 0:
-            nwritersWaiting = nwritersWaiting + 1;
+            call P &(mutex);
+            nreadersEntered = nreadersEntered - 1;
             call vHat();
-            call P &(wsema);
+        else:
+            call P &(mutex);
+            if (nreadersEntered + nwritersEntered) > 0:
+                nwritersWaiting = nwritersWaiting + 1;
+                call vHat();
+                call P &(wsema);
+            ;
+            nwritersEntered = nwritersEntered + 1;
+            call vHat();
+
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                         (atLabel.rcs == dict{})
+                  ;
+
+            call P &(mutex);
+            nwritersEntered = nwritersEntered - 1;
+            call vHat();
         ;
-        nwritersEntered = nwritersEntered + 1;
-        call vHat();
-
-        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                     (atLabel.rcs == dict{})
-              ;
-
-        call P &(mutex);
-        nwritersEntered = nwritersEntered - 1;
-        call vHat();
     ;
 ;
 mutex = Semaphore(1);
@@ -58,8 +57,6 @@ nreadersEntered = 0;
 nreadersWaiting = 0;
 nwritersEntered = 0;
 nwritersWaiting = 0;
-
-spawn reader();
-spawn reader();
-spawn writer();
-spawn writer();
+for i in 1..4:
+    spawn process();
+;
