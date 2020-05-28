@@ -1,45 +1,45 @@
 import synch;
 
-def reader():
+def process():
     while choose({ False, True }):
-        let blocked = True:
-            while blocked:
-                call lock &(rwlock);
-                if nwriters == 0:
-                    nreaders = nreaders + 1;
-                    blocked = False;
+        if choose({ .reader, .writer }) == .reader:
+            let blocked = True:
+                while blocked:
+                    call lock &(rwlock);
+                    if nwriters == 0:
+                        nreaders = nreaders + 1;
+                        blocked = False;
+                    ;
+                    call unlock &(rwlock);
                 ;
-                call unlock &(rwlock);
             ;
-        ;
-        @rcs: assert atLabel.wcs == dict{}
-              ;
-        call lock &(rwlock);
-        nreaders = nreaders - 1;
-        call unlock &(rwlock);
-    ;
-;
-def writer():
-    while choose({ False, True }):
-        let blocked = True:
-            while blocked:
-                call lock &(rwlock);
-                if (nreaders == 0) and (nwriters == 0):
-                    nwriters = 1;
-                    blocked = False;
+            @rcs: assert atLabel.wcs == dict{}
+                  ;
+            call lock &(rwlock);
+            nreaders = nreaders - 1;
+            call unlock &(rwlock);
+        else:
+            let blocked = True:
+                while blocked:
+                    call lock &(rwlock);
+                    if (nreaders == 0) and (nwriters == 0):
+                        nwriters = 1;
+                        blocked = False;
+                    ;
+                    call unlock &(rwlock);
                 ;
-                call unlock &(rwlock);
             ;
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                         (atLabel.rcs == dict{})
+                  ;
+            call lock &(rwlock);
+            nwriters = 0;
+            call unlock &(rwlock);
         ;
-        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                     (atLabel.rcs == dict{})
-              ;
-        call lock &(rwlock);
-        nwriters = 0;
-        call unlock &(rwlock);
     ;
 ;
 rwlock = Lock();
 nreaders = 0; nwriters = 0;
-spawn reader(); spawn reader();
-spawn writer(); spawn writer();
+for i in 1..4:
+    spawn process();
+;

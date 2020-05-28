@@ -1510,6 +1510,8 @@ class LetAST(AST):
         # Restore the old variable state
         for (var, expr) in self.vars:
             code.append(DelVarOp(var))  # remove variable
+            (lexeme, file, line, column) = var
+            del scope.names[lexeme]
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
@@ -2269,7 +2271,7 @@ def explore(s, visited, mapping, reach):
                 explore(nextState, visited, mapping, reach)
             r = reach[nextState]
             if r != None:
-                assert r != set()
+                assert r != set(), nextState
                 result = result.union(r)
         else:
             result.add(next)

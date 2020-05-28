@@ -2,43 +2,42 @@
 
 import synch;
 
-def reader():
+def process():
     while choose({ False, True }):
-        call lock&(rwlock);
-        while nwriters > 0:
-            call wait&(rcond);
-        ;
-        nreaders = nreaders + 1;
-        call unlock&(rwlock);
+        if choose({ .reader, .writer }) == .reader:
+            call lock&(rwlock);
+            while nwriters > 0:
+                call wait&(rcond);
+            ;
+            nreaders = nreaders + 1;
+            call unlock&(rwlock);
 
-        @rcs: assert atLabel.wcs == dict{};
+            @rcs: assert atLabel.wcs == dict{};
 
-        call lock&(rwlock);
-        nreaders = nreaders - 1;
-        if nreaders == 0:
+            call lock&(rwlock);
+            nreaders = nreaders - 1;
+            if nreaders == 0:
+                call notify&(wcond);
+            ;
+            call unlock&(rwlock);
+        else:
+            call lock&(rwlock);
+            while (nreaders + nwriters) > 0:
+                call wait&(wcond);
+            ;
+            nwriters = nwriters + 1;
+            call unlock&(rwlock);
+
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                         (atLabel.rcs == dict{})
+                  ;
+
+            call lock&(rwlock);
+            nwriters = nwriters - 1;
+            call notifyAll&(rcond);
             call notify&(wcond);
+            call unlock&(rwlock);
         ;
-        call unlock&(rwlock);
-    ;
-;
-def writer():
-    while choose({ False, True }):
-        call lock&(rwlock);
-        while (nreaders + nwriters) > 0:
-            call wait&(wcond);
-        ;
-        nwriters = nwriters + 1;
-        call unlock&(rwlock);
-
-        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                     (atLabel.rcs == dict{})
-              ;
-
-        call lock&(rwlock);
-        nwriters = nwriters - 1;
-        call notifyAll&(rcond);
-        call notify&(wcond);
-        call unlock&(rwlock);
     ;
 ;
 rwlock = False;
@@ -46,6 +45,6 @@ rcond = Condition&(rwlock);
 wcond = Condition&(rwlock);
 nreaders = 0;
 nwriters = 0;
-
-spawn reader(); spawn reader();
-spawn writer(); spawn writer();
+for i in 1..4:
+    spawn process();
+;
