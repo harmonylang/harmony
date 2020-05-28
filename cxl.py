@@ -1185,7 +1185,7 @@ class NaryRule(Rule):
         (ast2, t) = ExpressionRule().parse(t[1:])
         args.append(ast2)
         (lexeme, file, line, column) = t[0]
-        if op[0] == "if":                    # TODO. Should be F/T cases be evaluated?
+        if op[0] == "if":                    # TODO. Should both F/T cases be evaluated?
             assert lexeme == "else"
             (ast3, t) = ExpressionRule().parse(t[1:])
             args.append(ast3)
