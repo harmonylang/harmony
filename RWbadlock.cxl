@@ -1,0 +1,26 @@
+import synch;
+
+def process():
+    while choose({ False, True }):
+        if choose({ .reader, .writer }) == .reader:
+            call lock &(rwlock);
+
+            @rcs: assert atLabel.wcs == dict{}
+                  ;
+
+            call unlock &(rwlock);
+        else:
+            call lock &(rwlock);
+
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                       (atLabel.rcs == dict{})
+                  ;
+
+            call unlock &(rwlock);
+        ;
+    ;
+;
+rwlock = Lock();
+for i in 1..4:
+    spawn process();
+;

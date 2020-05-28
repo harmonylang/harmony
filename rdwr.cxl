@@ -1,0 +1,29 @@
+fun __mutex__():
+    let n = bagsize(processes()), nrcs = bagsize(atLabel.rcs),
+                                nwcs = bagsize(atLabel.wcs):
+        assert ((nrcs >= 0) and (nwcs == 0)) or ((nrcs == 0) and (nwcs == 1));
+        assert (nrcs + nwcs) <= n;
+        result = (n, nrcs, nwcs);
+    ;
+;
+fun __step__(state):
+    assert (state[1] + state[2]) <= state[0];
+    if state == (0, 0, 0):
+        result = { };
+    elif state[0] == state[1]:      # all processes are readers
+        assert state[2] == 0;
+        result = { (state[0], state[1] - 1, 0) };
+    elif state[0] == state[2]:      # all processes are writers
+        assert state[1] == 0;
+        assert state[2] == 1;
+        result = { (state[0], 0, state[2] - 1) };
+    elif state[1] > 0:
+        assert state[2] == 0;
+        result = { (state[0] - 1, state[1], 0), (state[0], state[1] - 1, 0),
+                (state[0], state[1] + 1, 0) };
+    else:
+        assert state[1] == 0;
+        assert (state[2] == 0) or (state[2] == 1);
+        result = { (state[0] - 1, 0, state[2]), (state[0], 0, 1 - state[2]) };
+    ;
+;

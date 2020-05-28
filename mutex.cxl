@@ -1,0 +1,25 @@
+fun __mutex__():
+    let P = processes(), Q = atLabel.cs, nprocs = 0, ncs = 0:
+        for p in keys(P):
+            nprocs = nprocs + P[p];
+        ;
+        for q in keys(Q):
+            ncs = ncs + Q[q];
+        ;
+        assert (ncs == 0) or (ncs == 1);
+        assert ncs <= nprocs;
+        result = (nprocs, ncs);
+    ;
+;
+fun __step__(state):
+    if state[0] == 0:
+        assert state[1] == 0;
+        result = { };
+    elif (state[0] == 1) and (state[1] == 1):
+        result = { (state[0], 0) };
+    else:
+        assert state[0] > 0, state;
+        assert (state[1] == 0) or (state[1] == 1);
+        result = { (state[0] - 1, state[1]), (state[0], 1 - state[1]) };
+    ;
+;
