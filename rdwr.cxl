@@ -21,9 +21,13 @@ fun __step__(state):
         assert state[2] == 0;
         result = { (state[0] - 1, state[1], 0), (state[0], state[1] - 1, 0),
                 (state[0], state[1] + 1, 0) };
+    elif state[2] > 0:
+        assert state[1] == 0;
+        assert state[2] == 1;
+        result = { (state[0] - 1, 0, state[2]), (state[0], 0, 0) };
     else:
         assert state[1] == 0;
-        assert (state[2] == 0) or (state[2] == 1);
-        result = { (state[0] - 1, 0, state[2]), (state[0], 0, 1 - state[2]) };
+        assert state[2] == 0;
+        result = { (state[0] - 1, 0, 0), (state[0], 1, 0), (state[0], 0, 1) };
     ;
 ;

@@ -1126,6 +1126,9 @@ class NaryAST(AST):
         return "NaryOp(" + str(self.op) + ", " + str(self.args) + ")"
 
     def isConstant(self, scope):
+        (op, file, line, column) = self.op
+        if op in { "atLabel", "nametag", "processes" }:
+            return False
         return all(x.isConstant(scope) for x in self.args)
 
     def gencode(self, scope, code):
@@ -2392,13 +2395,19 @@ def run(code, labels, map, step):
             ctx.push(novalue)
             while ctx.pc != frame.end:
                 code[ctx.pc].eval(sc, ctx)
-                assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
+                assert sc.vars == s.vars    # TODO.  map should be read-only
             hs = ctx.vars.d["result"]
             mapping[s] = hs
             attainable.add(hs)
 
-            # Map high-level step to desirable next high-level states
-            # TODO.  Share code with __map__
+        # mapping[s] is high-level state as function of low-level state s
+        # attainable is the set of high-level states corresponding to the set of low-level states
+
+        # See what high-level states can be reached from each high-level state
+        hstep = {}
+        for hs in attainable:
+            # Map high-level step to next high-level states
+            # TODO.  Share code with __map__ (and other such places)
             assert isinstance(step, PcValue)
             frame = code[step.pc]
             assert isinstance(frame, FrameOp)
@@ -2411,14 +2420,22 @@ def run(code, labels, map, step):
             next = ctx.vars.d["result"]
             assert isinstance(next, SetValue), next
             desirable = desirable.union(next.s)
+            hstep[hs] = next.s
+
+        # hstep[hs] is the set of high-level states that are reachable from hs
+        # desirable is the set of high-level states reachable from attainable
 
         # See which high level states can be reached from each low level state
         reach = {}
         for s in visited.keys():
             explore(s, visited, mapping, reach)
 
-        print("ATTAINABLE", attainable)
-        print("DESIRABLE", desirable)
+        # reach[s] is the set of high level states reachable from low level state s
+
+        # Make sure each low-level step is allowed
+        for (s, next) in reach.items():
+            for hs in next:
+                assert hs in hstep[mapping[s]], (s, mapping[s], hstep[mapping[s]], hs)
 
         # Now see if every desirable high level state can be reached
         for s in visited.keys():
