@@ -2271,7 +2271,6 @@ def explore(s, visited, mapping, reach):
                 explore(nextState, visited, mapping, reach)
             r = reach[nextState]
             if r != None:
-                assert r != set(), nextState
                 result = result.union(r)
         else:
             result.add(next)
