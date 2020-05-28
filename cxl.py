@@ -1125,7 +1125,10 @@ class NaryAST(AST):
     def __repr__(self):
         return "NaryOp(" + str(self.op) + ", " + str(self.args) + ")"
 
-    def compile(self, scope, code):
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.args)
+
+    def gencode(self, scope, code):
         (op, file, line, column) = self.op
         n = len(self.args)
         if n == 2 and (op == "and" or op == "or"):
