@@ -776,6 +776,13 @@ class NaryOp(Op):
                 context.push(e1 in e2.s)
             else:
                 assert False, self
+        elif self.n == 3:
+            assert op == "if"
+            e1 = context.pop()
+            e2 = context.pop()
+            e3 = context.pop()
+            assert isinstance(e2, bool), e2
+            context.push(e1 if e2 else e3)
         else:
             assert False, self
         context.pc += 1
@@ -1172,12 +1179,19 @@ class NaryRule(Rule):
         (lexeme, file, line, column) = t[0]
         if lexeme in self.closers:
             return (ast, t)
+        args = [ast]
         op = t[0]
-        assert isbinaryop(op[0]), op
+        assert isbinaryop(op[0]) or op[0] == "if", op
         (ast2, t) = ExpressionRule().parse(t[1:])
+        args.append(ast2)
         (lexeme, file, line, column) = t[0]
+        if op[0] == "if":                    # TODO. Should be F/T cases be evaluated?
+            assert lexeme == "else"
+            (ast3, t) = ExpressionRule().parse(t[1:])
+            args.append(ast3)
+            (lexeme, file, line, column) = t[0]
         assert lexeme in self.closers, (t[0], self.closers)
-        return (NaryAST(op, [ast, ast2]), t)
+        return (NaryAST(op, args), t)
 
 class SetComprehensionRule(Rule):
     def __init__(self, value):
