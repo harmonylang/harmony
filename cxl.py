@@ -827,7 +827,16 @@ class IterOp(Op):
             context.pc = self.pc
 
 class AST:
-    pass
+    def isConstant(self, scope):
+        return False
+
+    def eval(self, scope, code):
+        state = State(code, scope.labels)
+        ctx = Context("__const__", 0, len(code))
+        ctx.atomic = 1
+        while ctx.pc != len(code):
+            code[ctx.pc].eval(state, ctx)
+        return ctx.pop()
 
 class ConstantAST(AST):
     def __init__(self, const):
@@ -838,6 +847,9 @@ class ConstantAST(AST):
 
     def compile(self, scope, code):
         code.append(ConstantOp(self.const))
+
+    def isConstant(self, scope):
+        return True
 
 class NameAST(AST):
     def __init__(self, name):
@@ -861,6 +873,19 @@ class NameAST(AST):
             else:
                 assert False, tv
 
+    def isConstant(self, scope):
+        (lexeme, file, line, column) = self.name
+        tv = scope.lookup(self.name)
+        if tv == None:
+            return False
+        (t, v) = tv
+        if t == "variable":
+            return False
+        elif t == "constant":
+            return True
+        else:
+            assert False, tv
+
 class SetAST(AST):
     def __init__(self, collection):
         self.collection = collection
@@ -874,6 +899,9 @@ class SetAST(AST):
         code.append(ConstantOp((len(self.collection), None, None, None)))
         code.append(SetOp())
 
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.collection)
+
 class DictAST(AST):
     def __init__(self, record):
         self.record = record
@@ -881,12 +909,25 @@ class DictAST(AST):
     def __repr__(self):
         return str(self.record)
 
-    def compile(self, scope, code):
+    def isConstant(self, scope):
+        return all(k.isConstant(scope) and v.isConstant(scope)
+                        for (k, v) in self.record.items())
+
+    def gencode(self, scope, code):
         for (k, v) in self.record.items():
             v.compile(scope, code)
             k.compile(scope, code)
         code.append(ConstantOp((len(self.record), None, None, None)))
         code.append(DictOp())
+
+    def compile(self, scope, code):
+        if self.isConstant(scope):
+            code2 = []
+            self.gencode(scope, code2)
+            v = self.eval(scope, code2)
+            code.append(ConstantOp((v, None, None, None)))
+        else:
+            self.gencode(scope, code)
 
 class SetComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -1638,6 +1679,7 @@ class ConstAST(AST):
         return "Const(" + str(self.const) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
+        assert self.expr.isConstant(scope)
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)

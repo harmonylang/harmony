@@ -1,1 +1,3 @@
-x = dict{};
+const N = 3;
+
+x = dict{ N: 4 };
