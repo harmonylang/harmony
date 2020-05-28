@@ -838,6 +838,15 @@ class AST:
             code[ctx.pc].eval(state, ctx)
         return ctx.pop()
 
+    def compile(self, scope, code):
+        if self.isConstant(scope):
+            code2 = []
+            self.gencode(scope, code2)
+            v = self.eval(scope, code2)
+            code.append(ConstantOp((v, None, None, None)))
+        else:
+            self.gencode(scope, code)
+
 class ConstantAST(AST):
     def __init__(self, const):
         self.const = const
@@ -893,14 +902,14 @@ class SetAST(AST):
     def __repr__(self):
         return str(self.collection)
 
-    def compile(self, scope, code):
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.collection)
+
+    def gencode(self, scope, code):
         for e in self.collection:
             e.compile(scope, code)
         code.append(ConstantOp((len(self.collection), None, None, None)))
         code.append(SetOp())
-
-    def isConstant(self, scope):
-        return all(x.isConstant(scope) for x in self.collection)
 
 class DictAST(AST):
     def __init__(self, record):
@@ -919,15 +928,6 @@ class DictAST(AST):
             k.compile(scope, code)
         code.append(ConstantOp((len(self.record), None, None, None)))
         code.append(DictOp())
-
-    def compile(self, scope, code):
-        if self.isConstant(scope):
-            code2 = []
-            self.gencode(scope, code2)
-            v = self.eval(scope, code2)
-            code.append(ConstantOp((v, None, None, None)))
-        else:
-            self.gencode(scope, code)
 
 class SetComprehensionAST(AST):
     def __init__(self, value, var, expr):
