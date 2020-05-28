@@ -1,38 +1,38 @@
 import synch;
 
-def reader():
+def process():
     while choose({ False, True }):
-        call lock &(rlock);
-        if nreaders == 0:
+        if choose({ .reader, .writer }) == .reader:
+            call lock &(rlock);
+            if nreaders == 0:
+                call lock &(rwlock);
+            ;
+            nreaders = nreaders + 1;
+            call unlock &(rlock);
+
+            @rcs: assert atLabel.wcs == dict{}
+                  ;
+
+            call lock &(rlock);
+            nreaders = nreaders - 1;
+            if nreaders == 0:
+                call unlock &(rwlock);
+            ;
+            call unlock &(rlock);
+        else:
             call lock &(rwlock);
-        ;
-        nreaders = nreaders + 1;
-        call unlock &(rlock);
 
-        @rcs: assert atLabel.wcs == dict{}
-              ;
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                         (atLabel.rcs == dict{})
+                  ;
 
-        call lock &(rlock);
-        nreaders = nreaders - 1;
-        if nreaders == 0:
             call unlock &(rwlock);
         ;
-        call unlock &(rlock);
-    ;
-;
-def writer():
-    while choose({ False, True }):
-        call lock &(rwlock);
-
-        @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                     (atLabel.rcs == dict{})
-              ;
-
-        call unlock &(rwlock);
     ;
 ;
 rwlock = Lock();
 rlock = Lock();
 nreaders = 0;
-spawn reader(); spawn reader();
-spawn writer(); spawn writer();
+for i in 1..4:
+    spawn process();
+;

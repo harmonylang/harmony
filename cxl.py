@@ -51,6 +51,7 @@ def isreserved(s):
         "assert",
         "atLabel",
         "atomic",
+        "bagsize",
         "call",
         "cardinality",
         "choose",
@@ -81,7 +82,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "cardinality",
+    return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
                         "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
@@ -657,7 +658,7 @@ class NaryOp(Op):
         for (ctx, cnt) in state.ctxbag.items():
             if ctx.pc == pc:
                 c = d.get(ctx.nametag)
-                d[ctx.nametag] = 1 if c == None else (c + 1)
+                d[ctx.nametag] = cnt if c == None else (c + cnt)
         return DictValue(d)
 
     def eval(self, state, context):
@@ -685,16 +686,20 @@ class NaryOp(Op):
                 assert isinstance(e, DictValue), e
                 assert len(e) == 0
                 assert context.atomic > 0
-                context.push(DictValue(
-                    { ctx.nametag:cnt
-                            for (ctx, cnt) in state.ctxbag.items()
-                    }))
+                d = {}
+                for (ctx, cnt) in state.ctxbag.items():
+                    c = d.get(ctx.nametag)
+                    d[ctx.nametag] = cnt if c == None else (c + cnt)
+                context.push(DictValue(d))
             elif op == "len":
                 assert isinstance(e, DictValue), e
                 context.push(len(e.d))
             elif op == "keys":
                 assert isinstance(e, DictValue), e
                 context.push(SetValue(set(e.d.keys())))
+            elif op == "bagsize":
+                assert isinstance(e, DictValue), e
+                context.push(sum(e.d.values()))
             else:
                 assert False, self
         elif self.n == 2:
@@ -2327,7 +2332,7 @@ def run(code, labels, map, step):
     if map != None:
         # Compute low -> high mapping
         mapping = {}
-        steps = {}
+        attainable = set()
         desirable = set()
         for s in visited.keys():
             sc = s.copy()
@@ -2344,6 +2349,7 @@ def run(code, labels, map, step):
                 assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
             hs = ctx.vars.d["result"]
             mapping[s] = hs
+            attainable.add(hs)
 
             # Map high-level step to desirable next high-level states
             # TODO.  Share code with __map__
@@ -2357,8 +2363,7 @@ def run(code, labels, map, step):
                 code[ctx.pc].eval(sc, ctx)
                 assert sc.vars == s.vars    # TODO.  Maybe map should be read-only
             next = ctx.vars.d["result"]
-            assert isinstance(next, SetValue)
-            steps[hs] = next.s
+            assert isinstance(next, SetValue), next
             desirable = desirable.union(next.s)
 
         # See which high level states can be reached from each low level state
@@ -2366,12 +2371,15 @@ def run(code, labels, map, step):
         for s in visited.keys():
             explore(s, visited, mapping, reach)
 
+        print("ATTAINABLE", attainable)
+        print("DESIRABLE", desirable)
+
         # Now see if every desirable high level state can be reached
         for s in visited.keys():
             hs = mapping[s]
             if hs in desirable:
                 desirable.remove(hs)
-        print("DESIRABLE", desirable)
+        assert desirable == set(), desirable
 
     return visited
 
