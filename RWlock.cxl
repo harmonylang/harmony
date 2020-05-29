@@ -12,20 +12,18 @@ def process():
 
             @rcs: assert atLabel.wcs == dict{}
                   ;
-
             call lock &(rlock);
             nreaders = nreaders - 1;
             if nreaders == 0:
                 call unlock &(rwlock);
             ;
             call unlock &(rlock);
-        else:
+        else:                       # .write
             call lock &(rwlock);
 
             @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                          (atLabel.rcs == dict{})
                   ;
-
             call unlock &(rwlock);
         ;
     ;

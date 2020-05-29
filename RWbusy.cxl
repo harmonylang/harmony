@@ -13,11 +13,12 @@ def process():
                     call unlock &(rwlock);
                 ;
             ;
-            @rcs: assert atLabel.wcs == dict{};
+            @rcs: assert atLabel.wcs == dict{}
+                  ;
             call lock &(rwlock);
             nreaders = nreaders - 1;
             call unlock &(rwlock);
-        else:
+        else:                       # .write
             let blocked = True:
                 while blocked:
                     call lock &(rwlock);
