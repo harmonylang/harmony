@@ -2,7 +2,7 @@ import synch;
 
 def process():
     while choose({ False, True }):
-        if choose({ .reader, .writer }) == .reader:
+        if choose({ .read, .write }) == .read:
             call lock &(rlock);
             if nreaders == 0:
                 call lock &(rwlock);

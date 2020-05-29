@@ -6,12 +6,15 @@ def process(self):
     call unlock &(countlock);
     done[self] = True;
 ;
+def main(self):
+    while not (done[0] and done[1]):
+        pass;
+    ;
+    assert count == 2, count;
+;
 count = 0;
 countlock = Lock();
 done = [ False, False ];
 spawn process(0), 0;
 spawn process(1), 1;
-while not (done[0] and done[1]):
-    pass;
-;
-assert count == 2;
+spawn main();

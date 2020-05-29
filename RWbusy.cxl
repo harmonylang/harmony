@@ -2,7 +2,7 @@ import synch;
 
 def process():
     while choose({ False, True }):
-        if choose({ .reader, .writer }) == .reader:
+        if choose({ .read, .write }) == .read:
             let blocked = True:
                 while blocked:
                     call lock &(rwlock);
@@ -13,8 +13,7 @@ def process():
                     call unlock &(rwlock);
                 ;
             ;
-            @rcs: assert atLabel.wcs == dict{}
-                  ;
+            @rcs: assert atLabel.wcs == dict{};
             call lock &(rwlock);
             nreaders = nreaders - 1;
             call unlock &(rwlock);

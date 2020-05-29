@@ -226,7 +226,7 @@ name.  For example, \texttt{.main} is an atom.
 
 CXL makes extensive use of dictionaries.  Their syntax and properties
 are a little different from Python.
-A dictionary maps keys to values.
+A dictionary maps CXL values, known as \emph{keys}, to CXL values.
 Unlike Python, any CXL value can be a key, including another
 dictionary.
 CXL dictionaries are written as
@@ -269,7 +269,7 @@ then \texttt{x[0] == False} and \texttt{x[1] == True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.
 
-CXL is not an object-oriented language, however, so objects don't have
+CXL is not an object-oriented language, so objects don't have
 built-in methods.  However, CXL does have some powerful operators to
 make up for some of that.
 For example, dictionaries have two handy unary operators.
@@ -489,16 +489,16 @@ a location in the CXL machine code.  The first thing we need to
 ensure is that there cannot be two processes at the critical section.
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.  CXL in fact
-supports this.  It has a method \texttt{atLabel $L$}, where $L$
+supports this.  It has an operator \texttt{atLabel $L$}, where $L$
 is the atom of the label (in this case, \texttt{.cs}).  The
-method returns a bag of name tags of processes executing at that
+operator returns a bag of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 Method \texttt{atLabel} only exists for specification purposes---do not
 use it in normal code.
 
 Figure~\ref{fig:csbarebones} shows the code.
-The assertion also makes use of the method \texttt{nametag()} that
+The assertion also makes use of the \texttt{nametag()} operator that
 returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
 there is no code yet for entering and exiting the critical section.
@@ -508,7 +508,9 @@ For example, we could insert the following code to enter the
 critical section:
 \begin{code}
 \begin{verbatim}
-while True: pass;;
+while True:
+    pass;
+;
 \end{verbatim}
 \end{code}
 This code will surely prevent two or more processes from being
@@ -524,11 +526,20 @@ What we need now a \emph{liveness property}: we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
 but here we will propose the following informally: if some set of processes
-$S$ are trying to enter the critical section, then eventually one process in
-$S$ will enter the critical section if any process already in the
-intersection eventually leaves, even if no processes other than $S$ ever
-try to enter the critical section.
+$S$ are trying to enter the critical section and any process already in the
+intersection eventually leaves, then eventually one process in $S$ will enter
+the critical section.
 We call this \emph{progress}.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=2in]{figures/mutex.png}
+\end{center}
+\caption{High-level state diagram specification of mutual exclusion with up to two processes.
+The first number in a state gives the number of processes; the second number is the
+number of processes in the critical section.}
+\label{fig:mutex}
+\end{figure}
 
 In order to detect violations of progress, and other liveness problems in
 algorithms in general, CXL requires that every execution must be
@@ -541,6 +552,8 @@ critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
 Note also that we have dropped the \texttt{@ncs} label: it would serve no
 specific purpose.
+Figure~\ref{fig:mutex} show a high-level state diagram of the code in
+Figure~\ref{fig:cs}.
 
 \begin{quote}
 Try it out!
@@ -578,12 +591,15 @@ to a state from which a terminating state cannot be reached.
 \label{fig:upturn}
 \end{figure}
 
-Figure~\ref{fig:uplock} presents a solution based on a na\"{\i}ve implementation
-of a \emph{lock}.
-The idea is that the lock is a baton that at most one process can own at
-a time.
+In order to have at most one process in a critical section at a time, you
+probably are thinking that one might use a \emph{lock}.
+That is a good thought, but how does one implement one?
+Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
+na\"{\i}ve implementation of a lock.
+The idea is that the lock is like a baton that at most one process can own
+(or hold) at a time.
 Initially the lock is not owned, indicated by lock being \texttt{False}.
-To enter the critical section, a process waits until lock is \texttt{False}
+To enter the critical section, a process waits until \texttt{lock} is \texttt{False}
 and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
 releases the lock by setting it back to \texttt{False}.
@@ -613,16 +629,20 @@ Process 0 can only reach the critical section if at some time $t_1$,
 $t_1 > t_0$, it finds that \texttt{flags[1] == False}.
 Because of the invariant, \texttt{flags[1] == False} implies that
 process~1 is not at the critical section at time $t_1$.
-Suppose that process~1 is at the critical section from $t_2$ until
-it clears its flag at time $t_3$.  Note $t_0 < t_1 < t_2 < t_3$.
-Process~1 can only reach the critical section between $(t_2, t_3)$
-if it finds \texttt{flags[0] == False} during $(t_1, t_3)$.  But
-during $(t_0, t_3)$ \texttt{flags[0] == True}.
+Let $t_2$ be the time at which process~0 sets \texttt{flags[0]}
+to \texttt{False}.  Process~0 is in the critical section sometime
+between $t_1$ and $t_2$.
+It is easy to see that process~1 cannot enter the critical section
+between $t_1$ and $t_2$, because \texttt{flags[1] == False} at
+time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
+it would first have to set \texttt{flags[1]} to \texttt{True} and
+then wait until \texttt{flags[0] == False}.  But that does not happen
+until time $t_2$.
 
 However, the solution has a different problem called \emph{livelock}:
 if both try to enter the critical section at the same time, they may
 end up waiting for one another indefinitely.  Thus the solution
-violated \emph{progress}.
+violates \emph{progress}.
 
 The final na\"{\i}ve solution is based on a variable called \texttt{turn}
 that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
@@ -667,7 +687,7 @@ win because writes to memory in CXL are atomic.
 The process continues to be polite, waiting in a \texttt{while} loop
 until either the other process is no where near the critical section
 or has given way.
-Running the algorithm though CXL shows that it satisfies both mutual
+Running the algorithm with CXL shows that it satisfies both mutual
 exclusion and progress.
 
 Why does it work?  We will focus here on how one might go about proving
@@ -713,6 +733,7 @@ Also imagine that in this particular state $\mathtt{turn} = 1$.  Now let
 process process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
 section, violating mutual exclusion.
+So mutual exclusion is an invariant, but not an inductive invariant.
 Doing a inductive proof with an invariant that is not inductive is usually
 much harder than doing one with an invariant that is.
 
@@ -733,10 +754,8 @@ $\mathtt{flags}[i]$ but still before setting \texttt{turn} to $1-i$.
 Let's call it $I_p(i)$.
 
 Figure~\ref{fig:petersonproof} formalizes $I_p(i)$ in CXL.
-The figure uses the CXL \texttt{atomic} statement for the first time.
-For now, all you need to know is that it turns the embedded statement into
-a single atomic step.  The label \texttt{@gate} thus refers exactly to
-this statement.  You can run Figure~\ref{fig:petersonproof} to determine
+The label \texttt{@gate} refers to the instruction that sets \texttt{turn} to $1-i$.
+You can run Figure~\ref{fig:petersonproof} to determine
 that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
 
 To see that $I_p(i)$ implies mutual exclusion, suppose not.  Then
@@ -930,7 +949,6 @@ While the CXL machine does not have any built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
 This feature is available in the CXL language through its \texttt{atomic}
 statement.
-You already saw an example of this in Figure~\ref{fig:petersonproof}.
 We can use \texttt{atomic} blocks to implement a wide variety of
 interlock operations.
 For example, we could fix the program in Figure~\ref{fig:inc} by
@@ -977,8 +995,8 @@ the invariant.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $I_1$ is also easy to verify for exiting the critical section.
-Invariant $I_2$ is obvious as process $i$ only proceeds to the critical
-section if \texttt{private[$i$] == False} and no other process modifies
+Invariant $I_2$ is obvious as (i) process $i$ only proceeds to the critical
+section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 \texttt{private[$i$]}.
 
 \begin{figure}
@@ -1006,8 +1024,9 @@ is used to compute the number of variables that have value
 \texttt{False}.
 The function is invoked by in a loop by a process that runs alongside
 the other processes.
-Note that this process must be started after the variables are
-initialized---before that the invariant does not hold yet.
+In CXL, \texttt{assert} statements are executed atomically, so the
+evaluation of the assertion is not interleaved with the execution
+of other processes.
 Because CXL tries every possible execution, the process is guaranteed
 to find violations of the invariant if it does not hold.
 
@@ -1057,8 +1076,6 @@ is very common.
 In CXL, atomic statements allow you to \emph{implement} your own
 low synchronization primitives like test-and-set.  Atomic statements
 are not intended to \emph{replace} locks or other synchonization primitives.
-By the way, CXL \texttt{assert} statements execute atomically
-as if they are nested within an atomic statement.
 
 \begin{figure}
 \begin{code}
@@ -1098,7 +1115,7 @@ Locks are probably the most popular and basic form of synchronization
 in concurrent programs.  For this reason, CXL has a module called
 \texttt{synch} that includes support for locks.
 Figure~\ref{fig:locks} shows how they are implemented, and
-Figure~\ref{fig:figinc} gives an example of how they may be used,
+Figure~\ref{fig:incfixed} gives an example of how they may be used,
 in this case to fix the program of Figure~\ref{fig:inc}.
 Notice that the module completely hides the implementation of the
 lock.
@@ -1116,14 +1133,26 @@ chapters.
 \label{fig:rwbusy}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=2in]{figures/rdwr.png}
+\end{center}
+\caption{High-level state diagram specification of reader/writer locks with
+up to two processes.
+The first number in a state gives the number of processes; the second number is the
+number of processes reading in the critical section; the third is the number of
+processes writing in the critical section.}
+\label{fig:rdwr}
+\end{figure}
+
 Locks are useful when accessing a shared data structure.  By preventing
 more than one process from accessing the data structure at the same
-time, conflicting access are avoided.  However, not all concurrent
+time, conflicting accesses are avoided.  However, not all concurrent
 accesses conflict, and opportunities for concurrency may be lost,
 hurting performance.  One important case is when multiple processes
-are simply reading the data structure.  There is no conflict, and
-all reads should be allowed to proceed concurrently.  In many
-applications, reads are the majority of all accesses.
+are simply reading the data structure.
+In many applications, reads are the majority of all accesses.
+Allowing reads to proceed concurrently can significantly improve performance.
 
 What we want is a special kind of lock that allows either one writer
 or one or more readers to be in the critical section.  This is called
@@ -1135,24 +1164,33 @@ Figure~\ref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
 The lock is used to protect access to those counters.
-The program shows two kinds of processes: \texttt{reader()} and
-\texttt{writer()}.  The critical section is spread between two
-labels: readers access \texttt{@rcs} and writers access \texttt{@wcs}.
+The program shows a process that executes in a loop.
+Each time, it decides whether to read or write.
+The critical section is spread between two labels:
+readers access \texttt{@rcs} and writers access \texttt{@wcs}.
 The specification is that if a reader is at label \texttt{@rcs},
 no writer is allowed to be at label \texttt{@wcs}.  Vice versa, if
 a writer is at label \texttt{@wcs}, no reader is allowed to be at
 label \texttt{@rcs} \emph{and} there cannot be another writer at
-label \texttt{@wcs}.
+label \texttt{@wcs}.  Figure~\ref{fig:rdwr} shows a high-level
+specification for two processes.
 
-A reader process that wants to enter \texttt{@rcs} first waits
-until there are no writers: \texttt{nwriters == 0}.
-If so, it increments the number of readers.  Similarly, a writer
-process waits until there are no readers \emph{or} writers.
+\begin{quote}
+\begin{itemize}
+\item Draw additional states and steps in Figure~\ref{fig:rdwr} to 
+for three processes.
+\end{itemize}
+\end{quote}
+
+A process that wants to read first waits until there are no writers:
+\texttt{nwriters == 0}.  If so, it increments the number of readers.
+Similarly, a
+process that wants to write waits until there are no readers \emph{or} writers.
 If so, it increments the number of writers.
 The important invariants in this code are:
 \begin{itemize}
 \item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
-\item $n$ writers at \texttt{@rcs} $\Rightarrow \mathtt{nwriters} \ge n$,
+\item $n$ writers at \texttt{@wcs} $\Rightarrow \mathtt{nwriters} \ge n$,
 \item $(\mathtt{nreaders} \ge 0 \land \mathtt{nwriters} = 0) \lor
     (\mathtt{nreaders} = 0 \land 0 \le \mathtt{nwriters} \le 1)$.
 \end{itemize}
@@ -1209,7 +1247,7 @@ The invariants that imply the reader/writer specification
 
 \begin{itemize}
 \item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
-\item $\exists$ writer at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} = 0$,
+\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathtt{nreaders} = 0$,
 \end{itemize}
 
 A writer simply acquires \texttt{rwlock} to enter the critical section
