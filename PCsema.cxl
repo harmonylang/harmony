@@ -1,24 +1,24 @@
 import synch;
 
-const NSLOTS = 1;     # size of bounded buffer
-const NITEMS = 3;     # number of items to produce/consume
-const NPROCS = 2;     # number of processes
+const NSLOTS = 2;     # size of bounded buffer
+const NITEMS = 2;     # number of items to produce/consume per process
+const NPROCS = 2;     # number of producers and number of consumers
 
 def produce(item):
-    call P&(nempty);
-    call P&(mutex);
-    buf[myin] = item;
-    myin = (myin % NSLOTS) + 1;
-    call V&(mutex);
-    call V&(nfull);
+    call P &(nempty);
+    call P &(mutex);
+    buf[b_in] = item;
+    b_in = (b_in % NSLOTS) + 1;
+    call V &(mutex);
+    call V &(nfull);
 ;
 def consume():
-    call P&(nfull);
-    call P&(mutex);
-    result = buf[myout];
-    myout = (myout % NSLOTS) + 1;
-    call V&(mutex);
-    call V&(nempty);
+    call P &(nfull);
+    call P &(mutex);
+    result = buf[b_out];
+    b_out = (b_out % NSLOTS) + 1;
+    call V &(mutex);
+    call V &(nempty);
 ;
 def producer():
     for i in 1..NITEMS:
@@ -31,7 +31,7 @@ def consumer():
     ;
 ;
 buf = dict{ () for x in 1..NSLOTS };
-myin = 1; myout = 1;
+b_in = 1; b_out = 1;
 nfull = Semaphore(0);
 nempty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
