@@ -470,6 +470,15 @@ trying to do the same thing.  We call this a \emph{critical section}: a
 set of instructions where only one process is allowed to execute at a
 time.
 
+Critical sections are useful when accessing a shared data
+structure, particularly when that access requires multiple underlying
+machine instructions.  A simple counter is a very simple example of
+a data structure.  A more involved one would be access to a binary tree.
+Adding a node to a binary tree or re-balancing a tree often requires
+multiple operations.  Maintaining consistency is certainly much easier
+(although not necessarily impossible) if during this time no other
+process also tries to access the binary tree.
+
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.  In CXL:
 
@@ -1274,10 +1283,71 @@ It does not matter in which order they leave: the second will release
 
 \chapter{Semaphores}
 
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+def Semaphore(cnt):
+    result = cnt;
+;
+def P(sema):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (^sema) > 0:
+                    ^sema = (^sema) - 1;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        ^sema = (^sema) + 1;
+    ;
+;
+\end{verbatim}
+\end{code}
+\caption{The \texttt{Semaphore} interface in the \texttt{synch} module.}
+\label{fig:semaphore}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\verbatiminput{../PCsema.cxl}
+\end{code}
+\caption{Bounded Buffer implementation using semaphores.}
+\label{fig:boundedbuffer}
+\end{figure}
+
 So far we have looked at how to protect a single resource.  Sometimes
 we have multiple but a limited amount of resources that require
 protection.  That is, if there are only $n$ resources, no more than
-$n$ processes can access them at a time.
+$n$ can be used at a time; if all are in use and a process come along
+that needs one of the resources, it has to wait until another process
+releases one of the resources.  Note that we cannot solve this problem
+simply using a lock per resource---allocating a resource requires access
+to all of them.
+
+A good example is the so-called \emph{bounded buffer}.  It is essentially
+a queue implemented using a circular buffer of a certain length and two pointers:
+one where items are inserted and one from where items are extracted.  If the
+buffer is full, processes that want to add more items have to wait.  In the usual
+formulation, processes that want to extract an item when the buffer is empty
+also have to wait.  It would be easy to build such a thing using a busy waiting
+approach, but again, we would like to avoid busy waiting.
+
+Introduced by the famous Dutch computer scientist Edsger Dijkstra,
+a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
+a counter that can be incremented and decremented but is not allowed to go
+below zero.  The semaphore counter is typically initialized to the number of
+resources available.  When allocating a resource, a process decrements the
+counter using the \texttt{procure} or simply \texttt{P} operation.  The
+\texttt{procure} operation blocks the invoking process if the counter is zero.
+To release the resource, a process increments the resource using the
+\texttt{vacate} or {V} operation.
+Figure~\ref{fig:sema} shows the \texttt{synch} module implementation of
+semaphores.
 
 \chapter{Starvation}
 
