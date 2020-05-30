@@ -20,7 +20,7 @@ def consume():
     call V&(mutex);
     call V&(nempty);
 ;
-def producer(self):
+def producer():
     for i in 1..NITEMS:
         call produce(i);
     ;
