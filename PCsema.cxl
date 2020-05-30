@@ -1,13 +1,12 @@
 import synch;
 
-const NSLOTS = 1;         # size of bounded buffer
-const NITEMS = 3;         # number of items to produce/consume
-const NPRODUCERS = 2;     # number of producers
+const NSLOTS = 1;     # size of bounded buffer
+const NITEMS = 3;     # number of items to produce/consume
+const NPROCS = 2;     # number of processes
 
 def produce(item):
     call P&(nempty);
     call P&(mutex);
-    # buf[myin] = choose({ 10, 20 });
     buf[myin] = item;
     myin = (myin % NSLOTS) + 1;
     call V&(mutex);
@@ -22,32 +21,21 @@ def consume():
     call V&(nempty);
 ;
 def producer(self):
-    for i in 0..(NITEMS-1):
-        call produce((i * NPRODUCERS) + self);
+    for i in 1..NITEMS:
+        call produce(i);
     ;
 ;
 def consumer():
-    let consuming = True, item = ():
-        while consuming:
-            call lock &(consumelock);
-            if nconsumed == (NITEMS * NPRODUCERS):
-                consuming = False;
-                call unlock &(consumelock);
-            else:
-                nconsumed = nconsumed + 1;
-                call unlock &(consumelock);
-                item = consume();
-            ;
-        ;
+    for i in 1..NITEMS:
+        result = consume();
     ;
 ;
-buf = dict{ 0 for x in 1..NSLOTS };
+buf = dict{ () for x in 1..NSLOTS };
 myin = 1; myout = 1;
-nfull = Semaphore(0); nempty = Semaphore(NSLOTS);
+nfull = Semaphore(0);
+nempty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
-nconsumed = 0;
-consumelock = Lock();
-for i in 0..(NPRODUCERS-1):
-    spawn producer(i);
+for i in 1..NPROCS:
+    spawn consumer();
+    spawn producer();
 ;
-spawn consumer(); spawn consumer();
