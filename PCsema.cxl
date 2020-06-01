@@ -5,20 +5,20 @@ const NITEMS = 2;     # number of items to produce/consume per process
 const NPROCS = 2;     # number of producers and number of consumers
 
 def produce(item):
-    call P &(nempty);
+    call P &(n_empty);
     call P &(mutex);
     buf[b_in] = item;
     b_in = (b_in % NSLOTS) + 1;
     call V &(mutex);
-    call V &(nfull);
+    call V &(n_full);
 ;
 def consume():
-    call P &(nfull);
+    call P &(n_full);
     call P &(mutex);
     result = buf[b_out];
     b_out = (b_out % NSLOTS) + 1;
     call V &(mutex);
-    call V &(nempty);
+    call V &(n_empty);
 ;
 def producer():
     for i in 1..NITEMS:
@@ -32,8 +32,8 @@ def consumer():
 ;
 buf = dict{ () for x in 1..NSLOTS };
 b_in = 1; b_out = 1;
-nfull = Semaphore(0);
-nempty = Semaphore(NSLOTS);
+n_full = Semaphore(0);
+n_empty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
 for i in 1..NPROCS:
     spawn consumer();

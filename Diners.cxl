@@ -5,7 +5,7 @@ import synch;
 const N = 5;
 
 def diner(which):
-    # while choose({ False, True }):
+    while choose({ False, True }):
         let left = which, right = (which % N) + 1:
             call P &(forks[left]);
             call P &(forks[right]);
@@ -13,7 +13,7 @@ def diner(which):
             call V &(forks[left]);
             call V &(forks[right]);
         ;
-    # ;
+    ;
 ;
 forks = dict{ Semaphore(1) for sema in 1..N };
 for i in 1..N:
