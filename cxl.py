@@ -1,6 +1,7 @@
 import sys
 import traceback
 import collections
+import time
 
 # TODO.  This should not be global ideally
 files = {}
@@ -2195,6 +2196,8 @@ globops = [
     AtomicIncOp, LoadOp, SpawnOp, StoreOp
 ]
 
+lasttime = 0
+
 # Have context ctx make one (macro) step in the given state
 def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Keep track of whether this is the same context as the parent context
@@ -2212,6 +2215,13 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     while cc.pc != cc.end:
         # execute one microstep
         steps.append(cc.pc)
+
+        global lasttime
+        if time.time() - lasttime > 0.2:
+            print("  ", "ctx =", nametag2str(cc.nametag), "pc =%4d"%cc.pc,
+                    "#states =", len(visited), "diameter =", node.len,
+                    "queue =", len(todo), end="     \r")
+            lasttime = time.time()
 
         # If the current instruction is a "choose" instruction, make the specified choice
         if isinstance(sc.code[cc.pc], ChooseOp):
@@ -2340,7 +2350,6 @@ def run(code, labels, map, step):
     bad = set()
     infloop = set()
 
-    cnt = 0
     faultyState = False
     while todo:
         state = todo.popleft()
@@ -2352,10 +2361,6 @@ def run(code, labels, map, step):
         if node.expanded:
             continue
         node.expanded = True
-
-        cnt += 1
-        print(" ", "#states =", cnt, "diameter =", node.len,
-                        "queue =", len(todo), end="     \r")
 
         if state.choosing != None:
             ctx = state.choosing

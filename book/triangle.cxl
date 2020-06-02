@@ -1,4 +1,4 @@
-const N = 5;
+const N = 10;
 
 def triangle(n):   # computes the n'th triangle number
     result = 0;
