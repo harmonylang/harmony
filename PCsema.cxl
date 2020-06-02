@@ -1,8 +1,7 @@
 import synch;
 
 const NSLOTS = 2;     # size of bounded buffer
-const NITEMS = 2;     # number of items to produce/consume per process
-const NPROCS = 2;     # number of producers and number of consumers
+const NPROCS = 3;     # number of producers and number of consumers
 
 def produce(item):
     call P &(n_empty);
@@ -20,22 +19,12 @@ def consume():
     call V &(mutex);
     call V &(n_empty);
 ;
-def producer():
-    for i in 1..NITEMS:
-        call produce(i);
-    ;
-;
-def consumer():
-    for i in 1..NITEMS:
-        result = consume();
-    ;
-;
 buf = dict{ () for x in 1..NSLOTS };
 b_in = 1; b_out = 1;
 n_full = Semaphore(0);
 n_empty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
 for i in 1..NPROCS:
-    spawn consumer();
-    spawn producer();
+    spawn consume();
+    spawn produce();
 ;
