@@ -2206,24 +2206,26 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Make a copy of the context before modifying it (cc is "context copy")
     cc = ctx.copy()
 
-    if choice == None:
-        steps = []
-    else:
-        steps = [cc.pc]
-        cc.stack[-1] = choice
-        cc.pc += 1
-
-    localStates = { cc.copy() }
+    steps = []
+    localStates = { cc.copy() }     # used to detect infinite loops
     foundInfLoop = False
     while cc.pc != cc.end:
         # execute one microstep
         steps.append(cc.pc)
 
-        try:
-            sc.code[cc.pc].eval(sc, cc)
-        except Exception as e:
-            traceback.print_exc()
-            sc.failure = True
+        # If the current instruction is a "choose" instruction, make the specified choice
+        if isinstance(sc.code[cc.pc], ChooseOp):
+            assert choice != None;
+            cc.stack[-1] = choice
+            cc.pc += 1
+            choice = None
+        else:
+            assert choice == None
+            try:
+                sc.code[cc.pc].eval(sc, cc)
+            except Exception as e:
+                traceback.print_exc()
+                sc.failure = True
 
         # TODO.  Checking for end twice in this loop seems wrong
         if sc.failure or cc.pc == cc.end:
