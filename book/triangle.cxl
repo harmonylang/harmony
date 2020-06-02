@@ -6,8 +6,5 @@ def triangle(n):   # computes the n'th triangle number
         result = result + i;
     ;
 ;
-def main():
-    x = choose(0..N);
-    assert triangle(x) == ((x * (x + 1)) / 2);
-;
-spawn main();
+x = choose(0..N);
+assert triangle(x) == ((x * (x + 1)) / 2);

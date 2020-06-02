@@ -839,7 +839,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = Context("__const__", 0, len(code))
+        ctx = Context(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
         ctx.atomic = 1
         while ctx.pc != len(code):
             code[ctx.pc].eval(state, ctx)
@@ -1705,7 +1705,7 @@ class ConstAST(AST):
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
-        ctx = Context("__const__", 0, len(code2))
+        ctx = Context(DictValue({"name": "__const__", "tag": novalue}), 0, len(code2))
         ctx.atomic = 1
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
@@ -2006,6 +2006,7 @@ class State:
         self.ctxbag = {}
         self.choosing = None
         self.failure = False
+        self.initializing = True
 
     def __repr__(self):
         return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ")"
@@ -2028,6 +2029,8 @@ class State:
             return False
         if self.failure != other.failure:
             return False
+        if self.initializing != self.initializing:
+            return False
         return True
 
     def copy(self):
@@ -2035,6 +2038,7 @@ class State:
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()
         s.failure = self.failure
+        s.initializing = self.initializing
         return s
 
     def get(self, var):
@@ -2108,7 +2112,7 @@ def get_path(visited, state):
     node = visited[state]
     return get_path(visited, node.parent) + [(node, state.vars)]
 
-def nametag(nt):
+def nametag2str(nt):
     return str(nt.d["name"]) + "/" + str(nt.d["tag"])
 
 def print_shortest(visited, bad):
@@ -2127,10 +2131,10 @@ def print_shortest(visited, bad):
         elif node.ctx.nametag == last[0] and node.steps[0] == last[1]:
             last = (node.ctx.nametag, node.ctx.pc, last[2] + node.steps, vars)
         else:
-            print(nametag(last[0]), strsteps(last[2]), last[1], last[3])
+            print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
-        print(nametag(last[0]), strsteps(last[2]), last[1], last[3])
+        print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
 
 class Scope:
     def __init__(self, parent):
@@ -2251,7 +2255,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     sc.remove(ctx)
 
     # Put the resulting context into the bag unless it's done
-    if cc.pc != cc.end:
+    if cc.pc == cc.end:
+        sc.initializing = False     # initializing ends when __init__ finishes
+    else:
         sc.add(cc)
 
     length = node.len if samectx else (node.len + 1)
@@ -2317,12 +2323,13 @@ def compile(f, filename):
     return (code, scope)
 
 def run(code, labels, map, step):
-    # Initialize state
     state = State(code, labels)
-    ctx = Context("__init__", 0, len(code))
+    ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
-    while ctx.pc != len(code):
-        code[ctx.pc].eval(state, ctx)
+    state.add(ctx)
+
+    # while ctx.pc != len(code):
+    #   code[ctx.pc].eval(state, ctx)
     # print("INITIAL STATE", state)
 
     # For traversing Kripke graph
@@ -2340,12 +2347,13 @@ def run(code, labels, map, step):
             faultyState = True
             break           # TODO: should this be a continue?
         node = visited[state]
-        cnt += 1
-        print(" ", "#states =", cnt, "diameter =", node.len,
-                        "queue =", len(todo), end="     \r")
         if node.expanded:
             continue
         node.expanded = True
+
+        cnt += 1
+        print(" ", "#states =", cnt, "diameter =", node.len,
+                        "queue =", len(todo), end="     \r")
 
         if state.choosing != None:
             ctx = state.choosing
@@ -2398,6 +2406,8 @@ def run(code, labels, map, step):
         attainable = set()
         desirable = set()
         for s in visited.keys():
+            if s.initializing:
+                continue
             sc = s.copy()
 
             # Map low-level state to high-level state
