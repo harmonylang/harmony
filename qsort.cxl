@@ -1,0 +1,31 @@
+def qsort(a):
+    if a == []:
+        result = [];
+    else:
+        let i = 1, pivot = a[0], lower = [], higher = []:
+            while i < len(a):
+                if a[i] < pivot:
+                    lower[len(lower)] = a[i];
+                else:
+                    higher[len(higher)] = a[i];
+                ;
+                i = i + 1;
+            ;
+            lower = qsort(lower);
+            higher = qsort(higher);
+            result = [];
+            i = 0;
+            while i < len(lower):
+                result[len(result)] = lower[i];
+                i = i + 1;
+            ;
+            result[len(result)] = pivot;
+            while i < len(higher):
+                result[len(result)] = higher[i];
+                i = i + 1;
+            ;
+        ;
+    ;
+;
+list = [3, 1,2];
+assert qsort(list) == [1,2,3], qsort(list);
