@@ -1,3 +1,5 @@
+const N = 3;
+
 def qsort(a):
     if a == []:
         result = [];
@@ -27,5 +29,17 @@ def qsort(a):
         ;
     ;
 ;
-list = [3, 1,2];
-assert qsort(list) == [1,2,3], qsort(list);
+const values = 1..N;
+
+def sorted(a):
+    result = True;
+    for i in 1..(len(a) - 1):
+        if a[i - 1] > a[i]:
+            result = False;
+        ;
+    ;
+;
+
+list = [ choose(values) for i in 1..N ];
+assert sorted(qsort(list));
+# assert ispermutation(list, qsort(list));
