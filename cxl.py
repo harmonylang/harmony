@@ -680,21 +680,39 @@ class NaryOp(Op):
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
-        if op == "+":
+        if op in { "+", "*", "and", "or" }:
             assert self.n > 1
             e1 = context.pop()
             for i in range(1, self.n):
                 e2 = context.pop()
-                if isinstance(e1, int):
-                    assert isinstance(e2, int), e2
-                    e1 += e2
-                elif isinstance(e1, SetValue):
-                    assert isinstance(e2, SetValue), e2
-                    e1 = SetValue(e1.s.union(e2.s))
-                else:
-                    assert isinstance(e1, DictValue), e1
-                    assert isinstance(e2, DictValue), e2
-                    e1 = self.concat(e1, e2)
+                if op == "+":
+                    if isinstance(e1, int):
+                        assert isinstance(e2, int), e2
+                        e1 += e2
+                    elif isinstance(e1, SetValue):
+                        assert isinstance(e2, SetValue), e2
+                        e1 = SetValue(e1.s.union(e2.s))
+                    else:
+                        assert isinstance(e1, DictValue), e1
+                        assert isinstance(e2, DictValue), e2
+                        e1 = self.concat(e1, e2)
+                elif op == "*":
+                    if isinstance(e1, int):
+                        assert isinstance(e2, int), e2
+                        e1 *= e2
+                    else:
+                        assert isinstance(e1, SetValue), e1
+                        assert isinstance(e2, SetValue), e2
+                        e1 = SetValue(e1.s.intersection(e2.s))
+                elif op == "and":   # may not need this
+                    assert isinstance(e1, bool), e1
+                    assert isinstance(e2, bool), e2
+                    e1 = e1 and e2
+                else:   # may not need this
+                    assert op == "or", op
+                    assert isinstance(e1, bool), e1
+                    assert isinstance(e2, bool), e2
+                    e1 = e1 or e2
             context.push(e1)
         elif self.n == 1:
             e = context.pop()
@@ -768,14 +786,6 @@ class NaryOp(Op):
                     assert isinstance(e1, SetValue), e1
                     assert isinstance(e2, SetValue), e2
                     context.push(SetValue(e1.s.difference(e2.s)))
-            elif op == "*":
-                if isinstance(e1, int):
-                    assert isinstance(e2, int), e2
-                    context.push(e1 * e2)
-                else:
-                    assert isinstance(e1, SetValue), e1
-                    assert isinstance(e2, SetValue), e2
-                    context.push(SetValue(e1.s.intersection(e2.s)))
             elif op == "/":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
@@ -788,14 +798,6 @@ class NaryOp(Op):
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
                 context.push(SetValue(set(range(e1, e2+1))))
-            elif op == "and":
-                assert isinstance(e1, bool), e1
-                assert isinstance(e2, bool), e2
-                context.push(e1 and e2)
-            elif op == "or":
-                assert isinstance(e1, bool), e1
-                assert isinstance(e2, bool), e2
-                context.push(e1 or e2)
             elif op == "in":
                 assert isinstance(e2, SetValue), e2
                 context.push(e1 in e2.s)
@@ -1215,8 +1217,8 @@ class NaryRule(Rule):
             (ast3, t) = ExpressionRule().parse(t[1:])
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
-        elif op[0] == "+" and lexeme == "+":
-            while op[0] == "+" and lexeme == "+":
+        elif (op[0] == lexeme) and (lexeme in { "+", "*", "and", "or" }):
+            while op[0] == lexeme:
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 args.append(ast3)
                 (lexeme, file, line, column) = t[0]
