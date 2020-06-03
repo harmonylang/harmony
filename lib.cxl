@@ -1,0 +1,26 @@
+# return s[b:e]
+def subseq(s, b, e):
+    result = [];
+    for x in b..(e-1):
+        result[x - b] = s[x];
+    ;
+;
+
+# quicksort
+def qsort(a):
+    if a == []:
+        result = [];
+    else:
+        let i = 1, pivot = a[0], lower = [], higher = []:
+            while i < len(a):
+                if a[i] < pivot:
+                    lower = lower + [a[i],];
+                else:
+                    higher = higher + [a[i],];
+                ;
+                i = i + 1;
+            ;
+            result = qsort(lower) + ([pivot,] + qsort(higher));
+        ;
+    ;
+;

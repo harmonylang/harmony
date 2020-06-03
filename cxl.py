@@ -499,6 +499,7 @@ class AssertOp(Op):
         cond = context.pop()
         assert isinstance(cond, bool)
         if not cond:
+            print()
             if self.exprthere:
                 print("CXL Assertion failed", self.token, expr)
             else:
