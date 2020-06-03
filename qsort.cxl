@@ -7,25 +7,15 @@ def qsort(a):
         let i = 1, pivot = a[0], lower = [], higher = []:
             while i < len(a):
                 if a[i] < pivot:
-                    lower[len(lower)] = a[i];
+                    lower = lower + [a[i],];
                 else:
-                    higher[len(higher)] = a[i];
+                    higher = higher + [a[i],];
                 ;
                 i = i + 1;
             ;
             lower = qsort(lower);
             higher = qsort(higher);
-            result = [];
-            i = 0;
-            while i < len(lower):
-                result[len(result)] = lower[i];
-                i = i + 1;
-            ;
-            result[len(result)] = pivot;
-            while i < len(higher):
-                result[len(result)] = higher[i];
-                i = i + 1;
-            ;
+            result = lower + ([pivot,] + higher);
         ;
     ;
 ;

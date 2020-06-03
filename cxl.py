@@ -662,6 +662,16 @@ class NaryOp(Op):
                 d[ctx.nametag] = cnt if c == None else (c + cnt)
         return DictValue(d)
 
+    def concat(self, d1, d2):
+        result = []
+        keys = sorted(d1.d.keys(), key=lambda x: keyValue(x))
+        for k in keys:
+            result.append(d1.d[k])
+        keys = sorted(d2.d.keys(), key=lambda x: keyValue(x))
+        for k in keys:
+            result.append(d2.d[k])
+        return DictValue({ i:result[i] for i in range(len(result)) })
+
     def eval(self, state, context):
         (op, file, line, column) = self.op
         if self.n == 1:
@@ -716,10 +726,13 @@ class NaryOp(Op):
                 if isinstance(e1, int):
                     assert isinstance(e2, int), e2
                     context.push(e1 + e2)
-                else:
-                    assert isinstance(e1, SetValue), e1
+                elif isinstance(e1, SetValue):
                     assert isinstance(e2, SetValue), e2
                     context.push(SetValue(e1.s.union(e2.s)))
+                else:
+                    assert isinstance(e1, DictValue), e1
+                    assert isinstance(e2, DictValue), e2
+                    context.push(self.concat(e1, e2))
             elif op == "-":
                 if isinstance(e1, int):
                     assert isinstance(e2, int), e2
