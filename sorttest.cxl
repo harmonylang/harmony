@@ -11,7 +11,7 @@ def sorted(a):
     ;
 ;
 const values = 1..N;
-list = [ choose(values) for i in 1..N ];
+list = [ choose(values) for i in 1..choose(0..N) ];
 s = qsort(list);
 assert sorted(s);
 assert list2bag(list) == list2bag(s);
