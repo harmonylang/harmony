@@ -285,8 +285,11 @@ class DictValue(Value):
     def __len__(self):
         return len(self.d.keys())
 
+    # Dictionary ordering generalizes lexicographical ordering when the dictionary
+    # represents a list or tuple
     def key(self):
-        return (5, [ keyValue(v) for v in sorted(self.d.keys(), key=lambda x: keyValue(x))])
+        return (5, [ (keyValue(v), keyValue(self.d[v]))
+                        for v in sorted(self.d.keys(), key=lambda x: keyValue(x))])
 
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
@@ -722,6 +725,14 @@ class NaryOp(Op):
             elif op == "!=":
                 assert type(e1) == type(e2), (type(e1), type(e2))
                 context.push(e1 != e2)
+            elif op == "<":
+                context.push(keyValue(e1) < keyValue(e2))
+            elif op == "<=":
+                context.push(keyValue(e1) <= keyValue(e2))
+            elif op == ">":
+                context.push(keyValue(e1) > keyValue(e2))
+            elif op == ">=":
+                context.push(keyValue(e1) >= keyValue(e2))
             elif op == "+":
                 if isinstance(e1, int):
                     assert isinstance(e2, int), e2
@@ -757,22 +768,6 @@ class NaryOp(Op):
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2
                 context.push(e1 % e2)
-            elif op == "<":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 < e2)
-            elif op == "<=":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 <= e2)
-            elif op == ">":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 > e2)
-            elif op == ">=":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
-                context.push(e1 >= e2)
             elif op == "..":
                 assert isinstance(e1, int), e1
                 assert isinstance(e2, int), e2

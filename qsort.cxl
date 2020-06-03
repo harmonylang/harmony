@@ -19,8 +19,6 @@ def qsort(a):
         ;
     ;
 ;
-const values = 1..N;
-
 def sorted(a):
     result = True;
     for i in 1..(len(a) - 1):
@@ -29,7 +27,7 @@ def sorted(a):
         ;
     ;
 ;
-
+const values = 1..N;
 list = [ choose(values) for i in 1..N ];
 assert sorted(qsort(list));
 # assert ispermutation(list, qsort(list));
