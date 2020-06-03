@@ -1,17 +1,5 @@
-import list;
-
-const N = 4;
-
-def sorted(a):
-    result = True;
-    for i in 1..(len(a) - 1):
-        if a[i - 1] > a[i]:
-            result = False;
-        ;
-    ;
-;
-const values = 1..N;
-list = [ choose(values) for i in 1..N ];
-s = qsort(list);
-assert sorted(s);
-assert list2bag(list) == list2bag(s);
+a = 1;
+b = 2;
+c = 3;
+d = 4;
+assert (a + b + c + d) == 10;

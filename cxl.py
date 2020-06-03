@@ -1216,9 +1216,10 @@ class NaryRule(Rule):
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
         elif op[0] == "+" and lexeme == "+":
-            (ast3, t) = ExpressionRule().parse(t[1:])
-            args.append(ast3)
-            (lexeme, file, line, column) = t[0]
+            while op[0] == "+" and lexeme == "+":
+                (ast3, t) = ExpressionRule().parse(t[1:])
+                args.append(ast3)
+                (lexeme, file, line, column) = t[0]
         assert lexeme in self.closers, (t[0], self.closers)
         return (NaryAST(op, args), t)
 
