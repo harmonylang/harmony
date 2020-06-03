@@ -32,23 +32,84 @@
 
 \maketitle
 
-\chapter{Introduction to Programming with CXL}
+\chapter{On Concurrent Programming}
 
+Programming with concurrency is hard.  On the one hand concurrency
+can make programs faster than sequential ones, but having multiple
+processes concurrently read and update shared variables and
+synchronize with one another makes programs more complicated than
+programs where only one thing happens at a time.  Why is this?
+There are, at least, two reasons:
+\begin{itemize}
+\item The execution of a sequential program is mostly \emph{deterministic}.
+If you run it twice with the same input, the same things will happen.
+Bugs are typically easily reproducible.
+\item Each statement and each function can be thought of as happening
+\emph{atomically} because there is no other activity interfering with
+their execution.
+\end{itemize}
+The lack of determinism and atomicity in concurrent programs make them
+not only hard to reason about, but also hard to test.
+Running the same test of concurrent code twice is likely to produce
+two different results.  More problematically, a test may trigger a
+bug only for certain ``lucky'' executions.  Due to the probabilistic
+nature of concurrent code, some bugs may be highly unlikely to get
+triggered even when running a test millions of times.  And even if
+a bug does get triggered, the source of the bug may be hard to find
+because it is hard to reproduce.
+
+This book is intended to help people with understanding and
+developing concurrent code.  In particular, it uses a new tool
+called CXL that help with \emph{testing} concurrent code.
+The approach is based on \emph{model checking}: instead of relying
+on luck, CXL will run \emph{all possible executions} of a particular
+test program.  So even if a bug is unlikely to occur, if the test
+\emph{can} expose the bug it \emph{will}.  Importantly, if the bug is
+found, the model checker precisely shows how to trigger it in
+the smallest number of steps.
+
+Model checking is not a replacement for formal verification.  Formal
+verification proves that a program is correct.  Model checking only
+verifies that a program is correct for some \emph{model}.  Think of
+a model as a test program.  Because model checking tries every possible
+execution, this means that the test program needs to be relatively
+simple.  In particular, it needs to have a relatively small number of
+reachable states.
+If the model is too large, it may run for longer than we may care to
+wait for or even run out of memory.
+
+So why is this useful?  Consider, for example, a sorting algorithm.
+Now suppose we create a test program, a model, that tries sorting
+\emph{all} lists of up to five numbers chosen from the set \{ 1,
+2, 3, 4, 5 \}.  Model checking proves that for those particular
+scenarios the sorting algorithm works: the output is a sorted
+permutation of the input.  In some sense it is an excellent test:
+it will have considered all corner cases, including lists where all
+numbers are the same, lists that are already sorted or reversely
+sorted, etc.  If there is a bug in the sorting algorithm, most
+likely it would be triggered and the model checker would produce a
+scenario that would make it easy to find the source of the bug.
+However, if the model checker does not find any bugs, we do not
+know necessarily that the algorithm works for lists with more than
+five numbers or for lists that have values other than the numbers
+1 through 5.  Still, we would expect that the likelihood that there
+are bugs remaining in the sorting algorithm is small.
+
+But model checking can also help with proving an algorithm correct.
+The reason is that the correctness of many programs is built around
+\emph{invariants}: predicates that must hold for every state in the
+execution of a program.  A model checker can find violations of
+those invariants when evaluating a model and provide valuable early
+feedback to somebody who is trying to construct a proof.
+
+So what is CXL?
 CXL is a concurrent programming language.  It was designed to teach
 the basics of concurrent programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
 algorithms.  CXL programs are not intended to be ``run'' like programs
 in most other programming languages---instead CXL programs are
-``model checked'' to verify that the program has certain desirable
-properties and does not suffer from bugs.  Model checking is
-limited---it can only check programs that have ``finite state
-spaces.''  But even programs that have infinite state spaces can
-often be constrained (for example, by specifying a finite set of
-test inputs) so that model checking is possible.  If, for
-example, a sorting algorithm is shown to work for any subset of
-some set of say, 5, different values, then one can hope that it
-will also work for sets that are larger than 5 values or sets that
-use more than 5 different values.
+model checked to verify that the program has certain desirable
+properties and does not suffer from bugs.
 
 The syntax and semantics of CXL is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
@@ -57,6 +118,8 @@ of Python programming.  We also will assume that the reader
 understand some basics of machine architecture and how programs
 are executed.  For example, we assume that the reader is familiar
 with the concepts of CPU, memory, register, and stack.
+
+\chapter{Introduction to Programming with CXL}
 
 Like Python, CXL is an imperative,
 dynamically typed and garbage collected programming language.
