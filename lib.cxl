@@ -13,7 +13,7 @@ def tail(s):
     result = subseq(s, 1, len(s));
 ;
 
-# quicksort
+# quicksort of a list
 def qsort(a):
     if a == []:
         result = [];
@@ -29,5 +29,13 @@ def qsort(a):
             ;
             result = qsort(lower) + ([pivot,] + qsort(higher));
         ;
+    ;
+;
+
+# sum of a list
+def sum(a):
+    result = 0;
+    for i in keys(a):
+        result = result + a[i];
     ;
 ;
