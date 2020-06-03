@@ -39,3 +39,15 @@ def sum(a):
         result = result + a[i];
     ;
 ;
+
+# turn a list into a bag (multiset)
+def list2bag(a):
+    result = dict{};
+    for i in keys(a):
+        if a[i] in keys(result):
+            result[a[i]] = result[a[i]] + 1;
+        else:
+            result[a[i]] = 1;
+        ;
+    ;
+;

@@ -1,3 +1,3 @@
-import lib;
+import list;
 
-assert sum([ 1, 2, 3, 4, 5 ]) == 15;
+assert list2bag([ 1, 2, 1, 2, 1 ]) == dict{ 1: 3, 2: 2 }, list2bag([ 1, 2, 1, 2, 1 ]);
