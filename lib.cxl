@@ -6,6 +6,13 @@ def subseq(s, b, e):
     ;
 ;
 
+def head(s):
+    result = s[0];
+;
+def tail(s):
+    result = subseq(s, 1, len(s));
+;
+
 # quicksort
 def qsort(a):
     if a == []:

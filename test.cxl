@@ -1,7 +1,3 @@
-def subseq(s, b, e):
-    result = [];
-    for x in b..(e-1):
-        result[x - b] = s[x];
-    ;
-;
-assert subseq([ 1, 2, 3, 4, 5 ], 1, 3) == [2, 3], subseq([ 1, 2, 3, 4, 5 ], 1, 3);
+import lib;
+
+assert tail([ 1, 2, 3, 4, 5 ]) == [2, 3, 4, 5];
