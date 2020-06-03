@@ -69,6 +69,8 @@ def isreserved(s):
         "keys",
         "len",
         "let",
+        "max",
+        "min",
         "nametag",
         "not",
         "or",
@@ -84,7 +86,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
-                        "nametag", "not", "keys", "len", "processes" ]
+                        "min", "max", "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
@@ -692,6 +694,14 @@ class NaryOp(Op):
             elif op == "cardinality":
                 assert isinstance(e, SetValue), e
                 context.push(len(e.s))
+            elif op == "min":
+                assert isinstance(e, SetValue), e
+                lst = sorted(e.s, key=lambda x: keyValue(x))
+                context.push(lst[0])
+            elif op == "max":
+                assert isinstance(e, SetValue), e
+                lst = sorted(e.s, key=lambda x: keyValue(x))
+                context.push(lst[-1])
             elif op == "nametag":
                 assert isinstance(e, DictValue), e
                 assert len(e) == 0
