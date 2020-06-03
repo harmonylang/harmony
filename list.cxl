@@ -27,7 +27,7 @@ def qsort(a):
                 ;
                 i = i + 1;
             ;
-            result = qsort(lower) + ([pivot,] + qsort(higher));
+            result = qsort(lower) + [pivot,] + qsort(higher);
         ;
     ;
 ;

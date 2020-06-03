@@ -680,7 +680,23 @@ class NaryOp(Op):
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
-        if self.n == 1:
+        if op == "+":
+            assert self.n > 1
+            e1 = context.pop()
+            for i in range(1, self.n):
+                e2 = context.pop()
+                if isinstance(e1, int):
+                    assert isinstance(e2, int), e2
+                    e1 += e2
+                elif isinstance(e1, SetValue):
+                    assert isinstance(e2, SetValue), e2
+                    e1 = SetValue(e1.s.union(e2.s))
+                else:
+                    assert isinstance(e1, DictValue), e1
+                    assert isinstance(e2, DictValue), e2
+                    e1 = self.concat(e1, e2)
+            context.push(e1)
+        elif self.n == 1:
             e = context.pop()
             if op == "-":
                 assert isinstance(e, int), e
@@ -744,17 +760,6 @@ class NaryOp(Op):
                 context.push(keyValue(e1) > keyValue(e2))
             elif op == ">=":
                 context.push(keyValue(e1) >= keyValue(e2))
-            elif op == "+":
-                if isinstance(e1, int):
-                    assert isinstance(e2, int), e2
-                    context.push(e1 + e2)
-                elif isinstance(e1, SetValue):
-                    assert isinstance(e2, SetValue), e2
-                    context.push(SetValue(e1.s.union(e2.s)))
-                else:
-                    assert isinstance(e1, DictValue), e1
-                    assert isinstance(e2, DictValue), e2
-                    context.push(self.concat(e1, e2))
             elif op == "-":
                 if isinstance(e1, int):
                     assert isinstance(e2, int), e2
@@ -1207,6 +1212,10 @@ class NaryRule(Rule):
         (lexeme, file, line, column) = t[0]
         if op[0] == "if":                    # TODO. Should both F/T cases be evaluated?
             assert lexeme == "else"
+            (ast3, t) = ExpressionRule().parse(t[1:])
+            args.append(ast3)
+            (lexeme, file, line, column) = t[0]
+        elif op[0] == "+" and lexeme == "+":
             (ast3, t) = ExpressionRule().parse(t[1:])
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
@@ -2358,10 +2367,6 @@ def run(code, labels, map, step):
     ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
     state.add(ctx)
-
-    # while ctx.pc != len(code):
-    #   code[ctx.pc].eval(state, ctx)
-    # print("INITIAL STATE", state)
 
     # For traversing Kripke graph
     visited = { state: Node(None, None, None, None, 0) }
