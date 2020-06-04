@@ -2,7 +2,7 @@ def incrementer(self):
     count = count + 1;
     done[self] = True;
 ;
-def main(self):
+def main():
     while not (done[0] and done[1]):
         pass;
     ;

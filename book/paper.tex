@@ -61,7 +61,7 @@ because it is hard to reproduce.
 
 This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
-called CXL that help with \emph{testing} concurrent code.
+called CXL that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}: instead of relying
 on luck, CXL will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
@@ -91,7 +91,7 @@ sorted, etc.  If there is a bug in the sorting algorithm, most
 likely it would be triggered and the model checker would produce a
 scenario that would make it easy to find the source of the bug.
 However, if the model checker does not find any bugs, we do not
-know necessarily that the algorithm works for lists with more than
+know for sure that the algorithm works for lists with more than
 five numbers or for lists that have values other than the numbers
 1 through 5.  Still, we would expect that the likelihood that there
 are bugs remaining in the sorting algorithm is small.
@@ -101,8 +101,9 @@ The reason is that the correctness of many programs is built around
 \emph{invariants}: predicates that must hold for every state in the
 execution of a program.  A model checker can find violations of
 those invariants when evaluating a model and provide valuable early
-feedback to somebody who is trying to construct a proof.
-Throughout this book we will include, as much as possible, examples
+feedback to somebody who is trying to construct a proof, even an
+informal one.
+Throughout this book we will include examples
 of such invariants as they often provide excellent insight into
 why a particular algorithm works.
 
@@ -112,7 +113,7 @@ the basics of concurrent programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
 algorithms.  CXL programs are not intended to be ``run'' like programs
 in most other programming languages---instead CXL programs are
-model checked to verify that the program has certain desirable
+model checked to test that the program has certain desirable
 properties and does not suffer from bugs.
 
 The syntax and semantics of CXL is similar to that of Python.
@@ -290,14 +291,14 @@ if it works or not.
 \chapter{CXL Values}
 \label{ch:cxlvalues}
 
-CXL programs manipulates CXL values.
+CXL programs manipulate CXL values.
 CXL values are recursively defined:
 they include booleans (\texttt{False} and \texttt{True}),
 integers (but not floating point numbers),
 strings (enclosed by double quotes),
 sets of CXL values,
 and dictionaries that map CXL values to other CXL values.
-
+%
 Another type of CXL value is the \emph{atom}.  It is essentially
 just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
@@ -316,9 +317,8 @@ following expression retrieves the CXL value that $k$ maps to:
 d k
 \end{verbatim}
 \end{code}
-This is unfamiliar, but in CXL square brackets can be used in the
-same way as parentheses, so you can express it in the more familiar
-form:
+This is unfamiliar to Python programers, but in CXL square brackets can be used
+in the same way as parentheses, so you can express it in the more familiar form:
 \begin{code}
 \begin{verbatim}
 d[k]
@@ -335,8 +335,8 @@ the indexes into the tuple.  For example, the tuple
 \texttt{dict\{ 0: 5, 1: False \}}.
 The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
 Note that this is different from the empty set, which is \texttt{\{\}}.
-As in Python, you can create singleton tuples by adding an
-extra ",". For example, \texttt{(1,)}.
+As in Python, you can create singleton tuples by including a comma.
+For example, \texttt{(1,)}.
 
 Again, square brackets and parentheses work the same in CXL, so
 \texttt{[a, b, c]} (which looks like a Python list)
@@ -434,7 +434,7 @@ The state of the CXL machine
 consists of the value of its memory and the multiset (or \emph{bag}) of
 contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
-The initial state of the CXL memory is the empty tuple, \texttt{()}.
+The initial state of the CXL memory is the empty dictionary, \texttt{()}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
@@ -446,23 +446,27 @@ It may seem strange that there is only one memory location and that each
 process has only one register.  However, this is not a limitation because
 CXL values are unbounded trees.
 Both the memory and the register of a process always contain
-a special type of CXL value in which the root is a dictionary
-that maps atoms to CXL values.  We call this a \emph{directory}.
+a dictionary that maps atoms to CXL values.  We call this a \emph{directory}.
 A directory represents the state of a collection of variables named by the atoms.
-
+%
 Because directories are CXL values themselves,
 directories can be organized into a tree.
 Each node in the tree is then identified
 by a sequence of atoms, like a path name in the file system hierarchy.  We call
-such a sequence the \emph{address} of a CXL value.
+such a sequence the \emph{address} of a CXL value, and it is relative to the
+``root'' of the CXL value.
 
 Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
 listed in Figure~\ref{fig:inccode}.
 The CXL machine is predominantly a \emph{stack machine}.
+All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
-Initially there is one process that starts executing at instruction 0.
-In this case, there is a \texttt{JUMP} instruction that sets the program
-counter to 22.  At program counter 1 is the code for the \texttt{up} method.
+Initially there is one process (with name tag \texttt{\_\_init\_\_/()}
+that starts executing at instruction 0 and keeps executing until the last
+execution in the program to initialize the state.
+In this case, the first instruction is a \texttt{JUMP} instruction that sets the
+program counter to 39.
+At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
@@ -486,15 +490,18 @@ the shared variable \texttt{count} onto the stack.
 \texttt{count} variable onto the stack.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
 It pops two values from the stack (1 and the value of \texttt{count}),
-adds them, and pushes the result back onto the stack.
+adds them and pushes the result back onto the stack.
 \item The \texttt{PushAddress} instruction pushes the address of the \texttt{count}
 variable onto the stack.
 \item The \texttt{Store} instruction pops the address of a variable and pops
-a CXL value (the sum of the \texttt{count} variable and 1), and updates the
+a CXL value (the sum of the \texttt{count} variable and 1) and updates the
 \texttt{count} variable.
 \end{enumerate}
 
-Figure~\ref{fig:incoutput} shows the output produced by running the
+Once initialization completes, any processes that were spawned can run.
+You can think of CXL as trying every possible interleaving of processes executing
+instructions.
+Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \texttt{Up.cxl} program.
 It starts by reporting that the assertion on line 9 in column 5 failed and that
 \texttt{count} has value 1 instead of 0:
@@ -513,9 +520,9 @@ If we look at the middle three rows, we see that:
 \item Process 0 executed instructions 1 through 7, loading the value of
 \texttt{count} but stopping just before storing 1 into \texttt{count};
 \item Process 1 executed instructions 1 through 12, storing 1 into
-into \texttt{count} and storing \texttt{True} into \texttt{done[2]};
+into \texttt{count} and storing \texttt{True} into \texttt{done[1]};
 \item Process 0 continues execution, storing value 1 into \texttt{count}
-and storing \texttt{True} into \texttt{done[1]}.
+and storing \texttt{True} into \texttt{done[0]}.
 \end{enumerate}
 
 This makes precise the concurrency problem that we encountered.
@@ -541,35 +548,24 @@ This makes precise the concurrency problem that we encountered.
 Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
-At the heart of the problem is that we would like make sure that when
-the \texttt{count} variable is being updated that no other process is
+At the heart of the problem is that we would like make sure that, when
+the \texttt{count} variable is being updated, no other process is
 trying to do the same thing.  We call this a \emph{critical section}: a
 set of instructions where only one process is allowed to execute at a
 time.
 
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
-machine instructions.  A simple counter is a very simple example of
+machine instructions.  A counter is a very simple example of
 a data structure.  A more involved one would be access to a binary tree.
-Adding a node to a binary tree or re-balancing a tree often requires
-multiple operations.  Maintaining consistency is certainly much easier
+Adding a node to a binary tree, or re-balancing a tree, often requires
+multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
 process also tries to access the binary tree.
 
 A critical section is often modeled as processes in an infinite loop
-entering and exiting the critical section.  In CXL:
-
-\begin{code}
-\begin{verbatim}
-while True:
-    @ncs: pass; # in non-critical section
-    # enter critical section
-    @cs: pass;  # in critical section
-    # exit critical section
-;
-\end{verbatim}
-\end{code}
-
+entering and exiting the critical section.
+Figure~\ref{fig:csbarebones} shows the CXL code.
 Here \texttt{@ncs} and \texttt{@cs} are \emph{labels}, each identifying
 a location in the CXL machine code.  The first thing we need to
 ensure is that there cannot be two processes at the critical section.
@@ -583,7 +579,6 @@ in the bag to the number of times the element appears in the bag.
 Method \texttt{atLabel} only exists for specification purposes---do not
 use it in normal code.
 
-Figure~\ref{fig:csbarebones} shows the code.
 The assertion also makes use of the \texttt{nametag()} operator that
 returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
