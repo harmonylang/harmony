@@ -1,4 +1,4 @@
-def process():
+def process(self):
     while choose({ False, True }):
         # Enter critical section
         while lock:
@@ -14,5 +14,5 @@ def process():
     ;
 ;
 lock = False;
-spawn process(), 0;
-spawn process(), 1;
+spawn process(0);
+spawn process(1);

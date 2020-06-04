@@ -732,8 +732,6 @@ process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
 opportunity to enter.
 An invariant of this solution is that while process~$i$ is in the critical
 section, \texttt{turn} == $i$.
-(If you do not believe that, replace the assertion at the critical
-section with \texttt{assert turn == self} and run CXL.)
 Since \texttt{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that
@@ -766,7 +764,7 @@ It then politely gives way to the other process should it also want to
 enter the critical section---if both do so at the same time one will
 win because writes to memory in CXL are atomic.
 The process continues to be polite, waiting in a \texttt{while} loop
-until either the other process is no where near the critical section
+until either the other process is nowhere near the critical section
 or has given way.
 Running the algorithm with CXL shows that it satisfies both mutual
 exclusion and progress.
@@ -793,12 +791,12 @@ A good way to prove mutual exclusion is through induction on
 the number of steps.
 In such a proof, we need a so-called
 \emph{inductive invariant} $I$, which is some predicate that holds
-over the state.  We need $I$ to satisfy the following:
+over the state.  An inductive invariant $I$, by definition, satisfies the following:
 \begin{itemize}
-\item (ME1) $I$ should imply mutual exclusion.
-\item (ME2) $I$ should hold in the initial state.
+\item (ME1) $I$ implies mutual exclusion.
+\item (ME2) $I$ hold in the initial state.
 \item (ME3) If $I$ holds over some state $s$, and some process in the
-state takes a step, then $I$ should also hold in the resulting state.
+state takes a step, then $I$ also holds in the resulting state.
 \end{itemize}
 
 One candidate for such an invariant is mutual exclusion itself.
