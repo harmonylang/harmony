@@ -1,4 +1,6 @@
 import sys
+import os
+import getopt
 import traceback
 import collections
 import time
@@ -2369,10 +2371,15 @@ def explore(s, visited, mapping, reach):
             result.add(next)
     reach[s] = result
 
-def compile(f, filename):
+def compile(filenames):
     scope = Scope(None)
     code = []
-    load(f, filename, scope, code)
+    if filenames == []:
+        load(sys.stdin, "<stdin>", scope, code)
+    else:
+        for fname in filenames:
+            with open(fname) as fd:
+                load(fd, fname, scope, code)
     optimize(code)
 
     lastloc = None
@@ -2382,7 +2389,7 @@ def compile(f, filename):
             if (file, line) != lastloc:
                 lines = files.get(file)
                 if lines != None and line <= len(lines):
-                    print(file, ":", line, lines[line - 1][0:-1])
+                    print("%s:%d"%(file, line), lines[line - 1][0:-1])
                 else:
                     print(file, ":", line)
             lastloc = (file, line)
@@ -2528,8 +2535,36 @@ def run(code, labels, map, step):
 
     return visited
 
+cxlpath = ""
+
+def usage():
+    print("Usage: cxl [options] [cxl-file...]")
+    print("  options: ")
+    print("    -cname=value: define a constant")
+    print("    -h: help")
+    exit(1)
+
 def main():
-    (code, scope) = compile(sys.stdin, "<stdin>")
+    if os.environ.get("CXLPATH") != None:
+        cxlpath = os.environ["CXLPATH"]
+
+    # Get options.  First set default values
+    consts = []
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],
+                        "c:h", ["const=", "help"])
+    except getopt.GetoptError as err:
+        print(str(err))
+        usage()
+    for o, a in opts:
+        if o in { "-c" }:
+            consts.append(a)
+        elif o in { "-h", "--help" }:
+            usage()
+        else:
+            assert False, "unhandled option"
+
+    (code, scope) = compile(args)
     m = scope.names.get("__mutex__")
     if m == None:
         mpc = None
