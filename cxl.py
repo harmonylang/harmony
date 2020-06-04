@@ -2401,7 +2401,7 @@ def parseConstant(c, v):
         code[ctx.pc].eval(state, ctx)
     constants[c] = ctx.pop()
 
-def compile(filenames, consts):
+def doCompile(filenames, consts):
     for c in consts:
         try:
             i = c.index("=")
@@ -2419,19 +2419,6 @@ def compile(filenames, consts):
             with open(fname) as fd:
                 load(fd, fname, scope, code)
     optimize(code)
-
-    lastloc = None
-    for pc in range(len(code)):
-        if scope.locations.get(pc) != None:
-            (file, line) = scope.locations[pc]
-            if (file, line) != lastloc:
-                lines = files.get(file)
-                if lines != None and line <= len(lines):
-                    print("%s:%d"%(file, line), lines[line - 1][0:-1])
-                else:
-                    print(file, ":", line)
-            lastloc = (file, line)
-        print("  ", pc, code[pc])
     return (code, scope)
 
 def run(code, labels, map, step):
@@ -2584,6 +2571,7 @@ cxlpath = ""
 def usage():
     print("Usage: cxl [options] [cxl-file...]")
     print("  options: ")
+    print("    -a: list machine code")
     print("    -cname=value: define a constant")
     print("    -h: help")
     exit(1)
@@ -2594,21 +2582,39 @@ def main():
 
     # Get options.  First set default values
     consts = []
+    printCode = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "c:h", ["const=", "help"])
+                        "ac:h", ["const=", "help"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
     for o, a in opts:
-        if o in { "-c" }:
+        if o == "-a":
+            printCode = True
+        elif o in { "-c", "--const" }:
             consts.append(a)
         elif o in { "-h", "--help" }:
             usage()
         else:
             assert False, "unhandled option"
 
-    (code, scope) = compile(args, consts)
+    (code, scope) = doCompile(args, consts)
+
+    if printCode:
+        lastloc = None
+        for pc in range(len(code)):
+            if scope.locations.get(pc) != None:
+                (file, line) = scope.locations[pc]
+                if (file, line) != lastloc:
+                    lines = files.get(file)
+                    if lines != None and line <= len(lines):
+                        print("%s:%d"%(file, line), lines[line - 1][0:-1])
+                    else:
+                        print(file, ":", line)
+                lastloc = (file, line)
+            print("  ", pc, code[pc])
+
     m = scope.names.get("__mutex__")
     if m == None:
         mpc = None
