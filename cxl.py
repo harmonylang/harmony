@@ -350,8 +350,7 @@ class AddressValue(Value):
 class Op:
     pass
 
-# Splits a non-empty set in an element and its remainder
-# TODO.  The element should be deterministically chosen, like minimum
+# Splits a non-empty set in its minimum element and its remainder
 class SplitOp(Op):
     def __repr__(self):
         return "Split"
@@ -360,9 +359,19 @@ class SplitOp(Op):
         v = context.pop()
         assert isinstance(v, SetValue)
         assert v.s != set()
-        lst = list(v.s)
+        lst = sorted(v.s, key=lambda x: keyValue(x))
         context.push(lst[0])
         context.push(SetValue(set(lst[1:])))
+        context.pc += 1
+
+class DupOp(Op):
+    def __repr__(self):
+        return "Dup"
+
+    def eval(self, state, context):
+        v = context.pop()
+        context.push(v)
+        context.push(v)
         context.pc += 1
 
 class DelVarOp(Op):
@@ -1710,12 +1719,11 @@ class SpawnAST(AST):
         return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
-        if self.tag == None:
-            code.append(ConstantOp((0, None, None, None)))
-            code.append(DictOp())
-        else:
+        if self.tag != None:
             self.tag.compile(scope, code)
         self.arg.compile(scope, code)
+        if self.tag == None:
+            code.append(DupOp())
         self.method.compile(scope, code)
         code.append(SpawnOp())
 
