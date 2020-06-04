@@ -1195,7 +1195,10 @@ class ApplyAST(AST):
         code.append(ApplyOp())
 
 class Rule:
-    pass
+    def expect(self, rule, b, got, want):
+        if not b:
+            print("Parse error in %s."%rule, "Got", got, ":", want)
+            sys.exit(1)
 
 class NaryRule(Rule):
     def __init__(self, closers):
@@ -1208,12 +1211,13 @@ class NaryRule(Rule):
             return (ast, t)
         args = [ast]
         op = t[0]
-        assert isbinaryop(op[0]) or op[0] == "if", op
+        self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
+                    "expected binary operation or 'if'")
         (ast2, t) = ExpressionRule().parse(t[1:])
         args.append(ast2)
         (lexeme, file, line, column) = t[0]
         if op[0] == "if":                    # TODO. Should both F/T cases be evaluated?
-            assert lexeme == "else"
+            self.expect("n-ary operation", lexeme == "else", t[0], "expected 'else'")
             (ast3, t) = ExpressionRule().parse(t[1:])
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
@@ -1222,7 +1226,8 @@ class NaryRule(Rule):
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 args.append(ast3)
                 (lexeme, file, line, column) = t[0]
-        assert lexeme in self.closers, (t[0], self.closers)
+        self.expect("n-ary operation", lexeme in self.closers, t[0],
+                            "expected one of %s"%self.closers)
         return (NaryAST(op, args), t)
 
 class SetComprehensionRule(Rule):
@@ -1232,9 +1237,9 @@ class SetComprehensionRule(Rule):
     def parse(self, t):
         name = t[0]
         (lexeme, file, line, column) = name
-        assert isname(lexeme), name
+        self.expect("set comprehension", isname(lexeme), name, "expected a name")
         (lexeme, file, line, column) = t[1]
-        assert lexeme == "in", t[1]
+        self.expect("set comprehension", lexeme == "in", t[1], "expected 'in'")
         (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (SetComprehensionAST(self.value, name, expr), t[1:])
 
@@ -1245,9 +1250,9 @@ class DictComprehensionRule(Rule):
     def parse(self, t):
         name = t[0]
         (lexeme, file, line, column) = name
-        assert isname(lexeme), name
+        self.expect("dict comprehension", isname(lexeme), name, "expected a name")
         (lexeme, file, line, column) = t[1]
-        assert lexeme == "in", t[1]
+        self.expect("dict comprehension", lexeme == "in", t[1], "expected 'in'")
         (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (DictComprehensionAST(self.value, name, expr), t[1:])
 
@@ -1259,16 +1264,16 @@ class TupleComprehensionRule(Rule):
     def parse(self, t):
         name = t[0]
         (lexeme, file, line, column) = name
-        assert isname(lexeme), name
+        self.expect("list comprehension", isname(lexeme), name, "expected a name")
         (lexeme, file, line, column) = t[1]
-        assert lexeme == "in", t[1]
+        self.expect("list comprehension", lexeme == "in", t[1], "expected 'in'")
         (expr, t) = NaryRule({"]"}).parse(t[2:])
         return (TupleComprehensionAST(self.ast, name, expr), t[1:])
 
 class SetRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        assert lexeme == "{", t[0]
+        self.expect("set expression", lexeme == "{", t[0], "expected '{'")
         (lexeme, file, line, column) = t[1]
         if lexeme == "}":
             return (SetAST([]), t[2:])
@@ -1278,16 +1283,19 @@ class SetRule(Rule):
             s.append(next)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
-                assert len(s) == 1, s
+                self.expect("set comprehension", len(s) == 1, t[0],
+                    "can have only one expression")
                 return SetComprehensionRule(s[0]).parse(t[1:])
             if lexeme == "}":
                 return (SetAST(s), t[1:])
-            assert lexeme == ",", t[0]
+            self.expect("set expression", lexeme == ",", t[0],
+                    "expected a comma")
 
 class DictRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        assert lexeme == "dict{", t[0]
+        self.expect("dict expression", lexeme == "dict{", t[0],
+                "expected dict{")
         (lexeme, file, line, column) = t[1]
         if lexeme == "}":
             return (DictAST({}), t[2:])
@@ -1296,12 +1304,15 @@ class DictRule(Rule):
             (key, t) = NaryRule({":", "for"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
-                assert d == {}, d
+                self.expect("dict comprehension", d == {}, t[0],
+                    "expected single expression")
                 return DictComprehensionRule(key).parse(t[1:])
-            assert lexeme == ":", t[0]
+            self.expect("dict expression", lexeme == ":", t[0],
+                                        "expected a colon")
             (value, t) = NaryRule({",", "}"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme in { ",", "}" }, t[0]
+            self.expect("dict expression", lexeme in { ",", "}" }, t[0],
+                                    "expected a comma or '}'")
             d[key] = value
         return (DictAST(d), t[1:])
 
@@ -1324,7 +1335,8 @@ class TupleRule(Rule):
             d[ConstantAST((i, file, line, column))] = next
             i += 1
             (lexeme, file, line, column) = t[0]
-        assert lexeme == self.closer, t[0]
+        self.expect("dict expression", lexeme == self.closer, t[0],
+                "expected %s"%self.closer)
         return (DictAST(d), t[1:])
 
 class BasicExpressionRule(Rule):
@@ -1342,7 +1354,8 @@ class BasicExpressionRule(Rule):
                                 for i in range(1, len(lexeme) - 1) }), t[1:])
         if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
+            self.expect("dot expression", isname(lexeme), t[1],
+                    "expected a name after .")
             return (ConstantAST((lexeme, file, line, column)), t[2:])
         if isname(lexeme):
             return (NameAST(t[0]), t[1:])
@@ -1365,12 +1378,14 @@ class BasicExpressionRule(Rule):
         if lexeme == "&(":
             (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ")", t[0]
+            self.expect("address expression", lexeme == ")", t[0],
+                "expected ')'")
             return (AddressAST(ast), t[1:])
         if lexeme == "choose(":
             (ast, t) = NaryRule({")"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ")", t[0]
+            self.expect("choose expresssion", lexeme == ")", t[0],
+                "expected ')'")
             return (ChooseAST(ast), t[1:])
         return (False, t)
 
@@ -1825,7 +1840,7 @@ class BlockRule(Rule):
 class StatementRule(Rule):
     def skip(self, token, t):
         (lex2, file2, line2, col2) = t[0]
-        assert lex2 == ";", t[0]
+        self.expect("statement", lex2 == ";", t[0], "expected a semicolon")
         (lex1, file1, line1, col1) = token
         if not ((line1 == line2) or (col1 == col2)):
             print("warning: ';' does not line up", token, t[0])
