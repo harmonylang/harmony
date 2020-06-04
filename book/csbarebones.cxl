@@ -6,5 +6,5 @@ def process(self):
         #exit critical section
     ;
 ;
-spawn process(0), 0;
-spawn process(1), 1;
+spawn process(0);
+spawn process(1);

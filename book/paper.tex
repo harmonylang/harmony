@@ -4,6 +4,7 @@
 \usepackage{framed}
 \usepackage{tcolorbox}
 \usepackage{verbatim}
+\usepackage{fancyvrb}
 \usepackage{comment}
 \usepackage{amsmath}
 
@@ -143,7 +144,7 @@ you get more familiar with programming in CXL.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{triangle.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{triangle.cxl}
 \end{code}
 \caption{Computing triangle numbers.}
 \label{fig:triangle}
@@ -194,7 +195,7 @@ you initialize it to 1.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{Up.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{Up.cxl}
 \end{code}
 \caption{Incrementing twice in parallel.}
 \label{fig:inc}
@@ -423,7 +424,7 @@ and a single mutable general purpose \emph{register} that contains a CXL value.
 
 A name tag consists of the name of the main method of the process,
 along with an optional tag specified in the \texttt{spawn} statement.
-The default tag is \texttt{()}.
+The default tag is the first argument to the method.
 In Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
@@ -495,9 +496,9 @@ a CXL value (the sum of the \texttt{count} variable and 1), and updates the
 
 Figure~\ref{fig:incoutput} shows the output produced by running the
 \texttt{Up.cxl} program.
-It starts by reporting that the assertion on line 12 failed and that
+It starts by reporting that the assertion on line 9 in column 5 failed and that
 \texttt{count} has value 1 instead of 0:
-\texttt{Assertion failed (’assert’, ’Up.cxl’, 12, 1) 1}.
+\texttt{Assertion failed (’assert’, ’Up.cxl’, 9, 5) 1}.
 Next it reports an execution that failed this assertion.  The output has
 four columns:
 \begin{enumerate}
@@ -523,7 +524,7 @@ This makes precise the concurrency problem that we encountered.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{csbarebones.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{csbarebones.cxl}
 \end{code}
 \caption{A barebones critical section.}
 \label{fig:csbarebones}
@@ -531,7 +532,7 @@ This makes precise the concurrency problem that we encountered.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{cs.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{cs.cxl}
 \end{code}
 \caption{CXL model of a critical section.}
 \label{fig:cs}
@@ -654,7 +655,7 @@ to a state from which a terminating state cannot be reached.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpLock.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpLock.cxl}
 \end{code}
 \caption{Na\"{\i}ve implementation of a shared lock.}
 \label{fig:uplock}
@@ -662,7 +663,7 @@ to a state from which a terminating state cannot be reached.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpFlags.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpFlags.cxl}
 \end{code}
 \caption{Na\"{\i}ve use of flags to solve mutual exclusion.}
 \label{fig:upflags}
@@ -670,7 +671,7 @@ to a state from which a terminating state cannot be reached.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpTurn.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpTurn.cxl}
 \end{code}
 \caption{Na\"{\i}ve use of turn variable to solve mutual exclusion.}
 \label{fig:upturn}
@@ -753,7 +754,7 @@ turn.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../Peterson.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../Peterson.cxl}
 \end{code}
 \caption{Peterson's Algorithm}
 \label{fig:peterson}
@@ -824,7 +825,7 @@ much harder than doing one with an invariant that is.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../PetersonProof.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../PetersonProof.cxl}
 \end{code}
 \caption{Peterson's Algorithm with Inductive Invariant}
 \label{fig:petersonproof}
@@ -965,7 +966,7 @@ the same expression in CXL.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../PetersonMethod.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../PetersonMethod.cxl}
 \end{code}
 \caption{Peterson's Algorithm accessed through methods.}
 \label{fig:petersonmethods}
@@ -1014,7 +1015,7 @@ That would allow you to simulate object methods.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpTAS.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpTAS.cxl}
 \end{code}
 \caption{Mutual Exclusion using a ``spinlock'' based on test-and-set.}
 \label{fig:tas}
@@ -1086,7 +1087,7 @@ section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpTASinv.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpTASinv.cxl}
 \end{code}
 \caption{Checking invariants.}
 \label{fig:tasinv}
@@ -1129,7 +1130,7 @@ update Figure~\ref{fig:tas}, replacing \texttt{tas}.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../TAS.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../TAS.cxl}
 \end{code}
 \caption{Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
 \label{fig:tas2}
@@ -1190,7 +1191,7 @@ def Lock():
 
 \begin{figure}
 \begin{code}
-\verbatiminput{UpFixed.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{UpFixed.cxl}
 \end{code}
 \caption{Program of Figure~\ref{fig:inc} fixed with a lock.}
 \label{fig:incfixed}
@@ -1212,7 +1213,7 @@ chapters.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../RWbusy.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWbusy.cxl}
 \end{code}
 \caption{Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
@@ -1309,7 +1310,7 @@ the lock and re-acquiring it.
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../RWlock.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWlock.cxl}
 \end{code}
 \caption{Reader/Writer with Two Locks.}
 \label{fig:rw2lock}
@@ -1390,7 +1391,7 @@ def V(sema):
 
 \begin{figure}
 \begin{code}
-\verbatiminput{../PCsema.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../PCsema.cxl}
 \end{code}
 \caption{Bounded Buffer implementation using semaphores.}
 \label{fig:boundedbuffer}
