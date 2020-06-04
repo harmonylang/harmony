@@ -7,6 +7,7 @@ import time
 
 # TODO.  This should not be global ideally
 files = {}
+constants = {}
 
 def load(f, filename, scope, code):
     files[filename] = []
@@ -1763,13 +1764,18 @@ class ConstAST(AST):
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
-        ctx = Context(DictValue({"name": "__const__", "tag": novalue}), 0, len(code2))
+        ctx = Context(DictValue({"name": "__const__", "tag": novalue}),
+                            0, len(code2))
         ctx.atomic = 1
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
         v = ctx.pop()
         (lexeme, file, line, column) = self.const
-        scope.names[lexeme] = ("constant", (v, file, line, column))
+        if lexeme in constants:
+            value = constants[lexeme]
+        else:
+            value = v
+        scope.names[lexeme] = ("constant", (value, file, line, column))
 
 class LValueRule(Rule):
     def parse(self, t):
@@ -2393,8 +2399,7 @@ def parseConstant(c, v):
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
-    value = ctx.pop()
-    print("CONST ARG", c, value)
+    constants[c] = ctx.pop()
 
 def compile(filenames, consts):
     for c in consts:
