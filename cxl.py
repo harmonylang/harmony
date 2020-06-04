@@ -15,9 +15,10 @@ def load(f, filename, scope, code):
     tokens = lexer(all, filename)
     try:
         (ast, rem) = StatListRule(set()).parse(tokens)
-    except IndexError as e:
-        print("Parsing", filename, "hit EOF (usually missing ';' at end of last line)?", e)
-        print(traceback.format_exc())
+    except IndexError:
+        # best guess...
+        print("Parsing", filename, "hit EOF (usually missing ';' at end of last line)")
+        # print(traceback.format_exc())
         sys.exit(1)
     ast.compile(scope, code)
 
@@ -366,7 +367,8 @@ class DelVarOp(Op):
         self.name = name
 
     def __repr__(self):
-        return "DelVar " + str(self.name)
+        (lexeme, file, line, column) = self.name
+        return "DelVar " + str(lexeme)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
@@ -378,7 +380,8 @@ class LoadVarOp(Op):
         self.name = name
 
     def __repr__(self):
-        return "LoadVar " + str(self.name)
+        (lexeme, file, line, column) = self.name
+        return "PushVar " + str(lexeme)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
@@ -390,7 +393,8 @@ class ConstantOp(Op):
         self.constant = constant
 
     def __repr__(self):
-        return "Constant " + str(self.constant)
+        (lexeme, file, line, column) = self.constant
+        return "Push " + str(lexeme)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.constant
@@ -402,7 +406,8 @@ class NameOp(Op):
         self.name = name 
 
     def __repr__(self):
-        return "Name " + str(self.name)
+        (lexeme, file, line, column) = self.name
+        return "PushAddress " + str(lexeme)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
@@ -463,7 +468,8 @@ class StoreVarOp(Op):
         self.n = n
 
     def __repr__(self):
-        return "StoreVar " + str(self.v) + " " + str(self.n)
+        (lexeme, file, line, column) = self.v
+        return "StoreVar " + str(lexeme) + " " + str(self.n)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.v
@@ -536,7 +542,9 @@ class FrameOp(Op):
         self.end = end
 
     def __repr__(self):
-        return "Frame " + str(self.name) + " " + str(self.args) + " " + str(self.end)
+        (lexeme, file, line, column) = self.name
+        args = [ a[0] for a in self.args ]
+        return "Frame " + str(lexeme) + " " + str(args) + " " + str(self.end)
 
     def eval(self, state, context):
         arg = context.pop()
@@ -657,7 +665,8 @@ class NaryOp(Op):
         self.n = n
 
     def __repr__(self):
-        return "Nary " + str(self.op) + " " + str(self.n)
+        (lexeme, file, line, column) = self.op
+        return "%d-ary "%self.n + str(lexeme)
 
     def atLabel(self, state, label):
         pc = state.labels[label]
@@ -1843,7 +1852,7 @@ class StatementRule(Rule):
         self.expect("statement", lex2 == ";", t[0], "expected a semicolon")
         (lex1, file1, line1, col1) = token
         if not ((line1 == line2) or (col1 == col2)):
-            print("warning: ';' does not line up", token, t[0])
+            print("Parse warning: ';' does not line up", token, t[0])
         return t[1:]
         
     def parse(self, t):

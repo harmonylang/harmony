@@ -1,5 +1,7 @@
+while True:
 a = False;
 b = True;
 c = True;
 d = False;
 assert (a or b or c or d) == True;
+  ;
