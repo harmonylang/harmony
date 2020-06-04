@@ -2377,10 +2377,37 @@ def explore(s, visited, mapping, reach):
             result.add(next)
     reach[s] = result
 
-def compile(filenames):
+def parseConstant(c, v):
+    tokens = lexer(v, "<constant argument>")
+    try:
+        (ast, rem) = ExpressionRule().parse(tokens)
+    except IndexError:
+        # best guess...
+        print("Parsing constant", v, "hit end of string")
+        sys.exit(1)
+    scope = Scope(None)
+    code = []
+    ast.compile(scope, code)
+    state = State(code, scope.labels)
+    ctx = Context(DictValue({"name": "__arg__", "tag": novalue}), 0, len(code))
+    ctx.atomic = 1
+    while ctx.pc != len(code):
+        code[ctx.pc].eval(state, ctx)
+    value = ctx.pop()
+    print("CONST ARG", c, value)
+
+def compile(filenames, consts):
+    for c in consts:
+        try:
+            i = c.index("=")
+            parseConstant(c[0:i], c[i+1:])
+        except IndexError:
+            print("Usage: -cC=V to define a constant")
+            sys.exit(1)
     scope = Scope(None)
     code = []
     if filenames == []:
+        print("Loading code from standard input...")
         load(sys.stdin, "<stdin>", scope, code)
     else:
         for fname in filenames:
@@ -2570,7 +2597,7 @@ def main():
         else:
             assert False, "unhandled option"
 
-    (code, scope) = compile(args)
+    (code, scope) = compile(args, consts)
     m = scope.names.get("__mutex__")
     if m == None:
         mpc = None
