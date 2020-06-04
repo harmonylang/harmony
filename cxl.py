@@ -2468,19 +2468,22 @@ def run(code, labels, map, step):
         else:
             for (ctx, _) in state.ctxbag.items():
                 onestep(state, ctx, None, visited, todo, node, infloop)
-    print()
+    print("#states =", len(visited), " "*100 + "\b"*100)
 
     # See if there has been a safety violation
+    issues_found = False
     if len(bad) > 0:
         print("==== Safety violation ====")
         # TODO.  First one added to bad should have shortest path
         print_shortest(visited, bad)
+        issues_found = True
 
     # See if there are processes stuck in infinite loops without accessing
     # shared state
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
+        issues_found = True
     elif not faultyState:
         # See if all processes "can" terminate.  First looks for states where
         # there are no processes.
@@ -2501,6 +2504,7 @@ def run(code, labels, map, step):
         if len(bad) > 0:
             print("==== Non-terminating States ====", len(bad))
             print_shortest(visited, bad)
+            issues_found = True
 
     # TODO.  Maybe should be done immediately after computing new state
     if map != None:
@@ -2571,6 +2575,8 @@ def run(code, labels, map, step):
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
+    if not issues_found:
+        print("no issues found")
     return visited
 
 cxlpath = ""
