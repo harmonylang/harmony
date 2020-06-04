@@ -2103,9 +2103,15 @@ class State:
         return self.vars.d[var]
 
     def iget(self, indexes):
+        path = indexes
         v = self.vars
         while indexes != []:
-            v = v.d[indexes[0]]
+            try:
+                v = v.d[indexes[0]]
+            except KeyError:
+                print()
+                print("can't find", indexes[0], "in variable", path)
+                sys.exit(1)
             indexes = indexes[1:]
         return v
 
