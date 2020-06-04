@@ -125,7 +125,7 @@ with the concepts of CPU, memory, register, and stack.
 \chapter{Introduction to Programming with CXL}
 
 Like Python, CXL is an imperative,
-dynamically typed and garbage collected programming language.
+dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
 \item Every statement in CXL must be terminated by a semicolon
@@ -135,8 +135,8 @@ in Python semicolons are optional and rarely used;
 \item Python is object-oriented; CXL is not;
 \item CXL does not (currently) support floating point;
 \item CXL does not support I/O of any kind;
-\item CXL does not support operator precedence or associativity.  Use
-parentheses liberally to remove ambiguity.
+\item CXL only supports basic operator precedence or associativity.
+Use parentheses liberally to remove ambiguity.
 \end{itemize}
 There are also many unimportant ones that you will discover as
 you get more familiar with programming in CXL.
@@ -162,16 +162,27 @@ They assign to \texttt{x} some unspecified value in the range \texttt{0..N}
 and then verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
 ``Running'' this CXL program will try all possible executions, which
-includes all possible values for $x$.  Essentially, the $\texttt{choose}(S)$
+includes all possible values for $x$.  Try it out:
+
+\begin{code}
+\begin{verbatim}
+$ ./cxl triangle.cxl
+#states = 13
+no issues found
+$
+\end{verbatim}
+\end{code}
+
+Essentially, the $\texttt{choose}(S)$
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\texttt{assert}$ statement checks that the output is
 correct.  If the program is correct, the output of CXL is the size of the
-``state graph'' and its diameter (more on this later).  If not, CXL also
+``state graph'' (13 states in this case).  If not, CXL also
 reports what went wrong, typically by displaying a summary of an execution in
 which something went wrong.
 
 \begin{quote}
-Try it out!
+Experiment!
 \begin{itemize}
 \item See what happens if, instead of initializing \texttt{result} to 0,
 you initialize it to 1.
@@ -351,19 +362,19 @@ this set.
 \begin{code}
 \begin{verbatim}
 Up.cxl:1 def incrementer(self):
-   0 Jump 39
-   1 Frame ('incrementer', 'Up.cxl', 1, 5) [('self', 'Up.cxl', 1, 17)] 12
+    0 Jump 39
+    1 Frame incrementer ['self'] 12
 Up.cxl:2     count = count + 1;
-   2 Constant (1, 'Up.cxl', 2, 21)
-   3 Name ('count', 'Up.cxl', 2, 13)
-   4 Load 1
-   5 Nary ('+', 'Up.cxl', 2, 19) 2
-   6 Name ('count', 'Up.cxl', 2, 5)
-   7 Store 1
+    2 Push 1
+    3 PushAddress count
+    4 Load 1
+    5 2-ary +
+    6 PushAddress count
+    7 Store 1
 Up.cxl:3     done[self] = True;
-   8 Constant (True, 'Up.cxl', 3, 18)
-   9 LoadVar ('self', 'Up.cxl', 3, 10)
-   10 Name ('done', 'Up.cxl', 3, 5)
+    8 Push True
+    9 PushVar self
+   10 PushAddress done
    11 Store 2
    12 Return
 \end{verbatim}
@@ -375,7 +386,10 @@ Up.cxl:3     done[self] = True;
 \begin{figure}
 \begin{code}
 \begin{verbatim}
+CXL Assertion failed ('assert', 'Up.cxl', 9, 5) 1
+#states = 79
 ==== Safety violation ====
+__init__/() [0,39-56]       57 dict{ .count:0, .done:dict{ 0:False, 1:False } }
 incrementer/0 [1-6]          7 dict{ .count:0, .done:dict{ 0:False, 1:False } }
 incrementer/1 [1-11]        12 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
 incrementer/0 [7-11]        12 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
@@ -453,34 +467,30 @@ instruction.
 
 The \texttt{Frame} instruction has three arguments:
 \begin{enumerate}
-\item A token containing the name of the method;
-\item A list of tokens containing the names of the arguments of the method;
-\item A program counter of the method's \texttt{Return} instruction.
+\item The name of the method;
+\item A list containing the names of the arguments of the method;
+\item The program counter of the method's \texttt{Return} instruction.
 \end{enumerate}
-
-A \emph{token} is a four-tuple containing a \emph{lexeme}, a file name, a
-line number in the file, and a column number in the file.  For example,
-\texttt{(’up’, ’Up.cxl’, 1, 5)} represents the lexeme \texttt{up} in
-file \texttt{Up.xcl}, line~1, column~5.  Tokens make it easy to relate
-the CXL machine instructions to the CXL source code.
 
 The code generated from \texttt{count := count + 1} in line 2 of
 \texttt{Up.cxl} is as follows:
 
 \begin{enumerate} \setcounter{enumi}{1}
-\item the \texttt{Constant} instruction pushes the constant 1
+\item the \texttt{Push} instruction pushes the constant 1
 onto the stack of the process.
-\item The \texttt{Load} instruction loads the shared variable
-\texttt{count} from the shared memory and pushes its value onto the
-stack.
-\item \texttt{Nary} stands for \texttt{n-ary}: in this case it is a \texttt{+}
-operation with 2 arguments.  It pops two values from the stack, adds them,
-and pushes the result back onto the stack.
-\item The \texttt{Name} instruction pushes the address of the \texttt{count}
+\item the \texttt{PushAddress} instruction pushes the address of
+the shared variable \texttt{count} onto the stack.
+\item The \texttt{Load} instruction pops the address of the
+\texttt{count} variable and then pushes the value of the
+\texttt{count} variable onto the stack.
+\item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
+It pops two values from the stack (1 and the value of \texttt{count}),
+adds them, and pushes the result back onto the stack.
+\item The \texttt{PushAddress} instruction pushes the address of the \texttt{count}
 variable onto the stack.
 \item The \texttt{Store} instruction pops the address of a variable and pops
-a CXL value, and updates the memory by replacing the CXL value oat the given
-address with the new CXL value.
+a CXL value (the sum of the \texttt{count} variable and 1), and updates the
+\texttt{count} variable.
 \end{enumerate}
 
 Figure~\ref{fig:incoutput} shows the output produced by running the
@@ -499,9 +509,9 @@ four columns:
 
 If we look at the middle three rows, we see that:
 \begin{enumerate}
-\item Process 0 executed instructions 1 through 5, loading the value of
+\item Process 0 executed instructions 1 through 7, loading the value of
 \texttt{count} but stopping just before storing 1 into \texttt{count};
-\item Process 1 executed instructions 1 through 10, storing 1 into
+\item Process 1 executed instructions 1 through 12, storing 1 into
 into \texttt{count} and storing \texttt{True} into \texttt{done[2]};
 \item Process 0 continues execution, storing value 1 into \texttt{count}
 and storing \texttt{True} into \texttt{done[1]}.
