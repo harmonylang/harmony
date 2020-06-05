@@ -1,45 +1,49 @@
 import synch;
 
+def acquire_rlock():
+    let blocked = True:
+        while blocked:
+            call lock &(rwlock);
+            if nwriters == 0:
+                nreaders = nreaders + 1; blocked = False;
+            ;
+            call unlock &(rwlock);
+        ;
+    ;
+;
+def release_rlock():
+    call lock &(rwlock); nreaders = nreaders - 1; call unlock &(rwlock);
+;
+def acquire_wlock():
+    let blocked = True:
+        while blocked:
+            call lock &(rwlock);
+            if (nreaders == 0) and (nwriters == 0):
+                nwriters = 1; blocked = False;
+            ;
+            call unlock &(rwlock);
+        ;
+    ;
+;
+def release_wlock():
+    call lock &(rwlock); nwriters = 0; call unlock &(rwlock);
+;
 def process():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
-            let blocked = True:
-                while blocked:
-                    call lock &(rwlock);
-                    if nwriters == 0:
-                        nreaders = nreaders + 1;
-                        blocked = False;
-                    ;
-                    call unlock &(rwlock);
-                ;
-            ;
-            @rcs: assert atLabel.wcs == dict{}
-                  ;
-            call lock &(rwlock);
-            nreaders = nreaders - 1;
-            call unlock &(rwlock);
+            call acquire_rlock();
+            @rcs: assert atLabel.wcs == dict{};
+            call release_rlock();
         else:                       # .write
-            let blocked = True:
-                while blocked:
-                    call lock &(rwlock);
-                    if (nreaders == 0) and (nwriters == 0):
-                        nwriters = 1;
-                        blocked = False;
-                    ;
-                    call unlock &(rwlock);
-                ;
-            ;
+            call acquire_wlock();
             @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                          (atLabel.rcs == dict{})
                   ;
-            call lock &(rwlock);
-            nwriters = 0;
-            call unlock &(rwlock);
+            call release_wlock();
         ;
     ;
 ;
 rwlock = Lock();
 nreaders = 0; nwriters = 0;
-for i in 1..4:
-    spawn process();
+for i in 1..4: spawn process();
 ;

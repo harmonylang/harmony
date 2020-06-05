@@ -1,30 +1,39 @@
 import synch;
 
+def acquire_rlock():
+    call lock &(rlock);
+    if nreaders == 0:
+        call lock &(rwlock);
+    ;
+    nreaders = nreaders + 1;
+    call unlock &(rlock);
+;
+def release_rlock():
+    call lock &(rlock);
+    nreaders = nreaders - 1;
+    if nreaders == 0:
+        call unlock &(rwlock);
+    ;
+    call unlock &(rlock);
+;
+def acquire_wlock():
+    call lock &(rwlock);
+;
+def release_wlock():
+    call unlock &(rwlock);
+;
 def process():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
-            call lock &(rlock);
-            if nreaders == 0:
-                call lock &(rwlock);
-            ;
-            nreaders = nreaders + 1;
-            call unlock &(rlock);
-
-            @rcs: assert atLabel.wcs == dict{}
-                  ;
-            call lock &(rlock);
-            nreaders = nreaders - 1;
-            if nreaders == 0:
-                call unlock &(rwlock);
-            ;
-            call unlock &(rlock);
+            call acquire_rlock();
+            @rcs: assert atLabel.wcs == dict{};
+            call release_rlock();
         else:                       # .write
-            call lock &(rwlock);
-
+            call acquire_wlock();
             @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                          (atLabel.rcs == dict{})
                   ;
-            call unlock &(rwlock);
+            call release_wlock();
         ;
     ;
 ;
