@@ -4,10 +4,20 @@ const NREADERS = 2;
 const NWRITERS = 2;
 
 def acquire_rlock():
-    call lock &(rwlock);
+    call lock &(rlock);
+    if nreaders == 0:
+        call lock &(rwlock);
+    ;
+    nreaders = nreaders + 1;
+    call unlock &(rlock);
 ;
 def release_rlock():
-    call unlock &(rwlock);
+    call lock &(rlock);
+    nreaders = nreaders - 1;
+    if nreaders == 0:
+        call unlock &(rwlock);
+    ;
+    call unlock &(rlock);
 ;
 def acquire_wlock():
     call lock &(rwlock);
@@ -38,6 +48,7 @@ def writer():
     call release_wlock();
 ;
 rwlock = Lock();
+rlock = Lock();
 nreaders = 0;
 flags = dict{ False for i in 1..NREADERS };
 for i in 1..NREADERS:
@@ -46,3 +57,4 @@ for i in 1..NREADERS:
 for i in 1..NWRITERS:
     spawn writer();
 ;
+# call acquire_rlock();

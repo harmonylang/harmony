@@ -43,11 +43,7 @@ def process():
         ;
     ;
 ;
-def blocker():
-    call acquire_rlock();
-;
 rwlock = Lock();
 nreaders = 0; nwriters = 0;
 for i in 1..4: spawn process();
 ;
-spawn blocker();

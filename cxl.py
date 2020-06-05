@@ -2442,7 +2442,7 @@ def doCompile(filenames, consts):
     optimize(code)
     return (code, scope)
 
-def run(code, labels, map, step):
+def run(code, labels, map, step, blockflag):
     state = State(code, labels)
     ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
@@ -2496,9 +2496,25 @@ def run(code, labels, map, step):
         # See if all processes "can" terminate.  First looks for states where
         # there are no processes.
         term = set()
-        for s in visited.keys():
-            if len(s.ctxbag) == 0:
+        for (s, n) in visited.items():
+            if blockflag:
+                # see if all processes are blocked
+                if len(s.ctxbag) > 0:
+                    someRunning = False
+                    for (ctx, next) in n.edges.items():
+                        (nxtstate, nxtctx, steps) = next
+                        if nxtstate != s:
+                            someRunning = True
+                            break
+                    if not someRunning:
+                        term.add(s)
+            elif len(s.ctxbag) == 0:
                 term.add(s)
+
+        # print("#TERM", len(term))
+        # print_shortest(visited, term)
+        # x = find_shortest(visited, term)
+ 
         # Now find all the states that can reach terminating states.
         nextgood = term
         while nextgood != set():
@@ -2608,6 +2624,7 @@ def usage():
     print("Usage: cxl [options] [cxl-file...]")
     print("  options: ")
     print("    -a: list machine code")
+    print("    -b: blocking execution")
     print("    -cname=value: define a constant")
     print("    -h: help")
     exit(1)
@@ -2619,15 +2636,18 @@ def main():
     # Get options.  First set default values
     consts = []
     printCode = False
+    blockflag = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "ac:h", ["const=", "help"])
+                        "abc:h", ["const=", "help"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
     for o, a in opts:
         if o == "-a":
             printCode = True
+        elif o == "-b":
+            blockflag = True
         elif o in { "-c", "--const" }:
             consts.append(a)
         elif o in { "-h", "--help" }:
@@ -2665,7 +2685,7 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    run(code, scope.labels, mpc, spc)
+    run(code, scope.labels, mpc, spc, blockflag)
 
 if __name__ == "__main__":
     main()
