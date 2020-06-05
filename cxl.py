@@ -699,8 +699,18 @@ class NaryOp(Op):
             result.append(d2.d[k])
         return DictValue({ i:result[i] for i in range(len(result)) })
 
+    def checktype(self, state, args, chk):
+        assert len(args) == self.n, (self, args)
+        if not chk:
+            print("unexpected types in", self.op, "operands:", list(reversed(args)))
+            state.failure = True
+            return False
+        return True
+
     def eval(self, state, context):
         (op, file, line, column) = self.op
+        assert len(context.stack) >= self.n
+        sa = context.stack[-self.n:]
         if op in { "+", "*", "and", "or" }:
             assert self.n > 1
             e1 = context.pop()
@@ -708,77 +718,103 @@ class NaryOp(Op):
                 e2 = context.pop()
                 if op == "+":
                     if isinstance(e1, int):
-                        assert isinstance(e2, int), e2
+                        if not self.checktype(state, sa, isinstance(e2, int)):
+                            return
                         e1 += e2
                     elif isinstance(e1, SetValue):
-                        assert isinstance(e2, SetValue), e2
+                        if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                            return
                         e1 = SetValue(e1.s.union(e2.s))
                     else:
-                        assert isinstance(e1, DictValue), e1
-                        assert isinstance(e2, DictValue), e2
+                        if not self.checktype(state, sa, isinstance(e1, DictValue)):
+                            return
+                        if not self.checktype(state, sa, isinstance(e2, DictValue)):
+                            return
                         e1 = self.concat(e1, e2)
                 elif op == "*":
                     if isinstance(e1, int):
-                        assert isinstance(e2, int), e2
+                        if not self.checktype(state, sa, isinstance(e2, int)):
+                            return
                         e1 *= e2
                     else:
-                        assert isinstance(e1, SetValue), e1
-                        assert isinstance(e2, SetValue), e2
+                        if not self.checktype(state, sa, isinstance(e1, SetValue)):
+                            return
+                        if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                            return
                         e1 = SetValue(e1.s.intersection(e2.s))
                 elif op == "and":   # may not need this
-                    assert isinstance(e1, bool), e1
-                    assert isinstance(e2, bool), e2
+                    if not self.checktype(state, sa, isinstance(e1, bool)):
+                        return
+                    if not self.checktype(state, sa, isinstance(e2, bool)):
+                        return
                     e1 = e1 and e2
                 else:   # may not need this
                     assert op == "or", op
-                    assert isinstance(e1, bool), e1
-                    assert isinstance(e2, bool), e2
+                    if not self.checktype(state, sa, isinstance(e1, bool)):
+                        return
+                    if not self.checktype(state, sa, isinstance(e2, bool)):
+                        return
                     e1 = e1 or e2
             context.push(e1)
         elif self.n == 1:
             e = context.pop()
             if op == "-":
-                assert isinstance(e, int), e
+                if not self.checktype(state, sa, isinstance(e, int)):
+                    return
                 context.push(-e)
             elif op == "not":
-                assert isinstance(e, bool), e
+                if not self.checktype(state, sa, isinstance(e, bool)):
+                    return
                 context.push(not e)
             elif op == "atLabel":
-                assert context.atomic > 0
-                assert isinstance(e, str), e
+                if not context.atomic:
+                    print(self.op, ": not in atomic block")
+                    state.failure = True
+                    return
+                if not self.checktype(state, sa, isinstance(e, str)):
+                    return
                 context.push(self.atLabel(state, e))
             elif op == "cardinality":
-                assert isinstance(e, SetValue), e
+                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                    return
                 context.push(len(e.s))
             elif op == "min":
-                assert isinstance(e, SetValue), e
+                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                    return
                 lst = sorted(e.s, key=lambda x: keyValue(x))
                 context.push(lst[0])
             elif op == "max":
-                assert isinstance(e, SetValue), e
+                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                    return
                 lst = sorted(e.s, key=lambda x: keyValue(x))
                 context.push(lst[-1])
             elif op == "nametag":
-                assert isinstance(e, DictValue), e
-                assert len(e) == 0
+                if not self.checktype(state, sa, e == novalue):
+                    return
                 context.push(context.nametag)
             elif op == "processes":
-                assert isinstance(e, DictValue), e
-                assert len(e) == 0
-                assert context.atomic > 0
+                if not self.checktype(state, sa, e == novalue):
+                    return
+                if not context.atomic:
+                    print(self.op, ": not in atomic block")
+                    state.failure = True
+                    return
                 d = {}
                 for (ctx, cnt) in state.ctxbag.items():
                     c = d.get(ctx.nametag)
                     d[ctx.nametag] = cnt if c == None else (c + cnt)
                 context.push(DictValue(d))
             elif op == "len":
-                assert isinstance(e, DictValue), e
+                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                    return
                 context.push(len(e.d))
             elif op == "keys":
-                assert isinstance(e, DictValue), e
+                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                    return
                 context.push(SetValue(set(e.d.keys())))
             elif op == "bagsize":
-                assert isinstance(e, DictValue), e
+                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                    return
                 context.push(sum(e.d.values()))
             else:
                 assert False, self
@@ -786,10 +822,12 @@ class NaryOp(Op):
             e1 = context.pop()
             e2 = context.pop()
             if op == "==":
-                assert type(e1) == type(e2), (type(e1), type(e2))
+                if not self.checktype(state, sa, type(e1) == type(e2)):
+                    return
                 context.push(e1 == e2)
             elif op == "!=":
-                assert type(e1) == type(e2), (type(e1), type(e2))
+                if not self.checktype(state, sa, type(e1) == type(e2)):
+                    return
                 context.push(e1 != e2)
             elif op == "<":
                 context.push(keyValue(e1) < keyValue(e2))
@@ -801,26 +839,36 @@ class NaryOp(Op):
                 context.push(keyValue(e1) >= keyValue(e2))
             elif op == "-":
                 if isinstance(e1, int):
-                    assert isinstance(e2, int), e2
+                    if not self.checktype(state, sa, isinstance(e2, int)):
+                        return
                     context.push(e1 - e2)
                 else:
-                    assert isinstance(e1, SetValue), e1
-                    assert isinstance(e2, SetValue), e2
+                    if not self.checktype(state, sa, isinstance(e1, SetValue)):
+                        return
+                    if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                        return
                     context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "/":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
+                if not self.checktype(state, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, sa, isinstance(e2, int)):
+                    return
                 context.push(e1 // e2)
             elif op == "%":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
+                if not self.checktype(state, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, sa, isinstance(e2, int)):
+                    return
                 context.push(e1 % e2)
             elif op == "..":
-                assert isinstance(e1, int), e1
-                assert isinstance(e2, int), e2
+                if not self.checktype(state, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, sa, isinstance(e2, int)):
+                    return
                 context.push(SetValue(set(range(e1, e2+1))))
             elif op == "in":
-                assert isinstance(e2, SetValue), e2
+                if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                    return
                 context.push(e1 in e2.s)
             else:
                 assert False, self
@@ -829,7 +877,8 @@ class NaryOp(Op):
             e1 = context.pop()
             e2 = context.pop()
             e3 = context.pop()
-            assert isinstance(e2, bool), e2
+            if not self.checktype(state, sa, isinstance(e2, bool)):
+                return
             context.push(e1 if e2 else e3)
         else:
             assert False, self
@@ -889,8 +938,11 @@ class AST:
         state = State(code, scope.labels)
         ctx = Context(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
         ctx.atomic = 1
-        while ctx.pc != len(code):
+        while ctx.pc != len(code) and not state.failure:
             code[ctx.pc].eval(state, ctx)
+        if state.failure:
+            print("constant evaluation failed")
+            sys.exit(1)
         return ctx.pop()
 
     def compile(self, scope, code):
