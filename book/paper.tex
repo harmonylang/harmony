@@ -1509,14 +1509,13 @@ def V(sema):
 \label{fig:pc}
 \end{figure}
 
-So far we have looked at how to protect a single resource.  Sometimes
-we have multiple but a limited amount of resources that require
-protection.  That is, if there are only $n$ resources, no more than
-$n$ can be used at a time; if all are in use and a process come along
-that needs one of the resources, it has to wait until another process
-releases one of the resources.  Note that we cannot solve this problem
-simply using a lock per resource---allocating a resource requires access
-to all of them.
+So far we have looked at how to protect a single resource.
+Some types of resources may have multiple units or slots, each of which
+If there are only $n$ units, no more than $n$ units can be used at a time;
+if all are in use and a process comes along that needs one of the units,
+it has to wait until another process releases one of the units.
+Note that we cannot solve this problem simply using a lock per unit---allocating
+a unit requires access to the entire collection.
 
 A good example is the so-called \emph{bounded buffer}.  It is essentially
 a queue implemented using a circular buffer of a certain length and two pointers:
@@ -1530,7 +1529,8 @@ Introduced by the famous Dutch computer scientist Edsger Dijkstra,
 a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
-resources available.  When allocating a resource, a process decrements the
+units of a resource initially available.
+When allocating a resource, a process decrements the
 counter using the \texttt{procure} or simply \texttt{P} operation.  The
 \texttt{procure} operation blocks the invoking process if the counter is zero.
 To release the resource, a process increments the resource using the

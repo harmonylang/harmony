@@ -26,5 +26,5 @@ n_empty = Semaphore(NSLOTS);
 mutex = Semaphore(1);
 for i in 1..NPROCS:
     spawn consume();
-    spawn produce();
+    spawn produce(i);
 ;
