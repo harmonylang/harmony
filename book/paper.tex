@@ -562,7 +562,7 @@ This makes precise the concurrency problem that we encountered.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{csbarebones.cxl}
 \end{code}
-\caption{A barebones critical section.}
+\caption{A barebones critical section with two processes.}
 \label{fig:csbarebones}
 \end{figure}
 
@@ -1522,7 +1522,9 @@ a queue implemented using a circular buffer of a certain length and two pointers
 one where items are inserted and one from where items are extracted.  If the
 buffer is full, processes that want to add more items have to wait.  In the usual
 formulation, processes that want to extract an item when the buffer is empty
-also have to wait.  It would be easy to build such a thing using a busy waiting
+also have to wait.
+This problem is known as the ``Producer/Consumer Problem.''
+It would be easy to solve using a busy waiting
 approach, but again, we would like to avoid busy waiting.
 
 Introduced by the famous Dutch computer scientist Edsger Dijkstra,
@@ -1537,6 +1539,48 @@ To release the resource, a process increments the resource using the
 \texttt{vacate} or {V} operation.
 Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
 semaphores.
+
+One can think of a semaphore as a generalization of a lock.  In fact, a
+lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
+acquires the lock, and \texttt{V} releases the lock.
+
+Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
+buffer using semaphores.  It features a circular bounded buffer \texttt{buf} with
+slots numbered 1 through \texttt{NSLOTS}.  There are two indexes into
+the buffer: \texttt{b\_in} specifies where the next produced item is inserted,
+while \texttt{b\_out} specifies from where the next can be consumed.
+As there may be multiple producers and multiple
+consumers, updates to the indexes, which are shared variables, must be protected.
+To this end we use two semaphores as locks: \texttt{l\_in} for \texttt{b\_in}
+and \texttt{l\_out} for \texttt{b\_out}.
+
+Without additional synchronization, the indexes may overflow and point to invalid
+entries in the circular buffer.
+To this end there is a semaphore \texttt{n\_full} that
+keeps track of the number of filled entries in the buffer and a semaphore
+\texttt{n\_empty} that keeps track of the number of empty entries in the buffer.
+
+To add an item to the bounded buffer (\texttt{produce(item)}), the producing
+process first has to wait until there is room in the bounded buffer.
+To this end, it invokes \texttt{P(n\_empty)}, which waits until
+\texttt{n\_empty > 0} and atomically decrements \texttt{n\_empty} once this
+is the case.  Next, it adds the item to the next position in the buffer.
+Since there may be more than one empty slot, multiple producers may attempt
+to do the same thing concurrently.  Hence the use of the \texttt{l\_in}
+semaphore used as a lock.  Finally, once the item is added, the
+\texttt{n\_full} semaphore is incremented to signal to consumers that
+an item is available.
+
+The consumer code is symmetric.
+
+Note the quite different usage of the \texttt{l\_} semaphores and \texttt{n\_}
+semaphores.
+People often call semaphores that are used as locks \emph{binary semaphores},
+as their counters only take on the values 0 and 1.
+They protect critical sections.
+The second type of semaphores are called \emph{counting semaphores}.
+They are essentially used to send signals between processes.
+However, binary and counting semaphores are implemented the same way.
 
 \chapter{Starvation}
 
