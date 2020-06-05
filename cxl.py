@@ -2199,7 +2199,7 @@ def get_path(visited, state):
 def nametag2str(nt):
     return str(nt.d["name"]) + "/" + str(nt.d["tag"])
 
-def print_shortest(visited, bad):
+def find_shortest(visited, bad):
     best_state = None
     best_len = 0
     for s in bad:
@@ -2207,7 +2207,10 @@ def print_shortest(visited, bad):
         if best_state == None or node.len < best_len:
             best_state = s
             best_len = node.len
-    path = get_path(visited, best_state)[1:]
+    return best_state
+
+def print_path(visited, bad_state):
+    path = get_path(visited, bad_state)[1:]
     last = None
     for (node, vars) in path:
         if last == None:
@@ -2219,6 +2222,10 @@ def print_shortest(visited, bad):
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
         print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
+
+def print_shortest(visited, bad):
+    bad_state = find_shortest(visited, bad)
+    print_path(visited, bad_state)
 
 class Scope:
     def __init__(self, parent):
@@ -2504,8 +2511,23 @@ def run(code, labels, map, step):
         bad = set(visited.keys()).difference(term)
         if len(bad) > 0:
             print("==== Non-terminating States ====", len(bad))
-            print_shortest(visited, bad)
+            bad_state = find_shortest(visited, bad)
+            print_path(visited, bad_state)
             issues_found = True
+
+            # See which processes are blocked
+            node = visited[bad_state]
+            running = 0
+            blocked = 0
+            for (ctx, next) in node.edges.items():
+                (nxtstate, nxtctx, steps) = next
+                if nxtstate == bad_state:
+                    blocked += 1
+                    print("blocked process:", ctx)
+                else:
+                    running += 1
+                    print("running process:", ctx)
+            print("#blocked:", blocked, "#running:", running)
 
     # TODO.  Maybe should be done immediately after computing new state
     if map != None:
