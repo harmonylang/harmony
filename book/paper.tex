@@ -1411,8 +1411,8 @@ section than any process enter.
 
 It is instructive to see what happens when a writer is in the critical
 section and two readers try to enter.  The first reader successfully
-acquires \texttt{rlock} and but \emph{hangs} when trying to acquire
-\texttt{rwlock}, which is held by the writer.  The second reader hangs
+acquires \texttt{rlock} and but blocks (!) when trying to acquire
+\texttt{rwlock}, which is held by the writer.  The second reader blocks
 trying acquire \texttt{rlock} because it is held by the first reader.
 When the writer leaves the critical section, the first reader acquires
 \texttt{rwlock}, sets \texttt{nreaders} to 1, and releases \texttt{rlock}.
