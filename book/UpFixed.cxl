@@ -15,6 +15,6 @@ def main(self):
 count = 0;
 countlock = Lock();
 done = [ False, False ];
-spawn process(0), 0;
-spawn process(1), 1;
+spawn process(0);
+spawn process(1);
 spawn main();

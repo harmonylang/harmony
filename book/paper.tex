@@ -1054,7 +1054,9 @@ and then sets the shared variable to \texttt{True} (``set'').
 
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
 a set of $N$ processes.
-It uses $N+1$ variables.
+It is called \emph{spinlock}, because each process is ``spinning'' until
+it can acquire the lock.
+The program uses $N+1$ variables.
 Variable \texttt{shared} is initialized to \texttt{False} while
 \texttt{private[$i$]} for each process $i$ is initialized to \texttt{True}.
 An important invariant, $I_1$, of the program is that at any time at most
@@ -1133,15 +1135,14 @@ update Figure~\ref{fig:tas}, replacing \texttt{tas}.
 
 In Figure~\ref{fig:tas} we have shown a solution based on a shared
 variable and a private variable for each process.   The private
-variables themselves are implemented as shared variables as well,
+variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective processes.
 There is no need to keep \texttt{private} as a shared
 variable---we only did so to be able to show and check the invariants.
-Figure~\ref{fig:tas2} shows a more straightforward implementation.
+Figure~\ref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of Figure~\ref{fig:uplock},
 but uses test-and-set to check and set the lock variable atomically.
-Compared to Peterson's Algorithm, this approach is general for
-any number of processes.
+This approach is general for any number of processes.
 
 It is important to appreciate the difference between an
 \emph{atomic section} (the statements executed within an
