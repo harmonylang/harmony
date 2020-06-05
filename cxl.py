@@ -515,7 +515,10 @@ class AssertOp(Op):
         if self.exprthere:
             expr = context.pop()
         cond = context.pop()
-        assert isinstance(cond, bool)
+        if not isinstance(cond, bool):
+            print("Error: argument to", self.token, "must be a boolean")
+            state.failure = True
+            return
         if not cond:
             print()
             if self.exprthere:
@@ -523,6 +526,7 @@ class AssertOp(Op):
             else:
                 print("CXL Assertion failed", self.token)
             state.failure = True
+            return
         context.pc += 1
 
 class PopOp(Op):
@@ -639,7 +643,11 @@ class JumpCondOp(Op):
 
     def eval(self, state, context):
         c = context.pop()
-        assert isinstance(c, bool), c
+        if not isinstance(c, bool):
+            print()
+            print("pc =", context.pc, ": Error: conditional not a boolean")
+            state.failure = True
+            return
         if c == self.cond:
             context.pc = self.pc
         else:
@@ -702,7 +710,8 @@ class NaryOp(Op):
     def checktype(self, state, args, chk):
         assert len(args) == self.n, (self, args)
         if not chk:
-            print("unexpected types in", self.op, "operands:", list(reversed(args)))
+            print()
+            print("Error: unexpected types in", self.op, "operands:", list(reversed(args)))
             state.failure = True
             return False
         return True
@@ -897,7 +906,8 @@ class ApplyOp(Op):
         if isinstance(method, DictValue):
             context.push(method.d[e])
             context.pc += 1
-        elif isinstance(method, OpValue):
+        # TODO.  I believe the following is dead code
+        elif False and isinstance(method, OpValue):
             op = method.op
             if op == "-":
                 assert isinstance(e, int), e
@@ -906,7 +916,12 @@ class ApplyOp(Op):
                 assert False, self
             context.pc += 1
         else:
-            assert isinstance(method, PcValue), method
+            # TODO.  Need a token to have location
+            if not isinstance(method, PcValue):
+                print()
+                print("pc =", context.pc, ": Error: must be either a method or a dictionary")
+                state.failure = True
+                return
             context.push(context.pc + 1)
             context.push(e)
             context.pc = method.pc
@@ -1562,6 +1577,9 @@ class AddressAST(AST):
         lv = self.lv.indexes[0]
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
+            if tv != None:
+                print(lv, ": Parse error: can only take address of shared variable")
+                sys.exit(1)
             assert tv == None, tv   # can't take address of local var
             code.append(NameOp(lv.name))
         else:
@@ -1820,7 +1838,9 @@ class ConstAST(AST):
         return "Const(" + str(self.const) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        assert self.expr.isConstant(scope)
+        if not self.expr.isConstant(scope):
+            print(self.const, ": Parse error: expression not a constant")
+            sys.exit(1)
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
@@ -2388,7 +2408,12 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         # this process is scheduled from this state.
         if isinstance(sc.code[cc.pc], ChooseOp):
             v = cc.stack[-1]
-            assert isinstance(v, SetValue), v
+            if not isinstance(v, SetValue):
+                # TODO.  Need the location of the choose operation in the file
+                print()
+                print("pc =", cc.pc, ": Error: choose can only be applied to sets")
+                sc.failure = True
+                break
             if len(v.s) != 1:
                 sc.choosing = cc
                 break
