@@ -168,13 +168,14 @@ includes all possible values for $x$.  Try it out:
 
 \begin{code}
 \begin{verbatim}
-$ ./cxl triangle.cxl
+$ cxl triangle.cxl
 #states = 13
 no issues found
 $
 \end{verbatim}
 \end{code}
 
+(For this to work, make sure \texttt{cxl} is in your command shell's search path.)
 Essentially, the $\texttt{choose}(S)$
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\texttt{assert}$ statement checks that the output is
@@ -458,6 +459,13 @@ such a sequence the \emph{address} of a CXL value, and it is relative to the
 
 Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
 listed in Figure~\ref{fig:inccode}.
+You can obtain this code by invoking \texttt{cxl} with the \texttt{-a} flag
+like so:
+\begin{code}
+\begin{verbatim}
+cxl -a Up.cxl
+\end{verbatim}
+\end{code}
 The CXL machine is predominantly a \emph{stack machine}.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
