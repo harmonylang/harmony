@@ -124,6 +124,12 @@ understand some basics of machine architecture and how programs
 are executed.  For example, we assume that the reader is familiar
 with the concepts of CPU, memory, register, and stack.
 
+CXL is heavily influenced by TLA+, TLC, and PlusCal~\cite{}.
+CXL is designed to have a lower learning curve than those
+systems, but is not as powerful.  When you finish this book
+and want to learn more, we strongly encourage checking
+those out.
+
 \chapter{Introduction to Programming with CXL}
 
 Like Python, CXL is an imperative,
@@ -183,6 +189,18 @@ correct.  If the program is correct, the output of CXL is the size of the
 ``state graph'' (13 states in this case).  If not, CXL also
 reports what went wrong, typically by displaying a summary of an execution in
 which something went wrong.
+
+In CXL, constants have a default, but those can be overridden on the command
+line using the \texttt{-c} option.
+For example, if you want to test the code for \texttt{N = 100}, run:
+\begin{code}
+\begin{verbatim}
+$ cxl -c N=100 triangle.cxl
+#states = 103
+no issues found
+$
+\end{verbatim}
+\end{code}
 
 \begin{quote}
 Experiment!

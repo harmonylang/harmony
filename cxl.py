@@ -1790,13 +1790,14 @@ class LValueRule(Rule):
         (lexeme, file, line, column) = t[0]
         if lexeme == "^":
             (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
+            self.expect("lvalue expression", isname(lexeme), t[1],
+                "expect name after ^")
             return (LValueAST([PointerAST(NameAST(t[1]))]), t[2:])
         elif lexeme == "(":
             (lexeme, file, line, column) = t[1]
             (ast, t) = BasicExpressionRule().parse(t[2:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ")", t[0]
+            self.expect("lvalue expression", lexeme == ")", t[0], "expected ')'")
             indexes = [PointerAST(ast)]
             t = t[1:]
         else:
@@ -1815,7 +1816,7 @@ class AssignmentRule(Rule):
     def parse(self, t):
         (lv, t) = LValueRule().parse(t)
         (lexeme, file, line, column) = t[0]
-        assert lexeme == "=", t[0]
+        self.expect("assignment",  lexeme == "=", t[0], "expected '='")
         (rv, t) = NaryRule({";"}).parse(t[1:])
         return (AssignmentAST(lv, rv), t[1:])
 
@@ -1830,10 +1831,10 @@ class LabelStatRule(Rule):
                 break
             label = t[1]
             (lexeme, file, line, column) = label
-            assert isname(lexeme), t[1]
+            self.expect("label", isname(lexeme), t[1], "expected name after @")
             labels.append(label)
             (lexeme, file, line, column) = t[2]
-            assert lexeme == ":", t[2]
+            self.expect("label", lexeme == ":", t[2], "expected ':' after label")
             t = t[3:]
 
         (ast, t) = StatementRule().parse(t)
@@ -1860,7 +1861,7 @@ class BlockRule(Rule):
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
-        assert lexeme == ":", t[0]
+        self.expect("block statement", lexeme == ":", t[0], "missing ':'")
         return StatListRule(self.delim).parse(t[1:])
 
 class StatementRule(Rule):
@@ -1878,9 +1879,9 @@ class StatementRule(Rule):
         if lexeme == "const":
             const = t[1]
             (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
+            self.expect("constant definition", isname(lexeme), t[1], "expected name")
             (lexeme, file, line, column) = t[2]
-            assert lexeme == "=", t[2]
+            self.expect("constant definition", lexeme == "=", t[2], "expected '='")
             (ast, t) = NaryRule({";"}).parse(t[3:])
             return (ConstAST(const, ast), self.skip(token, t))
         if lexeme == "if":
@@ -1892,7 +1893,8 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = t[0]
                 if lexeme in { "else", ";" }:
                     break
-                assert lexeme == "elif", t[0]
+                self.expect("if statement", lexeme == "elif", t[0],
+                            "expected 'else' or 'elif' or semicolon")
             if lexeme == "else":
                 (stat, t) = BlockRule({";"}).parse(t[1:])
             else:
@@ -1905,9 +1907,9 @@ class StatementRule(Rule):
         if lexeme == "for":
             var = t[1]
             (lexeme, file, line, column) = var
-            assert isname(lexeme), var
+            self.expect("for statement", isname(lexeme), var, "expected name")
             (lexeme, file, line, column) = t[2]
-            assert lexeme == "in", t[2]
+            self.expect("for statement", lexeme == "in", t[2], "expected 'in'")
             (s, t) = NaryRule({":"}).parse(t[3:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (ForAST(var, s, stat), self.skip(token, t))
@@ -1916,15 +1918,15 @@ class StatementRule(Rule):
             while True:
                 var = t[1]
                 (lexeme, file, line, column) = var
-                assert isname(lexeme), var
+                self.expect("let statement", isname(lexeme), var, "expected name")
                 (lexeme, file, line, column) = t[2]
-                assert lexeme == "=", t[2]
+                self.expect("let statement", lexeme == "=", t[2], "expected '='")
                 (ast, t) = NaryRule({":", ","}).parse(t[3:])
                 vars.append((var, ast))
                 (lexeme, file, line, column) = t[0]
                 if lexeme == ":":
                     break
-                assert lexeme == ","
+                self.expect("let statement", lexeme == ",", "expected ',' or ':'")
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (LetAST(vars, stat), self.skip(token, t))
         if lexeme == "atomic":
@@ -1937,24 +1939,27 @@ class StatementRule(Rule):
             map = lexeme == "fun"
             name = t[1]
             (lexeme, file, line, column) = name
-            assert isname(lexeme), name
+            self.expect("method definition", isname(lexeme), name, "expected name")
             (lexeme, file, line, column) = t[2]
-            assert lexeme == "(", t[2]
+            self.expect("method definition", lexeme == "(", t[2], "expected '('")
             arg = t[3]
             (lexeme, file, line, column) = arg
             if lexeme == ")":
                 args = []
                 (stat, t) = BlockRule({";"}).parse(t[4:])
             else:
-                assert isname(lexeme), arg
+                self.expect("method definition", isname(lexeme), arg,
+                        "expected name or ')'")
                 args = [arg]
                 t = t[4:]
                 (lexeme, file, line, column) = t[0]
                 while lexeme != ")":
-                    assert lexeme == ",", t[0]
+                    self.expect("method definition", lexeme == ",", t[0],
+                                "expected ',' or ')'")
                     arg = t[1]
                     (lexeme, file, line, column) = arg
-                    assert isname(lexeme), arg
+                    self.expect("method definition", isname(lexeme), arg,
+                                "expected argument name")
                     args.append(arg)
                     t = t[2:]
                     (lexeme, file, line, column) = t[0]
@@ -1963,7 +1968,7 @@ class StatementRule(Rule):
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            assert lexeme == ";", t[0]
+            self.expect("call statement", lexeme == ";", t[0], "expected semicolon")
             return (CallAST(expr), self.skip(token, t))
         if lexeme == "spawn":
             (method, t) = BasicExpressionRule().parse(t[1:])
@@ -1974,13 +1979,13 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = t[0]
             else:
                 tag = None
-            assert lexeme == ";", t[0]
+            self.expect("spawn statement", lexeme == ";", t[0], "expected semicolon")
             return (SpawnAST(tag, method, arg), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))
         if lexeme == "import":
             (lexeme, file, line, column) = t[1]
-            assert isname(lexeme), t[1]
+            self.expect("import statement", isname(lexeme), t[1], "expected name")
             return (ImportAST(t[1]), self.skip(token, t[2:]))
         if lexeme == "assert":
             (cond, t) = NaryRule({",", ";"}).parse(t[1:])
@@ -1988,7 +1993,7 @@ class StatementRule(Rule):
             if lexeme == ",":
                 (expr, t) = NaryRule({";"}).parse(t[1:])
             else:
-                assert lexeme == ";", t[0]
+                self.expect("assert statement", lexeme == ";", t[0], "expected semicolon")
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
