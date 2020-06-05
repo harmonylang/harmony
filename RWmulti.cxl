@@ -1,0 +1,58 @@
+import synch;
+
+const NREADERS = 3;
+const NWRITERS = 2;
+
+def acquire_rlock():
+    call lock &(rlock);
+    if nreaders == 0:
+        call lock &(rwlock);
+    ;
+    nreaders = nreaders + 1;
+    call unlock &(rlock);
+;
+def release_rlock():
+    call lock &(rlock);
+    nreaders = nreaders - 1;
+    if nreaders == 0:
+        call unlock &(rwlock);
+    ;
+    call unlock &(rlock);
+;
+def acquire_wlock():
+    call lock &(rwlock);
+;
+def release_wlock():
+    call unlock &(rwlock);
+;
+def reader(self):
+    call acquire_rlock();
+    @rcs: assert atLabel.wcs == dict{};
+
+    flags[self] = True;
+    let blocked = True:
+        while blocked:
+            if { flags[i] for i in 0..(NREADERS - 1) } == { True }:
+                blocked = False;
+            ;
+        ;
+    ;
+    call release_rlock();
+;
+def writer():
+    call acquire_wlock();
+    @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                 (atLabel.rcs == dict{})
+          ;
+    call release_wlock();
+;
+rwlock = Lock();
+rlock = Lock();
+nreaders = 0;
+flags = [ False for i in 0..(NREADERS-1) ];
+for i in 0..(NREADERS-1):
+    spawn reader(i);
+;
+for i in 0..(NWRITERS-1):
+    spawn writer();
+;

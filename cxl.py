@@ -1800,7 +1800,8 @@ class LValueRule(Rule):
             indexes = [PointerAST(ast)]
             t = t[1:]
         else:
-            assert isname(lexeme), t[0]
+            self.expect("lvalue expression", isname(lexeme), t[0],
+                                "expecting a name")
             indexes = [NameAST(t[0])]
             t = t[1:]
         while t != []:
