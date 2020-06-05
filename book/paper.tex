@@ -1234,7 +1234,7 @@ The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
 
-\chapter{Reader/Writer Locks}
+\chapter{Reader/Writer Locks using Busy Waiting}
 
 \begin{figure}
 \begin{code}
@@ -1313,12 +1313,12 @@ critical section, any other reader is also able to enter.
 
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}:
-processes spin in a loop until some desirable condition is met.
+processes spin in a loop until some desirable application-level condition is met.
+
 The astute reader might wonder if obtaining an ordinary lock itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the lock is available
 (see Figure~\ref{fig:locks}).
-
 In most operating systems and programming language runtimes, however,
 when a process acquires a lock, the process is placed on a scheduling
 queue and stops using CPU cycles until the lock becomes available.
@@ -1333,6 +1333,38 @@ the process may have to read \texttt{nreaders} and/or \texttt{nwriters}
 to decide if it can go on or has to try again, involving releasing
 the lock and re-acquiring it.
 
+We call a process \emph{blocked} in a state if steps by that process
+do not change the shared memory in that state.  A process trying to
+acquire a test-and-set spinlock held by another process is a good example
+of a process being blocked: the process only reads the shared memory
+but does not change it.
+
+However, a process trying to obtain a read or write lock in
+Figure~ref{fig:rwbusy} has to actually obtain a spinlock just to check
+if the read or write lock is available.  So even when the read or write
+lock is not available, the process ends up updating the spinlock and
+therefore the shared memory.
+
+Thus, it is considered ok to have processes be blocked while waiting
+for application-specific conditions, but not for them to
+busy-wait for application-specific conditions.
+
+[TODO.  The following must be updated.]
+CXL does not complain about Figure~\ref{fig:rwbusy}, but using
+the right test, CXL can be used to check for busy-waiting.
+One approach is as follows.  First, obtain a lock in the initialization
+code by adding the following line to the end of the code:
+\begin{code}
+\begin{verbatim}
+call acquire_rlock();
+\end{verbatim}
+\end{code}
+
+Second, run CXL with the \texttt{-b} flag.  This flag tells CXL to check
+that all states are non-terminating and have all processes blocked.
+
+\chapter{Reader/Writer Lock, Part 2}
+
 \begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../RWlock.cxl}
@@ -1341,8 +1373,13 @@ the lock and re-acquiring it.
 \label{fig:rw2lock}
 \end{figure}
 
-So it is considered ok to have processes using spinlock a implement a
-lock, but not to busy-wait for application-specific conditions.
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWmulti.cxl}
+\end{code}
+\caption{Checking that multiple readers can acquire the read lock.}
+\label{fig:rwmulti}
+\end{figure}
 
 Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
@@ -1382,6 +1419,26 @@ and enter the critical section \emph{without} acquiring \texttt{rwlock}.
 \texttt{rwlock} is essentially jointly held by both readers.
 It does not matter in which order they leave: the second will release
 \texttt{rwlock}.
+
+While CXL does not detect any issues, we must remember what it is checking
+for: it checks to make sure that there are never a reader and a writer
+in the critical section, and there are never two readers in the critical
+section.  Moreover, it checks progress: all executions eventually terminate.
+What it does \emph{not} check is if the code allows more than one reader
+in the critical section.  Indeed, we could have implemented the reader/writer
+lock as in Figure~\ref{fig:rwmulti} using an ordinary lock, never allowing
+more than one process in the critical section.
+
+Figure~\ref{fig:rwmulti} contains a new test that ensures that indeed more
+than one reader can enter the critical section at a time.  It does so by
+having processes sometimes wait in the critical section until all other readers
+are there.  If other readers cannot enter, then that process enters in an
+infinite loop that CXL will readily detect.  Try it out!
+
+An important lesson here is that one should not celebrate too early if CXL
+does not find any issues.  While a test may be successful, a test may not
+explore all desirable executions.  While CXL can help explore all cornercases
+in a test, it cannot find problems that the test is not looking for.
 
 \chapter{Semaphores}
 
