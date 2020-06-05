@@ -14,13 +14,13 @@ def P_mutex():
 
 #### The code above can go into its own CXL module ####
 
-def process(self, pm):
+def process(self):
     while choose({ False, True }):
-        call P_enter(pm, self);
+        call P_enter(&(mutex), self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        call P_exit(pm, self);
+        call P_exit(&(mutex), self);
     ;
 ;
 mutex = P_mutex();
-spawn process(0, &(mutex)), 0;
-spawn process(1, &(mutex)), 1;
+spawn process(0);
+spawn process(1);

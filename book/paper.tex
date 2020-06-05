@@ -789,22 +789,20 @@ more than one choice.
 
 A good way to prove mutual exclusion is through induction on
 the number of steps.
-In such a proof, we need a so-called
-\emph{inductive invariant} $I$, which is some predicate that holds
-over the state.  An inductive invariant $I$, by definition, satisfies the following:
+In such a proof, we need a so-called \emph{inductive invariant} $I$ that
+implies mutual exclusion.
+An inductive invariant $I$ is a predicate over state that satisfies the following:
 \begin{itemize}
-\item (ME1) $I$ implies mutual exclusion.
-\item (ME2) $I$ hold in the initial state.
-\item (ME3) If $I$ holds over some state $s$, and some process in the
+\item $I$ hold in the initial state.
+\item For any state in which $I$ holds and any process in the
 state takes a step, then $I$ also holds in the resulting state.
 \end{itemize}
 
 One candidate for such an invariant is mutual exclusion itself.
-After all, it certainly satisfies ME1 and ME2.
+After all, it certainly holds over the initial state.
 And as CXL has already determined, mutual exclusion is an invariant:
 it holds over every \emph{reachable state}.
-Unfortunately, it is not an \emph{inductive} invariant and therefore does
-not satisfy ME3.
+Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
 and process~1 at the start of the \texttt{while} loop.
@@ -824,20 +822,23 @@ much harder than doing one with an invariant that is.
 \label{fig:petersonproof}
 \end{figure}
 
-Let $C(\mathtt{self}) = \mathtt{flags}[1 - \mathtt{self}] \land
-\mathtt{turn} = 1 - \mathtt{self}$, that is, the condition on the \texttt{while} loop.
-For Peterson's Algorithm, an inductive invariant that works well is:
+Let $C(i) = \mathtt{flags}[1 - i] \land
+\mathtt{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
+for process~$i$.
+Let predicate $I_p(i)$ be the following.
 if process $i$ is label \texttt{@cs} (i.e., process $i$ is in the critical section),
 then $C(i)$ does not hold or process $1-i$ is executing after setting
 $\mathtt{flags}[i]$ but still before setting \texttt{turn} to $1-i$.
-Let's call it $I_p(i)$.
+More formally, $I_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot C(i) \lor \mathtt{process}(1-i)@gate)$.
+For Peterson's Algorithm, an inductive invariant that works well is
+$I_p(0) \land I_p(1)$.
 
 Figure~\ref{fig:petersonproof} formalizes $I_p(i)$ in CXL.
 The label \texttt{@gate} refers to the instruction that sets \texttt{turn} to $1-i$.
 You can run Figure~\ref{fig:petersonproof} to determine
 that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
 
-To see that $I_p(i)$ implies mutual exclusion, suppose not.  Then
+To see that the inductive invariant implies mutual exclusion, suppose not.  Then
 when both process~0 and process~1 are in the critical section, the
 following must hold:
 $(\lnot C(0) \lor \mathtt{process}(1)@gate) \land
@@ -847,28 +848,27 @@ We also know that neither process~0 nor process~1 is at label \texttt{@gate}
 (because they are both at label \texttt{@cs}),
 so this simplifies to $(\lnot C(0)) \land (\lnot C(1))$.
 So we conclude that $\mathtt{turn} = 0 \land \mathtt{turn} = 1$, a
-logical impossibility.  Thus $I_p(i)$ satisfies ME1.
+logical impossibility.  Thus $I_p(i)$ implies mutual exclusion.
 
-$I_p(i)$ satisfies ME2 trivially, because in the initial state no process
+To see that $I_p(0) \land I_p(1)$ is, in fact, an inductive invariant, first note that
+it certainly holds in the initial state, because in the initial state no process
 is in the critical section.
-
-Finally we have to show that $I_p(i)$ satisfies ME3. Without loss of
-generality, suppose $i=0$ (a benefit from the fact that the algorithm is
-symmetric for both processes).  We have to show that if we are in a state
+Without loss of generality, suppose $i=0$ (a benefit from the fact that the algorithm is
+symmetric for both processes).  We still have to show that if we are in a state
 in which $I_p(0)$ holds, then any step will result in a state in which
-$I_p(0)$ continues to hold.
-Since $I_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
+$I_p(0)$ still holds.
+If $I_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
 were to take a step, then in the next state process~0 would be no longer
 at that label and $I_p(0)$ would hold trivially over the next state.
 Therefore we only need to consider a step by process~1.
 
-From $I_p(0)$ we know that one of the following cases must hold before
+From $I_p(0)$ we know that one of the following three cases must hold before
 process~1 takes a step:
-\begin{itemize}
+\begin{enumerate}
 \item \texttt{flags[1] = False};
 \item \texttt{turn = 0};
 \item process~1 is at label \texttt{@gate}.
-\end{itemize}
+\end{enumerate}
 
 Let us consider each of these cases.
 In the first case, if process~1 takes a step, there are two possibilities:
@@ -880,7 +880,7 @@ We know that process~1 never sets \texttt{turn} to 1, so
 if the second case holds before the step, it will also hold after the step.
 Finally, if process~1 is at label \texttt{@gate} before the step, then after
 the step \texttt{turn} will equal 0, and therefore the second case will hold
-after the step.
+after the step.  qed.
 
 We have now demonstrated mutual exclusion in Peterson's Algorithm in two
 different ways: one by letting CXL explore all possible executions, the
@@ -891,7 +891,7 @@ encourage to include inductive invariants in your CXL code.
 
 A cool anecdote is the following.  When the author of CXL had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
-page.  The page claimed that the following predicate was invariant:
+page.  The page claimed that the following predicate is invariant:
 if process $i$ is in the critical section, then $\lnot C(i)$ (i.e.,
 $I_p(i)$ without the disjunct that process $1-i$ is at label \texttt{gate}).
 To demonstrate that this predicate is not invariant, you can remove the
@@ -944,9 +944,6 @@ If you invoke \texttt{m()}, the argument is \texttt{()},
 which is the empty tuple.
 If you invoke \texttt{m(a, b)}, the argument is \texttt{(a, b)},
 the tuple consisting of values \texttt{a} and \texttt{b}.
-You have already seen examples of this: the expression
-\texttt{atLabel.cs} invokes method \texttt{atLabel} with
-argument \texttt{.cs}.
 
 You may note that all this looks familiar.  Indeed, the syntax
 is the same as that for dictionaries (see Chapter~\ref{ch:cxlvalues}).
@@ -973,7 +970,7 @@ For this (as well as some other uses), CXL supports \emph{pointers}
 to shared variables.
 If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
 (the parentheses are mandatory) is a pointer to \texttt{x}
-(also known as the \emph{address} of \texttt{x}.
+(also known as the \emph{address} of \texttt{x}).
 Conversely, if \texttt{p} is a pointer to a shared variable, then the
 expression \texttt{\^{}p} is the value of the shared variable.
 
@@ -1020,13 +1017,16 @@ lock is that checking the lock and setting it if it is available is
 not \emph{atomic}.  Thus multiple processes contending for the lock
 can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
-if generalized to multiple processes.  Instead, processors provide
+if generalized to multiple processes.  Instead, multi-core processors provide
 so-called \emph{interlock instructions}: special machine instructions
 that can read memory and then write it in an indivisible step.
 
 While the CXL machine does not have any built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
-This feature is available in the CXL language through its \texttt{atomic}
+This feature is available in the CXL language in two ways.
+First, any CXL statement can be made atomic by placing a label in front
+of it.  Second, a group of CXL statements can be made atomic
+through its \texttt{atomic}
 statement.
 We can use \texttt{atomic} blocks to implement a wide variety of
 interlock operations.
@@ -1049,7 +1049,8 @@ Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
 Here \texttt{s} points to a shared boolean variable and \texttt{p}
 to a private boolean variable, belonging to some process.
 The operation copies the value of the shared variable to the
-private variable and then sets the shared variable to \texttt{True}.
+private variable (the ``test'')
+and then sets the shared variable to \texttt{True} (``set'').
 
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
 a set of $N$ processes.
@@ -1058,9 +1059,10 @@ Variable \texttt{shared} is initialized to \texttt{False} while
 \texttt{private[$i$]} for each process $i$ is initialized to \texttt{True}.
 An important invariant, $I_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.
-Another invariant, $I_2$, is that if process $i$ is in the critical section,
+Another invariant, $I_2(i)$, is that if process $i$ is in the critical section,
 then \texttt{private[$i$] == False}.
-Between the two, it is clear that only one process can be in the
+Between the two (i.e., $I_1 \land \forall i: I_2(i)$),
+it is clear that only one process can be in the
 critical section at the same time.
 
 To see that invariant $I_1$ is maintained, note that
@@ -1074,7 +1076,7 @@ the invariant.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $I_1$ is also easy to verify for exiting the critical section.
-Invariant $I_2$ is obvious as (i) process $i$ only proceeds to the critical
+Invariant $I_2(i)$ is obvious as (i) process $i$ only proceeds to the critical
 section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 \texttt{private[$i$]}.
 
@@ -1087,7 +1089,7 @@ section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 \end{figure}
 
 CXL can check these invariants as well.  Figure~\ref{fig:tas} already
-has the code to check $I_2$.  But how would one go about checking an
+has the code to check $I_2(i)$.  But how would one go about checking an
 invariant like $I_1$.  Invariants must hold for every state.
 For $I_2$ we only need an assertion at label \texttt{@cs} because the
 premisse is that there is a process at that label.  However, we would
