@@ -28,16 +28,6 @@ def release_wlock():
 def reader(self):
     call acquire_rlock();
     @rcs: assert atLabel.wcs == dict{};
-    flags[self] = True;
-    if choose({ False, True }):
-        let blocked = True:
-            while blocked:
-                if { flags[i] for i in 1..NREADERS } == { True }:
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
     call release_rlock();
 ;
 def writer():
@@ -50,11 +40,8 @@ def writer():
 rwlock = Lock();
 rlock = Lock();
 nreaders = 0;
-flags = dict{ False for i in 1..NREADERS };
-for i in 1..NREADERS:
-    spawn reader(i);
+for i in 1..NREADERS: spawn reader(i);
 ;
-for i in 1..NWRITERS:
-    spawn writer();
+for i in 1..NWRITERS: spawn writer();
 ;
-# call acquire_rlock();
+call acquire_rlock();

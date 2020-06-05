@@ -1311,6 +1311,14 @@ The solution also supports progress: if no process is in the critical
 section then any process can enter.  Better still: if any reader is in the
 critical section, any other reader is also able to enter.
 
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWblock.cxl}
+\end{code}
+\caption{Checking for Busy Waiting.}
+\label{fig:rwblock}
+\end{figure}
+
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}:
 processes spin in a loop until some desirable application-level condition is met.
@@ -1349,18 +1357,14 @@ Thus, it is considered ok to have processes be blocked while waiting
 for application-specific conditions, but not for them to
 busy-wait for application-specific conditions.
 
-[TODO.  The following must be updated.]
-CXL does not complain about Figure~\ref{fig:rwbusy}, but using
+CXL does not complain about Figure~\ref{fig:rwbusy}, but, using
 the right test, CXL can be used to check for busy-waiting.
-One approach is as follows.  First, obtain a lock in the initialization
-code by adding the following line to the end of the code:
-\begin{code}
-\begin{verbatim}
-call acquire_rlock();
-\end{verbatim}
-\end{code}
-
-Second, run CXL with the \texttt{-b} flag.  This flag tells CXL to check
+Figure~\ref{fig:rwblock} presents such a test.
+Note that the initialization code obtains a read lock, preventing
+all readers and writers from entering the critical section.
+In that case, those processes should ideally be blocked and CXL
+can test for that by running it with the \texttt{-b} flag.
+This flag tells CXL to check
 that all states are non-terminating and have all processes blocked.
 
 \chapter{Reader/Writer Lock, Part 2}
