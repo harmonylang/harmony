@@ -1926,7 +1926,7 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = t[0]
                 if lexeme == ":":
                     break
-                self.expect("let statement", lexeme == ",", "expected ',' or ':'")
+                self.expect("let statement", lexeme == ",", t[0], "expected ',' or ':'")
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (LetAST(vars, stat), self.skip(token, t))
         if lexeme == "atomic":
