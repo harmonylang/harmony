@@ -1102,8 +1102,8 @@ We can do this by adding another process that, in a loop,
 checks the invariant.  Figure~\ref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
 in a state.  It introduces a new feature of CXL: the ability to have
-variables local to a method.  In this case, the variable \texttt{sum}
-is used to compute the number of variables that have value
+variables local to a method.  In this case, the process variable \texttt{sum}
+is used to compute the number of shared variables that have value
 \texttt{False}.
 The function is invoked by in a loop by a process that runs alongside
 the other processes.
