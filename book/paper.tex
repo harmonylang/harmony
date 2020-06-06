@@ -1491,6 +1491,7 @@ processes being blocked trying to acquire the lock.
 \item Do you see what the problem is?
 \item Does it depend on \texttt{N}, the number of philosophers?
 \item Can you come up with a solution?
+\item Does it matter in what order the philosophers lay down their forks?
 \end{itemize}
 \end{quote}
 
@@ -1520,14 +1521,6 @@ before the higher numbered fork, like so:
 \end{quote}
 
 \chapter{Semaphores}
-
-\begin{figure}
-\begin{center}
-\includegraphics[width=2.5in]{figures/pc.jpeg}
-\end{center}
-\caption{High-level state diagram specification of producers/consumers.}
-\label{fig:pc}
-\end{figure}
 
 \begin{figure}
 \begin{code}
@@ -1560,21 +1553,75 @@ def V(sema):
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{../PCsema.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../DinersSema.cxl}
 \end{code}
-\caption{Bounded Buffer implementation using semaphores.}
-\label{fig:boundedbuffer}
+\caption{Italian Philosophers.}
+\label{fig:dinerssema}
 \end{figure}
 
 So far we have looked at how to protect a single resource.
-Some types of resources may have multiple units or slots, each of which
+Some types of resources may have multiple units.
 If there are only $n$ units, no more than $n$ units can be used at a time;
 if all are in use and a process comes along that needs one of the units,
 it has to wait until another process releases one of the units.
 Note that we cannot solve this problem simply using a lock per unit---allocating
 a unit requires access to the entire collection.
 
-A good example is the so-called \emph{bounded buffer}.  It is essentially
+Consider a variant of the Dining Philosophers (which were clearly Dutch---who
+else need two forks to eat a meal?) that I call Italian Philosophers (who only
+need one fork each to eat spaghetti).  Again, there are five philosophers.
+This time, however, there is a glass sitting in the middle of the table with only
+three forks in it.  A philosopher needs one of those forks to eat, but clearly,
+no more than three philosophers can eat at a time.
+
+\begin{quote}
+\begin{itemize}
+\item See if you can come up with a deadlock-free solution using locks.  Represent
+    each fork as a lock.
+\end{itemize}
+\end{quote}
+
+It's not easy.  It would be easy to come up with a solution that uses a single lock
+and busy waiting, but we would like to avoid busy waiting.
+Introduced by Dijkstra,
+a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
+a counter that can be incremented and decremented but is not allowed to go
+below zero.  The semaphore counter is typically initialized to the number of
+units of a resource initially available.
+When allocating a resource, a process decrements the
+counter using the \texttt{procure} or simply \texttt{P} operation.  The
+\texttt{procure} operation blocks the invoking process if the counter is zero.
+To release the resource, a process increments the resource using the
+\texttt{vacate} or {V} operation.
+
+Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
+semaphores.
+Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
+using a semaphore.
+One can think of a semaphore as a generalization of a lock.  In fact, a
+lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
+acquires the lock, and \texttt{V} releases the lock.
+
+\chapter{Bounded Buffer}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=2.5in]{figures/pc.jpeg}
+\end{center}
+\caption{High-level state diagram specification of producers/consumers.}
+\label{fig:pc}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../PCsema.cxl}
+\end{code}
+\caption{Bounded Buffer implementation using semaphores.}
+\label{fig:boundedbuffer}
+\end{figure}
+
+A good example of a resource with multiple units is the so-called \emph{bounded buffer}.
+It is essentially
 a queue implemented using a circular buffer of a certain length and two pointers:
 one where items are inserted and one from where items are extracted.  If the
 buffer is full, processes that want to add more items have to wait.  In the usual
@@ -1587,25 +1634,6 @@ two numbers in a state specify
 the number of items that the producers still can produce and
 the number of items that the consumers have consumed.  In this case
 there are three items to produce initially.
-
-It would be easy to solve using a busy waiting
-approach, but again, we would like to avoid busy waiting.
-Introduced by the Dijkstra,
-a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
-a counter that can be incremented and decremented but is not allowed to go
-below zero.  The semaphore counter is typically initialized to the number of
-units of a resource initially available.
-When allocating a resource, a process decrements the
-counter using the \texttt{procure} or simply \texttt{P} operation.  The
-\texttt{procure} operation blocks the invoking process if the counter is zero.
-To release the resource, a process increments the resource using the
-\texttt{vacate} or {V} operation.
-Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
-semaphores.
-
-One can think of a semaphore as a generalization of a lock.  In fact, a
-lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
-acquires the lock, and \texttt{V} releases the lock.
 
 Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
 buffer using semaphores.  It features a circular bounded buffer \texttt{buf} with
