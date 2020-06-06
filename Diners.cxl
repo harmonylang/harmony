@@ -1,5 +1,3 @@
-# Dining Philosophers -- deadlock-prone
-
 import synch;
 
 const N = 5;
@@ -7,15 +5,16 @@ const N = 5;
 def diner(which):
     while choose({ False, True }):
         let left = which, right = (which % N) + 1:
-            call P &(forks[left]);
-            call P &(forks[right]);
-            @dine:
-            call V &(forks[left]);
-            call V &(forks[right]);
+            call lock &(forks[left]);
+            call lock &(forks[right]);
+            # dine
+            call unlock &(forks[left]);
+            call unlock &(forks[right]);
+            # think
         ;
     ;
 ;
-forks = dict{ Semaphore(1) for sema in 1..N };
+forks = dict{ Lock() for i in 1..N };
 for i in 1..N:
-    spawn diner(i), i;
+    spawn diner(i);
 ;

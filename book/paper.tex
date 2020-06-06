@@ -1367,13 +1367,6 @@ can test for that by running it with the \texttt{-b} flag.
 This flag tells CXL to check
 that all states are non-terminating and have all processes blocked.
 
-\begin{quote}
-\begin{itemize}
-\item Is Peterson's Algorithm blocking or busy-waiting?
-\item Check your answer by developing a test.
-\end{itemize}
-\end{quote}
-
 \chapter{Reader/Writer Lock, Part 2}
 
 \begin{figure}
@@ -1462,6 +1455,70 @@ reader/writer locks can be instantiated.
 \end{itemize}
 \end{quote}
 
+\chapter{Deadlock}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../Diners.cxl}
+\end{code}
+\caption{Dining Philosophers.}
+\label{fig:diners}
+\end{figure}
+
+When multiple processes are synchronizing access to shared resources, they
+may end up in a \emph{deadlock} situation where one or more of the processes
+end up being blocked indefinitely because each is waiting for another to give
+up a resource.
+The famous Dutch computer scientist Edsger W.~Dijkstra illustrated this using
+a scenario he called ``Dining Philosophers.''
+
+Imagine five philosopers sitting around a table, each with a plate of food in
+front of them, and a fork between each two plates.  Each philosopher requires
+two forks to eat.  To start eating, a philosopher first picks up the fork on
+the left, then the fork on the right.  Each philospher likes to take breaks
+from eating to think for a while.  To do so, the philosopher puts down both
+forks.  The philosophers repeat this procedure.  Dijkstra had them repeating
+this for ever, but for the purposes of this book, philosphers can leave
+the table when they're not eating.
+
+Figure~\ref{fig:diners} implements the dining philosophers in CXL, using a
+process for each philosopher and a lock for each fork.  If you
+run it, CXL complains that the execution may not terminate, with all five
+processes being blocked trying to acquire the lock.
+
+\begin{quote}
+\begin{itemize}
+\item Do you see what the problem is?
+\item Does it depend on \texttt{N}, the number of philosophers?
+\item Can you come up with a solution?
+\end{itemize}
+\end{quote}
+
+We will discuss ways of preventing deadlock later, but one important
+approach to avoiding deadlock is to establish an ordering among the
+resources (in this case the forks) and, when needing more than one
+resource, always acquiring them in order.  In the case of the philosopers,
+they could prevent deadlock by always picking up the lower numbered fork
+before the higher numbered fork, like so:
+
+\begin{code}
+\begin{verbatim}
+    if left < right:
+        call lock &(forks[left]);
+        call lock &(forks[right]);
+    else:
+        call unlock &(forks[right]);
+        call unlock &(forks[left]);
+    ;
+\end{verbatim}
+\end{code}
+
+\begin{quote}
+\begin{itemize}
+\item Try it out!
+\end{itemize}
+\end{quote}
+
 \chapter{Semaphores}
 
 \begin{figure}
@@ -1533,7 +1590,7 @@ there are three items to produce initially.
 
 It would be easy to solve using a busy waiting
 approach, but again, we would like to avoid busy waiting.
-Introduced by the famous Dutch computer scientist Edsger Dijkstra,
+Introduced by the Dijkstra,
 a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
