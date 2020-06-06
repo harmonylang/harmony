@@ -1584,7 +1584,8 @@ no more than three philosophers can eat at a time.
 It's not easy.  It would be easy to come up with a solution that uses a single lock
 and busy waiting, but we would like to avoid busy waiting.
 Introduced by Dijkstra,
-a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
+a \emph{semaphore} is a synchronization primitive that fits the bill.
+A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
 units of a resource initially available.
@@ -1598,6 +1599,16 @@ Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
 semaphores.
 Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
 using a semaphore.
+
+\begin{quote}
+\begin{itemize}
+\item Can you come up with a test (an assertion) that shows that at most three
+philosophers are eating at the same time?
+\item Can you come up with a test (different code) that checks to see that
+the solution allows more than one philosopher to eat at the same time?
+\end{itemize}
+\end{quote}
+
 One can think of a semaphore as a generalization of a lock.  In fact, a
 lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
 acquires the lock, and \texttt{V} releases the lock.
@@ -1670,7 +1681,7 @@ People often call semaphores that are used as locks \emph{binary semaphores},
 as their counters only take on the values 0 and 1.
 They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
-They are essentially used to send signals between processes.
+They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
 We can run the code through CXL, but what does it test?  There are no
