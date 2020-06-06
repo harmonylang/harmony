@@ -1465,6 +1465,14 @@ reader/writer locks can be instantiated.
 \chapter{Semaphores}
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=2.5in]{figures/pc.jpeg}
+\end{center}
+\caption{High-level state diagram specification of producers/consumers.}
+\label{fig:pc}
+\end{figure}
+
+\begin{figure}
 \begin{code}
 \begin{verbatim}
 def Semaphore(cnt):
@@ -1501,14 +1509,6 @@ def V(sema):
 \label{fig:boundedbuffer}
 \end{figure}
 
-\begin{figure}
-\begin{center}
-\includegraphics[width=2.5in]{figures/pc.jpeg}
-\end{center}
-\caption{High-level state diagram specification of producers/consumers.}
-\label{fig:pc}
-\end{figure}
-
 So far we have looked at how to protect a single resource.
 Some types of resources may have multiple units or slots, each of which
 If there are only $n$ units, no more than $n$ units can be used at a time;
@@ -1524,9 +1524,15 @@ buffer is full, processes that want to add more items have to wait.  In the usua
 formulation, processes that want to extract an item when the buffer is empty
 also have to wait.
 This problem is known as the ``Producer/Consumer Problem.''
+
+Figure~\ref{fig:pc} gives a high-level description of what we want.  The
+two numbers in a state specify
+the number of items that the producers still can produce and
+the number of items that the consumers have consumed.  In this case
+there are three items to produce initially.
+
 It would be easy to solve using a busy waiting
 approach, but again, we would like to avoid busy waiting.
-
 Introduced by the famous Dutch computer scientist Edsger Dijkstra,
 a \emph{semaphore} is a primitive that fits the bill.  A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
@@ -1581,6 +1587,17 @@ They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
 They are essentially used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
+
+We can run the code through CXL, but what does it test?  There are no
+assert statements in the code.
+We can split the functionality of this code into two pieces.  One is
+the synchronization part: producers should never run more than \texttt{NSLOTS}
+ahead of the consumers, but they should be able to produce up to \texttt{NSLOTS}
+items even if there are no consumers.  The other part is the data: we want
+to make sure that the items are sent through the buffer in order and without
+loss.  We will first focus on the synchronization.
+
+[RVR.  More here.]
 
 \chapter{Starvation}
 
