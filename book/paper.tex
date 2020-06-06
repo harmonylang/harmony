@@ -1631,6 +1631,36 @@ acquires the lock, and \texttt{V} releases the lock.
 \label{fig:boundedbuffer}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 PCsema.cxl
+cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
+cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
+cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
+cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 PCsema.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
+\end{verbatim}
+\end{code}
+\caption{Script for testing producer/consumer synchronization
+(assuming the code is in file \texttt{PCsema.cxl}).}
+\label{fig:pcscript}
+\end{figure}
+
 A good example of a resource with multiple units is the so-called \emph{bounded buffer}.
 It is essentially
 a queue implemented using a circular buffer of a certain length and two pointers:
@@ -1692,6 +1722,13 @@ ahead of the consumers, but they should be able to produce up to \texttt{NSLOTS}
 items even if there are no consumers.  The other part is the data: we want
 to make sure that the items are sent through the buffer in order and without
 loss.  We will first focus on the synchronization.
+
+The first part can be tested with the code given in Figure~\ref{fig:pc}, by
+experimenting with different non-negative values for the three constants.
+In particular, any run with a positive \texttt{NSLOTS} and
+$\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
+should terminate, while other values should lead to processes blocking.
+One could write a script like the one in Figure~\ref{fig:pcscript}.
 
 [RVR.  More here.]
 
