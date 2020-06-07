@@ -479,16 +479,20 @@ class StoreVarOp(Op):
         context.pc += 1
 
 class DelVarOp(Op):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, v, n):
+        self.v = v
+        self.n = n
 
     def __repr__(self):
-        (lexeme, file, line, column) = self.name
-        return "DelVar " + str(lexeme)
+        (lexeme, file, line, column) = self.v
+        return "DelVar " + str(lexeme) + ", " + self.n
 
     def eval(self, state, context):
-        (lexeme, file, line, column) = self.name
-        context.delete(lexeme)
+        (lexeme, file, line, column) = self.v
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.pop())
+        context.delete([lexeme] + indexes)
         context.pc += 1
 
 class ChooseOp(Op):
@@ -1109,9 +1113,9 @@ class SetComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
-        code.append(DelVarOp(self.var))
-        code.append(DelVarOp(S))
-        code.append(DelVarOp(N))
+        code.append(DelVarOp(self.var, 0))
+        code.append(DelVarOp(S, 0))
+        code.append(DelVarOp(N, 0))
 
 class DictComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -1167,9 +1171,9 @@ class DictComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var))
-        code.append(DelVarOp(S))
-        code.append(DelVarOp(N))
+        code.append(DelVarOp(self.var, 0))
+        code.append(DelVarOp(S, 0))
+        code.append(DelVarOp(N, 0))
 
 class TupleComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -1239,10 +1243,10 @@ class TupleComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var))
-        code.append(DelVarOp(S))
-        code.append(DelVarOp(N))
-        code.append(DelVarOp(I))
+        code.append(DelVarOp(self.var, 0))
+        code.append(DelVarOp(S, 0))
+        code.append(DelVarOp(N, 0))
+        code.append(DelVarOp(I, 0))
 
 # N-ary operator
 class NaryAST(AST):
@@ -1586,17 +1590,17 @@ class DelAST(AST):
             tv = scope.lookup(lv.name)
             if tv == None:
                 code.append(NameOp(lv.name))
-                code.append(StoreOp(n))
+                code.append(DelOp(n))
             else:
                 (t, v) = tv
                 if t == "variable":
-                    code.append(StoreVarOp(v, n - 1))
+                    code.append(DelVarOp(v, n - 1))
                 else:
                     assert False, tv
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(StoreOp(n))
+            code.append(DelOp(n))
 
 class AddressAST(AST):
     def __init__(self, lv):
@@ -1615,7 +1619,6 @@ class AddressAST(AST):
             if tv != None:
                 print(lv, ": Parse error: can only take address of shared variable")
                 sys.exit(1)
-            assert tv == None, tv   # can't take address of local var
             code.append(NameOp(lv.name))
         else:
             assert isinstance(lv, PointerAST), lv
@@ -1702,7 +1705,7 @@ class LetAST(AST):
 
         # Restore the old variable state
         for (var, expr) in self.vars:
-            code.append(DelVarOp(var))  # remove variable
+            code.append(DelVarOp(var, 0))  # remove variable
             (lexeme, file, line, column) = var
             del scope.names[lexeme]
 
@@ -1743,8 +1746,8 @@ class ForAST(AST):
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
 
-        code.append(DelVarOp(self.var))
-        code.append(DelVarOp(S))
+        code.append(DelVarOp(self.var, 0))
+        code.append(DelVarOp(S, 0))
 
 class AtomicAST(AST):
     def __init__(self, stat):
@@ -2167,14 +2170,20 @@ class Context:
         d[indexes[0]] = v
         return DictValue(d)
 
+    def remove(self, record, indexes):
+        if len(indexes) > 1:
+            d = record.d.copy()
+            d[indexes[0]] = self.remove(record.d[indexes[0]], indexes[1:])
+        else:
+            d = record.d.copy()
+            del d[indexes[0]]
+        return DictValue(d)
+
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
 
-    def delete(self, var):
-        if var in self.vars.d:
-            copy = self.vars.d.copy()
-            del copy[var]
-            self.vars = DictValue(copy)
+    def delete(self, indexes):
+        self.vars = self.remove(self.vars, indexes)
 
     def push(self, val):
         assert val != None
