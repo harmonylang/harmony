@@ -10,6 +10,8 @@ files = {}
 constants = {}
 
 def load(f, filename, scope, code):
+    if filename in files:
+        return
     files[filename] = []
     all = ""
     for line in f:

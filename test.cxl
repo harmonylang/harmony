@@ -1,4 +1,4 @@
-def abc(a, b):
-;
+import bag;
+import bag;
 
-call abc(1, 2, 3);
+assert bagEmpty() == ();
