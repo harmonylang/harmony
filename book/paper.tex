@@ -1944,7 +1944,7 @@ While spinlocks suffer from starvation, it is a uniform random
 process and each process has an equal chance of entering the critical
 section.  Thus the probability of starvation is exponentially vanishing.
 Unfortunately, such is not the case for the
-reader/writer solution of Figure~\ref{fig:rw2lock}.
+reader/writer solutions that we presented thus far.
 Consider this scenario: there are two readers and one writer.  One reader
 is in the critical section while the writer is waiting.  Now the
 second reader tries to enter and is able to.  The first reader leaves.
@@ -1956,6 +1956,6 @@ all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 In this chapter, we will present a version of a reader/writer lock
 implementation that solves this type of starvation, but won't eliminate
-the type of starvation that comes with spinlocks.
+the type of starvation.
 
 \end{document}
