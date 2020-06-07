@@ -2018,11 +2018,11 @@ def signal(c):
 \end{verbatim} 
 \end{code} 
 
-\texttt{wait} releases the monitor mutex and blocks while trying
+\texttt{wait} releases the monitor lock and blocks while trying
 to procure the condition variable (which is a semaphore that is 0 when
 \texttt{wait} is invoked).
 \texttt{signal} vacates the condition variable, passing the baton to
-a process trying to procure it, and then procures the monitor mutex.
+a process trying to procure it, and then procures the monitor lock.
 The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
 \texttt{V} operations alternate as prescribed by the SBS technique.
 Our implementations of reader/writer locks can be easily changed to
@@ -2030,10 +2030,114 @@ use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
 \texttt{V}.
 
 In the late 70s, Xerox PARC developed a new programming language called
-Mesa.  Mesa introduced various important concepts to programming languages,
+Mesa~\cite{mesa}.
+Mesa introduced various important concepts to programming languages,
 including software exceptions and incremental compilation.  Mesa also
 incorporated a version of monitors.
-However, there are some subtle but important differences with Hoare-style
-monitors that make Mesa-style monitors quite unlike split binary semaphores.
+However, there are some subtle but important differences with Hoare
+monitors that make Mesa monitors quite unlike split binary semaphores.
+
+As in Hoare monitors, there is a lock associated with each monitor,
+and the lock is acquired upon entry to a method and released upon exit.
+Mesa monitors also have condition variable that a process can wait on.
+Like in Hoare monitors, the \texttt{wait} operation release the monitor
+lock.
+The most important difference is in what \texttt{signal} does.
+To make the distinction more clear, we shall call corresponding Mesa
+operation \texttt{notify} rather than \texttt{signal}.
+When a process $p$ invokes \texttt{notify}, it does not immediately pass 
+he baton to some process $q$ requiring the baton.  Instead, $p$ holds onto
+the baton until it leaves the monitor.  At that point $q$ gets the baton,
+assuming there even was such a process $q$.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=6in]{figures/monitor.jpeg}
+\end{center}
+\caption{High-level depictions of Hoare and Mesa monitors.  The hall is
+where processes wait to enter the bathroom (the critical section).  The
+bedrooms illustrate two condition variables.  The circles are processes.}
+\label{fig:pc}
+\end{figure}
+
+Figure~\ref{fig:bathroom} illustrates the difference with a drawing.
+Here a bathroom represents the critical section, allowing only one
+process at a time say.  The bedrooms represent condition variables.
+There is some condition associated with each bedroom.
+In the hall are processes waiting to enter the critical section.
+
+On the left is a Hoare monitor.  When a process leaves the monitor
+(let's call that process $p$), it must be in the bathroom.
+It can choose to either let a process
+in one of the bedrooms or a process in the hall, assuming there are any.
+To make the choice, $p$ checks for each bedroom if its condition holds
+and if there are processes in the bedroom.
+If there are such bedrooms, $p$ selects one and let's that process into
+the bathroom.  Let's call that process $q$.  Importantly, when $q$ enters
+the bathroom, the condition that $q$ was waiting for still holds.
+
+On the right is a Mesa monitor.  The only way into the bathroom is through
+the hall.  When process $p$ leaves the bathroom,
+if also checks each of the bedrooms to see if there is a process $q$ that
+can run.  But instead of letting $q$ go straight into the bathroom, $q$
+goes into the hall, joining any other processes that are also waiting to
+enter the bathroom.  Finally, when $p$ has left the bathroom, one of the
+processes in the hall is let into the bathroom.  But that may not be $q$.
+Assuming every process eventually leaves the bathroom and the system is
+fair, eventually $q$ will enter the bathroom.  However, it is no longer
+guaranteed that its condition holds.  Therefore, the first thing $q$ must
+do is check to see if the condition holds.  If not, it should go back
+into the bedroom corresponding to the condition.
+
+It turns out that with the Mesa monitor there is another important option:
+when process $p$ leaves the bathroom, it can choose to let any number of
+processes in the bedrooms into the hall.  It can do so by calling
+\texttt{notify} repeatedly, each time letting one process in one of the
+bedrooms into the hall.  Note that called \texttt{notify} on an empty
+bedroom is considered a no-op in Mesa.  Mesa also has a function called
+\texttt{notifyAll} (aka \texttt{broadcast)}) that, when applied to
+a bedroom, let's all processes in that bedroom into the hall.
+
+While Hoare monitors are conceptually simpler, the so-called
+``Mesa monitor semantics'' have become more popular, adopted by all major
+programming languages including C, Java, and Python.
+
+\chapter{Mesa Condition Variables in CXL}
+
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: {} };
+;
+def wait(c):
+    let lk = (^c).lock, blocked = True:
+        (^c).waiters = (^c).waiters + { nametag() };
+        ^lk = False;
+        while blocked:
+            atomic:
+                if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
+                    ^lk = True;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def notify(c):
+    let waiters = (^c).waiters:
+        if waiters != {}:
+            (^c).waiters = waiters - { choose(waiters) };
+        ;
+    ;
+;
+def notifyAll(c):
+    (^c).waiters = {};
+;
+\end{verbatim}
+\end{code}
+\caption{Implementation of condition variables in the \texttt{synch} module.}
+\label{fig:cv}
+\end{figure}
 
 \end{document}
