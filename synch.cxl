@@ -36,9 +36,11 @@ def wait(c):
     ;
 ;
 def notify(c):
-    let waiters = (^c).waiters:
-        if waiters != {}:
-            (^c).waiters = waiters - { choose(waiters) };
+    atomic:
+        let waiters = (^c).waiters:
+            if waiters != {}:
+                (^c).waiters = waiters - { choose(waiters) };
+            ;
         ;
     ;
 ;
