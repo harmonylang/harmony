@@ -1569,6 +1569,35 @@ class AssignmentAST(AST):
             lv.expr.compile(scope, code)
             code.append(StoreOp(n))
 
+class DelAST(AST):
+    def __init__(self, lv):
+        self.lv = lv
+
+    def __repr__(self):
+        return "Del(" + str(self.lv) + ")"
+
+    def compile(self, scope, code):
+        assert isinstance(self.lv, LValueAST)
+        n = len(self.lv.indexes)
+        for i in range(1, n):
+            self.lv.indexes[n - i].compile(scope, code)
+        lv = self.lv.indexes[0]
+        if isinstance(lv, NameAST):
+            tv = scope.lookup(lv.name)
+            if tv == None:
+                code.append(NameOp(lv.name))
+                code.append(StoreOp(n))
+            else:
+                (t, v) = tv
+                if t == "variable":
+                    code.append(StoreVarOp(v, n - 1))
+                else:
+                    assert False, tv
+        else:
+            assert isinstance(lv, PointerAST), lv
+            lv.expr.compile(scope, code)
+            code.append(StoreOp(n))
+
 class AddressAST(AST):
     def __init__(self, lv):
         self.lv = lv
