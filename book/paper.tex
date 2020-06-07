@@ -1954,10 +1954,45 @@ reader.  Unfortunately for the writer, this scenario can repeat itself
 indefinitely.  So even if neither reader was in the critical section
 all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
+
 In this chapter, we will present a version of a reader/writer lock
 implementation that solves this type of starvation, but won't eliminate
 the type of starvation.
+In particular, the probability that either a reader or writer gets starved
+will be exponentially diminishing.
+We shall call such a solution \emph{fair} (although it does not quite
+match the usual formal nor vernacular concepts of fairness).
+
+It is difficult if not impossible to make the reader/writer lock solution of
+Figure~\ref{fig:rw2lock} fair.  However, the split binary semaphore solution of
+Figure~\ref{fig:RWsplitsema} provides much control over whom to pass baton
+to.
+Figure~\ref{fig:RWfair} contains a version of Figure~\ref{fig:RWsplitsema}
+that is a fair solution to the reader/writer problem.  There are two changes
+compared to the original version:
+
+\begin{enumerate}
+\item When a reader tries to enter the critical section, it yields not only
+if there are writers in the critical section, but also if there are writers
+waiting to enter the critical section;
+\item There are two versions of \texttt{V\_one()}.  In particular, when the
+last reader leaves the critical section, it preferentially passes the baton
+to a waiting writer rather than to a waiting reader.  Similarly,
+when a writer leaves the critical section, it preferentially passes
+the baton to a waiting reader rather than to a waiting writer.
+\end{enumerate}
+
+The net effect of this is that if there is contention between readers and
+writers, than readers and writers end up alternating entering the critical
+section.  While readers can still starve other readers and writers can still
+starve other writers, they can not starve one another.  And contention for
+a semaphore is resolved probabilistically, each reader and each writer will
+eventually have a chance to enter the critical section almost surely.
 
 \chapter{Monitors}
+
+Tony Hoare, who came up with the concept of split binary semaphores, devised
+an abstraction of the concept in a programming language paradigm called
+\emph{monitors}.
 
 \end{document}
