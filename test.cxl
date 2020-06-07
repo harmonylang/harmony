@@ -1,4 +1,4 @@
 import bag;
-import bag;
 
-assert bagEmpty() == ();
+x = { 3 for x in {} };
+

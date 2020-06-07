@@ -1,4 +1,4 @@
-import synch;
+import synchbag;
 
 def acquire_rlock():
     call lock &(rwlock);

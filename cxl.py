@@ -2198,7 +2198,8 @@ class Context:
             d[indexes[0]] = self.doDelete(record.d[indexes[0]], indexes[1:])
         else:
             d = record.d.copy()
-            del d[indexes[0]]
+            if indexes[0] in d:
+                del d[indexes[0]]
         return DictValue(d)
 
     def set(self, indexes, val):
