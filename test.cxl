@@ -1,4 +1,1 @@
-import bag;
-
-x = { 3 for x in {} };
-
+assert 3 not < 2;

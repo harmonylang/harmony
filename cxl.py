@@ -1331,6 +1331,11 @@ class NaryRule(Rule):
             return (ast, t)
         args = [ast]
         op = t[0]
+        invert = None
+        if op[0] == "not":
+            invert = op
+            t = t[1:]
+            op = t[0]
         self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
                     "expected binary operation or 'if'")
         (ast2, t) = ExpressionRule().parse(t[1:])
@@ -1348,7 +1353,11 @@ class NaryRule(Rule):
                 (lexeme, file, line, column) = t[0]
         self.expect("n-ary operation", lexeme in self.closers, t[0],
                             "expected one of %s"%self.closers)
-        return (NaryAST(op, args), t)
+        ast = NaryAST(op, args)
+        if invert != None:
+            return (NaryAST(invert, [ast]), t)
+        else:
+            return (ast, t)
 
 class SetComprehensionRule(Rule):
     def __init__(self, value):
