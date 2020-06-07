@@ -2414,15 +2414,18 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         # this process is scheduled from this state.
         if isinstance(sc.code[cc.pc], ChooseOp):
             v = cc.stack[-1]
-            if not isinstance(v, SetValue):
+            if (not isinstance(v, SetValue)) or v.s == set():
                 # TODO.  Need the location of the choose operation in the file
                 print()
-                print("pc =", cc.pc, ": Error: choose can only be applied to sets")
+                print("pc =", cc.pc,
+                    ": Error: choose can only be applied to non-empty sets")
                 sc.failure = True
                 break
-            if len(v.s) != 1:
+            if len(v.s) > 1:
                 sc.choosing = cc
                 break
+            else:
+                choice = list(v.s)[0]
 
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
