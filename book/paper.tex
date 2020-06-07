@@ -579,7 +579,8 @@ problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
 the \texttt{count} variable is being updated, no other process is
-trying to do the same thing.  We call this a \emph{critical section}: a
+trying to do the same thing.  We call this a \emph{critical section}
+(aka critical region): a
 set of instructions where only one process is allowed to execute at a
 time.
 
@@ -1349,7 +1350,7 @@ of a process being blocked: the process only reads the shared memory
 but does not change it.
 
 However, a process trying to obtain a read or write lock in
-Figure~ref{fig:rwbusy} has to actually obtain a spinlock just to check
+Figure~\ref{fig:rwbusy} has to actually obtain a spinlock just to check
 if the read or write lock is available.  So even when the read or write
 lock is not available, the process ends up updating the spinlock and
 therefore the shared memory.
@@ -1366,7 +1367,8 @@ all readers and writers from entering the critical section.
 In that case, those processes should ideally be blocked and CXL
 can test for that by running it with the \texttt{-b} flag.
 This flag tells CXL to check
-that all states are non-terminating and have all processes blocked.
+that all states are non-terminating and lead to a state in which
+all processes are blocked.
 
 \chapter{Reader/Writer Lock, Part 2}
 
@@ -1591,10 +1593,12 @@ a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
 units of a resource initially available.
 When allocating a resource, a process decrements the
-counter using the \texttt{procure} or simply \texttt{P} operation.  The
-\texttt{procure} operation blocks the invoking process if the counter is zero.
+counter using the \texttt{P} operation.  You can think of \texttt{P} standing
+for \emph{Procure}, as in procuring the resource associated with the semaphore.
+The \texttt{P} operation blocks the invoking process if the counter is zero.
 To release the resource, a process increments the resource using the
-\texttt{vacate} or {V} operation.
+\texttt{V} operation.  You can think of \texttt{V} standing for \emph{vacate},
+as in vacating the resource.
 
 Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
 semaphores.
@@ -1612,7 +1616,7 @@ the solution allows more than one philosopher to eat at the same time?
 
 One can think of a semaphore as a generalization of a lock.  In fact, a
 lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
-acquires the lock, and \texttt{V} releases the lock.
+procures the lock, and \texttt{V} vacates the lock.
 
 \chapter{Bounded Buffer}
 
@@ -1706,11 +1710,12 @@ To add an item to the bounded buffer (\texttt{produce(item)}), the producing
 process first has to wait until there is room in the bounded buffer.
 To this end, it invokes \texttt{P(n\_empty)}, which waits until
 \texttt{n\_empty > 0} and atomically decrements \texttt{n\_empty} once this
-is the case.  Next, it adds the item to the next position in the buffer.
+is the case.  In other words, the producer procures an empty slot.
+Next, it adds the item to the next position in the buffer.
 Since there may be more than one empty slot, multiple producers may attempt
 to do the same thing concurrently.  Hence the use of the \texttt{l\_in}
-semaphore used as a lock.  Finally, once the item is added, the
-\texttt{n\_full} semaphore is incremented to signal to consumers that
+semaphore used as a lock.  Finally, once the item is added, the process
+increments the \texttt{n\_full} semaphore to signal to consumers that
 an item is available.
 
 The consumer code is symmetric.
@@ -1762,18 +1767,18 @@ exactly the set of tuples that the producers produce.
 \end{figure}
 
 Reader/writer locks and bounded buffers are both examples of what are
-sometimes called \emph{conditional critical regions} (CCRs).
-All critical regions are in fact conditional.  Even the basic one
+sometimes called \emph{conditional critical sections} (CCSs).
+All critical sections are in fact conditional.  Even the basic one
 has the condition that a process can only enter if no other process
-is in the critical region.  Reader/writer locks refined that, loosening
-the restriction for improved performance.  In the case of bounded buffers,
-there were two CCRs.  First, a CCR
+is in the critical section.  Reader/writer locks refined that, loosening
+the restriction for improved performance.
+In the case of bounded buffers, there were two CCSs.  First, a CCS
 to add an entry to the bounded buffer that can only be entered by one
 process and only if there is room in the bounded buffer (\texttt{produce}).
-Second, a CCR that can only be entered by one process and
+Second, a CCS that can only be entered by one process and
 only if there is an item in the bounded buffer (\texttt{consume}).
 
-CCRs are easy to implement using busy waiting:
+CCSs are easy to implement using busy waiting:
 \begin{code}
 \begin{verbatim}
 let blocked = True:
@@ -1789,15 +1794,17 @@ call unlock():
 \end{code}
 
 We have seen solutions to the reader/writer problem and the producer/consumer
-problem that do no busy-wait, but they are quite different.  It would be nice
-to have a general technique for all CCR problems.
+problem that do not busy-wait, but they are quite different.  It would be nice
+to have a general technique for all CCS problems.
 The ``Split Binary Semaphore'' (SBS) is such a technique, originally proposed by
 Tony Hoare and popularized by Edsger Dijkstra.
-SBS is an example of what one could call a ``baton-passing'' technique:
-when a process has the
-baton and is about to leave the critical region, giving up the baton, it first
-checks to see if there are any processes that are waiting and can now run.
+SBS is an example of what one could call a ``baton-passing'' technique.
+A process needs the baton to access shared variables.
+When a process has the baton and does not need it any more,
+it first checks to see if there are any processes that are waiting for the
+baton and can make progress.
 If so, it passes the baton directly to one of those processes.
+If not, it simply gives up the baton.
 
 We will illustrate the technique using the reader/writer problem.
 Figure~\ref{fig:RWsplitsema} shows the
@@ -1808,27 +1815,28 @@ SBS.
 Step 1 is to enumerate all waiting conditions.  In the case of the reader/writer
 problem, there are two: a process that wants to read may have to wait for a
 writer to leave the critical regiion, while a process that wants to write may
-have to wait until all readers have left the critical region.  If there are $N$
+have to wait until all readers have left the critical section.  If there are $N$
 waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
 each waiting condition and an extra one that processes use when they first try
-to enter the critical region and do not yet know if they need to wait.
+to enter the critical section and do not yet know if they need to wait.
 We shall call this the \texttt{mutex}.
 
 An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
-must always be 1 if there is no process in the CCR and 0 if there is
-a process in the CCR.  As it were, these semaphores taken together are emulating a
-single binary semaphore.
-Initially, \texttt{mutex} is 1 and the other $N$ semaphores
-are all 0.  To maintain the invariant, each process alternates \texttt{P} and
+must always be 0 or 1, and it should be 0 when a process is accessing the shared
+variables.
+As it were, these semaphores taken together are emulating a single binary semaphore.
+Initially, \texttt{mutex} is~1 and the other $N$ semaphores
+are all~0.  To maintain the invariant, each process alternates \texttt{P} and
 \texttt{V} operations, starting with \texttt{P~\&(mutex)} when it tries to
-enter the CCR, and ending with a \texttt{V} operation on one of the semaphores
+enter the CCS, and ending with a \texttt{V} operation on one of the semaphores
 (yet to be determined).
 
 Another important part of the SBS technique is to keep careful track of the
-state.  In the case of the reader/writer lock, the state consists:
+state.  In the case of the reader/writer lock, the state consists of the
+following shared variables:
 \begin{itemize}
-\item \texttt{nreadersEntered}: the number of readers in the critical region;
-\item \texttt{nwritersEntered}: the number of writers in the critical region;
+\item \texttt{nreadersEntered}: the number of readers in the critical section;
+\item \texttt{nwritersEntered}: the number of writers in the critical section;
 \item \texttt{nreadersWaiting}: the number of readers waiting to enter;
 \item \texttt{nwritersWaiting}: the number of writers waiting to enter.
 \end{itemize}
@@ -1836,27 +1844,26 @@ Each of the
 \texttt{rlock\_acquire}, \texttt{rlock\_release},
 \texttt{wlock\_acquire}, and \texttt{wlock\_release} methods must maintain
 this state.
-To wit, check out \texttt{rlock\_acquire},  It first checks to see if there
+To wit, check out \texttt{rlock\_acquire}.  It first checks to see if there
 are any writers.  If so, it increments \texttt{nreadersWaiting}.  If not,
 it increments \texttt{nreadersEntered}.
-Either way, it calls the method \texttt{V\_one()}.
 
-Note that the four
-reader/writer methods never call \texttt{V} on a specific binary semaphore:
+Either way, it vacates one of the semaphores next.
 \texttt{V\_one()} is the baton passing function that selects which of the
-binary semaphores to increment.
+binary semaphores to vacate.
 Method \texttt{V\_one()} first checks to see if there are any readers or
 writers waiting.  If there are readers waiting and there are no writers
-in the critical section, it increments the semaphore associated with
+in the critical section, it vacates the semaphore associated with
 readers waiting.  If there are writers waiing and there are no readers
-nor writers in the critical section, it increments the semaphore associated
-with writers waiting.  If both conditions hold, it could increment either
-one---it would not matter.  However, it can only increment one of the semaphores.
-If none of the conditions hold, the \texttt{V\_one} increments \texttt{mutex}.
+nor writers in the critical section, it vacates the semaphore associated
+with writers waiting.  If both conditions hold, it could vacates either
+one---it would not matter.  However, it can only vacate one of the semaphores.
+If none of the conditions hold, \texttt{V\_one()} vacates \texttt{mutex}.
 
 Let us return now to \texttt{rlock\_acquire}, in the case that the process
-found there is a writer in the critical region.  After \texttt{V\_one()} returns,
-it invokes calls \texttt{P~\&(rsema)}, blocking on the semaphore associated
+found there is a writer in the critical section, it vacates
+\texttt{mutex} and procures \texttt{rsema},
+blocking on the semaphore associated
 with waiting readers.  When later some other process passes the baton to
 it by incrementing \texttt{rsema}), it updates the state by decrementing
 \texttt{nreadersWaiting} and incrementing \texttt{nreadersEntered}.  It
@@ -1869,20 +1876,20 @@ the writer calls \texttt{wlock\_release}:
 \item After procuring \texttt{mutex},
 the sum of the three semaphores is 0.  The writer then decrements
 \texttt{nwritersEntered} and calls \texttt{V\_one()}.
-\item \texttt{V\_one()} finds that there are no writers in the critical region
+\item \texttt{V\_one()} finds that there are no writers in the critical section
 and there are two readers waiting.  It therefore vacates \texttt{rsema}.
 The sum of the semaphores is now 1, because \texttt{rsema} is 1.  This
 guarantees that only a waiting reader, procuring \texttt{rsema}, can enter
-the critical region.
+the critical section.
 \item When it does, the reader decrements \texttt{nreadersWaiting}
 from 2 to 1, and increments \texttt{nReadersEntered} from 0 to 1.
 The reader finally calls \texttt{V\_one()}.
 \item Again, \texttt{V\_one()} finds that there are no writers and
 that there are readers waiting, so again it vacates \texttt{rsema},
 passing the baton to the one remaining waiting reader.
-\item The reader decrements \texttt{nreadersWaiting} from 1 to 0 and
+\item The remaining reader decrements \texttt{nreadersWaiting} from 1 to 0 and
 increments \texttt{nReadersEntered} from 1 to 2.
-\item Finally, the reader  calls \texttt{V\_one()}.
+\item Finally, the remaining reader  calls \texttt{V\_one()}.
 \texttt{V\_one()} does not find any processes waiting,
 and so it vacates \texttt{mutex}.
 \end{enumerate}
@@ -1894,6 +1901,14 @@ and so it vacates \texttt{mutex}.
 \end{quote}
 
 \chapter{Starvation}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWfair.cxl}
+\end{code}
+\caption{Reader/Writer Lock implementation addressing fairness.}
+\label{fig:RWfair}
+\end{figure}
 
 So far we have pursued two properties: \emph{mutual exclusion}
 and \emph{progress}.  The former is an example of a
