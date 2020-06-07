@@ -374,19 +374,6 @@ class DupOp(Op):
         context.push(v)
         context.pc += 1
 
-class DelVarOp(Op):
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        (lexeme, file, line, column) = self.name
-        return "DelVar " + str(lexeme)
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.name
-        context.delete(lexeme)
-        context.pc += 1
-
 class LoadVarOp(Op):
     def __init__(self, name):
         self.name = name
@@ -489,6 +476,19 @@ class StoreVarOp(Op):
         for i in range(self.n):
             indexes.append(context.pop())
         context.set([lexeme] + indexes, context.pop())
+        context.pc += 1
+
+class DelVarOp(Op):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        (lexeme, file, line, column) = self.name
+        return "DelVar " + str(lexeme)
+
+    def eval(self, state, context):
+        (lexeme, file, line, column) = self.name
+        context.delete(lexeme)
         context.pc += 1
 
 class ChooseOp(Op):
