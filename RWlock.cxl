@@ -22,6 +22,10 @@ def acquire_wlock():
 def release_wlock():
     call unlock &(rwlock);
 ;
+rwlock = Lock();
+rlock = Lock();
+nreaders = 0;
+
 def process():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
@@ -37,9 +41,6 @@ def process():
         ;
     ;
 ;
-rwlock = Lock();
-rlock = Lock();
-nreaders = 0;
 for i in 1..4:
     spawn process();
 ;
