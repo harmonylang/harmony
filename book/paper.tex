@@ -1676,6 +1676,15 @@ the number of items that the producers still can produce and
 the number of items that the consumers have consumed.  In this case
 there are three items to produce initially.
 
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../PCsemadata.cxl}
+\end{code}
+\caption{Test whether the bounded buffer delivers the right data in the
+right order.}
+\label{fig:PCsemadata}
+\end{figure}
+
 Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
 buffer using semaphores.  It features a circular bounded buffer \texttt{buf} with
 slots numbered 1 through \texttt{NSLOTS}.  There are two indexes into
@@ -1730,7 +1739,16 @@ $\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
 should terminate, while other values should lead to processes blocking.
 One could write a script like the one in Figure~\ref{fig:pcscript}.
 
-[RVR.  More here.]
+Figure~\ref{fig:PCsemadata} tests whether the correct data is sent in
+the correct order.  There are the same number of producers and consumers.
+Each producer $i$ produces two tuples: $(i, 0)$ and $(i, 1)$ in that order.
+Each consumer consumes two tuples and checks that the tuples are different
+and that, if the two tuples come from the same producer, then they have to
+be in the order sent.
+Moreover, consumers add the tuples they received to the set
+\texttt{received} (atomically---a lock could have been used here as well).)
+The \texttt{main()} process waits for all consumers to have received
+exactly the set of tuples that the producers produce.
 
 \chapter{Split Binary Semaphores}
 
