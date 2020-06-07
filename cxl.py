@@ -904,7 +904,13 @@ class ApplyOp(Op):
         method = context.pop()
         e = context.pop()
         if isinstance(method, DictValue):
-            context.push(method.d[e])
+            try:
+                context.push(method.d[e])
+            except KeyError:
+                print()
+                print("pc =", context.pc, "Error: no entry", e, "in", method)
+                state.failure = True
+                return
             context.pc += 1
         # TODO.  I believe the following is dead code
         elif False and isinstance(method, OpValue):
