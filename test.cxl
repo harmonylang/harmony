@@ -1,1 +1,11 @@
-const N = x;
+import bag;
+
+x = bagEmpty();
+assert bagCount(x, 10) == 0;
+call bagAdd(&(x), 10);
+call bagAdd(&(x), 10);
+assert bagCount(x, 10) == 2;
+call bagRemove(&(x), 10);
+call bagRemove(&(x), 10);
+assert bagCount(x, 10) == 0;
+assert x == dict{}, x;

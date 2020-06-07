@@ -445,6 +445,22 @@ class StoreOp(Op):
         state.set(av.indexes + indexes[1:], context.pop())
         context.pc += 1
 
+class DelOp(Op):
+    def __init__(self, n):
+        self.n = n                  # number of indexes
+
+    def __repr__(self):
+        return "Del " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.pop())
+        av = indexes[0]
+        assert isinstance(av, AddressValue), indexes
+        state.delete(av.indexes + indexes[1:])
+        context.pc += 1
+
 class AddressOp(Op):
     def __init__(self, n):
         self.n = n          # #indexes in LValue
@@ -2170,10 +2186,10 @@ class Context:
         d[indexes[0]] = v
         return DictValue(d)
 
-    def remove(self, record, indexes):
+    def doDelete(self, record, indexes):
         if len(indexes) > 1:
             d = record.d.copy()
-            d[indexes[0]] = self.remove(record.d[indexes[0]], indexes[1:])
+            d[indexes[0]] = self.doDelete(record.d[indexes[0]], indexes[1:])
         else:
             d = record.d.copy()
             del d[indexes[0]]
@@ -2183,7 +2199,7 @@ class Context:
         self.vars = self.update(self.vars, indexes, val)
 
     def delete(self, indexes):
-        self.vars = self.remove(self.vars, indexes)
+        self.vars = self.doDelete(self.vars, indexes)
 
     def push(self, val):
         assert val != None
@@ -2260,8 +2276,20 @@ class State:
         d[indexes[0]] = v
         return DictValue(d)
 
+    def doDelete(self, record, indexes):
+        if len(indexes) > 1:
+            d = record.d.copy()
+            d[indexes[0]] = self.doDelete(record.d[indexes[0]], indexes[1:])
+        else:
+            d = record.d.copy()
+            del d[indexes[0]]
+        return DictValue(d)
+
     def set(self, indexes, val):
         self.vars = self.update(self.vars, indexes, val)
+
+    def delete(self, indexes):
+        self.vars = self.doDelete(self.vars, indexes)
 
     def add(self, ctx):
         cnt = self.ctxbag.get(ctx)
