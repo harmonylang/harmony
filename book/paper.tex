@@ -1791,8 +1791,101 @@ call unlock():
 We have seen solutions to the reader/writer problem and the producer/consumer
 problem that do no busy-wait, but they are quite different.  It would be nice
 to have a general technique for all CCR problems.
-The ``Split Binary Semaphore'' is such a technique, originally proposed by
-Tony Hoare and popularized by Dijkstra.
+The ``Split Binary Semaphore'' (SBS) is such a technique, originally proposed by
+Tony Hoare and popularized by Edsger Dijkstra.
+SBS is an example of what one could call a ``baton-passing'' technique:
+when a process has the
+baton and is about to leave the critical region, giving up the baton, it first
+checks to see if there are any processes that are waiting and can now run.
+If so, it passes the baton directly to one of those processes.
+
+We will illustrate the technique using the reader/writer problem.
+Figure~\ref{fig:RWsplitsema} shows the
+\texttt{rlock\_acquire}, \texttt{rlock\_release},
+\texttt{wlock\_acquire}, and \texttt{wlock\_release} methods implemented using
+SBS.
+
+Step 1 is to enumerate all waiting conditions.  In the case of the reader/writer
+problem, there are two: a process that wants to read may have to wait for a
+writer to leave the critical regiion, while a process that wants to write may
+have to wait until all readers have left the critical region.  If there are $N$
+waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
+each waiting condition and an extra one that processes use when they first try
+to enter the critical region and do not yet know if they need to wait.
+We shall call this the \texttt{mutex}.
+
+An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
+must always be 1 if there is no process in the CCR and 0 if there is
+a process in the CCR.  As it were, these semaphores taken together are emulating a
+single binary semaphore.
+Initially, \texttt{mutex} is 1 and the other $N$ semaphores
+are all 0.  To maintain the invariant, each process alternates \texttt{P} and
+\texttt{V} operations, starting with \texttt{P~\&(mutex)} when it tries to
+enter the CCR, and ending with a \texttt{V} operation on one of the semaphores
+(yet to be determined).
+
+Another important part of the SBS technique is to keep careful track of the
+state.  In the case of the reader/writer lock, the state consists:
+\begin{itemize}
+\item \texttt{nreadersEntered}: the number of readers in the critical region;
+\item \texttt{nwritersEntered}: the number of writers in the critical region;
+\item \texttt{nreadersWaiting}: the number of readers waiting to enter;
+\item \texttt{nwritersWaiting}: the number of writers waiting to enter.
+\end{itemize}
+Each of the
+\texttt{rlock\_acquire}, \texttt{rlock\_release},
+\texttt{wlock\_acquire}, and \texttt{wlock\_release} methods must maintain
+this state.
+To wit, check out \texttt{rlock\_acquire},  It first checks to see if there
+are any writers.  If so, it increments \texttt{nreadersWaiting}.  If not,
+it increments \texttt{nreadersEntered}.
+Either way, it calls the method \texttt{V\_one()}.
+
+Note that the four
+reader/writer methods never call \texttt{V} on a specific binary semaphore:
+\texttt{V\_one()} is the baton passing function that selects which of the
+binary semaphores to increment.
+Method \texttt{V\_one()} first checks to see if there are any readers or
+writers waiting.  If there are readers waiting and there are no writers
+in the critical section, it increments the semaphore associated with
+readers waiting.  If there are writers waiing and there are no readers
+nor writers in the critical section, it increments the semaphore associated
+with writers waiting.  If both conditions hold, it could increment either
+one---it would not matter.  However, it can only increment one of the semaphores.
+If none of the conditions hold, the \texttt{V\_one} increments \texttt{mutex}.
+
+Let us return now to \texttt{rlock\_acquire}, in the case that the process
+found there is a writer in the critical region.  After \texttt{V\_one()} returns,
+it invokes calls \texttt{P~\&(rsema)}, blocking on the semaphore associated
+with waiting readers.  When later some other process passes the baton to
+it by incrementing \texttt{rsema}), it updates the state by decrementing
+\texttt{nreadersWaiting} and incrementing \texttt{nreadersEntered}.  It
+then invokes \texttt{V\_one()} one more time.
+
+As an example, consider the case where there is a writer in the critical
+section and there are two readers waiting.  Let us see what happens when
+the writer calls \texttt{wlock\_release}:
+\begin{enumerate}
+\item After procuring \texttt{mutex},
+the sum of the three semaphores is 0.  The writer then decrements
+\texttt{nwritersEntered} and calls \texttt{V\_one()}.
+\item \texttt{V\_one()} finds that there are no writers in the critical region
+and there are two readers waiting.  It therefore vacates \texttt{rsema}.
+The sum of the semaphores is now 1, because \texttt{rsema} is 1.  This
+guarantees that only a waiting reader, procuring \texttt{rsema}, can enter
+the critical region.
+\item When it does, the reader decrements \texttt{nreadersWaiting}
+from 2 to 1, and increments \texttt{nReadersEntered} from 0 to 1.
+The reader finally calls \texttt{V\_one()}.
+\item Again, \texttt{V\_one()} finds that there are no writers and
+that there are readers waiting, so again it vacates \texttt{rsema},
+passing the baton to the one remaining waiting reader.
+\item The reader decrements \texttt{nreadersWaiting} from 1 to 0 and
+increments \texttt{nReadersEntered} from 1 to 2.
+\item Finally, the reader  calls \texttt{V\_one()}.
+\texttt{V\_one()} does not find any processes waiting,
+and so it vacates \texttt{mutex}.
+\end{enumerate}
 
 \chapter{Starvation}
 
