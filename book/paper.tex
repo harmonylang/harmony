@@ -1268,6 +1268,7 @@ Allowing reads to proceed concurrently can significantly improve performance.
 What we want is a special kind of lock that allows either one writer
 or one or more readers to be in the critical section.  This is called
 a \emph{reader/writer lock}~\cite{courtois71}.
+[RVR: or was it David Parnas who first introduced them?]
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
@@ -1751,6 +1752,47 @@ The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
 \chapter{Split Binary Semaphores}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../RWbinsem.cxl}
+\end{code}
+\caption{Reader/Writer Lock implementation using Split Binary Semaphores.}
+\label{fig:RWsplitsema}
+\end{figure}
+
+Reader/writer locks and bounded buffers are both examples of what are
+sometimes called \emph{conditional critical regions} (CCRs).
+All critical regions are in fact conditional.  Even the basic one
+has the condition that a process can only enter if no other process
+is in the critical region.  Reader/writer locks refined that, loosening
+the restriction for improved performance.  In the case of bounded buffers,
+there were two CCRs.  First, a CCR
+to add an entry to the bounded buffer that can only be entered by one
+process and only if there is room in the bounded buffer (\texttt{produce}).
+Second, a CCR that can only be entered by one process and
+only if there is an item in the bounded buffer (\texttt{consume}).
+
+CCRs are easy to implement using busy waiting:
+\begin{code}
+\begin{verbatim}
+let blocked = True:
+    while blocked:
+        call lock();
+        if application-condition-holds:
+            blocked = False;
+        else:
+            call unlock():
+@cr: application-code;
+call unlock():
+\end{verbatim}
+\end{code}
+
+We have seen solutions to the reader/writer problem and the producer/consumer
+problem that do no busy-wait, but they are quite different.  It would be nice
+to have a general technique for all CCR problems.
+The ``Split Binary Semaphore'' is such a technique, originally proposed by
+Tony Hoare and popularized by Dijkstra.
 
 \chapter{Starvation}
 

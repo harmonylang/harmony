@@ -1,62 +1,46 @@
-# split binary semaphore solution to read/write locks
-
 import synch;
 
-def vHat():
+def V_one():
     if (nwritersEntered == 0) and (nreadersWaiting > 0):
-        nreadersWaiting = nreadersWaiting - 1;
         call V &(rsema);
     elif ((nreadersEntered + nwritersEntered) == 0) and (nwritersWaiting > 0):
-        nwritersWaiting = nwritersWaiting - 1;
         call V &(wsema);
     else:
         call V &(mutex);
     ;
 ;
-def process():
-    while choose({ False, True }):
-        if choose({ .reader, .writer }) == .reader:
-            call P &(mutex);
-            if nwritersEntered > 0:
-                nreadersWaiting = nreadersWaiting + 1;
-                call vHat();
-                call P &(rsema);
-            ;
-            nreadersEntered = nreadersEntered + 1;
-            call vHat();
-
-            @rcs: assert atLabel.wcs == dict{};
-
-            call P &(mutex);
-            nreadersEntered = nreadersEntered - 1;
-            call vHat();
-        else:
-            call P &(mutex);
-            if (nreadersEntered + nwritersEntered) > 0:
-                nwritersWaiting = nwritersWaiting + 1;
-                call vHat();
-                call P &(wsema);
-            ;
-            nwritersEntered = nwritersEntered + 1;
-            call vHat();
-
-            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                         (atLabel.rcs == dict{})
-                  ;
-
-            call P &(mutex);
-            nwritersEntered = nwritersEntered - 1;
-            call vHat();
-        ;
+def acquire_rlock():
+    call P &(mutex);
+    if nwritersEntered > 0:
+        nreadersWaiting = nreadersWaiting + 1;
+        call V_one();
+        call P &(rsema);
+        nreadersWaiting = nreadersWaiting - 1;
     ;
+    nreadersEntered = nreadersEntered + 1;
+    call V_one();
 ;
-mutex = Semaphore(1);
-rsema = Semaphore(0);
-wsema = Semaphore(0);
-nreadersEntered = 0;
-nreadersWaiting = 0;
-nwritersEntered = 0;
-nwritersWaiting = 0;
-for i in 1..4:
-    spawn process();
+def release_rlock():
+    call P &(mutex);
+    nreadersEntered = nreadersEntered - 1;
+    call V_one();
 ;
+def acquire_wlock():
+    call P &(mutex);
+    if (nreadersEntered + nwritersEntered) > 0:
+        nwritersWaiting = nwritersWaiting + 1;
+        call V_one();
+        call P &(wsema);
+        nwritersWaiting = nwritersWaiting - 1;
+    ;
+    nwritersEntered = nwritersEntered + 1;
+    call V_one();
+;
+def release_wlock():
+    call P &(mutex);
+    nwritersEntered = nwritersEntered - 1;
+    call V_one();
+;
+mutex = Semaphore(1); rsema = Semaphore(0); wsema = Semaphore(0);
+nreadersEntered = 0; nreadersWaiting = 0;
+nwritersEntered = 0; nwritersWaiting = 0;
