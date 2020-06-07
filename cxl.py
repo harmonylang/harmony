@@ -501,7 +501,7 @@ class DelVarOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.v
-        return "DelVar " + str(lexeme) + ", " + self.n
+        return "DelVar " + str(lexeme) + ", " + str(self.n)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.v
@@ -586,8 +586,12 @@ class FrameOp(Op):
         arg = context.pop()
         context.push(context.vars)
         if len(self.args) != 1:
-            assert isinstance(arg, DictValue)
-            assert len(self.args) == len(arg.d), (self.args, arg)
+            if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
+                print("Error: argument count mismatch", self.name,
+                    ": expected", len(self.args), "arguments but got",
+                        len(arg.d) if isinstance(arg, DictValue) else 1)
+                state.failure = True
+                return
         if self.args == []:
             context.vars = DictValue({ "result": novalue })
         elif len(self.args) == 1:

@@ -11,6 +11,10 @@ def bagCount(bag, elt):
         result = 0;
     ;
 ;
+def bagChoose(bag):
+    # TODO.  Assert that no elements are mapped to 0
+    result = choose(keys(bag));
+;
 def bagAdd(pb, elt):
     if elt in keys(^pb):
         (^pb)[elt] = (^pb)[elt] + 1;
