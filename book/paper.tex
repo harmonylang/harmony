@@ -1322,7 +1322,8 @@ critical section, any other reader is also able to enter.
 \end{figure}
 
 While correct, it is not considered a good solution.
-The solution is an example of what is called \emph{busy-waiting}:
+The solution is an example of what is called \emph{busy-waiting}
+(aka spin-waiting):
 processes spin in a loop until some desirable application-level condition is met.
 
 The astute reader might wonder if obtaining an ordinary lock itself is an
@@ -1994,5 +1995,45 @@ eventually have a chance to enter the critical section almost surely.
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}.
+A monitor is a special version of an object-oriented \emph{class}, comprising
+a set of variables and methods that operate on those variabled.
+There is a split binary semaphore associated with each such class.
+The \texttt{mutex} is hidden: it is automatically acquired when invoking a
+method and released upon exit.
+The other semaphores are called \emph{condition variables}.
+There are two operations on condition variables: \texttt{wait} and \texttt{signal}.
+If \texttt{c} is a pointer to a condition variable, then the semantics of the
+operations, in CXL, are as follows:
+
+\begin{code} 
+\begin{verbatim} 
+def wait(c):
+    call V &(mutex);
+    call P c;
+;
+def signal(c):
+    call V c;
+    call P &(mutex);
+;
+\end{verbatim} 
+\end{code} 
+
+\texttt{wait} releases the monitor mutex and blocks while trying
+to procure the condition variable (which is a semaphore that is 0 when
+\texttt{wait} is invoked).
+\texttt{signal} vacates the condition variable, passing the baton to
+a process trying to procure it, and then procures the monitor mutex.
+The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
+\texttt{V} operations alternate as prescribed by the SBS technique.
+Our implementations of reader/writer locks can be easily changed to
+use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
+\texttt{V}.
+
+In the late 70s, Xerox PARC developed a new programming language called
+Mesa.  Mesa introduced various important concepts to programming languages,
+including software exceptions and incremental compilation.  Mesa also
+incorporated a version of monitors.
+However, there are some subtle but important differences with Hoare-style
+monitors that make Mesa-style monitors quite unlike split binary semaphores.
 
 \end{document}
