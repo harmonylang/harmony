@@ -1835,18 +1835,18 @@ Another important part of the SBS technique is to keep careful track of the
 state.  In the case of the reader/writer lock, the state consists of the
 following shared variables:
 \begin{itemize}
-\item \texttt{nreadersEntered}: the number of readers in the critical section;
-\item \texttt{nwritersEntered}: the number of writers in the critical section;
-\item \texttt{nreadersWaiting}: the number of readers waiting to enter;
-\item \texttt{nwritersWaiting}: the number of writers waiting to enter.
+\item \texttt{r\_entered}: the number of readers in the critical section;
+\item \texttt{w\_entered}: the number of writers in the critical section;
+\item \texttt{r\_waiting}: the number of readers waiting to enter;
+\item \texttt{w\_waiting}: the number of writers waiting to enter.
 \end{itemize}
 Each of the
 \texttt{rlock\_acquire}, \texttt{rlock\_release},
 \texttt{wlock\_acquire}, and \texttt{wlock\_release} methods must maintain
 this state.
 To wit, check out \texttt{rlock\_acquire}.  It first checks to see if there
-are any writers.  If so, it increments \texttt{nreadersWaiting}.  If not,
-it increments \texttt{nreadersEntered}.
+are any writers.  If so, it increments \texttt{r\_waiting}.  If not,
+it increments \texttt{r\_entered}.
 
 Either way, it vacates one of the semaphores next.
 \texttt{V\_one()} is the baton passing function that selects which of the
@@ -1862,11 +1862,11 @@ If none of the conditions hold, \texttt{V\_one()} vacates \texttt{mutex}.
 
 Let us return now to \texttt{rlock\_acquire}, in the case that the process
 found there is a writer in the critical section, it vacates
-\texttt{mutex} and procures \texttt{rsema},
+\texttt{mutex} and procures \texttt{r\_sema},
 blocking on the semaphore associated
 with waiting readers.  When later some other process passes the baton to
-it by incrementing \texttt{rsema}), it updates the state by decrementing
-\texttt{nreadersWaiting} and incrementing \texttt{nreadersEntered}.  It
+it by incrementing \texttt{r\_sema}), it updates the state by decrementing
+\texttt{r\_waiting} and incrementing \texttt{r\_entered}.  It
 then invokes \texttt{V\_one()} one more time.
 
 As an example, consider the case where there is a writer in the critical
@@ -1875,20 +1875,20 @@ the writer calls \texttt{wlock\_release}:
 \begin{enumerate}
 \item After procuring \texttt{mutex},
 the sum of the three semaphores is 0.  The writer then decrements
-\texttt{nwritersEntered} and calls \texttt{V\_one()}.
+\texttt{w\_entered} and calls \texttt{V\_one()}.
 \item \texttt{V\_one()} finds that there are no writers in the critical section
-and there are two readers waiting.  It therefore vacates \texttt{rsema}.
-The sum of the semaphores is now 1, because \texttt{rsema} is 1.  This
-guarantees that only a waiting reader, procuring \texttt{rsema}, can enter
+and there are two readers waiting.  It therefore vacates \texttt{r\_sema}.
+The sum of the semaphores is now 1, because \texttt{r\_sema} is 1.  This
+guarantees that only a waiting reader, procuring \texttt{r\_sema}, can enter
 the critical section.
-\item When it does, the reader decrements \texttt{nreadersWaiting}
-from 2 to 1, and increments \texttt{nReadersEntered} from 0 to 1.
+\item When it does, the reader decrements \texttt{r\_waiting}
+from 2 to 1, and increments \texttt{r\_entered} from 0 to 1.
 The reader finally calls \texttt{V\_one()}.
 \item Again, \texttt{V\_one()} finds that there are no writers and
-that there are readers waiting, so again it vacates \texttt{rsema},
+that there are readers waiting, so again it vacates \texttt{r\_sema},
 passing the baton to the one remaining waiting reader.
-\item The remaining reader decrements \texttt{nreadersWaiting} from 1 to 0 and
-increments \texttt{nReadersEntered} from 1 to 2.
+\item The remaining reader decrements \texttt{r\_waiting} from 1 to 0 and
+increments \texttt{r\_entered} from 1 to 2.
 \item Finally, the remaining reader  calls \texttt{V\_one()}.
 \texttt{V\_one()} does not find any processes waiting,
 and so it vacates \texttt{mutex}.
@@ -1957,5 +1957,7 @@ the writer never had a chance.
 In this chapter, we will present a version of a reader/writer lock
 implementation that solves this type of starvation, but won't eliminate
 the type of starvation.
+
+\chapter{Monitors}
 
 \end{document}

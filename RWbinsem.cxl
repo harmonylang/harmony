@@ -1,46 +1,46 @@
 import synch;
 
 def V_one():
-    if (nwritersEntered == 0) and (nreadersWaiting > 0):
-        call V &(rsema);
-    elif ((nreadersEntered + nwritersEntered) == 0) and (nwritersWaiting > 0):
-        call V &(wsema);
+    if (w_entered == 0) and (r_waiting > 0):
+        call V &(r_sema);
+    elif ((r_entered + w_entered) == 0) and (w_waiting > 0):
+        call V &(w_sema);
     else:
         call V &(mutex);
     ;
 ;
 def acquire_rlock():
     call P &(mutex);
-    if nwritersEntered > 0:
-        nreadersWaiting = nreadersWaiting + 1;
+    if w_entered > 0:
+        r_waiting = r_waiting + 1;
         call V &(mutex);
-        call P &(rsema);
-        nreadersWaiting = nreadersWaiting - 1;
+        call P &(r_sema);
+        r_waiting = r_waiting - 1;
     ;
-    nreadersEntered = nreadersEntered + 1;
+    r_entered = r_entered + 1;
     call V_one();
 ;
 def release_rlock():
     call P &(mutex);
-    nreadersEntered = nreadersEntered - 1;
+    r_entered = r_entered - 1;
     call V_one();
 ;
 def acquire_wlock():
     call P &(mutex);
-    if (nreadersEntered + nwritersEntered) > 0:
-        nwritersWaiting = nwritersWaiting + 1;
+    if (r_entered + w_entered) > 0:
+        w_waiting = w_waiting + 1;
         call V &(mutex);
-        call P &(wsema);
-        nwritersWaiting = nwritersWaiting - 1;
+        call P &(w_sema);
+        w_waiting = w_waiting - 1;
     ;
-    nwritersEntered = nwritersEntered + 1;
+    w_entered = w_entered + 1;
     call V_one();
 ;
 def release_wlock():
     call P &(mutex);
-    nwritersEntered = nwritersEntered - 1;
+    w_entered = w_entered - 1;
     call V_one();
 ;
-mutex = Semaphore(1); rsema = Semaphore(0); wsema = Semaphore(0);
-nreadersEntered = 0; nreadersWaiting = 0;
-nwritersEntered = 0; nwritersWaiting = 0;
+mutex = Semaphore(1); r_sema = Semaphore(0); w_sema = Semaphore(0);
+r_entered = 0; r_waiting = 0;
+w_entered = 0; w_waiting = 0;

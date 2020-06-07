@@ -1,48 +1,48 @@
-def V_one_r():
-    if (nwritersEntered == 0) and (nwritersWaiting == 0) and (nreadersWaiting > 0):
-        call V &(rsema);
-    elif ((nreadersEntered + nwritersEntered) == 0) and (nwritersWaiting > 0):
-        call V &(wsema);
+def V_one_r():  # prefers reader next over writer next
+    if (w_entered == 0) and (w_waiting == 0) and (r_waiting > 0):
+        call V &(r_sema);
+    elif ((r_entered + w_entered) == 0) and (w_waiting > 0):
+        call V &(w_sema);
     else:
         call V &(mutex);
     ;
 ;
-def V_one_w():
-    if ((nreadersEntered + nwritersEntered) == 0) and (nwritersWaiting > 0):
-        call V &(wsema);
-    elif (nwritersEntered == 0) and (nwritersWaiting == 0) and (nreadersWaiting > 0):
-        call V &(rsema);
+def V_one_w():  # prefers writer next over reader next
+    if ((r_entered + w_entered) == 0) and (w_waiting > 0):
+        call V &(w_sema);
+    elif (w_entered == 0) and (w_waiting == 0) and (r_waiting > 0):
+        call V &(r_sema);
     else:
         call V &(mutex);
     ;
 ;
 def acquire_rlock():
     call P &(mutex);
-    if (nwritersEntered > 0) or (nwritersWaiting > 0):
-        nreadersWaiting = nreadersWaiting + 1;
-        call V &(mutex); call P &(rsema);
-        nreadersWaiting = nreadersWaiting - 1;
+    if (w_entered > 0) or (w_waiting > 0):
+        r_waiting = r_waiting + 1;
+        call V &(mutex); call P &(r_sema);
+        r_waiting = r_waiting - 1;
     ;
-    nreadersEntered = nreadersEntered + 1;
+    r_entered = r_entered + 1;
     call V_one_r();     # only other readers can enter
 ;
 def release_rlock():
     call P &(mutex);
-    nreadersEntered = nreadersEntered - 1;
+    r_entered = r_entered - 1;
     call V_one_w();     # other writers have right of way
 ;
 def acquire_wlock():
     call P &(mutex);
-    if (nreadersEntered + nwritersEntered) > 0:
-        nwritersWaiting = nwritersWaiting + 1;
-        call V &(mutex); call P &(wsema);
-        nwritersWaiting = nwritersWaiting - 1;
+    if (r_entered + w_entered) > 0:
+        w_waiting = w_waiting + 1;
+        call V &(mutex); call P &(w_sema);
+        w_waiting = w_waiting - 1;
     ;
-    nwritersEntered = nwritersEntered + 1;
+    w_entered = w_entered + 1;
     call V &(mutex);    # no other process can enter
 ;
 def release_wlock():
     call P &(mutex);
-    nwritersEntered = nwritersEntered - 1;
+    w_entered = w_entered - 1;
     call V_one_r();     # other readers have right of way
 ;
