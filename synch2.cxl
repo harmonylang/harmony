@@ -1,0 +1,48 @@
+def tas(lk):
+    atomic:
+        result = ^lk;
+        ^lk = True;
+    ;
+;
+def Lock():
+    result = False;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk = False;
+;
+def Condition(lk):
+    result = lk;
+;
+def wait(c):
+    call unlock(^c);
+    call lock(^c);
+;
+def notify(c):
+;
+def notifyAll(c):
+;
+def Semaphore(cnt):
+    result = cnt;
+;
+def P(sema):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (^sema) > 0:
+                    ^sema = (^sema) - 1;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        ^sema = (^sema) + 1;
+    ;
+;

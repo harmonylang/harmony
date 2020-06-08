@@ -2006,7 +2006,7 @@ If \texttt{c} is a pointer to a condition variable, then the semantics of the
 operations, in CXL, are as follows:
 
 \begin{code} 
-\begin{verbatim} 
+\begin{Verbatim}[xleftmargin=5mm,numbers=left]
 def wait(c):
     call V &(mutex);
     call P c;
@@ -2015,7 +2015,7 @@ def signal(c):
     call V c;
     call P &(mutex);
 ;
-\end{verbatim} 
+\end{Verbatim} 
 \end{code} 
 
 \texttt{wait} releases the monitor lock and blocks while trying
@@ -2057,10 +2057,10 @@ assuming there even was such a process $q$.
 \caption{High-level depictions of Hoare and Mesa monitors.  The hall is
 where processes wait to enter the bathroom (the critical section).  The
 bedrooms illustrate two condition variables.  The circles are processes.}
-\label{fig:pc}
+\label{fig:monitors}
 \end{figure}
 
-Figure~\ref{fig:pc} illustrates the difference with a drawing.
+Figure~\ref{fig:monitors} illustrates the difference with a drawing.
 Here a bathroom represents the critical section, allowing only one
 process at a time say.  The bedrooms represent condition variables.
 There is some condition associated with each bedroom.
@@ -2106,17 +2106,19 @@ programming languages including C, Java, and Python.
 
 \begin{figure}
 \begin{code}
-\begin{verbatim}
+\begin{Verbatim}[xleftmargin=5mm,numbers=left]
+import bag;
+
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: {} };
+    result = dict{ .lock: lk, .waiters: bagEmpty() };
 ;
 def wait(c):
-    let lk = (^c).lock, blocked = True:
-        (^c).waiters = (^c).waiters + { nametag() };
+    let lk = (^c).lock, blocked = True, cnt = bagCount((^c).waiters, nametag()):
+        call bagAdd(&((^c).waiters), nametag());
         ^lk = False;
         while blocked:
             atomic:
-                if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
+                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
                     ^lk = True;
                     blocked = False;
                 ;
@@ -2125,16 +2127,18 @@ def wait(c):
     ;
 ;
 def notify(c):
-    let waiters = (^c).waiters:
-        if waiters != {}:
-            (^c).waiters = waiters - { choose(waiters) };
+    atomic:
+        let waiters = (^c).waiters:
+            if waiters != bagEmpty():
+                call bagRemove(&((^c).waiters), bagChoose(waiters));
+            ;
         ;
     ;
 ;
 def notifyAll(c):
-    (^c).waiters = {};
+    (^c).waiters = bagEmpty();
 ;
-\end{verbatim}
+\end{Verbatim}
 \end{code}
 \caption{Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:cv}

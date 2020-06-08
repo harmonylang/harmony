@@ -1,5 +1,3 @@
-import bag;
-
 def tas(lk):
     atomic:
         result = ^lk;
@@ -18,19 +16,18 @@ def unlock(lk):
     ^lk = False;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: bagEmpty() };
+    result = dict{ .lock: lk, .waiters: {} };
 ;
 def wait(c):
-    let lk = (), blocked = True, cnt = 0:
+    let lk = (), blocked = True:
         atomic:
             lk = (^c).lock;
-            cnt = bagCount((^c).waiters, nametag());
-            call bagAdd(&((^c).waiters), nametag());
+            (^c).waiters = (^c).waiters + { nametag() };
             ^lk = False;
         ;
         while blocked:
             atomic:
-                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
+                if (not (^lk)) and (not ((nametag()) in (^c).waiters)):
                     ^lk = True;
                     blocked = False;
                 ;
@@ -41,14 +38,14 @@ def wait(c):
 def notify(c):
     atomic:
         let waiters = (^c).waiters:
-            if waiters != bagEmpty():
-                call bagRemove(&((^c).waiters), bagChoose(waiters));
+            if waiters != {}:
+                (^c).waiters = waiters - { choose(waiters) };
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (^c).waiters = bagEmpty();
+    (^c).waiters = {};
 ;
 def Semaphore(cnt):
     result = cnt;
