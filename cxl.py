@@ -465,9 +465,15 @@ class StoreOp(Op):
         for i in range(self.n):
             indexes.append(context.pop())
         av = indexes[0]
+        # TODO.  May need to produce a nicer error message for this:
         assert isinstance(av, AddressValue), indexes
-        state.set(av.indexes + indexes[1:], context.pop())
-        context.pc += 1
+
+        if not state.initializing and (av.indexes[0] not in state.vars.d):
+            print("pc =", context.pc, "Error: using an uninitialized shared variable", av.indexes[0])
+            state.failure = True
+        else:
+            state.set(av.indexes + indexes[1:], context.pop())
+            context.pc += 1
 
 class DelOp(Op):
     def __init__(self, n):
@@ -2893,6 +2899,9 @@ def run(code, labels, map, step, blockflag):
             if hs in desirable:
                 desirable.remove(hs)
         assert desirable == set(), desirable
+
+    # for (s, n) in visited.items():
+    #    print(">>>", s)
 
     if not issues_found:
         print("no issues found")

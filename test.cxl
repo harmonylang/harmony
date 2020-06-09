@@ -1,1 +1,5 @@
-assert 3 not < 2;
+def f():
+    x = 3;
+;
+x = 2;
+spawn f();
