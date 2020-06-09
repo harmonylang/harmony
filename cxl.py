@@ -2728,7 +2728,7 @@ def doCompile(filenames, consts):
     optimize(code)
     return (code, scope)
 
-def run(code, labels, map, step, blockflag):
+def run(code, labels, map, step, blockflag, printStates):
     state = State(code, labels)
     ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
@@ -2900,8 +2900,9 @@ def run(code, labels, map, step, blockflag):
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
-    # for (s, n) in visited.items():
-    #    print(">>>", s)
+    if printStates:
+        for (s, n) in visited.items():
+           print(">>>", s)
 
     if not issues_found:
         print("no issues found")
@@ -2916,6 +2917,7 @@ def usage():
     print("    -b: blocking execution")
     print("    -cname=value: define a constant")
     print("    -h: help")
+    print("    -s: list all states")
     exit(1)
 
 def main():
@@ -2926,9 +2928,10 @@ def main():
     consts = []
     printCode = False
     blockflag = False
+    printStates = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "abc:h", ["const=", "help"])
+                        "abc:hs", ["const=", "help"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -2941,6 +2944,8 @@ def main():
             consts.append(a)
         elif o in { "-h", "--help" }:
             usage()
+        elif o  == "-s":
+            printStates = True
         else:
             assert False, "unhandled option"
 
@@ -2974,7 +2979,7 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    run(code, scope.labels, mpc, spc, blockflag)
+    run(code, scope.labels, mpc, spc, blockflag, printStates)
 
 if __name__ == "__main__":
     main()
