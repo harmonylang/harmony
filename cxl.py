@@ -69,6 +69,7 @@ def isreserved(s):
         "False",
         "fun",
         "for",
+        "go",
         "if",
         "import",
         "in",
@@ -82,6 +83,7 @@ def isreserved(s):
         "or",
         "pass",
         "spawn",
+        "stop",
         "True",
         "while"
     ]
@@ -91,7 +93,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
+    return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "go",
                         "min", "max", "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
@@ -228,7 +230,8 @@ def keyValue(v):
     return v.key()
 
 class Value:
-    pass
+    def __str__(self):
+        return self.__repr__()
 
 class PcValue(Value):
     def __init__(self, pc):
@@ -462,6 +465,27 @@ class DelOp(Op):
         assert isinstance(av, AddressValue), indexes
         state.delete(av.indexes + indexes[1:])
         context.pc += 1
+
+class StopOp(Op):
+    def __init__(self, n):
+        self.n = n                  # number of indexes
+
+    def __repr__(self):
+        return "Stop " + str(self.n)
+
+    def eval(self, state, context):
+        indexes = []
+        for i in range(self.n):
+            indexes.append(context.pop())
+        av = indexes[0]
+        assert isinstance(av, AddressValue), indexes
+
+        # First update the context before saving it
+        context.pc += 1
+        context.stopped = True
+
+        # Save the context
+        state.stop(av.indexes + indexes[1:], context)
 
 class AddressOp(Op):
     def __init__(self, n):
@@ -851,6 +875,13 @@ class NaryOp(Op):
                 if not self.checktype(state, sa, isinstance(e, DictValue)):
                     return
                 context.push(sum(e.d.values()))
+            elif op == "go":
+                if not self.checktype(state, sa, isinstance(e, Context)):
+                    return
+                ec = e.copy()
+                ec.stopped = False
+                state.add(ec)
+                context.push(novalue)
             else:
                 assert False, self
         elif self.n == 2:
@@ -1633,6 +1664,32 @@ class DelAST(AST):
             lv.expr.compile(scope, code)
             code.append(DelOp(n))
 
+class StopAST(AST):
+    def __init__(self, lv):
+        self.lv = lv
+
+    def __repr__(self):
+        return "Stop " + str(self.lv)
+
+    def compile(self, scope, code):
+        assert isinstance(self.lv, LValueAST)
+        n = len(self.lv.indexes)
+        for i in range(1, n):
+            self.lv.indexes[n - i].compile(scope, code)
+        lv = self.lv.indexes[0]
+        if isinstance(lv, NameAST):
+            tv = scope.lookup(lv.name)
+            if tv == None:
+                code.append(NameOp(lv.name))
+                code.append(StopOp(n))
+            else:
+                print("Error: Can't store state in process variable")
+                sys.exit(1)
+        else:
+            assert isinstance(lv, PointerAST), lv
+            lv.expr.compile(scope, code)
+            code.append(StopOp(n))
+
 class AddressAST(AST):
     def __init__(self, lv):
         self.lv = lv
@@ -2076,6 +2133,9 @@ class StatementRule(Rule):
         if lexeme == "del":
             (ast, t) = LValueRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
+        if lexeme == "stop":
+            (ast, t) = LValueRule().parse(t[1:])
+            return (StopAST(ast), self.skip(token, t))
         if lexeme == "def" or lexeme == "fun":
             map = lexeme == "fun"
             name = t[1]
@@ -2139,7 +2199,7 @@ class StatementRule(Rule):
             return (AssertAST(token, cond, expr), self.skip(token, t))
         return AssignmentRule().parse(t)
 
-class Context:
+class Context(Value):
     def __init__(self, nametag, pc, end):
         self.nametag = nametag
         self.pc = pc
@@ -2147,14 +2207,17 @@ class Context:
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
         self.vars = novalue
-        self.pid = None      # assigned lazily
+        self.stopped = False
 
     def __repr__(self):
         return "Context(" + str(self.nametag) + ", " + str(self.pc) + ")"
 
+    def __str__(self):
+        return self.__repr__()
+
     def __hash__(self):
         h = (self.nametag, self.pc, self.end,
-                    self.atomic, self.vars, self.pid).__hash__()
+                    self.atomic, self.vars, self.stopped).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -2168,8 +2231,7 @@ class Context:
             return False
         if self.atomic != other.atomic:
             return False
-        # !!!
-        if self.pid != other.pid:
+        if self.stopped != other.stopped:
             return False
         assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
@@ -2179,7 +2241,7 @@ class Context:
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.vars = self.vars
-        c.pid = self.pid
+        c.stopped = self.stopped
         return c
 
     def get(self, var):
@@ -2223,6 +2285,9 @@ class Context:
 
     def pop(self):
         return self.stack.pop()
+
+    def key(self):
+        return (100, self.__hash__())
 
 class State:
     def __init__(self, code, labels):
@@ -2293,12 +2358,28 @@ class State:
         return DictValue(d)
 
     def doDelete(self, record, indexes):
+        d = record.d.copy()
         if len(indexes) > 1:
-            d = record.d.copy()
             d[indexes[0]] = self.doDelete(record.d[indexes[0]], indexes[1:])
         else:
-            d = record.d.copy()
             del d[indexes[0]]
+        return DictValue(d)
+
+    def doStop(self, record, indexes, ctx):
+        d = record.d.copy()
+        if len(indexes) > 1:
+            d[indexes[0]] = self.doStop(record.d[indexes[0]], indexes[1:], ctx)
+        else:
+            # TODO.  Should be print + set state.failure
+            # TODO.  Make ctx a CXL value
+            bag = d[indexes[0]]
+            assert(isinstance(bag, DictValue))
+            d2 = bag.d.copy()
+            if ctx in d2:
+                d2[ctx] += 1
+            else:
+                d2[ctx] = 1
+            d[indexes[0]] = DictValue(d2)
         return DictValue(d)
 
     def set(self, indexes, val):
@@ -2306,6 +2387,9 @@ class State:
 
     def delete(self, indexes):
         self.vars = self.doDelete(self.vars, indexes)
+
+    def stop(self, indexes, ctx):
+        self.vars = self.doStop(self.vars, indexes, ctx)
 
     def add(self, ctx):
         cnt = self.ctxbag.get(ctx)
@@ -2488,7 +2572,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
                 sc.failure = True
 
         # TODO.  Checking for end twice in this loop seems wrong
-        if sc.failure or cc.pc == cc.end:
+        if sc.failure or cc.pc == cc.end or cc.stopped:
             break
 
         # See if this process is making a nondeterministic choice.
@@ -2527,7 +2611,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Put the resulting context into the bag unless it's done
     if cc.pc == cc.end:
         sc.initializing = False     # initializing ends when __init__ finishes
-    else:
+    elif not cc.stopped:
         sc.add(cc)
 
     length = node.len if samectx else (node.len + 1)

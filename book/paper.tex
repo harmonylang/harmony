@@ -2127,11 +2127,9 @@ def wait(c):
     ;
 ;
 def notify(c):
-    atomic:
-        let waiters = (^c).waiters:
-            if waiters != bagEmpty():
-                call bagRemove(&((^c).waiters), bagChoose(waiters));
-            ;
+    let waiters = (^c).waiters:
+        if waiters != bagEmpty():
+            call bagRemove(&((^c).waiters), bagChoose(waiters));
         ;
     ;
 ;
