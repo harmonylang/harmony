@@ -1,0 +1,10 @@
+import synch5;
+
+def process(lk):
+    call lock(lk);
+    call unlock(lk);
+;
+mylock = Lock();
+for i in 1..2:
+    spawn process &(mylock), i;
+;
