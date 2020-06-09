@@ -93,7 +93,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "go",
+    return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
                         "min", "max", "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
@@ -378,6 +378,25 @@ class DupOp(Op):
         context.push(v)
         context.push(v)
         context.pc += 1
+
+class GoOp(Op):
+    def __repr__(self):
+        return "Go"
+
+    def eval(self, state, context):
+        ctx = context.pop()
+        if not isinstance(ctx, Context):
+            print()
+            print("pc =", context.pc, "Error: expected context value, got", ctx)
+            print("CTX", context.stack)
+            state.failure = True
+        else:
+            result = context.pop();
+            copy = ctx.copy()
+            copy.push(result)
+            copy.stopped = False
+            state.add(copy)
+            context.pc += 1
 
 class LoadVarOp(Op):
     def __init__(self, name):
@@ -875,13 +894,6 @@ class NaryOp(Op):
                 if not self.checktype(state, sa, isinstance(e, DictValue)):
                     return
                 context.push(sum(e.d.values()))
-            elif op == "go":
-                if not self.checktype(state, sa, isinstance(e, Context)):
-                    return
-                ec = e.copy()
-                ec.stopped = False
-                state.add(ec)
-                context.push(novalue)
             else:
                 assert False, self
         elif self.n == 2:
@@ -1582,6 +1594,9 @@ class ExpressionRule(Rule):
     def parse(self, t):
         func = t[0]
         (lexeme, file, line, column) = func
+        if lexeme == "stop":
+            (ast, t) = LValueRule().parse(t[1:])
+            return (StopAST(ast), t)
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
             if lexeme == "^":
@@ -1923,6 +1938,19 @@ class SpawnAST(AST):
         self.method.compile(scope, code)
         code.append(SpawnOp())
 
+class GoAST(AST):
+    def __init__(self, ctx, result):
+        self.ctx = ctx
+        self.result = result
+
+    def __repr__(self):
+        return "Spawn(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
+
+    def compile(self, scope, code):
+        self.result.compile(scope, code)
+        self.ctx.compile(scope, code)
+        code.append(GoOp())
+
 class ImportAST(AST):
     def __init__(self, module):
         self.module = module
@@ -2133,9 +2161,6 @@ class StatementRule(Rule):
         if lexeme == "del":
             (ast, t) = LValueRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
-        if lexeme == "stop":
-            (ast, t) = LValueRule().parse(t[1:])
-            return (StopAST(ast), self.skip(token, t))
         if lexeme == "def" or lexeme == "fun":
             map = lexeme == "fun"
             name = t[1]
@@ -2182,6 +2207,12 @@ class StatementRule(Rule):
                 tag = None
             self.expect("spawn statement", lexeme == ";", t[0], "expected semicolon")
             return (SpawnAST(tag, method, arg), self.skip(token, t))
+        if lexeme == "go":
+            (ctx, t) = BasicExpressionRule().parse(t[1:])
+            (result, t) = BasicExpressionRule().parse(t)
+            (lexeme, file, line, column) = t[0]
+            self.expect("go statement", lexeme == ";", t[0], "expected semicolon")
+            return (GoAST(ctx, result), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))
         if lexeme == "import":
