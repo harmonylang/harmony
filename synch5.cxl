@@ -1,0 +1,74 @@
+import list;
+
+def Lock():
+    result = dict{ .locked: False, .blocked: [] };
+;
+def lock(lk):
+    atomic:
+        if (^lk).locked:
+            call stop (^lk).blocked;
+            assert (^lk).locked;
+        else:
+            (^lk).locked = True;
+        ;
+    ;
+;
+def unlock(lk):
+    atomic:
+        if (^lk).blocked == []:
+            (^lk).locked = False;
+        else:
+            let pick = (^lk).blocked[0]:
+                (^lk).blocked = tail((^lk).blocked);
+                go pick();
+            ;
+        ;
+    ;
+;
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: [] };
+;
+def wait(c):
+    atomic:
+        call unlock((^c).lock);
+        call stop (^c).waiters;
+    ;
+;
+def notify(c):
+    atomic:
+        let lk = (^c).lock, waiters = (^c).waiters:
+            if waiters != []:
+                (^lk).blocked = (^lk).blocked + [waiters[0],];
+                (^c).waiters = tail(waiters);
+            ;
+        ;
+    ;
+;
+def notifyAll(c):
+    atomic:
+        let lk = (^c).lock, waiters = (^c).waiters:
+            (^lk).blocked = (^lk).blocked + waiters;
+            (^c).waiters = [];
+        ;
+    ;
+;
+def Semaphore(cnt):
+    result = cnt;
+;
+def P(sema):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (^sema) > 0:
+                    ^sema = (^sema) - 1;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        ^sema = (^sema) + 1;
+    ;
+;
