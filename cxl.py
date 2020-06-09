@@ -449,7 +449,7 @@ class LoadOp(Op):
         for i in range(self.n):
             indexes.append(context.pop())
         av = indexes[0]
-        assert isinstance(av, AddressValue), indexes
+        assert isinstance(av, AddressValue), (context.pc, indexes, state)
         context.push(state.iget(av.indexes + indexes[1:]))
         context.pc += 1
 
@@ -2403,13 +2403,10 @@ class State:
         else:
             # TODO.  Should be print + set state.failure
             # TODO.  Make ctx a CXL value
-            bag = d[indexes[0]]
-            assert(isinstance(bag, DictValue))
-            d2 = bag.d.copy()
-            if ctx in d2:
-                d2[ctx] += 1
-            else:
-                d2[ctx] = 1
+            list = d[indexes[0]]
+            assert(isinstance(list, DictValue))
+            d2 = list.d.copy()
+            d2[len(d2)] = ctx
             d[indexes[0]] = DictValue(d2)
         return DictValue(d)
 
