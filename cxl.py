@@ -2561,7 +2561,7 @@ def optimize(code):
 
 # These operations cause global state changes
 globops = [
-    AtomicIncOp, LoadOp, SpawnOp, StoreOp
+    AtomicIncOp, GoOp, LoadOp, SpawnOp, StoreOp
 ]
 
 lasttime = 0

@@ -1,4 +1,4 @@
-import synch5;
+import synch;
 
 def process(lk):
     call lock(lk);
@@ -6,5 +6,5 @@ def process(lk):
 ;
 mylock = Lock();
 for i in 1..2:
-    spawn process &(mylock), i;
+    spawn process &(mylock);
 ;
