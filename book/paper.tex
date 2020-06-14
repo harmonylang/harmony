@@ -1463,14 +1463,15 @@ Allowing reads to proceed concurrently can significantly improve performance.
 What we want is a special kind of lock that allows either one writer
 or one or more readers to be in the critical section.  This is called
 a \emph{reader/writer lock}~\cite{courtois71}.
-[RVR: or was it David Parnas who first introduced them?]
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
 Figure~\ref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
-The lock is used to protect access to those counters.
+We will call the lock the \emph{mutex} to distinguish it clearly from
+the reader/writer lock that we are implementing.
+The mutex is used to protect shared access to the counters.
 The program shows a process that executes in a loop.
 Each time, it decides whether to read or write.
 The critical section is spread between two labels:
@@ -1519,30 +1520,27 @@ While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
 (aka spin-waiting):
 processes spin in a loop until some desirable application-level condition is met.
-
-The astute reader might wonder if obtaining an ordinary lock itself is an
+The astute reader might wonder if obtaining the mutex itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
-of \texttt{lock()} spins in a loop until the lock is available
+of \texttt{lock()} spins in a loop until the mutex is available
 (see Figure~\ref{fig:spinlocks}).
-In most operating systems and programming language runtimes, however,
+
+However, there is a big difference.  As we pointed out, the processes that
+are waiting for a spinlock are \emph{blocked}: they are in an infinite loop
+in which they do not change the state.
+The processes waiting for a reader/writer lock do change the state while
+in the infinite loop: they acquire the mutex and release it.
+
+In most operating systems and programming language runtimes,
 when a process acquires a lock, the process is placed on a scheduling
 queue and stops using CPU cycles until the lock becomes available.
-Moreover, if there are multiple processes waiting for a lock, there
-is a scheduler that decides which of the processes gets the lock.
-Busy waiting disables all this.
-
-But even when multiple processes each run on their own core, the solution
-is inefficient.  After all, when the lock becomes available, the process
-has to check other variables to see if it can continue.  In our case,
-the process may have to read \texttt{nreaders} and/or \texttt{nwriters}
-to decide if it can go on or has to try again, involving releasing
-the lock and re-acquiring it.
-
+CXL supports this with the \texttt{synchS} module.
+Busy waiting disables all this: even when using the \texttt{synchS}
+module, readers and writers only get suspended temporarily in case
+there is contention for the mutex.
 A process trying to obtain a read or write lock in
-Figure~\ref{fig:rwbusy} has to obtain a spinlock just to check
-if the read or write lock is available.  So even when the read or write
-lock is not available, the process ends up updating the spinlock and
-therefore the shared memory.
+Figure~\ref{fig:rwbusy} has to obtain the mutex repeatedly
+until the read or write lock is available.
 
 Thus, it is considered ok to have processes be blocked while waiting
 for application-specific conditions, but not for them to
@@ -1579,7 +1577,7 @@ all processes are blocked.
 
 Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
-It uses two locks: \texttt{rwlock} is used by both readers and writers,
+It uses two ordinary locks: \texttt{rwlock} is used by both readers and writers,
 while \texttt{rlock} is only used by readers.
 \texttt{rwlock} is held either when readers are at label \texttt{@rcs}
 or when a writer is at label \texttt{@wcs}.

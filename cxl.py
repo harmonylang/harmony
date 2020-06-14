@@ -1974,7 +1974,6 @@ class ImportAST(AST):
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.module
-        print("IMPORT", lexeme, modules)
         if lexeme in modules:
             lexeme = modules[lexeme]
         filename = lexeme + ".cxl"
