@@ -1279,6 +1279,9 @@ def tas(lk):
         ^lk = True;
     ;
 ;
+def Lock():
+    result = False;
+;
 def lock(lk):
     while tas(lk):
         pass;
@@ -1287,13 +1290,10 @@ def lock(lk):
 def unlock(lk):
     ^lk = False;
 ;
-def Lock():
-    result = False;
-;
 \end{verbatim}
 \end{code}
 \caption{The \texttt{Lock} interface in the \texttt{synch} module.}
-\label{fig:locks}
+\label{fig:spinlocks}
 \end{figure}
 
 \begin{figure}
@@ -1307,7 +1307,7 @@ def Lock():
 Locks are probably the most popular and basic form of synchronization
 in concurrent programs.  For this reason, CXL has a module called
 \texttt{synch} that includes support for locks.
-Figure~\ref{fig:locks} shows how they are implemented, and
+Figure~\ref{fig:spinlocks} shows how they are implemented, and
 Figure~\ref{fig:incfixed} gives an example of how they may be used,
 in this case to fix the program of Figure~\ref{fig:inc}.
 Notice that the module completely hides the implementation of the
@@ -1315,6 +1315,119 @@ lock.
 The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
+
+We call a process \emph{blocked} in a state if the process is in
+an \emph{infinite loop} in which the process does not update the
+shared memory.
+A process trying to
+acquire a test-and-set spinlock held by another process is a good example
+of a process being blocked: the process only reads the shared memory
+but does not change it.
+The only way to break out of the infinite loop is if another process
+changes the shared memory.
+The \texttt{while} loop in Peterson's algorithm, in case its condition
+does not hold, is another example of a process being blocked.
+
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+import list;
+
+def Lock():
+    result = dict{ .locked: False, .suspended: [] };
+;
+def lock(lk):
+    atomic:
+        if (^lk).locked:
+            call stop (^lk).suspended;
+            assert (^lk).locked;
+        else:
+            (^lk).locked = True;
+        ;
+    ;
+;
+def unlock(lk):
+    atomic:
+        if (^lk).suspended == []:
+            (^lk).locked = False;
+        else:
+            go (head((^lk).suspended)) ();
+            (^lk).suspended = tail((^lk).suspended);
+        ;
+    ;
+;
+\end{verbatim}
+\end{code}
+\caption{The \texttt{Lock} interface using suspension.}
+\label{fig:suspension}
+\end{figure}
+
+In most operating systems, processes are virtual and can be suspended
+until some condition changes.  For example, a process can be suspended
+until the lock is available to it.
+In CXL, a process can suspend itself and save its context in a
+list.  Recall that the context of a process consists of its name tag,
+its program counter, and the contents of its register and stack.
+A context is a regular CXL value.
+The syntax of the expression is as follows:
+
+\begin{code}
+\begin{verbatim}
+stop L
+\end{verbatim}
+\end{code}
+
+Here \texttt{L} is a shared list.
+Another process can revive the process using the \texttt{go} stateent:
+
+\begin{code}
+\begin{verbatim}
+go C R
+\end{verbatim}
+\end{code}
+
+Here \texttt{C} is a context and \texttt{R} is a CXL value.
+It causes a process with context \texttt{C} to be added to the state that has
+just executed the \texttt{stop} expression.  The \texttt{stop} expression
+returns the value \texttt{R}.
+
+There is a second version of the \texttt{synch} module that uses suspension
+instead of spinlocks.
+Figure~\ref{fig:suspension} shows the same \texttt{Lock} interface implemented
+using suspension.
+A \texttt{Lock} maintains both a boolean indicating whether the lock is taken,
+and a list of contexts of processes that want to acquire the lock.
+\texttt{lock} sets the lock if available, or suspends itself if not.
+Note that \texttt{stop} is called within an \texttt{atomic} statement---this is
+the only exception to an atomic statement running to completion.  While the
+process is running no other processes can run, but when it suspends itself
+it allows other processes to run.
+
+\texttt{unlock} checks to see if any processes are waiting to get the lock.
+If so, it uses the \texttt{head} and \texttt{tail}
+methods from the \texttt{list} module to resume the first process that got
+suspend and to remove its context from the list.
+Selecting the first process is a design choice.  Another implementation could
+have picked the last one, and yet another implementation could have used
+\texttt{choose} to pick an arbitrary one.  Selecting the first is a common
+choice in lock implementations as it prevents \emph{starvation}: every process
+gets a chance to obtain the lock (assuming every process eventually releases
+it).  Chapter~\ref{ch:starvation} will talk more about starvation.
+
+CXL allows you to select which version of the \texttt{synch} module you would
+like to use with the \texttt{-m} flag.  For example,
+
+\begin{code}
+\begin{verbatim}
+cxl -m synch=synchS x.cxl
+\end{verbatim}
+\end{code}
+
+runs the file \texttt{x.cxl} using the Suspension version of the \texttt{synch} module.
+You will find that using the \texttt{synchS} module often leads to searching a
+significantly larger search space than using the \texttt{synch} module.
+Part of the reason is that the \texttt{synchS} module keeps track of the order
+in which processes wait for a lock.
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 
@@ -1410,7 +1523,7 @@ processes spin in a loop until some desirable application-level condition is met
 The astute reader might wonder if obtaining an ordinary lock itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the lock is available
-(see Figure~\ref{fig:locks}).
+(see Figure~\ref{fig:spinlocks}).
 In most operating systems and programming language runtimes, however,
 when a process acquires a lock, the process is placed on a scheduling
 queue and stops using CPU cycles until the lock becomes available.
@@ -1425,14 +1538,8 @@ the process may have to read \texttt{nreaders} and/or \texttt{nwriters}
 to decide if it can go on or has to try again, involving releasing
 the lock and re-acquiring it.
 
-We call a process \emph{blocked} in a state if steps by that process
-do not change the shared memory in that state.  A process trying to
-acquire a test-and-set spinlock held by another process is a good example
-of a process being blocked: the process only reads the shared memory
-but does not change it.
-
-However, a process trying to obtain a read or write lock in
-Figure~\ref{fig:rwbusy} has to actually obtain a spinlock just to check
+A process trying to obtain a read or write lock in
+Figure~\ref{fig:rwbusy} has to obtain a spinlock just to check
 if the read or write lock is available.  So even when the read or write
 lock is not available, the process ends up updating the spinlock and
 therefore the shared memory.
@@ -1983,6 +2090,7 @@ and so it vacates \texttt{mutex}.
 \end{quote}
 
 \chapter{Starvation}
+\label{ch:starvation}
 
 \begin{figure}
 \begin{code}

@@ -1,12 +1,12 @@
 import list;
 
 def Lock():
-    result = dict{ .locked: False, .blocked: [] };
+    result = dict{ .locked: False, .suspended: [] };
 ;
 def lock(lk):
     atomic:
         if (^lk).locked:
-            call stop (^lk).blocked;
+            call stop (^lk).suspended;
             assert (^lk).locked;
         else:
             (^lk).locked = True;
@@ -15,13 +15,11 @@ def lock(lk):
 ;
 def unlock(lk):
     atomic:
-        if (^lk).blocked == []:
+        if (^lk).suspended == []:
             (^lk).locked = False;
         else:
-            let pick = (^lk).blocked[0]:
-                (^lk).blocked = tail((^lk).blocked);
-                go pick();
-            ;
+            go (head((^lk).suspended)) ();
+            (^lk).suspended = tail((^lk).suspended);
         ;
     ;
 ;

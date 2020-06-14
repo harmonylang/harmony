@@ -1,4 +1,4 @@
-import synch5;
+import synch;
 
 def process(lk):
     call lock(lk);

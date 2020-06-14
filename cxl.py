@@ -6,8 +6,9 @@ import collections
 import time
 
 # TODO.  This should not be global ideally
-files = {}
-constants = {}
+files = {}              # files that have been read already
+constants = {}          # constants modified with -c
+modules = {}            # modules modified with -m
 
 def load(f, filename, scope, code):
     if filename in files:
@@ -1973,6 +1974,9 @@ class ImportAST(AST):
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.module
+        print("IMPORT", lexeme, modules)
+        if lexeme in modules:
+            lexeme = modules[lexeme]
         filename = lexeme + ".cxl"
         with open(filename) as f:
             load(f, filename, scope, code)
@@ -2726,14 +2730,24 @@ def parseConstant(c, v):
         code[ctx.pc].eval(state, ctx)
     constants[c] = ctx.pop()
 
-def doCompile(filenames, consts):
+def doCompile(filenames, consts, mods):
     for c in consts:
         try:
             i = c.index("=")
             parseConstant(c[0:i], c[i+1:])
         except IndexError:
-            print("Usage: -cC=V to define a constant")
+            print("Usage: -c C=V to define a constant")
             sys.exit(1)
+
+    global modules
+    for m in mods:
+        try:
+            i = m.index("=")
+            modules[m[0:i]] = m[i+1:]
+        except IndexError:
+            print("Usage: -m module=version to specify a module version")
+            sys.exit(1)
+
     scope = Scope(None)
     code = []
     if filenames == []:
@@ -2946,8 +2960,9 @@ def usage():
     print("  options: ")
     print("    -a: list machine code")
     print("    -b: blocking execution")
-    print("    -cname=value: define a constant")
+    print("    -c name=value: define a constant")
     print("    -h: help")
+    print("    -m module=version: select a module version")
     print("    -s: list all states")
     exit(1)
 
@@ -2957,12 +2972,13 @@ def main():
 
     # Get options.  First set default values
     consts = []
+    mods = []
     printCode = False
     blockflag = False
     printStates = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "abc:hs", ["const=", "help"])
+                        "abc:hm:s", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -2973,6 +2989,8 @@ def main():
             blockflag = True
         elif o in { "-c", "--const" }:
             consts.append(a)
+        elif o in { "-m", "--module" }:
+            mods.append(a)
         elif o in { "-h", "--help" }:
             usage()
         elif o  == "-s":
@@ -2980,7 +2998,7 @@ def main():
         else:
             assert False, "unhandled option"
 
-    (code, scope) = doCompile(args, consts)
+    (code, scope) = doCompile(args, consts, mods)
 
     if printCode:
         lastloc = None
