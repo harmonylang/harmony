@@ -66,7 +66,7 @@ def V(sema):
     atomic:
         let cnt = (^sema).count, waiters = (^sema).waiters:
             if waiters != []:
-                go waiters[0];
+                go (waiters[0]) ();
                 (^sema).waiters = tail(waiters);
             else:
                 (^sema).count = cnt + 1;
