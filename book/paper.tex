@@ -2567,36 +2567,36 @@ CXL currently supports the following statements:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{lv = e} & \texttt{lv} is an lvalue and \texttt{e} is an expression; \\
+\texttt{lv = e} & \texttt{lv} is an lvalue and \texttt{e} is an expression\\
 \hline
-\texttt{pass} & do nothing; \\
+\texttt{pass} & do nothing\\
 \hline
-\texttt{del lv} & delete; \\
+\texttt{del lv} & delete\\
 \hline
-\texttt{call e} & evaluate \texttt{e}; \\
+\texttt{call e} & evaluate \texttt{e}\\
 \hline
-\texttt{assert b [, x]} & \texttt{b} is a Boolean.  If \texttt{False}, optionally print expression \texttt{e}; \\
+\texttt{assert b [, x]} & \texttt{b} is a Boolean.  If \texttt{False}, optionally print expression \texttt{e}\\
 \hline
-\texttt{const v = e} & \texttt{v} is an identifier, \texttt{e} is a constant expression; \\
+\texttt{const v = e} & \texttt{v} is an identifier, \texttt{e} is a constant expression\\
 \hline
-\texttt{def m(v, ...): S} & \texttt{m} and \texttt{v} are identifiers, \texttt{S} a list of statements; \\
+\texttt{def m(v, ...): S} & \texttt{m} and \texttt{v} are identifiers, \texttt{S} a list of statements\\
 \hline
-\texttt{let v = e, ...: S} & \texttt{e} is an expression, \texttt{S} a list of statements; \\
+\texttt{let v = e, ...: S} & \texttt{e} is an expression, \texttt{S} a list of statements\\
 \hline
-\texttt{if b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements; \\
+\texttt{if b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{while b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements; \\
+\texttt{while b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements\\
 \hline
 \texttt{for v in e: S} & \texttt{e} is a set evaluated in order,
-                            \texttt{S} a list of statements; \\
+                            \texttt{S} a list of statements\\
 \hline
-\texttt{atomic: S} & \texttt{S} a list of statements; \\
+\texttt{atomic: S} & \texttt{S} a list of statements\\
 \hline
 \texttt{spawn p e [, t]} & \texttt{p} is a method, \texttt{e} is an expression, \texttt{t} is an optional tag (an expression) \\
 \hline
 \texttt{go c e} & \texttt{c} is a context, \texttt{e} is an expression \\
 \hline
-\texttt{import m} & \texttt{m} identifies a module. \\
+\texttt{import m} & \texttt{m} identifies a module \\
 \hline
 \end{tabular}
 \vspace{1em}
@@ -2612,17 +2612,17 @@ multisets:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{bagEmpty()} & returns an empty bag; \\
+\texttt{bagEmpty()} & returns an empty bag\\
 \hline
-\texttt{bagFromset(s)} & create a bag from set \texttt{s}; \\
+\texttt{bagFromset(s)} & create a bag from set \texttt{s}\\
 \hline
-\texttt{bagCount(b, e} & count how many times \texttt{e} occurs in bag \texttt{b}; \\
+\texttt{bagCount(b, e} & count how many times \texttt{e} occurs in bag \texttt{b}\\
 \hline
-\texttt{bagChoose(b)} & like \texttt{choose(s)}, but applied to a bag; \\
+\texttt{bagChoose(b)} & like \texttt{choose(s)}, but applied to a bag\\
 \hline
-\texttt{bagAdd(pb, e)} & add one copy of \texttt{e} to bag \texttt{\^{}pb}; \\
+\texttt{bagAdd(pb, e)} & add one copy of \texttt{e} to bag \texttt{\^{}pb}\\
 \hline
-\texttt{bagRemove(pb, e)} & remove one copy of \texttt{e} from bag \texttt{\^{}pb}; \\
+\texttt{bagRemove(pb, e)} & remove one copy of \texttt{e} from bag \texttt{\^{}pb}\\
 \hline
 \end{tabular}
 \vspace{1em}
@@ -2634,19 +2634,19 @@ or tuples:
 \begin{tabular}{|l|l|}
 \hline
 \texttt{subseq(t, b, f)} & return a \emph{slice} of list \texttt{t} starting
-at index \texttt{b} and ending just before index \texttt{f}; \\
+at index \texttt{b} and ending just before index \texttt{f}\\
 \hline
-\texttt{append(t, e)} & append \texttt{e} to list \texttt{t}; \\
+\texttt{append(t, e)} & append \texttt{e} to list \texttt{t}\\
 \hline
-\texttt{head(t)} & return the first element of list \texttt{t}; \\
+\texttt{head(t)} & return the first element of list \texttt{t}\\
 \hline
-\texttt{tail(t)} & return all but the first element of list \texttt{t}; \\
+\texttt{tail(t)} & return all but the first element of list \texttt{t}\\
 \hline
-\texttt{qsort(t)} & sort list \texttt{t} using quicksort; \\
+\texttt{qsort(t)} & sort list \texttt{t} using quicksort\\
 \hline
-\texttt{sum(t)} & return the sum of all elements in \texttt{t}; \\
+\texttt{sum(t)} & return the sum of all elements in \texttt{t}\\
 \hline
-\texttt{list2bag(t)} & convert list \texttt{t} into a bag. \\
+\texttt{list2bag(t)} & convert list \texttt{t} into a bag \\
 \hline
 \end{tabular}
 
