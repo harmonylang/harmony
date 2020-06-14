@@ -2183,7 +2183,7 @@ Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}.
 A monitor is a special version of an object-oriented \emph{class}, comprising
-a set of variables and methods that operate on those variabled.
+a set of variables and methods that operate on those variables.
 There is a split binary semaphore associated with each such class.
 The \texttt{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
@@ -2205,11 +2205,11 @@ def signal(c):
 \end{Verbatim} 
 \end{code} 
 
-\texttt{wait} releases the monitor lock and blocks while trying
+\texttt{wait} releases the mutex and blocks while trying
 to procure the condition variable (which is a semaphore that is 0 when
 \texttt{wait} is invoked).
 \texttt{signal} vacates the condition variable, passing the baton to
-a process trying to procure it, and then procures the monitor lock.
+a process trying to procure it, and then procures the mutex.
 The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
 \texttt{V} operations alternate as prescribed by the SBS technique.
 Our implementations of reader/writer locks can be easily changed to
@@ -2224,16 +2224,16 @@ incorporated a version of monitors.
 However, there are some subtle but important differences with Hoare
 monitors that make Mesa monitors quite unlike split binary semaphores.
 
-As in Hoare monitors, there is a lock associated with each monitor,
-and the lock is acquired upon entry to a method and released upon exit.
+As in Hoare monitors, there is a hidden mutex associated with each monitor,
+and the mutex is automatically acquired upon entry to a method and released
+upon exit.
 Mesa monitors also have condition variable that a process can wait on.
-Like in Hoare monitors, the \texttt{wait} operation release the monitor
-lock.
+Like in Hoare monitors, the \texttt{wait} operation release the mutex.
 The most important difference is in what \texttt{signal} does.
-To make the distinction more clear, we shall call corresponding Mesa
+To make the distinction more clear, we shall call the corresponding Mesa
 operation \texttt{notify} rather than \texttt{signal}.
 When a process $p$ invokes \texttt{notify}, it does not immediately pass 
-he baton to some process $q$ requiring the baton.  Instead, $p$ holds onto
+the baton to some process $q$ requiring the baton.  Instead, $p$ holds onto
 the baton until it leaves the monitor.  At that point $q$ gets the baton,
 assuming there even was such a process $q$.
 
@@ -2255,11 +2255,11 @@ In the hall are processes waiting to enter the critical section.
 
 On the left is a Hoare monitor.  When a process leaves the monitor
 (let's call that process $p$), it must be in the bathroom.
-It can choose to either let a process
+It can choose to either let in a process
 in one of the bedrooms or a process in the hall, assuming there are any.
 To make the choice, $p$ checks for each bedroom if its condition holds
 and if there are processes in the bedroom.
-If there are such bedrooms, $p$ selects one and let's that process into
+If there are such bedrooms, $p$ selects one and lets that process into
 the bathroom.  Let's call that process $q$.  Importantly, when $q$ enters
 the bathroom, the condition that $q$ was waiting for still holds.
 
@@ -2273,15 +2273,16 @@ processes in the hall is let into the bathroom.  But that may not be $q$.
 Assuming every process eventually leaves the bathroom and the system is
 fair, eventually $q$ will enter the bathroom.  However, it is no longer
 guaranteed that its condition holds.  Therefore, the first thing $q$ must
-do is check to see if the condition holds.  If not, it should go back
+do is check, again, to see if the condition holds.  If not, it should go back
 into the bedroom corresponding to the condition.
 
-It turns out that with the Mesa monitor there is another important option:
+Mesa monitors provide another important option:
 when process $p$ leaves the bathroom, it can choose to let any number of
 processes in the bedrooms into the hall.  It can do so by calling
 \texttt{notify} repeatedly, each time letting one process in one of the
-bedrooms into the hall.  Note that called \texttt{notify} on an empty
-bedroom is considered a no-op in Mesa.  Mesa also has a function called
+bedrooms into the hall.  Using \texttt{notify} on an empty
+bedroom is considered a no-op in Mesa.  (Hoare monitors do not allow
+using \texttt{signal} on an empty bathroom.) Mesa also has a function called
 \texttt{notifyAll} (aka \texttt{broadcast)}) that, when applied to
 a bedroom, let's all processes in that bedroom into the hall.
 
@@ -2336,5 +2337,21 @@ def notifyAll(c):
 \caption{Unfair Reader/Writer Lock implemtation using Mesa-style condition variables.}
 \label{fig:RWcv}
 \end{figure}
+
+The \texttt{synch} module supports Mesa condition variables.  However, like C, Java, and Python,
+it does not have built-in language support for them but instead associates condition variables
+with explicit locks.
+Figure~\ref{fig:cv} shows the \texttt{synch} interface to condition variables.
+\texttt{Condition(lk)} creates a new condition variable associated with the given pointer
+to a lock \texttt{lk}.
+The condition variable itself is represented by a dictionary containing the pointer to the lock
+and a bag of name tags of processes waiting on the condition variable.
+(The \texttt{synchS} library instead has a list of contexts.)
+
+\texttt{wait} adds the nametag of the process to the bag.  This increments the number of processes
+in the bag with the same context.  \texttt{wait} then waits until that count is restored to the
+value that it had upon entry to \texttt{wait}.  \texttt{notify} removes an arbitrary context from
+the bag, allowing one of the processes with that context to return from \texttt{wait}.
+\texttt{notifyAll} empties out the entire bag, allowing all processes in the bag to resume.
 
 \end{document}

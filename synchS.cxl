@@ -36,7 +36,7 @@ def notify(c):
     atomic:
         let lk = (^c).lock, waiters = (^c).waiters:
             if waiters != []:
-                (^lk).blocked = (^lk).blocked + [waiters[0],];
+                (^lk).suspended = (^lk).suspended + [waiters[0],];
                 (^c).waiters = tail(waiters);
             ;
         ;
@@ -45,7 +45,7 @@ def notify(c):
 def notifyAll(c):
     atomic:
         let lk = (^c).lock, waiters = (^c).waiters:
-            (^lk).blocked = (^lk).blocked + waiters;
+            (^lk).suspended = (^lk).suspended + waiters;
             (^c).waiters = [];
         ;
     ;
