@@ -2945,7 +2945,7 @@ def run(code, labels, map, step, blockflag, printStates):
         bad_state = find_shortest(visited, bad)
         print_path(visited, bad_state)
         for ctx in bad_state.stopbag.keys():
-            print("  ", ctx)
+            print("stopped process:", ctx)
         issues_found = True
 
     if not issues_found:
