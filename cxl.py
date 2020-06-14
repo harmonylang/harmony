@@ -95,7 +95,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
-                        "min", "max", "nametag", "not", "keys", "len", "processes" ]
+            "min", "max", "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
@@ -249,22 +249,6 @@ class PcValue(Value):
 
     def key(self):
         return (3, self.pc)
-
-class OpValue(Value):
-    def __init__(self, op):
-        self.op = op
-
-    def __repr__(self):
-        return "Op(" + str(self.op) + ")"
-
-    def __hash__(self):
-        return self.op.__hash__()
-
-    def __eq__(self, other):
-        return isinstance(other, OpValue) and other.op == self.op
-
-    def key(self):
-        return (4, self.pc)
 
 class DictValue(Value):
     def __init__(self, d):
@@ -995,15 +979,6 @@ class ApplyOp(Op):
                 state.failure = True
                 return
             context.pc += 1
-        # TODO.  I believe the following is dead code
-        elif False and isinstance(method, OpValue):
-            op = method.op
-            if op == "-":
-                assert isinstance(e, int), e
-                context.push(-e)
-            else:
-                assert False, self
-            context.pc += 1
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
@@ -1254,14 +1229,14 @@ class DictComprehensionAST(AST):
         code.append(DelVarOp(S, 0))
         code.append(DelVarOp(N, 0))
 
-class TupleComprehensionAST(AST):
+class ListComprehensionAST(AST):
     def __init__(self, value, var, expr):
         self.value = value
         self.var = var
         self.expr = expr
 
     def __repr__(self):
-        return "TupleComprehension(" + str(self.var) + ")"
+        return "ListComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
         scope.checkUnused(self.var)
@@ -1442,7 +1417,7 @@ class DictComprehensionRule(Rule):
         (expr, t) = NaryRule({"}"}).parse(t[2:])
         return (DictComprehensionAST(self.value, name, expr), t[1:])
 
-class TupleComprehensionRule(Rule):
+class ListComprehensionRule(Rule):
     def __init__(self, ast, closer):
         self.ast = ast
         self.closer = closer
@@ -1454,7 +1429,7 @@ class TupleComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         self.expect("list comprehension", lexeme == "in", t[1], "expected 'in'")
         (expr, t) = NaryRule({"]"}).parse(t[2:])
-        return (TupleComprehensionAST(self.ast, name, expr), t[1:])
+        return (ListComprehensionAST(self.ast, name, expr), t[1:])
 
 class SetRule(Rule):
     def parse(self, t):
@@ -1510,7 +1485,7 @@ class TupleRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         if lexeme == "for":
-            return TupleComprehensionRule(self.ast, self.closer).parse(t[1:])
+            return ListComprehensionRule(self.ast, self.closer).parse(t[1:])
         d = { ConstantAST((0, file, line, column)): self.ast }
         i = 1
         while lexeme == ",":
