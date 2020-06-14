@@ -403,7 +403,7 @@ class LoadVarOp(Op):
         context.push(context.get(lexeme))
         context.pc += 1
 
-class ConstantOp(Op):
+class PushOp(Op):
     def __init__(self, constant):
         self.constant = constant
 
@@ -416,7 +416,7 @@ class ConstantOp(Op):
         context.push(lexeme)
         context.pc += 1
 
-class NameOp(Op):
+class PushAddressOp(Op):
     def __init__(self, name):
         self.name = name 
 
@@ -603,17 +603,6 @@ class PopOp(Op):
         context.pop()
         context.pc += 1
 
-class MethodOp(Op):
-    def __init__(self, name, endpc):
-        self.name = name
-        self.endpc = endpc      # points to return code
-
-    def __repr__(self):
-        return "Method " + str(self.name) + " " + str(self.endpc)
-
-    def eval(self, state, context):
-        context.pc = self.endpc + 1
-
 class FrameOp(Op):
     def __init__(self, name, args, end):
         self.name = name
@@ -710,11 +699,6 @@ class JumpCondOp(Op):
 
     def eval(self, state, context):
         c = context.pop()
-        if not isinstance(c, bool):
-            print()
-            print("pc =", context.pc, ": Error: conditional not a boolean")
-            state.failure = True
-            return
         if c == self.cond:
             context.pc = self.pc
         else:
@@ -990,25 +974,6 @@ class ApplyOp(Op):
             context.push(e)
             context.pc = method.pc
 
-class IterOp(Op):
-    def __init__(self, method, pc):
-        self.method = method
-        self.pc = pc
-
-    def __repr__(self):
-        return "Iter " + str(self.method) + " " + str(self.pc)
-
-    def eval(self, state, context):
-        cnt = context.pop()
-        if cnt > 0:
-            v = context.pop()
-            context.push(cnt - 1)
-            context.push(context.pc + 1)
-            context.push(v)
-            context.pc = self.method
-        else:
-            context.pc = self.pc
-
 class AST:
     def isConstant(self, scope):
         return False
@@ -1029,7 +994,7 @@ class AST:
             code2 = []
             self.gencode(scope, code2)
             v = self.eval(scope, code2)
-            code.append(ConstantOp((v, None, None, None)))
+            code.append(PushOp((v, None, None, None)))
         else:
             self.gencode(scope, code)
 
@@ -1041,7 +1006,7 @@ class ConstantAST(AST):
         return str(self.const)
 
     def compile(self, scope, code):
-        code.append(ConstantOp(self.const))
+        code.append(PushOp(self.const))
 
     def isConstant(self, scope):
         return True
@@ -1057,14 +1022,14 @@ class NameAST(AST):
         (lexeme, file, line, column) = self.name
         tv = scope.lookup(self.name)
         if tv == None:
-            code.append(NameOp(self.name))
+            code.append(PushAddressOp(self.name))
             code.append(LoadOp(1))
         else:
             (t, v) = tv
             if t == "variable":
                 code.append(LoadVarOp(self.name))
             elif t == "constant":
-                code.append(ConstantOp(v))
+                code.append(PushOp(v))
             else:
                 assert False, tv
 
@@ -1094,7 +1059,7 @@ class SetAST(AST):
     def gencode(self, scope, code):
         for e in self.collection:
             e.compile(scope, code)
-        code.append(ConstantOp((len(self.collection), None, None, None)))
+        code.append(PushOp((len(self.collection), None, None, None)))
         code.append(SetOp())
 
 class DictAST(AST):
@@ -1112,7 +1077,7 @@ class DictAST(AST):
         for (k, v) in self.record.items():
             v.compile(scope, code)
             k.compile(scope, code)
-        code.append(ConstantOp((len(self.record), None, None, None)))
+        code.append(PushOp((len(self.record), None, None, None)))
         code.append(DictOp())
 
 class SetComprehensionAST(AST):
@@ -1148,7 +1113,7 @@ class SetComprehensionAST(AST):
         #       push value
         pc = len(code)
         code.append(LoadVarOp(S))
-        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(PushOp((SetValue(set()), file, line, column)))
         code.append(NaryOp(("!=", file, line, column), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
@@ -1205,7 +1170,7 @@ class DictComprehensionAST(AST):
         #       push key
         pc = len(code)
         code.append(LoadVarOp(S))
-        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(PushOp((SetValue(set()), file, line, column)))
         code.append(NaryOp(("!=", file, line, column), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
@@ -1256,7 +1221,7 @@ class ListComprehensionAST(AST):
         code.append(StoreVarOp(N, 0))
 
         # Create an index variable, initialized to 0
-        code.append(ConstantOp((0, file, line, column)))
+        code.append(PushOp((0, file, line, column)))
         I = ("%index:"+str(uid), file, line, column)
         code.append(StoreVarOp(I, 0))
 
@@ -1269,7 +1234,7 @@ class ListComprehensionAST(AST):
         #       increment index
         pc = len(code)
         code.append(LoadVarOp(S))
-        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(PushOp((SetValue(set()), file, line, column)))
         code.append(NaryOp(("!=", file, line, column), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
@@ -1287,7 +1252,7 @@ class ListComprehensionAST(AST):
         code.append(LoadVarOp(I))
 
         # increment index
-        code.append(ConstantOp((1, file, line, column)))
+        code.append(PushOp((1, file, line, column)))
         code.append(LoadVarOp(I))
         code.append(NaryOp(("+", file, line, column), 2))
         code.append(StoreVarOp(I, 0))
@@ -1323,7 +1288,7 @@ class NaryAST(AST):
         if n == 2 and (op == "and" or op == "or"):
             self.args[0].compile(scope, code)
             code.append(JumpCondOp(op == "and", len(code) + 3))
-            code.append(ConstantOp((op == "or", file, line, column)))
+            code.append(PushOp((op == "or", file, line, column)))
             pc = len(code)
             code.append(None)
             self.args[1].compile(scope, code)
@@ -1626,7 +1591,7 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(NameOp(lv.name))
+                code.append(PushAddressOp(lv.name))
                 code.append(StoreOp(n))
             else:
                 (t, v) = tv
@@ -1655,7 +1620,7 @@ class DelAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(NameOp(lv.name))
+                code.append(PushAddressOp(lv.name))
                 code.append(DelOp(n))
             else:
                 (t, v) = tv
@@ -1684,7 +1649,7 @@ class StopAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(NameOp(lv.name))
+                code.append(PushAddressOp(lv.name))
                 code.append(StopOp(n))
             else:
                 print("Error: Can't store state in process variable")
@@ -1711,7 +1676,7 @@ class AddressAST(AST):
             if tv != None:
                 print(lv, ": Parse error: can only take address of shared variable")
                 sys.exit(1)
-            code.append(NameOp(lv.name))
+            code.append(PushAddressOp(lv.name))
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
@@ -1821,7 +1786,7 @@ class ForAST(AST):
 
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
-        code.append(ConstantOp((SetValue(set()), file, line, column)))
+        code.append(PushOp((SetValue(set()), file, line, column)))
         code.append(NaryOp(("!=", file, line, column), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
