@@ -2395,7 +2395,7 @@ get to enter next or one of the writers gets to enter next.
 
 \appendix
 
-\chapter{List of CXL Values}
+\chapter{List of Values}
 
 Chapter~\ref{ch:cxlvalues} provides an introduction to CXL values.
 Below is a complete list of CXL value types with examples:
@@ -2455,7 +2455,7 @@ the value of the register, and the contents of the stack.  Currently,
 contexts are ordered by hash.
 \end{itemize}
 
-\chapter{List of CXL Operators}
+\chapter{List of Operators}
 
 CXL currently supports the following operators:
 
@@ -2560,7 +2560,7 @@ In each case, \texttt{s} must be a set.
 For list comprehensions, the list will be sorted by \texttt{e}.
 For dictionary comprehensions, each \texttt{e} will be mapped to \texttt{f(e)}.
 
-\chapter{List of CXL Statements}
+\chapter{List of Statements}
 
 CXL currently supports the following statements:
 
@@ -2650,7 +2650,7 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \hline
 \end{tabular}
 
-\chapter{List of CXL Machine Instructions}
+\chapter{List of Machine Instructions}
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -2661,9 +2661,9 @@ Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
 Assert & pop $b$ and check that it is \texttt{True} \\
 \hline
-AtomicDec & decrement the atomic counter of this context \\
-\hline
 AtomicInc & increment the atomic counter of this context \\
+\hline
+AtomicDec & decrement the atomic counter of this context \\
 \hline
 Choose & choose an element from the set on top of the stack \\
 \hline
@@ -2678,11 +2678,11 @@ Dup & duplicate the top element of the stack \\
 Frame $m$ $a$ $r$& start method $m$ with arguments $a$,
 initializing variables.  Last instruction is at $r$ \\
 \hline
-Go & restore context \\
-\hline
-JumpCond $e$ $p$ & pop expression and if equal to $e$ set program counter to $p$ \\
+Go & pop context and value, push value on context's stack, and add to context bag \\
 \hline
 Jump $p$ & set program counter to $p$ \\
+\hline
+JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
 \hline
 Load & load a shared variable and push it onto the stack \\
 \hline
@@ -2702,14 +2702,25 @@ Set & pop $n$ and $n$ elements and push a set of the elements \\
 \hline
 Spawn & pop tag, argument, and method and spawn a new context \\
 \hline
-Split & split a non-empty set in its minimum element and its remainder \\
+Split & pop set and push minimum and remainder \\
 \hline
-Stop & save context \\
+Stop & save context into shared variable and remove from context bag \\
 \hline
 Store & pop a value from the stack and store it in a shared variable \\
 \hline
 StoreVar $v$ & pop a value from the stack and store it in process variable $v$ \\
 \hline
 \end{tabular}
+\vspace{1em}
+
+Clarifications:
+\begin{itemize}
+\item The effect of the \texttt{Apply} instructions depends much on $m$.
+If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
+and pushes the value.
+If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
+pushing the current program counter and setting the program counter to
+$m$.  $m$ is supposed to leave the result on the stack.
+\end{itemize}
 
 \end{document}
