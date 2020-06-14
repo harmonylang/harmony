@@ -1,0 +1,20 @@
+def process(self):
+    while choose({ False, True }):
+        # Enter critical section
+        flags[self] = True;
+        turn = 1 - self;
+        while flags[1 - self] and (turn == (1 - self)):
+            pass;
+        ;
+
+        # critical section is here
+        @cs: assert atLabel.cs == dict{ nametag(): 1 }, atLabel.cs;
+
+        # Leave critical section
+        flags[self] = False;
+    ;
+;
+flags = [ False, False ];
+turn = 0;
+spawn process(0);
+spawn process(1);
