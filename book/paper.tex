@@ -2395,7 +2395,7 @@ get to enter next or one of the writers gets to enter next.
 
 \appendix
 
-\chapter{Complete List of CXL Values}
+\chapter{List of CXL Values}
 
 Chapter~\ref{ch:cxlvalues} provides an introduction to CXL values.
 Below is a complete list of CXL value types with examples:
@@ -2455,7 +2455,7 @@ the value of the register, and the contents of the stack.  Currently,
 contexts are ordered by hash.
 \end{itemize}
 
-\chapter{Complete List of CXL Operators}
+\chapter{List of CXL Operators}
 
 CXL currently supports the following operators:
 
@@ -2498,6 +2498,8 @@ CXL currently supports the following operators:
 \hline
 \texttt{e not in e} & first is any CXL value, second is set \\
 \hline
+\texttt{e if e else e} & middle \texttt{e} must be a Boolean \\
+\hline
 \texttt{\^{}e} & an address \\
 \hline
 \texttt{choose e} & a set \\
@@ -2520,6 +2522,10 @@ CXL currently supports the following operators:
 \hline
 \texttt{processes e} & \texttt{e} must be \texttt{()} \\
 \hline
+\texttt{\&(lv)} & \texttt{lv} is an lvalue \\
+\hline
+\texttt{stop lv} & \texttt{lv} is an lvalue \\
+\hline
 \end{tabular}
 \vspace{1em}
 
@@ -2529,6 +2535,12 @@ the concatenation when applied to lists or tuples.
 \texttt{*} computes the intersection when applied to sets.
 \texttt{x..y} computes the set consisting of the integers \texttt{x}
 through \texttt{y} inclusive.  It returns the empty set if \texttt{x > y}.
+
+An \emph{lvalue} (short for left hand value of an assignment statement)
+is something that can be assigned.  This can be a
+shared variable, a process variable, or a dereferenced pointer
+variable.  It can also be indexed.  Examples include
+\texttt{var}, \texttt{var[e]}, and \texttt{\^{}p}.
 
 CXL also supports the following comprehensions:
 
@@ -2547,5 +2559,95 @@ Dict comprehension & \texttt{dict\{ f(e) for e in s \}} \\
 In each case, \texttt{s} must be a set.
 For list comprehensions, the list will be sorted by \texttt{e}.
 For dictionary comprehensions, each \texttt{e} will be mapped to \texttt{f(e)}.
+
+\chapter{List of CXL Statements}
+
+CXL currently supports the following statements:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{lv = e} & \texttt{lv} is an lvalue and \texttt{e} is an expression; \\
+\hline
+\texttt{pass} & do nothing; \\
+\hline
+\texttt{del lv} & delete; \\
+\hline
+\texttt{call e} & evaluate \texttt{e}; \\
+\hline
+\texttt{assert b [, x]} & \texttt{b} is a Boolean.  If \texttt{False}, optionally print expression \texttt{e}; \\
+\hline
+\texttt{const v = e} & \texttt{v} is an identifier, \texttt{e} is a constant expression; \\
+\hline
+\texttt{def m(v, ...): S} & \texttt{m} and \texttt{v} are identifiers, \texttt{S} a list of statements; \\
+\hline
+\texttt{let v = e, ...: S} & \texttt{e} is an expression, \texttt{S} a list of statements; \\
+\hline
+\texttt{if b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements; \\
+\hline
+\texttt{while b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements; \\
+\hline
+\texttt{for v in e: S} & \texttt{e} is a set evaluated in order,
+                            \texttt{S} a list of statements; \\
+\hline
+\texttt{atomic: S} & \texttt{S} a list of statements; \\
+\hline
+\texttt{spawn p e [, t]} & \texttt{p} is a method, \texttt{e} is an expression, \texttt{t} is an optional tag (an expression) \\
+\hline
+\texttt{go c e} & \texttt{c} is a context, \texttt{e} is an expression \\
+\hline
+\texttt{import m} & \texttt{m} identifies a module. \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+To iterate through a dictionary, list, or tuple, use:
+\texttt{for v in keys(e):~S}.
+
+\chapter{List of Modules}
+
+The \texttt{bag} module has various useful methods that operate on bags or
+multisets:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{bagEmpty()} & returns an empty bag; \\
+\hline
+\texttt{bagFromset(s)} & create a bag from set \texttt{s}; \\
+\hline
+\texttt{bagCount(b, e} & count how many times \texttt{e} occurs in bag \texttt{b}; \\
+\hline
+\texttt{bagChoose(b)} & like \texttt{choose(s)}, but applied to a bag; \\
+\hline
+\texttt{bagAdd(pb, e)} & add one copy of \texttt{e} to bag \texttt{\^{}pb}; \\
+\hline
+\texttt{bagRemove(pb, e)} & remove one copy of \texttt{e} from bag \texttt{\^{}pb}; \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+The \texttt{list} module has various useful methods that operate on lists
+or tuples:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{subseq(t, b, f)} & return a \emph{slice} of list \texttt{t} starting
+at index \texttt{b} and ending just before index \texttt{f}; \\
+\hline
+\texttt{append(t, e)} & append \texttt{e} to list \texttt{t}; \\
+\hline
+\texttt{head(t)} & return the first element of list \texttt{t}; \\
+\hline
+\texttt{tail(t)} & return all but the first element of list \texttt{t}; \\
+\hline
+\texttt{qsort(t)} & sort list \texttt{t} using quicksort; \\
+\hline
+\texttt{sum(t)} & return the sum of all elements in \texttt{t}; \\
+\hline
+\texttt{list2bag(t)} & convert list \texttt{t} into a bag. \\
+\hline
+\end{tabular}
 
 \end{document}
