@@ -39,15 +39,24 @@ Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
 processes concurrently read and update shared variables and
 synchronize with one another makes programs more complicated than
-programs where only one thing happens at a time.  Why is this?
+programs where only one thing happens at a time.  Why are concurrent
+programs more complicated than sequential ones?
 There are, at least, two reasons:
 \begin{itemize}
 \item The execution of a sequential program is mostly \emph{deterministic}.
-If you run it twice with the same input, the same things will happen.
-Bugs are typically easily reproducible.
-\item Each statement and each function can be thought of as happening
-\emph{atomically} because there is no other activity interfering with
-their execution.
+If you run it twice with the same input, the same output will be produced.
+Bugs are typically easily reproducible and easy to track down, for example
+by instrumenting the program.
+The output of running concurrent programs depends on how the various
+processes are interleaved.  Some bugs may occur only occasionally and
+may never occur when the program is instrumented to find them
+(so-called \emph{Heisenbugs}).
+\item In a sequential program, each statement and each function can be
+thought of as happening \emph{atomically} because there is no other activity
+interfering with their execution.  Even though a statement or function may
+be compiled into multiple machine instructions, they are executed back-to-back
+until completion.  Not so with a concurrent program, where other instructions
+may update memory locations as a statement or function is being executed.
 \end{itemize}
 The lack of determinism and atomicity in concurrent programs make them
 not only hard to reason about, but also hard to test.
@@ -79,7 +88,9 @@ reachable states.
 If the model is too large, it may run for longer than we may care to
 wait for or even run out of memory.
 
-So why is this useful?  Consider, for example, a sorting algorithm.
+So if model checking does not prove a program correct, why is it
+useful?  To answer that question consider, for example, a sorting
+algorithm.
 Now suppose we create a test program, a model, that tries sorting
 \emph{all} lists of up to five numbers chosen from the set \{ 1,
 2, 3, 4, 5 \}.  Model checking proves that for those particular
@@ -95,12 +106,17 @@ know for sure that the algorithm works for lists with more than
 five numbers or for lists that have values other than the numbers
 1 through 5.  Still, we would expect that the likelihood that there
 are bugs remaining in the sorting algorithm is small.
+Note, however, that it would be easy to write a program
+that sorts all lists of up to five numbers correctly but fails to
+do so for a list of 6 numbers.  (Hint: simply use an \texttt{if}
+statement.)
 
-But model checking can also help with proving an algorithm correct.
+While model checking does not in general prove an algorithm correct,
+it can help with proving an algorithm correct.
 The reason is that the correctness of many programs is built around
 \emph{invariants}: predicates that must hold for every state in the
 execution of a program.  A model checker can find violations of
-those invariants when evaluating a model and provide valuable early
+proposed invariants when evaluating a model and provide valuable early
 feedback to somebody who is trying to construct a proof, even an
 informal one.
 Throughout this book we will include examples
@@ -122,7 +138,8 @@ use.  We will assume that the reader is familiar with the basics
 of Python programming.  We also will assume that the reader
 understand some basics of machine architecture and how programs
 are executed.  For example, we assume that the reader is familiar
-with the concepts of CPU, memory, register, and stack.
+with the concepts of CPU, memory, register, stack, and machine
+instructions.
 
 CXL is heavily influenced by Leslie Lamport's work on
 TLA+, TLC, and PlusCal~\cite{}.
@@ -139,15 +156,15 @@ Like Python, CXL is an imperative,
 dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
-\item Every statement in CXL must be terminated by a semicolon
-(even \texttt{while} statements and \texttt{def} statements);
-in Python semicolons are optional and rarely used;
-\item Correct indentation in CXL is encouraged but optional;
-\item Python is object-oriented; CXL is not;
-\item CXL does not (currently) support floating point;
-\item CXL does not support I/O of any kind;
-\item CXL only supports basic operator precedence or associativity.
+\item Syntax: Every statement in CXL must be terminated by a semicolon
+(even \texttt{while} statements and \texttt{def} statements).
+In Python semicolons are optional and rarely used.
+There is no syntactic significance to indentation in CXL.
+Correct indentation in CXL is encouraged but not enforced.
+CXL only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
+\item CXL does not (currently) support floating point.  CXL does not support I/O;
+\item Python is object-oriented; CXL is not;
 \end{itemize}
 There are also many unimportant ones that you will discover as
 you get more familiar with programming in CXL.
@@ -169,8 +186,8 @@ also has a variable called \texttt{n} containing the value of the
 argument.  The \texttt{x..y} notation generates a set containing the numbers
 from~\texttt{x} to~\texttt{y} (inclusive).  The last two lines in the program are
 the most interesting.
-They assign to \texttt{x} some unspecified value in the range \texttt{0..N}
-and then verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
+The first assigns to \texttt{x} some unspecified value in the range \texttt{0..N}
+and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
 ``Running'' this CXL program will try all possible executions, which
 includes all possible values for $x$.  Try it out:
@@ -248,7 +265,7 @@ program correct in that \texttt{count} will always end up being 2?
 \item What are the possible values of \texttt{count} at the time of the
 \texttt{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
-underlying architecture are atomic---in fact they are.)
+underlying machine architecture are atomic---in fact they are.)
 \end{itemize}
 \end{quote}
 
@@ -282,8 +299,8 @@ The following is a possible interleaving of incrementers~0 and~1:
 stores $1$ into \texttt{count};
 \item incrementer 0 adds one to the value that it loaded (0), and
 stores $1$ into \texttt{count};
-\item incrementer 0 sets \texttt{upDone} to \texttt{True};
-\item incrementer 1 sets \texttt{upDone} to \texttt{True}.
+\item incrementer 0 sets \texttt{done[0]} to \texttt{True};
+\item incrementer 1 sets \texttt{done[1]} to \texttt{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \texttt{count} ends up
@@ -325,9 +342,9 @@ Another type of CXL value is the \emph{atom}.  It is essentially
 just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
 
-CXL makes extensive use of dictionaries.  Their syntax and properties
-are a little different from Python.
-A dictionary maps CXL values, known as \emph{keys}, to CXL values.
+CXL makes extensive use of dictionaries.
+A dictionary maps values, known as \emph{keys}, to values.
+The CXL dictionary syntax and properties are a little different from Python.
 Unlike Python, any CXL value can be a key, including another
 dictionary.
 CXL dictionaries are written as
@@ -340,7 +357,8 @@ d k
 \end{verbatim}
 \end{code}
 This is unfamiliar to Python programers, but in CXL square brackets can be used
-in the same way as parentheses, so you can express it in the more familiar form:
+in the same way as parentheses, so you can express the same thing in the form
+that is familiar to Python programmers:
 \begin{code}
 \begin{verbatim}
 d[k]
@@ -349,6 +367,7 @@ d[k]
 However, if \texttt{d = dict\{ .count: 3 \}}, then you can write
 can write \texttt{d.count} (which has value 3) instead of having to write
 \texttt{d[.count]} (although both will work).
+Thus using atoms, a dictionary can be made to look much like a Python object.
 The meaning of \texttt{d a b c ...} is \texttt{((((d a) b) c) ...)}.
 
 Tuples are special forms of dictionaries where the keys are
@@ -427,8 +446,8 @@ Before we delve into how to solve synchronization problems, it is important
 to know a bit about the underlying machine.  A CXL program is translated
 into a list of machine instructions that the CXL machine executes.
 The CXL machine is not an ordinary virtual machine, but its architecture
-is nonetheless representative of conventional machines such as hardware
-with memory and CPUs and virtual machines such as the Java Virtual Machine.
+is nonetheless representative of conventional computers and
+virtual machines such as the Java Virtual Machine.
 
 Instead of bits and bytes, a CXL machine manipulates CXL values.
 A CXL machine has the following components:
@@ -456,7 +475,7 @@ The state of the CXL machine
 consists of the value of its memory and the multiset (or \emph{bag}) of
 contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
-The initial state of the CXL memory is the empty dictionary, \texttt{()}.
+The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
@@ -473,10 +492,10 @@ A directory represents the state of a collection of variables named by the atoms
 %
 Because directories are CXL values themselves,
 directories can be organized into a tree.
-Each node in the tree is then identified
+Each node in a directory tree is then identified
 by a sequence of atoms, like a path name in the file system hierarchy.  We call
 such a sequence the \emph{address} of a CXL value, and it is relative to the
-``root'' of the CXL value.
+``root'' of the directory tree.
 
 Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
 listed in Figure~\ref{fig:inccode}.
@@ -490,22 +509,19 @@ cxl -a Up.cxl
 The CXL machine is predominantly a \emph{stack machine}.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
-Initially there is one process (with name tag \texttt{\_\_init\_\_/()}
-that starts executing at instruction 0 and keeps executing until the last
-execution in the program to initialize the state.
+At first there is one process (with name tag \texttt{\_\_init\_\_/()}
+that initializes the state.
+It starts executing at instruction 0 and keeps executing until the last
+execution in the program.
 In this case, the first instruction is a \texttt{JUMP} instruction that sets the
 program counter to 39.
 At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
-The \texttt{Frame} instruction has three arguments:
-\begin{enumerate}
-\item The name of the method;
-\item A list containing the names of the arguments of the method;
-\item The program counter of the method's \texttt{Return} instruction.
-\end{enumerate}
-
+The \texttt{Frame} instruction has three arguments: the name of the method,
+a list containing the names of the arguments of the method, and
+the program counter of the method's \texttt{Return} instruction.
 The code generated from \texttt{count := count + 1} in line 2 of
 \texttt{Up.cxl} is as follows:
 
@@ -587,7 +603,8 @@ time.
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
 machine instructions.  A counter is a very simple example of
-a data structure.  A more involved one would be access to a binary tree.
+a data structure, but as we have seen it too requires multiple instructions.
+A more involved one would be access to a binary tree.
 Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
@@ -596,19 +613,20 @@ process also tries to access the binary tree.
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
 Figure~\ref{fig:csbarebones} shows the CXL code.
-Here \texttt{@ncs} and \texttt{@cs} are \emph{labels}, each identifying
+Here \texttt{@cs} is a \emph{label}, identifying
 a location in the CXL machine code.  The first thing we need to
 ensure is that there cannot be two processes at the critical section.
 We would like to place an assertion at the \texttt{@cs} label that
-specifies that only the current process can be there.  CXL in fact
-supports this.  It has an operator \texttt{atLabel $L$}, where $L$
-is the atom of the label (in this case, \texttt{.cs}).  The
-operator returns a bag of name tags of processes executing at that
+specifies that only the current process can be there.
+
+CXL in fact supports this.
+It has an operator \texttt{atLabel $L$}, where $L$
+is the atom containing the name of the label (in this case, \texttt{.cs}).
+The operator returns a bag (multiset) of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 Method \texttt{atLabel} only exists for specification purposes---do not
 use it in normal code.
-
 The assertion also makes use of the \texttt{nametag()} operator that
 returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
@@ -642,16 +660,6 @@ intersection eventually leaves, then eventually one process in $S$ will enter
 the critical section.
 We call this \emph{progress}.
 
-\begin{figure}
-\begin{center}
-\includegraphics[width=4in]{figures/mutex.jpeg}
-\end{center}
-\caption{High-level state diagram specification of mutual exclusion with up to two processes.
-The first number in a state gives the number of processes; the second number is the
-number of processes in the critical section.}
-\label{fig:mutex}
-\end{figure}
-
 In order to detect violations of progress, and other liveness problems in
 algorithms in general, CXL requires that every execution must be
 able to reach a state in which all processes have terminated.
@@ -661,10 +669,6 @@ will model processes in critical sections using the framework in
 Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
-Note also that we have dropped the \texttt{@ncs} label: it would serve no
-specific purpose.
-Figure~\ref{fig:mutex} show a high-level state diagram of the code in
-Figure~\ref{fig:cs}.
 
 \begin{quote}
 Try it out!
@@ -675,6 +679,24 @@ to a state from which a terminating state cannot be reached.
 \end{itemize}
 \end{quote}
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=4in]{figures/mutex.jpeg}
+\end{center}
+\caption{High-level state diagram specification of mutual exclusion with up to two processes.
+The first number in a state gives the number of processes; the second number is the
+number of processes in the critical section.}
+\label{fig:mutex}
+\end{figure}
+
+Figure~\ref{fig:mutex} show a high-level state diagram of the code in
+Figure~\ref{fig:cs}.
+The circles represent states, while the arrows represent possible state
+transitions.  The label in each circle summarizes the state;  the label
+on an arrow describes the transition.  In this case,
+the label contains two numbers: the total number of processes and the number
+of processes in the critical section.  A process that is in the critical
+section cannot terminate.
 
 \chapter{Na\"{\i}ve Attempts at Implementing Critical Sections}
 
@@ -702,20 +724,22 @@ to a state from which a terminating state cannot be reached.
 \label{fig:upturn}
 \end{figure}
 
-In order to have at most one process in a critical section at a time, you
-probably are thinking that one might use a \emph{lock}.
-That is a good thought, but how does one implement one?
-Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
-na\"{\i}ve implementation of a lock.
+You may already have heard of the concept of a \emph{lock} and have realized that
+it could be used to implement a critical section.
 The idea is that the lock is like a baton that at most one process can own
 (or hold) at a time.
+A process that wants to enter the critical section at a time must obtain the
+lock first and release it upon exiting the critical section.
+Using a lock is a good thought, but how does one implement one?
+Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
+na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
 Initially the lock is not owned, indicated by lock being \texttt{False}.
 To enter the critical section, a process waits until \texttt{lock} is \texttt{False}
 and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
 releases the lock by setting it back to \texttt{False}.
 
-Unfortunately, if we run the program, we find that the assertion still
+Unfortunately, if we run the program through CXL, we find that the assertion still
 fails.  Diagnosing the problem, we see that the \texttt{lock} variable
 suffers from the same problem as the \texttt{count} variable
 in Figure~\ref{fig:inc}: operations
@@ -733,7 +757,7 @@ solution does prevent both processes being in the critical section at
 the same time.
 
 To see why, first note the invariant that if process $i$ is in the
-critical section, then flags[i] == True.
+critical section, then \texttt{flags[$i$] == True}.
 Without loss of generality,
 suppose that process~0 sets \texttt{flags[0]} at time $t_0$.
 Process 0 can only reach the critical section if at some time $t_1$,
@@ -750,8 +774,8 @@ it would first have to set \texttt{flags[1]} to \texttt{True} and
 then wait until \texttt{flags[0] == False}.  But that does not happen
 until time $t_2$.
 
-However, the solution has a different problem called \emph{livelock}:
-if both try to enter the critical section at the same time, they may
+Run the program through CXL.  Unfortunately, it turns out the solution has a
+problem: if both try to enter the critical section at the same time, they may
 end up waiting for one another indefinitely.  Thus the solution
 violates \emph{progress}.
 
@@ -766,11 +790,23 @@ Since \texttt{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that
 processes 0 and 1 alternate entering the critical section.
-The problem with the solution is
-that it also violates the \emph{progress} property:
+
+Run the program through CXL.  It turns out that this solution also violates
+\emph{progress}, albeit for a different reason:
 if process~$i$ terminates instead of entering the critical section when it
 is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
 turn.
+
+\begin{quote}
+Try your own solutions!
+\begin{itemize}
+\item See if you can come up with some different approaches that satisfy both
+mutual exclusion and progress.  Try them with CXL and see if they work or not.
+If they don't, try to understand why.
+Do not despair if you can't figure it out---as
+we will find out, it is possible but not easy.
+\end{itemize}
+\end{quote}
 
 \chapter{Peterson's Algorithm}
 \label{ch:peterson}
@@ -795,9 +831,18 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in CXL are atomic.
 The process continues to be polite, waiting in a \texttt{while} loop
 until either the other process is nowhere near the critical section
-or has given way.
+(\texttt{flag[1 - self] == False}) or or has given way
+(\texttt{turn == self}).
 Running the algorithm with CXL shows that it satisfies both mutual
 exclusion and progress.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=4in]{figures/states.jpeg}
+\end{center}
+\caption{Venn diagram of all states and a trace.}
+\label{fig:states}
+\end{figure}
 
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
@@ -805,28 +850,59 @@ For that, we have to understand a little bit more about how the CXL
 machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
 at any point of time the CXL machine is in a specific state.
+A state is comprised of the values of the shared variables as well as
+the values of the process variables for each process, including its
+program counter and the contents of its stack.
 Everytime a process executes a CXL machine instruction, the
-state changes (if only because the program counter of the process is
-updated).  We call that a \emph{step}.  Steps in CXL are atomic.
+state changes (if only because the program counter of the process
+changes).  We call that a \emph{step}.  Steps in CXL are atomic.
 
 The CXL machine starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace} is a
-sequence of steps starting from the initial state.  When making a
-step, there are two sources of non-determinism in CXL.  One is when
-in some state more than one process can make a step.  The other is
+sequence of steps starting from the initial state.
+When making a step, there are two sources of non-determinism in CXL.
+One is when
+there is more than one process that can make a step.  The other is
 when a process executes a \texttt{choose} operation and there is
 more than one choice.
+Because there is non-determinism, there are multiple possible traces.
+We call a state \emph{reachable} if it is either the initial state
+or it can be reached from the initial state through a trace.
+A state is final
+when there are no processes left to make state changes.
 
-A good way to prove mutual exclusion is through induction on
-the number of steps.
-In such a proof, we need a so-called \emph{inductive invariant} $I$ that
-implies mutual exclusion.
-An inductive invariant $I$ is a predicate over state that satisfies the following:
+A \emph{property} describes a subset of
+states.  In other words, a property is equivalent to a subset of the states.
+\emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
+are all examples of properties.
+Figure~\ref{fig:states} depicts a Venn diagram of various properties
+and a trace.
+An \emph{invariant} is a property that holds over all reachable states.
+We want to show that mutual exclusion is an invariant.
+In other words, we want to show that the set of reachable states is a subset
+of the set of states where there is at most one process in the critical
+section.
+
+One way to prove that a property is an invariant is through induction
+on the number of steps.  First you prove that the property holds over
+the initial state.  Then you prove that for every reachable state,
+and for every step from that reachable state, the property also holds
+over the resulting state.
+For this you need a predicate that describes exactly which
+states are reachable.
+But we do not have such a predicate: we know how to describe the set
+of reachable states, but given an arbitrary state it is not easy to
+see whether it is reachable or not.
+
+To solve this problem, we will use what is called an
+\emph{inductive invariant}.
+An inductive invariant $I$ is a predicate over states that satisfies the following:
 \begin{itemize}
-\item $I$ hold in the initial state.
+\item $I$ holds in the initial state.
 \item For any state in which $I$ holds and any process in the
 state takes a step, then $I$ also holds in the resulting state.
 \end{itemize}
+Unlike an invariant, an inductive invariant must also hold over unreachable states.
 
 One candidate for such an invariant is mutual exclusion itself.
 After all, it certainly holds over the initial state.
@@ -852,6 +928,10 @@ much harder than doing one with an invariant that is.
 \label{fig:petersonproof}
 \end{figure}
 
+So we are looking for an inductive invariant that \emph{implies} mutual
+exclusion.  In other words, the set of states where the inducive invariant holds
+must be a subset of the set of states where there is at most one process in
+the critical section.
 Let $C(i) = \mathtt{flags}[1 - i] \land
 \mathtt{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
 for process~$i$.

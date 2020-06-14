@@ -53,22 +53,26 @@ def notifyAll(c):
     ;
 ;
 def Semaphore(cnt):
-    result = cnt;
+    result = dict{ .count: cnt, .waiters: [] };
 ;
 def P(sema):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if (^sema) > 0:
-                    ^sema = (^sema) - 1;
-                    blocked = False;
-                ;
-            ;
+    atomic:
+        if (^sema).count > 0:
+            (^sema).count = (^sema).count - 1;
+        else:
+            call stop (^sema).waiters;
         ;
     ;
 ;
 def V(sema):
     atomic:
-        ^sema = (^sema) + 1;
+        let cnt = (^sema).count, waiters = (^sema).waiters:
+            if waiters != []:
+                go waiters[0];
+                (^sema).waiters = tail(waiters);
+            else:
+                (^sema).count = cnt + 1;
+            ;
+        ;
     ;
 ;

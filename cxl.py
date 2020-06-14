@@ -391,6 +391,13 @@ class GoOp(Op):
             print("CTX", context.stack)
             state.failure = True
         else:
+            if ctx in state.stopbag:
+                cnt = state.stopbag[ctx]
+                assert cnt > 0
+                if cnt == 1:
+                    del state.stopbag[ctx]
+                else:
+                    state.stopbag[ctx] = cnt - 1
             result = context.pop();
             copy = ctx.copy()
             copy.push(result)
@@ -417,7 +424,7 @@ class ConstantOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.constant
-        return "Push " + str(lexeme)
+        return "Push " + strValue(lexeme)
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.constant
@@ -2332,16 +2339,19 @@ class State:
         self.labels = labels
         self.vars = novalue
         self.ctxbag = {}
+        self.stopbag = {}
         self.choosing = None
         self.failure = False
         self.initializing = True
 
     def __repr__(self):
-        return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ")"
+        return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ", " + str(self.stopbag) + ")"
 
     def __hash__(self):
         h = self.vars.__hash__()
         for c in self.ctxbag.items():
+            h ^= c.__hash__()
+        for c in self.stopbag.items():
             h ^= c.__hash__()
         return h
 
@@ -2352,6 +2362,8 @@ class State:
         if self.vars != other.vars:
             return False
         if self.ctxbag != other.ctxbag:
+            return False
+        if self.stopbag != other.stopbag:
             return False
         if self.choosing != other.choosing:
             return False
@@ -2365,6 +2377,7 @@ class State:
         s = State(self.code, self.labels)
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()
+        s.stopbag = self.stopbag.copy()
         s.failure = self.failure
         s.initializing = self.initializing
         return s
@@ -2424,6 +2437,11 @@ class State:
 
     def stop(self, indexes, ctx):
         self.vars = self.doStop(self.vars, indexes, ctx)
+        cnt = self.stopbag.get(ctx)
+        if cnt == None:
+            self.stopbag[ctx] = 1
+        else:
+            self.stopbag[ctx] = cnt + 1
 
     def add(self, ctx):
         cnt = self.ctxbag.get(ctx)
@@ -2561,7 +2579,7 @@ def optimize(code):
 
 # These operations cause global state changes
 globops = [
-    AtomicIncOp, GoOp, LoadOp, SpawnOp, StoreOp
+    AtomicIncOp, LoadOp, StoreOp
 ]
 
 lasttime = 0
@@ -2903,6 +2921,19 @@ def run(code, labels, map, step, blockflag, printStates):
     if printStates:
         for (s, n) in visited.items():
            print(">>>", s)
+
+    # Look for states where there are no processes running but there are blocked processes.
+    bad = set()
+    for (s, n) in visited.items():
+        if len(s.ctxbag) == 0 and len(s.stopbag) > 0:
+            bad.add(s)
+    if len(bad) > 0:
+        print("==== Stopped States ====", len(bad))
+        bad_state = find_shortest(visited, bad)
+        print_path(visited, bad_state)
+        for ctx in bad_state.stopbag.keys():
+            print("  ", ctx)
+        issues_found = True
 
     if not issues_found:
         print("no issues found")

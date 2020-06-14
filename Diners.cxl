@@ -1,4 +1,4 @@
-import synch;
+import synch5;
 
 const N = 5;
 
