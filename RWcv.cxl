@@ -21,12 +21,12 @@ def acquire_wlock():
     while (nreaders + nwriters) > 0:
         call wait &(wcond);
     ;
-    nwriters = nwriters + 1;
+    nwriters = 1;
     call unlock &(rwlock);
 ;
 def release_wlock():
     call lock &(rwlock);
-    nwriters = nwriters - 1;
+    nwriters = 0;
     call notifyAll &(rcond);
     call notify &(wcond);
     call unlock &(rwlock);

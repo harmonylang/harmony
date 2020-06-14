@@ -2178,6 +2178,7 @@ a semaphore is resolved probabilistically, each reader and each writer will
 eventually have a chance to enter the critical section almost surely.
 
 \chapter{Monitors}
+\label{ch:monitors}
 
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
@@ -2353,5 +2354,40 @@ in the bag with the same context.  \texttt{wait} then waits until that count is 
 value that it had upon entry to \texttt{wait}.  \texttt{notify} removes an arbitrary context from
 the bag, allowing one of the processes with that context to return from \texttt{wait}.
 \texttt{notifyAll} empties out the entire bag, allowing all processes in the bag to resume.
+
+To illustrate how Mesa condition variables are used in practice, we demonstrate, once again,
+using an implementation of reader/writer locks.
+Figure~\ref{fig:RWcv} shows the code.  \texttt{rwlock} is the global lock or mutex for the
+reader/writer lock.  There are two condition variables: readers wait on \texttt{rcond} and
+writers wait on \texttt{wcond}.  The implementation also keeps track of the number of
+readers and writers in the critical section.
+
+When inspecting the code, one important feature to notice is that \texttt{wait} is always
+invoked within a \texttt{while} loop that checks for the condition that the process is
+waiting for.  We explained why in Chapter~\ref{ch:monitors}: when a process resumes after
+being notified, it is not guaranteed that the condition it was waiting for holds, even
+if it did at the time of invoking \texttt{notify} or \texttt{notifyAll}.
+It is \emph{imperative} that you always have a \texttt{while} loop around any invocation
+of \texttt{wait}.
+
+In \texttt{release\_rlock}, notice that \texttt{notify \&(wcond)} is invoked when there
+are no readers left, \emph{without} checking if there are writers waiting to enter.
+With Mesa monitors this is ok, because calling \texttt{notify} is a no-op if no process
+is waiting.
+
+\texttt{release\_wlock} executes \texttt{notifyAll \&(wcond)} as well as
+\texttt{notify \&(wcond)}.
+Again, because we do not keep track of the number of waiting readers or writers, we
+have to conservatively assume that all waiting readers can enter, or, alternatively,
+up to one waiting writer can enter.  So \texttt{release\_wlock} wakes up all
+potential candidates.
+There are two things to note here.  First, unlike split binary semaphores or Hoare
+monitors, where multiple waiting readers would have to be signaled one at a time in a
+baton-passing fashion (see Figure~\ref{fig:splitsema}), with Mesa monitors
+all readers are awaked in one fell swoop using \texttt{notifyAll}.
+Second, both readers and writers are awakened---this is ok because both execute
+\texttt{wait} within a \texttt{while} loop, re-checking the condition that they
+are waiting for.  So if both type of processes are waiting, either all the readers
+get to enter next or one of the writers gets to enter next.
 
 \end{document}
