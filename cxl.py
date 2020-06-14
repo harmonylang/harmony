@@ -1976,7 +1976,7 @@ class ImportAST(AST):
         (lexeme, file, line, column) = self.module
         if lexeme in modules:
             lexeme = modules[lexeme]
-        filename = lexeme + ".cxl"
+        filename = "modules/" + lexeme + ".cxl"
         with open(filename) as f:
             load(f, filename, scope, code)
 
