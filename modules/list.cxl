@@ -6,6 +6,9 @@ def subseq(s, b, e):
     ;
 ;
 
+def append(s, e):
+    result = s + [e,];
+;
 def head(s):
     result = s[0];
 ;

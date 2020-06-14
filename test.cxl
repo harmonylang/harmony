@@ -1,5 +1,2 @@
-def f():
-    x = 3;
-;
-x = 2;
-spawn f();
+import list;
+assert append([ 1, 2 ], 3) == [ 1, 2, 3 ];
