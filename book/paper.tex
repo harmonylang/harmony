@@ -2398,6 +2398,14 @@ get to enter next or one of the writers gets to enter next.
 
 \chapter{Barrier Synchronization}
 
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/barrier.cxl}
+\end{code}
+\caption{[barrier.cxl] Barrier synchronization with semaphores.}
+\label{fig:barrier}
+\end{figure}
+
 \appendix
 
 \chapter{List of Values}
@@ -2648,9 +2656,15 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \hline
 \texttt{qsort(t)} & sort list \texttt{t} using quicksort\\
 \hline
-\texttt{sum(t)} & return the sum of all elements in \texttt{t}\\
-\hline
 \texttt{list2bag(t)} & convert list \texttt{t} into a bag \\
+\hline
+\texttt{list2set(t)} & convert list \texttt{t} into a set \\
+\hline
+\texttt{listMin(t)} & return the minimum of all elements in \texttt{t}\\
+\hline
+\texttt{listMax(t)} & return the maximum of all elements in \texttt{t}\\
+\hline
+\texttt{listSum(t)} & return the sum of all elements in \texttt{t}\\
 \hline
 \end{tabular}
 

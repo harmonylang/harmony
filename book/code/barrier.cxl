@@ -1,0 +1,27 @@
+import synch;
+import list;
+
+const N = 3;        # number of processes
+const R = 4;        # number of rounds
+
+def process(self):
+    for r in 1..R:
+        for i in 1..N:
+            if i != self:
+                call V &(sema[i]);
+            ;
+        ;
+        for i in 1..N:
+            if i != self:
+                call P &(sema[self]);
+            ;
+        ;
+        round[self] = (round[self] + 1);
+        assert (listMax(round) - listMin(round)) <= 1;
+    ;
+;
+round = dict{ 0 for i in 1..N };
+sema = dict{ Semaphore(0) for i in 1..N };
+for i in 1..N:
+    spawn process(i);
+;

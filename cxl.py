@@ -2346,7 +2346,7 @@ class State:
                 v = v.d[indexes[0]]
             except KeyError:
                 print()
-                print("can't find", indexes[0], "in variable", path)
+                print("no index", indexes[0], "in variable", path)
                 sys.exit(1)
             indexes = indexes[1:]
         return v

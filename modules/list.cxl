@@ -36,11 +36,15 @@ def qsort(a):
 ;
 
 # sum of a list
-def sum(a):
+def listSum(a):
     result = 0;
     for i in keys(a):
         result = result + a[i];
     ;
+;
+
+def list2set(a):
+    result = { a[i] for i in keys(a) };
 ;
 
 # turn a list into a bag (multiset)
@@ -53,4 +57,11 @@ def list2bag(a):
             result[a[i]] = 1;
         ;
     ;
+;
+
+def listMin(a):
+    result = min(list2set(a));
+;
+def listMax(a):
+    result = max(list2set(a));
 ;
