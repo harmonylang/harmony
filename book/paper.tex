@@ -2459,6 +2459,16 @@ non-blocking (aka \emph{wait-free}) synchronization algorithms~\cite{}.
 \chapter{Barrier Synchronization}
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
+\end{center}
+\caption{High-level state diagram specification of barrier synchronization
+with three processes and two rounds.  The three numbers specify how many
+rounds each process has completed.}
+\label{fig:barrierdiagram}
+\end{figure}
+
+\begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/barrier.cxl}
 \end{code}
@@ -2466,15 +2476,39 @@ non-blocking (aka \emph{wait-free}) synchronization algorithms~\cite{}.
 \label{fig:barrier}
 \end{figure}
 
-\begin{figure}
-\begin{center}
-\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
-\end{center}
-\caption{High-level state diagram specification of barrier synchronization
-with three processes and three rounds.  The three numbers specify the round
-number of each process.}
-\label{fig:barrierdiagram}
-\end{figure}
+Barrier synchronization is a problem that comes up in high-performance
+parallel computing, used, among others, for scalable simulation.
+Barrier synchronization is almost the opposite of critical sections:
+the intention is to get a group of processes to run some code at the
+same time.
+More precisely, the processes run in rounds.  At the end of each round
+there is a so-called \emph{barrier} where processes wait until all
+processes have completed the round.
+For example, in an iterative matrix algorithm, the matrix may be
+cut up into fragments.  During a round, one process runs for each
+fragment concurrently.  The next round is not allowed to start
+until all processes have completed operations on their fragment.
+
+Figure~\ref{fig:barrierdiagram} shows a high-level depiction with three
+processes.  Initially all processes are in round 0.  Then each process
+can start and finish the round.  However, none of the processes can
+progress to the next round until all processes have finished the
+current round.
+
+Counting semaphores work well for implementing barrier synchronization.
+Figure~\ref{fig:barrier} shows an example.  There is a 0-initialized
+semaphore for each of the \texttt{N} processes.
+Before process $i$ enters a round, it first sends a signal to every
+other process and then waits until it receives a signal from
+every other process.  Process $i$ sends a signal to process $j$
+by incrementing \texttt{sema[$j$]} (using \texttt{V}),
+while process $i$ waits for a signal be decrementing \texttt{sema[$i$]}
+(using \texttt{P}).
+
+The \texttt{round} array is kept to check the correctness of this
+approach.  Each process increments its entry every time it enters
+a round.  If the algorithm is correct, it can never be that two processes
+are more than one round apart.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
