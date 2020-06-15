@@ -593,7 +593,7 @@ class AssertOp(Op):
         if not cond:
             print()
             if self.exprthere:
-                print("CXL Assertion failed", self.token, expr)
+                print("CXL Assertion failed", self.token, strValue(expr))
             else:
                 print("CXL Assertion failed", self.token)
             state.failure = True

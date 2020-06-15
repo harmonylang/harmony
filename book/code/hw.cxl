@@ -1,0 +1,52 @@
+const NPROC = 3;        # number of processes
+const NPROD = 3;        # maximum number of items produced per process
+const MAX_ITEMS = NPROC * NPROD;
+
+def inc(pcnt):
+    atomic:
+        result = ^pcnt;
+        ^pcnt = (^pcnt) + 1;
+    ;
+;
+def swap(pv):
+    atomic:
+        result = ^pv;
+        ^pv = ();
+    ;
+;
+def enq(item):
+    let i = inc &(back):
+        items[i] = (item,);
+    ;
+;
+def deq():
+    result = ();
+    while result == ():
+        let range = back, i = 0:
+            while (i < range) and (result == ()):
+                result = swap(&(items[i]));
+                i = i + 1;
+            ;
+        ;
+    ;
+    result = result[0];     # convert (item,) into item
+;
+back = 0;
+items = [ () for i in 0..(MAX_ITEMS) ];
+
+def process():
+    let n = 0, m = 0:
+        for i in 1..NPROD:
+            if (n == m) or (choose({ .enq, .deq }) == .enq):
+                call enq(i);
+                n = n + 1;
+            else:
+                call deq();
+                m = m + 1;
+            ;
+        ;
+    ;
+;
+for i in 1..NPROC:
+    spawn process();
+;
