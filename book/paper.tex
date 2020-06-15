@@ -2404,6 +2404,27 @@ get to enter next or one of the writers gets to enter next.
 \label{fig:hw}
 \end{figure}
 
+So far we have concentrated on critical sections to synchronize multiple
+processes.  Certainly, preventing multiple processes from accessing
+certain code at the same time simplifies how to think about synchronization.
+However, it can lead to starvation.  Even in the absence of starvation,
+if some process is slow for some reason while being in the critical section,
+the other processes have to wait for it to finish the critical section.
+In this chapter, we will have a brief look at how one can develop concurrent
+code in which processes never have to wait for other processes.
+For this, we will revisit the producer/consumer problem, in which a
+set of processes are producing items and a set of processes are
+consuming items.
+
+The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
+Wing~\cite{HW}.  It uses two interlock instructions:
+\begin{itemize}
+\item \texttt{inc(p)}: atomically increments \texttt{\^{}p} and returns
+the old value;
+\item \texttt{swap(p)}: sets \texttt{\^{}p} to \texttt{()} and returns
+the old value.
+\end{itemize}
+
 \chapter{Barrier Synchronization}
 
 \begin{figure}
