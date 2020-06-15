@@ -2396,6 +2396,9 @@ Second, both readers and writers are awakened---this is ok because both execute
 are waiting for.  So if both type of processes are waiting, either all the readers
 get to enter next or one of the writers gets to enter next.
 
+Andrew Birrell's paper on Programming with Threads gives an excellent
+introduction to working with Mesa-style condition variables~\cite{Birrell89}.
+
 \chapter{Non-Blocking Synchronization}
 
 \begin{figure}
