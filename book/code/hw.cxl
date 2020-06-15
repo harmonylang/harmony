@@ -1,6 +1,4 @@
-const NPROC = 3;        # number of processes
-const NPROD = 3;        # maximum number of items produced per process
-const MAX_ITEMS = NPROC * NPROD;
+const MAX_ITEMS = 3;
 
 def inc(pcnt):
     atomic:
@@ -14,12 +12,10 @@ def swap(pv):
         ^pv = ();
     ;
 ;
-def enq(item):
-    let i = inc &(back):
-        items[i] = (item,);
-    ;
+def produce(item):
+    items[inc &(back)] = (item,);
 ;
-def deq():
+def consume():
     result = ();
     while result == ():
         let range = back, i = 0:
@@ -34,19 +30,9 @@ def deq():
 back = 0;
 items = [ () for i in 0..(MAX_ITEMS) ];
 
-def process():
-    let n = 0, m = 0:
-        for i in 1..NPROD:
-            if (n == m) or (choose({ .enq, .deq }) == .enq):
-                call enq(i);
-                n = n + 1;
-            else:
-                call deq();
-                m = m + 1;
-            ;
-        ;
-    ;
+for i in 1..MAX_ITEMS:
+    spawn produce(i);
 ;
-for i in 1..NPROC:
-    spawn process();
+for i in 1..choose(0..MAX_ITEMS):
+    spawn consume();
 ;
