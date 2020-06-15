@@ -2738,6 +2738,8 @@ appears otherwise:
 \item \texttt{m(a, b, c)} invokes method \texttt{m} with tuple \texttt{(a, b, c)} as argument.
 \end{itemize}
 The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
+\item Every \texttt{Stop} instruction must immediately be followed by a 
+\texttt{Continue} instruction.
 \end{itemize}
 
 \chapter{Contexts and Processes}
@@ -2837,8 +2839,7 @@ other contexts.
 
 A \emph{macro step} can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
-\texttt{AtomicInc}, and \texttt{Choose}.  Also, any instruction after
-a \texttt{Stop} instruction starts a macro step.  The CXL machine
+\texttt{AtomicInc}, and \texttt{Continue}.  The CXL machine
 interleaves macro steps, not micro steps.  Like micro steps, each
 macro step involves a single context.  Unlike a micro step, a macro
 step can leave the state unchanged.

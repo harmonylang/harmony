@@ -498,11 +498,19 @@ class StopOp(Op):
         assert isinstance(av, AddressValue), indexes
 
         # First update the context before saving it
-        context.pc += 1
         context.stopped = True
+        context.pc += 1
+        assert isinstance(state.code[context.pc], ContinueOp)
 
         # Save the context
         state.stop(av.indexes + indexes[1:], context)
+
+class ContinueOp(Op):
+    def __repr__(self):
+        return "Continue"
+
+    def eval(self, state, context):
+        context.pc += 1
 
 class AddressOp(Op):
     def __init__(self, n):
@@ -1651,6 +1659,7 @@ class StopAST(AST):
             if tv == None:
                 code.append(PushAddressOp(lv.name))
                 code.append(StopOp(n))
+                code.append(ContinueOp())
             else:
                 print("Error: Can't store state in process variable")
                 sys.exit(1)
@@ -1658,6 +1667,7 @@ class StopAST(AST):
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
             code.append(StopOp(n))
+            code.append(ContinueOp())
 
 class AddressAST(AST):
     def __init__(self, lv):
@@ -2522,7 +2532,7 @@ def optimize(code):
 
 # These operations cause global state changes
 globops = [
-    AtomicIncOp, LoadOp, StoreOp
+    AtomicIncOp, ContinueOp, LoadOp, StoreOp
 ]
 
 lasttime = 0
