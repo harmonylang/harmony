@@ -164,7 +164,7 @@ There is no syntactic significance to indentation in CXL.
 Correct indentation in CXL is encouraged but not enforced.
 CXL only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
-\item CXL does not (currently) support floating point.  CXL does not support I/O;
+\item CXL does not (currently) support floating point, iterators, or I/O;
 \item Python is object-oriented; CXL is not;
 \end{itemize}
 There are also many unimportant ones that you will discover as
@@ -193,7 +193,8 @@ The first assigns to \texttt{x} some unspecified value in the range \texttt{0..N
 and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
 ``Running'' this CXL program will try all possible executions, which
-includes all possible values for $x$.  Try it out:
+includes all possible values for $x$.  Try it out (here \texttt{\$}
+represents a shell prompt):
 
 \begin{code}
 \begin{verbatim}
@@ -2393,6 +2394,10 @@ Second, both readers and writers are awakened---this is ok because both execute
 are waiting for.  So if both type of processes are waiting, either all the readers
 get to enter next or one of the writers gets to enter next.
 
+\chapter{Non-Blocking Synchronization}
+
+\chapter{Barrier Synchronization}
+
 \appendix
 
 \chapter{List of Values}
@@ -2450,9 +2455,7 @@ representation;
 ordered;
 \item an address is a list of atoms.  Addresses are lexicographically
 ordered accordingly;
-\item a context consists of a name tag, the value of the program counter,
-the value of the register, and the contents of the stack.  Currently,
-contexts are ordered by hash.
+\item contexts (Appendix~\ref{app:context} are ordered by hash.
 \end{itemize}
 
 \chapter{List of Operators}
@@ -2601,6 +2604,7 @@ CXL currently supports the following statements:
 \end{tabular}
 \vspace{1em}
 
+CXL does not support Python-style iterators.
 To iterate through a dictionary, list, or tuple, use:
 \texttt{for v in keys(e):~S}.
 
@@ -2721,6 +2725,127 @@ and pushes the value.
 If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
 pushing the current program counter and setting the program counter to
 $m$.  $m$ is supposed to leave the result on the stack.
+\item The \texttt{Frame} instruction pushes the value of the process
+register (\emph{i.e.}, the values of the process variables) onto the
+stack.  It initializes the \texttt{result} variable to the empty dictionary.
+The \texttt{Return} instruction restores the process register by popping
+its value of the stack.
+\item All method calls have exactly one argument, although it sometimes
+appears otherwise:
+\begin{itemize}
+\item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
+\item \texttt{m(a)} invokes method \texttt{m} with argument \texttt{a};
+\item \texttt{m(a, b, c)} invokes method \texttt{m} with tuple \texttt{(a, b, c)} as argument.
 \end{itemize}
+The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
+\end{itemize}
+
+\chapter{Contexts and Processes}
+\label{app:context}
+
+A context captures the state of a process.  Each time the process
+executes an instruction, it goes from one context to another.
+All instructions update the program counter, and so no instruction
+leaves the context the same.
+There may be multiple processes
+with the same state at the same time.
+
+A context consists of the following:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+name tag & a dictionary with atoms \texttt{.name} and \texttt{.tag} \\
+\hline
+program counter & a Program Counter value pointing into the code \\
+\hline
+end & a Program Counter value indicating the end of the process code \\
+\hline
+atomic & if non-zero, the process is in atomic mode \\
+\hline
+stack & a list of CXL values \\
+\hline
+register & a CXL dictionary mapping atoms (representing process variables) to CXL values \\
+\hline
+stopped & a Boolean indicating if the context is stopped \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+Details:
+\begin{itemize}
+\item The name in a name tag is the name of the method that the process
+is executing;
+\item The tag in a name tag is its argument by default.  Optionally
+\texttt{spawn} allows the tag to be specified explicitly;
+\item A process terminates when it reaches the \texttt{Return} instruction
+of the method or when it hits a fault.  Faults include divide by zero,
+reading a non-existent key in a dictionary, accessing a non-existent
+variable, as well as when an assertion fails;
+\item The execution of a process in atomic mode does not get interleaved
+with that of other processes.
+\item The register of a process always contains a dictionary, mapping
+atoms to arbitrary values.  The atoms correspond to the variable names
+in a CXL program.
+\end{itemize}
+
+A context is considered \emph{blocked} if there does not exist a
+sequence instructions that the process can execute that either writes
+to a shared variable (even if that leaves the shared variable unchanged)
+or terminates the process.
+
+\chapter{The CXL Machine}
+
+The CXL machine has the following state:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+code & a list of CXL machine instructions \\
+\hline
+labels & a dictionary of atoms to program counters \\
+\hline
+variables & a dictionnary mapping atoms to values \\
+\hline
+ctxbag & a bag of non-stopped contexts \\
+\hline
+stopbag & a bag of stopped contexts \\
+\hline
+choosing & if not \texttt{None}, indicates a context that is choosing \\
+\hline
+failure & Boolean indicating some context has failed \\
+\hline
+initializing & Boolean indicating that the state is not fully initialized. \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+There is initially a single context with nametag
+\texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
+in atomic mode until it finishes executing the last instruction in
+the code.  All states until then are \texttt{initializing} states.
+Other processes, created through \texttt{spawn} statements, do not
+start executing until then.
+
+A \emph{micro step} is the execution of a single CXL machine instruction
+by a context.
+Each micro step generates a new state.
+When there are multiple contexts, the CXL machine can interleave them.
+However, trying to interleave every microstep would be needlessly expensive,
+as many micro steps involve changes to a context that are invisible to
+other contexts.
+
+A \emph{macro step} can involve multiple micro steps.  The following
+instructions start a new macro step: \texttt{Load}, \texttt{Store},
+\texttt{AtomicInc}, and \texttt{Choose}.  Also, any instruction after
+a \texttt{Stop} instruction starts a macro step.  The CXL machine
+interleaves macro steps, not micro steps.  Like micro steps, each
+macro step involves a single context.  Unlike a micro step, a macro
+step can leave the state unchanged.
+
+Executing a CXL program results in a graph where the nodes are CXL
+states and the edges are macro steps.  A terminating state is a
+state with an empty context bag or a state where all contexts are
+blocked.
 
 \end{document}
