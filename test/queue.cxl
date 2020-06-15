@@ -1,0 +1,46 @@
+const Q_NPOOL  = 10;      # number of queue node entries
+const Q_END    = -1;      # end of queue
+
+def q_release(qnode):
+    q_pool[qnode].next = q_free;
+    q_free = qnode;
+;
+def q_new():
+    result = q_free;
+    q_free = q_pool[result].next;
+    q_pool[result].next = Q_END;
+;
+def enqueue(item):
+    new = q_new();
+    if q_tail == Q_END:
+        q_head = new;
+    else:
+        q_pool[q_tail].next = new;
+    ;
+    q_tail = new;
+    q_pool[new].item = item;
+;
+def dequeue():
+    head = q_head;
+    result = q_pool[head].item;
+    q_head = q_pool[head].next;
+    call q_release(head);
+;
+
+q_pool = [ dict{ .item: (), .next: Q_END } for i in 0..(Q_NPOOL-1) ];
+q_free = -1;
+for i in 0..(Q_NPOOL-1):
+    call q_release(i);
+;
+q_head = Q_END;
+q_tail = Q_END;
+
+call enqueue(1);
+call enqueue(2);
+call enqueue(3);
+x = dequeue();
+assert x == 1;
+x = dequeue();
+assert x == 2;
+x = dequeue();
+assert x == 3;
