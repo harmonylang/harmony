@@ -2530,11 +2530,6 @@ def optimize(code):
         elif isinstance(op, JumpCondOp):
             code[i] = JumpCondOp(op.cond, optjump(code, op.pc))
 
-# These operations cause global state changes
-globops = [
-    AtomicIncOp, ContinueOp, LoadOp, StoreOp
-]
-
 lasttime = 0
 
 # Have context ctx make one (macro) step in the given state
@@ -2601,7 +2596,14 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if cc.atomic == 0 and type(sc.code[cc.pc]) in globops and len(sc.ctxbag) > 0:
+        if cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp } and len(sc.ctxbag) > 1:
+            break
+        if cc.atomic == 0 and isinstance(sc.code[cc.pc], AtomicIncOp):
+            break
+
+        # ContinueOp always causes a break
+        if isinstance(sc.code[cc.pc], ContinueOp):
+            assert False        # TODO.  For debugging.  Remove this line
             break
 
         # Detect infinite loops
