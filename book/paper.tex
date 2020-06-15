@@ -1,5 +1,6 @@
 \documentclass{report}
 \usepackage{fullpage}
+\usepackage[nottoc,numbib]{tocbibind}
 \usepackage{graphicx}
 \usepackage{framed}
 \usepackage{tcolorbox}
@@ -143,13 +144,13 @@ with the concepts of CPU, memory, register, stack, and machine
 instructions.
 
 CXL is heavily influenced by Leslie Lamport's work on
-TLA+, TLC, and PlusCal~\cite{}.
+TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09}.
 CXL is designed to have a lower learning curve than those
 systems, but is not as powerful.  When you finish this book
 and want to learn more, we strongly encourage checking
 those out.
 Another excellent resource is Fred Schneider's book ``On
-Concurrent Programming.''
+Concurrent Programming''~\cite{Schneider97}.
 
 \chapter{Introduction to Programming with CXL}
 
@@ -1466,7 +1467,7 @@ Allowing reads to proceed concurrently can significantly improve performance.
 
 What we want is a special kind of lock that allows either one writer
 or one or more readers to be in the critical section.  This is called
-a \emph{reader/writer lock}~\cite{courtois71}.
+a \emph{reader/writer lock}~\cite{CHP71}.
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
@@ -2223,7 +2224,7 @@ use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
 \texttt{V}.
 
 In the late 70s, Xerox PARC developed a new programming language called
-Mesa~\cite{mesa}.
+Mesa~\cite{LR80}.
 Mesa introduced various important concepts to programming languages,
 including software exceptions and incremental compilation.  Mesa also
 incorporated a version of monitors.
@@ -2418,7 +2419,7 @@ set of processes are producing items and a set of processes are
 consuming items.
 
 The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
-Wing~\cite{HW}.
+Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
 is not necessarily practical.
 There are two variables.  \texttt{items} is an unbounded array with each
@@ -2474,6 +2475,9 @@ with three processes and three rounds.  The three numbers specify the round
 number of each process.}
 \label{fig:barrierdiagram}
 \end{figure}
+
+\bibliographystyle{alpha}
+\bibliography{paper}
 
 \appendix
 
