@@ -1857,7 +1857,8 @@ cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
 \label{fig:pcscript}
 \end{figure}
 
-A good example of a resource with multiple units is the so-called \emph{bounded buffer}.
+A good example of a resource with multiple units is the
+so-called \emph{bounded buffer} (aka \emph{ring buffer}).
 It is essentially
 a queue implemented using a circular buffer of a certain length and two pointers:
 one where items are inserted and one from where items are extracted.  If the
@@ -2417,13 +2418,42 @@ set of processes are producing items and a set of processes are
 consuming items.
 
 The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
-Wing~\cite{HW}.  It uses two interlock instructions:
+Wing~\cite{HW}.
+The code is a ``proof of existence'' for non-blocking synchronization; it
+is not necessarily practical.
+There are two variables.  \texttt{items} is an unbounded array with each
+entry initialized to \texttt{()}.  \texttt{back} is an index into the
+array and points to the next slot where a new value is inserted.
+The code uses two interlock instructions:
 \begin{itemize}
 \item \texttt{inc(p)}: atomically increments \texttt{\^{}p} and returns
 the old value;
 \item \texttt{swap(p)}: sets \texttt{\^{}p} to \texttt{()} and returns
 the old value.
 \end{itemize}
+
+Method \texttt{produce(item)} uses \texttt{inc \&(back)} to allocate
+the next available slot in the \texttt{items} array.
+It stores the item as a singleton tuple.
+Method \texttt{consume()} repeatedly scans the array, up to the
+\texttt{back} index, trying to find an item to return.
+To check an entry, it uses \texttt{swap()}
+to atomically remove an item from a slot if there is one.
+This way, if two or more processes attempt to extract an item from
+the same slot, at most one will succeed.
+
+There is no critical section.  If one process is executing instructions
+very slowly, this does not negatively impact the other processes, as it
+would with solutions based on critical sections.
+On the contrary, it helps them because it creates less contention.
+
+The solution is not practical because the \texttt{items} array must be
+unbounded if an unbounded number of items may be produced.  Each slot
+in the array is only used once, which is inefficient.  Also, the \texttt{inc}
+and \texttt{swap} interlock instructions are not universally available
+on existing hardware.
+However, in the literature there are many examples of practical
+non-blocking (aka \emph{wait-free}) synchronization algorithms~\cite{}.
 
 \chapter{Barrier Synchronization}
 
