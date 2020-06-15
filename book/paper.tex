@@ -2844,8 +2844,11 @@ macro step involves a single context.  Unlike a micro step, a macro
 step can leave the state unchanged.
 
 Executing a CXL program results in a graph where the nodes are CXL
-states and the edges are macro steps.  A terminating state is a
-state with an empty context bag or a state where all contexts are
-blocked.
+states and the edges are macro steps.
+When a state is \texttt{choosing}, the edges from that state are
+by a single context, one for each choice.  If not, the edges from
+the state are one per context.
+A terminating state is a state with an empty context bag or a state
+where all contexts are blocked.
 
 \end{document}
