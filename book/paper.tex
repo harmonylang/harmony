@@ -17,6 +17,12 @@
 \tolerance=9999
 \newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
 
+\newglossaryentry{actor model}
+{
+  name=actor model,
+  description={is a concurrency model where there are no shared variables, only
+      processes with private variables and exchanging messages}
+}
 \newglossaryentry{atomicity}
 {
   name=atomicity,
@@ -24,11 +30,37 @@
     instructions by a process is executed indivisibly and cannot be interleaved with 
     machine instructions of another process}
 }
+\newglossaryentry{barrier synchronization}
+{
+  name=barrier synchronization,
+  description={is when a set of processes execute in rounds, waiting for one another
+    to complete each round}
+}
+\newglossaryentry{blocked process}
+{
+  name=blocked process,
+  description={is a process cannot make progress without the help of another process.
+      For example, a process that is waiting for a spinlock to become available}
+}
+\newglossaryentry{busy waiting}
+{
+  name=busy waiting,
+  description={(aka spin-waiting) is when a process waits in a loop for some
+      application-defined condition while changing the state, for example by
+      continually acquiring and releasing a lock}
+}
 \newglossaryentry{concurrent execution}
 {
   name=concurrent execution,
   description={(aka parallel execution) is when there are multiple processes executing and
       their machine instructions are interleaved in an unpredictable manner}
+}
+\newglossaryentry{condition variable}
+{
+  name=condition variable,
+  description={a variable that keeps track of which processes are waiting for a
+    specific application-level condition.  The variable can be waited on as well
+    as signaled or notified}
 }
 \newglossaryentry{context}
 {
@@ -36,6 +68,12 @@
   description={(aka continuation) describes the state of a running process,
     including its program counter, the values of its variables (stored in its
     register), and the contents of its stack}
+}
+\newglossaryentry{conditional critical section}
+{
+  name=conditional critical section,
+  description={is a critical section with, besides mutual exclusion, additional conditions on
+      when a process is allowed to enter the critical section}
 }
 \newglossaryentry{critical section}
 {
@@ -45,11 +83,29 @@
     atomically, as other processes can continue to execute and access shared
     variables}
 }
+\newglossaryentry{deadlock}
+{
+  name=deadlock,
+  description={is when there are two or more processes waiting indefinitely for one
+    another to release a resource}
+}
 \newglossaryentry{determinism}
 {
   name=determinism,
   description={is when the outcome of an execution is uniquely determined by the
     initial state}
+}
+\newglossaryentry{fairness}
+{
+  name=fairness,
+  description={is when each process eventually can access each resource it needs to access
+    with high probability}
+}
+\newglossaryentry{interlock instruction}
+{
+  name=interlock instruction,
+  description={a machine instruction that involves multiple memory load and/or store
+    operations, executed atomically}
 }
 \newglossaryentry{invariant}
 {
@@ -57,29 +113,39 @@
   description={is a binary predicate over states that must hold for every
   reachable state of a process}
 }
+\newglossaryentry{lock}
+{
+  name=lock,
+  description={an object that can be owned by at most one process at a time.  Useful
+    for implementing mutual exclusion}
+}
 \newglossaryentry{machine instruction}
 {
   name=machine instruction,
   description={is an atomic operation on the CXL machine, executed by a process}
-}
-\newglossaryentry{macro step}
-{
-  name=macro step,
-  description={is a sequence of micro steps with at most one instruction
-        externally visible to other processes.  It is the unit of interleaving
-        in CXL}
-}
-\newglossaryentry{micro step}
-{
-  name=micro step,
-  description={is the execution of one machine instruction by a process, updating
-        its state and the state of the CXL machine}
 }
 \newglossaryentry{model checking}
 {
   name=model checking,
   description={is a formal verification method that explores all possible executions
     of a program, which must have a finite number of states}
+}
+\newglossaryentry{monitor}
+{
+  name=monitor,
+  description={is a programming language paradigm that supports mutual exclusion
+    as well as waiting for resources to become available}
+}
+\newglossaryentry{mutual exclusion}
+{
+  name=mutual exclusion,
+  description={is a property that two processes never enter the same critical section}
+}
+\newglossaryentry{non-blocking synchronization}
+{
+  name=non-blocking synchronization,
+  description={(aka wait-free synchronization) is when access to a shared resource can be
+      guaranteed in a bounded number of steps even if other processes are not making progress}
 }
 \newglossaryentry{process}
 {
@@ -93,6 +159,14 @@
   name=process variable,
   description={is a variable that is private to a single process and stored in
         its register}
+}
+\newglossaryentry{producer/consumer problem}
+{
+  name=producer/consumer problem,
+  description={is a synchronization problem whereby one or more producing processes
+    submit items and one or more consuming process want to receive them.  No item
+    can get lost or forged or be delivered to more than one consumer, and producers
+    and consumers should block if resources are exhausted}
 }
 \newglossaryentry{property}
 {
@@ -109,6 +183,18 @@
   description={describes when multiple processes access shared state concurrently,
     leading to undesirable outcomes}
 }
+\newglossaryentry{reader/writer lock}
+{
+  name=reader/writer lock,
+  description={is a lock on a resource that can be held by multiple processes if they all 
+    only read the resource}
+}
+\newglossaryentry{semaphore}
+{
+  name=semaphore,
+  description={is a counter that can be atomically incremented and decremented,
+    but blocks the process until the counter is larger than zero first}
+}
 \newglossaryentry{sequential execution}
 {
   name=sequential execution,
@@ -121,17 +207,49 @@
   description={is a variable that is stored in the memory of the CXL machine and
       shared between multiple processes, as opposed to a process variable}
 }
+\newglossaryentry{spinlock}
+{
+  name=spinlock,
+  description={is an implementation of a lock whereby a process loops until the
+    lock is available, at which point the process atomically obtains the lock}
+}
 \newglossaryentry{stack machine}
 {
   name=stack machine,
   description={is a model of computing where the state of a process is kept on
     a stack.  CXL uses a combination of a stack machine and a register-based machine}
 }
+\newglossaryentry{starvation}
+{
+  name=starvation,
+  description={is when a process cannot make progress because it is continuously
+    losing a competition with other processes to get access to a resource}
+}
+\newglossaryentry{state}
+{
+  name=state,
+  description={an assignment of values to variables.  In a CXL machine, this includes
+      the contents of its shared memory and the set of contexts}
+}
+\newglossaryentry{step}
+{
+  name=step,
+  description={is the execution of a machine instruction by a process, updating
+        its state.  CXL distinguishes micro steps (machine instructions) and macro
+        step (a sequence of instructions with at most one effect visible by
+        other processes)}
+}
 \newglossaryentry{thread safety}
 {
   name=thread safety,
   description={is when the implementation of a data structure allows concurrent access
     with well-defined semantics}
+}
+\newglossaryentry{trace}
+{
+  name=trace,
+  description={is a sequence of steps, starting from an initial state.  An infinite
+    trace is also called a \emph{behavior}}
 }
 
 % \renewcommand{\topfraction}{.99}
@@ -812,6 +930,7 @@ identifying a location in the CXL machine code.  The first thing we need to
 ensure is that there can never be two processes at the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
+\glsadd{mutual exclusion}
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
@@ -931,6 +1050,7 @@ section cannot terminate.
 
 You may already have heard of the concept of a \emph{lock}
 \index{lock}
+\glsadd{lock}
 and have realized that
 it could be used to implement a critical section.
 The idea is that the lock is like a baton that at most one process can own
@@ -1058,6 +1178,7 @@ For that, we have to understand a little bit more about how the CXL
 machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
 \index{state}
+\glsadd{state}
 at any point of time the CXL machine is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
@@ -1069,11 +1190,13 @@ Everytime a process executes a CXL machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}
+\glsadd{step}
 Steps in CXL are atomic.
 
 The CXL machine starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
 \index{trace}
+\glsadd{trace}
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}
@@ -1349,6 +1472,7 @@ That would allow you to simulate object methods.
 
 \chapter{Spinlock}
 \index{spinlock}
+\glsadd{spinlock}
 
 \begin{figure}
 \begin{code}
@@ -1367,6 +1491,7 @@ algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple processes.  Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
 \index{interlock instruction}
+\glsadd{interlock instruction}
 special machine instructions
 that can read memory and then write it in an indivisible step.
 
@@ -1569,6 +1694,7 @@ chapters.
 
 We call a process \emph{blocked}
 \index{blocked process}
+\glsadd{blocked process}
 in a state if the process is in
 an \emph{infinite loop} in which the process does not update the
 shared memory.
@@ -1691,6 +1817,7 @@ in which processes wait for a lock.
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \index{reader/writer lock}
+\glsadd{reader/writer lock}
 
 \begin{figure}
 \begin{code}
@@ -1780,6 +1907,7 @@ critical section, any other reader is also able to enter.
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
 \index{busy waiting}
+\glsadd{busy waiting}
 (aka spin-waiting):
 \index{spin waiting}
 processes spin in a loop until some desirable application-level condition is met.
@@ -1910,6 +2038,7 @@ reader/writer locks can be instantiated.
 
 \chapter{Deadlock}
 \index{deadlock}
+\glsadd{deadlock}
 
 \begin{figure}
 \begin{code}
@@ -1977,6 +2106,7 @@ before the higher numbered fork, like so:
 
 \chapter{Semaphores}
 \index{semaphore}
+\glsadd{semaphore}
 
 \begin{figure}
 \begin{code}
@@ -2083,6 +2213,7 @@ Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 \chapter{Bounded Buffer}
 \index{bounded buffer}
 \index{producer/consumer problem}
+\glsadd{producer/consumer problem}
 
 \begin{figure}
 \begin{center}
@@ -2241,7 +2372,8 @@ Reader/writer locks and bounded buffers are both examples of what are
 sometimes called \emph{conditional critical sections}
 \index{conditional critical section}
 (CCSs)~\cite{Hoare73}.
-All critical sections are in fact conditional.  Even the basic one
+\glsadd{conditional critical section}
+All critical sections are, in a way, conditional.  Even the basic critical section
 has the condition that a process can only enter if no other process
 is in the critical section.  Reader/writer locks refined that, loosening
 the restriction for improved performance.
@@ -2376,6 +2508,7 @@ and so it vacates \texttt{mutex}.
 \chapter{Starvation}
 \label{ch:starvation}
 \index{starvation}
+\glsadd{starvation}
 
 \begin{figure}
 \begin{code}
@@ -2437,12 +2570,12 @@ all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
 In this chapter, we will present a version of a reader/writer lock
-implementation that solves this type of starvation, but won't eliminate
-the type of starvation.
+implementation that solves this type of starvation.
 In particular, the probability that either a reader or writer gets starved
 will be exponentially diminishing.
 We shall call such a solution \emph{fair}
 \index{fairness}
+\glsadd{fairness}
 (although it does not quite
 match the usual formal nor vernacular concepts of fairness).
 
@@ -2479,6 +2612,7 @@ Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}~\cite{Hoare74}.
 \index{monitor}
+\glsadd{monitor}
 (A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
@@ -2487,6 +2621,7 @@ The \texttt{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are called \emph{condition variables}.
 \index{condition variable}
+\glsadd{condition variable}
 There are two operations on condition variables: \texttt{wait}
 \index{wait}
 and
@@ -2718,7 +2853,8 @@ Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \chapter{Actors and Synchronized Queues}
-\index{actor}
+\index{actor model}
+\glsadd{actor model}
 
 \begin{figure}
 \begin{code}
@@ -2811,6 +2947,7 @@ requests.
 
 \chapter{Non-Blocking Synchronization}
 \index{non-blocking synchronization}
+\glsadd{non-blocking synchronization}
 
 \begin{figure}
 \begin{code}
@@ -2874,6 +3011,7 @@ synchronization algorithms~\cite{}.
 
 \chapter{Barrier Synchronization}
 \index{barrier synchronization}
+\glsadd{barrier synchronization}
 
 \begin{figure}
 \begin{center}
@@ -3405,8 +3543,6 @@ Other processes, created through \texttt{spawn} statements, do not
 start executing until then.
 
 A \emph{micro step}
-\index{micro step}
-\glsadd{micro step}
 is the execution of a single CXL machine instruction
 by a context.
 Each micro step generates a new state.
@@ -3417,7 +3553,6 @@ other contexts.
 
 A \emph{macro step}
 \index{macro step}
-\glsadd{macro step}
 can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
 \texttt{AtomicInc}, and \texttt{Continue}.  The CXL machine
