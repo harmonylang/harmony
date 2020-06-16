@@ -50,8 +50,9 @@
 
 Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
-processes concurrently read and update shared variables and
-synchronize with one another makes programs more complicated than
+processes concurrently read and update shared variables
+\index{shared variable}
+and synchronize with one another makes programs more complicated than
 programs where only one thing happens at a time.  Why are concurrent
 programs more complicated than sequential ones?
 There are, at least, two reasons:
@@ -269,7 +270,9 @@ you initialize it to 1.
 \end{figure}
 
 Concurrent programming, aka multithreaded programming, involves multiple
-processes running in parallel while sharing variables.
+processes
+\index{process}
+running in parallel while sharing variables.
 Figure~\ref{fig:inc} presents a simple example.
 The program
 initializes two shared variables: an integer \texttt{count} and
@@ -281,6 +284,7 @@ both \texttt{done} flags.
 After that, it verifies that the value of \texttt{count} equals 2.  If not,
 it reports the actual value of \texttt{count}.
 The program spawns three processes.
+\index{process}
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
 
@@ -365,9 +369,13 @@ they include booleans (\texttt{False} and \texttt{True}),
 integers (but not floating point numbers),
 strings (enclosed by double quotes),
 sets of CXL values,
-and dictionaries that map CXL values to other CXL values.
+and dictionaries
+\index{dictionary}
+that map CXL values to other CXL values.
 %
-Another type of CXL value is the \emph{atom}.  It is essentially
+Another type of CXL value is the \emph{atom}.
+\index{atom}
+It is essentially
 just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
 
@@ -490,8 +498,12 @@ an CXL value.
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
 \index{name tag}
-a program counter, a stack of CXL values,
-and a single mutable general purpose \emph{register} that contains a CXL value.
+a program counter,
+\index{program counter}
+a stack of CXL values,
+and a single mutable general purpose \emph{register}
+\index{register}
+that contains a CXL value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
@@ -525,6 +537,7 @@ process has only one register.  However, this is not a limitation because
 CXL values are unbounded trees.
 Both the memory and the register of a process always contain
 a dictionary that maps atoms to CXL values.  We call this a \emph{directory}.
+\index{directory}
 A directory represents the state of a collection of variables named by the atoms.
 %
 Because directories are CXL values themselves,
@@ -651,12 +664,15 @@ multiple operations.  Maintaining ``consistency'' is certainly much easier
 process also tries to access the binary tree.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) is called \emph{thread-safe}.
+\index{thread safety}
+\index{thread}
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
 Figure~\ref{fig:csbarebones} shows the CXL code.
-Here \texttt{@cs} is a \emph{label}, identifying
-a location in the CXL machine code.  The first thing we need to
+Here \texttt{@cs} is a \emph{label},
+\index{label}
+identifying a location in the CXL machine code.  The first thing we need to
 ensure is that there cannot be two processes at the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
@@ -664,15 +680,18 @@ We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
 CXL in fact supports this.
-It has an operator \texttt{atLabel $L$}, where $L$
+It has an operator \texttt{atLabel $L$},
+\index{atLabel operator}
+where $L$
 is the atom containing the name of the label (in this case, \texttt{.cs}).
 The operator returns a bag (multiset) of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 Method \texttt{atLabel} only exists for specification purposes---do not
 use it in normal code.
-The assertion also makes use of the \texttt{nametag()} operator that
-returns the name tag of the current process.
+The assertion also makes use of the \texttt{nametag()} operator
+\index{nametag operator}
+that returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
 there is no code yet for entering and exiting the critical section.
 
