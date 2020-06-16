@@ -27,8 +27,23 @@
 \newglossaryentry{concurrent execution}
 {
   name=concurrent execution,
-  description={is when there are multiple processes executing and their machine
-    instructions are interleaved in an unpredictable manner}
+  description={(aka parallel execution) is when there are multiple processes executing and
+      their machine instructions are interleaved in an unpredictable manner}
+}
+\newglossaryentry{context}
+{
+  name=context,
+  description={(aka continuation) describes the state of a running process,
+    including its program counter, the values of its variables (stored in its
+    register), and the contents of its stack}
+}
+\newglossaryentry{critical section}
+{
+  name=critical section,
+  description={(aka critical region) is a set of instructions that only one process
+    is allowed to execute at a time.  The instructions are, however, not executed
+    atomically, as other processes can continue to execute and access shared
+    variables}
 }
 \newglossaryentry{determinism}
 {
@@ -39,7 +54,8 @@
 \newglossaryentry{invariant}
 {
   name=invariant,
-  description={is a binary property that must hold for every state of a process}
+  description={is a binary predicate over states that must hold for every
+  reachable state of a process}
 }
 \newglossaryentry{machine instruction}
 {
@@ -78,6 +94,15 @@
   description={is a variable that is private to a single process and stored in
         its register}
 }
+\newglossaryentry{property}
+{
+  name=property,
+  description={describes a set of execution traces or histories that are allowed by
+    a program.  Safety properties are properties in which ``no bad things happen,''
+    such as violating mutual exclusion in a critical section.  Liveness properties are
+    properties where ``something good eventually happens,'' like processes being
+    able to enter the critical section if they want to}
+}
 \newglossaryentry{sequential execution}
 {
   name=sequential execution,
@@ -89,6 +114,18 @@
   name=shared variable,
   description={is a variable that is stored in the memory of the CXL machine and
       shared between multiple processes, as opposed to a process variable}
+}
+\newglossaryentry{stack machine}
+{
+  name=stack machine,
+  description={is a model of computing where the state of a process is kept on
+    a stack.  CXL uses a combination of a stack machine and a register-based machine}
+}
+\newglossaryentry{thread safety}
+{
+  name=thread safety,
+  description={is when the implementation of a data structure allows concurrent access
+    with well-defined semantics}
 }
 
 % \renewcommand{\topfraction}{.99}
@@ -599,6 +636,7 @@ In Figure~\ref{fig:inc}, the created processes have name tags
 The state of a process is called a \emph{context} (aka continuation):
 \index{context}
 \index{continuation}
+\glsadd{context}
 it contains the value of
 its name tag, program counter, stack, and register.
 The state of the CXL machine
@@ -643,6 +681,7 @@ cxl -a Up.cxl
 \end{code}
 The CXL machine is predominantly a \emph{stack machine}.
 \index{stack machine}
+\glsadd{stack machine}
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
 At first there is one process (with name tag \texttt{\_\_init\_\_/()}
@@ -734,6 +773,7 @@ the \texttt{count} variable is being updated, no other process is
 trying to do the same thing.  This is called a \emph{critical section}
 (aka critical region)~\cite{EWD123}:
 \index{critical section}
+\glsadd{critical section}
 \index{critical region}
 a set of instructions where only one process is allowed to execute at a
 time.
@@ -750,6 +790,7 @@ process also tries to access the binary tree.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) is called \emph{thread-safe}.
 \index{thread safety}
+\glsadd{thread safety}
 \index{thread}
 
 A critical section is often modeled as processes in an infinite loop
@@ -758,7 +799,7 @@ Figure~\ref{fig:csbarebones} shows the CXL code.
 Here \texttt{@cs} is a \emph{label},
 \index{label}
 identifying a location in the CXL machine code.  The first thing we need to
-ensure is that there cannot be two processes at the critical section.
+ensure is that there can never be two processes at the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
 We would like to place an assertion at the \texttt{@cs} label that
@@ -997,7 +1038,7 @@ exclusion and progress.
 \begin{center}
 \includegraphics[width=4in]{figures/states-crop.pdf}
 \end{center}
-\caption{Venn diagram of all states and a trace.}
+\caption{Venn diagram classifying all states and a trace.}
 \label{fig:states}
 \end{figure}
 
@@ -1039,26 +1080,31 @@ or it can be reached from the initial state through a trace.
 A state is final
 when there are no processes left to make state changes.
 
-A \emph{property}
-\index{property}
-describes a subset of
-states.  In other words, a property is equivalent to a subset of the states.
+It is often useful to classify states into sets.
 \emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
-are all examples of properties.
-Figure~\ref{fig:states} depicts a Venn diagram of various properties
+are all examples of classes of states.
+Figure~\ref{fig:states} depicts a Venn diagram of various classes of states
 and a trace.
-An \emph{invariant}
+One way to classify states is to define a predicate over states.
+All states in which \texttt{x = 1}, or all states where
+there are two or more processes executing, are examples of such predicates.
+For our purposes, it is useful to define a predicate that says that at
+most one process is in the critical section.  We shall call such states
+\emph{exclusive}.
+
+An \emph{invariant} of a program
 \index{invariant}
-is a property that holds over all reachable states.
-We want to show that mutual exclusion is an invariant.
-In other words, we want to show that the set of reachable states is a subset
-of the set of states where there is at most one process in the critical
+is a predicate that holds over all states that are reachable by that program.
+We want to show that exclusivity is an invariant.
+In other words, we want to show that the set of reachable states of executing
+the program
+is a subset of the set of states where there is at most one process in the critical
 section.
 
-One way to prove that a property is an invariant is through induction
-on the number of steps.  First you prove that the property holds over
+One way to prove that a predicate is an invariant is through induction
+on the number of steps.  First you prove that the predicate holds over
 the initial state.  Then you prove that for every reachable state,
-and for every step from that reachable state, the property also holds
+and for every step from that reachable state, the predicate also holds
 over the resulting state.
 For this you need a predicate that describes exactly which
 states are reachable.
@@ -1077,9 +1123,9 @@ state takes a step, then $I$ also holds in the resulting state.
 \end{itemize}
 Unlike an invariant, an inductive invariant must also hold over unreachable states.
 
-One candidate for such an invariant is mutual exclusion itself.
+One candidate for such an invariant is exclusivity itself.
 After all, it certainly holds over the initial state.
-And as CXL has already determined, mutual exclusion is an invariant:
+And as CXL has already determined, exclusivity is an invariant:
 it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
@@ -1088,8 +1134,8 @@ and process~1 at the start of the \texttt{while} loop.
 Also imagine that in this particular state $\mathtt{turn} = 1$.  Now let
 process process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
-section, violating mutual exclusion.
-So mutual exclusion is an invariant, but not an inductive invariant.
+section, entering a state that is not exclusive.
+So exclusivity is an invariant, but not an inductive invariant.
 Doing a inductive proof with an invariant that is not inductive is usually
 much harder than doing one with an invariant that is.
 
@@ -1101,8 +1147,8 @@ much harder than doing one with an invariant that is.
 \label{fig:petersonproof}
 \end{figure}
 
-So we are looking for an inductive invariant that \emph{implies} mutual
-exclusion.  In other words, the set of states where the inducive invariant holds
+So we are looking for an inductive invariant that \emph{implies} exclusivity.
+In other words, the set of states where the inducive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
 Let $C(i) = \mathtt{flags}[1 - i] \land
@@ -1121,7 +1167,7 @@ The label \texttt{@gate} refers to the instruction that sets \texttt{turn} to $1
 You can run Figure~\ref{fig:petersonproof} to determine
 that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
 
-To see that the inductive invariant implies mutual exclusion, suppose not.  Then
+To see that the inductive invariant implies exclusivity, suppose not.  Then
 when both process~0 and process~1 are in the critical section, the
 following must hold:
 $(\lnot C(0) \lor \mathtt{process}(1)@gate) \land
@@ -1131,7 +1177,7 @@ We also know that neither process~0 nor process~1 is at label \texttt{@gate}
 (because they are both at label \texttt{@cs}),
 so this simplifies to $(\lnot C(0)) \land (\lnot C(1))$.
 So we conclude that $\mathtt{turn} = 0 \land \mathtt{turn} = 1$, a
-logical impossibility.  Thus $I_p(i)$ implies mutual exclusion.
+logical impossibility.  Thus $I_p(i)$ implies exclusivity.
 
 To see that $I_p(0) \land I_p(1)$ is, in fact, an inductive invariant, first note that
 it certainly holds in the initial state, because in the initial state no process
@@ -2329,6 +2375,12 @@ and so it vacates \texttt{mutex}.
 \label{fig:RWfair}
 \end{figure}
 
+A \emph{property}
+\index{property}
+\glsadd{property}
+is a set of traces.
+If a program has a certain property, that means that the traces that that
+program allows are a subset of the traces in the property.
 So far we have pursued two properties: \emph{mutual exclusion}
 and \emph{progress}.  The former is an example of a
 \emph{safety property}---it prevents something ``bad'' from
