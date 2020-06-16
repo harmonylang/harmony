@@ -3,8 +3,8 @@ import synch;
 const N = 5;
 
 def diner(which):
-    while choose({ False, True }):
-        let left = which, right = (which % N) + 1:
+    let left = which, right = (which % N) + 1:
+        while choose({ False, True }):
             if left < right:
                 call lock &(forks[left]);
                 call lock &(forks[right]);

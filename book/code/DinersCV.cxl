@@ -1,0 +1,39 @@
+import synch;
+
+const N = 5;
+
+def diner(which):
+    let left = which, right = (which % N) + 1:
+        while choose({ False, True }):
+            call lock &(mutex);
+            while forks[left] or forks[right]:
+                if forks[left]:
+                    call wait &(conds[left]);
+                ;
+                if forks[right]:
+                    call wait &(conds[right]);
+                ;
+            ;
+            forks[left] = True;
+            forks[right] = True;
+            call unlock &(mutex);
+
+            # dine
+
+            call lock &(mutex);
+            forks[left] = False;
+            forks[right] = False;
+            call notify &(conds[left]);
+            call notify &(conds[right]);
+            call unlock &(mutex);
+
+            # think
+        ;
+    ;
+;
+mutex = Lock();
+forks = dict{ False for i in 1..N };
+conds = dict{ Condition(&(mutex)) for i in 1..N };
+for i in 1..N:
+    spawn diner(i);
+;

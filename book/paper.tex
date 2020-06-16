@@ -2923,6 +2923,23 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 \chapter{Deadlock Prevention}
 \label{ch:deadlockprevention}
 
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersCV.cxl}
+\end{code}
+\caption{[DinersCV.cxl] Dining Philosophers that grab both forks at the same time.}
+\label{fig:dinerscv}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersAvoid.cxl}
+\end{code}
+\caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
+scenario.}
+\label{fig:dinersavoid}
+\end{figure}
+
 As introduced in Chapter~\ref{ch:deadlock}, deadlock is the situation when there are
 a collection of processes waiting for one another to release one or more resources.
 There are four conditions that must hold for deadlock to occur~\cite{CES71}:
@@ -2953,6 +2970,12 @@ resources in a particular order.
 
 We suggested the last technique to address the deadlock issue in the Dining
 Philosophers problem (Chapter~\ref{ch:deadlock}).
+
+To implement a \emph{No Hold and Wait} solution, a philosopher would need a
+way to lock both the left and right forks at the same time.  Locks do not
+have such an ability, and neither do semaphores, so we re-implement the
+Dining Philosophers using condition variables that allow one to wait for
+arbitrary application-specific conditions.
 
 \chapter{Actors and Synchronized Queues}
 \label{ch:actor}

@@ -5,16 +5,19 @@ const N = 5;
 def diner(which):
     let left = which, right = (which % N) + 1:
         while choose({ False, True }):
+            call P &(sema);
             call lock &(forks[left]);
             call lock &(forks[right]);
             # dine
             call unlock &(forks[left]);
             call unlock &(forks[right]);
+            call V &(sema);
             # think
         ;
     ;
 ;
 forks = dict{ Lock() for i in 1..N };
+sema = Semaphore(N - 1);
 for i in 1..N:
     spawn diner(i);
 ;
