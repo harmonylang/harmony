@@ -9,7 +9,7 @@ def P_exit(pm, pid):
     (^pm).flags[pid] = False;
 ;
 def P_mutex():
-    result = dict{ .turn: 0, .flags: [ False, False ] };
+    result = dict{ .turn: choose(0..1), .flags: [ False, False ] };
 ;
 
 #### The code above can go into its own CXL module ####

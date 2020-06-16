@@ -17,7 +17,7 @@ def process(self):
     ;
 ;
 flags = [ False, False ];
-turn = 0;
+turn = choose(0..1);
 nametags = [ dict{ .name: .process, .tag: tag } for tag in 0..1 ];
 spawn process(0), 0;
 spawn process(1), 1;
