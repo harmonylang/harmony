@@ -228,6 +228,7 @@ $
 
 (For this to work, make sure \texttt{cxl} is in your command shell's search path.)
 Essentially, the $\texttt{choose}(S)$
+\index{choose operator}
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\texttt{assert}$ statement checks that the output is
 correct.  If the program is correct, the output of CXL is the size of the
@@ -237,6 +238,7 @@ which something went wrong.
 
 In CXL, constants have a default, but those can be overridden on the command
 line using the \texttt{-c} option.
+\index{constant}
 For example, if you want to test the code for \texttt{N = 100}, run:
 \begin{code}
 \begin{verbatim}
@@ -1158,7 +1160,10 @@ Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
 You can put the first three methods in its own CXL source file
-and include it using the CXL \texttt{import} statement.  This would
+and include it using the CXL \texttt{import} statement.
+\index{import statement}
+\index{module}
+This would
 make the code re-usable by other applications.  For those who are
 extra adventurous: you can add the \texttt{P\_enter} and
 \texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
@@ -1492,7 +1497,9 @@ gets a chance to obtain the lock (assuming every process eventually releases
 it).  Chapter~\ref{ch:starvation} will talk more about starvation.
 
 CXL allows you to select which version of the \texttt{synch} module you would
-like to use with the \texttt{-m} flag.  For example,
+like to use with the \texttt{-m} flag.
+\index{module}
+For example,
 
 \begin{code}
 \begin{verbatim}
