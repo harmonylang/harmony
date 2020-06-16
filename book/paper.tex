@@ -1779,7 +1779,7 @@ no more than three philosophers can eat at a time.
 It's not easy.  It would be easy to come up with a solution that uses a single lock
 and busy waiting, but we would like to avoid busy waiting.
 Introduced by Dijkstra,
-a \emph{semaphore} is a synchronization primitive that fits the bill.
+a \emph{semaphore} is a synchronization primitive that fits the bill~\cite{EWD35}.
 A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
@@ -1993,7 +1993,7 @@ We have seen solutions to the reader/writer problem and the producer/consumer
 problem that do not busy-wait, but they are quite different.  It would be nice
 to have a general technique for all CCS problems.
 The ``Split Binary Semaphore'' (SBS) is such a technique, originally proposed by
-Tony Hoare and popularized by Edsger Dijkstra.
+Tony Hoare and popularized by Edsger Dijkstra~\cite{EWD703}.
 SBS is an example of what one could call a ``baton-passing'' technique.
 A process needs the baton to access shared variables.
 When a process has the baton and does not need it any more,
@@ -2297,8 +2297,21 @@ using \texttt{signal} on an empty bathroom.) Mesa also has a function called
 a bedroom, let's all processes in that bedroom into the hall.
 
 While Hoare monitors are conceptually simpler, the so-called
-``Mesa monitor semantics'' have become more popular, adopted by all major
-programming languages including C, Java, and Python.
+``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
+have become more popular, adopted by all major
+programming languages.
+
+That said, few programming languages provide full support for monitors.
+In Java, each object has a hidden lock \emph{and} a hidden condition variable
+associated with it.
+Methods declared with the \texttt{synchronized} keyword automatically
+obtain the lock.  Java objects also support \texttt{wait}, \texttt{notify},
+and \texttt{notifyAll}.  Java also supports explicit allocations of locks
+and condition variables.
+In Python, locks and condition variables must be explicitly declared.
+The \texttt{with} statement makes it easy to acquire and release a lock
+for a section of code.
+In C and C++, support for locks and condition variables is through libraries.
 
 \chapter{Mesa Condition Variables in CXL}
 
@@ -2378,6 +2391,9 @@ being notified, it is not guaranteed that the condition it was waiting for holds
 if it did at the time of invoking \texttt{notify} or \texttt{notifyAll}.
 It is \emph{imperative} that you always have a \texttt{while} loop around any invocation
 of \texttt{wait}.
+Many implementation of condition variables depend on this, and optimizations of the
+code allow so-called ``spurious wakeups,'' where \texttt{wait} may sometimes return even
+if it has not been notified.
 
 In \texttt{release\_rlock}, notice that \texttt{notify \&(wcond)} is invoked when there
 are no readers left, \emph{without} checking if there are writers waiting to enter.
@@ -2419,6 +2435,75 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 \caption{[actortest.cxl] Test code for producer/consumer actor.}
 \label{fig:actortest}
 \end{figure}
+
+Some programming languages favor a completely different way of implementing
+synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
+processes that have only private memory and communicate through messages.
+Given that there is no shared memory in the actor model, there is no need
+for critical sections.  Instead, some sequential process owns a particular
+piece of data and other processes access it by sending request messages
+to the process and optionally waiting for response messages.  Each process
+handles one message at a time, serializing all access to the data it owns.
+
+The actor synchronization model is popular in a variety of programming
+languages, including Erlang and Scala.  Actor support is also available
+through popular libraries such as Akka, which is available for various
+programming languages.  In Python, Java, and C/C++,
+actors can be easily emulated using threads and \emph{synchronized queues}
+for messaging.  Each thread would have one such queue for receiving messages.
+Dequeuing from an empty synchronized queue blocks the thread until
+another thread enqueues a message on the queue.
+
+The \texttt{synch} library supports a synchronized message queue,
+similar to the \texttt{Queue} object in Python.
+Its interface is as follows:
+\begin{itemize}
+\item \texttt{Queue()} returns a new message queue;
+\item \texttt{enqueue(q, item)} add \texttt{item} to the queue pointed to by \texttt{q};
+\item \texttt{dequeue(q)} waits for and returns an item on the queue pointed to by \texttt{q}.
+\end{itemize}
+
+Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
+\texttt{enqueue} is much like \texttt{V}, except that it is accompanied by data.
+\texttt{dequeue} is much like \texttt{P}, except that it also returns data.
+Thus, synchronized queues can be considered a generalization of counting semaphores.
+
+Figure~\ref{fig:actor} shows a solution to the producer/consumer problem using
+an actor.  \texttt{pc\_actor} is essentially a matchmaker: it matches
+\texttt{.produce} requests with \texttt{.consume} requests.
+Sometimes it may have buffered \texttt{.consume} requests and is waiting for
+\texttt{.produce} requests, and sometimes it is vice versa.
+The variable \texttt{balance} specifies what the situation is: if it is positive
+then it has buffered \texttt{.produce} requests;
+if it is negative
+then it has buffered \texttt{.consume} requests.
+Note that both \texttt{balance} and \texttt{requests} are variables that are
+local to the \texttt{pc\_actor} process.
+
+Each request message is a dictionary with two fields.  One of the fields is
+\texttt{.type}, which either is \texttt{.produce} or \texttt{.consume}.
+In case of \texttt{.produce}, the second field is \texttt{.item} and holds
+the data that is produced.
+In case of \texttt{.consume}, the second field is \texttt{.queue} and holds
+a pointer to the queue where the response message must be enqueued.
+\texttt{.produce} messages do not get a response.
+
+The \texttt{pc\_actor} process has two arguments.  \texttt{q} is a pointer
+to the queue on which it receives messages.  \texttt{nrequests} is the total
+number of requests that it will handle.  We need the latter because in CXL
+all processes are required to terminate.  In a more realistic implementation,
+the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
+
+The \texttt{produce} method takes two arguments: a pointer to the queue
+of the \texttt{pc\_actor} and the item.  The \texttt{consume} method
+takes two queue pointer arguments.  The first is a pointer to the queue
+of the \texttt{pc\_actor}.  The second is a pointer to the queue of the
+invoker: it is the queue to which the response must be posted.
+
+Figure~\ref{fig:actortest} shows how this code may be used.  It spawns
+\texttt{NITEMS} producer and consumer processes.  Note that in that
+case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
+requests.
 
 \chapter{Non-Blocking Synchronization}
 
