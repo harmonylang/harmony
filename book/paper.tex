@@ -2402,6 +2402,24 @@ get to enter next or one of the writers gets to enter next.
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
+\chapter{Actors}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/actor.cxl}
+\end{code}
+\caption{[actor.cxl] A producer/consumer actor.}
+\label{fig:actor}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/actortest.cxl}
+\end{code}
+\caption{[actortest.cxl] Test code for producer/consumer actor.}
+\label{fig:actortest}
+\end{figure}
+
 \chapter{Non-Blocking Synchronization}
 
 \begin{figure}

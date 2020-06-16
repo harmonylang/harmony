@@ -1,3 +1,4 @@
+import list;
 import bag;
 
 def tas(lk):
@@ -68,5 +69,26 @@ def P(sema):
 def V(sema):
     atomic:
         ^sema = (^sema) + 1;
+    ;
+;
+def Queue():
+    result = [];
+;
+def dequeue(q):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if ^q != []:
+                    result = head(^q);
+                    ^q = tail(^q);
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        ^q = append(^q, item);
     ;
 ;
