@@ -57,7 +57,9 @@ programs where only one thing happens at a time.  Why are concurrent
 programs more complicated than sequential ones?
 There are, at least, two reasons:
 \begin{itemize}
-\item The execution of a sequential program is mostly \emph{deterministic}.
+\item The execution of a sequential
+\index{sequential}
+program is mostly \emph{deterministic}.
 \index{determinism}
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
@@ -318,7 +320,9 @@ the machine must do at least three machine instructions.  Conceptually:
 
 When running multiple processes, each essentially runs an instantiation of
 the machine, and they do so in parallel.  As they execute, their machine
-instructions are interleaved in unspecified and often random ways.
+instructions are interleaved
+\index{interleaving}
+in unspecified and often random ways.
 A program is correct if it works for any interleaving.
 In fact, CXL will try all possible interleavings of the processes
 executing machine instructions.
@@ -521,8 +525,10 @@ The state of a process is called a \emph{context} (aka continuation):
 it contains the value of
 its name tag, program counter, stack, and register.
 The state of the CXL machine
-consists of the value of its memory and the multiset (or \emph{bag}) of
-contexts.  It is a multiset of contexts because two different processes can
+consists of the value of its memory and the multiset (or \emph{bag})
+\index{bag}
+\index{multiset}
+of contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
 The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
@@ -544,7 +550,9 @@ Because directories are CXL values themselves,
 directories can be organized into a tree.
 Each node in a directory tree is then identified
 by a sequence of atoms, like a path name in the file system hierarchy.  We call
-such a sequence the \emph{address} of a CXL value, and it is relative to the
+such a sequence the \emph{address}
+\index{address}
+of a CXL value, and it is relative to the
 ``root'' of the directory tree.
 
 Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
@@ -624,8 +632,6 @@ and storing \texttt{True} into \texttt{done[0]}.
 This makes precise the concurrency problem that we encountered.
 
 \chapter{Critical Sections}
-\index{critical section}
-\index{critical region}
 
 \begin{figure}
 \begin{code}
@@ -649,8 +655,10 @@ In this chapter we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
 the \texttt{count} variable is being updated, no other process is
 trying to do the same thing.  This is called a \emph{critical section}
-(aka critical region)~\cite{EWD123}: a
-set of instructions where only one process is allowed to execute at a
+(aka critical region)~\cite{EWD123}:
+\index{critical section}
+\index{critical region}
+a set of instructions where only one process is allowed to execute at a
 time.
 
 Critical sections are useful when accessing a shared data
@@ -933,8 +941,9 @@ changes).  We call that a \emph{step}.
 Steps in CXL are atomic.
 
 The CXL machine starts in an initial state in which there is only
-one process and its program counter is~0.  A \emph{trace} is a
-sequence of steps starting from the initial state.
+one process and its program counter is~0.  A \emph{trace}
+\index{trace}
+is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}
 in CXL.
@@ -943,18 +952,24 @@ there is more than one process that can make a step.  The other is
 when a process executes a \texttt{choose} operation and there is
 more than one choice.
 Because there is non-determinism, there are multiple possible traces.
-We call a state \emph{reachable} if it is either the initial state
+We call a state \emph{reachable}
+\index{reachable state}
+if it is either the initial state
 or it can be reached from the initial state through a trace.
 A state is final
 when there are no processes left to make state changes.
 
-A \emph{property} describes a subset of
+A \emph{property}
+\index{property}
+describes a subset of
 states.  In other words, a property is equivalent to a subset of the states.
 \emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
 are all examples of properties.
 Figure~\ref{fig:states} depicts a Venn diagram of various properties
 and a trace.
-An \emph{invariant} is a property that holds over all reachable states.
+An \emph{invariant}
+\index{invariant}
+is a property that holds over all reachable states.
 We want to show that mutual exclusion is an invariant.
 In other words, we want to show that the set of reachable states is a subset
 of the set of states where there is at most one process in the critical
@@ -985,7 +1000,7 @@ Unlike an invariant, an inductive invariant must also hold over unreachable stat
 One candidate for such an invariant is mutual exclusion itself.
 After all, it certainly holds over the initial state.
 And as CXL has already determined, mutual exclusion is an invariant:
-it holds over every \emph{reachable state}.
+it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
@@ -1160,7 +1175,9 @@ For this (as well as some other uses), CXL supports \emph{pointers}
 to shared variables.
 If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
 (the parentheses are mandatory) is a pointer to \texttt{x}
-(also known as the \emph{address} of \texttt{x}).
+(also known as the \emph{address}
+\index{address}
+of \texttt{x}).
 Conversely, if \texttt{p} is a pointer to a shared variable, then the
 expression \texttt{\^{}p} is the value of the shared variable.
 
@@ -1212,7 +1229,9 @@ not \emph{atomic}.  Thus multiple processes contending for the lock
 can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple processes.  Instead, multi-core processors provide
-so-called \emph{interlock instructions}: special machine instructions
+so-called \emph{interlock instructions}:
+\index{interlock instruction}
+special machine instructions
 that can read memory and then write it in an indivisible step.
 
 While the CXL machine does not have any built-in interlock instructions,
@@ -1413,7 +1432,7 @@ synchronization primitives, which will be discussed in later
 chapters.
 
 We call a process \emph{blocked}
-\index{blocked}
+\index{blocked process}
 in a state if the process is in
 an \emph{infinite loop} in which the process does not update the
 shared memory.
@@ -1511,7 +1530,9 @@ suspend and to remove its context from the list.
 Selecting the first process is a design choice.  Another implementation could
 have picked the last one, and yet another implementation could have used
 \texttt{choose} to pick an arbitrary one.  Selecting the first is a common
-choice in lock implementations as it prevents \emph{starvation}: every process
+choice in lock implementations as it prevents \emph{starvation}:
+\index{starvation}
+every process
 gets a chance to obtain the lock (assuming every process eventually releases
 it).  Chapter~\ref{ch:starvation} will talk more about starvation.
 
@@ -1534,7 +1555,6 @@ in which processes wait for a lock.
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \index{reader/writer lock}
-\index{busy waiting}
 
 \begin{figure}
 \begin{code}
@@ -1623,7 +1643,9 @@ critical section, any other reader is also able to enter.
 
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
+\index{busy waiting}
 (aka spin-waiting):
+\index{spin waiting}
 processes spin in a loop until some desirable application-level condition is met.
 The astute reader might wonder if obtaining the mutex itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
@@ -1974,8 +1996,11 @@ cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
 
 A good example of a resource with multiple units is the
 so-called \emph{bounded buffer} (aka \emph{ring buffer}).
+\index{ring buffer}
 It is essentially
-a queue implemented using a circular buffer of a certain length and two pointers:
+a queue implemented using a circular buffer
+\index{circular buffer}
+of a certain length and two pointers:
 one where items are inserted and one from where items are extracted.  If the
 buffer is full, processes that want to add more items have to wait.  In the usual
 formulation, processes that want to extract an item when the buffer is empty
@@ -2030,9 +2055,11 @@ The consumer code is symmetric.
 Note the quite different usage of the \texttt{l\_} semaphores and \texttt{n\_}
 semaphores.
 People often call semaphores that are used as locks \emph{binary semaphores},
+\index{binary semaphore}
 as their counters only take on the values 0 and 1.
 They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
+\index{counting semaphore}
 They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
@@ -2272,7 +2299,9 @@ implementation that solves this type of starvation, but won't eliminate
 the type of starvation.
 In particular, the probability that either a reader or writer gets starved
 will be exponentially diminishing.
-We shall call such a solution \emph{fair} (although it does not quite
+We shall call such a solution \emph{fair}
+\index{fairness}
+(although it does not quite
 match the usual formal nor vernacular concepts of fairness).
 
 It is difficult if not impossible to make the reader/writer lock solution of
@@ -2579,7 +2608,10 @@ languages, including Erlang and Scala.  Actor support is also available
 through popular libraries such as Akka, which is available for various
 programming languages.  In Python, Java, and C/C++,
 actors can be easily emulated using threads and \emph{synchronized queues}
-(aka \emph{blocking queues}) for messaging.
+\index{synchronized queue}
+(aka \emph{blocking queues})
+\index{blocking queue}
+for messaging.
 Each thread would have one such queue for receiving messages.
 Dequeuing from an empty synchronized queue blocks the thread until
 another thread enqueues a message on the queue.
@@ -2694,7 +2726,9 @@ in the array is only used once, which is inefficient.  Also, the \texttt{inc}
 and \texttt{swap} interlock instructions are not universally available
 on existing hardware.
 However, in the literature there are many examples of practical
-non-blocking (aka \emph{wait-free}) synchronization algorithms~\cite{}.
+non-blocking (aka \emph{wait-free})
+\index{wait-free synchronization}
+synchronization algorithms~\cite{}.
 
 \chapter{Barrier Synchronization}
 \index{barrier synchronization}
@@ -2922,7 +2956,9 @@ the concatenation when applied to lists or tuples.
 \texttt{x..y} computes the set consisting of the integers \texttt{x}
 through \texttt{y} inclusive.  It returns the empty set if \texttt{x > y}.
 
-An \emph{lvalue} (short for left hand value of an assignment statement)
+An \emph{lvalue}
+\index{lvalue}
+(short for left hand value of an assignment statement)
 is something that can be assigned.  This can be a
 shared variable, a process variable, or a dereferenced pointer
 variable.  It can also be indexed.  Examples include
@@ -3186,7 +3222,9 @@ atoms to arbitrary values.  The atoms correspond to the variable names
 in a CXL program.
 \end{itemize}
 
-A context is considered \emph{blocked} if there does not exist a
+A context is considered \emph{blocked}
+\index{blocked process}
+if there does not exist a
 sequence instructions that the process can execute that either writes
 to a shared variable (even if that leaves the shared variable unchanged)
 or terminates the process.
