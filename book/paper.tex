@@ -425,15 +425,15 @@ are concurrently incrementing a counter;
 details of the CXL language and machine to understand the problem
 underlying concurrency better.
 \item Chapter~\ref{ch:critical} introduces the concept of a critical
-section.
-\item Chapter~\ref{ch:naive} presents various flawed implementations
-of critical sections.
+section, and Chapter~\ref{ch:naive} presents various flawed implementations
+of critical sections to demonstrate that implementing a critical section
+is not trivial.
 \item Chapter~\ref{ch:peterson} introduces Peterson's Algorithm, an
-elegant solution to the mutual exclusion problem.
+elegant implementation of a critical section.
 \item Chapter~\ref{ch:method} gives some more details on the CXL
 language.
 \item Chapter~\ref{ch:spinlock} introduces hardware-supported locks
-for mutual exclusion.  Chapter~\ref{ch:synch} presents a CXL module
+for implemented critical sections.  Chapter~\ref{ch:synch} presents a CXL module
 that supports locks and other synchronization primitives.
 \item Chapters~\ref{ch:rdwrbusy} and~\ref{ch:rdwr2} present the
 abstraction and implementation of reader/writer
@@ -451,7 +451,7 @@ certain application-level conditions.
 problem and various solutions.
 \item Chapter~\ref{ch:starvation} talks about the problem that in some
 synchronization solutions, processes may not be able to get access to a
-resource they need, and a solution for the reader/writer problem.
+resource they need, and a solution applied to the reader/writer problem.
 \item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present monitors and
 condition variables, another approach to process synchronication.
 \item Chapter~\ref{ch:actor} presents the actor model as an approach to
@@ -462,7 +462,8 @@ steps.
 \item Chapter~\ref{ch:barrier} introduces barrier synchronization, useful in
 high-performance computing applications such as parallel simulations.
 \item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
-systems problem of having two processes communicate over an unreliable network.
+systems problem of having two processes communicate reliably over an unreliable
+network.
 \end{itemize}
 
 \chapter{Introduction to Programming with CXL}
@@ -2918,6 +2919,40 @@ get to enter next or one of the writers gets to enter next.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
+
+\chapter{Deadlock Prevention}
+\label{ch:deadlockprevention}
+
+As introduced in Chapter~\ref{ch:deadlock}, deadlock is the situation when there are
+a collection of processes waiting for one another to release one or more resources.
+There are four conditions that must hold for deadlock to occur~\cite{CES71}:
+\begin{enumerate}
+\item \emph{Mutual Exclusion}: each resource can only be used by one process at a time:
+\item \emph{Hold and Wait}: each process holds resources it already allocated while it
+waits for other resources that it needs;
+\item \emph{No Preemption}: Resources cannot be forcibly taken back from processes that
+allocated them;
+\item \emph{Circular Wait}: There exists a directed circular chain of processes, each waiting
+to allocate a resource held by the next.
+\end{enumerate}
+
+Preventing deadlock thus means preventing that one of these conditions occurs.
+However, mutual exclusion is not easily prevented (although, for some resources it is
+possible, as demonstrated in Chapter~\ref{ch:nonblocking}).
+Havender~\cite{Havender68} proposed the following techniques that avoid the remaining
+three conditions:
+
+\begin{itemize}
+\item \emph{No Hold and Wait}: a process must request all resources it is going to
+need at the same time;
+\item \emph{Preemption}: if a process is denied a request for a resource, it must
+release all resources that it has already acquired and start over;
+\item \emph{No Circular Wait}: define an ordering on all resources and allocate
+resources in a particular order.
+\end{itemize}
+
+We suggested the last technique to address the deadlock issue in the Dining
+Philosophers problem (Chapter~\ref{ch:deadlock}).
 
 \chapter{Actors and Synchronized Queues}
 \label{ch:actor}
