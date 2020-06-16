@@ -1,6 +1,9 @@
 \documentclass{report}
 \usepackage{fullpage}
+\usepackage{imakeidx}\makeindex
+\usepackage{hyperref}
 \usepackage[nottoc,notlot,notlof]{tocbibind}
+\usepackage{glossaries}\makeglossaries
 \usepackage{graphicx}
 \usepackage{framed}
 \usepackage{tcolorbox}
@@ -13,6 +16,14 @@
 \clubpenalty 10000
 \tolerance=9999
 \newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
+
+\newglossaryentry{macro step}
+{
+  name=macro step,
+  description={is a programmable machine that receives input,
+               stores and manipulates data, and provides
+               output in a useful format}
+}
 
 % \renewcommand{\topfraction}{.99}
 % \renewcommand{\bottomfraction}{.99}
@@ -46,6 +57,7 @@ programs more complicated than sequential ones?
 There are, at least, two reasons:
 \begin{itemize}
 \item The execution of a sequential program is mostly \emph{deterministic}.
+\index{determinism}
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
@@ -53,8 +65,11 @@ The output of running concurrent programs depends on how the various
 processes are interleaved.  Some bugs may occur only occasionally and
 may never occur when the program is instrumented to find them
 (so-called \emph{Heisenbugs}).
+\index{Heisenbug}
 \item In a sequential program, each statement and each function can be
-thought of as happening \emph{atomically} because there is no other activity
+thought of as happening \emph{atomically}
+\index{atomicity}
+because there is no other activity
 interfering with their execution.  Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
 until completion.  Not so with a concurrent program, where other instructions
@@ -73,15 +88,18 @@ because it is hard to reproduce.
 This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
 called CXL that helps with \emph{testing} concurrent code.
-The approach is based on \emph{model checking}: instead of relying
+The approach is based on \emph{model checking}:
+\index{model checking}
+instead of relying
 on luck, CXL will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
 \emph{can} expose the bug it \emph{will}.  Importantly, if the bug is
 found, the model checker precisely shows how to trigger it in
 the smallest number of steps.
 
-Model checking is not a replacement for formal verification.  Formal
-verification proves that a program is correct.  Model checking only
+Model checking is not a replacement for formal verification.
+\index{formal verification}
+Formal verification proves that a program is correct.  Model checking only
 verifies that a program is correct for some \emph{model}.  Think of
 a model as a test program.  Because model checking tries every possible
 execution, this means that the test program needs to be relatively
@@ -600,8 +618,8 @@ problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
 the \texttt{count} variable is being updated, no other process is
-trying to do the same thing.  We call this a \emph{critical section}
-(aka critical region): a
+trying to do the same thing.  This is called a \emph{critical section}
+(aka critical region)~\cite{EWD123}: a
 set of instructions where only one process is allowed to execute at a
 time.
 
@@ -614,6 +632,8 @@ Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
 process also tries to access the binary tree.
+An implementation of a data structure that can be safely accessed by multiple
+processes (or threads) is called \emph{thread-safe}.
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
@@ -815,6 +835,7 @@ we will find out, it is possible but not easy.
 
 \chapter{Peterson's Algorithm}
 \label{ch:peterson}
+\index{Peterson's Algorithm}
 
 \begin{figure}
 \begin{code}
@@ -1082,6 +1103,7 @@ you can pass a reference to an object to a method, and that method
 can then update the object.  In CXL, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
 For this (as well as some other uses), CXL supports \emph{pointers}
+\index{pointer}
 to shared variables.
 If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
 (the parentheses are mandatory) is a pointer to \texttt{x}
@@ -1716,6 +1738,7 @@ before the higher numbered fork, like so:
 \end{quote}
 
 \chapter{Semaphores}
+\index{semaphore}
 
 \begin{figure}
 \begin{code}
@@ -1963,7 +1986,7 @@ exactly the set of tuples that the producers produce.
 \end{figure}
 
 Reader/writer locks and bounded buffers are both examples of what are
-sometimes called \emph{conditional critical sections} (CCSs).
+sometimes called \emph{conditional critical sections} (CCSs)~\cite{Hoare73}.
 All critical sections are in fact conditional.  Even the basic one
 has the condition that a process can only enter if no other process
 is in the critical section.  Reader/writer locks refined that, loosening
@@ -2191,14 +2214,21 @@ eventually have a chance to enter the critical section almost surely.
 
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
-\emph{monitors}.
+\emph{monitors}~\cite{Hoare74}.
+\index{monitor}
+(A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
 There is a split binary semaphore associated with each such class.
 The \texttt{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are called \emph{condition variables}.
-There are two operations on condition variables: \texttt{wait} and \texttt{signal}.
+\index{condition variable}
+There are two operations on condition variables: \texttt{wait}
+\index{wait}
+and
+\texttt{signal}.
+\index{signal}
 If \texttt{c} is a pointer to a condition variable, then the semantics of the
 operations, in CXL, are as follows:
 
@@ -2228,6 +2258,7 @@ use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
 
 In the late 70s, Xerox PARC developed a new programming language called
 Mesa~\cite{LR80}.
+\index{Mesa}
 Mesa introduced various important concepts to programming languages,
 including software exceptions and incremental compilation.  Mesa also
 incorporated a version of monitors.
@@ -2242,6 +2273,7 @@ Like in Hoare monitors, the \texttt{wait} operation release the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
 operation \texttt{notify} rather than \texttt{signal}.
+\index{notify}
 When a process $p$ invokes \texttt{notify}, it does not immediately pass 
 the baton to some process $q$ requiring the baton.  Instead, $p$ holds onto
 the baton until it leaves the monitor.  At that point $q$ gets the baton,
@@ -2293,7 +2325,11 @@ processes in the bedrooms into the hall.  It can do so by calling
 bedrooms into the hall.  Using \texttt{notify} on an empty
 bedroom is considered a no-op in Mesa.  (Hoare monitors do not allow
 using \texttt{signal} on an empty bathroom.) Mesa also has a function called
-\texttt{notifyAll} (aka \texttt{broadcast)}) that, when applied to
+\texttt{notifyAll}
+\index{notifyAll}
+(aka \texttt{broadcast)})
+\index{broadcast}
+that, when applied to
 a bedroom, let's all processes in that bedroom into the hall.
 
 While Hoare monitors are conceptually simpler, the so-called
@@ -2418,7 +2454,8 @@ get to enter next or one of the writers gets to enter next.
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
-\chapter{Actors}
+\chapter{Actors and Synchronized Queues}
+\index{actor}
 
 \begin{figure}
 \begin{code}
@@ -2450,7 +2487,8 @@ languages, including Erlang and Scala.  Actor support is also available
 through popular libraries such as Akka, which is available for various
 programming languages.  In Python, Java, and C/C++,
 actors can be easily emulated using threads and \emph{synchronized queues}
-for messaging.  Each thread would have one such queue for receiving messages.
+(aka \emph{blocking queues}) for messaging.
+Each thread would have one such queue for receiving messages.
 Dequeuing from an empty synchronized queue blocks the thread until
 another thread enqueues a message on the queue.
 
@@ -3095,7 +3133,9 @@ However, trying to interleave every microstep would be needlessly expensive,
 as many micro steps involve changes to a context that are invisible to
 other contexts.
 
-A \emph{macro step} can involve multiple micro steps.  The following
+A \emph{macro step}
+\glsadd{macro step}
+can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
 \texttt{AtomicInc}, and \texttt{Continue}.  The CXL machine
 interleaves macro steps, not micro steps.  Like micro steps, each
@@ -3109,5 +3149,10 @@ by a single context, one for each choice.  If not, the edges from
 the state are one per context.
 A terminating state is a state with an empty context bag or a state
 where all contexts are blocked.
+
+\printindex
+
+% \glsaddall
+\printglossaries
 
 \end{document}
