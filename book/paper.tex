@@ -454,6 +454,8 @@ synchronization solutions, processes may not be able to get access to a
 resource they need, and a solution applied to the reader/writer problem.
 \item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present monitors and
 condition variables, another approach to process synchronication.
+\item Chapter~\ref{ch:deadlockprevention} revisits deadlocks and how to
+avoid them.
 \item Chapter~\ref{ch:actor} presents the actor model as an approach to
 synchronization.
 \item Chapter~\ref{ch:nonblocking} shows solutions to process synchronization
@@ -2922,6 +2924,7 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \chapter{Deadlock Prevention}
 \label{ch:deadlockprevention}
+\index{deadlock prevention}
 
 \begin{figure}
 \begin{code}
@@ -2929,15 +2932,6 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 \end{code}
 \caption{[DinersCV.cxl] Dining Philosophers that grab both forks at the same time.}
 \label{fig:dinerscv}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersAvoid.cxl}
-\end{code}
-\caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
-scenario.}
-\label{fig:dinersavoid}
 \end{figure}
 
 As introduced in Chapter~\ref{ch:deadlock}, deadlock is the situation when there are
@@ -2973,9 +2967,61 @@ Philosophers problem (Chapter~\ref{ch:deadlock}).
 
 To implement a \emph{No Hold and Wait} solution, a philosopher would need a
 way to lock both the left and right forks at the same time.  Locks do not
-have such an ability, and neither do semaphores, so we re-implement the
+have such an ability, and neither do semaphores. so we re-implement the
 Dining Philosophers using condition variables that allow one to wait for
 arbitrary application-specific conditions.
+
+Figure~\ref{fig:dinerscv} demonstrates how this might be done.
+We use a single mutex for the diners, and, for each fork, a boolean
+and a condition variable.  The boolean indicates if the fork has been
+taken.
+Each diner waits if either the left or right fork is already taken.
+But which condition variable to wait on?
+The code demonstrates an important technique to use when waiting for multiple
+conditions.
+The condition in the \texttt{while} statement is the condition that the
+diner is waiting for to be \texttt{False}.  Within the \texttt{while} statement,
+there is an \texttt{if} statement for each disjunct of that condition.
+The code waits for either or both forks if necessary.  After that, it goes
+back to the top of the \texttt{while} loop.
+
+A common mistake is to write the following code instead:
+
+\begin{code}
+\begin{Verbatim}
+while forks[left]:
+    call wait &(conds[left]);
+;
+while forks[right]:
+    call wait &(conds[right]);
+;
+\end{Verbatim}
+\end{code}
+
+\begin{quote}
+\begin{itemize}
+\item Can you see why this does not work?  What can go wrong?
+\end{itemize}
+\end{quote}
+
+The next approach suggested by Havender is to allow processes to back out.
+While this could be done, this invariably leads to a busy waiting solution
+where a process keeps obtaining locks and releasing them again until it
+finally is able to get all of them.
+The approach to order the resources was already presented in Chapter~\ref{ch:deadlock}
+
+There is, however, another approach. which is sometimes called
+\emph{deadlock avoidance}.
+\index{deadlock avoidance}.
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersAvoid.cxl}
+\end{code}
+\caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
+scenario.}
+\label{fig:dinersavoid}
+\end{figure}
 
 \chapter{Actors and Synchronized Queues}
 \label{ch:actor}
