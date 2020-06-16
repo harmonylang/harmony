@@ -17,12 +17,78 @@
 \tolerance=9999
 \newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
 
+\newglossaryentry{atomicity}
+{
+  name=atomicity,
+  description={describes that a certain machine instruction or sequence of machine
+    instructions by a process is executed indivisibly and cannot be interleaved with 
+    machine instructions of another process}
+}
+\newglossaryentry{concurrent execution}
+{
+  name=concurrent execution,
+  description={is when there are multiple processes executing and their machine
+    instructions are interleaved in an unpredictable manner}
+}
+\newglossaryentry{determinism}
+{
+  name=determinism,
+  description={is when the outcome of an execution is uniquely determined by the
+    initial state}
+}
+\newglossaryentry{invariant}
+{
+  name=invariant,
+  description={is a binary property that must hold for every state of a process}
+}
+\newglossaryentry{machine instruction}
+{
+  name=machine instruction,
+  description={is an atomic operation on the CXL machine, executed by a process}
+}
 \newglossaryentry{macro step}
 {
   name=macro step,
-  description={is a programmable machine that receives input,
-               stores and manipulates data, and provides
-               output in a useful format}
+  description={is a sequence of micro steps with at most one instruction
+        externally visible to other processes.  It is the unit of interleaving
+        in CXL}
+}
+\newglossaryentry{micro step}
+{
+  name=micro step,
+  description={is the execution of one machine instruction by a process, updating
+        its state and the state of the CXL machine}
+}
+\newglossaryentry{model checking}
+{
+  name=model checking,
+  description={is a formal verification method that explores all possible executions
+    of a program, which must have a finite number of states}
+}
+\newglossaryentry{process}
+{
+  name=process,
+  description={is a method in execution.  We do not make the distinction
+      between processes and threads.  A process has a program counter, a register,
+      and a stack}
+}
+\newglossaryentry{process variable}
+{
+  name=process variable,
+  description={is a variable that is private to a single process and stored in
+        its register}
+}
+\newglossaryentry{sequential execution}
+{
+  name=sequential execution,
+  description={is when there is just one process executing, as opposed to concurrent
+    execution}
+}
+\newglossaryentry{shared variable}
+{
+  name=shared variable,
+  description={is a variable that is stored in the memory of the CXL machine and
+      shared between multiple processes, as opposed to a process variable}
 }
 
 % \renewcommand{\topfraction}{.99}
@@ -50,8 +116,13 @@
 
 Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
-processes concurrently read and update shared variables
+processes (aka \emph{threads}\footnote{We
+\index{thread}
+do not make a distinction between processes and threads.}) concurrently
+\glsadd{concurrent execution}
+read and update shared variables
 \index{shared variable}
+\glsadd{shared variable}
 and synchronize with one another makes programs more complicated than
 programs where only one thing happens at a time.  Why are concurrent
 programs more complicated than sequential ones?
@@ -59,8 +130,10 @@ There are, at least, two reasons:
 \begin{itemize}
 \item The execution of a sequential
 \index{sequential}
+\glsadd{sequential execution}
 program is mostly \emph{deterministic}.
 \index{determinism}
+\glsadd{determinism}
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
@@ -72,6 +145,7 @@ may never occur when the program is instrumented to find them
 \item In a sequential program, each statement and each function can be
 thought of as happening \emph{atomically}
 \index{atomicity}
+\glsadd{atomicity}
 because there is no other activity
 interfering with their execution.  Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
@@ -93,6 +167,7 @@ developing concurrent code.  In particular, it uses a new tool
 called CXL that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}:
 \index{model checking}
+\glsadd{model checking}
 instead of relying
 on luck, CXL will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
@@ -139,6 +214,7 @@ it can help with proving an algorithm correct.
 The reason is that the correctness of many programs is built around
 \emph{invariants}:
 \index{invariant}
+\glsadd{invariant}
 predicates that must hold for every state in the
 execution of a program.  A model checker can find violations of
 proposed invariants when evaluating a model and provide valuable early
@@ -274,6 +350,7 @@ you initialize it to 1.
 Concurrent programming, aka multithreaded programming, involves multiple
 processes
 \index{process}
+\glsadd{process}
 running in parallel while sharing variables.
 Figure~\ref{fig:inc} presents a simple example.
 The program
@@ -286,7 +363,6 @@ both \texttt{done} flags.
 After that, it verifies that the value of \texttt{count} equals 2.  If not,
 it reports the actual value of \texttt{count}.
 The program spawns three processes.
-\index{process}
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
 
@@ -304,6 +380,7 @@ underlying machine architecture are atomic---in fact they are.)
 
 What is going on is that the CXL program is compiled to machine instructions,
 \index{machine instruction}
+\glsadd{machine instruction}
 and it is the machine instructions that are executed by the underlying CXL
 machine.  The details of this appear in Chapter~\ref{ch:cxlmachine},
 but suffice it to
@@ -932,7 +1009,10 @@ In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
 \index{state}
 at any point of time the CXL machine is in a specific state.
 A state is comprised of the values of the shared variables as well as
-the values of the process variables for each process, including its
+the values of the process variables
+\index{process variable}
+\glsadd{process variable}
+for each process, including its
 program counter and the contents of its stack.
 Everytime a process executes a CXL machine instruction, the
 state changes (if only because the program counter of the process
@@ -3264,6 +3344,7 @@ start executing until then.
 
 A \emph{micro step}
 \index{micro step}
+\glsadd{micro step}
 is the execution of a single CXL machine instruction
 by a context.
 Each micro step generates a new state.
@@ -3292,7 +3373,6 @@ where all contexts are blocked.
 
 \printindex
 
-% \glsaddall
 \printglossaries
 
 \end{document}
