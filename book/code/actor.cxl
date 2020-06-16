@@ -33,11 +33,10 @@ def pc_actor(q, nrequests):
         ;
     ;
 ;
-def produce(item):
+def produce(q, item):
     call enqueue(&(pc_queue), dict{ .type: .produce, .item: item });
 ;
-def consume(q):
-    call enqueue(&(pc_queue), dict{ .type: .consume, .queue: q });
-    result = dequeue(q);
+def consume(q1, q2):
+    call enqueue(q1, dict{ .type: .consume, .queue: q2 });
+    result = dequeue(q2);
 ;
-pc_queue = Queue();
