@@ -461,6 +461,7 @@ class StoreOp(Op):
         assert isinstance(av, AddressValue), indexes
 
         if not state.initializing and (av.indexes[0] not in state.vars.d):
+            print()
             print("pc =", context.pc, "Error: using an uninitialized shared variable", av.indexes[0])
             state.failure = True
         else:

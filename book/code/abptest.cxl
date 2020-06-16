@@ -1,0 +1,16 @@
+const NMSGS = 5;
+
+def sender():
+    for i in 1..NMSGS:
+        call app_send(i);
+    ;
+;
+def receiver():
+    for i in 1..NMSGS:
+        let payload = app_recv(i == NMSGS):
+            assert payload == i;
+        ;
+    ;
+;
+spawn sender();
+spawn receiver();

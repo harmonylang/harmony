@@ -1,0 +1,37 @@
+def net_send(pchan, m, reliable):
+    ^pchan = m if (reliable or choose({ False, True })) else ();
+;
+def net_recv(pchan):
+    result = ^pchan;
+;
+def app_send(payload):
+    s_seq = 1 - s_seq;
+    let m = dict{ .seq: s_seq, .payload: payload }, blocked = True:
+        while blocked:
+            call net_send(&(s_chan), m, False);
+            let response = net_recv(&(r_chan)):
+                blocked = (response == ()) or (response.ack != s_seq);
+            ;
+        ;
+    ;
+;
+def app_recv(reliable):
+    r_seq = 1 - r_seq;
+    let blocked = True:
+        while blocked:
+            let m = net_recv(&(s_chan)):
+                if m != ():
+                    call net_send(&(r_chan), dict{ .ack: m.seq }, reliable);
+                    if m.seq == r_seq:
+                        result = m.payload;
+                        blocked = False;
+                    ;
+                ;
+            ;
+        ;
+    ;
+;
+s_chan = ();
+r_chan = ();
+s_seq = 0;
+r_seq = 0;
