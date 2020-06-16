@@ -412,7 +412,61 @@ those out.
 Another excellent resource is Fred Schneider's book ``On
 Concurrent Programming''~\cite{Schneider97}.
 
+The book proceeds as follows:
+
+\begin{itemize}
+\item In Chapter~\ref{ch:cxlintro} introduces the CXL programming
+language, as it provides the language for presenting synchronization
+problems and solutions.
+\item Chapter~\ref{ch:concurrent} introduces the problem of
+concurrent programming through a simple example in which two processes
+are concurrently incrementing a counter;
+\item Chapters~\ref{ch:cxlvalues} and~\ref{ch:cxlmachine} present some more
+details of the CXL language and machine to understand the problem
+underlying concurrency better.
+\item Chapter~\ref{ch:critical} introduces the concept of a critical
+section.
+\item Chapter~\ref{ch:naive} presents various flawed implementations
+of critical sections.
+\item Chapter~\ref{ch:peterson} introduces Peterson's Algorithm, an
+elegant solution to the mutual exclusion problem.
+\item Chapter~\ref{ch:method} gives some more details on the CXL
+language.
+\item Chapter~\ref{ch:spinlock} introduces hardware-supported locks
+for mutual exclusion.  Chapter~\ref{ch:synch} presents a CXL module
+that supports locks and other synchronization primitives.
+\item Chapters~\ref{ch:rdwrbusy} and~\ref{ch:rdwr2} present the
+abstraction and implementation of reader/writer
+locks, which allow multiple processes in a critical section if they are
+all only executing read-only accesses.
+Chapter~\ref{ch:rdwrbusy} also talks about busy-waiting, which is
+an undesirable approach to synchronize processes.
+\item Chapter~\ref{ch:deadlock} introduces the notion of \emph{deadlock}
+where a set of processes are indefinitely waiting for one another to
+release a resource.
+\item Chapter~\ref{ch:semaphore} introduces a generalization of locks
+that is good not only for mutual exclusion but also for waiting for
+certain application-level conditions.
+\item Chapters~\ref{ch:bb} and~\ref{ch:sbs} introduce the bounded buffer
+problem and various solutions.
+\item Chapter~\ref{ch:starvation} talks about the problem that in some
+synchronization solutions, processes may not be able to get access to a
+resource they need, and a solution for the reader/writer problem.
+\item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present monitors and
+condition variables, another approach to process synchronication.
+\item Chapter~\ref{ch:actor} presents the actor model as an approach to
+synchronization.
+\item Chapter~\ref{ch:nonblocking} shows solutions to process synchronization
+that prevent processes waiting for one another more than a bounded number of
+steps.
+\item Chapter~\ref{ch:barrier} introduces barrier synchronization, useful in
+high-performance computing applications such as parallel simulations.
+\item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
+systems problem of having two processes communicate over an unreliable network.
+\end{itemize}
+
 \chapter{Introduction to Programming with CXL}
+\label{ch:cxlintro}
 
 Like Python, CXL is an imperative,
 dynamically typed, and garbage collected programming language.
@@ -499,6 +553,7 @@ you initialize it to 1.
 \end{quote}
 
 \chapter{The Problem of Concurrent Programming}
+\label{ch:concurrent}
 
 \begin{figure}
 \begin{code}
@@ -876,6 +931,7 @@ and storing \texttt{True} into \texttt{done[0]}.
 This makes precise the concurrency problem that we encountered.
 
 \chapter{Critical Sections}
+\label{ch:critical}
 
 \begin{figure}
 \begin{code}
@@ -1023,6 +1079,7 @@ of processes in the critical section.  A process that is in the critical
 section cannot terminate.
 
 \chapter{Na\"{\i}ve Attempts at Implementing Critical Sections}
+\label{ch:naive}
 
 \begin{figure}
 \begin{code}
@@ -1391,6 +1448,7 @@ Bonus question!
 \end{quote}
 
 \chapter{CXL Methods and Pointers}
+\label{ch:method}
 \index{CXL method}
 
 A method \texttt{m} with argument \texttt{a} is invoked in its
@@ -1471,6 +1529,7 @@ dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
 That would allow you to simulate object methods.
 
 \chapter{Spinlock}
+\label{ch:spinlock}
 \index{spinlock}
 \glsadd{spinlock}
 
@@ -1609,6 +1668,7 @@ update Figure~\ref{fig:tas}, replacing \texttt{tas}.
 \end{quote}
 
 \chapter{Locks and the Synch Module}
+\label{ch:synch}
 \index{lock}
 \index{synch module}
 
@@ -1816,6 +1876,7 @@ Part of the reason is that the \texttt{synchS} module keeps track of the order
 in which processes wait for a lock.
 
 \chapter{Reader/Writer Locks using Busy Waiting}
+\label{ch:rdwrbusy}
 \index{reader/writer lock}
 \glsadd{reader/writer lock}
 
@@ -1949,6 +2010,7 @@ that all states are non-terminating and lead to a state in which
 all processes are blocked.
 
 \chapter{Reader/Writer Lock, Part 2}
+\label{ch:rdwr2}
 
 \begin{figure}
 \begin{code}
@@ -2037,6 +2099,7 @@ reader/writer locks can be instantiated.
 \end{quote}
 
 \chapter{Deadlock}
+\label{ch:deadlock}
 \index{deadlock}
 \glsadd{deadlock}
 
@@ -2105,6 +2168,7 @@ before the higher numbered fork, like so:
 \end{quote}
 
 \chapter{Semaphores}
+\label{ch:semaphore}
 \index{semaphore}
 \glsadd{semaphore}
 
@@ -2211,6 +2275,7 @@ You may find the free ``The Little Book of Semaphores'' by
 Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 
 \chapter{Bounded Buffer}
+\label{ch:bb}
 \index{bounded buffer}
 \index{producer/consumer problem}
 \glsadd{producer/consumer problem}
@@ -2358,6 +2423,7 @@ The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
 \chapter{Split Binary Semaphores}
+\label{ch:sbs}
 \index{split binary semaphore}
 
 \begin{figure}
@@ -2748,6 +2814,7 @@ for a section of code.
 In C and C++, support for locks and condition variables is through libraries.
 
 \chapter{Mesa Condition Variables in CXL}
+\label{ch:mesa}
 
 \begin{figure}
 \begin{code}
@@ -2853,6 +2920,7 @@ Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \chapter{Actors and Synchronized Queues}
+\label{ch:actor}
 \index{actor model}
 \glsadd{actor model}
 
@@ -2946,6 +3014,7 @@ case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
 requests.
 
 \chapter{Non-Blocking Synchronization}
+\label{ch:nonblocking}
 \index{non-blocking synchronization}
 \glsadd{non-blocking synchronization}
 
@@ -3010,6 +3079,7 @@ non-blocking (aka \emph{wait-free})
 synchronization algorithms~\cite{}.
 
 \chapter{Barrier Synchronization}
+\label{ch:barrier}
 \index{barrier synchronization}
 \glsadd{barrier synchronization}
 
@@ -3074,6 +3144,7 @@ with just three semaphores.  Busy waiting is not allowed.
 \end{quote}
 
 \chapter{Networking: Alternating Bit Protocol}
+\label{ch:abp}
 \index{alternating bit protocol}
 
 \begin{figure}
