@@ -487,17 +487,24 @@ an CXL value.
 \item Processes:  Any process
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
+\index{name tag}
 a program counter, a stack of CXL values,
 and a single mutable general purpose \emph{register} that contains a CXL value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
-along with an optional tag specified in the \texttt{spawn} statement.
+along with an optional tag specified in the \texttt{spawn}
+\index{spawn statement}
+\index{tag}
+statement.
 The default tag is the first argument to the method.
 In Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
-The state of a process is called a \emph{context}: it contains the value of
+The state of a process is called a \emph{context} (aka continuation):
+\index{context}
+\index{continuation}
+it contains the value of
 its name tag, program counter, stack, and register.
 The state of the CXL machine
 consists of the value of its memory and the multiset (or \emph{bag}) of
@@ -535,6 +542,7 @@ cxl -a Up.cxl
 \end{verbatim}
 \end{code}
 The CXL machine is predominantly a \emph{stack machine}.
+\index{stack machine}
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
 At first there is one process (with name tag \texttt{\_\_init\_\_/()}
@@ -892,6 +900,7 @@ mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the CXL
 machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
+\index{state}
 at any point of time the CXL machine is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables for each process, including its
@@ -1443,7 +1452,9 @@ stop L
 \end{code}
 
 Here \texttt{L} is a shared list.
-Another process can revive the process using the \texttt{go} stateent:
+Another process can revive the process using the \texttt{go}
+\index{go statement}
+statement:
 
 \begin{code}
 \begin{verbatim}
@@ -1453,8 +1464,9 @@ go C R
 
 Here \texttt{C} is a context and \texttt{R} is a CXL value.
 It causes a process with context \texttt{C} to be added to the state that has
-just executed the \texttt{stop} expression.  The \texttt{stop} expression
-returns the value \texttt{R}.
+just executed the \texttt{stop}
+\index{stop expression}
+expression.  The \texttt{stop} expression returns the value \texttt{R}.
 
 There is a second version of the \texttt{synch} module that uses suspension
 instead of spinlocks.
