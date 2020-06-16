@@ -103,6 +103,12 @@
     properties where ``something good eventually happens,'' like processes being
     able to enter the critical section if they want to}
 }
+\newglossaryentry{race condition}
+{
+  name=race condition,
+  description={describes when multiple processes access shared state concurrently,
+    leading to undesirable outcomes}
+}
 \newglossaryentry{sequential execution}
 {
   name=sequential execution,
@@ -454,7 +460,11 @@ stores $1$ into \texttt{count};
 \end{enumerate}
 
 The result in this particular interleaving is that \texttt{count} ends up
-being 1.  When running CXL, it will
+being 1.
+This is known as a \emph{race condition}.
+\index{race condition}
+\glsadd{race condition}
+When running CXL, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
 
