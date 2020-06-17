@@ -1105,10 +1105,10 @@ What we need now a \emph{liveness property}:
 we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
-but here we will propose the following informally: if some set of processes
-$S$ are trying to enter the critical section and any process already in the
-intersection eventually leaves, then eventually one process in $S$ will enter
-the critical section.
+but here we will propose the following informally: if there exists a non-empty
+set $S$ of processes that are trying to enter the critical section and any
+process already in the intersection eventually leaves, then eventually one
+process in $S$ will enter the critical section.
 We call this \emph{progress}.
 \index{progress}
 
@@ -1121,15 +1121,6 @@ will model processes in critical sections using the framework in
 Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
-
-\begin{quote}
-Try it out!
-\begin{itemize}
-\item Plug \texttt{while True: pass;;} for entering the critical section
-in Figure~\ref{fig:cs} and run CXL.  It should print a trace
-to a state from which a terminating state cannot be reached.
-\end{itemize}
-\end{quote}
 
 \begin{figure}
 \begin{center}
@@ -1151,6 +1142,20 @@ the label on an arrow describes the transition.  In this case,
 the label contains two numbers: the total number of processes and the number
 of processes in the critical section.  A process that is in the critical
 section cannot terminate.
+
+\section*{Exercises}
+\begin{enumerate}
+\item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
+section, mutual is violated, the assertion should fail, and a trace should be reported.
+Now plug \texttt{while True: pass;;} before entering the critical section
+in Figure~\ref{fig:cs} and run CXL again.  Now mutual exclusion is guaranteed but
+progress is violated.  CXL should print a trace
+to a state from which a terminating state cannot be reached.
+Describe in English the difference in the failure reports.
+\item If we change the loop in Figure~\ref{fig:cs} into an infinite loop,
+does the \emph{progress} property guarantee that all processes that are trying
+to enter eventually enter?  Why or why not?
+\end{enumerate}
 
 \chapter{Na\"{\i}ve Attempts at Implementing Critical Sections}
 \label{ch:naive}
