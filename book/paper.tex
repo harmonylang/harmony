@@ -2962,9 +2962,6 @@ release all resources that it has already acquired and start over;
 resources in a particular order.
 \end{itemize}
 
-We suggested the last technique to address the deadlock issue in the Dining
-Philosophers problem (Chapter~\ref{ch:deadlock}).
-
 To implement a \emph{No Hold and Wait} solution, a philosopher would need a
 way to lock both the left and right forks at the same time.  Locks do not
 have such an ability, and neither do semaphores. so we re-implement the
@@ -2977,8 +2974,9 @@ and a condition variable.  The boolean indicates if the fork has been
 taken.
 Each diner waits if either the left or right fork is already taken.
 But which condition variable to wait on?
-The code demonstrates an important technique to use when waiting for multiple
-conditions.
+The code demonstrates an important technique to use when waiting for
+multiple conditions.
+\index{multiple conditions, waiting on}
 The condition in the \texttt{while} statement is the condition that the
 diner is waiting for to be \texttt{False}.  Within the \texttt{while} statement,
 there is an \texttt{if} statement for each disjunct of that condition.
@@ -3001,18 +2999,32 @@ while forks[right]:
 \begin{quote}
 \begin{itemize}
 \item Can you see why this does not work?  What can go wrong?
+\item Run it through CXL in case you are not sure!
 \end{itemize}
 \end{quote}
 
-The next approach suggested by Havender is to allow processes to back out.
+The \texttt{Preemption} approach suggested by Havender is to allow processes to back out.
 While this could be done, this invariably leads to a busy waiting solution
 where a process keeps obtaining locks and releasing them again until it
 finally is able to get all of them.
-The approach to order the resources was already presented in Chapter~\ref{ch:deadlock}
+The \emph{No Circular Waiting} approach to order the resources was already presented in
+Chapter~\ref{ch:deadlock}
 
 There is, however, another approach. which is sometimes called
 \emph{deadlock avoidance}.
 \index{deadlock avoidance}.
+In the case of the Dining Philosophers, we want to avoid the situation where each
+diner picks up a fork.  So if we can prevent more than four diners from starting to
+eat at the same time, then we can avoid the conditions for deadlock from ever
+happening.
+Figure~\ref{fig:dinersavoid} demonstrates this concept.  It uses a semaphore to
+restrict the number of diners at any time to four.
+
+This concept can be generalized using something called the
+Banker's Algorithm~\cite{EWD108}, but it is outside the scope of this book.
+The problem with these kinds of schemes is that one needs to know ahead of time
+what the maximum number of resources is that each process wants to allocate,
+making them generally quite impractical.
 
 \begin{figure}
 \begin{code}
