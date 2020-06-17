@@ -712,6 +712,7 @@ To understand the problem of concurrent computing, it
 is important to have a basic understanding of the CVM.
 
 \section*{CXL Values}
+\label{ap:cxlvalues}
 
 CXL programs, and indeed the CVM,  manipulate CXL values.
 CXL values are recursively defined:
@@ -783,6 +784,9 @@ If \texttt{d} is a
 dictionary, then \texttt{keys~d} (or equivalently \texttt{keys(d)})
 returns the set of keys and \texttt{len~d} returns the size of
 this set.
+
+Appendix~\ref{ap:cxlvalues} provides details on all the values that
+CXL currently supports.
 
 \section*{CXL Bytecode}
 
@@ -925,6 +929,8 @@ At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
+Appendix~\ref{ap:cxlbytecode} provides a list of all CVM machine instructions,
+in case you want to read about the details.
 The \texttt{Frame} instruction has three arguments: the name of the method,
 a list containing the names of the arguments of the method, and
 the program counter of the method's \texttt{Return} instruction.
@@ -3619,6 +3625,7 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \end{tabular}
 
 \chapter{List of Machine Instructions}
+\label{ap:cxlbytecode}
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -3823,8 +3830,10 @@ the state are one per context.
 A terminating state is a state with an empty context bag or a state
 where all contexts are blocked.
 
+\newpage
 \printindex
 
+\newpage
 \printglossaries
 
 \end{document}
