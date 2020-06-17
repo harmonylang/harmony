@@ -979,6 +979,16 @@ This makes precise the concurrency problem that we encountered.
 
 \section*{Exercises}
 
+\begin{enumerate}
+\item Figure~\ref{fig:incenter} shows an attempt at trying to fix the code of
+    Figure~\ref{fig:inc}.  Run it through CXL and see what happens.  Based on
+    the error output, Describe in English what is wrong with the code by describing,
+    in broad steps, how running the program can get into a bad state.
+\item What if we moved line~2 of Figure~\ref{fig:incenter} to after the \texttt{if}
+    statement (between lines~7 and~8)?  Do you think that would work?  Run it through
+    CXL and describe either why it works or why it does not work.
+\end{enumerate}
+
 \begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpEnter.cxl}
