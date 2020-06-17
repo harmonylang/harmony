@@ -550,6 +550,7 @@ $
 \begin{enumerate}
 \item See what happens if, instead of initializing \texttt{result} to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.)
+Explain in English what the problem is.
 \item Write a CXL program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{enumerate}
@@ -1023,11 +1024,11 @@ At the heart of the problem is that we would like make sure that, when
 the \texttt{count} variable is being updated, no other process is
 trying to do the same thing.  This is called a \emph{critical section}
 (aka critical region)~\cite{EWD123}:
-\index{critical section}
-\glsadd{critical section}
-\index{critical region}
 a set of instructions where only one process is allowed to execute at a
 time.
+\index{critical section}
+\index{critical region}
+\glsadd{critical section}
 
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
