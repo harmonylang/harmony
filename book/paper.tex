@@ -2145,8 +2145,11 @@ processes being blocked trying to acquire the lock.
 \end{itemize}
 \end{quote}
 
-We will discuss ways of preventing deadlock later, but one important
-approach to avoiding deadlock is to establish an ordering among the
+We will discuss ways of preventing deadlock later (Chapter~\ref{ch:deadlockprevention},
+but one important
+approach to preventing deadlock is to prevent a cycle from forming, with each
+process waiting for the next process on the cycle.
+We can do this by establishing an ordering among the
 resources (in this case the forks) and, when needing more than one
 resource, always acquiring them in order.  In the case of the philosopers,
 they could prevent deadlock by always picking up the lower numbered fork
