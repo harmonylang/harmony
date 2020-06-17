@@ -122,7 +122,7 @@
 \newglossaryentry{machine instruction}
 {
   name=machine instruction,
-  description={is an atomic operation on the CXL machine, executed by a process}
+  description={is an atomic operation on the CXL virtual machine, executed by a process}
 }
 \newglossaryentry{model checking}
 {
@@ -204,7 +204,7 @@
 \newglossaryentry{shared variable}
 {
   name=shared variable,
-  description={is a variable that is stored in the memory of the CXL machine and
+  description={is a variable that is stored in the memory of the CXL virtual machine and
       shared between multiple processes, as opposed to a process variable}
 }
 \newglossaryentry{spinlock}
@@ -228,7 +228,7 @@
 \newglossaryentry{state}
 {
   name=state,
-  description={an assignment of values to variables.  In a CXL machine, this includes
+  description={an assignment of values to variables.  In a CXL virtual machine, this includes
       the contents of its shared memory and the set of contexts}
 }
 \newglossaryentry{step}
@@ -421,8 +421,8 @@ problems and solutions.
 \item Chapter~\ref{ch:concurrent} introduces the problem of
 concurrent programming through a simple example in which two processes
 are concurrently incrementing a counter;
-\item Chapters~\ref{ch:cxlvalues} and~\ref{ch:cxlmachine} present some more
-details of the CXL language and machine to understand the problem
+\item Chapter~\ref{ch:cxlmachine} presents the
+CXL virtual machine to understand the problem
 underlying concurrency better.
 \item Chapter~\ref{ch:critical} introduces the concept of a critical
 section, and Chapter~\ref{ch:naive} presents various flawed implementations
@@ -546,14 +546,12 @@ $
 \end{verbatim}
 \end{code}
 
-\begin{quote}
-Experiment!
-\begin{itemize}
+\section*{Exercises}
+\begin{enumerate}
 \item See what happens if, instead of initializing \texttt{result} to 0,
-you initialize it to 1.
-\item Write a similar program that computes squares or factorials.
-\end{itemize}
-\end{quote}
+you initialize it to 1.  (You do not need to understand the error report at this time.)
+\item Write a program that computes factorials.
+\end{enumerate}
 
 \chapter{The Problem of Concurrent Programming}
 \label{ch:concurrent}
@@ -586,7 +584,6 @@ The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
 
 \begin{quote}
-What will happen?
 \begin{itemize}
 \item Before you run the program, what do you think will happen?  Is the
 program correct in that \texttt{count} will always end up being 2?
@@ -659,15 +656,62 @@ This would fix the issue, but more likely it is the program that must
 be fixed.
 
 \begin{quote}
-Can you think of a fix to the program?  You can try it out and see
+\begin{itemize}
+\item Can you think of a fix to the program?  You can try it out and see
 if it works or not.
+\end{itemize}
 \end{quote}
 
-\chapter{CXL Values}
-\label{ch:cxlvalues}
-\index{CXL Value}
+\section*{Exercises}
 
-CXL programs manipulate CXL values.
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Up.py}
+\end{code}
+\caption{[Up.py] Python implementation of Figure~\ref{fig:inc}.}
+\label{fig:incpy}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpMany.py}
+\end{code}
+\caption{[UpMany.py] Incrementing \texttt{N} times.}
+\label{fig:incmany}
+\end{figure}
+
+\begin{enumerate}
+\item CXL programs can usually be easily translated into Python.  For example,
+Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
+\begin{enumerate}
+\item Run Figure~\ref{fig:incpy} using Python.  Does the assertion fail?
+\item Using a script, run Figure~\ref{fig:inc} 1000 times.  How many times does the assertion
+fail (if any).
+\end{enumerate}
+\item Figure~\ref{fig:incmany} is a version of Figure~\ref{fig:incpy} that has each
+incrementer thread increment \texttt{count} \texttt{N} times.  Run Figure~\ref{fig:incpy}
+10 times (using Python).
+Report how many times the assertion fails and what the value of \texttt{count}
+was for each of the failed runs.
+\end{enumerate}
+
+\chapter{The CXL Virtual Machine}
+\label{ch:cxlmachine}
+\index{CXL virtual machine}
+
+CXL programs are compiled to CXL bytecode
+\index{bytecode}
+(machine instructions for a virtual machine),
+which in turn is executed by the CXL virtual machine (CVM).
+\index{virtual machine}
+\index{CXL Virtual Machine}
+\index{CVM}
+To understand the problem of concurrent computing, it
+is important to have a basic understanding of the CVM.
+
+\section*{CXL Values}
+
+CXL programs, and indeed the CVM,  manipulate CXL values.
 CXL values are recursively defined:
 they include booleans (\texttt{False} and \texttt{True}),
 integers (but not floating point numbers),
@@ -738,9 +782,7 @@ dictionary, then \texttt{keys~d} (or equivalently \texttt{keys(d)})
 returns the set of keys and \texttt{len~d} returns the size of
 this set.
 
-\chapter{The CXL Machine}
-\label{ch:cxlmachine}
-\index{CXL machine}
+\section*{CXL Bytecode}
 
 \begin{figure}
 \begin{code}
@@ -763,7 +805,7 @@ Up.cxl:3     done[self] = True;
    12 Return
 \end{verbatim}
 \end{code}
-\caption{The first part of the machine code corresponding to Figure~\ref{fig:inc}.}
+\caption{The first part of the CVM bytecode corresponding to Figure~\ref{fig:inc}.}
 \label{fig:inccode}
 \end{figure}
 
@@ -784,19 +826,19 @@ main/() [14-19,22-27,29-36] 37 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 \label{fig:incoutput}
 \end{figure}
 
-Before we delve into how to solve synchronization problems, it is important
-to know a bit about the underlying machine.  A CXL program is translated
-into a list of machine instructions that the CXL machine executes.
-The CXL machine is not an ordinary virtual machine, but its architecture
+A CXL program is translated
+into \emph{bytecode}, which is list of machine instructions that the
+CXL virtual machine (CVM) executes.
+The CVM is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional computers and
 virtual machines such as the Java Virtual Machine.
 
-Instead of bits and bytes, a CXL machine manipulates CXL values.
-A CXL machine has the following components:
+Instead of bits and bytes, a CVM manipulates CXL values.
+A CVM has the following components:
 \begin{itemize}
-\item Code:  This is an immutable and finite list of CXL machine instructions,
+\item Code:  This is an immutable and finite list of CVM instructions,
 generated from a CXL program.  The types of instructions will be described later.
-\item Shared memory: A CXL machine has just one memory location containing
+\item Shared memory: A CVM has just one memory location containing
 an CXL value.
 \item Processes:  Any process
 can spawn an unbounded number of other processes and processes may terminate.
@@ -825,7 +867,7 @@ The state of a process is called a \emph{context} (aka continuation):
 \glsadd{context}
 it contains the value of
 its name tag, program counter, stack, and register.
-The state of the CXL machine
+The state of a CVM
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}
 \index{multiset}
@@ -856,7 +898,7 @@ such a sequence the \emph{address}
 of a CXL value, and it is relative to the
 ``root'' of the directory tree.
 
-Compiling the code in Figure~\ref{fig:inc} results in the CXL machine code
+Compiling the code in Figure~\ref{fig:inc} results in the CVM bytecode
 listed in Figure~\ref{fig:inccode}.
 You can obtain this code by invoking \texttt{cxl} with the \texttt{-a} flag
 like so:
@@ -865,9 +907,10 @@ like so:
 cxl -a Up.cxl
 \end{verbatim}
 \end{code}
-The CXL machine is predominantly a \emph{stack machine}.
+Each process in the CVM is predominantly a \emph{stack machine},
 \index{stack machine}
 \glsadd{stack machine}
+but it also has a register.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
 At first there is one process (with name tag \texttt{\_\_init\_\_/()}
@@ -916,7 +959,7 @@ Next it reports an execution that failed this assertion.  The output has
 four columns:
 \begin{enumerate}
 \item The name tag of the process;
-\item The sequence of program counters of the CXL machine instructions that the process executed;
+\item The sequence of program counters of the CVM instructions that the process executed;
 \item The current program counter of the process;
 \item The contents of the shared memory.
 \end{enumerate}
@@ -982,10 +1025,10 @@ processes (or threads) is called \emph{thread-safe}.
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
-Figure~\ref{fig:csbarebones} shows the CXL code.
+Figure~\ref{fig:csbarebones} shows the CVM bytecode.
 Here \texttt{@cs} is a \emph{label},
 \index{label}
-identifying a location in the CXL machine code.  The first thing we need to
+identifying a location in the CVM bytecode.  The first thing we need to
 ensure is that there can never be two processes at the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
@@ -1239,21 +1282,21 @@ machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
 \index{state}
 \glsadd{state}
-at any point of time the CXL machine is in a specific state.
+at any point of time the CVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
 \index{process variable}
 \glsadd{process variable}
 for each process, including its
 program counter and the contents of its stack.
-Everytime a process executes a CXL machine instruction, the
+Everytime a process executes a CVM machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}
 \glsadd{step}
 Steps in CXL are atomic.
 
-The CXL machine starts in an initial state in which there is only
+The CVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
 \index{trace}
 \glsadd{trace}
@@ -1470,7 +1513,7 @@ If you invoke \texttt{m(a, b)}, the argument is \texttt{(a, b)},
 the tuple consisting of values \texttt{a} and \texttt{b}.
 
 You may note that all this looks familiar.  Indeed, the syntax
-is the same as that for dictionaries (see Chapter~\ref{ch:cxlvalues}).
+is the same as that for dictionaries (see Chapter~\ref{ch:cxlmachine}).
 Both dictionaries and methods map CXL values to CXL values,
 and their syntax is indistinguishable.
 If \texttt{f} is either a method or a
@@ -1557,7 +1600,7 @@ so-called \emph{interlock instructions}:
 special machine instructions
 that can read memory and then write it in an indivisible step.
 
-While the CXL machine does not have any built-in interlock instructions,
+While the CVM does not have any built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
 This feature is available in the CXL language in two ways.
 First, any CXL statement can be made atomic by placing a label in front
@@ -3289,7 +3332,7 @@ with just three semaphores.  Busy waiting is not allowed.
 
 \chapter{List of Values}
 
-Chapter~\ref{ch:cxlvalues} provides an introduction to CXL values.
+Chapter~\ref{ch:cxlmachine} provides an introduction to CXL values.
 Below is a complete list of CXL value types with examples:
 
 \vspace{1em}
@@ -3699,14 +3742,14 @@ sequence instructions that the process can execute that either writes
 to a shared variable (even if that leaves the shared variable unchanged)
 or terminates the process.
 
-\chapter{The CXL Machine}
+\chapter{The CXL Virtual Machine}
 
-The CXL machine has the following state:
+The CXL Virtual Machine (CVM) has the following state:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-code & a list of CXL machine instructions \\
+code & a list of CVM machine instructions \\
 \hline
 labels & a dictionary of atoms to program counters \\
 \hline
@@ -3733,10 +3776,10 @@ Other processes, created through \texttt{spawn} statements, do not
 start executing until then.
 
 A \emph{micro step}
-is the execution of a single CXL machine instruction
+is the execution of a single CVM machine instruction
 by a context.
 Each micro step generates a new state.
-When there are multiple contexts, the CXL machine can interleave them.
+When there are multiple contexts, the CVM can interleave them.
 However, trying to interleave every microstep would be needlessly expensive,
 as many micro steps involve changes to a context that are invisible to
 other contexts.
@@ -3745,7 +3788,7 @@ A \emph{macro step}
 \index{macro step}
 can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
-\texttt{AtomicInc}, and \texttt{Continue}.  The CXL machine
+\texttt{AtomicInc}, and \texttt{Continue}.  The CVM
 interleaves macro steps, not micro steps.  Like micro steps, each
 macro step involves a single context.  Unlike a micro step, a macro
 step can leave the state unchanged.
