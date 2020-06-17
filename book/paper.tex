@@ -425,11 +425,11 @@ are concurrently incrementing a counter;
 CXL virtual machine to understand the problem
 underlying concurrency better.
 \item Chapter~\ref{ch:critical} introduces the concept of a critical
-section, and Chapter~\ref{ch:naive} presents various flawed implementations
+section presents various flawed implementations
 of critical sections to demonstrate that implementing a critical section
 is not trivial.
 \item Chapter~\ref{ch:peterson} introduces Peterson's Algorithm, an
-elegant implementation of a critical section.
+elegant solution to implementating a critical section.
 \item Chapter~\ref{ch:method} gives some more details on the CXL
 language.
 \item Chapter~\ref{ch:spinlock} introduces hardware-supported locks
@@ -1143,23 +1143,6 @@ the label contains two numbers: the total number of processes and the number
 of processes in the critical section.  A process that is in the critical
 section cannot terminate.
 
-\section*{Exercises}
-\begin{enumerate}
-\item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
-section, mutual is violated, the assertion should fail, and a trace should be reported.
-Now plug \texttt{while True: pass;;} before entering the critical section
-in Figure~\ref{fig:cs} and run CXL again.  Now mutual exclusion is guaranteed but
-progress is violated.  CXL should print a trace
-to a state from which a terminating state cannot be reached.
-Describe in English the difference in the failure reports.
-\item If we change the loop in Figure~\ref{fig:cs} into an infinite loop,
-does the \emph{progress} property guarantee that all processes that are trying
-to enter eventually enter?  Why or why not?
-\end{enumerate}
-
-\chapter{Na\"{\i}ve Attempts at Implementing Critical Sections}
-\label{ch:naive}
-
 \begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/naiveLock.cxl}
@@ -1260,16 +1243,24 @@ if process~$i$ terminates instead of entering the critical section when it
 is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
 turn.
 
-\begin{quote}
-Try your own solutions!
-\begin{itemize}
+\section*{Exercises}
+\begin{enumerate}
+\item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
+section, mutual is violated, the assertion should fail, and a trace should be reported.
+Now plug \texttt{while True: pass;;} before entering the critical section
+in Figure~\ref{fig:cs} and run CXL again.  Now mutual exclusion is guaranteed but
+progress is violated.  CXL should print a trace
+to a state from which a terminating state cannot be reached.
+Describe in English the difference in the failure reports.
+\item If we change the loop in Figure~\ref{fig:cs} into an infinite loop,
+does the \emph{progress} property guarantee that all processes that are trying
+to enter eventually enter?  Why or why not?
 \item See if you can come up with some different approaches that satisfy both
 mutual exclusion and progress.  Try them with CXL and see if they work or not.
 If they don't, try to understand why.
 Do not despair if you can't figure it out---as
 we will find out, it is possible but not easy.
-\end{itemize}
-\end{quote}
+\end{enumerate}
 
 \chapter{Peterson's Algorithm}
 \label{ch:peterson}
@@ -1502,29 +1493,35 @@ Before trying to prove the algorithm, you can check that the predicate is
 at least invariant by testing it using CXL.  Doing so could potentially
 avoid wasting your time on a proof that will not work because the
 predicate is not invariant, and therefore not an inductive invariant either.
+To finish the story, the author of CXL fixed the Wikipedia page.
 
-To finish the story, the author of CXL fixed the Wikipedia page, but there
-is another cool story.  Years later a colleague of the author, teaching
-the same course, asked if the first two assignments (setting \texttt{flags[self]})
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csonebit.cxl}
+\end{code}
+\caption{[csonebit.cxl] Mutual exclusion using a flag per process.}
+\label{fig:csonebit}
+\end{figure}
+
+\section*{Exercises}
+\begin{enumerate}
+\item Figure~\ref{fig:csonebit} presents another correct solution to the
+mutual exclusion problem.  It is similar to the one in
+Figure~\ref{fig:upflags}, but has a process \emph{back out and try again}
+if it finds that the other process is either trying to enter the critical
+section or already has.  Compare this algorithm with Peterson's.  What are
+the advantages and disadvantages?
+\item A colleague of the author asked if the first two assignments in
+Peterson's algorithm (setting \texttt{flags[self]})
 to \texttt{True} and \texttt{turn} to \texttt{1 - self}) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
-
-\begin{quote}
-What do you think?
-\begin{itemize}
-\item See if you can figure out for yourself if the two assignments can be
+See if you can figure out for yourself if the two assignments can be
 reversed.  Then run the program in Figure~\ref{fig:peterson} after reversing
-the two assignments and see what happens.
-\end{itemize}
-\end{quote}
-
-\begin{quote}
-Bonus question!
-\begin{itemize}
-\item Can you generalize Peterson's algorithm to more than two processes?
-\end{itemize}
-\end{quote}
+the two assignments and describe in English what happens.
+\item Bonus question:
+Can you generalize Peterson's algorithm to more than two processes?
+\end{enumerate}
 
 \chapter{CXL Methods and Pointers}
 \label{ch:method}
@@ -2166,16 +2163,15 @@ does not find any issues.  While a test may be successful, a test may not
 explore all desirable executions.  While CXL can help explore all cornercases
 in a test, it cannot find problems that the test is not looking for.
 
-\begin{quote}
-\begin{itemize}
+\section*{Exercises}
+\begin{enumerate}
 \item Why do you suppose the code in Figure~\ref{fig:rwmulti} uses a flag
 per process rather than a simple counter?
 \item Can you write a version of this test that uses a counter instead
 of a flag per process?
 \item Write a ``library implementation'' of reader/writer locks so multiple
 reader/writer locks can be instantiated.
-\end{itemize}
-\end{quote}
+\end{enumerate}
 
 \chapter{Deadlock}
 \label{ch:deadlock}
