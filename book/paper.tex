@@ -496,7 +496,7 @@ you get more familiar with programming in CXL.
 \label{fig:triangle}
 \end{figure}
 
-Figure~\ref{fig:triangle} gives a simple example of a CXL program.
+Figure~\ref{fig:triangle} shows a simple example of a CXL program.
 (The code for examples in this book can be found in the \texttt{code} folder under
 the name listed in the caption of the example.)
 It is sequential and has a method \texttt{square} that takes
@@ -550,7 +550,8 @@ $
 \begin{enumerate}
 \item See what happens if, instead of initializing \texttt{result} to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.)
-\item Write a program that computes factorials.
+\item Write a CXL program that computes squares by repeated adding.  So the program
+should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{enumerate}
 
 \chapter{The Problem of Concurrent Programming}
@@ -975,6 +976,16 @@ and storing \texttt{True} into \texttt{done[0]}.
 \end{enumerate}
 
 This makes precise the concurrency problem that we encountered.
+
+\section*{Exercises}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpEnter.cxl}
+\end{code}
+\caption{[UpEnter.py] Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
+\label{fig:incenter}
+\end{figure}
 
 \chapter{Critical Sections}
 \label{ch:critical}

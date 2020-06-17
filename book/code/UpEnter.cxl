@@ -1,0 +1,22 @@
+def incrementer(self):
+    entered[self] = True;
+    if entered[1 - self]:
+        while not done[1 - self]:
+            pass;
+        ;
+    ;
+    count = count + 1;
+    done[self] = True;
+;
+def main():
+    while not (done[0] and done[1]):
+        pass;
+    ;
+    assert count == 2, count;
+;
+count = 0;
+entered = [ False, False ];
+done = [ False, False ];
+spawn incrementer(0);
+spawn incrementer(1);
+spawn main();
