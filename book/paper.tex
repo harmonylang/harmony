@@ -655,14 +655,11 @@ We could change the specification by changing the assertion as follows:
 This would fix the issue, but more likely it is the program that must
 be fixed.
 
-\begin{quote}
-\begin{itemize}
-\item Can you think of a fix to the program?  You can try it out and see
-if it works or not.
-\end{itemize}
-\end{quote}
-
 \section*{Exercises}
+
+The following exercises are intended to show you that on the one hand it
+is easy to translate CXL programs into Python, but on the other hand,
+it is easier to find concurrency bugs using CXL.
 
 \begin{figure}
 \begin{code}
@@ -685,7 +682,7 @@ if it works or not.
 Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
 \begin{enumerate}
 \item Run Figure~\ref{fig:incpy} using Python.  Does the assertion fail?
-\item Using a script, run Figure~\ref{fig:inc} 1000 times.  How many times does the assertion
+\item Using a script, run Figure~\ref{fig:incpy} 1000 times.  How many times does the assertion
 fail (if any).
 \end{enumerate}
 \item Figure~\ref{fig:incmany} is a version of Figure~\ref{fig:incpy} that has each
@@ -693,6 +690,9 @@ incrementer thread increment \texttt{count} \texttt{N} times.  Run Figure~\ref{f
 10 times (using Python).
 Report how many times the assertion fails and what the value of \texttt{count}
 was for each of the failed runs.
+\item Can you think of a fix to Figure~\ref{fig:inc}?  Try one or two different fixes
+and run them through CXL.  Do not worry about having to come up with a correct fix at this
+time---the important thing is to develop an understanding of concurrency.
 \end{enumerate}
 
 \chapter{The CXL Virtual Machine}
@@ -2055,7 +2055,7 @@ This flag tells CXL to check
 that all states are non-terminating and lead to a state in which
 all processes are blocked.
 
-\chapter{Reader/Writer Locks, Part 2}
+\chapter{Reader/Writer Locks with Blocking}
 \label{ch:rdwr2}
 
 \begin{figure}
