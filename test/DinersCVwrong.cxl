@@ -6,15 +6,14 @@ def diner(which):
     let left = which, right = (which % N) + 1:
         while choose({ False, True }):
             call lock &(mutex);
-            while forks[left] or forks[right]:
-                if forks[left]:
-                    call wait &(conds[left]);
-                ;
-                if forks[right]:
-                    call wait &(conds[right]);
-                ;
+            while forks[left]:
+                call wait &(conds[left]);
             ;
-            assert not (forks[left] or forks[right]);
+            while forks[right]:
+                call wait &(conds[right]);
+            ;
+            assert not forks[left];
+            assert not forks[right];
             forks[left] = True;
             forks[right] = True;
             call unlock &(mutex);
