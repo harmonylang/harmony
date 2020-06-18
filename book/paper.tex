@@ -3142,6 +3142,14 @@ scenario.}
 \glsadd{actor model}
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=4in]{figures/actor-crop.pdf}
+\end{center}
+\caption{Depiction of three actors.  The producer does not receive messages.}
+\label{fig:actorpic}
+\end{figure}
+
+\begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/actor.cxl}
 \end{code}
@@ -3159,8 +3167,10 @@ scenario.}
 
 Some programming languages favor a completely different way of implementing
 synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
-processes that have only private memory and communicate through messages.
-Given that there is no shared memory in the actor model, there is no need
+processes that have only private memory and communicate through message queues.
+See Figure~\ref{fig:actorpic} for an illustration.
+Given that there is no shared memory in the actor model (other than the message
+queues, which have built-in synchronization), there is no need
 for critical sections.  Instead, some sequential process owns a particular
 piece of data and other processes access it by sending request messages
 to the process and optionally waiting for response messages.  Each process
@@ -3193,8 +3203,9 @@ Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
 \texttt{dequeue} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
-Figure~\ref{fig:actor} shows a solution to the producer/consumer problem using
-an actor.  \texttt{pc\_actor} is essentially a matchmaker: it matches
+Figure~\ref{fig:actor} shows a CXL solution to the producer/consumer problem using
+an actor (as illustrated in Figure~\ref{fig:actorpic}.
+\texttt{pc\_actor} is essentially a matchmaker: it matches
 \texttt{.produce} requests with \texttt{.consume} requests.
 Sometimes it may have buffered \texttt{.consume} requests and is waiting for
 \texttt{.produce} requests, and sometimes it is vice versa.
