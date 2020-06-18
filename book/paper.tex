@@ -1711,7 +1711,7 @@ section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 
 CXL can check these invariants as well.  Figure~\ref{fig:tas} already
 has the code to check $I_2(i)$.  But how would one go about checking an
-invariant like $I_1$.  Invariants must hold for every state.
+invariant like $I_1$?  Invariants must hold for every state.
 For $I_2$ we only need an assertion at label \texttt{@cs} because the
 premisse is that there is a process at that label.  However, we would
 like to check $I_1$ in \emph{every state} (after the variables have
@@ -1732,19 +1732,13 @@ of other processes.
 Because CXL tries every possible execution, the process is guaranteed
 to find violations of the invariant if it does not hold.
 
-\begin{quote}
-Try doing mutual exclusion with other interlock instructions!
-\begin{itemize}
-\item Find a description for \texttt{compare-and-swap} (CAS)
-\index{compare-and-swap}
-\index{CAS}
-on the internet and
-update Figure~\ref{fig:tas}, replacing \texttt{tas}.
-\item Other interesting interlock instructions include \texttt{swap} and
-\texttt{fetch-and-add}.
-\index{fetch-and-add}
-\end{itemize}
-\end{quote}
+\section*{Exercises}
+\begin{enumerate}
+\item Implement an atomic swap operation.  It should take two pointer arguments
+and swap the values.
+\item Implement a spinlock using the atomic swap operation.
+\item Write out the invariants that need to hold and check them using CXL.
+\end{enumerate}
 
 \chapter{Locks and the Synch Module}
 \label{ch:synch}
@@ -1782,8 +1776,13 @@ The former is rarely available to a programmer, while the latter
 is very common.
 
 In CXL, atomic statements allow you to \emph{implement} your own
-low synchronization primitives like test-and-set.  Atomic statements
+synchronization primitives like test-and-set.  Other common examples
+include compare-and swap and fetch-and-add.  Atomic statements
 are not intended to \emph{replace} locks or other synchonization primitives.
+When solving synchronization problems you should not directly use
+atomic statement but use the synchronization primitives that are available
+to you.  But if you want to design a new synchronization primitive, then
+use \texttt{atomic} by all means.
 
 \begin{figure}
 \begin{code}
@@ -1953,6 +1952,13 @@ You will find that using the \texttt{synchS} module often leads to searching a
 significantly larger search space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
 in which processes wait for a lock.
+
+\section*{Exercises}
+\begin{enumerate}
+\item Write a synchronization module using your own implementation of \texttt{Lock}
+(for example, using Peterson's algorithm or using \texttt{swap}), and run the code in
+Figure~\ref{fig:incfixed} using your own module.
+\end{enumerate}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
@@ -2300,7 +2306,9 @@ a unit requires access to the entire collection.
 
 Consider a variant of the Dining Philosophers (which were clearly Dutch---who
 else need two forks to eat a meal?) that we call Italian Philosophers (who only
-need one fork each to eat spaghetti).  Again, there are five philosophers.
+use one fork each to eat spaghetti---they need the other to speak\footnote{The joke
+was provided to me by my dear friend and colleague Lorenzo Alvisi.}).
+Again, there are five philosophers.
 This time, however, there is a glass sitting in the middle of the table with only
 three forks in it.  A philosopher needs one of those forks to eat, but clearly,
 no more than three philosophers can eat at a time.
