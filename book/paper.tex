@@ -1495,14 +1495,6 @@ avoid wasting your time on a proof that will not work because the
 predicate is not invariant, and therefore not an inductive invariant either.
 To finish the story, the author of CXL fixed the Wikipedia page.
 
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csonebit.cxl}
-\end{code}
-\caption{[csonebit.cxl] Mutual exclusion using a flag per process.}
-\label{fig:csonebit}
-\end{figure}
-
 \section*{Exercises}
 \begin{enumerate}
 \item Figure~\ref{fig:csonebit} presents another correct solution to the
@@ -1511,6 +1503,24 @@ Figure~\ref{fig:upflags}, but has a process \emph{back out and try again}
 if it finds that the other process is either trying to enter the critical
 section or already has.  Compare this algorithm with Peterson's.  What are
 the advantages and disadvantages?
+\item
+Can you find an inductive invariant for the algorithm in
+Figure~\ref{fig:csonebit} to prove it correct?
+Here's a pseudo-code version of the algorithm to help you.  Each line
+is an atomic action:
+\begin{code}
+\begin{verbatim}
+    initially: flagX = flagY = False
+
+    process X:                          process Y:
+        X0: flagX = True                   Y0: flagY = True
+        X1: if not flagY goto X4           Y1: if not flagX goto Y4
+        X2: flagX = False                  Y2: flagY = False
+        X3: goto X0                        Y3: goto Y0
+        X4: ...critical section...         Y4: ...critical section...
+        X5: flagX = False                  Y5: flagY = False
+\end{verbatim}
+\end{code}
 \item A colleague of the author asked if the first two assignments in
 Peterson's algorithm (setting \texttt{flags[self]})
 to \texttt{True} and \texttt{turn} to \texttt{1 - self}) can be reversed.
@@ -1520,11 +1530,16 @@ See if you can figure out for yourself if the two assignments can be
 reversed.  Then run the program in Figure~\ref{fig:peterson} after reversing
 the two assignments and describe in English what happens.
 \item Bonus question:
-Can you find an inductive invariant for Figure~\ref{fig:csonebit} to prove
-it correct?
-\item Bonus question:
 Can you generalize Peterson's algorithm to more than two processes?
 \end{enumerate}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csonebit.cxl}
+\end{code}
+\caption{[csonebit.cxl] Mutual exclusion using a flag per process.}
+\label{fig:csonebit}
+\end{figure}
 
 \chapter{CXL Methods and Pointers}
 \label{ch:method}
