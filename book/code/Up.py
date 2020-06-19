@@ -9,6 +9,7 @@ def main():
     while not (done[0] and done[1]):
         pass
     assert count == 2, count
+    print("Done")
 
 def spawn(f, a):
     threading.Thread(target=f, args=a).start()
