@@ -1,38 +1,38 @@
 import synch;
 
 def acquire_rlock():
-    call lock &(rwlock);
+    lock(&rwlock);
     while nwriters > 0:
-        call wait &(rcond);
+        wait(&rcond);
     ;
     nreaders = nreaders + 1;
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def release_rlock():
-    call lock &(rwlock);
+    lock(&rwlock);
     nreaders = nreaders - 1;
     if nreaders == 0:
-        call notify &(wcond);
+        notify(&wcond);
     ;
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def acquire_wlock():
-    call lock &(rwlock);
+    lock(&rwlock);
     while (nreaders + nwriters) > 0:
-        call wait &(wcond);
+        wait(&wcond);
     ;
     nwriters = 1;
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def release_wlock():
-    call lock &(rwlock);
+    lock(&rwlock);
     nwriters = 0;
-    call notifyAll &(rcond);
-    call notify &(wcond);
-    call unlock &(rwlock);
+    notifyAll(&rcond);
+    notify(&wcond);
+    unlock(&rwlock);
 ;
 rwlock = Lock();
-rcond = Condition &(rwlock);
-wcond = Condition &(rwlock);
+rcond = Condition(&rwlock);
+wcond = Condition(&rwlock);
 nreaders = 0;
 nwriters = 0;
