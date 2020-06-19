@@ -1710,7 +1710,8 @@ class AddressAST(AST):
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-        code.append(AddressOp(n))
+        if n > 1:
+            code.append(AddressOp(n))
 
 class PassAST(AST):
     def __repr__(self):
