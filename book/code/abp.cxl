@@ -8,7 +8,7 @@ def app_send(payload):
     s_seq = 1 - s_seq;
     let m = dict{ .seq: s_seq, .payload: payload }, blocked = True:
         while blocked:
-            call net_send(&(s_chan), m, False);
+            net_send(&s_chan, m, False);
             let response = net_recv(&(r_chan)):
                 blocked = (response == ()) or (response.ack != s_seq);
             ;
@@ -21,7 +21,7 @@ def app_recv(reliable):
         while blocked:
             let m = net_recv(&(s_chan)):
                 if m != ():
-                    call net_send(&(r_chan), dict{ .ack: m.seq }, reliable);
+                    net_send(&r_chan, dict{ .ack: m.seq }, reliable);
                     if m.seq == r_seq:
                         result = m.payload;
                         blocked = False;

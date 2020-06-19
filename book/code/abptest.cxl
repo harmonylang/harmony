@@ -2,7 +2,7 @@ const NMSGS = 5;
 
 def sender():
     for i in 1..NMSGS:
-        call app_send(i);
+        app_send(i);
     ;
 ;
 def receiver():
