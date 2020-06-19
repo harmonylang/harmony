@@ -13,14 +13,14 @@ def swap(pv):
     ;
 ;
 def produce(item):
-    items[inc &(back)] = (item,);
+    items[inc(&back)] = (item,);
 ;
 def consume():
     result = ();
     while result == ():
         let range = back, i = 0:
             while (i < range) and (result == ()):
-                result = swap(&(items[i]));
+                result = swap(&items[i]);
                 i = i + 1;
             ;
         ;

@@ -5,13 +5,13 @@ const N = 5;
 def diner(which):
     let left = which, right = (which % N) + 1:
         while choose({ False, True }):
-            call P &(sema);
-            call lock &(forks[left]);
-            call lock &(forks[right]);
+            P(&sema);
+            lock(&forks[left]);
+            lock(&forks[right]);
             # dine
-            call unlock &(forks[left]);
-            call unlock &(forks[right]);
-            call V &(sema);
+            unlock(&forks[left]);
+            unlock(&forks[right]);
+            V(&sema);
             # think
         ;
     ;

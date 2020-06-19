@@ -10,7 +10,7 @@ def pc_actor(q, nrequests):
                     else:
                         let r = choose(requests):
                             assert r.type == .consume;
-                            call enqueue(r.queue, req.item);
+                            enqueue(r.queue, req.item);
                             requests = requests - { r };
                         ;
                     ;
@@ -22,7 +22,7 @@ def pc_actor(q, nrequests):
                     else:
                         let r = choose(requests):
                             assert r.type == .produce;
-                            call enqueue(req.queue, r.item);
+                            enqueue(req.queue, r.item);
                             requests = requests - { r };
                         ;
                     ;
@@ -34,9 +34,9 @@ def pc_actor(q, nrequests):
     ;
 ;
 def produce(q, item):
-    call enqueue(&(pc_queue), dict{ .type: .produce, .item: item });
+    enqueue(&pc_queue, dict{ .type: .produce, .item: item });
 ;
 def consume(q1, q2):
-    call enqueue(q1, dict{ .type: .consume, .queue: q2 });
+    enqueue(q1, dict{ .type: .consume, .queue: q2 });
     result = dequeue(q2);
 ;
