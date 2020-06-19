@@ -4,19 +4,19 @@ const NREADERS = 2;
 const NWRITERS = 2;
 
 def acquire_rlock():
-    call lock &(rwlock);
+    lock(&rwlock);
 ;
 def release_rlock():
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def acquire_wlock():
-    call lock &(rwlock);
+    lock(&rwlock);
 ;
 def release_wlock():
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def reader(self):
-    call acquire_rlock();
+    acquire_rlock();
     @rcs: assert atLabel.wcs == dict{};
     flags[self] = True;
     if choose({ False, True }):
@@ -28,14 +28,14 @@ def reader(self):
             ;
         ;
     ;
-    call release_rlock();
+    release_rlock();
 ;
 def writer():
-    call acquire_wlock();
+    acquire_wlock();
     @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                  (atLabel.rcs == dict{})
           ;
-    call release_wlock();
+    release_wlock();
 ;
 rwlock = Lock();
 nreaders = 0;

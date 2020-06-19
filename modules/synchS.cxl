@@ -6,7 +6,7 @@ def Lock():
 def lock(lk):
     atomic:
         if (^lk).locked:
-            call stop (^lk).suspended;
+            stop (^lk).suspended;
             assert (^lk).locked;
         else:
             (^lk).locked = True;
@@ -28,8 +28,8 @@ def Condition(lk):
 ;
 def wait(c):
     atomic:
-        call unlock((^c).lock);
-        call stop (^c).waiters;
+        unlock((^c).lock);
+        stop (^c).waiters;
     ;
 ;
 def notify(c):
@@ -58,7 +58,7 @@ def P(sema):
         if (^sema).count > 0:
             (^sema).count = (^sema).count - 1;
         else:
-            call stop (^sema).waiters;
+            stop (^sema).waiters;
         ;
     ;
 ;

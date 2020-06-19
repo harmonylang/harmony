@@ -4,38 +4,38 @@ const NREADERS = 2;
 const NWRITERS = 2;
 
 def acquire_rlock():
-    call lock &(rlock);
+    lock(&rlock);
     if nreaders == 0:
-        call lock &(rwlock);
+        lock(&rwlock);
     ;
     nreaders = nreaders + 1;
-    call unlock &(rlock);
+    unlock(&rlock);
 ;
 def release_rlock():
-    call lock &(rlock);
+    lock(&rlock);
     nreaders = nreaders - 1;
     if nreaders == 0:
-        call unlock &(rwlock);
+        unlock(&rwlock);
     ;
-    call unlock &(rlock);
+    unlock(&rlock);
 ;
 def acquire_wlock():
-    call lock &(rwlock);
+    lock(&rwlock);
 ;
 def release_wlock():
-    call unlock &(rwlock);
+    unlock(&rwlock);
 ;
 def reader(self):
-    call acquire_rlock();
+    acquire_rlock();
     @rcs: assert atLabel.wcs == dict{};
-    call release_rlock();
+    release_rlock();
 ;
 def writer():
-    call acquire_wlock();
+    acquire_wlock();
     @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                  (atLabel.rcs == dict{})
           ;
-    call release_wlock();
+    release_wlock();
 ;
 rwlock = Lock();
 rlock = Lock();
@@ -44,4 +44,4 @@ for i in 1..NREADERS: spawn reader(i);
 ;
 for i in 1..NWRITERS: spawn writer();
 ;
-call acquire_rlock();
+acquire_rlock();

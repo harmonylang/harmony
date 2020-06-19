@@ -19,8 +19,8 @@ def Condition(lk):
     result = lk;
 ;
 def wait(c):
-    call unlock(^c);
-    call lock(^c);
+    unlock(^c);
+    lock(^c);
 ;
 def notify(c):
 ;

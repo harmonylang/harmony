@@ -3,43 +3,43 @@ import synch;
 def acquire_rlock():
     let blocked = True:
         while blocked:
-            call lock &(rwlock);
+            lock(&rwlock);
             if nwriters == 0:
                 nreaders = nreaders + 1; blocked = False;
             ;
-            call unlock &(rwlock);
+            unlock(&rwlock);
         ;
     ;
 ;
 def release_rlock():
-    call lock &(rwlock); nreaders = nreaders - 1; call unlock &(rwlock);
+    lock(&rwlock); nreaders = nreaders - 1; unlock(&rwlock);
 ;
 def acquire_wlock():
     let blocked = True:
         while blocked:
-            call lock &(rwlock);
+            lock(&rwlock);
             if (nreaders == 0) and (nwriters == 0):
                 nwriters = 1; blocked = False;
             ;
-            call unlock &(rwlock);
+            unlock(&rwlock);
         ;
     ;
 ;
 def release_wlock():
-    call lock &(rwlock); nwriters = 0; call unlock &(rwlock);
+    lock(&rwlock); nwriters = 0; unlock(&rwlock);
 ;
 def process():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
-            call acquire_rlock();
+            acquire_rlock();
             @rcs: assert atLabel.wcs == dict{};
-            call release_rlock();
+            release_rlock();
         else:                       # .write
-            call acquire_wlock();
+            acquire_wlock();
             @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                          (atLabel.rcs == dict{})
                   ;
-            call release_wlock();
+            release_wlock();
         ;
     ;
 ;
