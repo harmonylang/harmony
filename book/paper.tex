@@ -279,13 +279,15 @@ Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
 processes (aka \emph{threads}\footnote{We
 \index{thread}
-do not make a distinction between processes and threads.}) concurrently
-\glsadd{concurrent execution}
+do not make a distinction between processes and threads.})
 read and update shared variables
 \index{shared variable}
+concurrently and synchronize with one another makes programs more
+complicated than programs where only one thing happens at a time.
+\glsadd{concurrent execution}
 \glsadd{shared variable}
-and synchronize with one another makes programs more complicated than
-programs where only one thing happens at a time.  Why are concurrent
+
+Why are concurrent
 programs more complicated than sequential ones?
 There are, at least, two reasons:
 \begin{itemize}
@@ -298,20 +300,21 @@ program is mostly \emph{deterministic}.
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
-The output of running concurrent programs depends on how the various
-processes are interleaved.  Some bugs may occur only occasionally and
+The output of running concurrent programs depends on how the
+execution of the various processes are \emph{interleaved}.
+Some bugs may occur only occasionally and
 may never occur when the program is instrumented to find them
 (so-called \emph{Heisenbugs}).
 \index{Heisenbug}
 \item In a sequential program, each statement and each function can be
 thought of as happening \emph{atomically}
 \index{atomicity}
+because there is no other activity interfering with their execution.
 \glsadd{atomicity}
-because there is no other activity
-interfering with their execution.  Even though a statement or function may
+Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
-until completion.  Not so with a concurrent program, where other instructions
-may update memory locations as a statement or function is being executed.
+until completion.  Not so with a concurrent program, where other processes
+may update memory locations while a statement or function is being executed.
 \end{itemize}
 The lack of determinism and atomicity in concurrent programs make them
 not only hard to reason about, but also hard to test.
@@ -341,11 +344,11 @@ Model checking is not a replacement for formal verification.
 Formal verification proves that a program is correct.  Model checking only
 verifies that a program is correct for some \emph{model}.  Think of
 a model as a test program.  Because model checking tries every possible
-execution, this means that the test program needs to be relatively
-simple.  In particular, it needs to have a relatively small number of
+execution, this means that the test program needs to be
+simple or it will take longer than we may care to wait for or run
+out of memory.
+In particular, the model needs to have a relatively small number of
 reachable states.
-If the model is too large, it may run for longer than we may care to
-wait for or even run out of memory.
 
 So if model checking does not prove a program correct, why is it
 useful?  To answer that question consider, for example, a sorting
@@ -381,7 +384,7 @@ execution of a program.  A model checker can find violations of
 proposed invariants when evaluating a model and provide valuable early
 feedback to somebody who is trying to construct a proof, even an
 informal one.
-Throughout this book we will include examples
+We will include examples
 of such invariants as they often provide excellent insight into
 why a particular algorithm works.
 
@@ -415,17 +418,17 @@ Concurrent Programming''~\cite{Schneider97}.
 The book proceeds as follows:
 
 \begin{itemize}
-\item In Chapter~\ref{ch:cxlintro} introduces the CXL programming
+\item Chapter~\ref{ch:cxlintro} introduces the CXL programming
 language, as it provides the language for presenting synchronization
 problems and solutions.
-\item Chapter~\ref{ch:concurrent} introduces the problem of
+\item Chapter~\ref{ch:concurrent} illustrates the problem of
 concurrent programming through a simple example in which two processes
-are concurrently incrementing a counter;
+are concurrently incrementing a counter.
 \item Chapter~\ref{ch:cxlmachine} presents the
 CXL virtual machine to understand the problem
 underlying concurrency better.
-\item Chapter~\ref{ch:critical} introduces the concept of a critical
-section presents various flawed implementations
+\item Chapter~\ref{ch:critical} introduces the concept of a
+\emph{critical section} and presents various flawed implementations
 of critical sections to demonstrate that implementing a critical section
 is not trivial.
 \item Chapter~\ref{ch:peterson} introduces Peterson's Algorithm, an
@@ -441,28 +444,33 @@ locks, which allow multiple processes in a critical section if they are
 all only executing read-only accesses.
 Chapter~\ref{ch:rdwrbusy} also talks about busy-waiting, which is
 an undesirable approach to synchronize processes.
-\item Chapter~\ref{ch:deadlock} introduces the notion of \emph{deadlock}
+\item Chapter~\ref{ch:deadlock} describes \emph{deadlock}
 where a set of processes are indefinitely waiting for one another to
 release a resource.
-\item Chapter~\ref{ch:semaphore} introduces a generalization of locks
+\item Chapter~\ref{ch:semaphore} introduces \emph{semaphores},
+a generalization of locks
 that is good not only for mutual exclusion but also for waiting for
 certain application-level conditions.
-\item Chapters~\ref{ch:bb} and~\ref{ch:sbs} introduce the bounded buffer
-problem and various solutions.
-\item Chapter~\ref{ch:starvation} talks about the problem that in some
-synchronization solutions, processes may not be able to get access to a
-resource they need, and a solution applied to the reader/writer problem.
-\item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present monitors and
-condition variables, another approach to process synchronication.
+\item Chapters~\ref{ch:bb} and~\ref{ch:sbs} introduce the
+\emph{bounded buffer problem} (aka \emph{producer/consumer problem})
+and various solutions.
+\item Chapter~\ref{ch:starvation} talks about \emph{starvation}:
+the problem that in some
+synchronization approaches processes may not be able to get access to a
+resource they need.
+\item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present
+\emph{monitors} and \emph{condition variables},
+another approach to process synchronication.
 \item Chapter~\ref{ch:deadlockprevention} revisits deadlocks and how to
 avoid them.
-\item Chapter~\ref{ch:actor} presents the actor model as an approach to
+\item Chapter~\ref{ch:actor} presents the \emph{actor model} as an approach to
 synchronization.
-\item Chapter~\ref{ch:nonblocking} shows solutions to process synchronization
-that prevent processes waiting for one another more than a bounded number of
+\item Chapter~\ref{ch:nonblocking} introduces \emph{non-blocking} or
+\emph{wait-free} synchronization algorithms,
+which prevent processes waiting for one another more than a bounded number of
 steps.
-\item Chapter~\ref{ch:barrier} introduces barrier synchronization, useful in
-high-performance computing applications such as parallel simulations.
+\item Chapter~\ref{ch:barrier} describes \emph{barrier synchronization},
+useful in high-performance computing applications such as parallel simulations.
 \item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
 systems problem of having two processes communicate reliably over an unreliable
 network.
@@ -483,7 +491,10 @@ Correct indentation in CXL is encouraged but not enforced.
 CXL only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item CXL does not (currently) support floating point, iterators, or I/O;
-\item Python is object-oriented; CXL is not;
+CXL does support \texttt{for} loops and various comprehensions over sets.
+\item Python is object-oriented, supporting classes with methods and
+inheritance; CXL has objects but does not support classes.  CXL supports
+pointers to objects.
 \end{itemize}
 There are also many unimportant ones that you will discover as
 you get more familiar with programming in CXL.
@@ -499,7 +510,7 @@ you get more familiar with programming in CXL.
 Figure~\ref{fig:triangle} shows a simple example of a CXL program.
 (The code for examples in this book can be found in the \texttt{code} folder under
 the name listed in the caption of the example.)
-It is sequential and has a method \texttt{square} that takes
+The example is sequential and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
 \texttt{result} that eventually contains the result of the
 method (there is no \texttt{return} statement in CXL).  The method
@@ -533,7 +544,8 @@ correct.  If the program is correct, the output of CXL is the size of the
 reports what went wrong, typically by displaying a summary of an execution in
 which something went wrong.
 
-In CXL, constants have a default, but those can be overridden on the command
+In CXL, constants have a default value,
+but those can be overridden on the command
 line using the \texttt{-c} option.
 \index{constant}
 For example, if you want to test the code for \texttt{N = 100}, run:
@@ -569,16 +581,15 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 Concurrent programming, aka multithreaded programming, involves multiple
 processes
 \index{process}
-\glsadd{process}
 running in parallel while sharing variables.
+\glsadd{process}
 Figure~\ref{fig:inc} presents a simple example.
 The program
 initializes two shared variables: an integer \texttt{count} and
 an array \texttt{done} with two booleans.
 Method \texttt{incrementer} takes a parameter called \texttt{self}.
 It increments \texttt{count} and sets \texttt{done[self]} to \texttt{True}.
-Method \texttt{main} waits for the processes to finish by polling
-both \texttt{done} flags.
+Method \texttt{main} waits until \texttt{done} flags are set to \texttt{True}.
 After that, it verifies that the value of \texttt{count} equals 2.  If not,
 it reports the actual value of \texttt{count}.
 The program spawns three processes.
@@ -638,10 +649,10 @@ The result in this particular interleaving is that \texttt{count} ends up
 being 1.
 This is known as a \emph{race condition}.
 \index{race condition}
-\glsadd{race condition}
 When running CXL, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
+\glsadd{race condition}
 
 If one thinks of the assertion as providing the specification of the
 program, then clearly its implementation does not satisfy its specification.
@@ -692,6 +703,7 @@ incrementer thread increment \texttt{count} \texttt{N} times.  Run Figure~\ref{f
 10 times (using Python).
 Report how many times the assertion fails and what the value of \texttt{count}
 was for each of the failed runs.
+Also experiment with lower values of \texttt{N}.
 \item Can you think of a fix to Figure~\ref{fig:inc}?  Try one or two different fixes
 and run them through CXL.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
