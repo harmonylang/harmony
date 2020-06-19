@@ -640,8 +640,12 @@ class FrameOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.name
-        args = [ a[0] for a in self.args ]
-        return "Frame " + str(lexeme) + " " + str(args) + " " + str(self.end)
+        args = ""
+        for a in self.args:
+            if args != "":
+                args += ", "
+            args += a[0]
+        return "Frame " + str(lexeme) + "(" + str(args) + ") end=" + str(self.end)
 
     def eval(self, state, context):
         arg = context.pop()

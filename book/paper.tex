@@ -795,7 +795,7 @@ CXL currently supports.
 \begin{verbatim}
 Up.cxl:1 def incrementer(self):
    0 Jump 32
-   1 Frame incrementer ['self'] 9
+   1 Frame incrementer(self) end=9
 Up.cxl:2     count = count + 1;
    2 Push 1
    3 Load count
@@ -929,8 +929,8 @@ instruction.
 
 Appendix~\ref{ap:cxlbytecode} provides a list of all CVM machine instructions,
 in case you want to read about the details.
-The \texttt{Frame} instruction has three arguments: the name of the method,
-a list containing the names of the arguments of the method, and
+The \texttt{Frame} instruction lists the name of the method,
+names of its arguments, and
 the program counter of the method's \texttt{Return} instruction.
 The code generated from \texttt{count := count + 1} in line 2 of
 \texttt{Up.cxl} is as follows:
@@ -3673,7 +3673,7 @@ Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
 Dup & duplicate the top element of the stack \\
 \hline
-Frame $m$ $a$ $r$& start method $m$ with arguments $a$,
+Frame $m$($a$) end=$r$& start method $m$ with arguments $a$,
 initializing variables.  Last instruction is at $r$ \\
 \hline
 Go & pop context and value, push value on context's stack, and add to context bag \\
