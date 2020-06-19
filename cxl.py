@@ -371,8 +371,7 @@ class GoOp(Op):
     def eval(self, state, context):
         ctx = context.pop()
         if not isinstance(ctx, Context):
-            state.failure = True
-            state.errormsg = "pc = " + str(context.pc) + \
+            state.failure = "pc = " + str(context.pc) + \
                 ": Error: expected context value, got " + str(ctx)
         else:
             if ctx in state.stopbag:
@@ -444,8 +443,7 @@ class LoadOp(Op):
         if self.name == None:
             av = context.pop()
             if not isinstance(av, AddressValue):
-                state.failure = True
-                state.errormsg = "Error: not an address " + \
+                state.failure = "Error: not an address " + \
                                     str(self.token) + " -> " + str(av)
                 return
             context.push(state.iget(av.indexes))
@@ -477,8 +475,7 @@ class StoreOp(Op):
         if self.v == None:
             av = indexes[0]
             if not isinstance(av, AddressValue):
-                state.failure = True
-                state.errormsg = "Error: not an address " + \
+                state.failure = "Error: not an address " + \
                                     str(self.token) + " -> " + str(av)
                 return
             lv = av.indexes
@@ -489,8 +486,7 @@ class StoreOp(Op):
             lv = [name]
 
         if not state.initializing and (name not in state.vars.d):
-            state.failure = True
-            state.errormsg = "Error: using an uninitialized shared variable " \
+            state.failure = "Error: using an uninitialized shared variable " \
                                     + str(self.token)
         else:
             state.set(lv + indexes, context.pop())
@@ -616,15 +612,13 @@ class AssertOp(Op):
             expr = context.pop()
         cond = context.pop()
         if not isinstance(cond, bool):
-            state.failure = True
-            state.errormsg = "Error: argument to " + str(self.token) + \
+            state.failure = "Error: argument to " + str(self.token) + \
                         "must be a boolean"
             return
         if not cond:
-            state.failure = True
-            state.errormsg = "CXL Assertion failed " + str(self.token)
+            state.failure = "CXL Assertion failed " + str(self.token)
             if self.exprthere:
-                state.errormsg += ": " + strValue(expr)
+                state.failure += ": " + strValue(expr)
             return
         context.pc += 1
 
@@ -659,8 +653,7 @@ class FrameOp(Op):
         context.push(context.vars)
         if len(self.args) != 1:
             if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
-                state.failure = True
-                state.errormsg = "Error: argument count mismatch " + \
+                state.failure = "Error: argument count mismatch " + \
                         self.name + ": expected " + str(len(self.args)) + \
                         " arguments but got " + \
                         str(len(arg.d) if isinstance(arg, DictValue) else 1)
@@ -802,8 +795,7 @@ class NaryOp(Op):
     def checktype(self, state, args, chk):
         assert len(args) == self.n, (self, args)
         if not chk:
-            state.failure = True
-            state.errormsg = "Error: unexpected types in " + str(self.op) + \
+            state.failure = "Error: unexpected types in " + str(self.op) + \
                         "operands: " + str(list(reversed(args)))
             return False
         return True
@@ -869,8 +861,7 @@ class NaryOp(Op):
                 context.push(not e)
             elif op == "atLabel":
                 if not context.atomic:
-                    state.failure = True
-                    state.errormsg = "not in atomic block: " + str(self.op)
+                    state.failure = "not in atomic block: " + str(self.op)
                     return
                 if not self.checktype(state, sa, isinstance(e, str)):
                     return
@@ -897,8 +888,7 @@ class NaryOp(Op):
                 if not self.checktype(state, sa, e == novalue):
                     return
                 if not context.atomic:
-                    state.failure = True
-                    state.errormsg = "not in atomic block: " + str(self.op)
+                    state.failure = "not in atomic block: " + str(self.op)
                     return
                 d = {}
                 for (ctx, cnt) in state.ctxbag.items():
@@ -999,16 +989,14 @@ class ApplyOp(Op):
             try:
                 context.push(method.d[e])
             except KeyError:
-                state.failure = True
-                state.errormsg = "Error: no entry " + str(e) + " in " + \
+                state.failure = "Error: no entry " + str(e) + " in " + \
                         str(self.token) + " = " + str(method)
                 return
             context.pc += 1
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
-                state.failure = True
-                state.errormsg = "pc = " + str(context.pc) + \
+                state.failure = "pc = " + str(context.pc) + \
                     ": Error: must be either a method or a dictionary"
                 return
             context.push(context.pc + 1)
@@ -1023,7 +1011,7 @@ class AST:
         state = State(code, scope.labels)
         ctx = Context(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
         ctx.atomic = 1
-        while ctx.pc != len(code) and not state.failure:
+        while ctx.pc != len(code) and state.failure == None:
             code[ctx.pc].eval(state, ctx)
         if state.failure:
             print("constant evaluation failed")
@@ -2343,12 +2331,15 @@ class State:
         self.ctxbag = {}
         self.stopbag = {}
         self.choosing = None
-        self.failure = False
-        self.errormsg = None
+        self.failure = None
         self.initializing = True
 
     def __repr__(self):
-        return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ", " + str(self.stopbag) + ")"
+        if state.failure != None:
+            return "State(" + str(self.vars) + ", " + str(self.ctxbag) + \
+                ", " + str(self.stopbag) + ", " + state.failure + ")"
+        return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ", " + \
+            str(self.stopbag) + ")"
 
     def __hash__(self):
         h = self.vars.__hash__()
@@ -2372,8 +2363,6 @@ class State:
             return False
         if self.failure != other.failure:
             return False
-        if self.errormsg != other.errormsg:
-            return False
         if self.initializing != self.initializing:
             return False
         return True
@@ -2384,7 +2373,6 @@ class State:
         s.ctxbag = self.ctxbag.copy()
         s.stopbag = self.stopbag.copy()
         s.failure = self.failure
-        s.errormsg = self.errormsg
         s.initializing = self.initializing
         return s
 
@@ -2622,11 +2610,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
                 traceback.print_exc()
-                sc.failure = True
-                sc.errormsg = "Python assertion failed"
+                sc.failure = "Python assertion failed"
 
         # TODO.  Checking for end twice in this loop seems wrong
-        if sc.failure or cc.pc == cc.end or cc.stopped:
+        if sc.failure != None or cc.pc == cc.end or cc.stopped:
             break
 
         # See if this process is making a nondeterministic choice.
@@ -2636,8 +2623,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             v = cc.stack[-1]
             if (not isinstance(v, SetValue)) or v.s == set():
                 # TODO.  Need the location of the choose operation in the file
-                sc.failure = True
-                sc.errormsg = "pc = " + str(cc.pc) + \
+                sc.failure = "pc = " + str(cc.pc) + \
                     ": Error: choose can only be applied to non-empty sets"
                 break
             if len(v.s) > 1:
@@ -2779,7 +2765,7 @@ def run(code, labels, map, step, blockflag, printStates):
     faultyState = False
     while todo:
         state = todo.popleft()
-        if state.failure:
+        if state.failure != None:
             bad.add(state)
             faultyState = True
             break           # TODO: should this be a continue?
@@ -2805,8 +2791,8 @@ def run(code, labels, map, step, blockflag, printStates):
     if len(bad) > 0:
         print("==== Safety violation ====")
         bad_state = find_shortest(visited, bad)
-        if bad_state.errormsg != None:
-            print(bad_state.errormsg)
+        if bad_state.failure != None:
+            print(bad_state.failure)
         print_path(visited, bad_state)
         issues_found = True
 
