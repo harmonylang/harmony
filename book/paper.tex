@@ -1577,13 +1577,14 @@ to have a method update a shared variable specified as an argument.
 For this (as well as some other uses), CXL supports \emph{pointers}
 \index{pointer}
 to shared variables.
-If \texttt{x} is a shared variable, then the expression \texttt{\&(x)}
-(the parentheses are mandatory) is a pointer to \texttt{x}
-(also known as the \emph{address}
+If \texttt{x} is a shared variable, then the expression \texttt{\&x}
+ is a pointer to \texttt{x} (also known as the \emph{address}
 \index{address}
 of \texttt{x}).
 Conversely, if \texttt{p} is a pointer to a shared variable, then the
 expression \texttt{\^{}p} is the value of the shared variable.
+In particular, \texttt{\^{}\&x == x}.
+This is similar to how C pointers work.
 
 Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
@@ -1593,7 +1594,9 @@ and include it using the CXL \texttt{import} statement.
 \index{import statement}
 \index{module}
 This would
-make the code re-usable by other applications.  For those who are
+make the code re-usable by other applications.
+
+For those who are
 extra adventurous: you can add the \texttt{P\_enter} and
 \texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
 like so:
@@ -1650,7 +1653,7 @@ def atomic_inc(ptr):
     ;
 ;
 count = 0;
-atomic_inc &(count);
+atomic_inc(&count);
 \end{Verbatim}
 \end{code}
 
