@@ -1043,13 +1043,13 @@ Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
 machine instructions.  A counter is a very simple example of
 a data structure, but as we have seen it too requires multiple instructions.
-A more involved one would be access to a binary tree.
+A more involved one would be accessing a binary tree.
 Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
 process also tries to access the binary tree.
 An implementation of a data structure that can be safely accessed by multiple
-processes (or threads) is called \emph{thread-safe}.
+processes (or threads) and free of race conditions is called \emph{thread-safe}.
 \index{thread safety}
 \glsadd{thread safety}
 \index{thread}
@@ -1081,9 +1081,9 @@ The assertion also makes use of the \texttt{nametag()} operator
 \index{nametag operator}
 that returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
-there is no code yet for entering and exiting the critical section.
+there is no code yet for safely entering and exiting the critical section.
 
-However, mutual exclusion by itself easy to ensure.
+However, mutual exclusion by itself is easy to ensure.
 For example, we could insert the following code to enter the
 critical section:
 \begin{code}
@@ -1109,8 +1109,8 @@ we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
 but here we will propose the following informally: if there exists a non-empty
-set $S$ of processes that are trying to enter the critical section and any
-process already in the intersection eventually leaves, then eventually one
+set $S$ of processes that are trying to enter the critical section and
+processes in the intersection always leave eventually, then eventually one
 process in $S$ will enter the critical section.
 We call this \emph{progress}.
 \index{progress}
@@ -1119,11 +1119,12 @@ In order to detect violations of progress, and other liveness problems in
 algorithms in general, CXL requires that every execution must be
 able to reach a state in which all processes have terminated.
 Clearly, even if mutual exclusion holds in Figure~\ref{fig:csbarebones},
-the spawned processes never terminate.  In order to resolve this, we
+the spawned processes never terminate.  We
 will model processes in critical sections using the framework in
 Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
+(Recall that CXL will try every possible execution.)
 
 \begin{figure}
 \begin{center}
@@ -1135,7 +1136,7 @@ number of processes in the critical section.}
 \label{fig:mutex}
 \end{figure}
 
-Figure~\ref{fig:mutex} show a high-level state diagram
+Figure~\ref{fig:mutex} shows a high-level state diagram
 \index{state diagram}
 of the code in
 Figure~\ref{fig:cs}.
@@ -1144,7 +1145,7 @@ transitions (high-level steps).  The label in each circle summarizes the state;
 the label on an arrow describes the transition.  In this case,
 the label contains two numbers: the total number of processes and the number
 of processes in the critical section.  A process that is in the critical
-section cannot terminate.
+section cannot terminate until after leaving the critical section.
 
 \begin{figure}
 \begin{code}
