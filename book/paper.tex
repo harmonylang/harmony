@@ -827,10 +827,9 @@ Up.cxl:3     done[self] = True;
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-   ctx = __init__/() pc =   0 #states = 1 diameter = 0 queue = 0
-CXL Assertion failed ('assert', 'Up.cxl', 9, 5) 1
 #states = 79
 ==== Safety violation ====
+CXL Assertion failed ('assert', 'Up.cxl', 9, 5) 1
 __init__/() [0,32-47]       48 dict{ .count:0, .done:dict{ 0:False, 1:False } }
 incrementer/0 [1-4]          5 dict{ .count:0, .done:dict{ 0:False, 1:False } }
 incrementer/1 [1-8]          9 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
@@ -877,7 +876,7 @@ The default tag is the first argument to the method.
 In Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
-The state of a process is called a \emph{context} (aka continuation):
+The state of a process is called a \emph{context} (aka \emph{continuation}):
 \index{context}
 \index{continuation}
 \glsadd{context}
@@ -893,8 +892,7 @@ The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
-Figure~\ref{fig:incstate} shows an example of a reachable state for 
-the program in Figure~\ref{fig:inc}.
+% Figure~\ref{fig:incstate} shows an example of a reachable state for the program in Figure~\ref{fig:inc}.
 
 
 It may seem strange that there is only one memory location and that each
@@ -929,7 +927,7 @@ Each process in the CVM is predominantly a \emph{stack machine},
 but it also has a register.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
-At first there is one process (with name tag \texttt{\_\_init\_\_/()}
+At first there is one process, with name tag \texttt{\_\_init\_\_/()},
 that initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
@@ -945,7 +943,7 @@ The \texttt{Frame} instruction lists the name of the method,
 names of its arguments, and
 the program counter of the method's \texttt{Return} instruction.
 The code generated from \texttt{count := count + 1} in line 2 of
-\texttt{Up.cxl} is as follows:
+\texttt{Up.cxl} is as follows (see Figure~\ref{fig:inccode}):
 
 \begin{enumerate} \setcounter{enumi}{1}
 \item the \texttt{Push} instruction pushes the constant 1
