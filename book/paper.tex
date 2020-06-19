@@ -794,21 +794,18 @@ CXL currently supports.
 \begin{code}
 \begin{verbatim}
 Up.cxl:1 def incrementer(self):
-    0 Jump 39
-    1 Frame incrementer ['self'] 12
+   0 Jump 32
+   1 Frame incrementer ['self'] 9
 Up.cxl:2     count = count + 1;
-    2 Push 1
-    3 PushAddress count
-    4 Load 1
-    5 2-ary +
-    6 PushAddress count
-    7 Store 1
+   2 Push 1
+   3 Load count
+   4 2-ary +
+   5 Store count
 Up.cxl:3     done[self] = True;
-    8 Push True
-    9 PushVar self
-   10 PushAddress done
-   11 Store 2
-   12 Return
+   6 Push True
+   7 PushVar self
+   8 Store done 1
+   9 Return
 \end{verbatim}
 \end{code}
 \caption{The first part of the CVM bytecode corresponding to Figure~\ref{fig:inc}.}
@@ -818,14 +815,15 @@ Up.cxl:3     done[self] = True;
 \begin{figure}
 \begin{code}
 \begin{verbatim}
+   ctx = __init__/() pc =   0 #states = 1 diameter = 0 queue = 0
 CXL Assertion failed ('assert', 'Up.cxl', 9, 5) 1
 #states = 79
 ==== Safety violation ====
-__init__/() [0,39-56]       57 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-incrementer/0 [1-6]          7 dict{ .count:0, .done:dict{ 0:False, 1:False } }
-incrementer/1 [1-11]        12 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
-incrementer/0 [7-11]        12 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
-main/() [14-19,22-27,29-36] 37 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+__init__/() [0,32-47]       48 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+incrementer/0 [1-4]          5 dict{ .count:0, .done:dict{ 0:False, 1:False } }
+incrementer/1 [1-8]          9 dict{ .count:1, .done:dict{ 0:False, 1:True  } }
+incrementer/0 [5-8]          9 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
+main/() [11-15,18-22,24-29] 29 dict{ .count:1, .done:dict{ 0:True,  1:True  } }
 \end{verbatim}
 \end{code}
 \caption{The output of running Figure~\ref{fig:inc}.}
@@ -940,19 +938,14 @@ The code generated from \texttt{count := count + 1} in line 2 of
 \begin{enumerate} \setcounter{enumi}{1}
 \item the \texttt{Push} instruction pushes the constant 1
 onto the stack of the process.
-\item the \texttt{PushAddress} instruction pushes the address of
-the shared variable \texttt{count} onto the stack.
-\item The \texttt{Load} instruction pops the address of the
-\texttt{count} variable and then pushes the value of the
+\item The \texttt{Load} instruction pushes the value of the
 \texttt{count} variable onto the stack.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
 It pops two values from the stack (1 and the value of \texttt{count}),
 adds them and pushes the result back onto the stack.
-\item The \texttt{PushAddress} instruction pushes the address of the \texttt{count}
-variable onto the stack.
-\item The \texttt{Store} instruction pops the address of a variable and pops
-a CXL value (the sum of the \texttt{count} variable and 1) and updates the
-\texttt{count} variable.
+\item The \texttt{Store} instruction pops pops
+a CXL value (the sum of the \texttt{count} variable and 1) and
+stores it in the \texttt{count} variable.
 \end{enumerate}
 
 Once initialization completes, any processes that were spawned can run.
@@ -973,14 +966,14 @@ four columns:
 \end{enumerate}
 
 If we look at the middle three rows, we see that:
-\begin{enumerate}
-\item Process 0 executed instructions 1 through 7, loading the value of
+\begin{itemize}
+\item Process 0 executed instructions 1 through 4, loading the value of
 \texttt{count} but stopping just before storing 1 into \texttt{count};
-\item Process 1 executed instructions 1 through 12, storing 1 into
+\item Process 1 executed instructions 1 through 8, storing 1 into
 into \texttt{count} and storing \texttt{True} into \texttt{done[1]};
 \item Process 0 continues execution, storing value 1 into \texttt{count}
 and storing \texttt{True} into \texttt{done[0]}.
-\end{enumerate}
+\end{itemize}
 
 This makes precise the concurrency problem that we encountered.
 
@@ -3686,11 +3679,11 @@ Jump $p$ & set program counter to $p$ \\
 \hline
 JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
 \hline
-Load & load a shared variable and push it onto the stack \\
+Load $v$ & push shared variable $v$ (\texttt{\^} is indirect) onto the stack \\
 \hline
 LoadVar $v$ & load process variable $v$ and push it onto the stack \\
 \hline
-Nary \textit{op} $n$ & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
+$n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
 \hline
 Pop & pop a value of the stack and discard it \\
 \hline
@@ -3708,7 +3701,7 @@ Split & pop set and push minimum and remainder \\
 \hline
 Stop & save context into shared variable and remove from context bag \\
 \hline
-Store & pop a value from the stack and store it in a shared variable \\
+Store $v$ $[n]$ & pop a value from the stack and store it in shared variable $v$ (\texttt{\^} is indirect) \\
 \hline
 StoreVar $v$ & pop a value from the stack and store it in process variable $v$ \\
 \hline
