@@ -371,10 +371,9 @@ class GoOp(Op):
     def eval(self, state, context):
         ctx = context.pop()
         if not isinstance(ctx, Context):
-            print()
-            print("pc =", context.pc, "Error: expected context value, got", ctx)
-            print("CTX", context.stack)
             state.failure = True
+            state.errormsg = "pc = " + str(context.pc) + \
+                ": Error: expected context value, got " + str(ctx)
         else:
             if ctx in state.stopbag:
                 cnt = state.stopbag[ctx]
@@ -445,9 +444,9 @@ class LoadOp(Op):
         if self.name == None:
             av = context.pop()
             if not isinstance(av, AddressValue):
-                print()
-                print("Error: not an address", self.token, "->", av)
                 state.failure = True
+                state.errormsg = "Error: not an address " + \
+                                    str(self.token) + " -> " + str(av)
                 return
             context.push(state.iget(av.indexes))
         else:
@@ -478,9 +477,9 @@ class StoreOp(Op):
         if self.v == None:
             av = indexes[0]
             if not isinstance(av, AddressValue):
-                print()
-                print("Error: not an address", self.token, "->", av)
                 state.failure = True
+                state.errormsg = "Error: not an address " + \
+                                    str(self.token) + " -> " + str(av)
                 return
             lv = av.indexes
             name = lv[0]
@@ -490,9 +489,9 @@ class StoreOp(Op):
             lv = [name]
 
         if not state.initializing and (name not in state.vars.d):
-            print()
-            print("Error: using an uninitialized shared variable", self.token)
             state.failure = True
+            state.errormsg = "Error: using an uninitialized shared variable " \
+                                    + str(self.token)
         else:
             state.set(lv + indexes, context.pop())
             context.pc += 1
@@ -617,16 +616,15 @@ class AssertOp(Op):
             expr = context.pop()
         cond = context.pop()
         if not isinstance(cond, bool):
-            print("Error: argument to", self.token, "must be a boolean")
             state.failure = True
+            state.errormsg = "Error: argument to " + str(self.token) + \
+                        "must be a boolean"
             return
         if not cond:
-            print()
-            if self.exprthere:
-                print("CXL Assertion failed", self.token, strValue(expr))
-            else:
-                print("CXL Assertion failed", self.token)
             state.failure = True
+            state.errormsg = "CXL Assertion failed " + str(self.token)
+            if self.exprthere:
+                state.errormsg += ": " + strValue(expr)
             return
         context.pc += 1
 
@@ -661,10 +659,11 @@ class FrameOp(Op):
         context.push(context.vars)
         if len(self.args) != 1:
             if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
-                print("Error: argument count mismatch", self.name,
-                    ": expected", len(self.args), "arguments but got",
-                        len(arg.d) if isinstance(arg, DictValue) else 1)
                 state.failure = True
+                state.errormsg = "Error: argument count mismatch " + \
+                        self.name + ": expected " + str(len(self.args)) + \
+                        " arguments but got " + \
+                        str(len(arg.d) if isinstance(arg, DictValue) else 1)
                 return
         if self.args == []:
             context.vars = DictValue({ "result": novalue })
@@ -803,9 +802,9 @@ class NaryOp(Op):
     def checktype(self, state, args, chk):
         assert len(args) == self.n, (self, args)
         if not chk:
-            print()
-            print("Error: unexpected types in", self.op, "operands:", list(reversed(args)))
             state.failure = True
+            state.errormsg = "Error: unexpected types in " + str(self.op) + \
+                        "operands: " + str(list(reversed(args)))
             return False
         return True
 
@@ -870,8 +869,8 @@ class NaryOp(Op):
                 context.push(not e)
             elif op == "atLabel":
                 if not context.atomic:
-                    print(self.op, ": not in atomic block")
                     state.failure = True
+                    state.errormsg = "not in atomic block: " + str(self.op)
                     return
                 if not self.checktype(state, sa, isinstance(e, str)):
                     return
@@ -898,8 +897,8 @@ class NaryOp(Op):
                 if not self.checktype(state, sa, e == novalue):
                     return
                 if not context.atomic:
-                    print(self.op, ": not in atomic block")
                     state.failure = True
+                    state.errormsg = "not in atomic block: " + str(self.op)
                     return
                 d = {}
                 for (ctx, cnt) in state.ctxbag.items():
@@ -1000,17 +999,17 @@ class ApplyOp(Op):
             try:
                 context.push(method.d[e])
             except KeyError:
-                print()
-                print("Error: no entry", e, "in", self.token, "=", method)
                 state.failure = True
+                state.errormsg = "Error: no entry " + str(e) + " in " + \
+                        str(self.token) + " = " + str(method)
                 return
             context.pc += 1
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
-                print()
-                print("pc =", context.pc, ": Error: must be either a method or a dictionary")
                 state.failure = True
+                state.errormsg = "pc = " + str(context.pc) + \
+                    ": Error: must be either a method or a dictionary"
                 return
             context.push(context.pc + 1)
             context.push(e)
@@ -2345,6 +2344,7 @@ class State:
         self.stopbag = {}
         self.choosing = None
         self.failure = False
+        self.errormsg = None
         self.initializing = True
 
     def __repr__(self):
@@ -2372,6 +2372,8 @@ class State:
             return False
         if self.failure != other.failure:
             return False
+        if self.errormsg != other.errormsg:
+            return False
         if self.initializing != self.initializing:
             return False
         return True
@@ -2382,6 +2384,7 @@ class State:
         s.ctxbag = self.ctxbag.copy()
         s.stopbag = self.stopbag.copy()
         s.failure = self.failure
+        s.errormsg = self.errormsg
         s.initializing = self.initializing
         return s
 
@@ -2620,6 +2623,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             except Exception as e:
                 traceback.print_exc()
                 sc.failure = True
+                sc.errormsg = "Python assertion failed"
 
         # TODO.  Checking for end twice in this loop seems wrong
         if sc.failure or cc.pc == cc.end or cc.stopped:
@@ -2632,10 +2636,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             v = cc.stack[-1]
             if (not isinstance(v, SetValue)) or v.s == set():
                 # TODO.  Need the location of the choose operation in the file
-                print()
-                print("pc =", cc.pc,
-                    ": Error: choose can only be applied to non-empty sets")
                 sc.failure = True
+                sc.errormsg = "pc = " + str(cc.pc) + \
+                    ": Error: choose can only be applied to non-empty sets"
                 break
             if len(v.s) > 1:
                 sc.choosing = cc
@@ -2801,8 +2804,10 @@ def run(code, labels, map, step, blockflag, printStates):
     issues_found = False
     if len(bad) > 0:
         print("==== Safety violation ====")
-        # TODO.  First one added to bad should have shortest path
-        print_shortest(visited, bad)
+        bad_state = find_shortest(visited, bad)
+        if bad_state.errormsg != None:
+            print(bad_state.errormsg)
+        print_path(visited, bad_state)
         issues_found = True
 
     # See if there are processes stuck in infinite loops without accessing
