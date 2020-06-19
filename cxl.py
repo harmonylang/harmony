@@ -430,8 +430,9 @@ class PushAddressOp(Op):
         context.pc += 1
 
 class LoadOp(Op):
-    def __init__(self, name):
+    def __init__(self, name, token):
         self.name = name
+        self.token = token
 
     def __repr__(self):
         if self.name == None:
@@ -443,7 +444,11 @@ class LoadOp(Op):
     def eval(self, state, context):
         if self.name == None:
             av = context.pop()
-            assert isinstance(av, AddressValue), (context.pc, indexes, state)
+            if not isinstance(av, AddressValue):
+                print()
+                print("Error: not an address", self.token, "->", av)
+                state.failure = True
+                return
             context.push(state.iget(av.indexes))
         else:
             (lexeme, file, line, column) = self.name
@@ -451,9 +456,10 @@ class LoadOp(Op):
         context.pc += 1
 
 class StoreOp(Op):
-    def __init__(self, v, n):
-        self.v = v       # shared variable (None if indirect)
-        self.n = n       # number of indexes
+    def __init__(self, v, n, token):
+        self.v = v          # shared variable (None if indirect)
+        self.n = n          # number of indexes
+        self.token = token  # for error reporting
 
     def __repr__(self):
         if self.v == None:
@@ -471,8 +477,11 @@ class StoreOp(Op):
             indexes.append(context.pop())
         if self.v == None:
             av = indexes[0]
-            # TODO.  May need to produce a nicer error message for this:
-            assert isinstance(av, AddressValue), indexes
+            if not isinstance(av, AddressValue):
+                print()
+                print("Error: not an address", self.token, "->", av)
+                state.failure = True
+                return
             lv = av.indexes
             name = lv[0]
             indexes = indexes[1:]
@@ -482,7 +491,7 @@ class StoreOp(Op):
 
         if not state.initializing and (name not in state.vars.d):
             print()
-            print("pc =", context.pc, "Error: using an uninitialized shared variable", name)
+            print("Error: using an uninitialized shared variable", self.token)
             state.failure = True
         else:
             state.set(lv + indexes, context.pop())
@@ -1055,7 +1064,7 @@ class NameAST(AST):
         (lexeme, file, line, column) = self.name
         tv = scope.lookup(self.name)
         if tv == None:
-            code.append(LoadOp(self.name))
+            code.append(LoadOp(self.name, self.name))
         else:
             (t, v) = tv
             if t == "variable":
@@ -1554,15 +1563,16 @@ class LValueAST(AST):
         return "LValueRule(" + str(self.indexes) + " " + self.token + ")"
 
 class PointerAST(AST):
-    def __init__(self, expr):
+    def __init__(self, expr, token):
         self.expr = expr
+        self.token = token
 
     def __repr__(self):
         return "Pointer(" + str(self.expr) + ")"
 
     def compile(self, scope, code):
         self.expr.compile(scope, code)
-        code.append(LoadOp(None))
+        code.append(LoadOp(None, self.token))
 
 class ChooseAST(AST):
     def __init__(self, expr):
@@ -1585,7 +1595,7 @@ class ExpressionRule(Rule):
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
             if lexeme == "^":
-                return (PointerAST(ast), t)
+                return (PointerAST(ast, func), t)
             else:
                 return (NaryAST(func, [ast]), t)
         (ast, t) = BasicExpressionRule().parse(t)
@@ -1597,7 +1607,7 @@ class ExpressionRule(Rule):
             args.append(arg)
         if ast == None:
             assert len(args) > 0, args
-            ast = PointerAST(args[0])
+            ast = PointerAST(args[0], func)
             args = args[1:]
         while args != []:
             ast = ApplyAST(ast, args[0], func)
@@ -1622,7 +1632,7 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(StoreOp(lv.name, n - 1))
+                code.append(StoreOp(lv.name, n - 1, lv.name))
             else:
                 (t, v) = tv
                 if t == "variable":
@@ -1632,7 +1642,7 @@ class AssignmentAST(AST):
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(StoreOp(None, n))
+            code.append(StoreOp(None, n, lv.token))
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -2006,7 +2016,7 @@ class LValueRule(Rule):
         (lexeme, file, line, column) = token
         if lexeme == "^":
             (ast, t) = ExpressionRule().parse(t[1:])
-            indexes = [PointerAST(ast)]
+            indexes = [PointerAST(ast, token)]
         elif lexeme == "(":
             (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
