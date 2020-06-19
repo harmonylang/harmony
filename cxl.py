@@ -978,8 +978,8 @@ class NaryOp(Op):
         context.pc += 1
 
 class ApplyOp(Op):
-    def __init__(self):
-        pass
+    def __init__(self, token):
+        self.token = token
 
     def __repr__(self):
         return "Apply"
@@ -992,7 +992,7 @@ class ApplyOp(Op):
                 context.push(method.d[e])
             except KeyError:
                 print()
-                print("pc =", context.pc, "Error: no entry", e, "in", method)
+                print("Error: no entry", e, "in", self.token, "=", method)
                 state.failure = True
                 return
             context.pc += 1
@@ -1331,9 +1331,10 @@ class NaryAST(AST):
             code.append(NaryOp(self.op, n))
 
 class ApplyAST(AST):
-    def __init__(self, method, arg):
+    def __init__(self, method, arg, token):
         self.method = method
         self.arg = arg
+        self.token = token
 
     def __repr__(self):
         return "Apply(" + str(self.method) + ", " + str(self.arg) + ")"
@@ -1341,7 +1342,7 @@ class ApplyAST(AST):
     def compile(self, scope, code):
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
-        code.append(ApplyOp())
+        code.append(ApplyOp(self.token))
 
 class Rule:
     def expect(self, rule, b, got, want):
@@ -1545,11 +1546,12 @@ class BasicExpressionRule(Rule):
         return (False, t)
 
 class LValueAST(AST):
-    def __init__(self, indexes):
+    def __init__(self, indexes, token):
         self.indexes = indexes
+        self.token = token  # for error messages
 
     def __repr__(self):
-        return "LValueRule(" + str(self.indexes) + ")"
+        return "LValueRule(" + str(self.indexes) + " " + self.token + ")"
 
 class PointerAST(AST):
     def __init__(self, expr):
@@ -1598,7 +1600,7 @@ class ExpressionRule(Rule):
             ast = PointerAST(args[0])
             args = args[1:]
         while args != []:
-            ast = ApplyAST(ast, args[0])
+            ast = ApplyAST(ast, args[0], func)
             args = args[1:]
         return (ast, t)
 
@@ -2000,7 +2002,8 @@ class ConstAST(AST):
 
 class LValueRule(Rule):
     def parse(self, t):
-        (lexeme, file, line, column) = t[0]
+        token = t[0]
+        (lexeme, file, line, column) = token
         if lexeme == "^":
             (ast, t) = ExpressionRule().parse(t[1:])
             indexes = [PointerAST(ast)]
@@ -2020,7 +2023,7 @@ class LValueRule(Rule):
             if index == False:
                 break
             indexes.append(index)
-        return (LValueAST(indexes), t)
+        return (LValueAST(indexes, token), t)
 
 class AssignmentRule(Rule):
     def __init__(self, lv):
@@ -2223,7 +2226,7 @@ class StatementRule(Rule):
         a = ast.indexes[0]
         args = ast.indexes[1:]
         while args != []:
-            a = ApplyAST(a, args[0])
+            a = ApplyAST(a, args[0], ast.token)
             args = args[1:]
         return (CallAST(a), self.skip(token, t))
 
