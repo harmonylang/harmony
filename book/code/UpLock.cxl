@@ -1,9 +1,9 @@
 import synch;
 
 def process(self):
-    call lock &(countlock);
+    lock(&countlock);
     count = count + 1;
-    call unlock &(countlock);
+    unlock(&countlock);
     done[self] = True;
 ;
 def main(self):

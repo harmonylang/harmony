@@ -16,9 +16,9 @@ def P_mutex():
 
 def process(self):
     while choose({ False, True }):
-        call P_enter(&(mutex), self);
+        P_enter(&mutex, self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        call P_exit(&(mutex), self);
+        P_exit(&mutex, self);
     ;
 ;
 mutex = P_mutex();

@@ -1592,17 +1592,6 @@ of \texttt{x}).
 Conversely, if \texttt{p} is a pointer to a shared variable, then the
 expression \texttt{\^{}p} is the value of the shared variable.
 
-It is often the case that methods that update shared variables through
-pointers do not actually have to return a result to be useful.
-In CXL, if you want to invoke a method that does not return a result
-or if you are simply not interested in it,
-you have to use a \texttt{call} statement like so:
-\begin{code}
-\begin{verbatim}
-call m a;
-\end{verbatim}
-\end{code}
-
 Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
@@ -1668,7 +1657,7 @@ def atomic_inc(ptr):
     ;
 ;
 count = 0;
-call atomic_inc &(count);
+atomic_inc &(count);
 \end{Verbatim}
 \end{code}
 
@@ -1871,7 +1860,7 @@ def Lock():
 def lock(lk):
     atomic:
         if (^lk).locked:
-            call stop (^lk).suspended;
+            stop (^lk).suspended;
             assert (^lk).locked;
         else:
             (^lk).locked = True;
@@ -2254,11 +2243,11 @@ before the higher numbered fork, like so:
 \begin{code}
 \begin{Verbatim}[xleftmargin=5mm,numbers=left]
     if left < right:
-        call lock &(forks[left]);
-        call lock &(forks[right]);
+        lock(&forks[left]);
+        lock(&(orks[right]);
     else:
-        call unlock &(forks[right]);
-        call unlock &(forks[left]);
+        unlock(&forks[right]);
+        unlock(&forks[left]);
     ;
 \end{Verbatim}
 \end{code}
@@ -2558,13 +2547,13 @@ CCSs are easy to implement using busy waiting:
 \begin{Verbatim}[xleftmargin=5mm,numbers=left]
 let blocked = True:
     while blocked:
-        call lock();
+        lock();
         if application-condition-holds:
             blocked = False;
         else:
-            call unlock():
+            unlock():
 @cr: application-code;
-call unlock():
+unlock():
 \end{Verbatim}
 \end{code}
 
@@ -2803,12 +2792,12 @@ operations, in CXL, are as follows:
 \begin{code} 
 \begin{Verbatim}[xleftmargin=5mm,numbers=left]
 def wait(c):
-    call V &(mutex);
-    call P c;
+    V(&mutex);
+    P(c);
 ;
 def signal(c):
-    call V c;
-    call P &(mutex);
+    V(c);
+    P(&mutex);
 ;
 \end{Verbatim} 
 \end{code} 
@@ -2930,7 +2919,7 @@ def Condition(lk):
 ;
 def wait(c):
     let lk = (^c).lock, blocked = True, cnt = bagCount((^c).waiters, nametag()):
-        call bagAdd(&((^c).waiters), nametag());
+        bagAdd(&(^c).waiters, nametag());
         ^lk = False;
         while blocked:
             atomic:
@@ -2945,7 +2934,7 @@ def wait(c):
 def notify(c):
     let waiters = (^c).waiters:
         if waiters != bagEmpty():
-            call bagRemove(&((^c).waiters), bagChoose(waiters));
+            bagRemove(&(^c).waiters, bagChoose(waiters));
         ;
     ;
 ;
@@ -3089,10 +3078,10 @@ A common mistake is to write the following code instead:
 \begin{code}
 \begin{Verbatim}
 while forks[left]:
-    call wait &(conds[left]);
+    wait(&conds[left]);
 ;
 while forks[right]:
-    call wait &(conds[right]);
+    wait(&conds[right]);
 ;
 \end{Verbatim}
 \end{code}
@@ -3573,8 +3562,6 @@ CXL currently supports the following statements:
 \texttt{pass} & do nothing\\
 \hline
 \texttt{del lv} & delete\\
-\hline
-\texttt{call e} & evaluate \texttt{e}\\
 \hline
 \texttt{assert b [, x]} & \texttt{b} is a Boolean.  If \texttt{False}, optionally print expression \texttt{e}\\
 \hline

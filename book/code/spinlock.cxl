@@ -10,7 +10,7 @@ def process(self):
     while choose({ False, True }):
         # Enter critical section
         while private[self]:
-            call tas(&(shared), &(private[self]));
+            tas(&shared, &private[self]);
         ;
 
         # Critical section

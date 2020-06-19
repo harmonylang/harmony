@@ -103,7 +103,7 @@ def isbinaryop(s):
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "dict{", "==", "!=", "<=", ">=", "..", "&(", "choose(" ]
+tokens = [ "dict{", "==", "!=", "<=", ">=", "..", "choose(" ]
 
 def lexer(s, file):
     result = []
@@ -1510,12 +1510,9 @@ class BasicExpressionRule(Rule):
                 return TupleRule(ast, closer).parse(t)
             else:
                 return (ast, t[1:])
-        if lexeme == "&(":
+        if lexeme == "&":
             (ast, t) = LValueRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("address expression", lexeme == ")", t[0],
-                "expected ')'")
-            return (AddressAST(ast), t[1:])
+            return (AddressAST(ast), t)
         if lexeme == "choose(":
             (ast, t) = NaryRule({")"}).parse(t[1:])
             (lexeme, file, line, column) = t[0]
@@ -1982,16 +1979,13 @@ class LValueRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         if lexeme == "^":
-            (lexeme, file, line, column) = t[1]
-            self.expect("lvalue expression", isname(lexeme), t[1],
-                "expect name after ^")
-            return (LValueAST([PointerAST(NameAST(t[1]))]), t[2:])
+            (ast, t) = ExpressionRule().parse(t[1:])
+            indexes = [PointerAST(ast)]
         elif lexeme == "(":
-            (lexeme, file, line, column) = t[1]
-            (ast, t) = BasicExpressionRule().parse(t[2:])
+            (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
             self.expect("lvalue expression", lexeme == ")", t[0], "expected ')'")
-            indexes = [PointerAST(ast)]
+            indexes = ast.indexes
             t = t[1:]
         else:
             self.expect("lvalue expression", isname(lexeme), t[0],
@@ -2006,12 +2000,12 @@ class LValueRule(Rule):
         return (LValueAST(indexes), t)
 
 class AssignmentRule(Rule):
+    def __init__(self, lv):
+        self.lv = lv
+
     def parse(self, t):
-        (lv, t) = LValueRule().parse(t)
-        (lexeme, file, line, column) = t[0]
-        self.expect("assignment",  lexeme == "=", t[0], "expected '='")
-        (rv, t) = NaryRule({";"}).parse(t[1:])
-        return (AssignmentAST(lv, rv), t[1:])
+        (rv, t) = NaryRule({";"}).parse(t)
+        return (AssignmentAST(self.lv, rv), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -2195,7 +2189,20 @@ class StatementRule(Rule):
                 self.expect("assert statement", lexeme == ";", t[0], "expected semicolon")
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
-        return AssignmentRule().parse(t)
+        (ast, t) = LValueRule().parse(t)
+        (lexeme, file, line, column) = t[0]
+        if lexeme == "=":
+            return AssignmentRule(ast).parse(t[1:])
+        self.expect("statement", lexeme == ";", t[0], "expected semicolon")
+
+        # Turn LValue into an RValue
+        assert isinstance(ast, LValueAST)
+        a = ast.indexes[0]
+        args = ast.indexes[1:]
+        while args != []:
+            a = ApplyAST(a, args[0])
+            args = args[1:]
+        return (CallAST(a), self.skip(token, t))
 
 class Context(Value):
     def __init__(self, nametag, pc, end):

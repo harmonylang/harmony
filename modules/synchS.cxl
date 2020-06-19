@@ -66,10 +66,36 @@ def V(sema):
     atomic:
         let cnt = (^sema).count, waiters = (^sema).waiters:
             if waiters != []:
+                assert cnt == 0;
                 go (waiters[0]) ();
                 (^sema).waiters = tail(waiters);
             else:
                 (^sema).count = cnt + 1;
+            ;
+        ;
+    ;
+;
+def Queue():
+    result = dict{ list: [], waiters: [] };;
+;
+def dequeue(q):
+    atomic:
+        let list = ^q.list:
+            if list == []:
+                stop ^q.waiters;
+            ;
+            result = head(list);
+            ^q.list = tail(list);
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        ^q.list = append(^q.list, item);
+        let waiters = ^q.waiters:
+            if waiters != []:
+                go (waiters[0]) item;
+                ^q.waiters = tail(waiters);
             ;
         ;
     ;
