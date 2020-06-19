@@ -1448,6 +1448,8 @@ class SetRule(Rule):
         s = []
         while True:
             (next, t) = NaryRule({"for", ",", "}"}).parse(t[1:])
+            if next == False:
+                return (next, t)
             s.append(next)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
@@ -1470,6 +1472,8 @@ class DictRule(Rule):
         d = {}
         while lexeme != "}":
             (key, t) = NaryRule({":", "for"}).parse(t[1:])
+            if key == False:
+                return (key, t)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
                 self.expect("dict comprehension", d == {}, t[0],
@@ -1538,6 +1542,8 @@ class BasicExpressionRule(Rule):
                 return (ConstantAST(
                     (novalue, file, line, column)), t[2:])
             (ast, t) = NaryRule({closer, ",", "for"}).parse(t[1:])
+            if not ast:
+                return (ast, t)
             (lexeme, file, line, column) = t[0]
             if lexeme != closer:
                 return TupleRule(ast, closer).parse(t)
