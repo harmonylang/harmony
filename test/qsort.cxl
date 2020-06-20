@@ -6,15 +6,15 @@ def swap(p, q):
         ^q = t; 
     ;
 ;
-def partition(l, h):
-    let x = a[h], i = l - 1:
-        for j in l..(h - 1):
-            if a[j] <= x:
+def partition(lo, hi):
+    let top = a[hi], i = lo - 1:
+        for j in lo..(hi - 1):
+            if a[j] <= top:
                 i = i + 1;
                 swap(&a[i], &a[j]);
             ;
         ;
-        swap(&a[i + 1], &a[h]); 
+        swap(&a[i + 1], &a[hi]); 
         result = i + 1;
     ;
 ;
@@ -22,14 +22,14 @@ def qsort():
     while todo != {}:
         let range = choose(todo):
             todo = todo - { range };
-            let l = range[0], h = range[1], p = partition(l, h):
-                if (p - 1) > l:
-                    assert (l, p - 1) != range;
-                    todo = todo + { (l, p - 1) };
+            let lo = range[0], hi = range[1], pivot = partition(lo, hi):
+                if (pivot - 1) > lo:
+                    assert (lo, pivot - 1) != range;
+                    todo = todo + { (lo, pivot - 1) };
                 ;
-                if (p + 1) < h :
-                    assert (p + 1, h) != range;
-                    todo = todo + { (p + 1, h) };
+                if (pivot + 1) < hi :
+                    assert (pivot + 1, hi) != range;
+                    todo = todo + { (pivot + 1, hi) };
                 ;
             ;
         ;
