@@ -1060,7 +1060,7 @@ Figure~\ref{fig:csbarebones} shows the CVM bytecode.
 Here \texttt{@cs} is a \emph{label},
 \index{label}
 identifying a location in the CVM bytecode.  The first thing we need to
-ensure is that there can never be two processes at the critical section.
+ensure is that there can never be two processes in the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
 \glsadd{mutual exclusion}
@@ -1124,7 +1124,8 @@ will model processes in critical sections using the framework in
 Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
-(Recall that CXL will try every possible execution.)
+(Recall that CXL will try every possible execution, and so it will evaluate
+both choices.)
 
 \begin{figure}
 \begin{center}
@@ -1137,15 +1138,15 @@ number of processes in the critical section.}
 \end{figure}
 
 Figure~\ref{fig:mutex} shows a high-level state diagram
-\index{state diagram}
-of the code in
-Figure~\ref{fig:cs}.
+\index{state diagram} of mutual exclusion and progress.
 The circles represent states, while the arrows represent possible state
 transitions (high-level steps).  The label in each circle summarizes the state;
 the label on an arrow describes the transition.  In this case,
 the label contains two numbers: the total number of processes and the number
 of processes in the critical section.  A process that is in the critical
 section cannot terminate until after leaving the critical section.
+We will now consider various approaches toward implementing this
+specification.
 
 \begin{figure}
 \begin{code}
@@ -1173,9 +1174,9 @@ section cannot terminate until after leaving the critical section.
 
 You may already have heard of the concept of a \emph{lock}
 \index{lock}
-\glsadd{lock}
 and have realized that
 it could be used to implement a critical section.
+\glsadd{lock}
 The idea is that the lock is like a baton that at most one process can own
 (or hold) at a time.
 A process that wants to enter the critical section at a time must obtain the
@@ -1213,7 +1214,7 @@ suppose that process~0 sets \texttt{flags[0]} at time $t_0$.
 Process 0 can only reach the critical section if at some time $t_1$,
 $t_1 > t_0$, it finds that \texttt{flags[1] == False}.
 Because of the invariant, \texttt{flags[1] == False} implies that
-process~1 is not at the critical section at time $t_1$.
+process~1 is not in the critical section at time $t_1$.
 Let $t_2$ be the time at which process~0 sets \texttt{flags[0]}
 to \texttt{False}.  Process~0 is in the critical section sometime
 between $t_1$ and $t_2$.
@@ -1224,12 +1225,13 @@ it would first have to set \texttt{flags[1]} to \texttt{True} and
 then wait until \texttt{flags[0] == False}.  But that does not happen
 until time $t_2$.
 
-Run the program through CXL.  Unfortunately, it turns out the solution has a
-problem: if both try to enter the critical section at the same time, they may
-end up waiting for one another indefinitely.  Thus the solution
-violates \emph{progress}.
+However, if you run the program through CXL, it turns out the solution
+does has a problem: if both try to enter the critical section at the same
+time, they may end up waiting for one another indefinitely.  Thus the
+solution violates \emph{progress}.
 
-The final na\"{\i}ve solution is based on a variable called \texttt{turn}
+The final na\"{\i}ve solution that we propose
+is based on a variable called \texttt{turn}
 that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
 enter the critical section, while process $1-i$ has to wait.  When done,
 process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
@@ -1251,14 +1253,14 @@ turn.
 \begin{enumerate}
 \item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
 section, mutual is violated, the assertion should fail, and a trace should be reported.
-Now plug \texttt{while True: pass;;} before entering the critical section
-in Figure~\ref{fig:cs} and run CXL again.  Now mutual exclusion is guaranteed but
-progress is violated.  CXL should print a trace
+Now plug the following code \texttt{while True: pass;;}
+just before entering the critical section
+in Figure~\ref{fig:cs} and run CXL again.
+Mutual exclusion is guaranteed but progress is violated.
+CXL should print a short trace
 to a state from which a terminating state cannot be reached.
-Describe in English the difference in the failure reports.
-\item If we change the loop in Figure~\ref{fig:cs} into an infinite loop,
-does the \emph{progress} property guarantee that all processes that are trying
-to enter eventually enter?  Why or why not?
+Describe in English the difference in the failure reports before
+and after inserting the code.
 \item See if you can come up with some different approaches that satisfy both
 mutual exclusion and progress.  Try them with CXL and see if they work or not.
 If they don't, try to understand why.
@@ -1290,7 +1292,7 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in CXL are atomic.
 The process continues to be polite, waiting in a \texttt{while} loop
 until either the other process is nowhere near the critical section
-(\texttt{flag[1 - self] == False}) or or has given way
+(\texttt{flag[1 - self] == False}) or has given way
 (\texttt{turn == self}).
 Running the algorithm with CXL shows that it satisfies both mutual
 exclusion and progress.
@@ -1303,31 +1305,31 @@ exclusion and progress.
 \label{fig:states}
 \end{figure}
 
+\glsadd{state}
+\glsadd{process variable}
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the CXL
 machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
 \index{state}
-\glsadd{state}
-at any point of time the CVM is in a specific state.
+at any point in time the CVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
 \index{process variable}
-\glsadd{process variable}
 for each process, including its
 program counter and the contents of its stack.
 Everytime a process executes a CVM machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}
-\glsadd{step}
 Steps in CXL are atomic.
+\glsadd{step}
 
+\glsadd{trace}
 The CVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
 \index{trace}
-\glsadd{trace}
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}
@@ -1396,7 +1398,7 @@ To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
 and process~1 at the start of the \texttt{while} loop.
 Also imagine that in this particular state $\mathtt{turn} = 1$.  Now let
-process process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
+process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
 section, entering a state that is not exclusive.
 So exclusivity is an invariant, but not an inductive invariant.
@@ -1419,7 +1421,7 @@ Let $C(i) = \mathtt{flags}[1 - i] \land
 \mathtt{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
 for process~$i$.
 Let predicate $I_p(i)$ be the following.
-if process $i$ is label \texttt{@cs} (i.e., process $i$ is in the critical section),
+if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
 then $C(i)$ does not hold or process $1-i$ is executing after setting
 $\mathtt{flags}[i]$ but still before setting \texttt{turn} to $1-i$.
 More formally, $I_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot C(i) \lor \mathtt{process}(1-i)@gate)$.
@@ -1497,7 +1499,7 @@ Before trying to prove the algorithm, you can check that the predicate is
 at least invariant by testing it using CXL.  Doing so could potentially
 avoid wasting your time on a proof that will not work because the
 predicate is not invariant, and therefore not an inductive invariant either.
-To finish the story, the author of CXL fixed the Wikipedia page.
+(The author fixed the Wikipedia page.)
 
 \section*{Exercises}
 \begin{enumerate}
