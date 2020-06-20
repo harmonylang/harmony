@@ -2227,13 +2227,17 @@ in a test, it cannot find problems that the test is not looking for.
 \begin{enumerate}
 \item Why do you suppose the code in Figure~\ref{fig:rwmulti} uses a flag
 per process rather than a simple counter?
-\item Can you write a version of this test that uses a counter instead
+Can you write a version of this test that uses a counter instead
 of a flag per process?
-\item Write a ``library implementation'' of reader/writer locks so multiple
-reader/writer locks can be instantiated.
+% \item Write a ``library implementation'' of reader/writer locks so multiple
+% reader/writer locks can be instantiated.
 \item Write a test program for ``bound locks'' (as implemented in the
 exercises of the last chapter) that checks that up to \texttt{M} processes
 can acquire the bound lock at the same time.
+\item Suppose a sports club has only one dressing room.  The policy is that
+either only women or only men may be in the dressing room at any time.
+Implement a ``dressing room lock'' that allows multiple people to enter the
+dressing room while observing the policy.
 \end{enumerate}
 
 \chapter{Deadlock}
@@ -2275,8 +2279,6 @@ processes being blocked trying to acquire the lock.
 \begin{itemize}
 \item Do you see what the problem is?
 \item Does it depend on \texttt{N}, the number of philosophers?
-\item Can you come up with a solution?
-\item Does it matter in what order the philosophers lay down their forks?
 \end{itemize}
 \end{quote}
 
@@ -2302,11 +2304,10 @@ before the higher numbered fork, like so:
 \end{Verbatim}
 \end{code}
 
-\begin{quote}
-\begin{itemize}
-\item Try it out!
-\end{itemize}
-\end{quote}
+\section*{Exercises}
+\begin{enumerate}
+\item Does it matter in what order the philosophers lay down their forks?
+\end{enumerate}
 
 \chapter{Semaphores}
 \label{ch:semaphore}
