@@ -654,7 +654,7 @@ class FrameOp(Op):
         if len(self.args) != 1:
             if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
                 state.failure = "Error: argument count mismatch " + \
-                        self.name + ": expected " + str(len(self.args)) + \
+                        str(self.name) + ": expected " + str(len(self.args)) + \
                         " arguments but got " + \
                         str(len(arg.d) if isinstance(arg, DictValue) else 1)
                 return
@@ -2338,9 +2338,9 @@ class State:
         self.initializing = True
 
     def __repr__(self):
-        if state.failure != None:
+        if self.failure != None:
             return "State(" + str(self.vars) + ", " + str(self.ctxbag) + \
-                ", " + str(self.stopbag) + ", " + state.failure + ")"
+                ", " + str(self.stopbag) + ", " + self.failure + ")"
         return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ", " + \
             str(self.stopbag) + ")"
 
