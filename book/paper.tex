@@ -2401,21 +2401,20 @@ semaphores.
 Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
 using a semaphore.
 
-\begin{quote}
-\begin{itemize}
-\item Can you come up with a test (an assertion) that shows that at most three
-philosophers are eating at the same time?
-\item Can you come up with a test (different code) that checks to see that
-the solution allows more than one philosopher to eat at the same time?
-\end{itemize}
-\end{quote}
-
 One can think of a semaphore as a generalization of a lock.  In fact, a
 lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
 procures the lock, and \texttt{V} vacates the lock.
 
 You may find the free ``The Little Book of Semaphores'' by
 Allen Downey a great resource for working with semaphores~\cite{Downey09}.
+
+\section*{Exercices}
+\begin{enumerate}
+\item Add an assertion that demonstrates that at most three
+Italian philosophers are eating at the same time?
+\item Implement a test program that checks to see that
+the solution allows more than one Italian philosopher to eat at the same time?
+\end{enumerate}
 
 \chapter{Bounded Buffer}
 \label{ch:bb}
@@ -2564,6 +2563,12 @@ Moreover, consumers add the tuples they received to the set
 \texttt{received} (atomically---a lock could have been used here as well).)
 The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
+
+\section*{Exercises}
+\begin{enumerate}
+\item Assume that you have only binary semaphores.  Implement counting
+semaphores using binary semaphores.
+\end{enumerate}
 
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
