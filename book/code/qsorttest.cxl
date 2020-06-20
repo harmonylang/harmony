@@ -1,0 +1,20 @@
+import list;
+
+def sorted():
+    result = True;
+    for i in 1..(len(a) - 1):
+        if a[i - 1] > a[i]:
+            result = False;
+        ;
+    ;
+;
+def main(copy):
+    qsort();                              # sort array 'a'
+    assert sorted();                      # is the array sorted?:
+    assert list2bag(a) == list2bag(copy); # is it a permutation of the input?
+;
+
+const values = 1..NITEMS;
+a = [ choose(values) for i in 1..choose(1..NITEMS) ];
+todo = { (0, len(a) - 1) };
+spawn main(a);

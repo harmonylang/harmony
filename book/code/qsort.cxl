@@ -1,0 +1,38 @@
+const NITEMS = 3;
+
+def swap(p, q):
+    let t = ^p:
+        ^p = ^q; 
+        ^q = t; 
+    ;
+;
+def partition(lo, hi):
+    let top = a[hi], i = lo - 1:
+        for j in lo..(hi - 1):
+            if a[j] <= top:
+                i = i + 1;
+                swap(&a[i], &a[j]);
+            ;
+        ;
+        swap(&a[i + 1], &a[hi]); 
+        result = i + 1;
+    ;
+;
+def sortrange(range):
+    let lo = range[0], hi = range[1], pivot = partition(lo, hi):
+        if (pivot - 1) > lo:
+            todo = todo + { (lo, pivot - 1) };
+        ;
+        if (pivot + 1) < hi :
+            todo = todo + { (pivot + 1, hi) };
+        ;
+    ;
+;
+def qsort():
+    while todo != {}:
+        let range = choose(todo):
+            todo = todo - { range };
+            sortrange(range);
+        ;
+    ;
+;

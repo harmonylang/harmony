@@ -1,4 +1,5 @@
 import synch;
+import list;
 
 const NITEMS = 3;
 const NWORKERS = 2;
@@ -21,13 +22,21 @@ def partition(lo, hi):
         result = i + 1;
     ;
 ;
-def qsort(range):
+def sortrange(range):
     let lo = range[0], hi = range[1], pivot = partition(lo, hi):
         if (pivot - 1) > lo:
             todo = todo + { (lo, pivot - 1) };
         ;
         if (pivot + 1) < hi :
             todo = todo + { (pivot + 1, hi) };
+        ;
+    ;
+;
+def qsort():
+    while todo != {}:
+        let range = choose(todo):
+            todo = todo - { range };
+            sortrange(range);
         ;
     ;
 ;
@@ -42,7 +51,7 @@ def worker():
                 let range = choose(todo):
                     todo = todo - { range };
                     unlock(&mutex);
-                    qsort(range);
+                    sortrange(range);
                 ;
             ;
         ;

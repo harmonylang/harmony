@@ -2414,7 +2414,37 @@ Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 Italian philosophers are eating at the same time?
 \item Implement a test program that checks to see that
 the solution allows more than one Italian philosopher to eat at the same time?
+\item Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
+algorithm, and Figure~\ref{fig:qsorttest} an accompanying test program.
+Note that it uses a shared variable \texttt{a} containing the array to be
+sorted and a shared variable \texttt{todo} containing the ranges of the
+array that need to be sorted (initially the entire array).
+Re-using as much of this code as you can, implement a parallel version of
+this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
+or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker processes''
+that should replace the \texttt{qsort} code.  Each worker loops until \texttt{todo}
+is empty and sorts the ranges that it finds until then.  The \texttt{main}
+process needs to wait until all workers are done.  Use a semaphore for this:
+the \texttt{main} process should use \texttt{P} to wait for each
+worker to terminate.  After that it should check if the array is sorted and a
+permutation of the original array.
 \end{enumerate}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/qsort.cxl}
+\end{code}
+\caption{[qsort.cxl] Iterative qsort() implementation.}
+\label{fig:qsort}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/qsorttest.cxl}
+\end{code}
+\caption{[qsorttest.cxl] Test program for Figure~\ref{fig:qsort}.}
+\label{fig:qsorttest}
+\end{figure}
 
 \chapter{Bounded Buffer}
 \label{ch:bb}
