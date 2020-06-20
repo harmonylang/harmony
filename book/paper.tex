@@ -1602,6 +1602,18 @@ This is similar to how C pointers work.
 Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
+The name \texttt{mutex} is often used to denote a variable or value
+that is used for mutual exclusion.
+\texttt{P\_mutex} is a method that returns a ``mutex,'' which, in this
+case, is a dictionary that contains Peterson's Algorithm's state:
+a turn variable and two flags.
+Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
+a pointer to a mutex and the process identifier (0 or 1).
+\texttt{(\^{}pm).turn} is the value of the \texttt{.turn} key
+in the mutex dictionary.  Note that the parentheses in this expression
+are needed, as \texttt{\^{}pm.turn} would wrongly evaluate to
+\texttt{\^{}(pm.turn)}.
+
 You can put the first three methods in its own CXL source file
 and include it using the CXL \texttt{import} statement.
 \index{import statement}
@@ -1646,7 +1658,7 @@ so-called \emph{interlock instructions}:
 special machine instructions
 that can read memory and then write it in an indivisible step.
 
-While the CVM does not have any built-in interlock instructions,
+While the CVM does not have any specific built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
 This feature is available in the CXL language in two ways.
 First, any CXL statement can be made atomic by placing a label in front
@@ -1683,7 +1695,7 @@ and then sets the shared variable to \texttt{True} (``set'').
 
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
 a set of $N$ processes.
-It is called \emph{spinlock},
+The approach is called \emph{spinlock},
 \index{spinlock}
 because each process is ``spinning'' until
 it can acquire the lock.
@@ -1700,7 +1712,9 @@ critical section at the same time.
 
 $I_1$ is an inductive invariant.
 To see that invariant $I_1$ is maintained, note that
-\texttt{\^{}p == True} upon entry of \texttt{tas}.
+\texttt{\^{}p == True} upon entry of \texttt{tas}
+(because of the condition on the \texttt{while} loop that the
+\texttt{tas} method is invoked in).
 So there are two cases:
 \begin{enumerate}
 \item \texttt{\^{}s} is \texttt{False} upon entry to \texttt{tas}.
