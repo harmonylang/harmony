@@ -76,26 +76,26 @@ def V(sema):
     ;
 ;
 def Queue():
-    result = dict{ list: [], waiters: [] };;
+    result = dict{ list: [], waiters: [] };
 ;
 def dequeue(q):
     atomic:
-        let list = ^q.list:
+        let list = (^q).list:
             if list == []:
-                stop ^q.waiters;
+                stop (^q).waiters;
             ;
             result = head(list);
-            ^q.list = tail(list);
+            (^q).list = tail(list);
         ;
     ;
 ;
 def enqueue(q, item):
     atomic:
-        ^q.list = append(^q.list, item);
-        let waiters = ^q.waiters:
+        (^q).list = append((^q).list, item);
+        let waiters = (^q).waiters:
             if waiters != []:
                 go (waiters[0]) item;
-                ^q.waiters = tail(waiters);
+                (^q).waiters = tail(waiters);
             ;
         ;
     ;

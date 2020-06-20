@@ -435,8 +435,9 @@ is not trivial.
 elegant solution to implementating a critical section.
 \item Chapter~\ref{ch:method} gives some more details on the CXL
 language.
-\item Chapter~\ref{ch:spinlock} introduces hardware-supported locks
-for implemented critical sections.  Chapter~\ref{ch:synch} presents a CXL module
+\item Chapter~\ref{ch:spinlock} introduces ``hardware'' locks
+for implemented critical sections.
+\item Chapter~\ref{ch:synch} presents CXL modules
 that supports locks and other synchronization primitives.
 \item Chapters~\ref{ch:rdwrbusy} and~\ref{ch:rdwr2} present the
 abstraction and implementation of reader/writer
@@ -1767,7 +1768,7 @@ and swap the values.
 \item Write out the invariants that need to hold and check them using CXL.
 \end{enumerate}
 
-\chapter{Locks and the Synch Module}
+\chapter{Locks and Blocking}
 \label{ch:synch}
 \index{lock}
 \index{synch module}
@@ -1845,7 +1846,7 @@ def unlock(lk):
 \label{fig:incfixed}
 \end{figure}
 
-Locks are probably the most popular and basic form of synchronization
+Locks are probably the most prevalent and basic form of synchronization
 in concurrent programs.  For this reason, CXL has a module called
 \texttt{synch} that includes support for locks.
 Figure~\ref{fig:spinlocks} shows how they are implemented, and
@@ -1909,7 +1910,7 @@ def unlock(lk):
 In most operating systems, processes are virtual and can be suspended
 until some condition changes.  For example, a process can be suspended
 until the lock is available to it.
-In CXL, a process can suspend itself and save its context in a
+In CXL, a process can suspend itself and save its context (state) in a
 list.  Recall that the context of a process consists of its name tag,
 its program counter, and the contents of its register and stack.
 A context is a regular CXL value.
@@ -1942,18 +1943,23 @@ There is a second version of the \texttt{synch} module that uses suspension
 instead of spinlocks.
 Figure~\ref{fig:suspension} shows the same \texttt{Lock} interface implemented
 using suspension.
-A \texttt{Lock} maintains both a boolean indicating whether the lock is taken,
-and a list of contexts of processes that want to acquire the lock.
-\texttt{lock} sets the lock if available, or suspends itself if not.
+The interface is implemented as follows:
+\begin{itemize}
+\item A \texttt{Lock} maintains both a boolean indicating whether the
+lock is taken and a list of contexts of processes that want to acquire the lock.
+\item
+\texttt{lock} sets the lock if available and suspends itself if not.
 Note that \texttt{stop} is called within an \texttt{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
 process is running no other processes can run, but when it suspends itself
 it allows other processes to run.
-
+\item
 \texttt{unlock} checks to see if any processes are waiting to get the lock.
 If so, it uses the \texttt{head} and \texttt{tail}
-methods from the \texttt{list} module to resume the first process that got
-suspend and to remove its context from the list.
+methods from the \texttt{list} module (see Appendix~\ref{ap:module})
+to resume the first process that got
+suspended and to remove its context from the list.
+\end{itemize}
 Selecting the first process is a design choice.  Another implementation could
 have picked the last one, and yet another implementation could have used
 \texttt{choose} to pick an arbitrary one.  Selecting the first is a common
@@ -1961,7 +1967,8 @@ choice in lock implementations as it prevents \emph{starvation}:
 \index{starvation}
 every process
 gets a chance to obtain the lock (assuming every process eventually releases
-it).  Chapter~\ref{ch:starvation} will talk more about starvation.
+it).  Chapter~\ref{ch:starvation} will talk more about starvation and how
+to prevent it.
 
 CXL allows you to select which version of the \texttt{synch} module you would
 like to use with the \texttt{-m} flag.
@@ -1974,7 +1981,7 @@ cxl -m synch=synchS x.cxl
 \end{verbatim}
 \end{code}
 
-runs the file \texttt{x.cxl} using the Suspension version of the \texttt{synch} module.
+runs the file \texttt{x.cxl} using the suspension version of the \texttt{synch} module.
 You will find that using the \texttt{synchS} module often leads to searching a
 significantly larger search space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
@@ -3617,6 +3624,7 @@ To iterate through a dictionary, list, or tuple, use:
 \texttt{for v in keys(e):~S}.
 
 \chapter{List of Modules}
+\label{ap:module}
 
 The \texttt{bag} module
 \index{bag module}

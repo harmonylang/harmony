@@ -2016,6 +2016,9 @@ class LValueRule(Rule):
             self.expect("lvalue expression", lexeme == ")", t[0], "expected ')'")
             indexes = ast.indexes
             t = t[1:]
+        elif lexeme == "stop":
+            (ast, t) = ExpressionRule().parse(t)
+            indexes = [ast]
         else:
             self.expect("lvalue expression", isname(lexeme), t[0],
                                 "expecting a name")
