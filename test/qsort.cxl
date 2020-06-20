@@ -1,6 +1,6 @@
 import synch;
 
-const NITEMS = 4;
+const NITEMS = 3;
 const NWORKERS = 2;
 
 def swap(p, q):
@@ -47,6 +47,7 @@ def worker():
             ;
         ;
     ;
+    V(&sema);
 ;
 def sorted():
     result = True;
@@ -56,11 +57,20 @@ def sorted():
         ;
     ;
 ;
+def main(copy):
+    for i in 1..NWORKERS:
+        P(&sema);
+    ;
+    assert sorted();
+    assert list2bag(a) == list2bag(copy);
+;
 
 const values = 1..NITEMS;
 a = [ choose(values) for i in 1..choose(1..NITEMS) ];
 todo = { (0, len(a) - 1) };
 mutex = Lock();
+sema = Semaphore(0);
 for i in 1..NWORKERS:
     spawn worker();
 ;
+spawn main(a);
