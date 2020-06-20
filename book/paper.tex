@@ -705,6 +705,7 @@ incrementer thread increment \texttt{count} \texttt{N} times.  Run Figure~\ref{f
 Report how many times the assertion fails and what the value of \texttt{count}
 was for each of the failed runs.
 Also experiment with lower values of \texttt{N}.
+How large does \texttt{N} need to be for assertions to fail?
 \item Can you think of a fix to Figure~\ref{fig:inc}?  Try one or two different fixes
 and run them through CXL.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
@@ -2131,6 +2132,19 @@ This flag tells CXL to check
 that all states are non-terminating and lead to a state in which
 all processes are blocked.
 
+\section*{Exercises}
+\begin{enumerate}
+\item Using busy waiting, implement a ``bound lock'' that allows
+up to \texttt{M} processes to acquire it at the same time.  A bound lock
+with \texttt{M == 1} is an ordinary lock.
+You should define a constant \texttt{M} and two methods:
+\texttt{acquire\_bound\_lock()}
+and \texttt{release\_bound\_lock()}.
+\item Write a test program for your bound lock
+that checks that no more than \texttt{M} processes can acquire the
+bound lock.
+\end{enumerate}
+
 \chapter{Reader/Writer Locks with Blocking}
 \label{ch:rdwr2}
 
@@ -2217,6 +2231,9 @@ per process rather than a simple counter?
 of a flag per process?
 \item Write a ``library implementation'' of reader/writer locks so multiple
 reader/writer locks can be instantiated.
+\item Write a test program for ``bound locks'' (as implemented in the
+exercises of the last chapter) that checks that up to \texttt{M} processes
+can acquire the bound lock at the same time.
 \end{enumerate}
 
 \chapter{Deadlock}
