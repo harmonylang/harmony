@@ -2588,7 +2588,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     cc = ctx.copy()
 
     steps = []
-    localStates = { cc.copy() }     # used to detect infinite loops
+    localStates = { (sc.copy(), cc.copy()) }  # used to detect infinite loops
     foundInfLoop = False
     while cc.pc != cc.end:
         # execute one microstep
@@ -2649,10 +2649,10 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             break
 
         # Detect infinite loops
-        if cc in localStates:
+        if (sc, cc) in localStates:
             foundInfLoop = True
             break
-        localStates.add(cc.copy())
+        localStates.add((sc.copy(), cc.copy()))
 
     # Remove original context from bag
     sc.remove(ctx)
