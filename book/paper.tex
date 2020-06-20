@@ -1990,8 +1990,11 @@ in which processes wait for a lock.
 \section*{Exercises}
 \begin{enumerate}
 \item Write a synchronization module using your own implementation of \texttt{Lock}
-(for example, using Peterson's algorithm or using \texttt{swap}) and run the code in
-Figure~\ref{fig:incfixed} using your own module.
+(for example, using Peterson's algorithm or using \texttt{swap}).
+\item
+Run Figure~\ref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
+and (3) your own module.  Report how many states were explored for each
+version of the module.
 \end{enumerate}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
