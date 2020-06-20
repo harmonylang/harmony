@@ -2594,12 +2594,6 @@ Moreover, consumers add the tuples they received to the set
 The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
-\section*{Exercises}
-\begin{enumerate}
-\item Assume that you have only binary semaphores.  Implement counting
-semaphores using binary semaphores.
-\end{enumerate}
-
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
 \index{split binary semaphore}
@@ -2743,11 +2737,13 @@ increments \texttt{r\_entered} from 1 to 2.
 and so it vacates \texttt{mutex}.
 \end{enumerate}
 
-\begin{quote}
-\begin{itemize}
-\item Implement the producer/consumer problem with SBS.
-\end{itemize}
-\end{quote}
+\section*{Exercises}
+\begin{enumerate}
+\item Assume that you have only binary semaphores.  Implement counting
+semaphores using binary semaphores using split binary semaphores.
+\item Implement a solution to the producer/consumer problem
+(Figure~\ref{fig:boundedbuffer}) using split binary semaphores.
+\end{enumerate}
 
 \chapter{Starvation}
 \label{ch:starvation}

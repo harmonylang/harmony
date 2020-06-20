@@ -11,23 +11,21 @@ def swap(p, q):
     ;
 ;
 def partition(lo, hi):
-    let top = a[hi], i = lo - 1:
-        for j in lo..(hi - 1):
-            if a[j] <= top:
-                i = i + 1;
-                swap(&a[i], &a[j]);
-            ;
+    result = lo;
+    for i in lo..(hi - 1):
+        if a[i] <= a[hi]:
+            swap(&a[result], &a[i]);
+            result = result + 1;
         ;
-        swap(&a[i + 1], &a[hi]); 
-        result = i + 1;
     ;
+    swap(&a[result], &a[hi]); 
 ;
 def sortrange(range):
     let lo = range[0], hi = range[1], pivot = partition(lo, hi):
         if (pivot - 1) > lo:
             todo = todo + { (lo, pivot - 1) };
         ;
-        if (pivot + 1) < hi :
+        if (pivot + 1) < hi:
             todo = todo + { (pivot + 1, hi) };
         ;
     ;
