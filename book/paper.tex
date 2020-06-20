@@ -2307,7 +2307,19 @@ before the higher numbered fork, like so:
 \section*{Exercises}
 \begin{enumerate}
 \item Does it matter in what order the philosophers lay down their forks?
+\item Figure~\ref{fig:bank} shows an implementation of a bank with various
+accounts and transfers between those accounts.
+Unfortunately, running the test reveals that it sometimes leaves unterminated
+processes.  Can you fix the problem?
 \end{enumerate}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/bank.cxl}
+\end{code}
+\caption{[bank.cxl] Bank accounts.}
+\label{fig:bank}
+\end{figure}
 
 \chapter{Semaphores}
 \label{ch:semaphore}
