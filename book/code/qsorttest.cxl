@@ -1,6 +1,6 @@
 import list;
 
-def sorted():
+def sorted():                             # return whether array 'a' is sorted
     result = True;
     for i in 1..(len(a) - 1):
         if a[i - 1] > a[i]:
