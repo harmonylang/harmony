@@ -2504,15 +2504,20 @@ cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
 A good example of a resource with multiple units is the
 so-called \emph{bounded buffer} (aka \emph{ring buffer}).
 \index{ring buffer}
-It is essentially
+Suppose you have a \emph{producer} (some process) wanting to
+communicate a stream of items with a \emph{consumer} (another process).
+A bounded buffer is essentially
 a queue implemented using a circular buffer
 \index{circular buffer}
 of a certain length and two pointers:
-one where items are inserted and one from where items are extracted.  If the
-buffer is full, processes that want to add more items have to wait.  In the usual
-formulation, processes that want to extract an item when the buffer is empty
-also have to wait.
-This problem is known as the ``Producer/Consumer Problem.''
+one where the producer inserts items, and one where the consumer extracts
+items.  If the
+buffer is full, the producer must wait; if the buffer is empty, the
+consumer must wait.
+This problem is known as the ``Producer/Consumer Problem'' and was
+proposed by Dijkstra~\cite{EWD329}.
+Here we generalize it to allowing multiple producers and multiple consumers
+all sharing the same bounded buffer.
 
 Figure~\ref{fig:pc} gives a high-level description of what we want.  The
 two numbers in a state specify
