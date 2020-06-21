@@ -2369,16 +2369,11 @@ Again, there are five philosophers.
 This time, however, there is a glass sitting in the middle of the table with only
 three forks in it.  A philosopher needs one of those forks to eat, but clearly,
 no more than three philosophers can eat at a time.
-
-\begin{quote}
-\begin{itemize}
-\item See if you can come up with a deadlock-free solution using locks.  Represent
-    each fork as a lock.
-\end{itemize}
-\end{quote}
-
-It's not easy.  It would be easy to come up with a solution that uses a single lock
+See if you can come up with a deadlock-free solution using locks.  Represent
+each fork as a lock.  It's not easy.
+It is not hard to come up with a solution that uses a single lock
 and busy waiting, but we would like to avoid busy waiting.
+
 Introduced by Dijkstra,
 a \emph{semaphore} is a synchronization primitive that fits the bill~\cite{EWD35}.
 A semaphore is essentially
@@ -2398,15 +2393,15 @@ To release the resource, a process increments the resource using the
 \index{Vacate}
 operation.  You can think of \texttt{V} standing for \emph{vacate},
 as in vacating the resource.
-
-Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
-semaphores.
-Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
-using a semaphore.
-
 One can think of a semaphore as a generalization of a lock.  In fact, a
 lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
 procures the lock, and \texttt{V} vacates the lock.
+
+Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
+semaphores.
+It represents a semaphore as an integer.
+Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
+using a semaphore.
 
 You may find the free ``The Little Book of Semaphores'' by
 Allen Downey a great resource for working with semaphores~\cite{Downey09}.
@@ -2419,8 +2414,8 @@ Italian philosophers are eating at the same time?
 the solution allows more than one Italian philosopher to eat at the same time?
 \item Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and Figure~\ref{fig:qsorttest} an accompanying test program.
-Note that it uses a shared variable \texttt{a} containing the array to be
-sorted and a shared variable \texttt{todo} containing the ranges of the
+The array to be sorted is stored in  shared variable \texttt{a}.
+Another shared variable, \texttt{todo}, contains the ranges of the
 array that need to be sorted (initially the entire array).
 Re-using as much of this code as you can, implement a parallel version of
 this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
@@ -2429,8 +2424,8 @@ that should replace the \texttt{qsort} code.  Each worker loops until \texttt{to
 is empty and sorts the ranges that it finds until then.  The \texttt{main}
 process needs to wait until all workers are done.  Use a semaphore for this:
 the \texttt{main} process should use \texttt{P} to wait for each
-worker to terminate.  After that it should check if the array is sorted and a
-permutation of the original array.
+worker to terminate.  After that it should check that the array is sorted and
+that it is a permutation of the original array.
 \end{enumerate}
 
 \begin{figure}
