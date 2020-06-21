@@ -459,7 +459,7 @@ and various solutions.
 the problem that in some
 synchronization approaches processes may not be able to get access to a
 resource they need.
-\item Chapters~\ref{ch:monitors} and~\ref{ch:mesa} present
+\item Chapter~\ref{ch:monitors} presents
 \emph{monitors} and \emph{condition variables},
 another approach to process synchronication.
 \item Chapter~\ref{ch:deadlockprevention} revisits deadlocks and how to
@@ -2869,6 +2869,12 @@ starve other writers, they can not starve one another.  And contention for
 a semaphore is resolved probabilistically, each reader and each writer will
 eventually have a chance to enter the critical section almost surely.
 
+\section*{Exercises}
+\begin{enumerate}
+\item TBD.  starvation-free dressing room
+\item TBD.  multiple GPU allocator
+\end{enumerate}
+
 \chapter{Monitors}
 \label{ch:monitors}
 
@@ -3011,8 +3017,8 @@ The \texttt{with} statement makes it easy to acquire and release a lock
 for a section of code.
 In C and C++, support for locks and condition variables is through libraries.
 
-\chapter{Mesa Condition Variables in CXL}
-\label{ch:mesa}
+% \chapter{Mesa Condition Variables in CXL}
+% \label{ch:mesa}
 
 \begin{figure}
 \begin{code}
