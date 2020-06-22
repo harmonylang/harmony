@@ -2817,7 +2817,7 @@ Progress is a weak form of liveness.  It says that \emph{some}
 process can enter, but it does not prevent a scenario such as
 the following.  There are three processes repeatedly trying to
 enter a critical section using a spinlock.  Two of
-the processes successfully enter, alternating, but the third
+the processes successfully keep entering, alternating, but the third
 process never gets a turn.  This is an example of
 \texttt{starvation}.  With a spinlock, this scenario could
 even happen with two processes.  Initially both processes
