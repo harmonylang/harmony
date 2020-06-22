@@ -2870,9 +2870,12 @@ indefinitely.  So even if neither reader was in the critical section
 all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
-In this chapter, we will present a version of a reader/writer lock
-implementation that solves this type of starvation.
-In particular, the probability that either a reader or writer gets starved
+In this chapter, we will present two SBS-based reader/writer lock
+implementations that solves this type of starvation.
+SBS allow much control over which thread runs next and is therefore a
+good starting point for developing synchronization algorithms that do not
+suffer from starvation.
+For the first solution the probability that either a reader or writer gets starved
 will be exponentially diminishing.
 We shall call such a solution \emph{fair}
 \index{fairness}
