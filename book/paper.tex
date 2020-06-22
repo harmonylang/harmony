@@ -2777,10 +2777,17 @@ and so it vacates \texttt{mutex}.
 semaphores using binary semaphores using split binary semaphores.
 \item Implement a solution to the producer/consumer problem
 (Figure~\ref{fig:boundedbuffer}) using split binary semaphores.
-\item Suppose a sports club has only one dressing room.  The policy is that
-either only women or only men may be in the dressing room together.
-Implement a ``dressing room lock'' that allows multiple people to enter the
-dressing room while observing the policy.
+\item Cornell's campus features some one-lane bridges.  Cars can
+only go in one direction at a time. Consider northbound
+and southbound cars wanting to cross a one-lane bridge.
+The bridge allows arbitrary many cars, as long as they're going in the
+same direction.
+Implement a lock that observes this requirement using SBS.  Write methods
+\texttt{nb\_enter()} that a car must invoke before going northbound on
+the bridge and \texttt{nb\_leave()} that the car must invoke after leaving
+the bridge.  Similarly write \texttt{sb\_enter()} and \texttt{sb\_leave()}
+for southbound cars.
+
 \end{enumerate}
 
 \chapter{Starvation}
@@ -2792,8 +2799,24 @@ dressing room while observing the policy.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWfair.cxl}
 \end{code}
-\caption{[RWfair.cxl] Reader/Writer Lock implementation addressing fairness.}
+\caption{[RWfair.cxl] Reader/Writer Lock SBS implementation addressing fairness.}
 \label{fig:RWfair}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqueue.cxl}
+\end{code}
+\caption{[RWqueue.cxl] Reader/Writer Lock SBS implementation using a queue.}
+\label{fig:RWqueue}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqtest.cxl}
+\end{code}
+\caption{[RWqtest.cxl] Test program for Figure~\ref{fig:RWqueue}.}
+\label{fig:RWqtest}
 \end{figure}
 
 A \emph{property}
@@ -2885,7 +2908,7 @@ eventually have a chance to enter the critical section almost surely.
 
 \section*{Exercises}
 \begin{enumerate}
-\item TBD.  starvation-free dressing room
+\item Write a fair solution to the one-lane bridge problem of Chapter~\ref{ch:sbs}.
 \item TBD.  multiple GPU allocator
 \end{enumerate}
 

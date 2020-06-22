@@ -27,8 +27,7 @@ def acquire_rlock():
     V_one_r();     # only other readers can enter
 ;
 def release_rlock():
-    P(&mutex);
-    r_entered = r_entered - 1;
+    P(&mutex); r_entered = r_entered - 1;
     V_one_w();     # other writers have right of way
 ;
 def acquire_wlock():
@@ -42,7 +41,8 @@ def acquire_wlock():
     V(&mutex);    # no other process can enter
 ;
 def release_wlock():
-    P(&mutex);
-    w_entered = w_entered - 1;
+    P(&mutex); w_entered = w_entered - 1;
     V_one_r();     # other readers have right of way
 ;
+mutex = Semaphore(1); r_sema = Semaphore(0); w_sema = Semaphore(0);
+r_entered = 0; r_waiting = 0; w_entered = 0; w_waiting = 0;
