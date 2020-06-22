@@ -2611,13 +2611,21 @@ and return \texttt{True} if it succeeds.
 \item Implement a \emph{bounded stack}.  Method \texttt{push(item)}
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
-\item Implement a thread-safe GPU allocator.  There are \texttt{N} GPUs identified
-by the numbers
+\item Implement a thread-safe GPU allocator by modifying Figure~\ref{fig:gpu}.
+There are \texttt{N} GPUs identified by the numbers
 1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
 Method \texttt{gpuRelease(gpu)} releases the given GPU.  It never needs
 to block.
 \end{enumerate}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/gpu.cxl}
+\end{code}
+\caption{[gpu.cxl] A thread-unsafe GPU allocator.}
+\label{fig:gpu}
+\end{figure}
 
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
