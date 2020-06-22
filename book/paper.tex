@@ -2511,10 +2511,16 @@ buffer is full, the producer must wait; if the buffer is empty, the
 consumer must wait.
 This problem is known as the ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
-Here we generalize it to allowing multiple producers and multiple consumers
-all sharing the same bounded buffer.
 
-Figure~\ref{fig:pc} gives a high-level description of what we want.  The
+The producer/consumer pattern is common.  Processes may be arranged
+in pipelines, where each upstream process is a producer and each downstream
+process is a consumer.
+Or processes may be arranged in a manager/worker pattern, with a manager
+producing jobs and workers executing them in parallel.
+
+In general, we allow multiple producers and multiple consumers
+all sharing the same bounded buffer.
+Figure~\ref{fig:pc} gives a high-level description.  The
 two numbers in a state specify
 the number of items that the producers still can produce and
 the number of items that the consumers have consumed.  In this case
@@ -2536,12 +2542,12 @@ the buffer: \texttt{b\_in} specifies where the next produced item is inserted,
 while \texttt{b\_out} specifies from where the next can be consumed.
 As there may be multiple producers and multiple
 consumers, updates to the indexes, which are shared variables, must be protected.
-To this end we use two semaphores as locks: \texttt{l\_in} for \texttt{b\_in}
+To this end, we use two semaphores as locks: \texttt{l\_in} for \texttt{b\_in}
 and \texttt{l\_out} for \texttt{b\_out}.
 
 Without additional synchronization, the indexes may overflow and point to invalid
 entries in the circular buffer.
-To this end there is a semaphore \texttt{n\_full} that
+For this, there is a semaphore \texttt{n\_full} that
 keeps track of the number of filled entries in the buffer and a semaphore
 \texttt{n\_empty} that keeps track of the number of empty entries in the buffer.
 
@@ -2556,21 +2562,20 @@ to do the same thing concurrently.  Hence the use of the \texttt{l\_in}
 semaphore used as a lock.  Finally, once the item is added, the process
 increments the \texttt{n\_full} semaphore to signal to consumers that
 an item is available.
-
 The consumer code is symmetric.
 
 Note the quite different usage of the \texttt{l\_} semaphores and \texttt{n\_}
 semaphores.
 People often call semaphores that are used as locks \emph{binary semaphores},
 \index{binary semaphore}
-as their counters only take on the values 0 and 1.
+as they only take on the values 0 and 1.
 They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
 \index{counting semaphore}
 They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
-We can run the code through CXL, but what does it test?  There are no
+We can run the code through CXL, but what would it test?  There are no
 assert statements in the code.
 We can split the functionality of this code into two pieces.  One is
 the synchronization part: producers should never run more than \texttt{NSLOTS}
@@ -2584,7 +2589,7 @@ experimenting with different non-negative values for the three constants.
 In particular, any run with a positive \texttt{NSLOTS} and
 $\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
 should terminate, while other values should lead to processes blocking.
-One could write a script like the one in Figure~\ref{fig:pcscript}.
+To this this, one can write a script like the one in Figure~\ref{fig:pcscript}.
 
 Figure~\ref{fig:PCsemadata} tests whether the correct data is sent in
 the correct order.  There are the same number of producers and consumers.
@@ -2606,7 +2611,7 @@ and return \texttt{True} if it succeeds.
 \item Implement a \emph{bounded stack}.  Method \texttt{push(item)}
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
-\item Implement a GPU allocator.  There are \texttt{N} GPUs identified
+\item Implement a thread-safe GPU allocator.  There are \texttt{N} GPUs identified
 by the numbers
 1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
@@ -2633,7 +2638,7 @@ sometimes called \emph{conditional critical sections}
 \glsadd{conditional critical section}
 All critical sections are, in a way, conditional.  Even the basic critical section
 has the condition that a process can only enter if no other process
-is in the critical section.  Reader/writer locks refined that, loosening
+is in the critical section.  Reader/writer locks refined that condition, loosening
 the restriction for improved performance.
 In the case of bounded buffers, there were two CCSs.  First, a CCS
 to add an entry to the bounded buffer that can only be entered by one
@@ -2677,7 +2682,7 @@ SBS.
 
 Step 1 is to enumerate all waiting conditions.  In the case of the reader/writer
 problem, there are two: a process that wants to read may have to wait for a
-writer to leave the critical regiion, while a process that wants to write may
+writer to leave the critical region, while a process that wants to write may
 have to wait until all readers have left the critical section.  If there are $N$
 waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
 each waiting condition and an extra one that processes use when they first try
@@ -2686,11 +2691,11 @@ We shall call this the \texttt{mutex}.
 
 An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
 must always be 0 or 1, and it should be 0 when a process is accessing the shared
-variables.
+variables and 1 when not.
 As it were, these semaphores taken together are emulating a single binary semaphore.
 Initially, \texttt{mutex} is~1 and the other $N$ semaphores
 are all~0.  To maintain the invariant, each process alternates \texttt{P} and
-\texttt{V} operations, starting with \texttt{P~\&(mutex)} when it tries to
+\texttt{V} operations, starting with \texttt{P(\&mutex)} when it tries to
 enter the CCS, and ending with a \texttt{V} operation on one of the semaphores
 (yet to be determined).
 
@@ -2719,17 +2724,18 @@ writers waiting.  If there are readers waiting and there are no writers
 in the critical section, it vacates the semaphore associated with
 readers waiting.  If there are writers waiing and there are no readers
 nor writers in the critical section, it vacates the semaphore associated
-with writers waiting.  If both conditions hold, it could vacates either
+with writers waiting.  If both conditions hold, it could vacate either
 one---it would not matter.  However, it can only vacate one of the semaphores.
 If none of the conditions hold, \texttt{V\_one()} vacates \texttt{mutex}.
 
-Let us return now to \texttt{rlock\_acquire}, in the case that the process
+Let us return now to \texttt{rlock\_acquire}. In the case that the process,
+say $p$,
 found there is a writer in the critical section, it vacates
 \texttt{mutex} and procures \texttt{r\_sema},
 blocking on the semaphore associated
 with waiting readers.  When later some other process passes the baton to
-it by incrementing \texttt{r\_sema}), it updates the state by decrementing
-\texttt{r\_waiting} and incrementing \texttt{r\_entered}.  It
+$p$ by incrementing \texttt{r\_sema}, $p$ updates the state by decrementing
+\texttt{r\_waiting} and incrementing \texttt{r\_entered}.  $p$
 then invokes \texttt{V\_one()} one more time.
 
 As an example, consider the case where there is a writer in the critical
