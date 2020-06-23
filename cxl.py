@@ -796,7 +796,7 @@ class NaryOp(Op):
         assert len(args) == self.n, (self, args)
         if not chk:
             state.failure = "Error: unexpected types in " + str(self.op) + \
-                        "operands: " + str(list(reversed(args)))
+                        " operands: " + str(list(reversed(args)))
             return False
         return True
 

@@ -3463,9 +3463,6 @@ requests.
 
 \section*{Exercises}
 \begin{problems}
-\item Implement a version of parallel qsort (see Example~\ref{ex:qsort})
-using the actor model.  Use an actor for each worker as well as a main
-actor that waits for each worker actor to have finished.
 \item Actors and message queues are good for building pipelines.
 Develop a pipeline that computes Mersenne primes (primes that are one less
 than a factor of two).  Write four actors:
@@ -3479,6 +3476,8 @@ less than a factor of two;
 Configure two versions of the pipeline, one that first checks if a number
 is prime and then if it is one less than a factor of two, the other
 in the opposite order.  Which do you think is better?
+\item Bonus question: implement a version of parallel qsort
+(see Example~\ref{ex:qsort}) using the actor model.
 \end{problems}
 
 \chapter{Non-Blocking Synchronization}
@@ -3521,7 +3520,7 @@ the old value;
 the old value.
 \end{itemize}
 
-Method \texttt{produce(item)} uses \texttt{inc \&(back)} to allocate
+Method \texttt{produce(item)} uses \texttt{inc(\&back)} to allocate
 the next available slot in the \texttt{items} array.
 It stores the item as a singleton tuple.
 Method \texttt{consume()} repeatedly scans the array, up to the
@@ -3545,6 +3544,9 @@ However, in the literature there are many examples of practical
 non-blocking (aka \emph{wait-free})
 \index{wait-free synchronization}
 synchronization algorithms~\cite{}.
+There are also various algorithms where read-only access does not
+require a lock but updates do require a lock---these are useful in
+situations where most accesses are read-only.
 
 \chapter{Barrier Synchronization}
 \label{ch:barrier}

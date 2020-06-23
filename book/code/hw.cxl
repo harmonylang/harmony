@@ -3,7 +3,7 @@ const MAX_ITEMS = 3;
 def inc(pcnt):
     atomic:
         result = ^pcnt;
-        ^pcnt = (^pcnt) + 1;
+        ^pcnt = ^pcnt + 1;
     ;
 ;
 def swap(pv):
