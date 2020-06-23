@@ -30,7 +30,7 @@
 {
   name=actor model,
   description={is a concurrency model where there are no shared variables, only
-      processes with private variables and exchanging messages}
+      processes with private variables that communicate through message passing}
 }
 \newglossaryentry{atomicity}
 {
@@ -569,8 +569,7 @@ $
 \section*{Exercises}
 \begin{problems}
 \item See what happens if, instead of initializing \texttt{result} to 0,
-you initialize it to 1.  (You do not need to understand the error report at this time.)
-Explain in English what the problem is.
+you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in Chapter~\ref{ch:cxlmachine}.)
 \item Write a CXL program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{problems}
@@ -2371,7 +2370,8 @@ Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 Italian philosophers are eating at the same time?
 \item Implement a test program that checks to see that
 the solution allows more than one Italian philosopher to eat at the same time?
-\item Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
+\item \label{ex:qsort}
+Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and Figure~\ref{fig:qsorttest} an accompanying test program.
 The array to be sorted is stored in  shared variable \texttt{a}.
 Another shared variable, \texttt{todo}, contains the ranges of the
@@ -2472,7 +2472,9 @@ This problem is known as the ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
 
 The producer/consumer pattern is common.  Processes may be arranged
-in pipelines, where each upstream process is a producer and each downstream
+in \emph{pipelines},
+\index{pipeline}
+where each upstream process is a producer and each downstream
 process is a consumer.
 Or processes may be arranged in a manager/worker pattern, with a manager
 producing jobs and workers executing them in parallel.
@@ -3330,7 +3332,6 @@ scenario.}
 \label{fig:dinersavoid}
 \end{figure}
 
-
 \section*{Exercises}
 \begin{problems}
 \item Figure~\ref{fig:bank} shows an implementation of a bank with various
@@ -3353,9 +3354,10 @@ accounts at the beginning of the test is the same as at the end.
 \label{fig:bank}
 \end{figure}
 
-\chapter{Actors and Synchronized Queues}
+\chapter{Actors and Message Passing}
 \label{ch:actor}
 \index{actor model}
+\index{message passing}
 \glsadd{actor model}
 
 \begin{figure}
@@ -3382,9 +3384,9 @@ accounts at the beginning of the test is the same as at the end.
 \label{fig:actortest}
 \end{figure}
 
-Some programming languages favor a completely different way of implementing
+Some programming languages favor a different way of implementing
 synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
-processes that have only private memory and communicate through message queues.
+processes that have only private memory and communicate through message passing.
 See Figure~\ref{fig:actorpic} for an illustration.
 Given that there is no shared memory in the actor model (other than the message
 queues, which have built-in synchronization), there is no need
@@ -3411,7 +3413,7 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item \texttt{enqueue(q, item)} add \texttt{item} to the queue pointed to by \texttt{q};
+\item \texttt{enqueue(q, item)} adds \texttt{item} to the queue pointed to by \texttt{q};
 \item \texttt{dequeue(q)} waits for and returns an item on the queue pointed to by \texttt{q}.
 \end{itemize}
 
@@ -3420,8 +3422,9 @@ Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
 \texttt{dequeue} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
-Figure~\ref{fig:actor} shows a CXL solution to the producer/consumer problem using
-an actor (as illustrated in Figure~\ref{fig:actorpic}.
+Figure~\ref{fig:actor} shows a CXL solution to the producer/consumer problem
+(with an unbounded buffer)
+using an actor (as illustrated in Figure~\ref{fig:actorpic}.
 \texttt{pc\_actor} is essentially a matchmaker: it matches
 \texttt{.produce} requests with \texttt{.consume} requests.
 Sometimes it may have buffered \texttt{.consume} requests and is waiting for
@@ -3457,6 +3460,26 @@ Figure~\ref{fig:actortest} shows how this code may be used.  It spawns
 \texttt{NITEMS} producer and consumer processes.  Note that in that
 case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
 requests.
+
+\section*{Exercises}
+\begin{problems}
+\item Implement a version of parallel qsort (see Example~\ref{ex:qsort})
+using the actor model.  Use an actor for each worker as well as a main
+actor that waits for each worker actor to have finished.
+\item Actors and message queues are good for building pipelines.
+Develop a pipeline that computes Mersenne primes (primes that are one less
+than a factor of two).  Write four actors:
+\begin{enumerate}
+\item an actor that generates a sequence of integers 1 through \texttt{N};
+\item an actor that receives integers and forwards only those that are prime;
+\item an actor that receives integers and forwards only those that are one
+less than a factor of two;
+\item an actor that receives integers but otherwise ignores them.
+\end{enumerate}
+Configure two versions of the pipeline, one that first checks if a number
+is prime and then if it is one less than a factor of two, the other
+in the opposite order.  Which do you think is better?
+\end{problems}
 
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
