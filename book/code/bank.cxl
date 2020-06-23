@@ -18,7 +18,8 @@ def transfer(a1, a2, amount):
     unlock(&accounts[a1].lock);
 ;
 def process():
-    let a1 = choose(0..(NACCOUNTS-1)), a2 = choose((0..(NACCOUNTS-1)) - { a1 }):
+    let a1 = choose(0..(NACCOUNTS-1)),
+                        a2 = choose((0..(NACCOUNTS-1)) - { a1 }):
         transfer(a1, a2, choose(0..MAX));
     ;
 ;

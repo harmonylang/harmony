@@ -5,45 +5,35 @@ def acquire_rlock():
         while blocked:
             lock(&rwlock);
             if nwriters == 0:
-                nreaders = nreaders + 1; blocked = False;
+                nreaders = nreaders + 1;
+                blocked = False;
             ;
             unlock(&rwlock);
         ;
     ;
 ;
 def release_rlock():
-    lock(&rwlock); nreaders = nreaders - 1; unlock(&rwlock);
+    lock(&rwlock);
+    nreaders = nreaders - 1;
+    unlock(&rwlock);
 ;
 def acquire_wlock():
     let blocked = True:
         while blocked:
             lock(&rwlock);
             if (nreaders == 0) and (nwriters == 0):
-                nwriters = 1; blocked = False;
+                nwriters = 1;
+                blocked = False;
             ;
             unlock(&rwlock);
         ;
     ;
 ;
 def release_wlock():
-    lock(&rwlock); nwriters = 0; unlock(&rwlock);
-;
-def process():
-    while choose({ False, True }):
-        if choose({ .read, .write }) == .read:
-            acquire_rlock();
-            @rcs: assert atLabel.wcs == dict{};
-            release_rlock();
-        else:                       # .write
-            acquire_wlock();
-            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
-                         (atLabel.rcs == dict{})
-                  ;
-            release_wlock();
-        ;
-    ;
+    lock(&rwlock);
+    nwriters = 0;
+    unlock(&rwlock);
 ;
 rwlock = Lock();
-nreaders = 0; nwriters = 0;
-for i in 1..4: spawn process();
-;
+nreaders = 0;
+nwriters = 0;

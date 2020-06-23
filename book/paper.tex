@@ -454,9 +454,6 @@ locks, which allow multiple processes in a critical section if they are
 all only executing read-only accesses.
 Chapter~\ref{ch:rdwrbusy} also talks about busy-waiting, which is
 an undesirable approach to synchronize processes.
-\item Chapter~\ref{ch:deadlock} describes \emph{deadlock}
-where a set of processes are indefinitely waiting for one another to
-release a resource.
 \item Chapter~\ref{ch:semaphore} introduces \emph{semaphores},
 a generalization of locks
 that is good not only for mutual exclusion but also for waiting for
@@ -471,8 +468,9 @@ resource they need.
 \item Chapter~\ref{ch:monitors} presents
 \emph{monitors} and \emph{condition variables},
 another approach to process synchronication.
-\item Chapter~\ref{ch:deadlockprevention} revisits deadlocks and how to
-avoid them.
+\item Chapter~\ref{ch:deadlock} describes \emph{deadlock}
+where a set of processes are indefinitely waiting for one another to
+release a resource.
 \item Chapter~\ref{ch:actor} presents the \emph{actor model} as an approach to
 synchronization.
 \item Chapter~\ref{ch:nonblocking} introduces \emph{non-blocking} or
@@ -1140,7 +1138,7 @@ both choices.)
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=4in]{figures/mutex-crop.pdf}
+\includegraphics[width=4.5in]{figures/mutex-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of mutual exclusion with up to two processes.
 The first number in a state gives the number of processes; the second number is the
@@ -2017,8 +2015,16 @@ version of the module.
 \end{figure}
 
 \begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWbusytest.cxl}
+\end{code}
+\caption{[RWbusytest.cxl] Test code for Figure~\ref{fig:rwbusy}.}
+\label{fig:rwbusytest}
+\end{figure}
+
+\begin{figure}
 \begin{center}
-\includegraphics[width=2in]{figures/rdwr-crop.pdf}
+\includegraphics[width=2.5in]{figures/rdwr-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of reader/writer locks with
 up to two processes.
@@ -2046,6 +2052,7 @@ this chapter and future ones.
 Figure~\ref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
+Figure~\ref{fig:rwbusytest} shows how the code may be used.
 We will call the lock the \emph{mutex} to distinguish it clearly from
 the reader/writer lock that we are implementing.
 The mutex is used to protect shared access to the counters.
@@ -2096,11 +2103,11 @@ processes spin in a loop until some desirable application-level condition is met
 Figure~\ref{fig:inc} also has an example of busy-waiting: the \texttt{main}
 process waits for the other two processes to finish by checking their \texttt{done}
 flags.
+
 The astute reader might wonder if obtaining the mutex itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the mutex is available
 (see Figure~\ref{fig:spinlocks}).
-
 However, there is a big difference.  As we pointed out, the processes that
 are waiting for a spinlock are \emph{blocked}.
 In most operating systems and programming language runtimes,
@@ -2238,87 +2245,6 @@ to a read lock when its done writing but not done reading.  Implement
 \texttt{downgrade}.  Note, you cannot do this simply by releasing the
 write lock and then obtaining the read lock.
 \end{problems}
-
-\chapter{Deadlock}
-\label{ch:deadlock}
-\index{deadlock}
-\glsadd{deadlock}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Diners.cxl}
-\end{code}
-\caption{[Diners.cxl] Dining Philosophers.}
-\label{fig:diners}
-\end{figure}
-
-When multiple processes are synchronizing access to shared resources, they
-may end up in a \emph{deadlock} situation where one or more of the processes
-end up being blocked indefinitely because each is waiting for another to give
-up a resource.
-The famous Dutch computer scientist Edsger W.~Dijkstra illustrated this using
-a scenario he called ``Dining Philosophers.''
-\index{dining philosopher}
-
-Imagine five philosopers sitting around a table, each with a plate of food in
-front of them and a fork between each two plates.  Each philosopher requires
-two forks to eat.  To start eating, a philosopher first picks up the fork on
-the left, then the fork on the right.  Each philospher likes to take breaks
-from eating to think for a while.  To do so, the philosopher puts down both
-forks.  Each philosopher repeat this procedure.  Dijkstra had them repeating
-this for ever, but for the purposes of this book, philosphers can leave
-the table when they're not eating.
-
-Figure~\ref{fig:diners} implements the dining philosophers in CXL, using a
-process for each philosopher and a lock for each fork.  If you
-run it, CXL complains that the execution may not terminate, with all five
-processes being blocked trying to acquire the lock.
-
-\begin{quote}
-\begin{itemize}
-\item Do you see what the problem is?
-\item Does it depend on \texttt{N}, the number of philosophers?
-\end{itemize}
-\end{quote}
-
-We will discuss ways of preventing deadlock later (Chapter~\ref{ch:deadlockprevention}),
-but one important
-approach to preventing deadlock is to prevent a cycle from forming, with each
-process waiting for the next process on the cycle.
-We can do this by establishing an ordering among the
-resources (in this case the forks) and, when needing more than one
-resource, always acquiring them in order.  In the case of the philosopers,
-they could prevent deadlock by always picking up the lower numbered fork
-before the higher numbered fork, like so:
-
-\begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-    if left < right:
-        lock(&forks[left]);
-        lock(&(orks[right]);
-    else:
-        unlock(&forks[right]);
-        unlock(&forks[left]);
-    ;
-\end{Verbatim}
-\end{code}
-
-\section*{Exercises}
-\begin{problems}
-\item Does it matter in what order the philosophers lay down their forks?
-\item Figure~\ref{fig:bank} shows an implementation of a bank with various
-accounts and transfers between those accounts.
-Unfortunately, running the test reveals that it sometimes leaves unterminated
-processes.  Can you fix the problem?
-\end{problems}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/bank.cxl}
-\end{code}
-\caption{[bank.cxl] Bank accounts.}
-\label{fig:bank}
-\end{figure}
 
 \chapter{Semaphores}
 \label{ch:semaphore}
@@ -3198,9 +3124,52 @@ Explain why this is so.  Then change the specification and the solution so that
 it is fair.
 \end{problems}
 
-\chapter{Deadlock Prevention}
-\label{ch:deadlockprevention}
-\index{deadlock prevention}
+\chapter{Deadlock}
+\label{ch:deadlock}
+\index{deadlock}
+\glsadd{deadlock}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Diners.cxl}
+\end{code}
+\caption{[Diners.cxl] Dining Philosophers.}
+\label{fig:diners}
+\end{figure}
+
+When multiple processes are synchronizing access to shared resources, they
+may end up in a \emph{deadlock} situation where one or more of the processes
+end up being blocked indefinitely because each is waiting for another to give
+up a resource.
+The famous Dutch computer scientist Edsger W.~Dijkstra illustrated this using
+a scenario he called ``Dining Philosophers.''
+\index{dining philosopher}
+
+Imagine five philosopers sitting around a table, each with a plate of food in
+front of them and a fork between each two plates.  Each philosopher requires
+two forks to eat.  To start eating, a philosopher first picks up the fork on
+the left, then the fork on the right.  Each philospher likes to take breaks
+from eating to think for a while.  To do so, the philosopher puts down both
+forks.  Each philosopher repeat this procedure.  Dijkstra had them repeating
+this for ever, but for the purposes of this book, philosphers can leave
+the table when they're not eating.
+
+Figure~\ref{fig:diners} implements the dining philosophers in CXL, using a
+process for each philosopher and a lock for each fork.  If you
+run it, CXL complains that the execution may not terminate, with all five
+processes being blocked trying to acquire the lock.
+
+\begin{quote}
+\begin{itemize}
+\item Do you see what the problem is?
+\item Does it depend on \texttt{N}, the number of philosophers?
+\item Does it matter in what order the philosophers lay down their forks?
+\end{itemize}
+\end{quote}
+
+% \chapter{Deadlock Prevention}
+% \label{ch:deadlockprevention}
+% \index{deadlock prevention}
 
 \begin{figure}
 \begin{code}
@@ -3210,8 +3179,7 @@ it is fair.
 \label{fig:dinerscv}
 \end{figure}
 
-As introduced in Chapter~\ref{ch:deadlock}, deadlock is the situation when there are
-a collection of processes waiting for one another to release one or more resources.
+\noindent
 There are four conditions that must hold for deadlock to occur~\cite{CES71}:
 \begin{enumerate}
 \item \emph{Mutual Exclusion}: each resource can only be used by one process at a time:
@@ -3279,16 +3247,38 @@ while forks[right]:
 \end{itemize}
 \end{quote}
 
-The \texttt{Preemption} approach suggested by Havender is to allow processes to back out.
+The \emph{Preemption} approach suggested by Havender is to allow processes to back out.
 While this could be done, this invariably leads to a busy waiting solution
 where a process keeps obtaining locks and releasing them again until it
 finally is able to get all of them.
-The \emph{No Circular Waiting} approach to order the resources was already presented in
-Chapter~\ref{ch:deadlock}
 
-There is, however, another approach. which is sometimes called
+The \emph{No Circular Waiting} approach
+is to prevent a cycle from forming, with each
+process waiting for the next process on the cycle.
+We can do this by establishing an ordering among the
+resources (in this case the forks) and, when needing more than one
+resource, always acquiring them in order.  In the case of the philosopers,
+they could prevent deadlock by always picking up the lower numbered fork
+before the higher numbered fork, like so:
+
+\vspace{1em}
+\begin{code}
+\begin{Verbatim}[xleftmargin=5mm,numbers=left]
+    if left < right:
+        lock(&forks[left]);
+        lock(&(orks[right]);
+    else:
+        unlock(&forks[right]);
+        unlock(&forks[left]);
+    ;
+\end{Verbatim}
+\end{code}
+\vspace{1em}
+
+This completes all the Havender methods.
+There is, however, another approach, which is sometimes called
 \emph{deadlock avoidance}.
-\index{deadlock avoidance}.
+\index{deadlock avoidance}
 In the case of the Dining Philosophers, we want to avoid the situation where each
 diner picks up a fork.  So if we can prevent more than four diners from starting to
 eat at the same time, then we can avoid the conditions for deadlock from ever
@@ -3309,6 +3299,23 @@ making them generally quite impractical.
 \caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
 scenario.}
 \label{fig:dinersavoid}
+\end{figure}
+
+
+\section*{Exercises}
+\begin{problems}
+\item Figure~\ref{fig:bank} shows an implementation of a bank with various
+accounts and transfers between those accounts.
+Unfortunately, running the test reveals that it sometimes leaves unterminated
+processes.  Can you fix the problem?
+\end{problems}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/bank.cxl}
+\end{code}
+\caption{[bank.cxl] Bank accounts.}
+\label{fig:bank}
 \end{figure}
 
 \chapter{Actors and Synchronized Queues}

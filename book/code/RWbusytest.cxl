@@ -1,0 +1,18 @@
+def process():
+    while choose({ False, True }):
+        if choose({ .read, .write }) == .read:
+            acquire_rlock();
+            @rcs: assert atLabel.wcs == dict{};
+            release_rlock();
+        else:                       # .write
+            acquire_wlock();
+            @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
+                         (atLabel.rcs == dict{})
+                  ;
+            release_wlock();
+        ;
+    ;
+;
+for i in 1..4:
+    spawn process();
+;

@@ -3,18 +3,6 @@ import synch;
 const NREADERS = 2;
 const NWRITERS = 2;
 
-def acquire_rlock():
-    lock(&rwlock);
-;
-def release_rlock():
-    unlock(&rwlock);
-;
-def acquire_wlock():
-    lock(&rwlock);
-;
-def release_wlock():
-    unlock(&rwlock);
-;
 def reader(self):
     acquire_rlock();
     @rcs: assert atLabel.wcs == dict{};

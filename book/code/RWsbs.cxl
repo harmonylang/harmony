@@ -13,8 +13,7 @@ def acquire_rlock():
     P(&mutex);
     if w_entered > 0:
         r_waiting = r_waiting + 1;
-        V(&mutex);
-        P(&r_sema);
+        V(&mutex); P(&r_sema);
         r_waiting = r_waiting - 1;
     ;
     r_entered = r_entered + 1;
@@ -29,8 +28,7 @@ def acquire_wlock():
     P(&mutex);
     if (r_entered + w_entered) > 0:
         w_waiting = w_waiting + 1;
-        V(&mutex);
-        P(&w_sema);
+        V(&mutex); P(&w_sema);
         w_waiting = w_waiting - 1;
     ;
     w_entered = w_entered + 1;
@@ -42,5 +40,4 @@ def release_wlock():
     V_one();
 ;
 mutex = Semaphore(1); r_sema = Semaphore(0); w_sema = Semaphore(0);
-r_entered = 0; r_waiting = 0;
-w_entered = 0; w_waiting = 0;
+r_entered = 0; r_waiting = 0; w_entered = 0; w_waiting = 0;
