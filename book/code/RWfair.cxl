@@ -19,9 +19,8 @@ def V_one_w():  # prefers writer next over reader next
 def acquire_rlock():
     P(&mutex);
     if (w_entered > 0) or (w_waiting > 0):
-        r_waiting = r_waiting + 1;
-        V(&mutex); P(&r_sema);
-        r_waiting = r_waiting - 1;
+        r_waiting = r_waiting + 1; V(&mutex);
+        P(&r_sema); r_waiting = r_waiting - 1;
     ;
     r_entered = r_entered + 1;
     V_one_r();     # only other readers can enter
@@ -33,9 +32,8 @@ def release_rlock():
 def acquire_wlock():
     P(&mutex);
     if (r_entered + w_entered) > 0:
-        w_waiting = w_waiting + 1;
-        V(&mutex); P(&w_sema);
-        w_waiting = w_waiting - 1;
+        w_waiting = w_waiting + 1; V(&mutex);
+        P(&w_sema); w_waiting = w_waiting - 1;
     ;
     w_entered = w_entered + 1;
     V(&mutex);    # no other process can enter
