@@ -3548,6 +3548,22 @@ There are also various algorithms where read-only access does not
 require a lock but updates do require a lock---these are useful in
 situations where most accesses are read-only.
 
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/lst1.cxl}
+\end{code}
+\caption{[lst1.cxl] List with non-blocking read operations, part 1.}
+\label{fig:lst1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/lst2.cxl}
+\end{code}
+\caption{[lst2.cxl] List with non-blocking read operations, part 2.}
+\label{fig:lst2}
+\end{figure}
+
 \chapter{Barrier Synchronization}
 \label{ch:barrier}
 \index{barrier synchronization}

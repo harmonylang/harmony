@@ -1,14 +1,3 @@
-import synch;
-import alloc;
-
-def lst_node(v, n):
-    result = rec_alloc();
-    (^result).data = dict{ .lock: Lock(), .value: v };
-    (^result).next = n;
-;
-def lst_new():
-    result = lst_node(-inf, lst_node(inf, NULL));
-;
 def lst_find(lst, v):
     let before = lst, after = (^before).next:
         lock(&(^before).data.lock);
@@ -41,15 +30,6 @@ def lst_remove(lst, v):
             unlock(&(^after).data.lock);
         ;
         unlock(&(^before).data.lock);
-    ;
-;
-
-def lst_contains(lst, v):
-    let n = lst:
-        while (^n).data.value < v:
-            n = (^n).next;
-        ;
-        result = (^n).data.value == v;
     ;
 ;
 
