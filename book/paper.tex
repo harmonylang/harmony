@@ -882,7 +882,10 @@ along with an optional tag specified in the \texttt{spawn}
 \index{tag}
 statement.
 The default tag is the first argument to the method.
-In Figure~\ref{fig:inc}, the created processes have name tags
+A name tag is represented as a dictionary with keys \texttt{.name}
+and \texttt{.tag}, but we shall often abbreviate it using the notation
+\texttt{name/tag}.
+For example, in Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
 The state of a process is called a \emph{context} (aka \emph{continuation}):
@@ -995,6 +998,27 @@ and storing \texttt{True} into \texttt{done[0]}.
 \end{itemize}
 
 This makes precise the concurrency problem that we encountered.
+
+CXL can report a variety of failure types:
+\begin{itemize}
+\item \texttt{Safety violation}: this means something went wrong with
+at least one of the executions of the program that it tried.  This
+can include a failing assertion, divide by zero, using an uninitialized
+or non-existent variable, dividing a set by an integer, and so on.
+CXL will print at trace of the shortest bad execution that it found.
+\item \texttt{Infinite loop}: some process ran into an infinite loop
+in which it got back to the same state without having accessed any
+shared variables.
+\item \texttt{Non-terminating States}: CXL found one or more states
+from which there does not exist an execution such that all processes
+terminate.  CXL will not only print the non-terminating state with
+the shortest trace, but also the list of processes that are running
+at that state, along with their name tags and program counters.
+\item \texttt{Stopped States}: Similar to non-terminating states,
+these are states in which some processes are left that cannot
+terminate.  Chapter~\ref{ch:synch} will explain what it means for
+a process to be stopped.
+\end{itemize}
 
 \section*{Exercises}
 
