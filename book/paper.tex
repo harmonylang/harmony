@@ -11,6 +11,15 @@
 \usepackage{fancyvrb}
 \usepackage{comment}
 \usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{etoolbox}
+
+\AtBeginEnvironment{enumerate}{\everymath{\displaystyle}}
+\newlist{problems}{enumerate}{2}
+\setlist[problems]{wide=0pt}
+\setlist[problems,1]{label=\thechapter.\arabic*, font=\bfseries, wide=0pt}
+\setlist[problems,2]{label=(\alph*), wide =0.5em, topsep=2pt, itemsep=2pt}
 
 \widowpenalty 10000
 \clubpenalty 10000
@@ -560,13 +569,13 @@ $
 \end{code}
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item See what happens if, instead of initializing \texttt{result} to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.)
 Explain in English what the problem is.
 \item Write a CXL program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
-\end{enumerate}
+\end{problems}
 
 \chapter{The Problem of Concurrent Programming}
 \label{ch:concurrent}
@@ -691,7 +700,7 @@ it is easier to find concurrency bugs using CXL.
 \label{fig:incmany}
 \end{figure}
 
-\begin{enumerate}
+\begin{problems}
 \item CXL programs can usually be easily translated into Python.  For example,
 Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
 \begin{enumerate}
@@ -709,7 +718,7 @@ How large does \texttt{N} need to be for assertions to fail?
 \item Can you think of a fix to Figure~\ref{fig:inc}?  Try one or two different fixes
 and run them through CXL.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
-\end{enumerate}
+\end{problems}
 
 \chapter{The CXL Virtual Machine}
 \label{ch:cxlmachine}
@@ -991,7 +1000,7 @@ This makes precise the concurrency problem that we encountered.
 
 \section*{Exercises}
 
-\begin{enumerate}
+\begin{problems}
 \item Figure~\ref{fig:incenter} shows an attempt at trying to fix the code of
     Figure~\ref{fig:inc}.  Run it through CXL and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
@@ -999,7 +1008,7 @@ This makes precise the concurrency problem that we encountered.
 \item What if we moved line~2 of Figure~\ref{fig:incenter} to after the \texttt{if}
     statement (between lines~7 and~8)?  Do you think that would work?  Run it through
     CXL and describe either why it works or why it does not work.
-\end{enumerate}
+\end{problems}
 
 \begin{figure}
 \begin{code}
@@ -1252,7 +1261,7 @@ is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
 turn.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
@@ -1269,7 +1278,7 @@ mutual exclusion and progress.  Try them with CXL and see if they work or not.
 If they don't, try to understand why.
 Do not despair if you can't figure it out---as
 we will find out, it is possible but not easy.
-\end{enumerate}
+\end{problems}
 
 \chapter{Peterson's Algorithm}
 \label{ch:peterson}
@@ -1505,7 +1514,7 @@ predicate is not invariant, and therefore not an inductive invariant either.
 (The author fixed the Wikipedia page.)
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Figure~\ref{fig:csonebit} presents another correct solution to the
 mutual exclusion problem.  It is similar to the one in
 Figure~\ref{fig:upflags}, but has a process \emph{back out and try again}
@@ -1540,7 +1549,7 @@ reversed.  Then run the program in Figure~\ref{fig:peterson} after reversing
 the two assignments and describe in English what happens.
 \item Bonus question:
 Can you generalize Peterson's algorithm to more than two processes?
-\end{enumerate}
+\end{problems}
 
 \begin{figure}
 \begin{code}
@@ -1763,12 +1772,12 @@ Because CXL tries every possible execution, the process is guaranteed
 to find violations of the invariant if it does not hold.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Implement an atomic swap operation.  It should take two pointer arguments
 and swap the values.
 \item Implement a spinlock using the atomic swap operation.
 \item Write out the invariants that need to hold and check them using CXL.
-\end{enumerate}
+\end{problems}
 
 \chapter{Locks and Blocking}
 \label{ch:synch}
@@ -1985,14 +1994,14 @@ Part of the reason is that the \texttt{synchS} module keeps track of the order
 in which processes wait for a lock.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Write a synchronization module using your own implementation of \texttt{Lock}
 (for example, using Peterson's algorithm or using \texttt{swap}).
 \item
 Run Figure~\ref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
 and (3) your own module.  Report how many states were explored by CXL for each
 version of the module.
-\end{enumerate}
+\end{problems}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
@@ -2121,7 +2130,7 @@ that all states are non-terminating and lead to a state in which
 all processes are blocked.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Draw additional states and steps in Figure~\ref{fig:rdwr}
 for three processes.
 \item Using busy waiting, implement a ``bound lock'' that allows
@@ -2133,7 +2142,7 @@ and \texttt{release\_bound\_lock()}.
 \item Write a test program for your bound lock
 that checks that no more than \texttt{M} processes can acquire the
 bound lock.
-\end{enumerate}
+\end{problems}
 
 \chapter{Reader/Writer Locks with Blocking}
 \label{ch:rdwr2}
@@ -2214,7 +2223,7 @@ explore all desirable executions.  While CXL can help explore all cornercases
 in a test, it cannot find problems that the test is not looking for.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Why do you suppose the code in Figure~\ref{fig:rwmulti} uses a flag
 per process rather than a simple counter?
 Can you write a version of this test that uses a counter instead
@@ -2228,7 +2237,7 @@ can acquire the bound lock at the same time.
 to a read lock when its done writing but not done reading.  Implement
 \texttt{downgrade}.  Note, you cannot do this simply by releasing the
 write lock and then obtaining the read lock.
-\end{enumerate}
+\end{problems}
 
 \chapter{Deadlock}
 \label{ch:deadlock}
@@ -2295,13 +2304,13 @@ before the higher numbered fork, like so:
 \end{code}
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Does it matter in what order the philosophers lay down their forks?
 \item Figure~\ref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
 processes.  Can you fix the problem?
-\end{enumerate}
+\end{problems}
 
 \begin{figure}
 \begin{code}
@@ -2407,7 +2416,7 @@ You may find the free ``The Little Book of Semaphores'' by
 Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 
 \section*{Exercices}
-\begin{enumerate}
+\begin{problems}
 \item Add an assertion that demonstrates that at most three
 Italian philosophers are eating at the same time?
 \item Implement a test program that checks to see that
@@ -2426,7 +2435,7 @@ process needs to wait until all workers are done.  Use a semaphore for this:
 the \texttt{main} process should use \texttt{P} to wait for each
 worker to terminate.  After that it should check that the array is sorted and
 that it is a permutation of the original array.
-\end{enumerate}
+\end{problems}
 
 \begin{figure}
 \begin{code}
@@ -2603,7 +2612,7 @@ The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
 \section*{Exercises}
-\begin{enumerate}
+\begin{problems}
 \item Change the code in Figure~\ref{fig:boundedbuffer} so that
 \texttt{produce()} fails if the buffer is full rather than block.
 \texttt{produce()} should return \texttt{False} if it fails
@@ -2611,13 +2620,14 @@ and return \texttt{True} if it succeeds.
 \item Implement a \emph{bounded stack}.  Method \texttt{push(item)}
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
-\item Implement a thread-safe GPU allocator by modifying Figure~\ref{fig:gpu}.
+\item \label{ex:gpu} Implement a thread-safe GPU allocator by modifying
+Figure~\ref{fig:gpu}.
 There are \texttt{N} GPUs identified by the numbers
 1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
 Method \texttt{gpuRelease(gpu)} releases the given GPU.  It never needs
 to block.
-\end{enumerate}
+\end{problems}
 
 \begin{figure}
 \begin{code}
@@ -2772,13 +2782,13 @@ and so it vacates \texttt{mutex}.
 \end{enumerate}
 
 \section*{Exercises}
-\begin{enumerate}
-\item Assume that you have only binary semaphores.  Implement counting
-semaphores using binary semaphores using split binary semaphores.
+\begin{problems}
+\item Assume that you have only binary semaphores.
+Implement counting semaphores using binary semaphores using split binary semaphores.
 \item Implement a solution to the producer/consumer problem
 (Figure~\ref{fig:boundedbuffer}) using split binary semaphores.
-\item Cornell's campus features some one-lane bridges.  Cars can
-only go in one direction at a time. Consider northbound
+\item \label{ex:onelane} Cornell's campus features some one-lane bridges.
+Cars can only go in one direction at a time. Consider northbound
 and southbound cars wanting to cross a one-lane bridge.
 The bridge allows arbitrary many cars, as long as they're going in the
 same direction.
@@ -2788,7 +2798,7 @@ the bridge and \texttt{nb\_leave()} that the car must invoke after leaving
 the bridge.  Similarly write \texttt{sb\_enter()} and \texttt{sb\_leave()}
 for southbound cars.
 
-\end{enumerate}
+\end{problems}
 
 \chapter{Starvation}
 \label{ch:starvation}
@@ -2916,12 +2926,13 @@ in the order in which they appear in the queue.
 \end{figure}
 
 \section*{Exercises}
-\begin{enumerate}
-\item Write a fair solution to the one-lane bridge problem of Chapter~\ref{ch:sbs}.
+\begin{problems}
+\item Write a fair solution to the one-lane bridge problem of
+Exercise~\ref{ex:onelane}.
 If you want to use the queue method, you can change the signature of the
 methods to enter the bridge, adding an argument that contains a pointer to a
 semaphore.
-\end{enumerate}
+\end{problems}
 
 \chapter{Monitors}
 \label{ch:monitors}
@@ -3172,8 +3183,9 @@ Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \section*{Exercises}
-\begin{enumerate}
-\item Write a new version of the GPU allocator of Chapter~\ref{ch:bb}.  In this version,
+\begin{problems}
+\item Write a new version of the GPU allocator in Exercise~\ref{ex:gpu}.
+In this version,
 a process is allowed to allocate a set of GPUs and release a set of GPUs that it
 has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
 available, but it should grant them as soon as they are available.
@@ -3182,7 +3194,7 @@ A process does not have to return all the GPUs it allocated at once.
 \item The specification in the previous question makes the solution unfair.
 Explain why this is so.  Then change the specification and the solution so that
 it is fair.
-\end{enumerate}
+\end{problems}
 
 \chapter{Deadlock Prevention}
 \label{ch:deadlockprevention}
