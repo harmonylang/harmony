@@ -4,6 +4,7 @@ import getopt
 import traceback
 import collections
 import time
+import math
 
 # TODO.  This should not be global ideally
 files = {}              # files that have been read already
@@ -74,6 +75,7 @@ def isreserved(s):
         "if",
         "import",
         "in",
+        "inf",
         "keys",
         "len",
         "let",
@@ -215,7 +217,7 @@ def lexer(s, file):
     return result
 
 def strValue(v):
-    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int):
+    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
         return str(v)
     if isinstance(v, str):
         return "." + v
@@ -224,7 +226,7 @@ def strValue(v):
 def keyValue(v):
     if isinstance(v, bool):
         return (0, v)
-    if isinstance(v, int):
+    if isinstance(v, int) or isinstance(v, float):
         return (1, v)
     if isinstance(v, str):
         return (2, v)
@@ -856,7 +858,7 @@ class NaryOp(Op):
         elif self.n == 1:
             e = context.pop()
             if op == "-":
-                if not self.checktype(state, sa, isinstance(e, int)):
+                if not self.checktype(state, sa, isinstance(e, int) or isinstance(e, float)):
                     return
                 context.push(-e)
             elif op == "not":
@@ -917,12 +919,12 @@ class NaryOp(Op):
             e1 = context.pop()
             e2 = context.pop()
             if op == "==":
-                if not self.checktype(state, sa, type(e1) == type(e2)):
-                    return
+                # if not self.checktype(state, sa, type(e1) == type(e2)):
+                #     return
                 context.push(e1 == e2)
             elif op == "!=":
-                if not self.checktype(state, sa, type(e1) == type(e2)):
-                    return
+                # if not self.checktype(state, sa, type(e1) == type(e2)):
+                #     return
                 context.push(e1 != e2)
             elif op == "<":
                 context.push(keyValue(e1) < keyValue(e2))
@@ -1018,7 +1020,7 @@ class AST:
         while ctx.pc != len(code) and state.failure == None:
             code[ctx.pc].eval(state, ctx)
         if state.failure:
-            print("constant evaluation failed")
+            print("constant evaluation failed: ", self, state.failure)
             sys.exit(1)
         return ctx.pop()
 
@@ -1513,6 +1515,8 @@ class BasicExpressionRule(Rule):
             return (ConstantAST((True, file, line, column)), t[1:])
         if lexeme == "NULL":
             return (ConstantAST((AddressValue([]), file, line, column)), t[1:])
+        if lexeme == "inf":
+            return (ConstantAST((math.inf, file, line, column)), t[1:])
         if lexeme[0] == '"':
             return (DictAST({ ConstantAST((i-1, file, line, column)):
                         ConstantAST((lexeme[i:i+1], file, line, column))

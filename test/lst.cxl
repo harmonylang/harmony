@@ -1,14 +1,13 @@
 import synch;
 import alloc;
 
-const INF = 1000;
 def lst_node(v, n):
     result = rec_alloc();
     (^result).data = dict{ .lock: Lock(), .value: v };
     (^result).next = n;
 ;
 def lst_new():
-    result = lst_node(-INF, lst_node(INF, NULL));
+    result = lst_node(-inf, lst_node(inf, NULL));
 ;
 def lst_find(lst, v):
     let before = lst, after = (^before).next:
@@ -44,13 +43,12 @@ def lst_remove(lst, v):
     let x = lst_find(lst, v), before = x[0], after = x[1]:
         if (^after).data.value == v:
             (^before).next = (^after).next;
-            unlock(&(^before).data.lock);
             unlock(&(^after).data.lock);
             rec_free(after);
         else:
-            unlock(&(^before).data.lock);
             unlock(&(^after).data.lock);
         ;
+        unlock(&(^before).data.lock);
     ;
 ;
 

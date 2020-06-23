@@ -11,6 +11,7 @@ def rec_alloc():
     result = rec_flist;
     if result != NULL:
         rec_flist = (^result).next;
+    ;
     unlock(&rec_lock);
 ;
 rec_pool = [ dict{ .data: (), .next: NULL } for i in 0..(NPOOL-1) ];
