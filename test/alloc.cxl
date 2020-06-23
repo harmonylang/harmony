@@ -1,0 +1,93 @@
+import synch;
+
+const NPOOL  = 4;      # number of "records"
+const NULL   = ();      # represents a NULL pointer
+
+def rec_free(r):
+    lock(&rec_lock);
+    (^r).next = rec_flist;
+    rec_flist = r;
+    unlock(&rec_lock);
+;
+def rec_alloc():
+    lock(&rec_lock);
+    result = rec_flist;
+    rec_flist = (^result).next;
+    unlock(&rec_lock);
+;
+rec_pool = [ dict{ .data: (), .next: NULL } for i in 0..(NPOOL-1) ];
+rec_flist = NULL;
+rec_lock = Lock();
+for i in 0..(NPOOL-1):
+    rec_free(&rec_pool[i]);
+;
+
+const INF = 1000;
+def Node(v, n):
+    result = rec_alloc();
+    (^result).data = dict{ .lock: Lock(), .value: v };
+    (^result).next = n;
+;
+def lst_new():
+    result = Node(-INF, Node(INF, NULL));
+;
+def lst_find(lst, v):
+    let before = lst, after = (^before).next:
+        lock(&(^before).data.lock);
+        lock(&(^after).data.lock);
+        while (^after).data.value < v:
+            unlock(&(^before).data.lock);
+            before = after;
+            after = (^before).next;
+            lock(&(^after).data.lock);
+        ;
+        result = (before, after);
+    ;
+;
+def lst_contains(lst, v):
+    let n = lst:
+        while (^n).data.value < v:
+            n = (^n).next;
+        ;
+        result = (^n).data.value == v;
+    ;
+;
+def lst_insert(lst, v):
+    let x = lst_find(lst, v), before = x[0], after = x[1]:
+        if (^after).data.value != v:
+            (^before).next = Node(v, after);
+        ;
+        unlock(&(^before).data.lock);
+        unlock(&(^after).data.lock);
+    ;
+;
+def lst_remove(lst, v):
+    let x = lst_find(lst, v), before = x[0], after = x[1]:
+        if (^after).data.value == v:
+            (^before).next = (^after).next;
+            unlock(&(^before).data.lock);
+            unlock(&(^after).data.lock);
+            rec_free(after);
+        else:
+            unlock(&(^before).data.lock);
+            unlock(&(^after).data.lock);
+        ;
+    ;
+;
+
+mylist = lst_new();
+lst_insert(mylist, 3);
+assert lst_contains(mylist, 3);
+assert not lst_contains(mylist, 4);
+lst_insert(mylist, 7);
+assert lst_contains(mylist, 3);
+assert not lst_contains(mylist, 4);
+assert lst_contains(mylist, 7);
+lst_remove(mylist, 3);
+assert not lst_contains(mylist, 3);
+assert not lst_contains(mylist, 4);
+assert lst_contains(mylist, 7);
+lst_remove(mylist, 7);
+assert not lst_contains(mylist, 3);
+assert not lst_contains(mylist, 4);
+assert not lst_contains(mylist, 7);

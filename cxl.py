@@ -449,6 +449,9 @@ class LoadOp(Op):
             context.push(state.iget(av.indexes))
         else:
             (lexeme, file, line, column) = self.name
+            if lexeme not in state.vars.d:
+                state.failure = "Error: no variable " + str(self.token)
+                return
             context.push(state.get(lexeme))
         context.pc += 1
 
