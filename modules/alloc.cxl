@@ -1,0 +1,21 @@
+const NPOOL  = 100;      # number of "records" to allocate
+
+def rec_free(r):
+    lock(&rec_lock);
+    (^r).next = rec_flist;
+    rec_flist = r;
+    unlock(&rec_lock);
+;
+def rec_alloc():
+    lock(&rec_lock);
+    result = rec_flist;
+    if result != NULL:
+        rec_flist = (^result).next;
+    unlock(&rec_lock);
+;
+rec_pool = [ dict{ .data: (), .next: NULL } for i in 0..(NPOOL-1) ];
+rec_flist = NULL;           # free list
+rec_lock = Lock();
+for i in 0..(NPOOL-1):
+    rec_free(&rec_pool[i]);
+;

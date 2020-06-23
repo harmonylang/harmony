@@ -81,6 +81,7 @@ def isreserved(s):
         "min",
         "nametag",
         "not",
+        "NULL",
         "or",
         "pass",
         "spawn",
@@ -1510,6 +1511,8 @@ class BasicExpressionRule(Rule):
             return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
             return (ConstantAST((True, file, line, column)), t[1:])
+        if lexeme == "NULL":
+            return (ConstantAST((AddressValue([]), file, line, column)), t[1:])
         if lexeme[0] == '"':
             return (DictAST({ ConstantAST((i-1, file, line, column)):
                         ConstantAST((lexeme[i:i+1], file, line, column))
