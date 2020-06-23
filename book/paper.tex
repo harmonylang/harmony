@@ -2911,7 +2911,7 @@ The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
 \texttt{V} operations alternate as prescribed by the SBS technique.
 Our implementations of reader/writer locks can be easily changed to
 use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
-\texttt{V}.
+and \texttt{V}.
 
 In the late 70s, Xerox PARC developed a new programming language called
 Mesa~\cite{LR80}.
@@ -2926,15 +2926,16 @@ As in Hoare monitors, there is a hidden mutex associated with each monitor,
 and the mutex is automatically acquired upon entry to a method and released
 upon exit.
 Mesa monitors also have condition variable that a process can wait on.
-Like in Hoare monitors, the \texttt{wait} operation release the mutex.
+Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
 operation \texttt{notify} rather than \texttt{signal}.
 \index{notify}
 When a process $p$ invokes \texttt{notify}, it does not immediately pass 
-the baton to some process $q$ requiring the baton.  Instead, $p$ holds onto
-the baton until it leaves the monitor.  At that point $q$ gets the baton,
-assuming there even was such a process $q$.
+the baton to some process $q$ requiring the baton (assuming there even
+is such a process).  Instead, $p$ holds onto
+the baton until it leaves the monitor.  At that point, any process that
+was notified will have a chance to obtain the baton.
 
 \begin{figure}
 \begin{center}
@@ -2948,7 +2949,7 @@ bedrooms illustrate two condition variables.  The circles are processes.}
 
 Figure~\ref{fig:monitors} illustrates the difference with a drawing.
 Here a bathroom represents the critical section, allowing only one
-process at a time say.  The bedrooms represent condition variables.
+process at a time.  The bedrooms represent condition variables.
 There is some condition associated with each bedroom.
 In the hall are processes waiting to enter the critical section.
 
@@ -3312,6 +3313,12 @@ scenario.}
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
 processes.  Can you fix the problem?
+\item Add a method \texttt{total()} to the solution of the previous question
+that computes the total over all balances.
+It needs to obtain a lock on all accounts.  Make sure that
+it cannot cause deadlock.
+\item Use method \texttt{total()} to ensure that the sum total of the bank
+accounts at the beginning of the test is the same as at the end.
 \end{problems}
 
 \begin{figure}
