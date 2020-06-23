@@ -684,22 +684,6 @@ The following exercises are intended to show you that on the one hand it
 is easy to translate CXL programs into Python, but on the other hand,
 it is easier to find concurrency bugs using CXL.
 
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Up.py}
-\end{code}
-\caption{[Up.py] Python implementation of Figure~\ref{fig:inc}.}
-\label{fig:incpy}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpMany.py}
-\end{code}
-\caption{[UpMany.py] Incrementing \texttt{N} times.}
-\label{fig:incmany}
-\end{figure}
-
 \begin{problems}
 \item CXL programs can usually be easily translated into Python.  For example,
 Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
@@ -719,6 +703,22 @@ How large does \texttt{N} need to be for assertions to fail?
 and run them through CXL.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
 \end{problems}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Up.py}
+\end{code}
+\caption{[Up.py] Python implementation of Figure~\ref{fig:inc}.}
+\label{fig:incpy}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpMany.py}
+\end{code}
+\caption{[UpMany.py] Incrementing \texttt{N} times.}
+\label{fig:incmany}
+\end{figure}
 
 \chapter{The CXL Virtual Machine}
 \label{ch:cxlmachine}
@@ -1014,7 +1014,7 @@ This makes precise the concurrency problem that we encountered.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpEnter.cxl}
 \end{code}
-\caption{[UpEnter.py] Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
+\caption{[UpEnter.cxl] Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
 \label{fig:incenter}
 \end{figure}
 
@@ -1564,7 +1564,7 @@ Can you generalize Peterson's algorithm to more than two processes?
 \index{CXL method}
 
 A method \texttt{m} with argument \texttt{a} is invoked in its
-most basic form as follows (assigning the result to \texttt{r}).
+most basic form as follows (assigning the result to~\texttt{r}).
 \begin{code}
 \begin{verbatim}
 r = m a;
@@ -3088,12 +3088,14 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: bagEmpty() };
 ;
 def wait(c):
-    let lk = (^c).lock, blocked = True, cnt = bagCount((^c).waiters, nametag()):
+    let lk = (^c).lock, blocked = True,
+                cnt = bagCount((^c).waiters, nametag()):
         bagAdd(&(^c).waiters, nametag());
         ^lk = False;
         while blocked:
             atomic:
-                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
+                if (not (^lk)) and
+                        (bagCount((^c).waiters, nametag()) <= cnt):
                     ^lk = True;
                     blocked = False;
                 ;
@@ -3516,7 +3518,7 @@ fragment concurrently.  The next round is not allowed to start
 until all processes have completed operations on their fragment.
 
 Figure~\ref{fig:barrierdiagram} shows a high-level depiction with three
-processes.  Initially all processes are in round 0.  Then each process
+processes.  Initially all processes are in round~0.  Then each process
 can start and finish the round.  However, none of the processes can
 progress to the next round until all processes have finished the
 current round.
@@ -3536,13 +3538,11 @@ approach.  Each process increments its entry every time it enters
 a round.  If the algorithm is correct, it can never be that two processes
 are more than one round apart.
 
-\begin{quote}
-\begin{itemize}
+\section*{Exercises}
+\begin{problems}
 \item See if you can implement barrier synchronization for $N$ processes
-with just three semaphores.  Busy waiting is not allowed.
-\item How about just two?
-\end{itemize}
-\end{quote}
+with just three semaphores.  Busy waiting is not allowed.  How about just two?
+\end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}
