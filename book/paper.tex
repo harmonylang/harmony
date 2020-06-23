@@ -2803,22 +2803,6 @@ for southbound cars.
 \label{fig:RWfair}
 \end{figure}
 
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqueue.cxl}
-\end{code}
-\caption{[RWqueue.cxl] Reader/Writer Lock SBS implementation using a queue.}
-\label{fig:RWqueue}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqtest.cxl}
-\end{code}
-\caption{[RWqtest.cxl] Test program for Figure~\ref{fig:RWqueue}.}
-\label{fig:RWqtest}
-\end{figure}
-
 A \emph{property}
 \index{property}
 \glsadd{property}
@@ -2858,6 +2842,12 @@ the critical section.
 While spinlocks suffer from starvation, it is a uniform random
 process and each process has an equal chance of entering the critical
 section.  Thus the probability of starvation is exponentially vanishing.
+We shall call such a solution \emph{fair}
+\index{fairness}
+(although it does not quite
+match the usual formal nor vernacular concepts of fairness).
+\glsadd{fairness}
+
 Unfortunately, such is not the case for the
 reader/writer solutions that we presented thus far.
 Consider this scenario: there are two readers and one writer.  One reader
@@ -2870,26 +2860,12 @@ indefinitely.  So even if neither reader was in the critical section
 all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
-In this chapter, we will present two SBS-based reader/writer lock
-implementations that solves this type of starvation.
-SBS allow much control over which thread runs next and is therefore a
-good starting point for developing synchronization algorithms that do not
-suffer from starvation.
-For the first solution the probability that either a reader or writer gets starved
-will be exponentially diminishing.
-We shall call such a solution \emph{fair}
-\index{fairness}
-(although it does not quite
-match the usual formal nor vernacular concepts of fairness).
-\glsadd{fairness}
-
-It is difficult if not impossible to make the reader/writer lock solution of
-Figure~\ref{fig:rw2lock} fair.  However, the split binary semaphore solution of
-Figure~\ref{fig:RWsplitsema} provides much control over whom to pass baton
-to.
-Figure~\ref{fig:RWfair} contains a version of Figure~\ref{fig:RWsplitsema}
-that is a fair solution to the reader/writer problem.  There are two changes
-compared to the original version:
+SBSs allow much control over which thread runs next and is therefore a
+good starting point for developing fair synchronization algorithm
+In this chapter, we will present two SBS-based fair reader/writer lock
+implementations.
+The first, in Figure~\ref{fig:RWfair}, is based on Figure~\ref{fig:RWsplitsema}.
+There are two differences:
 
 \begin{enumerate}
 \item When a reader tries to enter the critical section, it yields not only
@@ -2905,14 +2881,46 @@ the baton to a waiting reader rather than to a waiting writer.
 The net effect of this is that if there is contention between readers and
 writers, than readers and writers end up alternating entering the critical
 section.  While readers can still starve other readers and writers can still
-starve other writers, they can not starve one another.  And contention for
+starve other writers, they cannot starve one another.  And since contention for
 a semaphore is resolved probabilistically, each reader and each writer will
 eventually have a chance to enter the critical section almost surely.
+
+Figures~\ref{fig:RWqueue} and~\ref{fig:RWqtest} present a different approach
+in which processes are allowed into the critical region in a purely First
+Come First Served manner.  When a reader arrives, it is allowed in only if
+there is no writer in the critical section or waiting to enter.  When a writer
+arrives, it is allowed in only if there is no reader or writer in the
+critical section (and therefore also not waiting to enter).  To maintain the
+arrival order, the solution uses a semaphore per process and a queue.
+The \texttt{acquire\_} methods take a pointer to
+the semaphore of the process as argument.
+Each entry in the queue is a pair consisting of a type of access
+(\texttt{.read} or \texttt{.write}) and a pointer to the semaphore of the
+processs that is waiting.  Method \texttt{V\_one} considers semaphores to vacate
+in the order in which they appear in the queue.
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqueue.cxl}
+\end{code}
+\caption{[RWqueue.cxl] Reader/Writer Lock SBS implementation using a queue.}
+\label{fig:RWqueue}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqtest.cxl}
+\end{code}
+\caption{[RWqtest.cxl] Test program for Figure~\ref{fig:RWqueue}.}
+\label{fig:RWqtest}
+\end{figure}
 
 \section*{Exercises}
 \begin{enumerate}
 \item Write a fair solution to the one-lane bridge problem of Chapter~\ref{ch:sbs}.
-\item TBD.  multiple GPU allocator
+If you want to use the queue method, you can change the signature of the
+methods to enter the bridge, adding an argument that contains a pointer to a
+semaphore.
 \end{enumerate}
 
 \chapter{Monitors}
@@ -3140,13 +3148,13 @@ Many implementation of condition variables depend on this, and optimizations of 
 code allow so-called ``spurious wakeups,'' where \texttt{wait} may sometimes return even
 if it has not been notified.
 
-In \texttt{release\_rlock}, notice that \texttt{notify \&(wcond)} is invoked when there
+In \texttt{release\_rlock}, notice that \texttt{notify(\&wcond)} is invoked when there
 are no readers left, \emph{without} checking if there are writers waiting to enter.
 With Mesa monitors this is ok, because calling \texttt{notify} is a no-op if no process
 is waiting.
 
-\texttt{release\_wlock} executes \texttt{notifyAll \&(wcond)} as well as
-\texttt{notify \&(wcond)}.
+\texttt{release\_wlock} executes \texttt{notifyAll(\&wcond)} as well as
+\texttt{notify(\&wcond)}.
 Again, because we do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter, or, alternatively,
 up to one waiting writer can enter.  So \texttt{release\_wlock} wakes up all
@@ -3162,6 +3170,19 @@ get to enter next or one of the writers gets to enter next.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
+
+\section*{Exercises}
+\begin{enumerate}
+\item Write a new version of the GPU allocator of Chapter~\ref{ch:bb}.  In this version,
+a process is allowed to allocate a set of GPUs and release a set of GPUs that it
+has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
+available, but it should grant them as soon as they are available.
+Method \texttt{gpuReleaseSet(s)} takes a set of GPU identifiers as argument.
+A process does not have to return all the GPUs it allocated at once.
+\item The specification in the previous question makes the solution unfair.
+Explain why this is so.  Then change the specification and the solution so that
+it is fair.
+\end{enumerate}
 
 \chapter{Deadlock Prevention}
 \label{ch:deadlockprevention}
