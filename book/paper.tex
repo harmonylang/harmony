@@ -3863,6 +3863,28 @@ To iterate through a dictionary, list, or tuple, use:
 \chapter{List of Modules}
 \label{ap:module}
 
+The \texttt{alloc} module
+\index{alloc module}
+support thread-safe dynamic allocation of ``records.''
+Each record has two fields: \texttt{.data} and \texttt{.next} that
+can be used arbitrarily, although \texttt{.next} is intended to be
+used as a pointer to another record.
+There are just two methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{rec\_alloc()} & allocate a record \\
+\hline
+\texttt{rec\_free(r)} & free record \texttt{r} \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+CXL supports an address value \texttt{NULL} that can be
+used as a null pointer.  \texttt{rec\_alloc} returns \texttt{NULL}
+when running out of memory.
+
 The \texttt{bag} module
 \index{bag module}
 has various useful methods that operate on bags or
@@ -3903,7 +3925,7 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \hline
 \texttt{tail(t)} & return all but the first element of list \texttt{t}\\
 \hline
-\texttt{qsort(t)} & sort list \texttt{t} using quicksort\\
+\texttt{listQsort(t)} & sort list \texttt{t} using quicksort\\
 \hline
 \texttt{list2bag(t)} & convert list \texttt{t} into a bag \\
 \hline
