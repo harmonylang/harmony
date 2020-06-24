@@ -726,7 +726,7 @@ time---the important thing is to develop an understanding of concurrency.
 
 \chapter{The CXL Virtual Machine}
 \label{ch:cxlmachine}
-\index{CXL virtual machine}
+\index{CXL Virtual Machine}
 
 CXL programs are compiled to CXL bytecode
 \index{bytecode}
@@ -3635,6 +3635,22 @@ The \texttt{lst\_contains} method can simply scan through the list
 because the \texttt{next} pointers are updated atomically in such a
 way that they always point to a legal suffix of the list.
 
+Determining if an implementation of a concurrent data structure
+is linearizable involves finding what are known as the
+\emph{linearization points}
+\index{linearization point}
+of the operations in an execution.  These are the unique
+points in time at which an operation appears to execute atomically.
+The linearization points for the \texttt{lst\_insert} and
+\texttt{lst\_remove} operations coincide exactly with the update
+of the \texttt{before.next} pointer.
+The linearization point of a \texttt{lst\_contains} method
+execution depends on whether the value is found or not.
+If found, it coincides with retrieving the pointer to the node
+that has the value.
+If not found, it coincides with retrieving the pointer to the
+\texttt{inf} node.
+
 \begin{figure}
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{code/lst1.cxl}
@@ -3653,6 +3669,10 @@ way that they always point to a legal suffix of the list.
 
 \section*{Exercises}
 \begin{problems}
+\item Add read-only methods to the data structure in Figures~\ref{fig:lst1}
+and~\ref{fig:lst2} that report the size of the list, the minimum value in the
+list, the maximum value in the list, and the sum of the values in the list.
+Are they linearizable?  If so, what are their linearization points?
 \item A \emph{seqlock} consists of a lock and a version number.
 An update operation acquires the lock, increments the version number, makes the
 changes to the data structure, and then releases the lock.  A read-only operation
