@@ -7,9 +7,9 @@ const NPROCESSES = 2;
 def transfer(a1, a2, amount):
     lock(&accounts[a1].lock);
     if amount <= accounts[a1].balance:
-        accounts[a1].balance = accounts[a1].balance - amount; 
+        accounts[a1].balance -= amount; 
         lock(&accounts[a2].lock);
-        accounts[a2].balance = accounts[a2].balance + amount; 
+        accounts[a2].balance += amount; 
         unlock(&accounts[a2].lock);
         result = True;
     else:

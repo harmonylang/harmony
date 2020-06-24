@@ -9,7 +9,6 @@ def lst_node(v, n):
 def lst_new():
     result = lst_node(-inf, lst_node(inf, NULL));
 ;
-
 def lst_contains(lst, v):
     let n = lst:
         while (^n).data.value < v:

@@ -2,9 +2,9 @@ const N = 10;
 
 def gpuAlloc():
     result = choose(availGPUs);
-    availGPUs = availGPUs - { result };
+    availGPUs -= { result };
 ;
 def gpuRelease(gpu):
-    availGPUs = availGPUs + { gpu };
+    availGPUs += { gpu };
 ;
 availGPUs = 1..N;

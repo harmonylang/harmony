@@ -7,7 +7,7 @@ def checkInvariant():
         ;
         for i in 0..(N-1):
             if not private[i]:
-                sum = sum + 1;
+                sum += 1;
             ;
         ;
         result = sum <= 1;

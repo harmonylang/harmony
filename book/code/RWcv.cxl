@@ -5,12 +5,12 @@ def acquire_rlock():
     while nwriters > 0:
         wait(&rcond);
     ;
-    nreaders = nreaders + 1;
+    nreaders += 1;
     unlock(&rwlock);
 ;
 def release_rlock():
     lock(&rwlock);
-    nreaders = nreaders - 1;
+    nreaders -= 1;
     if nreaders == 0:
         notify(&wcond);
     ;

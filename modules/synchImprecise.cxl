@@ -22,7 +22,7 @@ def wait(c):
     let lk = (), blocked = True:
         atomic:
             lk = (^c).lock;
-            (^c).waiters = (^c).waiters + { nametag() };
+            (^c).waiters += { nametag() };
             ^lk = False;
         ;
         while blocked:
@@ -55,7 +55,7 @@ def P(sema):
         while blocked:
             atomic:
                 if (^sema) > 0:
-                    ^sema = (^sema) - 1;
+                    ^sema -= 1;
                     blocked = False;
                 ;
             ;
@@ -64,6 +64,6 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        ^sema = (^sema) + 1;
+        ^sema += 1;
     ;
 ;

@@ -1,7 +1,7 @@
 def bagEmpty():
     result = dict{};
 ;
-def bagFromset(s):
+def bagFromSet(s):
     result = dict{ 1 for elt in s };
 ;
 def bagCount(bag, elt):
@@ -18,14 +18,14 @@ def bagChoose(bag):
 ;
 def bagAdd(pb, elt):
     if elt in keys(^pb):
-        (^pb)[elt] = (^pb)[elt] + 1;
+        (^pb)[elt] += 1;
     else:
         (^pb)[elt] = 1;
     ;
 ;
 def bagRemove(pb, elt):
     if (elt in keys(^pb)) and ((^pb)[elt] > 0):
-        (^pb)[elt] = (^pb)[elt] - 1;
+        (^pb)[elt] -= 1;
     ;
     if (^pb)[elt] <= 0:
         del (^pb)[elt];

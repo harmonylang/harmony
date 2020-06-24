@@ -36,7 +36,7 @@ def notify(c):
     atomic:
         let lk = (^c).lock, waiters = (^c).waiters:
             if waiters != []:
-                (^lk).suspended = (^lk).suspended + [waiters[0],];
+                (^lk).suspended += [waiters[0],];
                 (^c).waiters = tail(waiters);
             ;
         ;
@@ -45,7 +45,7 @@ def notify(c):
 def notifyAll(c):
     atomic:
         let lk = (^c).lock, waiters = (^c).waiters:
-            (^lk).suspended = (^lk).suspended + waiters;
+            (^lk).suspended += waiters;
             (^c).waiters = [];
         ;
     ;
@@ -56,7 +56,7 @@ def Semaphore(cnt):
 def P(sema):
     atomic:
         if (^sema).count > 0:
-            (^sema).count = (^sema).count - 1;
+            (^sema).count -= 1;
         else:
             stop (^sema).waiters;
         ;

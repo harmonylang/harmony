@@ -3,7 +3,7 @@ const N = 10;
 def triangle(n):   # computes the n'th triangle number
     result = 0;
     for i in 1..n:
-        result = result + i;
+        result += i;
     ;
 ;
 x = choose(0..N);

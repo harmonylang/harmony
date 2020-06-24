@@ -5,12 +5,12 @@ def acquire_rlock():
     if nreaders == 0:
         lock(&rwlock);
     ;
-    nreaders = nreaders + 1;
+    nreaders += 1;
     unlock(&rlock);
 ;
 def release_rlock():
     lock(&rlock);
-    nreaders = nreaders - 1;
+    nreaders -= 1;
     if nreaders == 0:
         unlock(&rwlock);
     ;

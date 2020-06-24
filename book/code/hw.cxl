@@ -3,7 +3,7 @@ const MAX_ITEMS = 3;
 def inc(pcnt):
     atomic:
         result = ^pcnt;
-        ^pcnt = ^pcnt + 1;
+        ^pcnt += 1;
     ;
 ;
 def swap(pv):
@@ -21,7 +21,7 @@ def consume():
         let range = back, i = 0:
             while (i < range) and (result == ()):
                 result = swap(&items[i]);
-                i = i + 1;
+                i += 1;
             ;
         ;
     ;

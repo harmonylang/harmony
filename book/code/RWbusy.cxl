@@ -5,7 +5,7 @@ def acquire_rlock():
         while blocked:
             lock(&rwlock);
             if nwriters == 0:
-                nreaders = nreaders + 1;
+                nreaders += 1;
                 blocked = False;
             ;
             unlock(&rwlock);
@@ -14,7 +14,7 @@ def acquire_rlock():
 ;
 def release_rlock():
     lock(&rwlock);
-    nreaders = nreaders - 1;
+    nreaders -= 1;
     unlock(&rwlock);
 ;
 def acquire_wlock():

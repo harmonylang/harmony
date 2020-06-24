@@ -15,7 +15,7 @@ def consumer():
         let second = consume():
             assert (first[0] != second[0]) or (first[1] < second[1]);
             atomic:
-                received = received + { first, second };
+                received += { first, second };
             ;
         ;
     ;

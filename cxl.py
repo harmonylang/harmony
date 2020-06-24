@@ -396,12 +396,20 @@ class LoadVarOp(Op):
         self.name = name
 
     def __repr__(self):
-        (lexeme, file, line, column) = self.name
-        return "PushVar " + str(lexeme)
+        if self.name == None:
+            return "LoadVar"
+        else:
+            (lexeme, file, line, column) = self.name
+            return "LoadVar " + str(lexeme)
 
     def eval(self, state, context):
-        (lexeme, file, line, column) = self.name
-        context.push(context.get(lexeme))
+        if self.name == None:
+            av = context.pop()
+            assert isinstance(av, AddressValue)
+            context.push(context.iget(av.indexes))
+        else:
+            (lexeme, file, line, column) = self.name
+            context.push(context.get(lexeme))
         context.pc += 1
 
 class PushOp(Op):
@@ -437,7 +445,7 @@ class LoadOp(Op):
 
     def __repr__(self):
         if self.name == None:
-            return "Load ^"
+            return "Load"
         else:
             (lexeme, file, line, column) = self.name
             return "Load " + lexeme
@@ -459,43 +467,37 @@ class LoadOp(Op):
         context.pc += 1
 
 class StoreOp(Op):
-    def __init__(self, v, n, token):
-        self.v = v          # shared variable (None if indirect)
-        self.n = n          # number of indexes
+    def __init__(self, name, token):
+        self.name = name
         self.token = token  # for error reporting
 
     def __repr__(self):
-        if self.v == None:
-            name = "^"
+        if self.name != None:
+            (lexeme, file, line, column) = self.name
+            return "Store " + lexeme
         else:
-            (name, file, line, column) = self.v
-        if self.n > 0:
-            return "Store " + name + " " + str(self.n)
-        else:
-            return "Store " + name
+            return "Store"
 
     def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        if self.v == None:
-            av = indexes[0]
+        v = context.pop()
+        if self.name == None:
+            av = context.pop()
             if not isinstance(av, AddressValue):
                 state.failure = "Error: not an address " + \
                                     str(self.token) + " -> " + str(av)
                 return
             lv = av.indexes
             name = lv[0]
-            indexes = indexes[1:]
         else:
-            (name, file, line, column) = self.v
-            lv = [name]
+            (lexeme, file, line, column) = self.name
+            lv = [lexeme]
+            name = lexeme
 
         if not state.initializing and (name not in state.vars.d):
             state.failure = "Error: using an uninitialized shared variable " \
-                                    + str(self.token)
+                    + name + ": " + str(self.token)
         else:
-            state.set(lv + indexes, context.pop())
+            state.set(lv, v)
             context.pc += 1
 
 class DelOp(Op):
@@ -560,20 +562,25 @@ class AddressOp(Op):
         context.pc += 1
 
 class StoreVarOp(Op):
-    def __init__(self, v, n):
+    def __init__(self, v):
         self.v = v
-        self.n = n
 
     def __repr__(self):
-        (lexeme, file, line, column) = self.v
-        return "StoreVar " + str(lexeme) + " " + str(self.n)
+        if self.v == None:
+            return "StoreVar"
+        else:
+            (lexeme, file, line, column) = self.v
+            return "StoreVar " + str(lexeme)
 
     def eval(self, state, context):
-        (lexeme, file, line, column) = self.v
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        context.set([lexeme] + indexes, context.pop())
+        if self.v == None:
+            value = context.pop()
+            av = context.pop();
+            assert isinstance(av, AddressValue)
+            context.set(av.indexes, value)
+        else:
+            (lexeme, file, line, column) = self.v
+            context.set([lexeme], context.pop())
         context.pc += 1
 
 class DelVarOp(Op):
@@ -812,49 +819,49 @@ class NaryOp(Op):
         sa = context.stack[-self.n:]
         if op in { "+", "*", "and", "or" }:
             assert self.n > 1
-            e1 = context.pop()
+            e2 = context.pop()
             for i in range(1, self.n):
-                e2 = context.pop()
+                e1 = context.pop()
                 if op == "+":
                     if isinstance(e1, int):
                         if not self.checktype(state, sa, isinstance(e2, int)):
                             return
-                        e1 += e2
+                        e2 += e1
                     elif isinstance(e1, SetValue):
                         if not self.checktype(state, sa, isinstance(e2, SetValue)):
                             return
-                        e1 = SetValue(e1.s.union(e2.s))
+                        e2 = SetValue(e2.s.union(e1.s))
                     else:
                         if not self.checktype(state, sa, isinstance(e1, DictValue)):
                             return
                         if not self.checktype(state, sa, isinstance(e2, DictValue)):
                             return
-                        e1 = self.concat(e1, e2)
+                        e2 = self.concat(e1, e2)
                 elif op == "*":
                     if isinstance(e1, int):
                         if not self.checktype(state, sa, isinstance(e2, int)):
                             return
-                        e1 *= e2
+                        e2 *= e1
                     else:
                         if not self.checktype(state, sa, isinstance(e1, SetValue)):
                             return
                         if not self.checktype(state, sa, isinstance(e2, SetValue)):
                             return
-                        e1 = SetValue(e1.s.intersection(e2.s))
+                        e2 = SetValue(e2.s.intersection(e1.s))
                 elif op == "and":   # may not need this
                     if not self.checktype(state, sa, isinstance(e1, bool)):
                         return
                     if not self.checktype(state, sa, isinstance(e2, bool)):
                         return
-                    e1 = e1 and e2
+                    e2 = e2 and e1
                 else:   # may not need this
                     assert op == "or", op
                     if not self.checktype(state, sa, isinstance(e1, bool)):
                         return
                     if not self.checktype(state, sa, isinstance(e2, bool)):
                         return
-                    e1 = e1 or e2
-            context.push(e1)
+                    e2 = e2 or e1
+            context.push(e2)
         elif self.n == 1:
             e = context.pop()
             if op == "-":
@@ -916,8 +923,8 @@ class NaryOp(Op):
             else:
                 assert False, self
         elif self.n == 2:
-            e1 = context.pop()
             e2 = context.pop()
+            e1 = context.pop()
             if op == "==":
                 # if not self.checktype(state, sa, type(e1) == type(e2)):
                 #     return
@@ -935,8 +942,8 @@ class NaryOp(Op):
             elif op == ">=":
                 context.push(keyValue(e1) >= keyValue(e2))
             elif op == "-":
-                if isinstance(e1, int):
-                    if not self.checktype(state, sa, isinstance(e2, int)):
+                if isinstance(e1, int) or isinstance(e1, float):
+                    if not self.checktype(state, sa, isinstance(e2, int) or isinstance(e2, float)):
                         return
                     context.push(e1 - e2)
                 else:
@@ -946,11 +953,14 @@ class NaryOp(Op):
                         return
                     context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "/":
-                if not self.checktype(state, sa, isinstance(e1, int)):
+                if not self.checktype(state, sa, isinstance(e1, int) or isinstance(e1, float)):
                     return
-                if not self.checktype(state, sa, isinstance(e2, int)):
+                if not self.checktype(state, sa, isinstance(e2, int) or isinstance(e2, float)):
                     return
-                context.push(e1 // e2)
+                if isinstance(e1, int) and (e2 == math.inf or e2 == -math.inf):
+                    context.push(0)
+                else:
+                    context.push(e1 // e2)
             elif op == "%":
                 if not self.checktype(state, sa, isinstance(e1, int)):
                     return
@@ -971,9 +981,9 @@ class NaryOp(Op):
                 assert False, self
         elif self.n == 3:
             assert op == "if"
-            e1 = context.pop()
-            e2 = context.pop()
             e3 = context.pop()
+            e2 = context.pop()
+            e1 = context.pop()
             if not self.checktype(state, sa, isinstance(e2, bool)):
                 return
             context.push(e1 if e2 else e3)
@@ -1132,13 +1142,13 @@ class SetComprehensionAST(AST):
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
         S = ("%set:"+str(uid), file, line, column)
-        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(S))
 
         # Also store the size
         N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
-        code.append(StoreVarOp(N, 0))
+        code.append(StoreVarOp(N))
 
         # Now generate the code:
         #   while X != {}:
@@ -1153,8 +1163,8 @@ class SetComprehensionAST(AST):
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
         code.append(SplitOp())  
-        code.append(StoreVarOp(S, 0))
-        code.append(StoreVarOp(self.var, 0))
+        code.append(StoreVarOp(S))
+        code.append(StoreVarOp(self.var))
 
         # TODO.  Figure out how to do this better
         ns = Scope(scope)
@@ -1188,13 +1198,13 @@ class DictComprehensionAST(AST):
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
         S = ("%set:"+str(uid), file, line, column)
-        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(S))
 
         # Also store the size
         N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
-        code.append(StoreVarOp(N, 0))
+        code.append(StoreVarOp(N))
 
         # Now generate the code:
         #   while X != {}:
@@ -1210,8 +1220,8 @@ class DictComprehensionAST(AST):
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
         code.append(SplitOp())  
-        code.append(StoreVarOp(S, 0))
-        code.append(StoreVarOp(self.var, 0))
+        code.append(StoreVarOp(S))
+        code.append(StoreVarOp(self.var))
 
         # TODO.  Figure out how to do this better
         ns = Scope(scope)
@@ -1246,18 +1256,18 @@ class ListComprehensionAST(AST):
         # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
         S = ("%set:"+str(uid), file, line, column)
-        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(S))
 
         # Also store the size
         N = ("%size:"+str(uid), file, line, column)
         code.append(LoadVarOp(S))
         code.append(NaryOp(("cardinality", file, line, column), 1))
-        code.append(StoreVarOp(N, 0))
+        code.append(StoreVarOp(N))
 
         # Create an index variable, initialized to 0
         code.append(PushOp((0, file, line, column)))
         I = ("%index:"+str(uid), file, line, column)
-        code.append(StoreVarOp(I, 0))
+        code.append(StoreVarOp(I))
 
         # Now generate the code:
         #   while X != {}:
@@ -1274,8 +1284,8 @@ class ListComprehensionAST(AST):
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
         code.append(SplitOp())  
-        code.append(StoreVarOp(S, 0))
-        code.append(StoreVarOp(self.var, 0))
+        code.append(StoreVarOp(S))
+        code.append(StoreVarOp(self.var))
 
         # TODO.  Figure out how to do this better
         ns = Scope(scope)
@@ -1289,7 +1299,7 @@ class ListComprehensionAST(AST):
         code.append(PushOp((1, file, line, column)))
         code.append(LoadVarOp(I))
         code.append(NaryOp(("+", file, line, column), 2))
-        code.append(StoreVarOp(I, 0))
+        code.append(StoreVarOp(I))
 
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
@@ -1328,8 +1338,8 @@ class NaryAST(AST):
             self.args[1].compile(scope, code)
             code[pc] = JumpOp(len(code))
         else:
-            for a in range(n):
-                self.args[n - a - 1].compile(scope, code)
+            for i in range(n):
+                self.args[i].compile(scope, code)
             code.append(NaryOp(self.op, n))
 
 class ApplyAST(AST):
@@ -1618,15 +1628,16 @@ class ExpressionRule(Rule):
         return (ast, t)
 
 class AssignmentAST(AST):
-    def __init__(self, lv, rv):
+    def __init__(self, lv, rv, op):
         self.lv = lv
         self.rv = rv
+        self.op = op
 
     def __repr__(self):
-        return "Assign(" + str(self.lv) + ", " + str(self.rv) + ")"
+        return "Assign(" + str(self.lv) + ", " + str(self.rv) + \
+                            ", " + self.op + ")"
 
     def compile(self, scope, code):
-        self.rv.compile(scope, code)
         assert isinstance(self.lv, LValueAST)
         n = len(self.lv.indexes)
         for i in range(1, n):
@@ -1635,17 +1646,52 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(StoreOp(lv.name, n - 1, lv.name))
+                if n > 1:
+                    code.append(PushAddressOp(lv.name))
+                    code.append(AddressOp(n))
+                if self.op[0] == "=":
+                    self.rv.compile(scope, code)
+                else:
+                    if n > 1:
+                        code.append(DupOp())
+                        code.append(LoadOp(None, lv.name))
+                    else:
+                        code.append(LoadOp(lv.name, lv.name))
+                    self.rv.compile(scope, code)
+                    code.append(NaryOp(self.op, 2))
+                if n > 1:
+                    code.append(StoreOp(None, lv.name))
+                else:
+                    code.append(StoreOp(lv.name, lv.name))
             else:
                 (t, v) = tv
                 if t == "variable":
-                    code.append(StoreVarOp(v, n - 1))
+                    code.append(PushAddressOp(v))
+                    if n > 1:
+                        code.append(AddressOp(n))
+                    if self.op[0] == "=":
+                        self.rv.compile(scope, code)
+                    else:
+                        code.append(DupOp())
+                        code.append(LoadVarOp(None))
+                        self.rv.compile(scope, code)
+                        code.append(NaryOp(self.op, 2))
+                    code.append(StoreVarOp(None))
                 else:
                     assert False, tv
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(StoreOp(None, n, lv.token))
+            if n > 1:
+                code.append(AddressOp(n))
+            if self.op[0] == "=":
+                self.rv.compile(scope, code)
+            else:
+                code.append(DupOp())
+                code.append(LoadOp(None, lv.token))
+                self.rv.compile(scope, code)
+                code.append(NaryOp(self.op, 2))
+            code.append(StoreOp(None, lv.token))
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -1801,7 +1847,7 @@ class LetAST(AST):
             (lexeme, file, line, column) = var
             scope.names[lexeme] = ("variable", var)
             expr.compile(scope, code)
-            code.append(StoreVarOp(var, 0))
+            code.append(StoreVarOp(var))
 
         # Run the body
         self.stat.compile(scope, code)
@@ -1828,7 +1874,7 @@ class ForAST(AST):
 
         self.expr.compile(scope, code)     # first push the set
         S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
-        code.append(StoreVarOp(S, 0))
+        code.append(StoreVarOp(S))
 
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
@@ -1838,8 +1884,8 @@ class ForAST(AST):
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
         code.append(SplitOp())  
-        code.append(StoreVarOp(S, 0))
-        code.append(StoreVarOp(self.var, 0))
+        code.append(StoreVarOp(S))
+        code.append(StoreVarOp(self.var))
 
         # TODO.  Figure out how to do this better
         ns = Scope(scope)
@@ -2042,12 +2088,13 @@ class LValueRule(Rule):
         return (LValueAST(indexes, token), t)
 
 class AssignmentRule(Rule):
-    def __init__(self, lv):
+    def __init__(self, lv, op):
         self.lv = lv
+        self.op = op
 
     def parse(self, t):
         (rv, t) = NaryRule({";"}).parse(t)
-        return (AssignmentAST(self.lv, rv), t[1:])
+        return (AssignmentAST(self.lv, rv, self.op), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -2232,9 +2279,14 @@ class StatementRule(Rule):
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
         (ast, t) = LValueRule().parse(t)
-        (lexeme, file, line, column) = t[0]
-        if lexeme == "=":
-            return AssignmentRule(ast).parse(t[1:])
+        (lexeme, file, line, column) = op = t[0]
+        if lexeme in [ "=", "+", "-", "*", "/", "and", "or" ]:
+            if lexeme != "=":
+                (eq, file, line, column) = t[1];
+                self.expect("assignment statement", eq == "=", t[1],
+                                                    "expected '='")
+                t = t[1:]
+            return AssignmentRule(ast, op).parse(t[1:])
         self.expect("statement", lexeme == ";", t[0], "expected semicolon")
 
         # Turn LValue into an RValue
@@ -2598,8 +2650,9 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     cc = ctx.copy()
 
     steps = []
-    localStates = { (sc.copy(), cc.copy()) }  # used to detect infinite loops
+    localStates = set() # used to detect infinite loops
     foundInfLoop = False
+    loopcnt = 0         # only check for infinite loops after a while
     while cc.pc != cc.end:
         # execute one microstep
         steps.append(cc.pc)
@@ -2658,11 +2711,13 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
             assert False        # TODO.  For debugging.  Remove this line
             break
 
-        # Detect infinite loops
-        if (sc, cc) in localStates:
-            foundInfLoop = True
-            break
-        localStates.add((sc.copy(), cc.copy()))
+        # Detect infinite loops if there's a suspicion
+        loopcnt += 1
+        if loopcnt > 1000:
+            if (sc, cc) in localStates:
+                foundInfLoop = True
+                break
+            localStates.add((sc.copy(), cc.copy()))
 
     # Remove original context from bag
     sc.remove(ctx)

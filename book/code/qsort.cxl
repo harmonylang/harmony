@@ -11,7 +11,7 @@ def partition(lo, hi):
     for i in lo..(hi - 1):
         if a[i] <= a[hi]:
             swap(&a[result], &a[i]);
-            result = result + 1;
+            result += 1;
         ;
     ;
     swap(&a[result], &a[hi]); 
@@ -19,17 +19,17 @@ def partition(lo, hi):
 def sortrange(range):
     let lo = range[0], hi = range[1], pivot = partition(lo, hi):
         if (pivot - 1) > lo:
-            todo = todo + { (lo, pivot - 1) };
+            todo += { (lo, pivot - 1) };
         ;
         if (pivot + 1) < hi:
-            todo = todo + { (pivot + 1, hi) };
+            todo += { (pivot + 1, hi) };
         ;
     ;
 ;
 def qsort():
     while todo != {}:
         let range = choose(todo):
-            todo = todo - { range };
+            todo -= { range };
             sortrange(range);
         ;
     ;
