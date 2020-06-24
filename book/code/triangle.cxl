@@ -2,9 +2,9 @@ const N = 10;
 
 def triangle(n):   # computes the n'th triangle number
     result = 0;
-    for i in 1..n:
-        result += i;
+    for i in 1..n:      # for each integer from 1 to n inclusive
+        result += i;    # add i to result
     ;
 ;
-x = choose(0..N);
+x = choose(0..N);       # select an x between 0 and N inclusive
 assert triangle(x) == ((x * (x + 1)) / 2);
