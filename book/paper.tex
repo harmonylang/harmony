@@ -3000,7 +3000,7 @@ It can choose to either let in a process
 in one of the bedrooms or a process in the hall, assuming there are any.
 To make the choice, $p$ checks for each bedroom if its condition holds
 and if there are processes in the bedroom.
-If there are such bedrooms, $p$ selects one and lets that process into
+If there are such bedrooms, $p$ selects one and one of its processes into
 the bathroom.  Let's call that process $q$.  Importantly, when $q$ enters
 the bathroom, the condition that $q$ was waiting for still holds.
 
@@ -3023,19 +3023,21 @@ processes in the bedrooms into the hall.  It can do so by calling
 \texttt{notify} repeatedly, each time letting one process in one of the
 bedrooms into the hall.  Using \texttt{notify} on an empty
 bedroom is considered a no-op in Mesa.  (Hoare monitors do not allow
-using \texttt{signal} on an empty bathroom.) Mesa also has a function called
-\texttt{notifyAll}
+using \texttt{signal} on an empty bathroom.) Mesa also provides an
+operation called \texttt{notifyAll}
 \index{notifyAll}
 (aka \texttt{broadcast)})
 \index{broadcast}
 that, when applied to
-a bedroom, let's all processes in that bedroom into the hall.
+a bedroom, lets all processes in that bedroom into the hall.
+This is not possible with Hoare monitors: when needing to wake up a set
+of processes, only one can be signaled at a time.  Each of those processes
+then has to signal the next until all processes have been signaled.
 
 While Hoare monitors are conceptually simpler, the so-called
 ``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
 have become more popular, adopted by all major
 programming languages.
-
 That said, few programming languages provide full support for monitors.
 In Java, each object has a hidden lock \emph{and} a hidden condition variable
 associated with it.
@@ -3099,15 +3101,17 @@ def notifyAll(c):
 \label{fig:RWcv}
 \end{figure}
 
-The \texttt{synch} module supports Mesa condition variables.  However, like C, Java, and Python,
+The CXL \texttt{synch} module supports Mesa condition variables.
+However, like C, Java, and Python,
 it does not have built-in language support for them but instead associates condition variables
 with explicit locks.
-Figure~\ref{fig:cv} shows the \texttt{synch} interface to condition variables.
+Figure~\ref{fig:cv} shows the implementation of
+condition variables in the \texttt{synch} module.
 \texttt{Condition(lk)} creates a new condition variable associated with the given pointer
 to a lock \texttt{lk}.
 The condition variable itself is represented by a dictionary containing the pointer to the lock
 and a bag of name tags of processes waiting on the condition variable.
-(The \texttt{synchS} library instead has a list of contexts.)
+(The \texttt{synchS} library instead uses a list of contexts.)
 
 \texttt{wait} adds the nametag of the process to the bag.  This increments the number of processes
 in the bag with the same context.  \texttt{wait} then waits until that count is restored to the
@@ -3115,8 +3119,8 @@ value that it had upon entry to \texttt{wait}.  \texttt{notify} removes an arbit
 the bag, allowing one of the processes with that context to return from \texttt{wait}.
 \texttt{notifyAll} empties out the entire bag, allowing all processes in the bag to resume.
 
-To illustrate how Mesa condition variables are used in practice, we demonstrate, once again,
-using an implementation of reader/writer locks.
+To illustrate how Mesa condition variables are used in practice, we demonstrate using,
+once again, an implementation of reader/writer locks.
 Figure~\ref{fig:RWcv} shows the code.  \texttt{rwlock} is the global lock or mutex for the
 reader/writer lock.  There are two condition variables: readers wait on \texttt{rcond} and
 writers wait on \texttt{wcond}.  The implementation also keeps track of the number of
@@ -3124,14 +3128,14 @@ readers and writers in the critical section.
 
 When inspecting the code, one important feature to notice is that \texttt{wait} is always
 invoked within a \texttt{while} loop that checks for the condition that the process is
-waiting for.  We explained why in Chapter~\ref{ch:monitors}: when a process resumes after
+waiting for.  We explained why above: when a process resumes after
 being notified, it is not guaranteed that the condition it was waiting for holds, even
 if it did at the time of invoking \texttt{notify} or \texttt{notifyAll}.
-It is \emph{imperative} that you always have a \texttt{while} loop around any invocation
-of \texttt{wait}.
-Many implementation of condition variables depend on this, and optimizations of the
-code allow so-called ``spurious wakeups,'' where \texttt{wait} may sometimes return even
-if it has not been notified.
+It is \emph{imperative} that there is always a \texttt{while} loop around any invocation
+of \texttt{wait} containing the negation of the condition that the process is waiting for.
+Many implementation of condition variables depend on this, and optimized implementations
+of condition variables often allow so-called ``spurious wakeups,'' where \texttt{wait}
+may sometimes return even if the conditon variable has not been notified.
 
 In \texttt{release\_rlock}, notice that \texttt{notify(\&wcond)} is invoked when there
 are no readers left, \emph{without} checking if there are writers waiting to enter.
@@ -3152,6 +3156,15 @@ Second, both readers and writers are awakened---this is ok because both execute
 \texttt{wait} within a \texttt{while} loop, re-checking the condition that they
 are waiting for.  So if both type of processes are waiting, either all the readers
 get to enter next or one of the writers gets to enter next.
+
+Much of the complexity of programming with Mesa condition variables is in figuring out
+when to invoke \texttt{notify} and when to invoke \texttt{notifyAll}.  As a rule of
+thumb: be conservative---it is better to wake up too many processes than too few.
+Waking up too many processes may lead to some inefficiency, but waking up to few
+may cause the application to get stuck.  CXL can be particularly helpful here, as
+it examines every corner case.  You can safely try to replace each \texttt{notifyAll}
+with \texttt{notify} and see if every possible execution of the the application still
+terminates.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
