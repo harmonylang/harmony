@@ -1,4 +1,4 @@
-import RWbusy;
+import RW;
 
 const NREADERS = 3;
 const NWRITERS = 3;

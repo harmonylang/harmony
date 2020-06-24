@@ -2033,17 +2033,17 @@ version of the module.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWbusy.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RW.cxl}
 \end{code}
-\caption{[RWbusy.cxl] Busy-Waiting Reader/Writer Lock implementation.}
+\caption{[RW.cxl] Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWbusytest.cxl}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWtest.cxl}
 \end{code}
-\caption{[RWbusytest.cxl] Test code for Figure~\ref{fig:rwbusy}.}
+\caption{[RWtest.cxl] Test code for Figure~\ref{fig:rwbusy}.}
 \label{fig:rwbusytest}
 \end{figure}
 
@@ -2197,6 +2197,7 @@ bound lock.
 
 Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
+You can test the code by running \texttt{cxl -m RW=RWlock RWtest}.
 It uses two ordinary locks: \texttt{rwlock} is used by both readers and writers,
 while \texttt{rlock} is only used by readers.
 \texttt{rwlock} is held either when readers are at label \texttt{@rcs}

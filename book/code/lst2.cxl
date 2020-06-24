@@ -1,3 +1,5 @@
+import lst1;
+
 def lst_find(lst, v):
     let before = lst, after = (^before).next:
         lock(&(^before).data.lock);

@@ -3,8 +3,6 @@ import BBsema;
 const NPRODS = 2;       # number of producers
 const NCONSS = NPRODS;  # number of consumers
 
-# bounded buffer implementation omitted to save space
-
 def producer(i):
     produce((i, 0));
     produce((i, 1));

@@ -1,3 +1,5 @@
+import RWqueue;
+
 const NPROCS = 3;
 
 def process(self):

@@ -1,4 +1,4 @@
-import RWbusy;
+import RW;
 
 def process():
     while choose({ False, True }):
