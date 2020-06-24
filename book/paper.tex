@@ -478,17 +478,17 @@ another approach to process synchronication.
 \item Chapter~\ref{ch:deadlock} describes \emph{deadlock}
 where a set of processes are indefinitely waiting for one another to
 release a resource.
-\item Chapter~\ref{ch:actor} presents the \emph{actor model} as an approach to
-synchronization.
+\item Chapter~\ref{ch:actor} presents the \emph{actor model}
+and \emph{message passing} as an approach to synchronization.
+\item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
+systems problem of having two processes communicate reliably over an unreliable
+network.
 \item Chapter~\ref{ch:nonblocking} introduces \emph{non-blocking} or
 \emph{wait-free} synchronization algorithms,
 which prevent processes waiting for one another more than a bounded number of
 steps.
 \item Chapter~\ref{ch:barrier} describes \emph{barrier synchronization},
 useful in high-performance computing applications such as parallel simulations.
-\item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
-systems problem of having two processes communicate reliably over an unreliable
-network.
 \end{itemize}
 
 \chapter{Introduction to Programming with CXL}
@@ -3524,6 +3524,35 @@ in the opposite order.  Which do you think is better?
 (see Example~\ref{ex:qsort}) using the actor model.
 \end{problems}
 
+\chapter{Networking: Alternating Bit Protocol}
+\label{ch:abp}
+\index{alternating bit protocol}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abp.cxl}
+\end{code}
+\caption{[abp.cxl] Alternating Bit Protocol.}
+\label{fig:abp}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abptest.cxl}
+\end{code}
+\caption{[abptest.cxl] Test code for alternating bit protocol.}
+\label{fig:abptest}
+\end{figure}
+
+A distributed system is a concurrent system in which a collection
+of processes communicate by message passing, much the same as
+in the actor model.
+The most important difference between distributed and concurrent
+systems is that the former takes \emph{failures} into account.
+In this chapter, we will consider two actors, a sender and
+a receiver, that communicate by message passing over a network
+that may lose messages.
+
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
 \index{non-blocking synchronization}
@@ -3756,25 +3785,6 @@ for solving semaphore problems.  Look for the double turnstile solution.)
 (You may want to use a double turnstile approach here as well.)
 \end{problems}
 
-\chapter{Networking: Alternating Bit Protocol}
-\label{ch:abp}
-\index{alternating bit protocol}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abp.cxl}
-\end{code}
-\caption{[abp.cxl] Alternating Bit Protocol.}
-\label{fig:abp}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abptest.cxl}
-\end{code}
-\caption{[abptest.cxl] Test code for alternating bit protocol.}
-\label{fig:abptest}
-\end{figure}
 
 \bibliographystyle{alpha}
 \bibliography{paper}
