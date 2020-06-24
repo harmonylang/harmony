@@ -3420,7 +3420,8 @@ so continually?
 
 Some programming languages favor a different way of implementing
 synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
-processes that have only private memory and communicate through message passing.
+processes that have only private memory and communicate through
+\emph{message passing}.
 See Figure~\ref{fig:actorpic} for an illustration.
 Given that there is no shared memory in the actor model (other than the message
 queues, which have built-in synchronization), there is no need
@@ -3428,6 +3429,7 @@ for critical sections.  Instead, some sequential process owns a particular
 piece of data and other processes access it by sending request messages
 to the process and optionally waiting for response messages.  Each process
 handles one message at a time, serializing all access to the data it owns.
+As message queues are FCFS, starvation is prevented.
 
 The actor synchronization model is popular in a variety of programming
 languages, including Erlang and Scala.  Actor support is also available
@@ -3456,8 +3458,8 @@ Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
 \texttt{dequeue} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
-Figure~\ref{fig:actor} shows a CXL solution to the producer/consumer problem
-(with an unbounded buffer)
+Figure~\ref{fig:actor} shows a CXL solution to the
+``multiple producer / multiple consumer problem'' (with an unbounded buffer)
 using an actor (as illustrated in Figure~\ref{fig:actorpic}.
 \texttt{pc\_actor} is essentially a matchmaker: it matches
 \texttt{.produce} requests with \texttt{.consume} requests.
@@ -3484,6 +3486,7 @@ number of requests that it will handle.  We need the latter because in CXL
 all processes are required to terminate.  In a more realistic implementation,
 the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
 
+The shared memory consists entirely of message queues.
 The \texttt{produce} method takes two arguments: a pointer to the queue
 of the \texttt{pc\_actor} and the item.  The \texttt{consume} method
 takes two queue pointer arguments.  The first is a pointer to the queue
@@ -3581,6 +3584,8 @@ synchronization algorithms~\cite{}.
 There are also various algorithms where read-only access does not
 require a lock but updates do require a lock---these are useful in
 situations where most accesses are read-only.
+
+TODO: Talk about seqlock perhaps.
 
 \begin{figure}
 \begin{code}
