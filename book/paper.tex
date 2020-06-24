@@ -3984,7 +3984,7 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-Address & compute address \\
+Address $n$ & compute address \\
 \hline
 Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
@@ -4046,6 +4046,13 @@ StoreVar [$v$] & pop a value from the stack and store it in a process variable \
 
 Clarifications:
 \begin{itemize}
+\item \texttt{Load} and \texttt{LoadVar} instructions have an optional
+variable name: if omitted the top of the stack must contain the path
+name of the variable as an AddressValue.
+\item \texttt{Store} and \texttt{StoreVar} instructions have an optional
+variable name.  In both cases the value to be assigned is on the top
+of the stack.  If the name is omitted, the path name is underneath that
+value on the stack.
 \item The effect of the \texttt{Apply} instructions depends much on $m$.
 If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
 and pushes the value.
@@ -4067,6 +4074,9 @@ appears otherwise:
 The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
 \item Every \texttt{Stop} instruction must immediately be followed by a 
 \texttt{Continue} instruction.
+\item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
+The top value must be an address value.  The remaining values are keys into dictionaries.
+The instruction then computes the address of \texttt{\^}$v_1~v_2~...~v_n$.
 \end{itemize}
 
 \chapter{Contexts and Processes}
