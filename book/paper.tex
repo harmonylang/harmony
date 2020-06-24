@@ -3171,7 +3171,9 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \section*{Exercises}
 \begin{problems}
-\item Write a new version of the GPU allocator in Exercise~\ref{ex:gpu}.
+\item Implement semaphores using Mesa condition variables.
+\item Write a new version of the GPU allocator in Exercise~\ref{ex:gpu}
+using Mesa condition variables.
 In this version,
 a process is allowed to allocate a set of GPUs and release a set of GPUs that it
 has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
@@ -3253,8 +3255,8 @@ to allocate a resource held by the next.
 Preventing deadlock thus means preventing that one of these conditions occurs.
 However, mutual exclusion is not easily prevented (although, for some resources it is
 possible, as demonstrated in Chapter~\ref{ch:nonblocking}).
-Havender~\cite{Havender68} proposed the following techniques that avoid the remaining
-three conditions:
+Havender proposed the following techniques that avoid the remaining
+three conditions~\cite{Havender68}:
 
 \begin{itemize}
 \item \emph{No Hold and Wait}: a process must request all resources it is going to
@@ -3280,9 +3282,10 @@ But which condition variable to wait on?
 The code demonstrates an important technique to use when waiting for
 multiple conditions.
 \index{multiple conditions, waiting on}
-The condition in the \texttt{while} statement is the condition that the
-diner is waiting for to be \texttt{False}.  Within the \texttt{while} statement,
-there is an \texttt{if} statement for each disjunct of that condition.
+The condition in the \texttt{while} statement is the negation of the
+condition that the diner is waiting and consists of two disjuncts.
+Within the \texttt{while} statement,
+there is an \texttt{if} statement for each disjunct.
 The code waits for either or both forks if necessary.  After that, it goes
 back to the top of the \texttt{while} loop.
 
@@ -3335,9 +3338,10 @@ before the higher numbered fork, like so:
 \vspace{1em}
 
 This completes all the Havender methods.
-There is, however, another approach, which is sometimes called
-\emph{deadlock avoidance}.
+There is, however, another approach, which is sometimes called deadlock
+\emph{avoidance}
 \index{deadlock avoidance}
+instead of deadlock \emph{prevention}.
 In the case of the Dining Philosophers, we want to avoid the situation where each
 diner picks up a fork.  So if we can prevent more than four diners from starting to
 eat at the same time, then we can avoid the conditions for deadlock from ever
@@ -3348,8 +3352,8 @@ restrict the number of diners at any time to four.
 This concept can be generalized using something called the
 Banker's Algorithm~\cite{EWD108}, but it is outside the scope of this book.
 The problem with these kinds of schemes is that one needs to know ahead of time
-what the maximum number of resources is that each process wants to allocate,
-making them generally quite impractical.
+the set of processes and what the maximum number of resources is that each process
+wants to allocate, making them generally quite impractical.
 
 \begin{figure}
 \begin{code}
@@ -3370,8 +3374,10 @@ processes.  Can you fix the problem?
 that computes the total over all balances.
 It needs to obtain a lock on all accounts.  Make sure that
 it cannot cause deadlock.
-\item Use method \texttt{total()} to ensure that the sum total of the bank
-accounts at the beginning of the test is the same as at the end.
+\item Implement an extra process that checks, once, if the total of
+the balances is the same as that at the beginning (using an assertion).
+Is once enough to determine that no money gets lost or create, or should it do
+so continually?
 \end{problems}
 
 \begin{figure}
