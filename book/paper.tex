@@ -3549,9 +3549,48 @@ of processes communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
 systems is that the former takes \emph{failures} into account.
-In this chapter, we will consider two actors, a sender and
-a receiver, that communicate by message passing over a network
-that may lose messages.
+In this chapter, we will consider two actors, Alice and Bob.
+Alice wants to send a sequence of application messages to Bob,
+but the underlying network may lose messages.
+The network does not re-order messages: when sending messages
+$m_1$ and $m_2$ in that order, then if both messages are received,
+$m_1$ is received before $m_2$.
+Also, the network does not create messages out of nothing: if
+message $m$ is received, then message $m$ was sent.
+
+We need a network protocol that Alice and Bob can run.
+In particular, it has to be the case that if Alice sends application
+messages $m_1, ..., m_n$ in that order, then if Bob receives an
+application message
+$m$, then $m = m_i$ for some $i$ and Bob will already have received
+application messages $m_1, ..., m_i$ (safety).
+Also, if the network is fair, then if Alice sends application message
+$m$, then eventually Bob should deliver $m$ (liveness).
+
+We assume that there are two unreliable network channels: \texttt{s\_chan}
+from Alice to Bob, and \texttt{r\_chan} from Bob to Alice.
+Because of the network's properties, we can model each
+channel as a variable that either contains a network message or nothing
+(we use \texttt{()} in the model).
+
+The \emph{Alternating Bit Protocol} is suitable for our purposes.
+Alice and Bob each maintain a zero-initialized sequence number,
+\texttt{s\_seq} and \texttt{r\_seq} resp.
+Alice sends a network message to Bob containing an
+application message as \emph{payload} and Alice's sequence number
+as \emph{header}.
+When Bob receives such a network message, Bob returns an
+an \emph{acknowledgment} to Alice, which is a network message
+containing the sequence number in the message that Bob received.
+
+In the protocol, Alice keeps sending the same network message until she
+receives an acknowledgment with the same sequence number.
+When this happens, Alice increments her sequence number.  She is now
+ready to send the next message she wants to send to Bob.
+Bob, on the other hand, waits until he receives a message matching
+Bob's sequence number.  If so, Bob \emph{delivers} the payload in the
+message and increments his sequence number.
+Because of the network properties,  a one-bit sequence number suffices.
 
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
