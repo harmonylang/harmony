@@ -27,7 +27,7 @@ def lst_remove(lst, v):
         if (^after).data.value == v:
             (^before).next = (^after).next;
             unlock(&(^after).data.lock);
-            rec_free(after);
+            recFree(after);
         else:
             unlock(&(^after).data.lock);
         ;

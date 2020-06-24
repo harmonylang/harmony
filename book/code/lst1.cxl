@@ -2,7 +2,7 @@ import synch;
 import alloc;
 
 def lst_node(v, n):
-    result = rec_alloc();
+    result = recAlloc();
     (^result).data = dict{ .lock: Lock(), .value: v };
     (^result).next = n;
 ;

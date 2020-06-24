@@ -3913,15 +3913,16 @@ There are just two methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{rec\_alloc()} & allocate a record \\
+\texttt{recAlloc()} & allocate a record \\
 \hline
-\texttt{rec\_free(r)} & free record \texttt{r} \\
+\texttt{recFree(r)} & free record \texttt{r} \\
 \hline
 \end{tabular}
 \vspace{1em}
 
-CXL supports an address value \texttt{NULL} that can be
-used as a null pointer.  \texttt{rec\_alloc} returns \texttt{NULL}
+The usage is similar to \texttt{malloc} and \texttt{free} in C.
+CXL also supports an address value \texttt{NULL} that can be
+used as a null pointer.  \texttt{recAlloc} returns \texttt{NULL}
 when running out of memory.
 
 The \texttt{bag} module
@@ -4025,7 +4026,7 @@ Pop & pop a value of the stack and discard it \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
 \hline
-PushAddress $v$ & push the address of shared variable $v$ \\
+PushAddress $v$ & push the address of variable $v$ \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
 \hline
@@ -4046,12 +4047,17 @@ StoreVar [$v$] & pop a value from the stack and store it in a process variable \
 
 Clarifications:
 \begin{itemize}
+\item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
+The top value must be an address value.  The remaining values are keys into dictionaries.
+The instruction then computes the address of \texttt{\^}$v_1~v_2~...~v_n$.
+\item Even though CXL code does not allow taking addresses of process variables, both
+shared and process variables can have addresses.
 \item \texttt{Load} and \texttt{LoadVar} instructions have an optional
-variable name: if omitted the top of the stack must contain the path
-name of the variable as an AddressValue.
+variable name: if omitted the top of the stack must contain the address of
+the variable.
 \item \texttt{Store} and \texttt{StoreVar} instructions have an optional
 variable name.  In both cases the value to be assigned is on the top
-of the stack.  If the name is omitted, the path name is underneath that
+of the stack.  If the name is omitted, the address is underneath that
 value on the stack.
 \item The effect of the \texttt{Apply} instructions depends much on $m$.
 If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
@@ -4074,9 +4080,6 @@ appears otherwise:
 The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
 \item Every \texttt{Stop} instruction must immediately be followed by a 
 \texttt{Continue} instruction.
-\item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
-The top value must be an address value.  The remaining values are keys into dictionaries.
-The instruction then computes the address of \texttt{\^}$v_1~v_2~...~v_n$.
 \end{itemize}
 
 \chapter{Contexts and Processes}
@@ -4088,7 +4091,6 @@ All instructions update the program counter, and so no instruction
 leaves the context the same.
 There may be multiple processes
 with the same state at the same time.
-
 A context consists of the following:
 
 \vspace{1em}
