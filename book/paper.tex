@@ -1206,15 +1206,18 @@ specification.
 \label{fig:upturn}
 \end{figure}
 
+\glsadd{lock}
 You may already have heard of the concept of a \emph{lock}
 \index{lock}
 and have realized that
 it could be used to implement a critical section.
-\glsadd{lock}
 The idea is that the lock is like a baton that at most one process can own
 (or hold) at a time.
 A process that wants to enter the critical section at a time must obtain the
 lock first and release it upon exiting the critical section.
+Note that the word ``lock'' does not describe the concept well---it really
+is more like a baton or token that only one process can hold.
+
 Using a lock is a good thought, but how does one implement one?
 Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
