@@ -3991,9 +3991,9 @@ Jump $p$ & set program counter to $p$ \\
 \hline
 JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
 \hline
-Load $v$ & push shared variable $v$ (\texttt{\^} is indirect) onto the stack \\
+Load [$v$] & push the value of a shared variable onto the stack \\
 \hline
-LoadVar $v$ & load process variable $v$ and push it onto the stack \\
+LoadVar [$v$] & push the value of a process variable onto the stack \\
 \hline
 $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
 \hline
@@ -4013,9 +4013,9 @@ Split & pop set and push minimum and remainder \\
 \hline
 Stop & save context into shared variable and remove from context bag \\
 \hline
-Store $v$ $[n]$ & pop a value from the stack and store it in shared variable $v$ (\texttt{\^} is indirect) \\
+Store [$v$] & pop a value from the stack and store it in a shared variable \\
 \hline
-StoreVar $v$ & pop a value from the stack and store it in process variable $v$ \\
+StoreVar [$v$] & pop a value from the stack and store it in a process variable \\
 \hline
 \end{tabular}
 \vspace{1em}
