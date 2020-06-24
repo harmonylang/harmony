@@ -1,9 +1,11 @@
+import actor;
+
 const NITEMS = 2;
 
 pc_queue = Queue();
 spawn pc_actor(&pc_queue, 2 * NITEMS);
 queues = [ Queue() for i in 0..(NITEMS - 1) ];
 for i in 0..(NITEMS-1):
-    spawn produce(&pcqueue, i);
-    spawn consume(&pcqueue, &queues[i]);
+    spawn produce(&pc_queue, i);
+    spawn consume(&pc_queue, &queues[i]);
 ;

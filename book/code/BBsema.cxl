@@ -1,8 +1,6 @@
 import synch;
 
 const NSLOTS = 2;     # size of bounded buffer
-const NPRODS = 3;     # number of producers
-const NCONSS = 3;     # number of consumers
 
 def produce(item):
     P(&n_empty);
@@ -27,9 +25,3 @@ l_in = Semaphore(1);
 l_out = Semaphore(1);
 n_full = Semaphore(0);
 n_empty = Semaphore(NSLOTS);
-for i in 1..NPRODS:
-    spawn produce(i);
-;
-for i in 1..NCONSS:
-    spawn consume();
-;

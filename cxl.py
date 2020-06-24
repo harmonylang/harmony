@@ -10,10 +10,12 @@ import math
 files = {}              # files that have been read already
 constants = {}          # constants modified with -c
 modules = {}            # modules modified with -m
+namestack = []          # stack of module names being compiled
 
 def load(f, filename, scope, code):
     if filename in files:
         return
+    namestack.append(filename)
     files[filename] = []
     all = ""
     for line in f:
@@ -28,6 +30,7 @@ def load(f, filename, scope, code):
         # print(traceback.format_exc())
         sys.exit(1)
     ast.compile(scope, code)
+    namestack.pop()
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -1666,17 +1669,23 @@ class AssignmentAST(AST):
             else:
                 (t, v) = tv
                 if t == "variable":
-                    code.append(PushAddressOp(v))
                     if n > 1:
+                        code.append(PushAddressOp(v))
                         code.append(AddressOp(n))
                     if self.op[0] == "=":
                         self.rv.compile(scope, code)
                     else:
-                        code.append(DupOp())
-                        code.append(LoadVarOp(None))
+                        if n > 1:
+                            code.append(DupOp())
+                            code.append(LoadVarOp(None))
+                        else:
+                            code.append(LoadVarOp(v))
                         self.rv.compile(scope, code)
                         code.append(NaryOp(self.op, 2))
-                    code.append(StoreVarOp(None))
+                    if n > 1:
+                        code.append(StoreVarOp(None))
+                    else:
+                        code.append(StoreVarOp(v))
                 else:
                     assert False, tv
         else:
@@ -2008,9 +2017,14 @@ class ImportAST(AST):
         (lexeme, file, line, column) = self.module
         if lexeme in modules:
             lexeme = modules[lexeme]
-        filename = "modules/" + lexeme + ".cxl"
-        with open(filename) as f:
-            load(f, filename, scope, code)
+        for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+            filename = dir + "/" + lexeme + ".cxl"
+            if os.path.exists(filename):
+                with open(filename) as f:
+                    load(f, filename, scope, code)
+                return
+        print("Can't find module", lexeme, "imported from", namestack)
+        sys.exit(1)
 
 class LabelStatAST(AST):
     def __init__(self, labels, ast, file, line):

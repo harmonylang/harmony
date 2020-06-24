@@ -1,5 +1,3 @@
-const NITEMS = 3;
-
 def swap(p, q):               # swap ^p and ^q
     let t = ^p:
         ^p = ^q; 

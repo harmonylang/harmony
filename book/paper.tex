@@ -2429,6 +2429,14 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{code/BBsematest.cxl}
+\end{code}
+\caption{[BBsematest.cxl] Test program for Figure~\ref{fig:boundedbuffer}.}
+\label{fig:bbtest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 \begin{verbatim}
 cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
 cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 PCsema.cxl
@@ -2538,7 +2546,8 @@ The second type of semaphores are called \emph{counting semaphores}.
 They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
-We can run the code through CXL, but what would it test?  There are no
+Figure~\ref{fig:bbtest} invokes the code of Figure~\ref{fig:boundedbuffer}.
+We can run this through CXL, but what would it test?  There are no
 assert statements in the code.
 We can split the functionality of this code into two pieces.  One is
 the synchronization part: producers should never run more than \texttt{NSLOTS}

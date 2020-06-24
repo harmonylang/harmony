@@ -1,7 +1,7 @@
-import synch;
+import RWbusy;
 
-const NREADERS = 2;
-const NWRITERS = 2;
+const NREADERS = 3;
+const NWRITERS = 3;
 
 def reader(self):
     acquire_rlock();

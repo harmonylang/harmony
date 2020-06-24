@@ -1,6 +1,6 @@
-import synch;
+import RWlock;
 
-const NREADERS = 2;
+const NREADERS = 3;
 const NWRITERS = 2;
 
 def reader(self):

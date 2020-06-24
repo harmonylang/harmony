@@ -1,4 +1,7 @@
 import list;
+import qsort;
+
+const NITEMS = 4;
 
 def sorted():                    # return whether array 'a' is sorted
     result = True;

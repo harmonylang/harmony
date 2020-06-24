@@ -1,6 +1,5 @@
-import synch;
+import BBsema;
 
-const NSLOTS = 2;       # size of bounded buffer
 const NPRODS = 2;       # number of producers
 const NCONSS = NPRODS;  # number of consumers
 
