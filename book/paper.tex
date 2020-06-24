@@ -122,6 +122,13 @@
   description={is a binary predicate over states that must hold for every
   reachable state of a process}
 }
+\newglossaryentry{linearizable}
+{
+  name=linearizable,
+  description={is a consistency condition for concurrent access to an object, requiring
+    that each access must appear to execute atomically sometime between the invocation
+    of the access and its completion}
+}
 \newglossaryentry{lock}
 {
   name=lock,
@@ -382,12 +389,12 @@ that sorts all lists of up to five numbers correctly but fails to
 do so for a list of 6 numbers.  (Hint: simply use an \texttt{if}
 statement.)
 
+\glsadd{invariant}
 While model checking does not in general prove an algorithm correct,
 it can help with proving an algorithm correct.
 The reason is that the correctness of many programs is built around
 \emph{invariants}:
 \index{invariant}
-\glsadd{invariant}
 predicates that must hold for every state in the
 execution of a program.  A model checker can find violations of
 proposed invariants when evaluating a model and provide valuable early
@@ -2347,14 +2354,14 @@ units of a resource initially available.
 When allocating a resource, a process decrements the
 counter using the \texttt{P}
 \index{P}
-\index{Procure}
+\index{procure}
 operation.  You can think of \texttt{P} standing
 for \emph{Procure}, as in procuring the resource associated with the semaphore.
 The \texttt{P} operation blocks the invoking process if the counter is zero.
 To release the resource, a process increments the resource using the
 \texttt{V}
 \index{V}
-\index{Vacate}
+\index{vacate}
 operation.  You can think of \texttt{V} standing for \emph{vacate},
 as in vacating the resource.
 One can think of a semaphore as a generalization of a lock.  In fact, a
@@ -3366,7 +3373,7 @@ scenario.}
 
 \section*{Exercises}
 \begin{problems}
-\item Figure~\ref{fig:bank} shows an implementation of a bank with various
+\item \label{ex:bank} Figure~\ref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
 processes.  Can you fix the problem?
@@ -3535,13 +3542,11 @@ processes.  Certainly, preventing multiple processes from accessing
 certain code at the same time simplifies how to think about synchronization.
 However, it can lead to starvation.  Even in the absence of starvation,
 if some process is slow for some reason while being in the critical section,
-the other processes have to wait for it to finish the critical section.
-In this chapter, we will have a brief look at how one can develop concurrent
-code in which processes never have to wait for other processes.
-For this, we will revisit the producer/consumer problem, in which a
-set of processes are producing items and a set of processes are
-consuming items.
+the other processes have to wait for it to finish executing the critical section.
+In this chapter, we will have a look at how one can develop concurrent
+code in which processes do not have to wait for other processes.
 
+As a first example, we will revisit the producer/consumer problem.
 The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
 Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
@@ -3571,21 +3576,64 @@ There is no critical section.  If one process is executing instructions
 very slowly, this does not negatively impact the other processes, as it
 would with solutions based on critical sections.
 On the contrary, it helps them because it creates less contention.
-
-The solution is not practical because the \texttt{items} array must be
-unbounded if an unbounded number of items may be produced.  Each slot
-in the array is only used once, which is inefficient.  Also, the \texttt{inc}
-and \texttt{swap} interlock instructions are not universally available
-on existing hardware.
+Unfortunately, the solution is not practical for the following reasons:
+\begin{itemize}
+\item The \texttt{items} array must be of infinite size if an unbounded number
+of items may be produced;
+\item Each slot in the array is only used once, which is inefficient;
+\item the \texttt{inc} and \texttt{swap} interlock instructions are not
+universally available on existing processors.
+\end{itemize}
 However, in the literature there are many examples of practical
 non-blocking (aka \emph{wait-free})
 \index{wait-free synchronization}
 synchronization algorithms~\cite{}.
-There are also various algorithms where read-only access does not
-require a lock but updates do require a lock---these are useful in
-situations where most accesses are read-only.
 
-TODO: Talk about seqlock perhaps.
+There are also various algorithms where read-only access is wait-free
+but updates do require a lock---these are useful in situations where
+most accesses are read-only and the performance of updates is less
+critical~\cite{}.
+Figures~\ref{fig:lst1} and~\ref{fig:lst2} implements an ordered linked
+list of integers without duplicates.
+There are two update operations:
+values can be added using \texttt{lst\_insert} or deleted using
+\texttt{lst\_remove}.
+There is also a read-only operation: \texttt{lst\_contains} checks if
+a particular value is in the list.
+
+\glsadd{linearizable}
+The implementation uses the \texttt{alloc} module for dynamic allocation
+\index{dynamic allocation}
+of nodes in the list using \texttt{recAlloc} and \texttt{recFree}.
+The read-only operation \texttt{lst\_contains} is wait\_free: it scans
+through the list without having to obtain a lock.
+Nonetheless, the implementation of the list is
+\emph{linearizable}~\cite{HW90},
+\index{linearizable}
+a strong notion of consistency that
+makes it appear as if each of the operations executes atomically at
+some point between their invocation and return.
+
+The list has two ``book-end'' nodes with values \texttt{-inf} and
+\texttt{inf} (like the Python \texttt{math.inf} constants).
+Each node has a lock, a value, and \texttt{next}, a pointer to the next node
+(which is \texttt{NULL} for the final \texttt{inf} node).
+The \texttt{lst\_find(lst, v)} method is a helper function for update
+methods that
+finds and locks two consecutive nodes \texttt{before} and \texttt{after}
+such that \texttt{before.value $<$ v $\le$ after.value}.
+It does so by performing something called \emph{hand-over-hand locking}.
+\index{hand-over-hand locking}
+It first locks the first node, which is the \texttt{-inf} node.
+Then, iteratively, it obtains a lock on the next node and release the
+lock on the last one, and so on, similar to climbing a tree
+hand-over-hand.
+
+Having the two adjoining nodes locked, implementing \texttt{lst\_insert}
+and \texttt{lst\_remove} is straightforward.
+The \texttt{lst\_contains} method can simply scan through the list
+because the \texttt{next} pointers are updated atomically in such a
+way that they always point to a legal suffix of the list.
 
 \begin{figure}
 \begin{code}
@@ -3602,6 +3650,20 @@ TODO: Talk about seqlock perhaps.
 \caption{[lst2.cxl] List with non-blocking read operations, part 2.}
 \label{fig:lst2}
 \end{figure}
+
+\section*{Exercises}
+\begin{problems}
+\item A \emph{seqlock} consists of a lock and a version number.
+An update operation acquires the lock, increments the version number, makes the
+changes to the data structure, and then releases the lock.  A read-only operation
+does not use the lock.  Instead, it retrieves the version number,
+reads the data structure, and then checks if the
+version number has not changed.  If it has, read-only operation is retried.
+Use a seqlock to implement a bank much like Exercise~\ref{ex:bank}, with
+one seqlock for the entire bank (i.e., no locks on individual accounts).
+Method \texttt{transfer} is an update operation; method \texttt{total} is a
+read-only operation.  Explain how a \texttt{seqlock} can lead to starvation.
+\end{problems}
 
 \chapter{Barrier Synchronization}
 \label{ch:barrier}
