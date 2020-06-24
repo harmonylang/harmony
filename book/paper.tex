@@ -3713,16 +3713,17 @@ rounds each process has completed.}
 
 Barrier synchronization is a problem that comes up in high-performance
 parallel computing, used, among others, for scalable simulation.
-Barrier synchronization is almost the opposite of critical sections:
+A barrier is almost the opposite of a critical section:
 the intention is to get a group of processes to run some code at the
-same time.
-More precisely, the processes run in rounds.  At the end of each round
-there is a so-called \emph{barrier} where processes wait until all
-processes have completed the round.
+same time, instead of having them execute it one at a time.
+More precisely, with barrier synchronization the processes execute in rounds.
+Between each round there is a so-called \emph{barrier} where processes wait
+until all processes have completed the round and before they start the
+next one.
 For example, in an iterative matrix algorithm, the matrix may be
-cut up into fragments.  During a round, one process runs for each
-fragment concurrently.  The next round is not allowed to start
-until all processes have completed operations on their fragment.
+cut up into fragments.  During a round, the processes run concurrently
+one for each fragment.  The next round is not allowed to start
+until all processes have completed processing their fragment.
 
 Figure~\ref{fig:barrierdiagram} shows a high-level depiction with three
 processes.  Initially all processes are in round~0.  Then each process
@@ -3749,7 +3750,10 @@ are more than one round apart.
 \begin{problems}
 \item See if you can implement barrier synchronization for $N$ processes
 with just three semaphores.  Busy waiting is not allowed.  How about just two?
+(As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
+for solving semaphore problems.  Look for the double turnstile solution.)
 \item Implement barrier synchronization with Mesa condition variables.
+(You may want to use a double turnstile approach here as well.)
 \end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
