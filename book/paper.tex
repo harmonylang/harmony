@@ -3634,6 +3634,9 @@ and \texttt{lst\_remove} is straightforward.
 The \texttt{lst\_contains} method can simply scan through the list
 because the \texttt{next} pointers are updated atomically in such a
 way that they always point to a legal suffix of the list.
+An invariant of the algorithm is that at any point in time the
+list is ``complete'', starting with a \texttt{-inf} node and ending
+with a \texttt{inf} node.
 
 Determining if an implementation of a concurrent data structure
 is linearizable involves finding what are known as the
