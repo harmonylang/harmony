@@ -2723,6 +2723,28 @@ def optimize(code):
 
 lasttime = 0
 
+class Pad:
+    def __init__(self, descr):
+        self.descr = descr
+        self.value = ""
+        self.lastlen = 0
+    
+    def __repr__(self):
+        return self.descr + " = " + self.value
+
+    def pad(self, v):
+        if len(v) < len(self.value):
+            self.value = " " * (len(self.value) - len(v))
+        else:
+            self.value = ""
+        self.value += v
+
+p_ctx = Pad("ctx")
+p_pc  = Pad("pc")
+p_ns  = Pad("#states")
+p_dia = Pad("diameter")
+p_ql  = Pad("#queue")
+
 # Have context ctx make one (macro) step in the given state
 def onestep(state, ctx, choice, visited, todo, node, infloop):
     # Keep track of whether this is the same context as the parent context
@@ -2744,10 +2766,12 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
         global lasttime
         if time.time() - lasttime > 0.3:
-            print("  ", "ctx =", nametag2str(cc.nametag), "pc =%4d"%cc.pc,
-                    "#states =", len(visited), "diameter =", node.len,
-                    "queue =", len(todo) #, end="     \r")
-                    )
+            p_ctx.pad(nametag2str(cc.nametag))
+            p_pc.pad(str(cc.pc))
+            p_ns.pad(str(len(visited)))
+            p_dia.pad(str(node.len))
+            p_ql.pad(str(len(todo)))
+            print(p_ctx, p_pc, p_ns, p_dia, p_ql, end="\r")
             lasttime = time.time()
 
         # If the current instruction is a "choose" instruction, make the specified choice
