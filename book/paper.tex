@@ -3640,6 +3640,11 @@ for the last acknowledgment, or the receiver waiting for the last message.
 in distributed systems as well.
 Develop a protocol for a single client and server using the same network
 model as for the ABP protocol.
+Hint: the response to a request can contain the same sequence number as the
+request.
+\item Generalize the solution in the previous exercise to multiple clients.
+Each client is uniquely identified.  You may either use separate channel pairs
+for each client, or solve the problem using a single pair of channels.
 \end{problems}
 
 \chapter{Non-Blocking Synchronization}
