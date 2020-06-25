@@ -2499,6 +2499,10 @@ where each upstream process is a producer and each downstream
 process is a consumer.
 Or processes may be arranged in a manager/worker pattern, with a manager
 producing jobs and workers executing them in parallel.
+Or, in the client/server model,
+\index{client/server model}
+some process may act as a \emph{server} that clients can send requests to
+and receive responses from.
 
 In general, we allow multiple producers and multiple consumers
 all sharing the same bounded buffer.
@@ -3507,6 +3511,12 @@ requests.
 
 \section*{Exercises}
 \begin{problems}
+\item \label{ex:cltsvr} A popular model is the \emph{client/server} model.
+Here a single actor implements some service, like computing the square of a
+number.
+A client can send a message containing an integer to the server, and the
+server returns a response message containing the square of that message.
+Implement this.
 \item Actors and message queues are good for building pipelines.
 Develop a pipeline that computes Mersenne primes (primes that are one less
 than a factor of two).  Write four actors:
@@ -3520,13 +3530,13 @@ less than a factor of two;
 Configure two versions of the pipeline, one that first checks if a number
 is prime and then if it is one less than a factor of two, the other
 in the opposite order.  Which do you think is better?
-\item Bonus question: implement a version of parallel qsort
-(see Example~\ref{ex:qsort}) using the actor model.
 \end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}
 \index{alternating bit protocol}
+\index{protocol}
+\index{distributed system}
 
 \begin{figure}
 \begin{code}
@@ -3548,11 +3558,14 @@ A distributed system is a concurrent system in which a collection
 of processes communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
-systems is that the former takes \emph{failures} into account,
+systems is that the former takes \emph{failures}
+\index{failure}
+into account,
 including failures of processes and failures of shared memory.
 In this chapter, we will consider two actors, Alice and Bob.
 Alice wants to send a sequence of application messages to Bob,
 but the underlying network may lose messages.
+\index{network}
 The network does not re-order messages: when sending messages
 $m_1$ and $m_2$ in that order, then if both messages are received,
 $m_1$ is received before $m_2$.
@@ -3619,12 +3632,10 @@ for the last acknowledgment, or the receiver waiting for the last message.
 
 \section*{Exercises}
 \begin{problems}
-\item A common pattern in distributed systems is the so-called \emph{client/server}
-model, where a server process provides services to a set of clients.  The clients
-send request messages to the server, and the server sends a response to each
-request.  Develop a protocol for a single client and server using the same network
-model as for the ABP protocol.  By way of example, let a request contain an
-integer and the response consist of the square of that integer.
+\item Exercise~\ref{ex:cltsvr} explored the \emph{client/server}.  It is popular
+in distributed systems as well.
+Develop a protocol for a single client and server using the same network
+model as for the ABP protocol.
 \end{problems}
 
 \chapter{Non-Blocking Synchronization}
