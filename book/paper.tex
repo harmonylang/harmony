@@ -3548,7 +3548,8 @@ A distributed system is a concurrent system in which a collection
 of processes communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
-systems is that the former takes \emph{failures} into account.
+systems is that the former takes \emph{failures} into account,
+including failures of processes and failures of shared memory.
 In this chapter, we will consider two actors, Alice and Bob.
 Alice wants to send a sequence of application messages to Bob,
 but the underlying network may lose messages.
@@ -3567,13 +3568,9 @@ application messages $m_1, ..., m_i$ (safety).
 Also, if the network is fair, then if Alice sends application message
 $m$, then eventually Bob should deliver $m$ (liveness).
 
-We assume that there are two unreliable network channels: \texttt{s\_chan}
-from Alice to Bob, and \texttt{r\_chan} from Bob to Alice.
-Because of the network's properties, we can model each
-channel as a variable that either contains a network message or nothing
-(we use \texttt{()} in the model).
-
 The \emph{Alternating Bit Protocol} is suitable for our purposes.
+We assume that there are two unreliable network channels: one from Alice
+to Bob and one from Bob to Alice.
 Alice and Bob each maintain a zero-initialized sequence number,
 \texttt{s\_seq} and \texttt{r\_seq} resp.
 Alice sends a network message to Bob containing an
@@ -3591,6 +3588,34 @@ Bob, on the other hand, waits until he receives a message matching
 Bob's sequence number.  If so, Bob \emph{delivers} the payload in the
 message and increments his sequence number.
 Because of the network properties,  a one-bit sequence number suffices.
+
+Because of the network's properties, we can model each
+channel as a variable that either contains a network message or nothing
+(we use \texttt{()} in the model).  Let \texttt{s\_chan} be the channel
+from Alice to Bob and \texttt{r\_chan} the channel from Bob to Alice.
+\texttt{net\_send(pchan, m, reliable)} models sending a message \texttt{m} to
+\texttt{\^{}pchan}, where \texttt{pchan} is either \texttt{\&s\_chan}
+or \texttt{\&r\_chan}.
+The method places either \texttt{m} (to model a successful send)
+or \texttt{()} (to model loss) in \texttt{\^{}pchan}.
+The use of the \texttt{reliable} flag will be explained later.
+\texttt{net\_recv(pchan)} models checking \texttt{\^{}pchan} for
+the next message.
+
+Method \texttt{app\_send(m)} tries \emph{retransmitting} \texttt{m} until
+an acknowledgment is received.
+Method \texttt{app\_recv(reliable)} returns the next successfully received
+message.
+Figure~\ref{fig:abptest} shows how the methods may be used to send and receive
+a stream of \texttt{NMSGS} messages reliably.
+It has to be bounded, because model checking requires a finite model.
+
+Only the last invocation of \texttt{app\_recv(reliable)} is invoked with
+\texttt{reliable == True}.  It causes the last acknowledgment to be sent
+reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
+once the last acknowledgment has been received.
+Without something like this, either the sender may be left hanging waiting
+for the last acknowledgment, or the receiver waiting for the last message.
 
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
