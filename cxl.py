@@ -2192,32 +2192,32 @@ class BlockRule(Rule):
 # This parses the lefthand side of an assignment in a let expression.  Grammar:
 #   lhs = (tuple ",")* [tuple]
 #   tuple = name | "(" lhs ")"
-class LetTupleRule(Rule):
+class LetLhsRule(Rule):
     def parse(self, t):
         tuples = []
         while True:
             (lexeme, file, line, column) = t[0]
-            if lexeme == "(":
-                (nest, t) = LetTupleRule().parse(t[1:])
+            if (isname(lexeme)):
+                tuples.append(("name", t[0]))
+            elif lexeme == "(":
+                (nest, t) = LetLhsRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == ")", t[0], "expected ')'")
                 tuples.append(nest)
             elif lexeme == "[":
-                (nest, t) = LetTupleRule().parse(t[1:])
+                (nest, t) = LetLhsRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "]", t[0], "expected ']'")
                 tuples.append(("nest", nest))
             else:
-                self.expect("let statement", isname(lexeme), t[0], "expected variable name")
-                tuples.append(("name", t[0]))
+                return (("nest", tuples), t)
             (lexeme, file, line, column) = t[1]
             if lexeme != ",":
-                break
+                if len(tuples) == 1:
+                    return (tuples[0], t[1:])
+                else:
+                    return (("nest", tuples), t[1:])
             t = t[2:]
-        if len(tuples) == 1:
-            return (tuples[0], t[1:])
-        else:
-            return (("nest", tuples), t[1:])
 
 class StatementRule(Rule):
     def skip(self, token, t):
@@ -2271,7 +2271,7 @@ class StatementRule(Rule):
         if lexeme == "let":
             vars = []
             while True:
-                (tuples, t) = LetTupleRule().parse(t[1:])
+                (tuples, t) = LetLhsRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "=", t[0], "expected '='")
                 (ast, t) = NaryRule({":", ","}).parse(t[1:])
