@@ -3617,6 +3617,16 @@ once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
 for the last acknowledgment, or the receiver waiting for the last message.
 
+\section*{Exercises}
+\begin{problems}
+\item A common pattern in distributed systems is the so-called \emph{client/server}
+model, where a server process provides services to a set of clients.  The clients
+send request messages to the server, and the server sends a response to each
+request.  Develop a protocol for a single client and server using the same network
+model as for the ABP protocol.  By way of example, let a request contain an
+integer and the response consist of the square of that integer.
+\end{problems}
+
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
 \index{non-blocking synchronization}
