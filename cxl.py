@@ -2743,10 +2743,11 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         steps.append(cc.pc)
 
         global lasttime
-        if time.time() - lasttime > 0.2:
+        if time.time() - lasttime > 0.3:
             print("  ", "ctx =", nametag2str(cc.nametag), "pc =%4d"%cc.pc,
                     "#states =", len(visited), "diameter =", node.len,
-                    "queue =", len(todo), end="     \r")
+                    "queue =", len(todo) #, end="     \r")
+                    )
             lasttime = time.time()
 
         # If the current instruction is a "choose" instruction, make the specified choice
