@@ -3169,7 +3169,14 @@ def dump(visited, code, scope):
                         print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
                     print("</tr><tr>", file=f)
                 lastloc = (file, line)
-            print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", code[pc], "</td>", file=f)
+            print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", file=f)
+            if isinstance(code[pc], JumpOp) or isinstance(code[pc], JumpCondOp):
+                print("<a href='#P%d'>"%code[pc].pc, code[pc], "</a>", file=f)
+            elif isinstance(code[pc], PushOp) and isinstance(code[pc].constant[0], PcValue):
+                print("Push <a href='#P%d'>"%code[pc].constant[0].pc, strValue(code[pc].constant[0]), "</a>", file=f)
+            else:
+                print(code[pc], file=f)
+            print("</td>", file=f)
             print("</tr>", file=f)
         print("</table>", file=f)
         print("</div>", file=f)
