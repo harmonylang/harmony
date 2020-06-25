@@ -11,6 +11,7 @@ files = {}              # files that have been read already
 constants = {}          # constants modified with -c
 modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
+node_uid = 1            # unique node identifier
 
 def load(f, filename, scope, code):
     if filename in files:
@@ -2603,15 +2604,18 @@ class State:
             self.ctxbag[ctx] = cnt - 1
 
 class Node:
-    def __init__(self, parent, ctx, choice, steps, len):
+    def __init__(self, parent, ctx, steps, len):
+        global node_uid
+
         self.parent = parent    # next hop on way to initial state
         self.len = len          # length of path to initial state
         self.ctx = ctx          # the context that made the hop from the parent state
-        self.choice = choice    # maybe None if no choice was made
         self.steps = steps      # list of microsteps
         self.edges = {}         # forward edges (ctx -> <nextState, nextContext, steps>)
         self.sources = set()    # backward edges
         self.expanded = False   # lazy deletion
+        self.uid = node_uid
+        node_uid += 1
 
 def strsteps(steps):
     if steps == None:
@@ -2841,7 +2845,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, cc, choice, steps, length)
+        next = Node(state, cc, steps, length)
         visited[sc] = next
         if samectx:
             todo.insert(0, sc)
@@ -2854,7 +2858,6 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
         next.parent = state
         next.ctx = cc
         next.steps = steps
-        next.choice = choice
         todo.insert(0, sc)
     node.edges[ctx] = (sc, cc, steps)
     next.sources.add(state)
@@ -2935,7 +2938,7 @@ def run(code, labels, map, step, blockflag, printStates):
     state.add(ctx)
 
     # For traversing Kripke graph
-    visited = { state: Node(None, None, None, None, 0) }
+    visited = { state: Node(None, None, None, 0) }
     todo = collections.deque([state])
     bad = set()
     infloop = set()
@@ -3123,7 +3126,162 @@ def run(code, labels, map, step, blockflag, printStates):
         print("no issues found")
     return visited
 
-cxlpath = ""
+def htmlstrsteps(steps):
+    if steps == None:
+        return "[]"
+    result = ""
+    i = 0
+    while i < len(steps):
+        if result != "":
+            result += ","
+        result += "<a href='#P%d'>%d"%(steps[i], steps[i])
+        j = i + 1
+        while j < len(steps) and steps[j] == steps[j - 1] + 1:
+            j += 1
+        if j > i + 1:
+            result += "-" + str(steps[j - 1])
+        result += "</a>"
+        i = j
+    return result
+
+def dump(visited, code, scope):
+    with open("cxl.html", "w") as f:
+        print("""
+            <html>
+            <head>
+            <link rel="stylesheet" type="text/css" href="cxl.css">
+            </head>
+            <body>
+        """, file=f)
+        print("<div id='table-wrapper'>", file=f)
+        print("<div id='table-scroll'>", file=f)
+        print("<table border='1'>", file=f)
+        lastloc = None
+        for pc in range(len(code)):
+            print("<tr>", file=f)
+            if scope.locations.get(pc) != None:
+                (file, line) = scope.locations[pc]
+                if (file, line) != lastloc:
+                    lines = files.get(file)
+                    if lines != None and line <= len(lines):
+                        print("<th colspan='2' align='left'>%s:%d"%(file, line), lines[line - 1][0:-1], "</th>", file=f)
+                    else:
+                        print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
+                    print("</tr><tr>", file=f)
+                lastloc = (file, line)
+            print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", code[pc], "</td>", file=f)
+            print("</tr>", file=f)
+        print("</table>", file=f)
+        print("</div>", file=f)
+        print("</div>", file=f)
+
+        for (s, n) in visited.items():
+            print("<div id='div%d' style='display:none';>"%n.uid, file=f);
+            print("<div class='container'>", file=f)
+
+            print("<a name='N%d'/>"%n.uid, file=f)
+            print("<h3></h3>", file=f)
+
+            print("<table><tr><td valign='top'>", file=f)
+
+            print("<table border='1'>", file=f)
+            print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
+            print("<tr><td>distance</td><td>%d</td></tr>"%n.len, file=f)
+            if n.parent != None:
+                parent = visited[n.parent].uid
+                print("<tr><td>parent</td><td><a href='javascript:showhide(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
+            if s.initializing:
+                print("<tr><td>status</td><td>initializing</td></tr>", file=f)
+            elif len(s.ctxbag) == 0:
+                if len(s.stopbag) == 0:
+                    print("<tr><td>status</td><td>terminal</td></tr>", file=f)
+                else:
+                    print("<tr><td>status</td><td>stopped</td></tr>", file=f)
+            else:
+                print("<tr><td>status</td><td>normal</td></tr>", file=f)
+            if s.choosing != None:
+                print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
+            print("</table>", file=f)
+
+            print("</td><td valign='top'>", file=f)
+
+            print("<table border='1'>", file=f)
+            print("<tr><th>Variable</th><th>Value</th></tr>", file=f)
+            for (key, value) in s.vars.d.items():
+                print("<tr>", file=f)
+                print("<td>%s</td>"%strValue(key)[1:], file=f)
+                print("<td>%s</td>"%strValue(value), file=f)
+                print("</tr>", file=f)
+            print("</table>", file=f)
+
+            print("</td></tr></table>", file=f)
+
+            print("<table border='1'>", file=f)
+            print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
+            for (ctx, cnt) in s.ctxbag.items():
+                print("<tr>", file=f)
+                print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
+                print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
+                print("<td>%d</td>"%cnt, file=f)
+                if ctx.stopped:
+                    print("<td>stopped</td>", file=f)
+                else:
+                    print("<td>running</td>", file=f)
+
+                # print variables
+                print("<td>", file=f)
+                print("<table border='1'>", file=f)
+                for (key, value) in ctx.vars.d.items():
+                    print("<tr>", file=f)
+                    print("<td>%s</td>"%strValue(key)[1:], file=f)
+                    print("<td>%s</td>"%strValue(value), file=f)
+                    print("</tr>", file=f)
+                print("</table>", file=f)
+                print("</td>", file=f)
+
+                # print stack
+                print("<td>", file=f)
+                print("<table border='1'>", file=f)
+                for v in ctx.stack:
+                    print("<tr>", file=f)
+                    print("<td>%s</td>"%strValue(v), file=f)
+                    print("</tr>", file=f)
+                print("</table>", file=f)
+                print("</td>", file=f)
+                if ctx in n.edges:
+                    (ns, nc, steps) = n.edges[ctx]
+                    print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+                    nn = visited[ns]
+                    print("<td><a href='javascript:showhide(%d)'>"%nn.uid, file=f)
+                    print("%d</a></td>"%nn.uid, file=f)
+                else:
+                    print("<td>no steps</td>", file=f)
+                    print("<td></td>", file=f)
+                print("</tr>", file=f)
+            print("</table>", file=f)
+            print("<hr/>", file=f)
+
+            print("</div>", file=f);
+            print("</div>", file=f);
+
+        print(
+            """
+                <script>
+                  var current = 1;
+
+                  function showhide(id) {
+                      document.getElementById('div' + current).style.display = 'none';
+                      document.getElementById('div' + id).style.display = 'block';
+                      var url = location.href;
+                      location.href = '#N'+id;
+                      history.replaceState(null,null,url);
+                      current = id;
+                  }
+                  showhide(1);
+                </script>
+            """, file=f)
+        print("</body>", file=f)
+        print("</html>", file=f)
 
 def usage():
     print("Usage: cxl [options] [cxl-file...]")
@@ -3137,9 +3295,6 @@ def usage():
     exit(1)
 
 def main():
-    if os.environ.get("CXLPATH") != None:
-        cxlpath = os.environ["CXLPATH"]
-
     # Get options.  First set default values
     consts = []
     mods = []
@@ -3198,7 +3353,8 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    run(code, scope.labels, mpc, spc, blockflag, printStates)
+    visited = run(code, scope.labels, mpc, spc, blockflag, printStates)
+    dump(visited, code, scope)
 
 if __name__ == "__main__":
     main()
