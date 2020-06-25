@@ -1,6 +1,6 @@
 import actor;
 
-const NITEMS = 2;
+const NITEMS = 3;
 
 pc_queue = Queue();
 spawn pc_actor(&pc_queue, 2 * NITEMS);
