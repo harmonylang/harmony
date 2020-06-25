@@ -558,7 +558,7 @@ class AddressOp(Op):
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
-            indexes.append(context.pop())
+            indexes = [context.pop()] + indexes;
         av = indexes[0]
         assert isinstance(av, AddressValue), av
         context.push(AddressValue(av.indexes + indexes[1:]))
@@ -647,6 +647,20 @@ class PopOp(Op):
 
     def eval(self, state, context):
         context.pop()
+        context.pc += 1
+
+class SwapOp(Op):
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "Swap"
+
+    def eval(self, state, context):
+        x = context.pop()
+        y = context.pop()
+        context.push(x)
+        context.push(y)
         context.pc += 1
 
 class FrameOp(Op):
@@ -1642,15 +1656,15 @@ class AssignmentAST(AST):
 
     def compile(self, scope, code):
         assert isinstance(self.lv, LValueAST)
-        n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
+        n = len(self.lv.indexes)
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
                 if n > 1:
                     code.append(PushAddressOp(lv.name))
+                    for i in range(1, n):
+                        self.lv.indexes[i].compile(scope, code)
                     code.append(AddressOp(n))
                 if self.op[0] == "=":
                     self.rv.compile(scope, code)
@@ -1671,6 +1685,8 @@ class AssignmentAST(AST):
                 if t == "variable":
                     if n > 1:
                         code.append(PushAddressOp(v))
+                        for i in range(1, n):
+                            self.lv.indexes[i].compile(scope, code)
                         code.append(AddressOp(n))
                     if self.op[0] == "=":
                         self.rv.compile(scope, code)
@@ -1692,6 +1708,8 @@ class AssignmentAST(AST):
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
             if n > 1:
+                for i in range(1, n):
+                    self.lv.indexes[i].compile(scope, code)
                 code.append(AddressOp(n))
             if self.op[0] == "=":
                 self.rv.compile(scope, code)
@@ -1768,8 +1786,6 @@ class AddressAST(AST):
 
     def compile(self, scope, code):
         n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
@@ -1781,6 +1797,8 @@ class AddressAST(AST):
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
         if n > 1:
+            for i in range(1, n):
+                self.lv.indexes[i].compile(scope, code)
             code.append(AddressOp(n))
 
 class PassAST(AST):
@@ -1850,22 +1868,39 @@ class LetAST(AST):
     def __repr__(self):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
+    def assign(self, scope, code, var):
+        (type, v) = var;
+        if type == "name":
+            scope.checkUnused(v)
+            (lexeme, file, line, column) = v
+            scope.names[lexeme] = ("variable", v)
+            code.append(StoreVarOp(v))
+        else:
+            assert type == "nest"
+            assert len(v) > 0
+            for index in range(0, len(v)):
+                code.append(DupOp())
+                code.append(PushOp((index, None, None, None)))      # TODO: file, line, col
+                code.append(SwapOp())
+                code.append(ApplyOp(None))
+                self.assign(scope, code, v[index])
+            code.append(PopOp())        # TODO: last value does not need dupping
+
     def compile(self, scope, code):
         for (var, expr) in self.vars:
-            scope.checkUnused(var)
-            (lexeme, file, line, column) = var
-            scope.names[lexeme] = ("variable", var)
             expr.compile(scope, code)
-            code.append(StoreVarOp(var))
+            self.assign(scope, code, var)
 
         # Run the body
         self.stat.compile(scope, code)
 
         # Restore the old variable state
-        for (var, expr) in self.vars:
-            code.append(DelVarOp(var, 0))  # remove variable
-            (lexeme, file, line, column) = var
-            del scope.names[lexeme]
+        if False:
+            for (var, expr) in self.vars:
+                var = var[0][1];
+                code.append(DelVarOp(var, 0))  # remove variable
+                (lexeme, file, line, column) = var
+                del scope.names[lexeme]
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
@@ -2154,6 +2189,36 @@ class BlockRule(Rule):
         self.expect("block statement", lexeme == ":", t[0], "missing ':'")
         return StatListRule(self.delim).parse(t[1:])
 
+# This parses the lefthand side of an assignment in a let expression.  Grammar:
+#   lhs = (tuple ",")* [tuple]
+#   tuple = name | "(" lhs ")"
+class LetTupleRule(Rule):
+    def parse(self, t):
+        tuples = []
+        while True:
+            (lexeme, file, line, column) = t[0]
+            if lexeme == "(":
+                (nest, t) = LetTupleRule().parse(t[1:])
+                (lexeme, file, line, column) = t[0]
+                self.expect("let statement", lexeme == ")", t[0], "expected ')'")
+                tuples.append(nest)
+            elif lexeme == "[":
+                (nest, t) = LetTupleRule().parse(t[1:])
+                (lexeme, file, line, column) = t[0]
+                self.expect("let statement", lexeme == "]", t[0], "expected ']'")
+                tuples.append(("nest", nest))
+            else:
+                self.expect("let statement", isname(lexeme), t[0], "expected variable name")
+                tuples.append(("name", t[0]))
+            (lexeme, file, line, column) = t[1]
+            if lexeme != ",":
+                break
+            t = t[2:]
+        if len(tuples) == 1:
+            return (tuples[0], t[1:])
+        else:
+            return (("nest", tuples), t[1:])
+
 class StatementRule(Rule):
     def skip(self, token, t):
         (lex2, file2, line2, col2) = t[0]
@@ -2206,13 +2271,11 @@ class StatementRule(Rule):
         if lexeme == "let":
             vars = []
             while True:
-                var = t[1]
-                (lexeme, file, line, column) = var
-                self.expect("let statement", isname(lexeme), var, "expected name")
-                (lexeme, file, line, column) = t[2]
-                self.expect("let statement", lexeme == "=", t[2], "expected '='")
-                (ast, t) = NaryRule({":", ","}).parse(t[3:])
-                vars.append((var, ast))
+                (tuples, t) = LetTupleRule().parse(t[1:])
+                (lexeme, file, line, column) = t[0]
+                self.expect("let statement", lexeme == "=", t[0], "expected '='")
+                (ast, t) = NaryRule({":", ","}).parse(t[1:])
+                vars.append((tuples, ast))
                 (lexeme, file, line, column) = t[0]
                 if lexeme == ":":
                     break

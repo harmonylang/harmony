@@ -14,7 +14,7 @@ def lst_find(lst, v):
     ;
 ;
 def lst_insert(lst, v):
-    let x = lst_find(lst, v), before = x[0], after = x[1]:
+    let before, after = lst_find(lst, v):
         if (^after).data.value != v:
             (^before).next = lst_node(v, after);
         ;
