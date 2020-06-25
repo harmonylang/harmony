@@ -3952,17 +3952,11 @@ CXL currently supports the following operators:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{e == e} & two CXL values of the same type \\
+\texttt{e == e}, \texttt{e != e} & two CXL values of the same type \\
 \hline
-\texttt{e != e} & two CXL values of the same type \\
+\texttt{e < e, e <= e} & any two CXL values \\
 \hline
-\texttt{e < e} & any two CXL values \\
-\hline
-\texttt{e <= e} & any two CXL values \\
-\hline
-\texttt{e > e} & any two CXL values \\
-\hline
-\texttt{e >= e} & any two CXL values \\
+\texttt{e > e, e >= e} & any two CXL values \\
 \hline
 \texttt{e and e and ...} & two or more Booleans \\
 \hline
@@ -3984,9 +3978,7 @@ CXL currently supports the following operators:
 \hline
 \texttt{e~..~e} & two integers \\
 \hline
-\texttt{e in e} & first is any CXL value, second is set \\
-\hline
-\texttt{e not in e} & first is any CXL value, second is set \\
+\texttt{e [not] in e} & first is any CXL value, second is set \\
 \hline
 \texttt{e if e else e} & middle \texttt{e} must be a Boolean \\
 \hline
@@ -3994,9 +3986,7 @@ CXL currently supports the following operators:
 \hline
 \texttt{choose e} & a set \\
 \hline
-\texttt{min e} & a set \\
-\hline
-\texttt{max e} & a set \\
+\texttt{min e, max e} & a set \\
 \hline
 \texttt{cardinality e} & a set \\
 \hline

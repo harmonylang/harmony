@@ -1886,6 +1886,18 @@ class LetAST(AST):
                 self.assign(scope, code, v[index])
             code.append(PopOp())        # TODO: last value does not need dupping
 
+    def delete(self, scope, code, var):
+        (type, v) = var;
+        if type == "name":
+            code.append(DelVarOp(v, 0))  # remove variable
+            (lexeme, file, line, column) = v
+            del scope.names[lexeme]
+        else:
+            assert type == "nest"
+            assert len(v) > 0
+            for x in v:
+                self.delete(scope, code, x)
+
     def compile(self, scope, code):
         for (var, expr) in self.vars:
             expr.compile(scope, code)
@@ -1895,12 +1907,8 @@ class LetAST(AST):
         self.stat.compile(scope, code)
 
         # Restore the old variable state
-        if False:
-            for (var, expr) in self.vars:
-                var = var[0][1];
-                code.append(DelVarOp(var, 0))  # remove variable
-                (lexeme, file, line, column) = var
-                del scope.names[lexeme]
+        for (var, expr) in self.vars:
+            self.delete(scope, code, var)
 
 class ForAST(AST):
     def __init__(self, var, expr, stat):
