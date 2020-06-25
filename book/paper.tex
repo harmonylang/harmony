@@ -1987,13 +1987,17 @@ The interface is implemented as follows:
 \item A \texttt{Lock} maintains both a boolean indicating whether the
 lock is taken and a list of contexts of processes that want to acquire the lock.
 \item
-\texttt{lock} sets the lock if available and suspends itself if not.
+\texttt{lock}
+\index{lock}
+sets the lock if available and suspends itself if not.
 Note that \texttt{stop} is called within an \texttt{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
 process is running no other processes can run, but when it suspends itself
 it allows other processes to run.
 \item
-\texttt{unlock} checks to see if any processes are waiting to get the lock.
+\texttt{unlock}
+\index{unlock}
+checks to see if any processes are waiting to get the lock.
 If so, it uses the \texttt{head} and \texttt{tail}
 methods from the \texttt{list} module (see Appendix~\ref{ap:module})
 to resume the first process that got
@@ -3790,7 +3794,9 @@ If not found, it coincides with retrieving the pointer to the
 and~\ref{fig:lst2} that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
 Are they linearizable?  If so, what are their linearization points?
-\item A \emph{seqlock} consists of a lock and a version number.
+\item A \emph{seqlock}
+\index{seqlock}
+consists of a lock and a version number.
 An update operation acquires the lock, increments the version number, makes the
 changes to the data structure, and then releases the lock.  A read-only operation
 does not use the lock.  Instead, it retrieves the version number,
