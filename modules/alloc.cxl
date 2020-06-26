@@ -9,13 +9,13 @@ def recFree(r):
 def recAlloc():
     lock(&rec_lock);
     result = rec_flist;
-    if result != NULL:
+    if result != None:
         rec_flist = (^result).next;
     ;
     unlock(&rec_lock);
 ;
-rec_pool = [ dict{ .data: (), .next: NULL } for i in 0..(NPOOL-1) ];
-rec_flist = NULL;           # free list
+rec_pool = [ dict{ .data: (), .next: None } for i in 0..(NPOOL-1) ];
+rec_flist = None;           # free list
 rec_lock = Lock();
 for i in 0..(NPOOL-1):
     recFree(&rec_pool[i]);

@@ -86,8 +86,8 @@ def isreserved(s):
         "max",
         "min",
         "nametag",
+        "None",
         "not",
-        "NULL",
         "or",
         "pass",
         "spawn",
@@ -334,6 +334,8 @@ class AddressValue(Value):
         self.indexes = indexes
 
     def __repr__(self):
+        if len(self.indexes) == 0:
+            return "None"
         result = "&" + self.indexes[0]
         for index in self.indexes[1:]:
             if isinstance(index, str):
@@ -1561,7 +1563,7 @@ class BasicExpressionRule(Rule):
             return (ConstantAST((False, file, line, column)), t[1:])
         if lexeme == "True":
             return (ConstantAST((True, file, line, column)), t[1:])
-        if lexeme == "NULL":
+        if lexeme == "None":
             return (ConstantAST((AddressValue([]), file, line, column)), t[1:])
         if lexeme == "inf":
             return (ConstantAST((math.inf, file, line, column)), t[1:])

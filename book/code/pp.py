@@ -105,7 +105,7 @@ tokens = []
 def putchar(c):
     print(c, end="")
 
-constants = { "False", "True", "NULL",
+constants = { "False", "True", "None",
     "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
 
 def doimport(module, file):
