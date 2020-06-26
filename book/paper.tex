@@ -14,6 +14,7 @@
 \usepackage{geometry}
 \usepackage{enumitem}
 \usepackage{etoolbox}
+\usepackage{bold-extra}
 
 \AtBeginEnvironment{enumerate}{\everymath{\displaystyle}}
 \newlist{problems}{enumerate}{2}
@@ -2428,7 +2429,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=2.5in]{figures/pc-crop.pdf}
+\includegraphics[width=3in]{figures/pc-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of producers/consumers.}
 \label{fig:pc}
@@ -3207,7 +3208,11 @@ it is fair.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Diners.cxl}
+\begin{tabbing}
+XX\=XXX\=XXX\kill
+\input{code/Diners.tex}
+\end{tabbing}
+% \VerbatimInput[xleftmargin=5mm,numbers=left]{code/Diners.cxl}
 \end{code}
 \caption{[Diners.cxl] Dining Philosophers.}
 \label{fig:diners}

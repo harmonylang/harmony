@@ -3196,7 +3196,7 @@ def dump(visited, code, scope):
             print("<tr><td>distance</td><td>%d</td></tr>"%n.len, file=f)
             if n.parent != None:
                 parent = visited[n.parent].uid
-                print("<tr><td>parent</td><td><a href='javascript:showhide(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
+                print("<tr><td>parent</td><td><a href='javascript:show(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
             if s.initializing:
                 print("<tr><td>status</td><td>initializing</td></tr>", file=f)
             elif len(s.ctxbag) == 0:
@@ -3222,6 +3222,12 @@ def dump(visited, code, scope):
             print("</table>", file=f)
 
             print("</td></tr></table>", file=f)
+
+            print("<table border='1'><tr><td>Reachable from:</td>", file=f)
+            for src in n.sources:
+                sid = visited[src].uid
+                print("<td><a href='javascript:show(%d)'>%d</td>"%(sid, sid), file=f)
+            print("</tr></table>", file=f)
 
             print("<table border='1'>", file=f)
             print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
@@ -3259,7 +3265,7 @@ def dump(visited, code, scope):
                     (ns, nc, steps) = n.edges[ctx]
                     print("<td>%s</td>"%htmlstrsteps(steps), file=f)
                     nn = visited[ns]
-                    print("<td><a href='javascript:showhide(%d)'>"%nn.uid, file=f)
+                    print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
                     print("%d</a></td>"%nn.uid, file=f)
                 else:
                     print("<td>no steps</td>", file=f)
@@ -3276,7 +3282,7 @@ def dump(visited, code, scope):
                 <script>
                   var current = 1;
 
-                  function showhide(id) {
+                  function show(id) {
                       document.getElementById('div' + current).style.display = 'none';
                       document.getElementById('div' + id).style.display = 'block';
                       var url = location.href;
@@ -3284,7 +3290,7 @@ def dump(visited, code, scope):
                       history.replaceState(null,null,url);
                       current = id;
                   }
-                  showhide(1);
+                  show(1);
                 </script>
             """, file=f)
         print("</body>", file=f)
