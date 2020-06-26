@@ -383,7 +383,7 @@ class GoOp(Op):
 
     def eval(self, state, context):
         ctx = context.pop()
-        if not isinstance(ctx, Context):
+        if not isinstance(ctx, ContextValue):
             state.failure = "pc = " + str(context.pc) + \
                 ": Error: expected context value, got " + str(ctx)
         else:
@@ -688,6 +688,8 @@ class FrameOp(Op):
     def eval(self, state, context):
         arg = context.pop()
         context.push(context.vars)
+        context.push(context.fp)
+        context.fp = len(context.stack) # points to old fp, old vars, and return address
         if len(self.args) != 1:
             if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
                 state.failure = "Error: argument count mismatch " + \
@@ -713,6 +715,7 @@ class ReturnOp(Op):
 
     def eval(self, state, context):
         result = context.get("result")
+        context.fp = context.pop()
         context.vars = context.pop()
         assert isinstance(context.vars, DictValue)
         pc = context.pop()
@@ -732,7 +735,7 @@ class SpawnOp(Op):
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = frame.name
-        ctx = Context(DictValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
+        ctx = ContextValue(DictValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -1052,7 +1055,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = Context(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
+        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
         ctx.atomic = 1
         while ctx.pc != len(code) and state.failure == None:
             code[ctx.pc].eval(state, ctx)
@@ -2113,7 +2116,7 @@ class ConstAST(AST):
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
-        ctx = Context(DictValue({"name": "__const__", "tag": novalue}),
+        ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}),
                             0, len(code2))
         ctx.atomic = 1
         while ctx.pc != len(code2):
@@ -2393,18 +2396,19 @@ class StatementRule(Rule):
             args = args[1:]
         return (CallAST(a), self.skip(token, t))
 
-class Context(Value):
+class ContextValue(Value):
     def __init__(self, nametag, pc, end):
         self.nametag = nametag
         self.pc = pc
         self.end = end
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
+        self.fp = 0         # frame pointer
         self.vars = novalue
         self.stopped = False
 
     def __repr__(self):
-        return "Context(" + str(self.nametag) + ", " + str(self.pc) + ")"
+        return "ContextValue(" + str(self.nametag) + ", " + str(self.pc) + ")"
 
     def __str__(self):
         return self.__repr__()
@@ -2417,7 +2421,7 @@ class Context(Value):
         return h
 
     def __eq__(self, other):
-        if not isinstance(other, Context):
+        if not isinstance(other, ContextValue):
             return False
         if self.nametag != other.nametag:
             return False
@@ -2427,13 +2431,16 @@ class Context(Value):
             return False
         if self.stopped != other.stopped:
             return False
+        if self.fp != other.fp:
+            return False
         assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = Context(self.nametag, self.pc, self.end)
+        c = ContextValue(self.nametag, self.pc, self.end)
         c.atomic = self.atomic
         c.stack = self.stack.copy()
+        c.fp = self.fp
         c.vars = self.vars
         c.stopped = self.stopped
         return c
@@ -2904,7 +2911,7 @@ def parseConstant(c, v):
     code = []
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = Context(DictValue({"name": "__arg__", "tag": novalue}), 0, len(code))
+    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
@@ -2942,7 +2949,7 @@ def doCompile(filenames, consts, mods):
 
 def run(code, labels, map, step, blockflag):
     state = State(code, labels)
-    ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
+    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
     state.add(ctx)
 
@@ -3065,7 +3072,7 @@ def run(code, labels, map, step, blockflag):
             assert isinstance(map, PcValue)
             frame = code[map.pc]
             assert isinstance(frame, FrameOp)
-            ctx = Context("__map__", map.pc, frame.end)
+            ctx = ContextValue("__map__", map.pc, frame.end)
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(novalue)
             while ctx.pc != frame.end:
@@ -3086,7 +3093,7 @@ def run(code, labels, map, step, blockflag):
             assert isinstance(step, PcValue)
             frame = code[step.pc]
             assert isinstance(frame, FrameOp)
-            ctx = Context("__step__", step.pc, frame.end)
+            ctx = ContextValue("__step__", step.pc, frame.end)
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(hs)
             while ctx.pc != frame.end:
@@ -3249,11 +3256,12 @@ def htmlnode(s, visited, f):
         print("</tr></table>", file=f)
 
     print("<table border='1'>", file=f)
-    print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
+    print("<tr><th>Context</th><th>PC</th><th>FP</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
         print("<tr>", file=f)
         print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
         print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
+        print("<td>%d"%ctx.fp, file=f)
         print("<td>%d</td>"%s.ctxbag[ctx], file=f)
         if ctx.stopped:
             print("<td>stopped</td>", file=f)
