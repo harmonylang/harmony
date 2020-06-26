@@ -1124,16 +1124,16 @@ We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
 CXL in fact supports this.
-It has an operator \texttt{atLabel}~$L$,
+It has an operator \textbf{atLabel}~$L$,
 \index{atLabel operator}
 where $L$
 is the atom containing the name of the label (in this case, \texttt{.cs}).
 The operator returns a bag (multiset) of name tags of processes executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
-Method \texttt{atLabel} only exists for specification purposes---do not
+Method \textbf{atLabel} only exists for specification purposes---do not
 use it in normal code.
-The assertion also makes use of the \texttt{nametag()} operator
+The assertion also makes use of the \textbf{nametag}() operator
 \index{nametag operator}
 that returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
@@ -1727,10 +1727,10 @@ it does have support for executing multiple instructions atomically.
 This feature is available in the CXL language in two ways.
 First, any CXL statement can be made atomic by placing a label in front
 of it.  Second, a group of CXL statements can be made atomic
-through its \texttt{atomic}
+through its \textbf{atomic}
 \index{atomic statement}
 statement.
-We can use \texttt{atomic} statement blocks to implement a wide variety of
+We can use \textbf{atomic} statement blocks to implement a wide variety of
 interlock operations.
 For example, we could fix the program in Figure~\ref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
@@ -1743,19 +1743,19 @@ Many CPUs have an atomic ``test-and-set'' (TAS)
 \index{TAS}
 operation.
 Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
-Here \texttt{s} points to a shared boolean variable and \texttt{p}
+Here $s$ points to a shared boolean variable and $p$
 to a private boolean variable, belonging to some process.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to \texttt{True} (``set'').
 
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
-a set of $N$ processes.
+a set of \texttt{N} processes.
 The approach is called \emph{spinlock},
 \index{spinlock}
 because each process is ``spinning'' until
 it can acquire the lock.
-The program uses $N+1$ variables.
+The program uses $\mathtt{N}+1$ variables.
 Variable \textit{shared} is initialized to \texttt{False} while
 \textit{private}[$i$] for each process $i$ is initialized to \texttt{True}.
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
@@ -1804,7 +1804,7 @@ We can do this by adding another process that, in a loop,
 checks the invariant.  Figure~\ref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
 in a state.  It introduces a new feature of CXL: the ability to have
-variables local to a method.  In this case, the process variable \texttt{sum}
+variables local to a method.  In this case, the process variable \textit{sum}
 is used to compute the number of shared variables that have value
 \texttt{False}.
 The function is invoked by in a loop by a process that runs alongside
@@ -1840,7 +1840,7 @@ In Figure~\ref{fig:tas} we have shown a solution based on a shared
 variable and a private variable for each process.   The private
 variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective processes.
-There is no need to keep \texttt{private} as a shared
+There is no need to keep \textit{private} as a shared
 variable---we only did so to be able to show and check the invariants.
 Figure~\ref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of Figure~\ref{fig:uplock},
@@ -1849,7 +1849,7 @@ This approach is general for any number of processes.
 
 It is important to appreciate the difference between an
 \emph{atomic section} (the statements executed within an
-\texttt{atomic} statement) and a \emph{critical section}
+\textbf{atomic} statement) and a \emph{critical section}
 (protected by a lock of some sort).
 The former ensures that while the
 atomic statement is executing no other process can execute.
@@ -1865,7 +1865,7 @@ are not intended to \emph{replace} locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
 atomic statement but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
-use \texttt{atomic} by all means.
+use \textbf{atomic} by all means.
 
 \begin{figure}
 \begin{code}
@@ -1924,27 +1924,23 @@ A context is a regular CXL value.
 The syntax of the expression is as follows:
 
 \begin{code}
-\begin{verbatim}
-stop L
-\end{verbatim}
+\textbf{stop} $L$
 \end{code}
 
-Here \texttt{L} is a shared list.
-Another process can revive the process using the \texttt{go}
+Here $L$ is a shared variable containing a list.
+Another process can revive the process using the \textbf{go}
 \index{go statement}
 statement:
 
 \begin{code}
-\begin{verbatim}
-go C R
-\end{verbatim}
+\textbf{go} $C$ $R$
 \end{code}
 
-Here \texttt{C} is a context and \texttt{R} is a CXL value.
-It causes a process with context \texttt{C} to be added to the state that has
-just executed the \texttt{stop}
+Here $C$ is a context and $R$ is a CXL value.
+It causes a process with context $C$ to be added to the state that has
+just executed the \textbf{stop}
 \index{stop expression}
-expression.  The \texttt{stop} expression returns the value \texttt{R}.
+expression.  The \textbf{stop} expression returns the value $R$.
 
 There is a second version of the \texttt{synch} module that uses suspension
 instead of spinlocks.
@@ -1958,7 +1954,7 @@ lock is taken and a list of contexts of processes that want to acquire the lock.
 \texttt{lock}
 \index{lock}
 sets the lock if available and suspends itself if not.
-Note that \texttt{stop} is called within an \texttt{atomic} statement---this is
+Note that \textbf{stop} is called within an \textbf{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
 process is running no other processes can run, but when it suspends itself
 it allows other processes to run.
@@ -3802,7 +3798,7 @@ Set & \texttt{\{ 1, 2, 3 \}, \{ False, .id, 3 \} } \\
 \hline
 Address & \texttt{\&lock, \&flags[2], None} \\
 \hline
-Context & (generated by \texttt{stop} expression) \\
+Context & (generated by \textbf{stop} expression) \\
 \hline
 \end{tabular}
 \vspace{1em}
