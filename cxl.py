@@ -3266,12 +3266,13 @@ def htmlnode(s, visited, code, scope, f, verbose):
     else:
         print("<tr><td>status</td><td>normal</td></tr>", file=f)
 
-    print("<tr><td>from</td>", file=f)
-    print("<td><table><tr>", file=f)
-    for src in sorted(n.sources, key=lambda x: (visited[x].len, visited[x].uid)):
-        sid = visited[src].uid
-        print("<td><a href='javascript:show(%d)'>%d</td>"%(sid, sid), file=f)
-    print("</tr></table></td></tr>", file=f)
+    if verbose:
+        print("<tr><td>from</td>", file=f)
+        print("<td><table><tr>", file=f)
+        for src in sorted(n.sources, key=lambda x: (visited[x].len, visited[x].uid)):
+            sid = visited[src].uid
+            print("<td><a href='javascript:show(%d)'>%d</td>"%(sid, sid), file=f)
+        print("</tr></table></td></tr>", file=f)
 
     if s.choosing != None:
         print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
@@ -3289,7 +3290,8 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("</table>", file=f)
 
     print("</td><td>", file=f)
-    htmlpath(s, visited, "shortest path", "black", f)
+    if verbose:
+        htmlpath(s, visited, "shortest path", "black", f)
     print("<td></tr></table>", file=f)
 
     if s.failure != None:
@@ -3301,7 +3303,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("<tr><th>Context</th><th>Stack Trace</th><th>#</th><th>Status</th><th>Variables</th>", file=f)
     if verbose:
         print("<th>FP</th><th>Stack</th>", file=f)
-    print("<th>Steps</th><th>Next State</th></tr>", file=f)
+        print("<th>Steps</th><th>Next State</th></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
         print("<tr>", file=f)
         print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
@@ -3327,7 +3329,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
 
         # print stack
         if verbose:
-            print("<td>%d"%ctx.fp, file=f)
+            print("<td>%d</td>"%ctx.fp, file=f)
             print("<td align='center'>", file=f)
             print("<table border='1'>", file=f)
             for v in ctx.stack:
@@ -3341,16 +3343,15 @@ def htmlnode(s, visited, code, scope, f, verbose):
                 print("</td></tr>", file=f)
             print("</table>", file=f)
             print("</td>", file=f)
-
-        if ctx in n.edges:
-            (ns, nc, steps) = n.edges[ctx]
-            print("<td>%s</td>"%htmlstrsteps(steps), file=f)
-            nn = visited[ns]
-            print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
-            print("%d</a></td>"%nn.uid, file=f)
-        else:
-            print("<td>no steps</td>", file=f)
-            print("<td></td>", file=f)
+            if ctx in n.edges:
+                (ns, nc, steps) = n.edges[ctx]
+                print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+                nn = visited[ns]
+                print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
+                print("%d</a></td>"%nn.uid, file=f)
+            else:
+                print("<td>no steps</td>", file=f)
+                print("<td></td>", file=f)
         print("</tr>", file=f)
 
     print("</table>", file=f)
