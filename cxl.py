@@ -3150,6 +3150,44 @@ def htmlstrsteps(steps):
         i = j
     return result
 
+def htmlpath(s, visited, label, color, f):
+    path = []
+    while s != None:
+        n = visited[s]
+        if n.ctx == None:
+            break
+        path = [(nametag2str(n.ctx.nametag), n.steps, n.uid)] + path
+        s = n.parent
+    path2 = []
+    lastctx = None
+    laststeps = []
+    laststates = []
+    for (ctx, steps, sid) in path:
+        if ctx != lastctx:
+            if lastctx != None:
+                path2.append((lastctx, laststeps, laststates))
+            lastctx = ctx
+            laststeps = []
+            laststates = []
+            lastctx = ctx
+        laststeps += steps
+        laststates.append(sid)
+    path2.append((lastctx, laststeps, laststates))
+    print("<table border='1' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
+    print("<tr><th>context</th><th>steps</th><th>state</th></tr>", file=f)
+    for (ctx, steps, states) in path2:
+        print("<tr><td>%s</td>"%ctx, file=f)
+        print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+        print("<td align='right'>", file=f)
+        if len(states) > 0:
+            sid = states[-1]
+        else:
+            sid = visited[s].uid
+        print(" <a href='javascript:show(%d)'>%d</a>"%(sid, sid), file=f)
+        print("</td></tr>", file=f)
+    print("</table>", file=f)
+    print("</p>", file=f)
+
 def dump(visited, code, scope):
     with open("cxl.html", "w") as f:
         print("""
@@ -3195,39 +3233,7 @@ def dump(visited, code, scope):
         if bad != set():
             print("<p>", file=f)
             s = find_shortest(visited, bad)
-            path = []
-            while s != None:
-                n = visited[s]
-                if n.ctx == None:
-                    break
-                path = [(nametag2str(n.ctx.nametag), n.steps, n.uid)] + path
-                s = n.parent
-            path2 = []
-            lastctx = None
-            laststeps = []
-            laststates = []
-            for (ctx, steps, sid) in path:
-                if ctx != lastctx:
-                    if lastctx != None:
-                        path2.append((lastctx, laststeps, laststates))
-                    lastctx = ctx
-                    laststeps = []
-                    laststates = []
-                    lastctx = ctx
-                laststeps += steps
-                laststates.append(sid)
-            path2.append((lastctx, laststeps, laststates))
-            print("<table border='1' style='color: red'><tr><th colspan='3' align='center'>path to bad state</th>", file=f)
-            print("<tr><th>context</th><th>steps</th><th>state</th></tr>", file=f)
-            for (ctx, steps, states) in path2:
-                print("<tr><td>%s</td>"%ctx, file=f)
-                print("<td>%s</td>"%htmlstrsteps(steps), file=f)
-                print("<td align='right'>", file=f)
-                sid = states[-1]
-                print(" <a href='javascript:show(%d)'>%d</a>"%(sid, sid), file=f)
-                print("</td></tr>", file=f)
-            print("</table>", file=f)
-            print("</p>", file=f)
+            htmlpath(s, visited, "path to bad state", "red", f)
 
         for (s, n) in visited.items():
             print("<div id='div%d' style='display:none';>"%n.uid, file=f);
@@ -3240,7 +3246,6 @@ def dump(visited, code, scope):
 
             print("<table border='1'>", file=f)
             print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
-            print("<tr><td>distance</td><td>%d</td></tr>"%n.len, file=f)
             if n.parent != None:
                 parent = visited[n.parent].uid
                 print("<tr><td>parent</td><td><a href='javascript:show(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
@@ -3270,7 +3275,9 @@ def dump(visited, code, scope):
                 print("</tr>", file=f)
             print("</table>", file=f)
 
-            print("</td></tr></table>", file=f)
+            print("</td><td>", file=f)
+            htmlpath(s, visited, "shortest path", "black", f)
+            print("<td></tr></table>", file=f)
 
             if s.failure != None:
                 print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
