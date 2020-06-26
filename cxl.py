@@ -3139,7 +3139,7 @@ def htmlstrsteps(steps):
     i = 0
     while i < len(steps):
         if result != "":
-            result += ","
+            result += " "
         result += "<a href='#P%d'>%d"%(steps[i], steps[i])
         j = i + 1
         while j < len(steps) and steps[j] == steps[j - 1] + 1:
@@ -3188,17 +3188,45 @@ def dump(visited, code, scope):
         print("</div>", file=f)
         print("</div>", file=f)
 
-        bad = []
+        bad = set()
         for s in visited.keys():
-            if s.failure:
-                bad.append(s)
-        if bad != []:
+            if s.failure != None:
+                bad.add(s)
+        if bad != set():
             print("<p>", file=f)
-            print("<table border='1' style='color: red'><tr><td>bad states:</td>", file=f)
-            for s in bad:
-                sid = visited[s].uid
-                print("<td><a href='javascript:show(%d)'>%d</a></td>"%(sid, sid), file=f)
-            print("</tr></table>", file=f)
+            s = find_shortest(visited, bad)
+            path = []
+            while s != None:
+                n = visited[s]
+                if n.ctx == None:
+                    break
+                path = [(nametag2str(n.ctx.nametag), n.steps, n.uid)] + path
+                s = n.parent
+            path2 = []
+            lastctx = None
+            laststeps = []
+            laststates = []
+            for (ctx, steps, sid) in path:
+                if ctx != lastctx:
+                    if lastctx != None:
+                        path2.append((lastctx, laststeps, laststates))
+                    lastctx = ctx
+                    laststeps = []
+                    laststates = []
+                    lastctx = ctx
+                laststeps += steps
+                laststates.append(sid)
+            path2.append((lastctx, laststeps, laststates))
+            print("<table border='1' style='color: red'><tr><td colspan='3' align='center'>path to bad state</td>", file=f)
+            print("<tr><th>context</th><th>steps</th><th>state</th></tr>", file=f)
+            for (ctx, steps, states) in path2:
+                print("<tr><td>%s</td>"%ctx, file=f)
+                print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+                print("<td align='right'>", file=f)
+                sid = states[-1]
+                print(" <a href='javascript:show(%d)'>%d</a>"%(sid, sid), file=f)
+                print("</td></tr>", file=f)
+            print("</table>", file=f)
             print("</p>", file=f)
 
         for (s, n) in visited.items():
@@ -3216,7 +3244,9 @@ def dump(visited, code, scope):
             if n.parent != None:
                 parent = visited[n.parent].uid
                 print("<tr><td>parent</td><td><a href='javascript:show(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
-            if s.initializing:
+            if s.failure != None:
+                print("<tr><td>status</td><td>failure</td></tr>", file=f)
+            elif s.initializing:
                 print("<tr><td>status</td><td>initializing</td></tr>", file=f)
             elif len(s.ctxbag) == 0:
                 if len(s.stopbag) == 0:
@@ -3255,11 +3285,11 @@ def dump(visited, code, scope):
 
             print("<table border='1'>", file=f)
             print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
-            for (ctx, cnt) in s.ctxbag.items():
+            for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
                 print("<tr>", file=f)
                 print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
                 print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
-                print("<td>%d</td>"%cnt, file=f)
+                print("<td>%d</td>"%s.ctxbag[ctx], file=f)
                 if ctx.stopped:
                     print("<td>stopped</td>", file=f)
                 else:
