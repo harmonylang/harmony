@@ -714,7 +714,10 @@ class ReturnOp(Op):
     def eval(self, state, context):
         result = context.get("result")
         context.vars = context.pop()
-        context.pc = context.pop()
+        assert isinstance(context.vars, DictValue)
+        pc = context.pop()
+        assert isinstance(pc, PcValue)
+        context.pc = pc.pc
         context.push(result)
 
 class SpawnOp(Op):
@@ -1039,7 +1042,7 @@ class ApplyOp(Op):
                 state.failure = "pc = " + str(context.pc) + \
                     ": Error: must be either a method or a dictionary"
                 return
-            context.push(context.pc + 1)
+            context.push(PcValue(context.pc + 1))
             context.push(e)
             context.pc = method.pc
 
@@ -3272,9 +3275,14 @@ def htmlnode(s, visited, f):
         print("<td align='center'>", file=f)
         print("<table border='1'>", file=f)
         for v in ctx.stack:
-            print("<tr>", file=f)
-            print("<td align='center'>%s</td>"%strValue(v), file=f)
-            print("</tr>", file=f)
+            print("<tr><td align='center'>", file=f)
+            if isinstance(v, PcValue):
+                print("<a href='#P%d'>"%v.pc, file=f)
+                print("%s"%strValue(v), file=f)
+                print("</a>", file=f)
+            else:
+                print("%s"%strValue(v), file=f)
+            print("</td></tr>", file=f)
         print("</table>", file=f)
         print("</td>", file=f)
         if ctx in n.edges:
