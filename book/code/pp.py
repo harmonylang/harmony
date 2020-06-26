@@ -125,6 +125,7 @@ def lexer(s, file, silent):
     nextimport = False;
     while s != "":
         if column == 1:
+            if line != 1 and not silent: print("\\\\\n")
             if not silent: print("\>{\\tiny %d}\\'\\>"%line, end="")
 
         # see if it's a blank
@@ -138,7 +139,6 @@ def lexer(s, file, silent):
             s = s[1:]
             line += 1
             column = 1
-            if not silent: print("\\\\\n")
             continue
 
         # skip over line comments
