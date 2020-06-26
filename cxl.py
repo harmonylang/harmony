@@ -2937,7 +2937,7 @@ def doCompile(filenames, consts, mods):
     optimize(code)
     return (code, scope)
 
-def run(code, labels, map, step, blockflag, printStates):
+def run(code, labels, map, step, blockflag):
     state = State(code, labels)
     ctx = Context(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
     ctx.atomic = 1
@@ -2973,6 +2973,8 @@ def run(code, labels, map, step, blockflag, printStates):
                 onestep(state, ctx, None, visited, todo, node, infloop)
     print("#states =", len(visited), " "*100 + "\b"*100)
 
+    todump = set()
+
     # See if there has been a safety violation
     issues_found = False
     if len(bad) > 0:
@@ -2981,6 +2983,7 @@ def run(code, labels, map, step, blockflag, printStates):
         if bad_state.failure != None:
             print(bad_state.failure)
         print_path(visited, bad_state)
+        todump.add(bad_state)
         issues_found = True
 
     # See if there are processes stuck in infinite loops without accessing
@@ -2988,6 +2991,7 @@ def run(code, labels, map, step, blockflag, printStates):
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
+        todump.add(find_shortest(infloop))
         issues_found = True
     elif not faultyState:
         # See if all processes "can" terminate.  First looks for states where
@@ -3026,6 +3030,7 @@ def run(code, labels, map, step, blockflag, printStates):
             print("==== Non-terminating States ====", len(bad))
             bad_state = find_shortest(visited, bad)
             print_path(visited, bad_state)
+            todump.add(bad_state)
             issues_found = True
 
             # See which processes are blocked
@@ -3111,10 +3116,6 @@ def run(code, labels, map, step, blockflag, printStates):
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
-    if printStates:
-        for (s, n) in visited.items():
-           print(">>>", s)
-
     # Look for states where there are no processes running but there are blocked processes.
     bad = set()
     for (s, n) in visited.items():
@@ -3123,6 +3124,7 @@ def run(code, labels, map, step, blockflag, printStates):
     if len(bad) > 0:
         print("==== Stopped States ====", len(bad))
         bad_state = find_shortest(visited, bad)
+        todump.add(bad_state)
         print_path(visited, bad_state)
         for ctx in bad_state.stopbag.keys():
             print("stopped process:", ctx)
@@ -3130,7 +3132,7 @@ def run(code, labels, map, step, blockflag, printStates):
 
     if not issues_found:
         print("no issues found")
-    return visited
+    return (visited, todump)
 
 def htmlstrsteps(steps):
     if steps == None:
@@ -3188,7 +3190,140 @@ def htmlpath(s, visited, label, color, f):
     print("</table>", file=f)
     print("</p>", file=f)
 
-def dump(visited, code, scope):
+def htmlnode(s, visited, f):
+    n = visited[s]
+    print("<div id='div%d' style='display:none';>"%n.uid, file=f);
+    print("<div class='container'>", file=f)
+
+    print("<a name='N%d'/>"%n.uid, file=f)
+    print("<h3></h3>", file=f)
+
+    print("<table><tr><td valign='top'>", file=f)
+
+    print("<table border='1'>", file=f)
+    print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
+    if s.failure != None:
+        print("<tr><td>status</td><td>failure</td></tr>", file=f)
+    elif s.initializing:
+        print("<tr><td>status</td><td>initializing</td></tr>", file=f)
+    elif len(s.ctxbag) == 0:
+        if len(s.stopbag) == 0:
+            print("<tr><td>status</td><td>terminal</td></tr>", file=f)
+        else:
+            print("<tr><td>status</td><td>stopped</td></tr>", file=f)
+    else:
+        print("<tr><td>status</td><td>normal</td></tr>", file=f)
+
+    print("<tr><td>from</td>", file=f)
+    print("<td><table><tr>", file=f)
+    for src in sorted(n.sources, key=lambda x: (visited[x].len, visited[x].uid)):
+        sid = visited[src].uid
+        print("<td><a href='javascript:show(%d)'>%d</td>"%(sid, sid), file=f)
+    print("</tr></table></td></tr>", file=f)
+
+    if s.choosing != None:
+        print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
+    print("</table>", file=f)
+
+    print("</td><td valign='top'>", file=f)
+
+    print("<table border='1'>", file=f)
+    print("<tr><th>Variable</th><th>Value</th></tr>", file=f)
+    for (key, value) in s.vars.d.items():
+        print("<tr>", file=f)
+        print("<td>%s</td>"%strValue(key)[1:], file=f)
+        print("<td>%s</td>"%strValue(value), file=f)
+        print("</tr>", file=f)
+    print("</table>", file=f)
+
+    print("</td><td>", file=f)
+    htmlpath(s, visited, "shortest path", "black", f)
+    print("<td></tr></table>", file=f)
+
+    if s.failure != None:
+        print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
+        print("<td>%s</td>"%s.failure, file=f)
+        print("</tr></table>", file=f)
+
+    print("<table border='1'>", file=f)
+    print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
+    for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
+        print("<tr>", file=f)
+        print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
+        print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
+        print("<td>%d</td>"%s.ctxbag[ctx], file=f)
+        if ctx.stopped:
+            print("<td>stopped</td>", file=f)
+        else:
+            print("<td>running</td>", file=f)
+
+        # print variables
+        print("<td>", file=f)
+        print("<table border='1'>", file=f)
+        for (key, value) in ctx.vars.d.items():
+            print("<tr>", file=f)
+            print("<td>%s</td>"%strValue(key)[1:], file=f)
+            print("<td>%s</td>"%strValue(value), file=f)
+            print("</tr>", file=f)
+        print("</table>", file=f)
+        print("</td>", file=f)
+
+        # print stack
+        print("<td align='center'>", file=f)
+        print("<table border='1'>", file=f)
+        for v in ctx.stack:
+            print("<tr>", file=f)
+            print("<td align='center'>%s</td>"%strValue(v), file=f)
+            print("</tr>", file=f)
+        print("</table>", file=f)
+        print("</td>", file=f)
+        if ctx in n.edges:
+            (ns, nc, steps) = n.edges[ctx]
+            print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+            nn = visited[ns]
+            print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
+            print("%d</a></td>"%nn.uid, file=f)
+        else:
+            print("<td>no steps</td>", file=f)
+            print("<td></td>", file=f)
+        print("</tr>", file=f)
+    print("</table>", file=f)
+    print("<hr/>", file=f)
+
+    print("</div>", file=f);
+    print("</div>", file=f);
+
+def htmlcode(code, scope, f):
+    print("<div id='table-wrapper'>", file=f)
+    print("<div id='table-scroll'>", file=f)
+    print("<table border='1'>", file=f)
+    lastloc = None
+    for pc in range(len(code)):
+        print("<tr>", file=f)
+        if scope.locations.get(pc) != None:
+            (file, line) = scope.locations[pc]
+            if (file, line) != lastloc:
+                lines = files.get(file)
+                if lines != None and line <= len(lines):
+                    print("<th colspan='2' align='left'>%s:%d"%(file, line), lines[line - 1][0:-1], "</th>", file=f)
+                else:
+                    print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
+                print("</tr><tr>", file=f)
+            lastloc = (file, line)
+        print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", file=f)
+        if isinstance(code[pc], JumpOp) or isinstance(code[pc], JumpCondOp):
+            print("<a href='#P%d'>"%code[pc].pc, code[pc], "</a>", file=f)
+        elif isinstance(code[pc], PushOp) and isinstance(code[pc].constant[0], PcValue):
+            print("Push <a href='#P%d'>"%code[pc].constant[0].pc, strValue(code[pc].constant[0]), "</a>", file=f)
+        else:
+            print(code[pc], file=f)
+        print("</td>", file=f)
+        print("</tr>", file=f)
+    print("</table>", file=f)
+    print("</div>", file=f)
+    print("</div>", file=f)
+
+def dump(visited, code, scope, bad):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3197,146 +3332,19 @@ def dump(visited, code, scope):
             </head>
             <body>
         """, file=f)
-        print("<div id='table-wrapper'>", file=f)
-        print("<div id='table-scroll'>", file=f)
-        print("<table border='1'>", file=f)
-        lastloc = None
-        for pc in range(len(code)):
-            print("<tr>", file=f)
-            if scope.locations.get(pc) != None:
-                (file, line) = scope.locations[pc]
-                if (file, line) != lastloc:
-                    lines = files.get(file)
-                    if lines != None and line <= len(lines):
-                        print("<th colspan='2' align='left'>%s:%d"%(file, line), lines[line - 1][0:-1], "</th>", file=f)
-                    else:
-                        print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
-                    print("</tr><tr>", file=f)
-                lastloc = (file, line)
-            print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", file=f)
-            if isinstance(code[pc], JumpOp) or isinstance(code[pc], JumpCondOp):
-                print("<a href='#P%d'>"%code[pc].pc, code[pc], "</a>", file=f)
-            elif isinstance(code[pc], PushOp) and isinstance(code[pc].constant[0], PcValue):
-                print("Push <a href='#P%d'>"%code[pc].constant[0].pc, strValue(code[pc].constant[0]), "</a>", file=f)
-            else:
-                print(code[pc], file=f)
-            print("</td>", file=f)
-            print("</tr>", file=f)
-        print("</table>", file=f)
-        print("</div>", file=f)
-        print("</div>", file=f)
 
-        bad = set()
-        for s in visited.keys():
-            if s.failure != None:
-                bad.add(s)
+        htmlcode(code, scope, f)
+
         if bad != set():
             print("<p>", file=f)
             s = find_shortest(visited, bad)
             htmlpath(s, visited, "path to bad state", "red", f)
-
-        for (s, n) in visited.items():
-            print("<div id='div%d' style='display:none';>"%n.uid, file=f);
-            print("<div class='container'>", file=f)
-
-            print("<a name='N%d'/>"%n.uid, file=f)
-            print("<h3></h3>", file=f)
-
-            print("<table><tr><td valign='top'>", file=f)
-
-            print("<table border='1'>", file=f)
-            print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
-            if n.parent != None:
-                parent = visited[n.parent].uid
-                print("<tr><td>parent</td><td><a href='javascript:show(%d)'>%d</a></td></tr>"%(parent, parent), file=f)
-            if s.failure != None:
-                print("<tr><td>status</td><td>failure</td></tr>", file=f)
-            elif s.initializing:
-                print("<tr><td>status</td><td>initializing</td></tr>", file=f)
-            elif len(s.ctxbag) == 0:
-                if len(s.stopbag) == 0:
-                    print("<tr><td>status</td><td>terminal</td></tr>", file=f)
-                else:
-                    print("<tr><td>status</td><td>stopped</td></tr>", file=f)
-            else:
-                print("<tr><td>status</td><td>normal</td></tr>", file=f)
-            if s.choosing != None:
-                print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
-            print("</table>", file=f)
-
-            print("</td><td valign='top'>", file=f)
-
-            print("<table border='1'>", file=f)
-            print("<tr><th>Variable</th><th>Value</th></tr>", file=f)
-            for (key, value) in s.vars.d.items():
-                print("<tr>", file=f)
-                print("<td>%s</td>"%strValue(key)[1:], file=f)
-                print("<td>%s</td>"%strValue(value), file=f)
-                print("</tr>", file=f)
-            print("</table>", file=f)
-
-            print("</td><td>", file=f)
-            htmlpath(s, visited, "shortest path", "black", f)
-            print("<td></tr></table>", file=f)
-
-            if s.failure != None:
-                print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
-                print("<td>%s</td>"%s.failure, file=f)
-                print("</tr></table>", file=f)
-
-            print("<table border='1'><tr><td>Reachable from:</td>", file=f)
-            for src in n.sources:
-                sid = visited[src].uid
-                print("<td><a href='javascript:show(%d)'>%d</td>"%(sid, sid), file=f)
-            print("</tr></table>", file=f)
-
-            print("<table border='1'>", file=f)
-            print("<tr><th>Context</th><th>PC</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
-            for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
-                print("<tr>", file=f)
-                print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
-                print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
-                print("<td>%d</td>"%s.ctxbag[ctx], file=f)
-                if ctx.stopped:
-                    print("<td>stopped</td>", file=f)
-                else:
-                    print("<td>running</td>", file=f)
-
-                # print variables
-                print("<td>", file=f)
-                print("<table border='1'>", file=f)
-                for (key, value) in ctx.vars.d.items():
-                    print("<tr>", file=f)
-                    print("<td>%s</td>"%strValue(key)[1:], file=f)
-                    print("<td>%s</td>"%strValue(value), file=f)
-                    print("</tr>", file=f)
-                print("</table>", file=f)
-                print("</td>", file=f)
-
-                # print stack
-                print("<td align='center'>", file=f)
-                print("<table border='1'>", file=f)
-                for v in ctx.stack:
-                    print("<tr>", file=f)
-                    print("<td align='center'>%s</td>"%strValue(v), file=f)
-                    print("</tr>", file=f)
-                print("</table>", file=f)
-                print("</td>", file=f)
-                if ctx in n.edges:
-                    (ns, nc, steps) = n.edges[ctx]
-                    print("<td>%s</td>"%htmlstrsteps(steps), file=f)
-                    nn = visited[ns]
-                    print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
-                    print("%d</a></td>"%nn.uid, file=f)
-                else:
-                    print("<td>no steps</td>", file=f)
-                    print("<td></td>", file=f)
-                print("</tr>", file=f)
-            print("</table>", file=f)
-            print("<hr/>", file=f)
-
-            print("</div>", file=f);
-            print("</div>", file=f);
+            while s != None:
+                htmlnode(s, visited, f)
+                s = visited[s].parent
+        else:
+            for s in visited.keys():
+                htmlnode(s, visited, f)
 
         print(
             """
@@ -3344,11 +3352,17 @@ def dump(visited, code, scope):
                   var current = 1;
 
                   function show(id) {
-                      document.getElementById('div' + current).style.display = 'none';
-                      document.getElementById('div' + id).style.display = 'block';
-                      var url = location.href;
-                      location.href = '#N'+id;
-                      history.replaceState(null,null,url);
+                      x = document.getElementById('div' + current);
+                      if (x != null) {
+                          x.style.display = 'none';
+                      }
+                      x = document.getElementById('div' + id)
+                      if (x != null) {
+                          x.style.display = 'block';
+                          var url = location.href;
+                          location.href = '#N'+id;
+                          history.replaceState(null,null,url);
+                      }
                       current = id;
                   }
                   show(1);
@@ -3365,7 +3379,6 @@ def usage():
     print("    -c name=value: define a constant")
     print("    -h: help")
     print("    -m module=version: select a module version")
-    print("    -s: list all states")
     exit(1)
 
 def main():
@@ -3374,10 +3387,9 @@ def main():
     mods = []
     printCode = False
     blockflag = False
-    printStates = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "abc:hm:s", ["const=", "help", "module="])
+                        "abc:hm:", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -3392,8 +3404,6 @@ def main():
             mods.append(a)
         elif o in { "-h", "--help" }:
             usage()
-        elif o  == "-s":
-            printStates = True
         else:
             assert False, "unhandled option"
 
@@ -3427,8 +3437,8 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    visited = run(code, scope.labels, mpc, spc, blockflag, printStates)
-    dump(visited, code, scope)
+    (visited, todump) = run(code, scope.labels, mpc, spc, blockflag)
+    dump(visited, code, scope, todump)
 
 if __name__ == "__main__":
     main()
