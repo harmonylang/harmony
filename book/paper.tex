@@ -1245,14 +1245,14 @@ is more like a baton or token that only one process can hold.
 Using a lock is a good thought, but how does one implement one?
 Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
-Initially the lock is not owned, indicated by lock being \texttt{False}.
-To enter the critical section, a process waits until \textit{lock} is \texttt{False}
+Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
+To enter the critical section, a process waits until \textit{lockTaken} is \texttt{False}
 and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
-releases the lock by setting it back to \texttt{False}.
+releases the lock by setting \textit{lockTaken} back to \texttt{False}.
 
 Unfortunately, if we run the program through CXL, we find that the assertion still
-fails.  Diagnosing the problem, we see that the \textit{lock} variable
+fails.  Diagnosing the problem, we see that the \textit{lockTaken} variable
 suffers from the same problem as the \textit{count} variable
 in Figure~\ref{fig:inc}: operations
 on it consist of several instructions.  It is thus possible

@@ -1,18 +1,18 @@
 def process(self):
     while choose({ False, True }):
         # Enter critical section
-        while lock:
+        while lockTaken:
             pass;
         ;
-        lock = True;
+        lockTaken = True;
 
         # Critical section
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
 
         # Leave critical section
-        lock = False;
+        lockTaken = False;
     ;
 ;
-lock = False;
+lockTaken = False;
 spawn process(0);
 spawn process(1);
