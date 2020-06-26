@@ -3402,9 +3402,10 @@ def dump(visited, code, scope, bad, fulldump):
 
                   function show(id) {
                       x = document.getElementById('div' + current);
-                      if (x != null) {
-                          x.style.display = 'none';
+                      if (x == null) {
+                          x = document.getElementById('divNone')
                       }
+                      x.style.display = 'none';
                       x = document.getElementById('div' + id)
                       if (x == null) {
                           x = document.getElementById('divNone')
