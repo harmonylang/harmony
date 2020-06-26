@@ -3331,7 +3331,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def dump(visited, code, scope, bad):
+def dump(visited, code, scope, bad, fulldump):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3347,9 +3347,13 @@ def dump(visited, code, scope, bad):
             print("<p>", file=f)
             s = find_shortest(visited, bad)
             htmlpath(s, visited, "path to bad state", "red", f)
-            while s != None:
-                htmlnode(s, visited, f)
-                s = visited[s].parent
+            if fulldump:
+                for s in visited.keys():
+                    htmlnode(s, visited, f)
+            else:
+                while s != None:
+                    htmlnode(s, visited, f)
+                    s = visited[s].parent
         else:
             for s in visited.keys():
                 htmlnode(s, visited, f)
@@ -3392,6 +3396,7 @@ def usage():
     print("    -a: list machine code")
     print("    -b: blocking execution")
     print("    -c name=value: define a constant")
+    print("    -d: dump full state into html file")
     print("    -h: help")
     print("    -m module=version: select a module version")
     exit(1)
@@ -3402,9 +3407,10 @@ def main():
     mods = []
     printCode = False
     blockflag = False
+    fulldump = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "abc:hm:", ["const=", "help", "module="])
+                        "abc:dhm:", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -3415,6 +3421,8 @@ def main():
             blockflag = True
         elif o in { "-c", "--const" }:
             consts.append(a)
+        elif o == "-d":
+            fulldump = True
         elif o in { "-m", "--module" }:
             mods.append(a)
         elif o in { "-h", "--help" }:
@@ -3453,7 +3461,7 @@ def main():
         assert t == "constant"
         (spc, file, line, column) = v
     (visited, todump) = run(code, scope.labels, mpc, spc, blockflag)
-    dump(visited, code, scope, todump)
+    dump(visited, code, scope, todump, fulldump)
 
 if __name__ == "__main__":
     main()
