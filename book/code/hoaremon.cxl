@@ -1,0 +1,8 @@
+def wait(c):
+    V(&mutex);
+    P(c);
+;
+def signal(c):
+    V(c);
+    P(&mutex);
+;

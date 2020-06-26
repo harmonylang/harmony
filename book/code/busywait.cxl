@@ -1,0 +1,9 @@
+let blocked = True:
+    while blocked:
+        lock();
+        if application-condition-holds:
+            blocked = False;
+        else:
+            unlock():
+@cr: application-code;
+unlock():

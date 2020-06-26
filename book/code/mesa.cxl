@@ -1,0 +1,31 @@
+import bag;
+
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: bagEmpty() };
+;
+def wait(c):
+    let lk = (^c).lock, blocked = True,
+                cnt = bagCount((^c).waiters, nametag()):
+        bagAdd(&(^c).waiters, nametag());
+        ^lk = False;
+        while blocked:
+            atomic:
+                if (not (^lk)) and
+                        (bagCount((^c).waiters, nametag()) <= cnt):
+                    ^lk = True;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def notify(c):
+    let waiters = (^c).waiters:
+        if waiters != bagEmpty():
+            bagRemove(&(^c).waiters, bagChoose(waiters));
+        ;
+    ;
+;
+def notifyAll(c):
+    (^c).waiters = bagEmpty();
+;

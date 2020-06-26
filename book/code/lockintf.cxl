@@ -1,0 +1,17 @@
+def tas(lk):
+    atomic:
+        result = ^lk;
+        ^lk = True;
+    ;
+;
+def Lock():
+    result = False;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk = False;
+;

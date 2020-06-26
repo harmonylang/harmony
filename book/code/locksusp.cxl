@@ -1,0 +1,25 @@
+import list;
+
+def Lock():
+    result = dict{ .locked: False, .suspended: [] };
+;
+def lock(lk):
+    atomic:
+        if (^lk).locked:
+            stop (^lk).suspended;
+            assert (^lk).locked;
+        else:
+            (^lk).locked = True;
+        ;
+    ;
+;
+def unlock(lk):
+    atomic:
+        if (^lk).suspended == []:
+            (^lk).locked = False;
+        else:
+            go (head((^lk).suspended)) ();
+            (^lk).suspended = tail((^lk).suspended);
+        ;
+    ;
+;
