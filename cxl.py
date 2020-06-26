@@ -3217,7 +3217,7 @@ def dump(visited, code, scope):
                 laststeps += steps
                 laststates.append(sid)
             path2.append((lastctx, laststeps, laststates))
-            print("<table border='1' style='color: red'><tr><td colspan='3' align='center'>path to bad state</td>", file=f)
+            print("<table border='1' style='color: red'><tr><th colspan='3' align='center'>path to bad state</th>", file=f)
             print("<tr><th>context</th><th>steps</th><th>state</th></tr>", file=f)
             for (ctx, steps, states) in path2:
                 print("<tr><td>%s</td>"%ctx, file=f)
