@@ -3165,6 +3165,7 @@ def htmlstrsteps(steps):
         return "[]"
     result = ""
     i = 0
+    cnt = 0
     while i < len(steps):
         if result != "":
             result += " "
@@ -3176,6 +3177,9 @@ def htmlstrsteps(steps):
             result += "-" + str(steps[j - 1])
         result += "</a>"
         i = j
+        cnt += 1
+        # if cnt > 10:
+        #     break
     return result
 
 def htmlpath(s, visited, label, color, f):
@@ -3362,6 +3366,7 @@ def htmlcode(code, scope, f):
     print("<div id='table-wrapper'>", file=f)
     print("<div id='table-scroll'>", file=f)
     print("<table border='1'>", file=f)
+    print("<tbody>", file=f)
     lastloc = None
     for pc in range(len(code)):
         print("<tr>", file=f)
@@ -3384,6 +3389,7 @@ def htmlcode(code, scope, f):
             print(code[pc], file=f)
         print("</td>", file=f)
         print("</tr>", file=f)
+    print("</tbody>", file=f)
     print("</table>", file=f)
     print("</div>", file=f)
     print("</div>", file=f)
