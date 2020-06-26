@@ -64,7 +64,6 @@ def isreserved(s):
         "del",
         "dict",
         "else",
-        "False",
         "fun",
         "for",
         "go",
@@ -79,12 +78,10 @@ def isreserved(s):
         "min",
         "nametag",
         "not",
-        "NULL",
         "or",
         "pass",
         "spawn",
         "stop",
-        "True",
         "while"
     ]
 
@@ -108,7 +105,8 @@ tokens = []
 def putchar(c):
     print(c, end="")
 
-constants = { "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
+constants = { "False", "True", "NULL",
+    "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
 
 def doimport(module, file):
     for dir in [ os.path.dirname(file), "../../modules", "." ]:
