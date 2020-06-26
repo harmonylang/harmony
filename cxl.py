@@ -3355,9 +3355,11 @@ def dump(visited, code, scope, bad, fulldump):
                     htmlnode(s, visited, f)
                     s = visited[s].parent
         else:
+            cnt = 0
             for s in visited.keys():
                 htmlnode(s, visited, f)
-                if not fulldump:
+                cnt += 1
+                if not fulldump and cnt > 100:
                     break
 
         print(
