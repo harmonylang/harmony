@@ -70,7 +70,6 @@ def isreserved(s):
         "if",
         "import",
         "in",
-        "inf",
         "keys",
         "len",
         "let",
@@ -105,7 +104,7 @@ tokens = []
 def putchar(c):
     print(c, end="")
 
-constants = { "False", "True", "None",
+constants = { "False", "True", "None", "inf",
     "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
 
 def doimport(module, file):
