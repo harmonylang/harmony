@@ -3188,6 +3188,19 @@ def dump(visited, code, scope):
         print("</div>", file=f)
         print("</div>", file=f)
 
+        bad = []
+        for s in visited.keys():
+            if s.failure:
+                bad.append(s)
+        if bad != []:
+            print("<p>", file=f)
+            print("<table border='1' style='color: red'><tr><td>bad states:</td>", file=f)
+            for s in bad:
+                sid = visited[s].uid
+                print("<td><a href='javascript:show(%d)'>%d</a></td>"%(sid, sid), file=f)
+            print("</tr></table>", file=f)
+            print("</p>", file=f)
+
         for (s, n) in visited.items():
             print("<div id='div%d' style='display:none';>"%n.uid, file=f);
             print("<div class='container'>", file=f)
@@ -3229,6 +3242,11 @@ def dump(visited, code, scope):
 
             print("</td></tr></table>", file=f)
 
+            if s.failure != None:
+                print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
+                print("<td>%s</td>"%s.failure, file=f)
+                print("</tr></table>", file=f)
+
             print("<table border='1'><tr><td>Reachable from:</td>", file=f)
             for src in n.sources:
                 sid = visited[src].uid
@@ -3259,11 +3277,11 @@ def dump(visited, code, scope):
                 print("</td>", file=f)
 
                 # print stack
-                print("<td>", file=f)
+                print("<td align='center'>", file=f)
                 print("<table border='1'>", file=f)
                 for v in ctx.stack:
                     print("<tr>", file=f)
-                    print("<td>%s</td>"%strValue(v), file=f)
+                    print("<td align='center'>%s</td>"%strValue(v), file=f)
                     print("</tr>", file=f)
                 print("</table>", file=f)
                 print("</td>", file=f)
