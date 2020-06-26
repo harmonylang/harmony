@@ -343,6 +343,7 @@ may update memory locations while a statement or function is being executed.
 \end{itemize}
 The lack of determinism and atomicity in concurrent programs make them
 not only hard to reason about, but also hard to test.
+\index{test}
 Running the same test of concurrent code twice is likely to produce
 two different results.  More problematically, a test may trigger a
 bug only for certain ``lucky'' executions.  Due to the probabilistic
@@ -350,7 +351,7 @@ nature of concurrent code, some bugs may be highly unlikely to get
 triggered even when running a test millions of times.  And even if
 a bug does get triggered, the source of the bug may be hard to find
 because it is hard to reproduce.
-j
+
 \glsadd{model checking}
 
 This book is intended to help people with understanding and
@@ -384,7 +385,9 @@ Now suppose we create a test program, a model, that tries sorting
 2, 3, 4, 5 \}.  Model checking proves that for those particular
 scenarios the sorting algorithm works: the output is a sorted
 permutation of the input.  In some sense it is an excellent test:
-it will have considered all corner cases, including lists where all
+it will have considered all \emph{corner cases},
+\index{corner case}
+including lists where all
 numbers are the same, lists that are already sorted or reversely
 sorted, etc.  If there is a bug in the sorting algorithm, most
 likely it would be triggered and the model checker would produce a
