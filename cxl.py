@@ -3357,6 +3357,8 @@ def dump(visited, code, scope, bad, fulldump):
         else:
             for s in visited.keys():
                 htmlnode(s, visited, f)
+                if not fulldump:
+                    break
 
         print(
             """
@@ -3389,6 +3391,7 @@ def dump(visited, code, scope, bad, fulldump):
             """, file=f)
         print("</body>", file=f)
         print("</html>", file=f)
+    print("Open file://" + os.getcwd() + "/cxl.html for more information")
 
 def usage():
     print("Usage: cxl [options] [cxl-file...]")
