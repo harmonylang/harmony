@@ -266,7 +266,7 @@ def lexer(s, file, silent):
         elif s[0] == "^":
             if not silent: print("\\^{}", end="")
         else:
-            if s[0] == "@":
+            if s[0] in ["@", "."]:
                 nextconst = True
             if not silent:
                 if s[0] == "-":

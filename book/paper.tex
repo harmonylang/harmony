@@ -399,7 +399,7 @@ five numbers or for lists that have values other than the numbers
 are bugs remaining in the sorting algorithm is small.
 Note, however, that it would be easy to write a program
 that sorts all lists of up to five numbers correctly but fails to
-do so for a list of 6 numbers.  (Hint: simply use an \texttt{if}
+do so for a list of 6 numbers.  (Hint: simply use an \textbf{if}
 statement.)
 
 \glsadd{invariant}
@@ -513,14 +513,14 @@ dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
 \item Syntax: Every statement in CXL must be terminated by a semicolon
-(even \texttt{while} statements and \texttt{def} statements).
+(even \textbf{while} statements and \textbf{def} statements).
 In Python semicolons are optional and rarely used.
 There is no syntactic significance to indentation in CXL.
 Correct indentation in CXL is encouraged but not enforced.
 CXL only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item CXL does not (currently) support floating point, iterators, or I/O;
-CXL does support \texttt{for} loops and various comprehensions over sets.
+CXL does support \textbf{for} loops and various comprehensions over sets.
 \item Python is object-oriented, supporting classes with methods and
 inheritance; CXL has objects but does not support classes.  CXL supports
 pointers to objects.
@@ -542,7 +542,7 @@ the name listed in the caption of the example.)
 The example is sequential and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
 \textit{result} that eventually contains the result of the
-method (there is no \texttt{return} statement in CXL).  The method
+method (there is no \textbf{return} statement in CXL).  The method
 also has a variable called \textit{n} containing the value of the
 argument.  The \textit{x..y} notation generates a set containing the numbers
 from~\textit{x} to~\textit{y} (inclusive).  The last two lines in the program are
@@ -567,7 +567,7 @@ $
 Essentially, the $\texttt{choose}($S$)$
 \index{choose operator}
 operator provides the input to the program by selecting some value from the
-set~$S$, while the $\texttt{assert}$ statement checks that the output is
+set~$S$, while the $\textbf{assert}$ statement checks that the output is
 correct.  If the program is correct, the output of CXL is the size of the
 ``state graph'' (13 states in this case).  If not, CXL also
 reports what went wrong, typically by displaying a summary of an execution in
@@ -630,7 +630,7 @@ The first runs \texttt{incrementer(0)}, the second runs
 \item Before you run the program, what do you think will happen?  Is the
 program correct in that \textit{count} will always end up being 2?
 \item What are the possible values of \textit{count} at the time of the
-\texttt{assert} statement?
+\textbf{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
 underlying machine architecture are atomic---in fact they are.)
 \end{itemize}
@@ -779,26 +779,22 @@ Unlike Python, any CXL value can be a key, including another
 dictionary.
 CXL dictionaries are written as
 $\mathtt{dict}\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
-If \texttt{d} is a dictionary, and \texttt{k} is a key, then the
-following expression retrieves the CXL value that $k$ maps to:
+If $d$ is a dictionary, and $k$ is a key, then the
+following expression retrieves the CXL value that $k$ maps to in $d$:
 \begin{code}
-\begin{verbatim}
-d k
-\end{verbatim}
+$d$ $k$
 \end{code}
 This is unfamiliar to Python programers, but in CXL square brackets can be used
 in the same way as parentheses, so you can express the same thing in the form
 that is familiar to Python programmers:
 \begin{code}
-\begin{verbatim}
-d[k]
-\end{verbatim}
+$d$[$k$]
 \end{code}
-However, if \texttt{d = dict\{ .count: 3 \}}, then you can write
-can write \texttt{d.count} (which has value 3) instead of having to write
-\texttt{d[.count]} (although both will work).
+However, if $d$ = \texttt{dict\{ .count: 3 \}}, then you can write
+can write $d$.\texttt{count} (which has value 3) instead of having to write
+$d$\texttt{[.count]} (although both will work).
 Thus using atoms, a dictionary can be made to look much like a Python object.
-The meaning of \texttt{d a b c ...} is \texttt{((((d a) b) c) ...)}.
+The meaning of $d$ $a$ $b$ $...$ is ((($d$ $a$) $b$) $...$).
 
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
@@ -813,8 +809,8 @@ Again, square brackets and parentheses work the same in CXL, so
 \texttt{[a, b, c]} (which looks like a Python list)
 is the same CXL value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same CXL value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
-So if \texttt{x == [ False, True ]},
-then \texttt{x[0] == False} and \texttt{x[1] == True}, just like in Python.
+So if $x$ = \texttt{[ False, True ]},
+then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.
 
@@ -822,9 +818,9 @@ CXL is not an object-oriented language, so objects don't have
 built-in methods.  However, CXL does have some powerful operators to
 make up for some of that.
 For example, dictionaries have two handy unary operators.
-If \texttt{d} is a
-dictionary, then \texttt{keys~d} (or equivalently \texttt{keys(d)})
-returns the set of keys and \texttt{len~d} returns the size of
+If $d$ is a
+dictionary, then \texttt{keys}~$d$ (or equivalently \texttt{keys}($d$)
+returns the set of keys and \texttt{len}~$d$ returns the size of
 this set.
 
 Appendix~\ref{ap:cxlvalues} provides details on all the values that
@@ -1052,7 +1048,7 @@ a process to be stopped.
     Figure~\ref{fig:inc}.  Run it through CXL and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
     in broad steps, how running the program can get into a bad state.
-\item What if we moved line~2 of Figure~\ref{fig:incenter} to after the \texttt{if}
+\item What if we moved line~2 of Figure~\ref{fig:incenter} to after the \textbf{if}
     statement (between lines~7 and~8)?  Do you think that would work?  Run it through
     CXL and describe either why it works or why it does not work.
 \end{problems}
@@ -1122,13 +1118,13 @@ Here \texttt{@cs} is a \emph{label},
 \index{label}
 identifying a location in the CVM bytecode.  The first thing we need to
 ensure is that there can never be two processes in the critical section.
-This property is called \texttt{mutual exclusion}.
+This property is called \emph{mutual exclusion}.
 \index{mutual exclusion}
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
 CXL in fact supports this.
-It has an operator \texttt{atLabel $L$},
+It has an operator \texttt{atLabel}~$L$,
 \index{atLabel operator}
 where $L$
 is the atom containing the name of the label (in this case, \texttt{.cs}).
@@ -1154,7 +1150,7 @@ while True:
 \end{verbatim}
 \end{code}
 This code will surely prevent two or more processes from being
-at label \texttt{cs} at the same time.
+at label \texttt{@cs} at the same time.
 But it does so by preventing \emph{any} process from reaching
 the critical section.
 We clearly need another property besides mutual exclusion.
@@ -1318,7 +1314,7 @@ turn.
 \item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
-Now plug the following code \texttt{while True: pass;;}
+Now plug the following code \textbf{while} \texttt{True}: \textbf{pass};;
 just before entering the critical section
 in Figure~\ref{fig:cs} and run CXL again.
 Mutual exclusion is guaranteed but progress is violated.
@@ -1355,7 +1351,7 @@ by setting its flag.
 It then politely gives way to the other process should it also want to
 enter the critical section---if both do so at the same time one will
 win because writes to memory in CXL are atomic.
-The process continues to be polite, waiting in a \texttt{while} loop
+The process continues to be polite, waiting in a \textbf{while} loop
 until either the other process is nowhere near the critical section
 ($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
@@ -1463,7 +1459,7 @@ it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
-and process~1 at the start of the \texttt{while} loop.
+and process~1 at the start of the \textbf{while} loop.
 Also imagine that in this particular state $\mathit{turn} = 1$.  Now let
 process~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
@@ -1485,7 +1481,7 @@ In other words, the set of states where the inducive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
 Let $\mathcal{C}(i) = \mathit{flags}[1 - i] \land
-\mathit{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
+\mathit{turn} = 1 - i$, that is, the condition on the \textbf{while} loop
 for process~$i$.
 Let predicate $\mathcal{I}_p(i)$ be the following.
 if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
@@ -1555,7 +1551,7 @@ A cool anecdote is the following.  When the author of CXL had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
 if process $i$ is in the critical section, then $\lnot \mathcal{C}(i)$ (i.e.,
-$\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{gate}).
+$\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{@gate}).
 To demonstrate that this predicate is not invariant, you can remove the
 disjunct from Figure~\ref{fig:petersonproof} and run it to get a
 counterexample.
@@ -1618,28 +1614,26 @@ Can you generalize Peterson's algorithm to more than two processes?
 \label{ch:method}
 \index{CXL method}
 
-A method \texttt{m} with argument \texttt{a} is invoked in its
+A method \texttt{m} with argument $a$ is invoked in its
 most basic form as follows (assigning the result to~\texttt{r}).
 \begin{code}
-\begin{verbatim}
-r = m a;
-\end{verbatim}
+$r$ = m $a$;
 \end{code}
 That's right, no parentheses are required.  In fact, if you invoke
-\texttt{m(a)}, the argument is \texttt{(a)}, which is the same
-as \texttt{a}.
+\texttt{m}($a$), the argument is ($a$), which is the same
+as $a$.
 If you invoke \texttt{m()}, the argument is \texttt{()},
 which is the empty tuple.
-If you invoke \texttt{m(a, b)}, the argument is \texttt{(a, b)},
-the tuple consisting of values \texttt{a} and \texttt{b}.
+If you invoke \texttt{m}($a$, $b$), the argument is ($a$, $b$),
+the tuple consisting of values $a$ and $a$.
 
 You may note that all this looks familiar.  Indeed, the syntax
 is the same as that for dictionaries (see Chapter~\ref{ch:cxlmachine}).
 Both dictionaries and methods map CXL values to CXL values,
 and their syntax is indistinguishable.
 If \texttt{f} is either a method or a
-dictionary, and \texttt{x} is an arbitrary CXL value, then
-\texttt{f x}, \texttt{f(x)}, and \texttt{f[x]} are all
+dictionary, and $x$ is an arbitrary CXL value, then
+\texttt{f} $x$, \texttt{f}($x$), and \texttt{f}[$x$] are all
 the same expression in CXL.
 
 \begin{figure}
@@ -1657,29 +1651,30 @@ to have a method update a shared variable specified as an argument.
 For this (as well as some other uses), CXL supports \emph{pointers}
 \index{pointer}
 to shared variables.
-If \texttt{x} is a shared variable, then the expression \texttt{\&x}
- is a pointer to \texttt{x} (also known as the \emph{address}
+If $x$ is a shared variable, then the expression \&$x$
+ is a pointer to $x$ (also known as the \emph{address}
 \index{address}
-of \texttt{x}).
-Conversely, if \texttt{p} is a pointer to a shared variable, then the
-expression \texttt{\^{}p} is the value of the shared variable.
-In particular, \texttt{\^{}\&x == x}.
+of $x$).
+Conversely, if $p$ is a pointer to a shared variable, then the
+expression \texttt{\^{}}$p$ is the value of the shared variable.
+In particular, \texttt{\^{}\&}$x$ == $x$.
 This is similar to how C pointers work.
 
 Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
-The name \texttt{mutex} is often used to denote a variable or value
+The name \textit{mutex} is often used to denote a variable or value
 that is used for mutual exclusion.
 \texttt{P\_mutex} is a method that returns a ``mutex,'' which, in this
 case, is a dictionary that contains Peterson's Algorithm's state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
 a pointer to a mutex and the process identifier (0 or 1).
-\texttt{(\^{}pm).turn} is the value of the \texttt{.turn} key
-in the mutex dictionary.  Note that the parentheses in this expression
-are needed, as \texttt{\^{}pm.turn} would wrongly evaluate to
-\texttt{\^{}(pm.turn)}.
+\texttt{(\^{}}\textit{pm}\texttt{.turn} is the value of the \texttt{.turn} key
+in the dictionary that \textit{pm} points to. 
+Note that the parentheses in this expression
+are needed, as \texttt{\^{}}\textit{pm}\texttt{.turn} would wrongly evaluate to
+\texttt{\^{}}(\textit{pm}\texttt{.turn}).
 
 You can put the first three methods in its own CXL source file
 and include it using the CXL \texttt{import} statement.
@@ -1774,7 +1769,7 @@ critical section at the same time.
 $\mathcal{I}_1$ is an inductive invariant.
 To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{\^{}}$p$ == \texttt{True} upon entry of \texttt{tas}
-(because of the condition on the \texttt{while} loop that the
+(because of the condition on the \textbf{while} loop that the
 \texttt{tas} method is invoked in).
 So there are two cases:
 \begin{enumerate}
@@ -1814,7 +1809,7 @@ is used to compute the number of shared variables that have value
 \texttt{False}.
 The function is invoked by in a loop by a process that runs alongside
 the other processes.
-In CXL, \texttt{assert} statements are executed atomically, so the
+In CXL, \textbf{assert} statements are executed atomically, so the
 evaluation of the assertion is not interleaved with the execution
 of other processes.
 Because CXL tries every possible execution, the process is guaranteed
@@ -2634,13 +2629,13 @@ have to wait until all readers have left the critical section.  If there are $N$
 waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
 each waiting condition and an extra one that processes use when they first try
 to enter the critical section and do not yet know if they need to wait.
-We shall call this the \texttt{mutex}.
+We shall call this the \textit{mutex}.
 
 An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
 must always be 0 or 1, and it should be 0 when a process is accessing the shared
 variables and 1 when not.
 As it were, these semaphores taken together are emulating a single binary semaphore.
-Initially, \texttt{mutex} is~1 and the other $N$ semaphores
+Initially, \textit{mutex} is~1 and the other $N$ semaphores
 are all~0.  To maintain the invariant, each process alternates \texttt{P} and
 \texttt{V} operations, starting with \texttt{P(\&mutex)} when it tries to
 enter the CCS, and ending with a \texttt{V} operation on one of the semaphores
@@ -2673,12 +2668,12 @@ readers waiting.  If there are writers waiing and there are no readers
 nor writers in the critical section, it vacates the semaphore associated
 with writers waiting.  If both conditions hold, it could vacate either
 one---it would not matter.  However, it can only vacate one of the semaphores.
-If none of the conditions hold, \texttt{V\_one()} vacates \texttt{mutex}.
+If none of the conditions hold, \texttt{V\_one()} vacates \textit{mutex}.
 
 Let us return now to \texttt{rlock\_acquire}. In the case that the process,
 say $p$,
 found there is a writer in the critical section, it vacates
-\texttt{mutex} and procures \texttt{r\_sema},
+\textit{mutex} and procures \texttt{r\_sema},
 blocking on the semaphore associated
 with waiting readers.  When later some other process passes the baton to
 $p$ by incrementing \texttt{r\_sema}, $p$ updates the state by decrementing
@@ -2689,7 +2684,7 @@ As an example, consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
 the writer calls \texttt{wlock\_release}:
 \begin{enumerate}
-\item After procuring \texttt{mutex},
+\item After procuring \textit{mutex},
 the sum of the three semaphores is 0.  The writer then decrements
 \texttt{w\_entered} and calls \texttt{V\_one()}.
 \item \texttt{V\_one()} finds that there are no writers in the critical section
@@ -2707,7 +2702,7 @@ passing the baton to the one remaining waiting reader.
 increments \texttt{r\_entered} from 1 to 2.
 \item Finally, the remaining reader  calls \texttt{V\_one()}.
 \texttt{V\_one()} does not find any processes waiting,
-and so it vacates \texttt{mutex}.
+and so it vacates \textit{mutex}.
 \end{enumerate}
 
 \section*{Exercises}
@@ -2884,7 +2879,7 @@ an abstraction of the concept in a programming language paradigm called
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
 There is a split binary semaphore associated with each such class.
-The \texttt{mutex} is hidden: it is automatically acquired when invoking a
+The \textit{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are called \emph{condition variables}.
 \index{condition variable}
@@ -3050,11 +3045,11 @@ writers wait on \texttt{wcond}.  The implementation also keeps track of the numb
 readers and writers in the critical section.
 
 When inspecting the code, one important feature to notice is that \texttt{wait} is always
-invoked within a \texttt{while} loop that checks for the condition that the process is
+invoked within a \textbf{while} loop that checks for the condition that the process is
 waiting for.  We explained why above: when a process resumes after
 being notified, it is not guaranteed that the condition it was waiting for holds, even
 if it did at the time of invoking \texttt{notify} or \texttt{notifyAll}.
-It is \emph{imperative} that there is always a \texttt{while} loop around any invocation
+It is \emph{imperative} that there is always a \textbf{while} loop around any invocation
 of \texttt{wait} containing the negation of the condition that the process is waiting for.
 Many implementation of condition variables depend on this, and optimized implementations
 of condition variables often allow so-called ``spurious wakeups,'' where \texttt{wait}
@@ -3076,7 +3071,7 @@ monitors, where multiple waiting readers would have to be signaled one at a time
 baton-passing fashion (see Figure~\ref{fig:RWsplitsema}), with Mesa monitors
 all readers are awaked in one fell swoop using \texttt{notifyAll}.
 Second, both readers and writers are awakened---this is ok because both execute
-\texttt{wait} within a \texttt{while} loop, re-checking the condition that they
+\texttt{wait} within a \textbf{while} loop, re-checking the condition that they
 are waiting for.  So if both type of processes are waiting, either all the readers
 get to enter next or one of the writers gets to enter next.
 
@@ -3206,12 +3201,12 @@ But which condition variable to wait on?
 The code demonstrates an important technique to use when waiting for
 multiple conditions.
 \index{multiple conditions, waiting on}
-The condition in the \texttt{while} statement is the negation of the
+The condition in the \textbf{while} statement is the negation of the
 condition that the diner is waiting and consists of two disjuncts.
-Within the \texttt{while} statement,
-there is an \texttt{if} statement for each disjunct.
+Within the \textbf{while} statement,
+there is an \textbf{if} statement for each disjunct.
 The code waits for either or both forks if necessary.  After that, it goes
-back to the top of the \texttt{while} loop.
+back to the top of the \textbf{while} loop.
 
 A common mistake is to write the following code instead:
 
