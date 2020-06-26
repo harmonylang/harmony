@@ -308,8 +308,12 @@ read and update shared variables
 \index{shared variable}
 concurrently and synchronize with one another makes programs more
 complicated than programs where only one thing happens at a time.
+
 \glsadd{concurrent execution}
 \glsadd{shared variable}
+\glsadd{sequential execution}
+\glsadd{determinism}
+\glsadd{atomicity}
 
 Why are concurrent
 programs more complicated than sequential ones?
@@ -317,10 +321,8 @@ There are, at least, two reasons:
 \begin{itemize}
 \item The execution of a sequential
 \index{sequential}
-\glsadd{sequential execution}
 program is mostly \emph{deterministic}.
 \index{determinism}
-\glsadd{determinism}
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
@@ -334,7 +336,6 @@ may never occur when the program is instrumented to find them
 thought of as happening \emph{atomically}
 \index{atomicity}
 because there is no other activity interfering with their execution.
-\glsadd{atomicity}
 Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
 until completion.  Not so with a concurrent program, where other processes
@@ -349,13 +350,14 @@ nature of concurrent code, some bugs may be highly unlikely to get
 triggered even when running a test millions of times.  And even if
 a bug does get triggered, the source of the bug may be hard to find
 because it is hard to reproduce.
+j
+\glsadd{model checking}
 
 This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
 called CXL that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}:
 \index{model checking}
-\glsadd{model checking}
 instead of relying
 on luck, CXL will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
@@ -398,6 +400,7 @@ do so for a list of 6 numbers.  (Hint: simply use an \texttt{if}
 statement.)
 
 \glsadd{invariant}
+
 While model checking does not in general prove an algorithm correct,
 it can help with proving an algorithm correct.
 The reason is that the correctness of many programs is built around
@@ -535,13 +538,13 @@ Figure~\ref{fig:triangle} shows a simple example of a CXL program.
 the name listed in the caption of the example.)
 The example is sequential and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
-\texttt{result} that eventually contains the result of the
+\textit{result} that eventually contains the result of the
 method (there is no \texttt{return} statement in CXL).  The method
-also has a variable called \texttt{n} containing the value of the
-argument.  The \texttt{x..y} notation generates a set containing the numbers
-from~\texttt{x} to~\texttt{y} (inclusive).  The last two lines in the program are
+also has a variable called \textit{n} containing the value of the
+argument.  The \textit{x..y} notation generates a set containing the numbers
+from~\textit{x} to~\textit{y} (inclusive).  The last two lines in the program are
 the most interesting.
-The first assigns to \texttt{x} some unspecified value in the range \texttt{0..N}
+The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
 and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
 ``Running'' this CXL program will try all possible executions, which
@@ -558,7 +561,7 @@ $
 \end{code}
 
 (For this to work, make sure \texttt{cxl} is in your command shell's search path.)
-Essentially, the $\texttt{choose}(S)$
+Essentially, the $\texttt{choose}($S$)$
 \index{choose operator}
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\texttt{assert}$ statement checks that the output is
@@ -583,7 +586,7 @@ $
 
 \section*{Exercises}
 \begin{problems}
-\item See what happens if, instead of initializing \texttt{result} to 0,
+\item See what happens if, instead of initializing \textit{result} to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in Chapter~\ref{ch:cxlmachine}.)
 \item Write a CXL program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
@@ -600,20 +603,21 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 \label{fig:inc}
 \end{figure}
 
+\glsadd{process}
+
 Concurrent programming, aka multithreaded programming, involves multiple
 processes
 \index{process}
 running in parallel while sharing variables.
-\glsadd{process}
 Figure~\ref{fig:inc} presents a simple example.
 The program
-initializes two shared variables: an integer \texttt{count} and
-an array \texttt{done} with two booleans.
-Method \texttt{incrementer} takes a parameter called \texttt{self}.
-It increments \texttt{count} and sets \texttt{done[self]} to \texttt{True}.
-Method \texttt{main} waits until \texttt{done} flags are set to \texttt{True}.
-After that, it verifies that the value of \texttt{count} equals 2.  If not,
-it reports the actual value of \texttt{count}.
+initializes two shared variables: an integer \textit{count} and
+an array \textit{done} with two booleans.
+Method \texttt{incrementer} takes a parameter called \textit{self}.
+It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
+Method \texttt{main} waits until \textit{done} flags are set to \texttt{True}.
+After that, it verifies that the value of \textit{count} equals 2.  If not,
+it reports the actual value of \textit{count}.
 The program spawns three processes.
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
@@ -621,17 +625,18 @@ The first runs \texttt{incrementer(0)}, the second runs
 \begin{quote}
 \begin{itemize}
 \item Before you run the program, what do you think will happen?  Is the
-program correct in that \texttt{count} will always end up being 2?
-\item What are the possible values of \texttt{count} at the time of the
+program correct in that \textit{count} will always end up being 2?
+\item What are the possible values of \textit{count} at the time of the
 \texttt{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
 underlying machine architecture are atomic---in fact they are.)
 \end{itemize}
 \end{quote}
 
+\glsadd{machine instruction}
+
 What is going on is that the CXL program is compiled to machine instructions,
 \index{machine instruction}
-\glsadd{machine instruction}
 and it is the machine instructions that are executed by the underlying CXL
 machine.  The details of this appear in Chapter~\ref{ch:cxlmachine},
 but suffice it to
@@ -657,23 +662,24 @@ executing machine instructions.
 
 The following is a possible interleaving of incrementers~0 and~1:
 \begin{enumerate}
-\item incrementer 0 loads the value of \texttt{count}, which is 0;
-\item incrementer 1 loads the value of \texttt{count}, which is still 0;
+\item incrementer 0 loads the value of \textit{count}, which is 0;
+\item incrementer 1 loads the value of \textit{count}, which is still 0;
 \item incrementer 1 adds one to the value that it loaded (0), and
-stores $1$ into \texttt{count};
+stores $1$ into \textit{count};
 \item incrementer 0 adds one to the value that it loaded (0), and
-stores $1$ into \texttt{count};
-\item incrementer 0 sets \texttt{done[0]} to \texttt{True};
-\item incrementer 1 sets \texttt{done[1]} to \texttt{True}.
+stores $1$ into \textit{count};
+\item incrementer 0 sets \textit{done}[0] to \texttt{True};
+\item incrementer 1 sets \textit{done}[1] to \texttt{True}.
 \end{enumerate}
 
-The result in this particular interleaving is that \texttt{count} ends up
+The result in this particular interleaving is that \textit{count} ends up
 being 1.
 This is known as a \emph{race condition}.
 \index{race condition}
 When running CXL, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
+
 \glsadd{race condition}
 
 If one thinks of the assertion as providing the specification of the
@@ -682,9 +688,7 @@ Either the specification or the implementation (or both) must have a bug.
 We could change the specification by changing the assertion as follows:
 
 \begin{code}
-\begin{verbatim}
-    assert (count == 1) or (count == 2);
-\end{verbatim}
+\textbf{assert} (\textit{count} == 1) or (\textit{count} == 2);
 \end{code}
 
 This would fix the issue, but more likely it is the program that must
@@ -705,9 +709,9 @@ Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
 fail (if any).
 \end{enumerate}
 \item Figure~\ref{fig:incmany} is a version of Figure~\ref{fig:incpy} that has each
-incrementer thread increment \texttt{count} \texttt{N} times.  Run Figure~\ref{fig:incpy}
+incrementer thread increment \textit{count} \texttt{N} times.  Run Figure~\ref{fig:incpy}
 10 times (using Python).
-Report how many times the assertion fails and what the value of \texttt{count}
+Report how many times the assertion fails and what the value of \textit{count}
 was for each of the failed runs.
 Also experiment with lower values of \texttt{N}.
 How large does \texttt{N} need to be for assertions to fail?
@@ -904,10 +908,11 @@ and \texttt{.tag}, but we shall often abbreviate it using the notation
 For example, in Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
+\glsadd{context}
+
 The state of a process is called a \emph{context} (aka \emph{continuation}):
 \index{context}
 \index{continuation}
-\glsadd{context}
 it contains the value of
 its name tag, program counter, stack, and register.
 The state of a CVM
@@ -940,6 +945,8 @@ such a sequence the \emph{address}
 of a CXL value, and it is relative to the
 ``root'' of the directory tree.
 
+\glsadd{stack machine}
+
 Compiling the code in Figure~\ref{fig:inc} results in the CVM bytecode
 listed in Figure~\ref{fig:inccode}.
 You can obtain this code by invoking \texttt{cxl} with the \texttt{-a} flag
@@ -951,7 +958,6 @@ cxl -a Up.cxl
 \end{code}
 Each process in the CVM is predominantly a \emph{stack machine},
 \index{stack machine}
-\glsadd{stack machine}
 but it also has a register.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
@@ -970,20 +976,20 @@ in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method,
 names of its arguments, and
 the program counter of the method's \texttt{Return} instruction.
-The code generated from \texttt{count := count + 1} in line 2 of
+The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
 \texttt{Up.cxl} is as follows (see Figure~\ref{fig:inccode}):
 
 \begin{enumerate} \setcounter{enumi}{1}
 \item The \texttt{Load} instruction pushes the value of the
-\texttt{count} variable onto the stack.
+\textit{count} variable onto the stack.
 \item the \texttt{Push} instruction pushes the constant 1
 onto the stack of the process.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
-It pops two values from the stack (1 and the value of \texttt{count}),
+It pops two values from the stack (1 and the value of \textit{count}),
 adds them and pushes the result back onto the stack.
 \item The \texttt{Store} instruction pops
-a CXL value (the sum of the \texttt{count} variable and 1) and
-stores it in the \texttt{count} variable.
+a CXL value (the sum of the \textit{count} variable and 1) and
+stores it in the \textit{count} variable.
 \end{enumerate}
 
 Once initialization completes, any processes that were spawned can run.
@@ -992,7 +998,7 @@ instructions.
 Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \texttt{Up.cxl} program.
 It starts by reporting that the assertion on line 9 in column 5 failed and that
-\texttt{count} has value 1 instead of 0:
+\textit{count} has value 1 instead of 0:
 \texttt{Assertion failed (’assert’, ’Up.cxl’, 9, 5) 1}.
 Next it reports an execution that failed this assertion.  The output has
 four columns:
@@ -1006,11 +1012,11 @@ four columns:
 If we look at the middle three rows, we see that:
 \begin{itemize}
 \item Process 0 executed instructions 1 through 4, loading the value of
-\texttt{count} but stopping just before storing 1 into \texttt{count};
+\textit{count} but stopping just before storing 1 into \textit{count};
 \item Process 1 executed instructions 1 through 10, storing 1 into
-into \texttt{count} and storing \texttt{True} into \texttt{done[1]};
-\item Process 0 continues execution, storing value 1 into \texttt{count}
-and storing \texttt{True} into \texttt{done[0]}.
+into \textit{count} and storing \texttt{True} into \textit{done}[1];
+\item Process 0 continues execution, storing value 1 into \textit{count}
+and storing \texttt{True} into \textit{done}[0].
 \end{itemize}
 
 This makes precise the concurrency problem that we encountered.
@@ -1079,14 +1085,16 @@ Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
-the \texttt{count} variable is being updated, no other process is
+the \textit{count} variable is being updated, no other process is
 trying to do the same thing.  This is called a \emph{critical section}
 (aka critical region)~\cite{EWD123}:
 a set of instructions where only one process is allowed to execute at a
 time.
 \index{critical section}
 \index{critical region}
+
 \glsadd{critical section}
+\glsadd{thread safety}
 
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
@@ -1100,8 +1108,9 @@ process also tries to access the binary tree.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) and free of race conditions is called \emph{thread-safe}.
 \index{thread safety}
-\glsadd{thread safety}
 \index{thread}
+
+\glsadd{mutual exclusion}
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
@@ -1112,7 +1121,6 @@ identifying a location in the CVM bytecode.  The first thing we need to
 ensure is that there can never be two processes in the critical section.
 This property is called \texttt{mutual exclusion}.
 \index{mutual exclusion}
-\glsadd{mutual exclusion}
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
@@ -1222,6 +1230,7 @@ specification.
 \end{figure}
 
 \glsadd{lock}
+
 You may already have heard of the concept of a \emph{lock}
 \index{lock}
 and have realized that
@@ -1237,14 +1246,14 @@ Using a lock is a good thought, but how does one implement one?
 Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
 Initially the lock is not owned, indicated by lock being \texttt{False}.
-To enter the critical section, a process waits until \texttt{lock} is \texttt{False}
+To enter the critical section, a process waits until \textit{lock} is \texttt{False}
 and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
 releases the lock by setting it back to \texttt{False}.
 
 Unfortunately, if we run the program through CXL, we find that the assertion still
-fails.  Diagnosing the problem, we see that the \texttt{lock} variable
-suffers from the same problem as the \texttt{count} variable
+fails.  Diagnosing the problem, we see that the \textit{lock} variable
+suffers from the same problem as the \textit{count} variable
 in Figure~\ref{fig:inc}: operations
 on it consist of several instructions.  It is thus possible
 for both processes to believe the lock is available and to obtain the lock
@@ -1254,27 +1263,27 @@ Figure~\ref{fig:upflags} presents a solution based on each process having
 a flag indicating that it is trying to enter the critical section.
 A process can write its own flag and read the flag of its peer.
 After setting its flag, the process waits until the other process
-(\texttt{1 - self}) is not trying to enter the critical section.
+($1 - \mathit{self}$) is not trying to enter the critical section.
 If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
 the same time.
 
 To see why, first note the invariant that if process $i$ is in the
-critical section, then \texttt{flags[$i$] == True}.
+critical section, then \textit{flags}[$i$] == \texttt{True}.
 Without loss of generality,
-suppose that process~0 sets \texttt{flags[0]} at time $t_0$.
+suppose that process~0 sets \textit{flags}[0] at time $t_0$.
 Process 0 can only reach the critical section if at some time $t_1$,
-$t_1 > t_0$, it finds that \texttt{flags[1] == False}.
-Because of the invariant, \texttt{flags[1] == False} implies that
+$t_1 > t_0$, it finds that \textit{flags}[1] == \texttt{False}.
+Because of the invariant, \textit{flags}[1] == \texttt{False} implies that
 process~1 is not in the critical section at time $t_1$.
-Let $t_2$ be the time at which process~0 sets \texttt{flags[0]}
+Let $t_2$ be the time at which process~0 sets \textit{flags}[0]
 to \texttt{False}.  Process~0 is in the critical section sometime
 between $t_1$ and $t_2$.
 It is easy to see that process~1 cannot enter the critical section
-between $t_1$ and $t_2$, because \texttt{flags[1] == False} at
+between $t_1$ and $t_2$, because \textit{flags}[1] == \texttt{False} at
 time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
-it would first have to set \texttt{flags[1]} to \texttt{True} and
-then wait until \texttt{flags[0] == False}.  But that does not happen
+it would first have to set \textit{flags}[1] to \texttt{True} and
+then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
 until time $t_2$.
 
 However, if you run the program through CXL, it turns out the solution
@@ -1283,14 +1292,14 @@ time, they may end up waiting for one another indefinitely.  Thus the
 solution violates \emph{progress}.
 
 The final na\"{\i}ve solution that we propose
-is based on a variable called \texttt{turn}
-that alternates between 0 and 1.  When \texttt{turn = $i$}, process~$i$ can
+is based on a variable called \textit{turn}
+that alternates between 0 and 1.  When \textit{turn} = $i$, process~$i$ can
 enter the critical section, while process $1-i$ has to wait.  When done,
-process~$i$ sets \texttt{turn} to $1-i$ to give the other process an
+process~$i$ sets \textit{turn} to $1-i$ to give the other process an
 opportunity to enter.
 An invariant of this solution is that while process~$i$ is in the critical
-section, \texttt{turn} == $i$.
-Since \texttt{turn} cannot be 0 and 1 at
+section, \textit{turn} == $i$.
+Since \textit{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that
 processes 0 and 1 alternate entering the critical section.
@@ -1345,8 +1354,8 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in CXL are atomic.
 The process continues to be polite, waiting in a \texttt{while} loop
 until either the other process is nowhere near the critical section
-(\texttt{flag[1 - self] == False}) or has given way
-(\texttt{turn == self}).
+($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
+($\mathit{turn} == \mathit{self}$).
 Running the algorithm with CXL shows that it satisfies both mutual
 exclusion and progress.
 
@@ -1360,6 +1369,7 @@ exclusion and progress.
 
 \glsadd{state}
 \glsadd{process variable}
+
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the CXL
@@ -1377,9 +1387,10 @@ state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}
 Steps in CXL are atomic.
-\glsadd{step}
 
+\glsadd{step}
 \glsadd{trace}
+
 The CVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
 \index{trace}
@@ -1405,7 +1416,7 @@ are all examples of classes of states.
 Figure~\ref{fig:states} depicts a Venn diagram of various classes of states
 and a trace.
 One way to classify states is to define a predicate over states.
-All states in which \texttt{x = 1}, or all states where
+All states in which $x$ = 1, or all states where
 there are two or more processes executing, are examples of such predicates.
 For our purposes, it is useful to define a predicate that says that at
 most one process is in the critical section.  We shall call such states
@@ -1434,11 +1445,11 @@ see whether it is reachable or not.
 To solve this problem, we will use what is called an
 \emph{inductive invariant}.
 \index{inductive invariant}
-An inductive invariant $I$ is a predicate over states that satisfies the following:
+An inductive invariant $\mathcal{I}$ is a predicate over states that satisfies the following:
 \begin{itemize}
-\item $I$ holds in the initial state.
-\item For any state in which $I$ holds and any process in the
-state takes a step, then $I$ also holds in the resulting state.
+\item $\mathcal{I}$ holds in the initial state.
+\item For any state in which $\mathcal{I}$ holds and any process in the
+state takes a step, then $\mathcal{I}$ also holds in the resulting state.
 \end{itemize}
 Unlike an invariant, an inductive invariant must also hold over unreachable states.
 
@@ -1450,8 +1461,8 @@ Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
 and process~1 at the start of the \texttt{while} loop.
-Also imagine that in this particular state $\mathtt{turn} = 1$.  Now let
-process~1 make a sequence of steps.  Because $\mathtt{turn} = 1$,
+Also imagine that in this particular state $\mathit{turn} = 1$.  Now let
+process~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
 section, entering a state that is not exclusive.
 So exclusivity is an invariant, but not an inductive invariant.
@@ -1470,51 +1481,51 @@ So we are looking for an inductive invariant that \emph{implies} exclusivity.
 In other words, the set of states where the inducive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
-Let $C(i) = \mathtt{flags}[1 - i] \land
-\mathtt{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
+Let $\mathcal{C}(i) = \mathit{flags}[1 - i] \land
+\mathit{turn} = 1 - i$, that is, the condition on the \texttt{while} loop
 for process~$i$.
-Let predicate $I_p(i)$ be the following.
+Let predicate $\mathcal{I}_p(i)$ be the following.
 if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
-then $C(i)$ does not hold or process $1-i$ is executing after setting
-$\mathtt{flags}[i]$ but still before setting \texttt{turn} to $1-i$.
-More formally, $I_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot C(i) \lor \mathtt{process}(1-i)@gate)$.
+then $\mathcal{C}(i)$ does not hold or process $1-i$ is executing after setting
+$\mathit{flags}[i]$ but still before setting \textit{turn} to $1-i$.
+More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate)$.
 For Peterson's Algorithm, an inductive invariant that works well is
-$I_p(0) \land I_p(1)$.
+$\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
 
-Figure~\ref{fig:petersonproof} formalizes $I_p(i)$ in CXL.
-The label \texttt{@gate} refers to the instruction that sets \texttt{turn} to $1-i$.
+Figure~\ref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in CXL.
+The label \texttt{@gate} refers to the instruction that sets \textit{turn} to $1-i$.
 You can run Figure~\ref{fig:petersonproof} to determine
-that $I_p(i)$ is indeed an invariant for $i = 0, 1$.
+that $\mathcal{I}_p(i)$ is indeed an invariant for $i = 0, 1$.
 
 To see that the inductive invariant implies exclusivity, suppose not.  Then
 when both process~0 and process~1 are in the critical section, the
 following must hold:
-$(\lnot C(0) \lor \mathtt{process}(1)@gate) \land
- (\lnot C(1) \lor \mathtt{process}(0)@gate)$.
+$(\lnot \mathcal{C}(0) \lor \mathtt{process}(1)@gate) \land
+ (\lnot \mathcal{C}(1) \lor \mathtt{process}(0)@gate)$.
 We know that both flags are set.
 We also know that neither process~0 nor process~1 is at label \texttt{@gate}
 (because they are both at label \texttt{@cs}),
-so this simplifies to $(\lnot C(0)) \land (\lnot C(1))$.
-So we conclude that $\mathtt{turn} = 0 \land \mathtt{turn} = 1$, a
-logical impossibility.  Thus $I_p(i)$ implies exclusivity.
+so this simplifies to $(\lnot \mathcal{C}(0)) \land (\lnot \mathcal{C}(1))$.
+So we conclude that $\mathit{turn} = 0 \land \mathit{turn} = 1$, a
+logical impossibility.  Thus $\mathcal{I}_p(i)$ implies exclusivity.
 
-To see that $I_p(0) \land I_p(1)$ is, in fact, an inductive invariant, first note that
+To see that $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$ is, in fact, an inductive invariant, first note that
 it certainly holds in the initial state, because in the initial state no process
 is in the critical section.
 Without loss of generality, suppose $i=0$ (a benefit from the fact that the algorithm is
 symmetric for both processes).  We still have to show that if we are in a state
-in which $I_p(0)$ holds, then any step will result in a state in which
-$I_p(0)$ still holds.
-If $I_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
+in which $\mathcal{I}_p(0)$ holds, then any step will result in a state in which
+$\mathcal{I}_p(0)$ still holds.
+If $\mathcal{I}_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
 were to take a step, then in the next state process~0 would be no longer
-at that label and $I_p(0)$ would hold trivially over the next state.
+at that label and $\mathcal{I}_p(0)$ would hold trivially over the next state.
 Therefore we only need to consider a step by process~1.
 
-From $I_p(0)$ we know that one of the following three cases must hold before
+From $\mathcal{I}_p(0)$ we know that one of the following three cases must hold before
 process~1 takes a step:
 \begin{enumerate}
-\item \texttt{flags[1] = False};
-\item \texttt{turn = 0};
+\item \textit{flags}[1] = \texttt{False};
+\item \textit{turn} = 0;
 \item process~1 is at label \texttt{@gate}.
 \end{enumerate}
 
@@ -1524,10 +1535,10 @@ either $flags[1]$ will still be \texttt{False} (in which case the first case
 continues to hold), or $flags[1]$ will be \texttt{True}
 and process~1 will be at label \texttt{@gate} (in which case the third case
 will hold).
-We know that process~1 never sets \texttt{turn} to 1, so
+We know that process~1 never sets \textit{turn} to 1, so
 if the second case holds before the step, it will also hold after the step.
 Finally, if process~1 is at label \texttt{@gate} before the step, then after
-the step \texttt{turn} will equal 0, and therefore the second case will hold
+the step \textit{turn} will equal 0, and therefore the second case will hold
 after the step.  qed.
 
 We have now demonstrated mutual exclusion in Peterson's Algorithm in two
@@ -1540,8 +1551,8 @@ encourage to include inductive invariants in your CXL code.
 A cool anecdote is the following.  When the author of CXL had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
-if process $i$ is in the critical section, then $\lnot C(i)$ (i.e.,
-$I_p(i)$ without the disjunct that process $1-i$ is at label \texttt{gate}).
+if process $i$ is in the critical section, then $\lnot \mathcal{C}(i)$ (i.e.,
+$\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{gate}).
 To demonstrate that this predicate is not invariant, you can remove the
 disjunct from Figure~\ref{fig:petersonproof} and run it to get a
 counterexample.
@@ -1581,8 +1592,8 @@ is an atomic action:
 \end{verbatim}
 \end{code}
 \item A colleague of the author asked if the first two assignments in
-Peterson's algorithm (setting \texttt{flags[self]})
-to \texttt{True} and \texttt{turn} to \texttt{1 - self}) can be reversed.
+Peterson's algorithm (setting \textit{flags}[\textit{self}])
+to \texttt{True} and \textit{turn} to 1 - \textit{self}) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
 See if you can figure out for yourself if the two assignments can be
@@ -1688,6 +1699,7 @@ That would allow you to simulate object methods.
 \chapter{Spinlock}
 \label{ch:spinlock}
 \index{spinlock}
+
 \glsadd{spinlock}
 
 \begin{figure}
@@ -1707,9 +1719,10 @@ algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple processes.  Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
 \index{interlock instruction}
-\glsadd{interlock instruction}
 special machine instructions
 that can read memory and then write it in an indivisible step.
+
+\glsadd{interlock instruction}
 
 While the CVM does not have any specific built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
@@ -1745,33 +1758,33 @@ The approach is called \emph{spinlock},
 because each process is ``spinning'' until
 it can acquire the lock.
 The program uses $N+1$ variables.
-Variable \texttt{shared} is initialized to \texttt{False} while
-\texttt{private[$i$]} for each process $i$ is initialized to \texttt{True}.
-An important invariant, $I_1$, of the program is that at any time at most
+Variable \textit{shared} is initialized to \texttt{False} while
+\textit{private}[$i$] for each process $i$ is initialized to \texttt{True}.
+An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.
-Another invariant, $I_2(i)$, is that if process $i$ is in the critical section,
-then \texttt{private[$i$] == False}.
-Between the two (i.e., $I_1 \land \forall i: I_2(i)$),
+Another invariant, $\mathcal{I}_2(i)$, is that if process $i$ is in the critical section,
+then \textit{private}[$i$] == \texttt{False}.
+Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one process can be in the
 critical section at the same time.
 
-$I_1$ is an inductive invariant.
-To see that invariant $I_1$ is maintained, note that
-\texttt{\^{}p == True} upon entry of \texttt{tas}
+$\mathcal{I}_1$ is an inductive invariant.
+To see that invariant $\mathcal{I}_1$ is maintained, note that
+\texttt{\^{}}$p$ == \texttt{True} upon entry of \texttt{tas}
 (because of the condition on the \texttt{while} loop that the
 \texttt{tas} method is invoked in).
 So there are two cases:
 \begin{enumerate}
-\item \texttt{\^{}s} is \texttt{False} upon entry to \texttt{tas}.
-Then upon exit \texttt{\^{}p == False} and \texttt{\^{}s == True}, maintaining
-the invariant.
-\item \texttt{\^{}s} is \texttt{True} upon entry to \texttt{tas}.
+\item \texttt{\^{}}$s$ is \texttt{False} upon entry to \texttt{tas}.
+Then upon exit \texttt{\^{}}$p$ == \texttt{False} and \texttt{\^{}}$s$ == \texttt{True},
+maintaining the invariant.
+\item \texttt{\^{}}$s$ is \texttt{True} upon entry to \texttt{tas}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
-Invariant $I_1$ is also easy to verify for exiting the critical section.
-Invariant $I_2(i)$ is obvious as (i) process $i$ only proceeds to the critical
-section if \texttt{private[$i$] == False}, and (ii) no other process modifies
-\texttt{private[$i$]}.
+Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section.
+Invariant $\mathcal{I}_2(i)$ is obvious as (i) process $i$ only proceeds to the critical
+section if \textit{private}[$i$] == \texttt{False}, and (ii) no other process modifies
+\textit{private}[$i$].
 
 \begin{figure}
 \begin{code}
@@ -1782,11 +1795,11 @@ section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 \end{figure}
 
 CXL can check these invariants as well.  Figure~\ref{fig:tas} already
-has the code to check $I_2(i)$.  But how would one go about checking an
-invariant like $I_1$?  Invariants must hold for every state.
-For $I_2$ we only need an assertion at label \texttt{@cs} because the
+has the code to check $\mathcal{I}_2(i)$.  But how would one go about checking an
+invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
+For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
 premisse is that there is a process at that label.  However, we would
-like to check $I_1$ in \emph{every state} (after the variables have
+like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 
 We can do this by adding another process that, in a loop,
@@ -1885,6 +1898,7 @@ synchronization primitives, which will be discussed in later
 chapters.
 
 \glsadd{blocked process}
+
 We call a process \emph{blocked}
 \index{blocked process}
 in a state if the process is waiting on a low-level synchronization
@@ -1999,6 +2013,7 @@ version of the module.
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
 \index{reader/writer lock}
+
 \glsadd{reader/writer lock}
 
 \begin{figure}
@@ -2069,10 +2084,10 @@ process that wants to write waits until there are no readers \emph{or} writers.
 Then it increments the number of writers.
 The important invariants in this code are:
 \begin{itemize}
-\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
-\item $n$ writers at \texttt{@wcs} $\Rightarrow \mathtt{nwriters} \ge n$,
-\item $(\mathtt{nreaders} \ge 0 \land \mathtt{nwriters} = 0) \lor
-    (\mathtt{nreaders} = 0 \land 0 \le \mathtt{nwriters} \le 1)$.
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathit{nreaders} \ge n$,
+\item $n$ writers at \texttt{@wcs} $\Rightarrow \mathit{nwriters} \ge n$,
+\item $(\mathit{nreaders} \ge 0 \land \mathit{nwriters} = 0) \lor
+    (\mathit{nreaders} = 0 \land 0 \le \mathit{nwriters} \le 1)$.
 \end{itemize}
 It is easy to see that the invariants hold and imply the reader/writer
 specification.
@@ -2089,6 +2104,7 @@ critical section, any other reader is also able to enter.
 \end{figure}
 
 \glsadd{busy waiting}
+
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
 \index{busy waiting}
@@ -2179,8 +2195,8 @@ The invariants that imply the reader/writer specification
 (which are again easy to verify) are as follows:
 
 \begin{itemize}
-\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathtt{nreaders} \ge n$,
-\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathtt{nreaders} = 0$,
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathit{nreaders} \ge n$,
+\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$,
 \end{itemize}
 
 A writer simply acquires \texttt{rwlock} to enter the critical section
@@ -2245,6 +2261,7 @@ write lock and then obtaining the read lock.
 \chapter{Semaphores}
 \label{ch:semaphore}
 \index{semaphore}
+
 \glsadd{semaphore}
 
 \begin{figure}
@@ -2359,6 +2376,7 @@ that it is a permutation of the original array.
 \label{ch:bb}
 \index{bounded buffer}
 \index{producer/consumer problem}
+
 \glsadd{producer/consumer problem}
 
 \begin{figure}
@@ -2566,11 +2584,12 @@ to block.
 \label{fig:RWsplitsema}
 \end{figure}
 
+\glsadd{conditional critical section}
+
 Reader/writer locks and bounded buffers are both examples of what are
 sometimes called \emph{conditional critical sections}
 \index{conditional critical section}
 (CCSs)~\cite{Hoare73}.
-\glsadd{conditional critical section}
 All critical sections are, in a way, conditional.  Even the basic critical section
 has the condition that a process can only enter if no other process
 is in the critical section.  Reader/writer locks refined that condition, loosening
@@ -2710,6 +2729,7 @@ for southbound cars.
 \chapter{Starvation}
 \label{ch:starvation}
 \index{starvation}
+
 \glsadd{starvation}
 
 \begin{figure}
@@ -2722,9 +2742,10 @@ for southbound cars.
 \label{fig:RWfair}
 \end{figure}
 
+\glsadd{property}
+
 A \emph{property}
 \index{property}
-\glsadd{property}
 is a set of traces.
 If a program has a certain property, that means that the traces that that
 program allows are a subset of the traces in the property.
@@ -2765,6 +2786,7 @@ We shall call such a solution \emph{fair}
 \index{fairness}
 (although it does not quite
 match the usual formal nor vernacular concepts of fairness).
+
 \glsadd{fairness}
 
 Unfortunately, such is not the case for the
@@ -2848,11 +2870,13 @@ semaphore.
 \chapter{Monitors}
 \label{ch:monitors}
 
+\glsadd{monitor}
+\glsadd{condition variable}
+
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}~\cite{Hoare74}.
 \index{monitor}
-\glsadd{monitor}
 (A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
@@ -2861,7 +2885,6 @@ The \texttt{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are called \emph{condition variables}.
 \index{condition variable}
-\glsadd{condition variable}
 There are two operations on condition variables: \texttt{wait}
 \index{wait}
 and
@@ -3085,6 +3108,7 @@ it is fair.
 \chapter{Deadlock}
 \label{ch:deadlock}
 \index{deadlock}
+
 \glsadd{deadlock}
 
 \begin{figure}
@@ -3274,6 +3298,7 @@ so continually?
 \label{ch:actor}
 \index{actor model}
 \index{message passing}
+
 \glsadd{actor model}
 
 \begin{figure}
@@ -3517,6 +3542,7 @@ for each client, or solve the problem using a single pair of channels.
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
 \index{non-blocking synchronization}
+
 \glsadd{non-blocking synchronization}
 
 \begin{figure}
@@ -3592,6 +3618,7 @@ There is also a read-only operation: \texttt{lst\_contains} checks if
 a particular value is in the list.
 
 \glsadd{linearizable}
+
 The implementation uses the \texttt{alloc} module for dynamic allocation
 \index{dynamic allocation}
 of nodes in the list using \texttt{recAlloc} and \texttt{recFree}.
@@ -3683,6 +3710,7 @@ read-only operation.  Explain how a \texttt{seqlock} can lead to starvation.
 \chapter{Barrier Synchronization}
 \label{ch:barrier}
 \index{barrier synchronization}
+
 \glsadd{barrier synchronization}
 
 \begin{figure}
