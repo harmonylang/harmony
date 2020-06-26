@@ -3356,6 +3356,15 @@ def dump(visited, code, scope, bad):
 
         print(
             """
+                <div id='divNone' style='display:none';>
+                  <div class='container'>
+                    <p>
+                        State information not available.
+                        Use cxl -d for a complete dump.
+                    </p>
+                  </div>
+                </div>
+
                 <script>
                   var current = 1;
 
@@ -3365,12 +3374,10 @@ def dump(visited, code, scope, bad):
                           x.style.display = 'none';
                       }
                       x = document.getElementById('div' + id)
-                      if (x != null) {
-                          x.style.display = 'block';
-                          var url = location.href;
-                          location.href = '#N'+id;
-                          history.replaceState(null,null,url);
+                      if (x == null) {
+                          x = document.getElementById('divNone')
                       }
+                      x.style.display = 'block';
                       current = id;
                   }
                   show(1);
