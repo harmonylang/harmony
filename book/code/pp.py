@@ -8,7 +8,6 @@ import math
 
 # TODO.  This should not be global ideally
 files = {}              # files that have been read already
-constants = {}          # constants modified with -c
 modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
@@ -103,12 +102,13 @@ def isbinaryop(s):
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "==", "!=", "<=", ">=", ".." ]
+# tokens = [ "==", "!=", "<=", ">=", ".." ]
+tokens = []
 
 def putchar(c):
     print(c, end="")
 
-constants = set()
+constants = { "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
 
 def doimport(module, file):
     for dir in [ os.path.dirname(file), "../../modules", "." ]:
@@ -144,11 +144,18 @@ def lexer(s, file, silent):
         # skip over line comments
         if s.startswith("#"):
             s = s[1:]
-            if not silent: print("\\#\\emph{", end="")
+            if not silent: print("\\emph{\\#", end="")
             while len(s) > 0 and s[0] != '\n':
-                if not silent: putchar(s[0])
+                column += 1
+                if not silent:
+                    if s[0] in ["&", "%", "{", "}", "#", "^", "_"]:
+                        print("\\" + s[0], end="")
+                    elif s[0] in [ "<", ">" ]:
+                        print("$" + s[0] + "$", end="")
+                    else:
+                        putchar(s[0])
                 s = s[1:]
-            if not silent: print("}")
+            if not silent: print("}", end="")
             continue
 
         # skip over nested comments
@@ -191,7 +198,7 @@ def lexer(s, file, silent):
             i = 0
             while i < len(s) and isnamechar(s[i]):
                 i += 1
-            found = s[:i]
+            found = s[:i].replace("_", "\\_")
             if isreserved(found):
                 if not silent: print("\\texttt{\\textbf{%s}}"%found, end="")
                 if found in [ "def", "const", "import" ]:
@@ -262,7 +269,15 @@ def lexer(s, file, silent):
         elif s[0] == "^":
             if not silent: print("\\^{}", end="")
         else:
-            if not silent: putchar(s[0])
+            if s[0] == "@":
+                nextconst = True
+            if not silent:
+                if s[0] == "-":
+                    print("--", end="")
+                elif s[0] in [ "<", ">" ]:
+                    print("$" + s[0] + "$", end="")
+                else:
+                    putchar(s[0])
         s = s[1:]
         column += 1
     return result

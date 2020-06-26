@@ -27,6 +27,13 @@
 \tolerance=9999
 \newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
 
+\newcommand{\cxlsource}[1]{
+\begin{tabbing}
+XX\=XXX\=XXX\kill
+    \input{code/#1.tex}
+\end{tabbing}
+}
+
 \newglossaryentry{actor model}
 {
   name=actor model,
@@ -517,7 +524,7 @@ you get more familiar with programming in CXL.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/triangle.cxl}
+\cxlsource{triangle}
 \end{code}
 \caption{[triangle.cxl] Computing triangle numbers.}
 \label{fig:triangle}
@@ -587,7 +594,7 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Up.cxl}
+\cxlsource{Up}
 \end{code}
 \caption{[Up.cxl] Incrementing twice in parallel.}
 \label{fig:inc}
@@ -1043,7 +1050,7 @@ a process to be stopped.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpEnter.cxl}
+\cxlsource{UpEnter}
 \end{code}
 \caption{[UpEnter.cxl] Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
 \label{fig:incenter}
@@ -1054,7 +1061,7 @@ a process to be stopped.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csbarebones.cxl}
+\cxlsource{csbarebones}
 \end{code}
 \caption{[csbarebones.cxl] A barebones critical section with two processes.}
 \label{fig:csbarebones}
@@ -1062,7 +1069,7 @@ a process to be stopped.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/cs.cxl}
+\cxlsource{cs}
 \end{code}
 \caption{[cx.cxl] CXL model of a critical section.}
 \label{fig:cs}
@@ -1192,7 +1199,7 @@ specification.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/naiveLock.cxl}
+\cxlsource{naiveLock}
 \end{code}
 \caption{[naiveLock.cxl] Na\"{\i}ve implementation of a shared lock.}
 \label{fig:uplock}
@@ -1200,7 +1207,7 @@ specification.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/naiveFlags.cxl}
+\cxlsource{naiveFlags}
 \end{code}
 \caption{[naiveFlags.cxl] Na\"{\i}ve use of flags to solve mutual exclusion.}
 \label{fig:upflags}
@@ -1208,7 +1215,7 @@ specification.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/naiveTurn.cxl}
+\cxlsource{naiveTurn}
 \end{code}
 \caption{[naiveTurn.cxl] Na\"{\i}ve use of turn variable to solve mutual exclusion.}
 \label{fig:upturn}
@@ -1320,7 +1327,7 @@ we will find out, it is possible but not easy.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Peterson.cxl}
+\cxlsource{Peterson}
 \end{code}
 \caption{[Peterson.cxl] Peterson's Algorithm}
 \label{fig:peterson}
@@ -1453,7 +1460,7 @@ much harder than doing one with an invariant that is.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/PetersonInductive.cxl}
+\cxlsource{PetersonInductive}
 \end{code}
 \caption{[PetersonInductive.cxl] Peterson's Algorithm with Inductive Invariant}
 \label{fig:petersonproof}
@@ -1587,7 +1594,7 @@ Can you generalize Peterson's algorithm to more than two processes?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csonebit.cxl}
+\cxlsource{csonebit}
 \end{code}
 \caption{[csonebit.cxl] Mutual exclusion using a flag per process.}
 \label{fig:csonebit}
@@ -1623,7 +1630,7 @@ the same expression in CXL.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/PetersonMethod.cxl}
+\cxlsource{PetersonMethod}
 \end{code}
 \caption{[PetersonMethod.cxl] Peterson's Algorithm accessed through methods.}
 \label{fig:petersonmethods}
@@ -1685,7 +1692,7 @@ That would allow you to simulate object methods.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/spinlock.cxl}
+\cxlsource{spinlock}
 \end{code}
 \caption{[spinlock.cxl] Mutual Exclusion using a ``spinlock'' based on test-and-set.}
 \label{fig:tas}
@@ -1717,15 +1724,7 @@ interlock operations.
 For example, we could fix the program in Figure~\ref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-def atomic_inc(ptr):
-    atomic:
-        ^ptr += 1;
-    ;
-;
-count = 0;
-atomic_inc(&count);
-\end{Verbatim}
+\cxlsource{atomicinc}
 \end{code}
 
 Many CPUs have an atomic ``test-and-set'' (TAS)
@@ -1776,7 +1775,7 @@ section if \texttt{private[$i$] == False}, and (ii) no other process modifies
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/spinlockInv.cxl}
+\cxlsource{spinlockInv}
 \end{code}
 \caption{[spinlockInv.cxl] Checking invariants.}
 \label{fig:tasinv}
@@ -1820,7 +1819,7 @@ and swap the values.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/csTAS.cxl}
+\cxlsource{csTAS}
 \end{code}
 \caption{[csTAS.cxl] Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
 \label{fig:tas2}
@@ -1859,25 +1858,7 @@ use \texttt{atomic} by all means.
 
 \begin{figure}
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-def tas(lk):
-    atomic:
-        result = ^lk;
-        ^lk = True;
-    ;
-;
-def Lock():
-    result = False;
-;
-def lock(lk):
-    while tas(lk):
-        pass;
-    ;
-;
-def unlock(lk):
-    ^lk = False;
-;
-\end{Verbatim}
+\cxlsource{lockintf}
 \end{code}
 \caption{The \texttt{Lock} interface in the \texttt{synch} module.}
 \label{fig:spinlocks}
@@ -1885,7 +1866,7 @@ def unlock(lk):
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpLock.cxl}
+\cxlsource{UpLock}
 \end{code}
 \caption{[UpLock.cxl] Program of Figure~\ref{fig:inc} fixed with a lock.}
 \label{fig:incfixed}
@@ -1915,33 +1896,7 @@ The only way forward is if the other process releases the lock.
 
 \begin{figure}
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-import list;
-
-def Lock():
-    result = dict{ .locked: False, .suspended: [] };
-;
-def lock(lk):
-    atomic:
-        if (^lk).locked:
-            stop (^lk).suspended;
-            assert (^lk).locked;
-        else:
-            (^lk).locked = True;
-        ;
-    ;
-;
-def unlock(lk):
-    atomic:
-        if (^lk).suspended == []:
-            (^lk).locked = False;
-        else:
-            go (head((^lk).suspended)) ();
-            (^lk).suspended = tail((^lk).suspended);
-        ;
-    ;
-;
-\end{Verbatim}
+\cxlsource{locksusp}
 \end{code}
 \caption{The \texttt{Lock} interface in the \texttt{synchS} module uses suspension.}
 \label{fig:suspension}
@@ -2048,7 +2003,7 @@ version of the module.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RW.cxl}
+\cxlsource{RW}
 \end{code}
 \caption{[RW.cxl] Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
@@ -2056,7 +2011,7 @@ version of the module.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWtest.cxl}
+\cxlsource{RWtest}
 \end{code}
 \caption{[RWtest.cxl] Test code for Figure~\ref{fig:rwbusy}.}
 \label{fig:rwbusytest}
@@ -2127,7 +2082,7 @@ critical section, any other reader is also able to enter.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWbusychk.cxl}
+\cxlsource{RWbusychk}
 \end{code}
 \caption{[RWbusychk.cxl] Checking for Busy Waiting.}
 \label{fig:rwblock}
@@ -2196,7 +2151,7 @@ bound lock.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWlock.cxl}
+\cxlsource{RWlock}
 \end{code}
 \caption{[RWlock.cxl] Reader/Writer with Two Locks.}
 \label{fig:rw2lock}
@@ -2204,7 +2159,7 @@ bound lock.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWmulti.cxl}
+\cxlsource{RWmulti}
 \end{code}
 \caption{[RWmulti.cxl] Checking that multiple readers can acquire the read lock.}
 \label{fig:rwmulti}
@@ -2294,28 +2249,7 @@ write lock and then obtaining the read lock.
 
 \begin{figure}
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-def Semaphore(cnt):
-    result = cnt;
-;
-def P(sema):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if (^sema) > 0:
-                    ^sema -= 1;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
-def V(sema):
-    atomic:
-        ^sema += 1;
-    ;
-;
-\end{Verbatim}
+\cxlsource{semaphore}
 \end{code}
 \caption{The \texttt{Semaphore} interface in the \texttt{synch} module.}
 \label{fig:semaphore}
@@ -2323,7 +2257,7 @@ def V(sema):
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersSema.cxl}
+\cxlsource{DinersSema}
 \end{code}
 \caption{[DinersSema.cxl] Italian Philosophers.}
 \label{fig:dinerssema}
@@ -2407,7 +2341,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/qsort.cxl}
+\cxlsource{qsort}
 \end{code}
 \caption{[qsort.cxl] Iterative qsort() implementation.}
 \label{fig:qsort}
@@ -2415,7 +2349,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/qsorttest.cxl}
+\cxlsource{qsorttest}
 \end{code}
 \caption{[qsorttest.cxl] Test program for Figure~\ref{fig:qsort}.}
 \label{fig:qsorttest}
@@ -2437,7 +2371,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/BBsema.cxl}
+\cxlsource{BBsema}
 \end{code}
 \caption{[BBsema.cxl] Bounded Buffer implementation using semaphores.}
 \label{fig:boundedbuffer}
@@ -2445,7 +2379,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/BBsematest.cxl}
+\cxlsource{BBsematest}
 \end{code}
 \caption{[BBsematest.cxl] Test program for Figure~\ref{fig:boundedbuffer}.}
 \label{fig:bbtest}
@@ -2519,7 +2453,7 @@ there are three items to produce initially.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/BBsemadata.cxl}
+\cxlsource{BBsemadata}
 \end{code}
 \caption{[BBsemadata.cxl] Test whether the bounded buffer delivers the right data in the
 right order.}
@@ -2614,7 +2548,7 @@ to block.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/gpu.cxl}
+\cxlsource{gpu}
 \end{code}
 \caption{[gpu.cxl] A thread-unsafe GPU allocator.}
 \label{fig:gpu}
@@ -2626,7 +2560,7 @@ to block.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWsbs.cxl}
+\cxlsource{RWsbs}
 \end{code}
 \caption{[RWsbs.cxl] Reader/Writer Lock implementation using Split Binary Semaphores.}
 \label{fig:RWsplitsema}
@@ -2649,17 +2583,7 @@ only if there is an item in the bounded buffer (\texttt{consume}).
 
 CCSs are easy to implement using busy waiting:
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-let blocked = True:
-    while blocked:
-        lock();
-        if application-condition-holds:
-            blocked = False;
-        else:
-            unlock():
-@cr: application-code;
-unlock():
-\end{Verbatim}
+\cxlsource{busywait}
 \end{code}
 
 We have seen solutions to the reader/writer problem and the producer/consumer
@@ -2791,7 +2715,7 @@ for southbound cars.
 \begin{figure}
 \begin{code}
 {\small
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWfair.cxl}
+\cxlsource{RWfair}
 }
 \end{code}
 \caption{[RWfair.cxl] Reader/Writer Lock SBS implementation addressing fairness.}
@@ -2897,7 +2821,7 @@ in the order in which they appear in the queue.
 \begin{figure}
 \begin{code}
 {\small
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqueue.cxl}
+\cxlsource{RWqueue}
 }
 \end{code}
 \caption{[RWqueue.cxl] Reader/Writer Lock SBS implementation using a queue.}
@@ -2906,7 +2830,7 @@ in the order in which they appear in the queue.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWqtest.cxl}
+\cxlsource{RWqtest}
 \end{code}
 \caption{[RWqtest.cxl] Test program for Figure~\ref{fig:RWqueue}.}
 \label{fig:RWqtest}
@@ -2946,18 +2870,9 @@ and
 If \texttt{c} is a pointer to a condition variable, then the semantics of the
 operations, in CXL, are as follows:
 
-\begin{code} 
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-def wait(c):
-    V(&mutex);
-    P(c);
-;
-def signal(c):
-    V(c);
-    P(&mutex);
-;
-\end{Verbatim} 
-\end{code} 
+\begin{code}
+\cxlsource{hoaremon}
+\end{code}
 
 \texttt{wait} releases the mutex and blocks while trying
 to procure the condition variable (which is a semaphore that is 0 when
@@ -3070,48 +2985,14 @@ In C and C++, support for locks and condition variables is through libraries.
 % \label{ch:mesa}
 
 \begin{figure}
-\begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-import bag;
-
-def Condition(lk):
-    result = dict{ .lock: lk, .waiters: bagEmpty() };
-;
-def wait(c):
-    let lk = (^c).lock, blocked = True,
-                cnt = bagCount((^c).waiters, nametag()):
-        bagAdd(&(^c).waiters, nametag());
-        ^lk = False;
-        while blocked:
-            atomic:
-                if (not (^lk)) and
-                        (bagCount((^c).waiters, nametag()) <= cnt):
-                    ^lk = True;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
-def notify(c):
-    let waiters = (^c).waiters:
-        if waiters != bagEmpty():
-            bagRemove(&(^c).waiters, bagChoose(waiters));
-        ;
-    ;
-;
-def notifyAll(c):
-    (^c).waiters = bagEmpty();
-;
-\end{Verbatim}
-\end{code}
+\cxlsource{mesa}
 \caption{Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:cv}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/RWcv.cxl}
+\cxlsource{RWcv}
 \end{code}
 \caption{[RWcv.cxl] Reader/Writer Lock implementation using Mesa-style condition variables.}
 \label{fig:RWcv}
@@ -3208,11 +3089,7 @@ it is fair.
 
 \begin{figure}
 \begin{code}
-\begin{tabbing}
-XX\=XXX\=XXX\kill
-\input{code/Diners.tex}
-\end{tabbing}
-% \VerbatimInput[xleftmargin=5mm,numbers=left]{code/Diners.cxl}
+\cxlsource{Diners}
 \end{code}
 \caption{[Diners.cxl] Dining Philosophers.}
 \label{fig:diners}
@@ -3254,7 +3131,7 @@ processes being blocked trying to acquire the lock.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersCV.cxl}
+\cxlsource{DinersCV}
 \end{code}
 \caption{[DinersCV.cxl] Dining Philosophers that grab both forks at the same time.}
 \label{fig:dinerscv}
@@ -3312,14 +3189,7 @@ back to the top of the \texttt{while} loop.
 A common mistake is to write the following code instead:
 
 \begin{code}
-\begin{Verbatim}
-while forks[left]:
-    wait(&conds[left]);
-;
-while forks[right]:
-    wait(&conds[right]);
-;
-\end{Verbatim}
+\cxlsource{baddblwait}
 \end{code}
 
 \begin{quote}
@@ -3345,15 +3215,7 @@ before the higher numbered fork, like so:
 
 \vspace{1em}
 \begin{code}
-\begin{Verbatim}[xleftmargin=5mm,numbers=left]
-    if left < right:
-        lock(&forks[left]);
-        lock(&(orks[right]);
-    else:
-        unlock(&forks[right]);
-        unlock(&forks[left]);
-    ;
-\end{Verbatim}
+\cxlsource{dinersfix}
 \end{code}
 \vspace{1em}
 
@@ -3377,7 +3239,7 @@ wants to allocate, making them generally quite impractical.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/DinersAvoid.cxl}
+\cxlsource{DinersAvoid}
 \end{code}
 \caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
 scenario.}
@@ -3402,7 +3264,7 @@ so continually?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/bank.cxl}
+\cxlsource{bank}
 \end{code}
 \caption{[bank.cxl] Bank accounts.}
 \label{fig:bank}
@@ -3424,7 +3286,7 @@ so continually?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/actor.cxl}
+\cxlsource{actor}
 \end{code}
 \caption{[actor.cxl] A producer/consumer actor.}
 \label{fig:actor}
@@ -3432,7 +3294,7 @@ so continually?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/actortest.cxl}
+\cxlsource{actortest}
 \end{code}
 \caption{[actortest.cxl] Test code for producer/consumer actor.}
 \label{fig:actortest}
@@ -3549,7 +3411,7 @@ in the opposite order.  Which do you think is better?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abp.cxl}
+\cxlsource{abp}
 \end{code}
 \caption{[abp.cxl] Alternating Bit Protocol.}
 \label{fig:abp}
@@ -3557,7 +3419,7 @@ in the opposite order.  Which do you think is better?
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/abptest.cxl}
+\cxlsource{abptest}
 \end{code}
 \caption{[abptest.cxl] Test code for alternating bit protocol.}
 \label{fig:abptest}
@@ -3659,7 +3521,7 @@ for each client, or solve the problem using a single pair of channels.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/hw.cxl}
+\cxlsource{hw}
 \end{code}
 \caption{[hw.cxl] Non-blocking queue.}
 \label{fig:hw}
@@ -3784,7 +3646,7 @@ If not found, it coincides with retrieving the pointer to the
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/lst1.cxl}
+\cxlsource{lst1}
 \end{code}
 \caption{[lst1.cxl] List with non-blocking read operations, part 1.}
 \label{fig:lst1}
@@ -3792,7 +3654,7 @@ If not found, it coincides with retrieving the pointer to the
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/lst2.cxl}
+\cxlsource{lst2}
 \end{code}
 \caption{[lst2.cxl] List with non-blocking read operations, part 2.}
 \label{fig:lst2}
@@ -3835,7 +3697,7 @@ rounds each process has completed.}
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/barrier.cxl}
+\cxlsource{barrier}
 \end{code}
 \caption{[barrier.cxl] Barrier synchronization with semaphores.}
 \label{fig:barrier}
