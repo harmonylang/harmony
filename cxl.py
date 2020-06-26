@@ -3216,7 +3216,33 @@ def htmlpath(s, visited, label, color, f):
     print("</table>", file=f)
     print("</p>", file=f)
 
-def htmlnode(s, visited, f):
+def htmlloc(code, scope, ctx, f):
+    pc = ctx.pc
+    fp = ctx.fp
+    print("<table border='1'>", file=f)
+    while True:
+        print("<tr><td><a href='#P%d'>%d</a> "%(pc, pc), file=f)
+        while pc >= 0 and pc not in scope.locations:
+            pc -= 1
+        (file, line) = scope.locations[pc]
+        while pc >= 0 and not isinstance(code[pc], FrameOp):
+            pc -= 1
+        if fp >= 3:
+            print("%s(%s):"%(code[pc].name[0], strValue(ctx.stack[fp-3])), file=f)
+        lines = files.get(file)
+        # print("%s:%d"%(file, line), file=f)
+        if lines != None and line <= len(lines):
+            print(lines[line - 1][0:-1], file=f)
+        print("</td></tr>", file=f)
+        if fp < 4:
+            break
+        pc = ctx.stack[fp - 4]
+        assert isinstance(pc, PcValue)
+        pc = pc.pc
+        fp = ctx.stack[fp - 1]
+    print("</table>", file=f)
+
+def htmlnode(s, visited, code, scope, f, verbose):
     n = visited[s]
     print("<div id='div%d' style='display:none';>"%n.uid, file=f);
     print("<div class='container'>", file=f)
@@ -3272,12 +3298,16 @@ def htmlnode(s, visited, f):
         print("</tr></table>", file=f)
 
     print("<table border='1'>", file=f)
-    print("<tr><th>Context</th><th>PC</th><th>FP</th><th>#</th><th>Status</th><th>Variables</th><th>Stack</th><th>Steps</th><th>Next State</th></tr>", file=f)
+    print("<tr><th>Context</th><th>Stack Trace</th><th>#</th><th>Status</th><th>Variables</th>", file=f)
+    if verbose:
+        print("<th>FP</th><th>Stack</th>", file=f)
+    print("<th>Steps</th><th>Next State</th></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
         print("<tr>", file=f)
         print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
-        print("<td><a href='#P%d'>%d</td>"%(ctx.pc, ctx.pc), file=f)
-        print("<td>%d"%ctx.fp, file=f)
+        print("<td>", file=f)
+        htmlloc(code, scope, ctx, f)
+        print("</td>", file=f)
         print("<td>%d</td>"%s.ctxbag[ctx], file=f)
         if ctx.stopped:
             print("<td>stopped</td>", file=f)
@@ -3296,19 +3326,22 @@ def htmlnode(s, visited, f):
         print("</td>", file=f)
 
         # print stack
-        print("<td align='center'>", file=f)
-        print("<table border='1'>", file=f)
-        for v in ctx.stack:
-            print("<tr><td align='center'>", file=f)
-            if isinstance(v, PcValue):
-                print("<a href='#P%d'>"%v.pc, file=f)
-                print("%s"%strValue(v), file=f)
-                print("</a>", file=f)
-            else:
-                print("%s"%strValue(v), file=f)
-            print("</td></tr>", file=f)
-        print("</table>", file=f)
-        print("</td>", file=f)
+        if verbose:
+            print("<td>%d"%ctx.fp, file=f)
+            print("<td align='center'>", file=f)
+            print("<table border='1'>", file=f)
+            for v in ctx.stack:
+                print("<tr><td align='center'>", file=f)
+                if isinstance(v, PcValue):
+                    print("<a href='#P%d'>"%v.pc, file=f)
+                    print("%s"%strValue(v), file=f)
+                    print("</a>", file=f)
+                else:
+                    print("%s"%strValue(v), file=f)
+                print("</td></tr>", file=f)
+            print("</table>", file=f)
+            print("</td>", file=f)
+
         if ctx in n.edges:
             (ns, nc, steps) = n.edges[ctx]
             print("<td>%s</td>"%htmlstrsteps(steps), file=f)
@@ -3319,9 +3352,8 @@ def htmlnode(s, visited, f):
             print("<td>no steps</td>", file=f)
             print("<td></td>", file=f)
         print("</tr>", file=f)
-    print("</table>", file=f)
-    print("<hr/>", file=f)
 
+    print("</table>", file=f)
     print("</div>", file=f);
     print("</div>", file=f);
 
@@ -3355,7 +3387,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def dump(visited, code, scope, bad, fulldump):
+def dump(visited, code, scope, bad, fulldump, verbose):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3373,15 +3405,15 @@ def dump(visited, code, scope, bad, fulldump):
             htmlpath(s, visited, "path to bad state", "red", f)
             if fulldump:
                 for s in visited.keys():
-                    htmlnode(s, visited, f)
+                    htmlnode(s, visited, code, scope, f, verbose)
             else:
                 while s != None:
-                    htmlnode(s, visited, f)
+                    htmlnode(s, visited, code, scope, f, verbose)
                     s = visited[s].parent
         else:
             cnt = 0
             for s in visited.keys():
-                htmlnode(s, visited, f)
+                htmlnode(s, visited, code, scope, f, verbose)
                 cnt += 1
                 if not fulldump and cnt > 100:
                     break
@@ -3491,7 +3523,7 @@ def main():
         assert t == "constant"
         (spc, file, line, column) = v
     (visited, todump) = run(code, scope.labels, mpc, spc, blockflag)
-    dump(visited, code, scope, todump, fulldump)
+    dump(visited, code, scope, todump, fulldump, False)
 
 if __name__ == "__main__":
     main()
