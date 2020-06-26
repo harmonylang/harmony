@@ -265,6 +265,12 @@ class DictValue(Value):
         if len(self.d) == 0:
             return "()"
         result = ""
+        if set(self.d.keys()) == set(range(len(self.d))):
+            for k in range(len(self.d)):
+                if result != "":
+                    result += ", ";
+                result += strValue(self.d[k])
+            return "[" + result + "]"
         keys = sorted(self.d.keys(), key=lambda x: keyValue(x))
         for k in keys:
             if result != "":
