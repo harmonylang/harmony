@@ -334,7 +334,13 @@ class AddressValue(Value):
         self.indexes = indexes
 
     def __repr__(self):
-        return "AV(" + str(self.indexes) + ")"
+        result = "&" + self.indexes[0]
+        for index in self.indexes[1:]:
+            if isinstance(index, str):
+                result = result + strValue(index)
+            else:
+                result += "[" + strValue(index) + "]"
+        return result
 
     def __hash__(self):
         hash = 0
@@ -687,6 +693,7 @@ class FrameOp(Op):
 
     def eval(self, state, context):
         arg = context.pop()
+        context.push(arg)               # restore for easier debugging
         context.push(context.vars)
         context.push(context.fp)
         context.fp = len(context.stack) # points to old fp, old vars, and return address
@@ -717,6 +724,7 @@ class ReturnOp(Op):
         result = context.get("result")
         context.fp = context.pop()
         context.vars = context.pop()
+        context.pop()       # argument saved for debugging
         assert isinstance(context.vars, DictValue)
         pc = context.pop()
         assert isinstance(pc, PcValue)
@@ -1603,7 +1611,7 @@ class LValueAST(AST):
         self.token = token  # for error messages
 
     def __repr__(self):
-        return "LValueRule(" + str(self.indexes) + " " + self.token + ")"
+        return "LValueAST(" + str(self.indexes) + " " + str(self.token) + ")"
 
 class PointerAST(AST):
     def __init__(self, expr, token):
@@ -1797,7 +1805,13 @@ class AddressAST(AST):
     def __repr__(self):
         return "Address(" + str(self.lv) + ")"
 
-    def compile(self, scope, code):
+    def isConstant(self, scope):
+        lv = self.lv.indexes[0]
+        if not isinstance(lv, NameAST):
+            return False
+        return all(x.isConstant(scope) for x in self.lv.indexes[1:])
+
+    def gencode(self, scope, code):
         n = len(self.lv.indexes)
         lv = self.lv.indexes[0]
         if isinstance(lv, NameAST):
@@ -2111,7 +2125,7 @@ class ConstAST(AST):
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
-            print(self.const, ": Parse error: expression not a constant")
+            print(self.const, ": Parse error: expression not a constant", str(self.expr))
             sys.exit(1)
         code2 = []
         self.expr.compile(scope, code2)
