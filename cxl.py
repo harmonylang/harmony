@@ -2893,7 +2893,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     node.edges[ctx] = (sc, cc, steps)
     next.sources.add(state)
     if cc.failure != None:
-        next.issues.add("process failures")
+        next.issues.add("process failure")
 
 def explore(s, visited, mapping, reach):
     reach[s] = None         # prevent infinite loops
@@ -3115,7 +3115,7 @@ def run(code, labels, map, step, blockflag):
         if len(bad) > 0:
             print("==== Non-terminating States ====", len(bad))
             for s in bad:
-                visited[s].issues.add("non-terminating states")
+                visited[s].issues.add("non-terminating state")
             bad_state = find_shortest(visited, bad)
             print_path(visited, bad_state)
             todump.add(bad_state)
@@ -3140,7 +3140,7 @@ def run(code, labels, map, step, blockflag):
     for (s, n) in visited.items():
         if len(s.ctxbag) == 0 and len(s.stopbag) > 0:
             bad.add(s)
-            visited[s].issues.add("stopped processes")
+            visited[s].issues.add("stopped process")
     if len(bad) > 0:
         print("==== Stopped States ====", len(bad))
         bad_state = find_shortest(visited, bad)
