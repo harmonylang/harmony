@@ -3044,9 +3044,9 @@ def run(code, labels, map, step, blockflag):
     bad = set()
 
     faultyState = False
+    maxdiameter = 0
     while todo:
         state = todo.popleft()
-        lastState = state
         node = visited[state]
         if len(node.issues) > 0:
             bad.add(state)
@@ -3055,6 +3055,9 @@ def run(code, labels, map, step, blockflag):
         if node.expanded:
             continue
         node.expanded = True
+        lastState = state
+        if node.len > maxdiameter:
+            maxdiameter = node.len
 
         if state.choosing != None:
             ctx = state.choosing
@@ -3067,9 +3070,9 @@ def run(code, labels, map, step, blockflag):
             for (ctx, _) in state.ctxbag.items():
                 onestep(state, ctx, None, visited, todo, node)
 
-    print("#states =", len(visited), " "*100 + "\b"*100)
+    print("#states =", len(visited), "diameter =", maxdiameter, " "*100 + "\b"*100)
 
-    todump = { lastState }
+    todump = set()
 
     # See if there has been a safety violation
     issues_found = False
@@ -3149,7 +3152,9 @@ def run(code, labels, map, step, blockflag):
 
     if not issues_found:
         print("no issues found")
-    s = find_shortest(visited, todump)
+        s = lastState
+    else:
+        s = find_shortest(visited, todump)
     return (visited, s)
 
 def htmlstrsteps(steps):
