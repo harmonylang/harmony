@@ -3213,14 +3213,16 @@ def htmlpath(s, visited, color, f):
         laststeps += steps
         laststates.append(sid)
     path2.append((lastctx, laststeps, laststates))
-    print("<table border='1' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
+    print("<table id='issuestbl' border='1' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
     print("<tr><th>context</th><th>steps</th>", file=f)
+    row = 1
     for (ctx, steps, states) in path2:
+        row += 1
         if len(states) > 0:
             sid = states[-1]
         else:
             sid = visited[s].uid
-        print("<tr><td><a href='javascript:show(%d)'>%s</a></td>"%(sid, ctx), file=f)
+        print("<tr><td><a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(row, sid, ctx), file=f)
         print("<td>%s</td>"%htmlstrsteps(steps), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
@@ -3271,7 +3273,7 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
             else:
                 print("<td>running</td>", file=f)
         else:
-            print("<td>???</td>", file=f)
+            print("<td>running</td>", file=f)
 
     # print variables
     print("<td>", file=f)
@@ -3494,6 +3496,21 @@ def dump(visited, code, scope, s, fulldump, verbose):
                       current = id;
                   }
                   show(1);
+
+                  function rowshow(row, id) {
+                    show(id);
+                    var tbl = document.getElementById("issuestbl");
+                    for (var i = 1; i < tbl.rows.length; i++) {
+                        if (i == row) {
+                            tbl.rows[i].style.backgroundColor = "#A5FF33";
+                            tbl.rows[i].style.color = "#FFFFFF";
+                        }
+                        else {
+                            tbl.rows[i].style.backgroundColor = "";
+                            tbl.rows[i].style.color = "";
+                        }
+                    }
+                  }
                 </script>
             """, file=f)
         print("</body>", file=f)
