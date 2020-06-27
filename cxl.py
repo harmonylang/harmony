@@ -647,7 +647,7 @@ class AssertOp(Op):
                         " must be a boolean: " + strValue(cond)
             return
         if not cond:
-            context.failure = "CXL Assertion failed " + str(self.token)
+            context.failure = "CXL Assertion failed "
             if self.exprthere:
                 context.failure += ": " + strValue(expr)
             return
@@ -3210,7 +3210,7 @@ def htmlpath(s, visited, label, color, f):
 def htmlloc(code, scope, ctx, f):
     pc = ctx.pc
     fp = ctx.fp
-    print("<table border='1'>", file=f)
+    print("<table border='1' width='100%'>", file=f)
     if ctx.failure != None:
         print("<tr style='color: red'><td>%s</td></tr>"%ctx.failure, file=f)
     while True:
