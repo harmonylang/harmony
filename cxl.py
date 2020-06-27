@@ -3402,7 +3402,8 @@ def htmlcode(code, scope, f):
             if (file, line) != lastloc:
                 lines = files.get(file)
                 if lines != None and line <= len(lines):
-                    print("<th colspan='2' align='left'>%s:%d"%(file, line), lines[line - 1][0:-1], "</th>", file=f)
+                    print("<th colspan='2' align='left'>%s:%d"%(os.path.basename(file), line),
+                            lines[line - 1][0:-1], "</th>", file=f)
                 else:
                     print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
                 print("</tr><tr>", file=f)
