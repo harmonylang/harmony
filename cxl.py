@@ -3195,17 +3195,15 @@ def htmlpath(s, visited, label, color, f):
         laststates.append(sid)
     path2.append((lastctx, laststeps, laststates))
     print("<table border='1' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
-    print("<tr><th>context</th><th>steps</th><th>state</th></tr>", file=f)
+    print("<tr><th>context</th><th>steps</th>", file=f)
     for (ctx, steps, states) in path2:
-        print("<tr><td>%s</td>"%ctx, file=f)
-        print("<td>%s</td>"%htmlstrsteps(steps), file=f)
-        print("<td align='right'>", file=f)
         if len(states) > 0:
             sid = states[-1]
         else:
             sid = visited[s].uid
-        print(" <a href='javascript:show(%d)'>%d</a>"%(sid, sid), file=f)
-        print("</td></tr>", file=f)
+        print("<tr><td><a href='javascript:show(%d)'>%s</a></td>"%(sid, ctx), file=f)
+        print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+        print("</tr>", file=f)
     print("</table>", file=f)
     print("</p>", file=f)
 
@@ -3251,7 +3249,9 @@ def htmlnode(s, visited, code, scope, f, verbose):
 
     print("<tr>", file=f)
     print("<td valign='top'>", file=f)
-    print("<table border='1'>", file=f)
+    print("<table border='1' width='90%'>", file=f)
+    print("<col style='width:20%'>", file=f)
+    print("<col style='width:80%'>", file=f)
 
     print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
     # if s.failure != None:
@@ -3281,7 +3281,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("</td>", file=f)
 
     print("<td valign='top'>", file=f)
-    print("<table border='1'>", file=f)
+    print("<table border='1' width='100%'>", file=f)
     print("<tr><th>Shared</th><th>Value</th></tr>", file=f)
     for (key, value) in s.vars.d.items():
         print("<tr>", file=f)
