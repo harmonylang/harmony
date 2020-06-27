@@ -2643,7 +2643,7 @@ class Node:
         self.edges = {}         # forward edges (ctx -> <nextState, nextContext, steps>)
         self.sources = set()    # backward edges
         self.expanded = False   # lazy deletion
-        self.ctxfail = 0        # counts crashed processes in ctxbag
+        self.issues = set()     # set of problems with this state
         self.uid = node_uid
         node_uid += 1
 
@@ -2893,7 +2893,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     node.edges[ctx] = (sc, cc, steps)
     next.sources.add(state)
     if cc.failure != None:
-        next.ctxfail += 1
+        next.issues.add("process failures")
 
 def explore(s, visited, mapping, reach):
     reach[s] = None         # prevent infinite loops
@@ -2961,107 +2961,8 @@ def doCompile(filenames, consts, mods):
     optimize(code)
     return (code, scope)
 
-def run(code, labels, map, step, blockflag):
-    state = State(code, labels)
-    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
-    ctx.atomic = 1
-    state.add(ctx)
-
-    # For traversing Kripke graph
-    visited = { state: Node(None, None, None, 0) }
-    todo = collections.deque([state])
-    bad = set()
-
-    faultyState = False
-    while todo:
-        state = todo.popleft()
-        node = visited[state]
-        if node.ctxfail > 0:
-            bad.add(state)
-            faultyState = True
-            break
-        if node.expanded:
-            continue
-        node.expanded = True
-
-        if state.choosing != None:
-            ctx = state.choosing
-            choices = ctx.stack[-1]
-            assert isinstance(choices, SetValue), choices
-            assert len(choices.s) > 0
-            for choice in choices.s:
-                onestep(state, ctx, choice, visited, todo, node)
-        else:
-            for (ctx, _) in state.ctxbag.items():
-                onestep(state, ctx, None, visited, todo, node)
-
-    print("#states =", len(visited), " "*100 + "\b"*100)
-
-    todump = set()
-
-    # See if there has been a safety violation
-    issues_found = False
-    if len(bad) > 0:
-        print("==== Safety violation ====")
-        bad_state = find_shortest(visited, bad)
-        print_path(visited, bad_state)
-        todump.add(bad_state)
-        issues_found = True
-
-    if not faultyState:
-        # See if all processes "can" terminate.  First looks for states where
-        # there are no processes.
-        term = set()
-        for (s, n) in visited.items():
-            if blockflag:
-                # see if all processes are blocked
-                if len(s.ctxbag) > 0:
-                    someRunning = False
-                    for (ctx, next) in n.edges.items():
-                        (nxtstate, nxtctx, steps) = next
-                        if nxtstate != s:
-                            someRunning = True
-                            break
-                    if not someRunning:
-                        term.add(s)
-            elif len(s.ctxbag) == 0:
-                term.add(s)
-
-        # print("#TERM", len(term))
-        # print_shortest(visited, term)
-        # x = find_shortest(visited, term)
- 
-        # Now find all the states that can reach terminating states.
-        nextgood = term
-        while nextgood != set():
-            newgood = set()
-            for s in nextgood:
-                for s2 in visited[s].sources.difference(term):
-                    newgood.add(s2)
-            term = term.union(newgood)
-            nextgood = newgood
-        bad = set(visited.keys()).difference(term)
-        if len(bad) > 0:
-            print("==== Non-terminating States ====", len(bad))
-            bad_state = find_shortest(visited, bad)
-            print_path(visited, bad_state)
-            todump.add(bad_state)
-            issues_found = True
-
-            # See which processes are blocked
-            node = visited[bad_state]
-            running = 0
-            blocked = 0
-            for (ctx, next) in node.edges.items():
-                (nxtstate, nxtctx, steps) = next
-                if nxtstate == bad_state:
-                    blocked += 1
-                    print("blocked process:", ctx)
-                else:
-                    running += 1
-                    print("running process:", ctx)
-            print("#blocked:", blocked, "#running:", running)
-
+# No longer using this code
+def mapcheck():
     # TODO.  Maybe should be done immediately after computing new state
     if map != None:
         # Compute low -> high mapping
@@ -3131,11 +3032,112 @@ def run(code, labels, map, step, blockflag):
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
+def run(code, labels, map, step, blockflag):
+    state = State(code, labels)
+    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
+    ctx.atomic = 1
+    state.add(ctx)
+
+    # For traversing Kripke graph
+    visited = { state: Node(None, None, None, 0) }
+    todo = collections.deque([state])
+    bad = set()
+
+    faultyState = False
+    while todo:
+        state = todo.popleft()
+        lastState = state
+        node = visited[state]
+        if len(node.issues) > 0:
+            bad.add(state)
+            faultyState = True
+            break
+        if node.expanded:
+            continue
+        node.expanded = True
+
+        if state.choosing != None:
+            ctx = state.choosing
+            choices = ctx.stack[-1]
+            assert isinstance(choices, SetValue), choices
+            assert len(choices.s) > 0
+            for choice in choices.s:
+                onestep(state, ctx, choice, visited, todo, node)
+        else:
+            for (ctx, _) in state.ctxbag.items():
+                onestep(state, ctx, None, visited, todo, node)
+
+    print("#states =", len(visited), " "*100 + "\b"*100)
+
+    todump = { lastState }
+
+    # See if there has been a safety violation
+    issues_found = False
+    if len(bad) > 0:
+        print("==== Safety violation ====")
+        bad_state = find_shortest(visited, bad)
+        print_path(visited, bad_state)
+        todump.add(bad_state)
+        issues_found = True
+
+    if not faultyState:
+        # See if all processes "can" terminate.  First looks for states where
+        # there are no processes.
+        term = set()
+        for (s, n) in visited.items():
+            if blockflag:
+                # see if all processes are blocked
+                if len(s.ctxbag) > 0:
+                    someRunning = False
+                    for (ctx, next) in n.edges.items():
+                        (nxtstate, nxtctx, steps) = next
+                        if nxtstate != s:
+                            someRunning = True
+                            break
+                    if not someRunning:
+                        term.add(s)
+            elif len(s.ctxbag) == 0:
+                term.add(s)
+
+        # Now find all the states that can reach terminating states.
+        nextgood = term
+        while nextgood != set():
+            newgood = set()
+            for s in nextgood:
+                for s2 in visited[s].sources.difference(term):
+                    newgood.add(s2)
+            term = term.union(newgood)
+            nextgood = newgood
+        bad = set(visited.keys()).difference(term)
+        if len(bad) > 0:
+            print("==== Non-terminating States ====", len(bad))
+            for s in bad:
+                visited[s].issues.add("non-terminating states")
+            bad_state = find_shortest(visited, bad)
+            print_path(visited, bad_state)
+            todump.add(bad_state)
+            issues_found = True
+
+            # See which processes are blocked
+            node = visited[bad_state]
+            running = 0
+            blocked = 0
+            for (ctx, next) in node.edges.items():
+                (nxtstate, nxtctx, steps) = next
+                if nxtstate == bad_state:
+                    blocked += 1
+                    print("blocked process:", ctx)
+                else:
+                    running += 1
+                    print("running process:", ctx)
+            print("#blocked:", blocked, "#running:", running)
+
     # Look for states where there are no processes running but there are blocked processes.
     bad = set()
     for (s, n) in visited.items():
         if len(s.ctxbag) == 0 and len(s.stopbag) > 0:
             bad.add(s)
+            visited[s].issues.add("stopped processes")
     if len(bad) > 0:
         print("==== Stopped States ====", len(bad))
         bad_state = find_shortest(visited, bad)
@@ -3147,7 +3149,8 @@ def run(code, labels, map, step, blockflag):
 
     if not issues_found:
         print("no issues found")
-    return (visited, todump)
+    s = find_shortest(visited, todump)
+    return (visited, s)
 
 def htmlstrsteps(steps):
     if steps == None:
@@ -3171,7 +3174,18 @@ def htmlstrsteps(steps):
         #     break
     return result
 
-def htmlpath(s, visited, label, color, f):
+def htmlpath(s, visited, color, f):
+    # Generate a label for the path table
+    issues = visited[s].issues
+    if len(issues) == 0:
+        issues = { "no issues" }
+    label = ""
+    for issue in issues:
+        if label != "":
+            label += ", "
+        label += issue
+    label = "issue: " + label
+
     path = []
     while s != None:
         n = visited[s]
@@ -3235,20 +3249,57 @@ def htmlloc(code, scope, ctx, f):
         fp = ctx.stack[fp - 1]
     print("</table>", file=f)
 
-def htmlnode(s, visited, code, scope, f, verbose):
-    n = visited[s]
-    print("<div id='div%d' style='display:none';>"%n.uid, file=f);
-    print("<div class='container'>", file=f)
-
-    print("<a name='N%d'/>"%n.uid, file=f)
-    print("<hr/>", file=f)
-
-    print("<table width='100%'>", file=f)
-    print("<col style='width:50%'>", file=f)
-    print("<col style='width:50%'>", file=f)
-
+def htmlrow(ctx, bag, code, scope, f, verbose):
     print("<tr>", file=f)
-    print("<td valign='top'>", file=f)
+    print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
+    print("<td>", file=f)
+    htmlloc(code, scope, ctx, f)
+    print("</td>", file=f)
+    print("<td>%d</td>"%bag[ctx], file=f)
+    if ctx.stopped:
+        print("<td>stopped</td>", file=f)
+    else:
+        print("<td>running</td>", file=f)
+
+    # print variables
+    print("<td>", file=f)
+    print("<table border='1'>", file=f)
+    for (key, value) in ctx.vars.d.items():
+        print("<tr>", file=f)
+        print("<td>%s</td>"%strValue(key)[1:], file=f)
+        print("<td>%s</td>"%strValue(value), file=f)
+        print("</tr>", file=f)
+    print("</table>", file=f)
+    print("</td>", file=f)
+
+    # print stack
+    if verbose:
+        print("<td>%d</td>"%ctx.fp, file=f)
+        print("<td align='center'>", file=f)
+        print("<table border='1'>", file=f)
+        for v in ctx.stack:
+            print("<tr><td align='center'>", file=f)
+            if isinstance(v, PcValue):
+                print("<a href='#P%d'>"%v.pc, file=f)
+                print("%s"%strValue(v), file=f)
+                print("</a>", file=f)
+            else:
+                print("%s"%strValue(v), file=f)
+            print("</td></tr>", file=f)
+        print("</table>", file=f)
+        print("</td>", file=f)
+        if ctx in n.edges:
+            (ns, nc, steps) = n.edges[ctx]
+            print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+            nn = visited[ns]
+            print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
+            print("%d</a></td>"%nn.uid, file=f)
+        else:
+            print("<td>no steps</td>", file=f)
+            print("<td></td>", file=f)
+    print("</tr>", file=f)
+
+def htmlstate(f):
     print("<table border='1' width='90%'>", file=f)
     print("<col style='width:20%'>", file=f)
     print("<col style='width:80%'>", file=f)
@@ -3278,10 +3329,18 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
 
     print("</table>", file=f)
-    print("</td>", file=f)
 
-    print("<td valign='top'>", file=f)
+def htmlnode(s, visited, code, scope, f, verbose):
+    n = visited[s]
+    print("<div id='div%d' style='display:none';>"%n.uid, file=f);
+    print("<div class='container'>", file=f)
+
+    print("<a name='N%d'/>"%n.uid, file=f)
+    print("<hr/>", file=f)
+
     print("<table border='1' width='100%'>", file=f)
+    print("<col style='width:20%'>", file=f)
+    print("<col style='width:80%'>", file=f)
     print("<tr><th>Shared</th><th>Value</th></tr>", file=f)
     for (key, value) in s.vars.d.items():
         print("<tr>", file=f)
@@ -3289,14 +3348,11 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<td>%s</td>"%strValue(value), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
-    print("</td>", file=f)
 
     if verbose:
         print("<td>", file=f)
-        htmlpath(s, visited, "shortest path", "black", f)
+        htmlpath(s, visited, "black", f)
         print("</td>", file=f)
-
-    print("</tr></table>", file=f)
 
     print("<hr/>", file=f)
 
@@ -3311,54 +3367,9 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<th>FP</th><th>Stack</th>", file=f)
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
-        print("<tr>", file=f)
-        print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
-        print("<td>", file=f)
-        htmlloc(code, scope, ctx, f)
-        print("</td>", file=f)
-        print("<td>%d</td>"%s.ctxbag[ctx], file=f)
-        if ctx.stopped:
-            print("<td>stopped</td>", file=f)
-        else:
-            print("<td>running</td>", file=f)
-
-        # print variables
-        print("<td>", file=f)
-        print("<table border='1'>", file=f)
-        for (key, value) in ctx.vars.d.items():
-            print("<tr>", file=f)
-            print("<td>%s</td>"%strValue(key)[1:], file=f)
-            print("<td>%s</td>"%strValue(value), file=f)
-            print("</tr>", file=f)
-        print("</table>", file=f)
-        print("</td>", file=f)
-
-        # print stack
-        if verbose:
-            print("<td>%d</td>"%ctx.fp, file=f)
-            print("<td align='center'>", file=f)
-            print("<table border='1'>", file=f)
-            for v in ctx.stack:
-                print("<tr><td align='center'>", file=f)
-                if isinstance(v, PcValue):
-                    print("<a href='#P%d'>"%v.pc, file=f)
-                    print("%s"%strValue(v), file=f)
-                    print("</a>", file=f)
-                else:
-                    print("%s"%strValue(v), file=f)
-                print("</td></tr>", file=f)
-            print("</table>", file=f)
-            print("</td>", file=f)
-            if ctx in n.edges:
-                (ns, nc, steps) = n.edges[ctx]
-                print("<td>%s</td>"%htmlstrsteps(steps), file=f)
-                nn = visited[ns]
-                print("<td><a href='javascript:show(%d)'>"%nn.uid, file=f)
-                print("%d</a></td>"%nn.uid, file=f)
-            else:
-                print("<td>no steps</td>", file=f)
-                print("<td></td>", file=f)
-        print("</tr>", file=f)
+        htmlrow(ctx, s.ctxbag, code, scope, f, verbose)
+    for ctx in sorted(s.stopbag.keys(), key=lambda x: nametag2str(x.nametag)):
+        htmlrow(ctx, s.stopbag, code, scope, f, verbose)
 
     print("</table>", file=f)
     print("</div>", file=f);
@@ -3396,7 +3407,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def dump(visited, code, scope, bad, fulldump, verbose):
+def dump(visited, code, scope, s, fulldump, verbose):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3416,12 +3427,10 @@ def dump(visited, code, scope, bad, fulldump, verbose):
         print("</td>", file=f)
 
         print("<td valign='top'>", file=f)
-        if bad != set():
-            s = find_shortest(visited, bad)
-            htmlpath(s, visited, "path to bad state", "red", f)
-        else:
-            s = None
+        if s != None:
+            htmlpath(s, visited, "red", f)
         print("</td>", file=f)
+
         print("</tr>", file=f)
 
         print("<tr>", file=f)
@@ -3549,8 +3558,9 @@ def main():
         (t, v) = s
         assert t == "constant"
         (spc, file, line, column) = v
-    (visited, todump) = run(code, scope.labels, mpc, spc, blockflag)
-    dump(visited, code, scope, todump, fulldump, False)
+
+    (visited, bad_state) = run(code, scope.labels, mpc, spc, blockflag)
+    dump(visited, code, scope, bad_state, fulldump, False)
 
 if __name__ == "__main__":
     main()

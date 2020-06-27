@@ -2,7 +2,7 @@
   position:relative;
 }
 #table-scroll {
-  height:250px;
+  height:200px;
   overflow:auto;  
 }
 #table-wrapper table {
