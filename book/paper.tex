@@ -1003,9 +1003,8 @@ You can think of CXL as trying every possible interleaving of processes executin
 instructions.
 Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \texttt{Up.cxl} program.
-It starts by reporting that the assertion on line 9 in column 5 failed and that
-\textit{count} has value 1 instead of 0:
-\texttt{Assertion failed (’assert’, ’Up.cxl’, 9, 5) 1}.
+It reports that the assertion on line 9 failed and that
+\textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.  The output has
 four columns:
 \begin{enumerate}
@@ -1034,9 +1033,6 @@ at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
 CXL will print at trace of the shortest bad execution that it found.
-\item \texttt{Infinite loop}: some process ran into an infinite loop
-in which it got back to the same state without having accessed any
-shared variables.
 \item \texttt{Non-terminating States}: CXL found one or more states
 from which there does not exist an execution such that all processes
 terminate.  CXL will not only print the non-terminating state with
