@@ -3291,7 +3291,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
 
     print("<td valign='top'>", file=f)
     print("<table border='1'>", file=f)
-    print("<tr><th>Variable</th><th>Value</th></tr>", file=f)
+    print("<tr><th>Shared</th><th>Value</th></tr>", file=f)
     for (key, value) in s.vars.d.items():
         print("<tr>", file=f)
         print("<td>%s</td>"%strValue(key)[1:], file=f)

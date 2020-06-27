@@ -2072,7 +2072,7 @@ label \texttt{@wcs}.  Figure~\ref{fig:rdwr} shows a high-level
 specification for two processes.
 
 A process that wants to read first waits until there are no writers:
-\texttt{nwriters == 0}.  Then it increments the number of readers.
+\textit{nwriters} == 0.  Then it increments the number of readers.
 Similarly, a
 process that wants to write waits until there are no readers \emph{or} writers.
 Then it increments the number of writers.
@@ -2178,11 +2178,11 @@ bound lock.
 Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
 You can test the code by running \texttt{cxl -m RW=RWlock RWtest}.
-It uses two ordinary locks: \texttt{rwlock} is used by both readers and writers,
-while \texttt{rlock} is only used by readers.
-\texttt{rwlock} is held either when readers are at label \texttt{@rcs}
+It uses two ordinary locks: \textit{rwlock} is used by both readers and writers,
+while \textit{rlock} is only used by readers.
+\textit{rwlock} is held either when readers are at label \texttt{@rcs}
 or when a writer is at label \texttt{@wcs}.
-\texttt{rlock} is used to protect the \texttt{nreaders} variable that
+\textit{rlock} is used to protect the \textit{nreaders} variable that
 counts the number of readers in the critical section. 
 
 The invariants that imply the reader/writer specification
@@ -2193,27 +2193,27 @@ The invariants that imply the reader/writer specification
 \item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$,
 \end{itemize}
 
-A writer simply acquires \texttt{rwlock} to enter the critical section
+A writer simply acquires \textit{rwlock} to enter the critical section
 and releases it to exit.  The \emph{first} reader to enter the critical
-section acquires \texttt{rwlock} and the \emph{last} reader to exit
-the critical section releases \texttt{rwlock}.
+section acquires \textit{rwlock} and the \emph{last} reader to exit
+the critical section releases \textit{rwlock}.
 The implementation satisfies progress: if no process is in the critical
 section than any process enter.
 
 It is instructive to see what happens when a writer is in the critical
 section and two readers try to enter.  The first reader successfully
-acquires \texttt{rlock} and but blocks when trying to acquire
-\texttt{rwlock}, which is held by the writer.  The second reader blocks
-trying acquire \texttt{rlock} because it is held by the first reader.
+acquires \textit{rlock} and but blocks when trying to acquire
+\textit{rwlock}, which is held by the writer.  The second reader blocks
+trying acquire \textit{rlock} because it is held by the first reader.
 When the writer leaves the critical section, the first reader acquires
-\texttt{rwlock}, sets \texttt{nreaders} to 1, and releases \texttt{rlock}.
-\texttt{rwlock} is still held.
-Then the second reader acquires \texttt{rlock} and, assuming the first
-reader is still in the critical section, increments \texttt{nreaders} to 2
-and enters the critical section \emph{without} acquiring \texttt{rwlock}.
-\texttt{rwlock} is essentially jointly held by both readers.
+\textit{rwlock}, sets \textit{nreaders} to 1, and releases \textit{rlock}.
+\textit{rwlock} is still held.
+Then the second reader acquires \textit{rlock} and, assuming the first
+reader is still in the critical section, increments \textit{nreaders} to 2
+and enters the critical section \emph{without} acquiring \textit{rwlock}.
+\textit{rwlock} is essentially jointly held by both readers.
 It does not matter in which order they leave: the second will release
-\texttt{rwlock}.
+\textit{rwlock}.
 
 While CXL does not detect any issues, we must remember what it is checking
 for: it checks to make sure that there are never a reader and a writer
@@ -2336,13 +2336,13 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \item \label{ex:qsort}
 Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and Figure~\ref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in  shared variable \texttt{a}.
-Another shared variable, \texttt{todo}, contains the ranges of the
+The array to be sorted is stored in  shared variable $a$.
+Another shared variable, \textit{todo}, contains the ranges of the
 array that need to be sorted (initially the entire array).
 Re-using as much of this code as you can, implement a parallel version of
 this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
 or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker processes''
-that should replace the \texttt{qsort} code.  Each worker loops until \texttt{todo}
+that should replace the \texttt{qsort} code.  Each worker loops until \textit{todo}
 is empty and sorts the ranges that it finds until then.  The \texttt{main}
 process needs to wait until all workers are done.  Use a semaphore for this:
 the \texttt{main} process should use \texttt{P} to wait for each
@@ -3035,9 +3035,9 @@ the bag, allowing one of the processes with that context to return from \texttt{
 
 To illustrate how Mesa condition variables are used in practice, we demonstrate using,
 once again, an implementation of reader/writer locks.
-Figure~\ref{fig:RWcv} shows the code.  \texttt{rwlock} is the global lock or mutex for the
-reader/writer lock.  There are two condition variables: readers wait on \texttt{rcond} and
-writers wait on \texttt{wcond}.  The implementation also keeps track of the number of
+Figure~\ref{fig:RWcv} shows the code.  \textit{rwlock} is the global lock or mutex for the
+reader/writer lock.  There are two condition variables: readers wait on \textit{rcond} and
+writers wait on \textit{wcond}.  The implementation also keeps track of the number of
 readers and writers in the critical section.
 
 When inspecting the code, one important feature to notice is that \texttt{wait} is always
@@ -4152,8 +4152,8 @@ its value of the stack.
 appears otherwise:
 \begin{itemize}
 \item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
-\item \texttt{m(a)} invokes method \texttt{m} with argument \texttt{a};
-\item \texttt{m(a, b, c)} invokes method \texttt{m} with tuple \texttt{(a, b, c)} as argument.
+\item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
+\item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
 \end{itemize}
 The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
 \item Every \texttt{Stop} instruction must immediately be followed by a 
