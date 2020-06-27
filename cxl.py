@@ -3213,7 +3213,7 @@ def htmlpath(s, visited, color, f):
         laststeps += steps
         laststates.append(sid)
     path2.append((lastctx, laststeps, laststates))
-    print("<table id='issuestbl' border='1' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
+    print("<table id='issuestbl' border='1' width='100%%' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
     print("<tr><th>context</th><th>steps</th>", file=f)
     row = 1
     for (ctx, steps, states) in path2:
