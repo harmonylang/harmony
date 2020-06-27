@@ -3421,7 +3421,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def dump(visited, code, scope, s, fulldump, verbose):
+def dump(visited, code, scope, state, fulldump, verbose):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3441,8 +3441,8 @@ def dump(visited, code, scope, s, fulldump, verbose):
         print("</td>", file=f)
 
         print("<td valign='top'>", file=f)
-        if s != None:
-            htmlpath(s, visited, "red", f)
+        if state != None:
+            htmlpath(state, visited, "red", f)
         print("</td>", file=f)
 
         print("</tr>", file=f)
@@ -3453,7 +3453,7 @@ def dump(visited, code, scope, s, fulldump, verbose):
             for s in visited.keys():
                 htmlnode(s, visited, code, scope, f, verbose)
         else:
-            if s == None:
+            if state == None:
                 cnt = 0
                 for s in visited.keys():
                     htmlnode(s, visited, code, scope, f, verbose)
@@ -3461,6 +3461,7 @@ def dump(visited, code, scope, s, fulldump, verbose):
                     if not fulldump and cnt > 100:
                         break
             else:
+                s = state
                 while s != None:
                     htmlnode(s, visited, code, scope, f, verbose)
                     s = visited[s].parent
@@ -3468,6 +3469,12 @@ def dump(visited, code, scope, s, fulldump, verbose):
         print("</tr>", file=f)
         print("</table>", file=f)
 
+        if state == None:
+            row = 0
+            sid = 1
+        else:
+            row = visited[state].len + 1
+            sid = visited[state].uid
         print(
             """
                 <div id='divNone' style='display:none';>
@@ -3495,7 +3502,6 @@ def dump(visited, code, scope, s, fulldump, verbose):
                       x.style.display = 'block';
                       current = id;
                   }
-                  show(1);
 
                   function rowshow(row, id) {
                     show(id);
@@ -3511,8 +3517,9 @@ def dump(visited, code, scope, s, fulldump, verbose):
                         }
                     }
                   }
+                  rowshow(%d, %d)
                 </script>
-            """, file=f)
+            """%(row, sid), file=f)
         print("</body>", file=f)
         print("</html>", file=f)
     print("Open file://" + os.getcwd() + "/cxl.html for more information")
