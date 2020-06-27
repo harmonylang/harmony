@@ -3254,7 +3254,7 @@ def htmlloc(code, scope, ctx, f):
         fp = ctx.stack[fp - 1]
     print("</table>", file=f)
 
-def htmlrow(ctx, bag, code, scope, f, verbose):
+def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
     print("<tr>", file=f)
     print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
     print("<td>", file=f)
@@ -3264,7 +3264,14 @@ def htmlrow(ctx, bag, code, scope, f, verbose):
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
     else:
-        print("<td>running</td>", file=f)
+        if ctx in node.edges:
+            (nxtstate, nxtctx, steps) = node.edges[ctx]
+            if nxtstate == state:
+                print("<td>blocked</td>", file=f)
+            else:
+                print("<td>running</td>", file=f)
+        else:
+            print("<td>???</td>", file=f)
 
     # print variables
     print("<td>", file=f)
@@ -3372,9 +3379,9 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<th>FP</th><th>Stack</th>", file=f)
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
-        htmlrow(ctx, s.ctxbag, code, scope, f, verbose)
+        htmlrow(ctx, s.ctxbag, s, n, code, scope, f, verbose)
     for ctx in sorted(s.stopbag.keys(), key=lambda x: nametag2str(x.nametag)):
-        htmlrow(ctx, s.stopbag, code, scope, f, verbose)
+        htmlrow(ctx, s.stopbag, s, n, code, scope, f, verbose)
 
     print("</table>", file=f)
     print("</div>", file=f);
