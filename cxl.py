@@ -2859,7 +2859,7 @@ def onestep(state, ctx, choice, visited, todo, node, infloop):
 
         # Detect infinite loops if there's a suspicion
         loopcnt += 1
-        if loopcnt > 1000:
+        if loopcnt > 200:
             if (sc, cc) in localStates:
                 foundInfLoop = True
                 break
@@ -3017,7 +3017,7 @@ def run(code, labels, map, step, blockflag):
     if len(infloop) > 0:
         print("==== Infinite Loop ====")
         print_shortest(visited, infloop)
-        todump.add(find_shortest(infloop))
+        todump.add(find_shortest(visited, infloop))
         issues_found = True
     elif not faultyState:
         # See if all processes "can" terminate.  First looks for states where
@@ -3252,11 +3252,16 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("<div class='container'>", file=f)
 
     print("<a name='N%d'/>"%n.uid, file=f)
-    print("<h3></h3>", file=f)
+    print("<hr/>", file=f)
 
-    print("<table><tr><td valign='top'>", file=f)
+    print("<table width='100%'>", file=f)
+    print("<col style='width:50%'>", file=f)
+    print("<col style='width:50%'>", file=f)
 
+    print("<tr>", file=f)
+    print("<td valign='top'>", file=f)
     print("<table border='1'>", file=f)
+
     print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
     if s.failure != None:
         print("<tr><td>status</td><td>failure</td></tr>", file=f)
@@ -3280,10 +3285,11 @@ def htmlnode(s, visited, code, scope, f, verbose):
 
     if s.choosing != None:
         print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
+
     print("</table>", file=f)
+    print("</td>", file=f)
 
-    print("</td><td valign='top'>", file=f)
-
+    print("<td valign='top'>", file=f)
     print("<table border='1'>", file=f)
     print("<tr><th>Variable</th><th>Value</th></tr>", file=f)
     for (key, value) in s.vars.d.items():
@@ -3292,11 +3298,16 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<td>%s</td>"%strValue(value), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
+    print("</td>", file=f)
 
-    print("</td><td>", file=f)
     if verbose:
+        print("<td>", file=f)
         htmlpath(s, visited, "shortest path", "black", f)
-    print("<td></tr></table>", file=f)
+        print("</td>", file=f)
+
+    print("</tr></table>", file=f)
+
+    print("<hr/>", file=f)
 
     if s.failure != None:
         print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
@@ -3404,26 +3415,44 @@ def dump(visited, code, scope, bad, fulldump, verbose):
             <body>
         """, file=f)
 
-        htmlcode(code, scope, f)
+        print("<table>", file=f)
+        print("<col style='width:50%'>", file=f)
+        print("<col style='width:50%'>", file=f)
+        print("<tr>", file=f)
 
+        print("<td valign='top'>", file=f)
+        htmlcode(code, scope, f)
+        print("</td>", file=f)
+
+        print("<td valign='top'>", file=f)
         if bad != set():
-            print("<p>", file=f)
             s = find_shortest(visited, bad)
             htmlpath(s, visited, "path to bad state", "red", f)
-            if fulldump:
+        else:
+            s = None
+        print("</td>", file=f)
+        print("</tr>", file=f)
+
+        print("<tr>", file=f)
+        print("<td colspan='2'>", file=f)
+        if fulldump:
+            for s in visited.keys():
+                htmlnode(s, visited, code, scope, f, verbose)
+        else:
+            if s == None:
+                cnt = 0
                 for s in visited.keys():
                     htmlnode(s, visited, code, scope, f, verbose)
+                    cnt += 1
+                    if not fulldump and cnt > 100:
+                        break
             else:
                 while s != None:
                     htmlnode(s, visited, code, scope, f, verbose)
                     s = visited[s].parent
-        else:
-            cnt = 0
-            for s in visited.keys():
-                htmlnode(s, visited, code, scope, f, verbose)
-                cnt += 1
-                if not fulldump and cnt > 100:
-                    break
+        print("</td>", file=f)
+        print("</tr>", file=f)
+        print("</table>", file=f)
 
         print(
             """

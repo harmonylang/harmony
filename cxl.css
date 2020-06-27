@@ -4,7 +4,6 @@
 #table-scroll {
   height:250px;
   overflow:auto;  
-  margin-top:20px;
 }
 #table-wrapper table {
   width:100%;
