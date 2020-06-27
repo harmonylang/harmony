@@ -855,14 +855,15 @@ Up.cxl:3     done[self] = True;
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states = 79
+#states = 79 diameter = 5
 ==== Safety violation ====
-CXL Assertion failed ('assert', 'Up.cxl', 9, 5): 1
 __init__/() [0,34-49]       50 dict{.count:0, .done:dict{0:False, 1:False}}
 incrementer/0 [1-4]          5 dict{.count:0, .done:dict{0:False, 1:False}}
 incrementer/1 [1-10]        11 dict{.count:1, .done:dict{0:False, 1:True }}
 incrementer/0 [5-10]        11 dict{.count:1, .done:dict{0:True,  1:True }}
 main/() [13-17,20-24,26-31] 31 dict{.count:1, .done:dict{0:True,  1:True }}
+>>> CXL Assertion failed : 1
+Open file:///Users/rvr/github/cxl/cxl.html for more information
 \end{verbatim}
 \end{code}
 \caption{The output of running Figure~\ref{fig:inc}.}

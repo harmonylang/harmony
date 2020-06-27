@@ -2696,6 +2696,9 @@ def print_path(visited, bad_state):
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
         print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
+    (node, vars) = path[-1]
+    if node.ctx.failure != 0:
+        print(">>>", node.ctx.failure)
 
 def print_shortest(visited, bad):
     bad_state = find_shortest(visited, bad)
@@ -3242,7 +3245,11 @@ def htmlloc(code, scope, ctx, f):
         while pc >= 0 and not isinstance(code[pc], FrameOp):
             pc -= 1
         if fp >= 3:
-            print("%s(%s):"%(code[pc].name[0], strValue(ctx.stack[fp-3])), file=f)
+            arg = ctx.stack[fp-3]
+            if arg == novalue:
+                print("%s():"%(code[pc].name[0]), file=f)
+            else:
+                print("%s(%s):"%(code[pc].name[0], strValue(arg)), file=f)
         lines = files.get(file)
         # print("%s:%d"%(file, line), file=f)
         if lines != None and line <= len(lines):
