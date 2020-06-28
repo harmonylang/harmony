@@ -2705,9 +2705,10 @@ def print_path(visited, bad_state):
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
         print(nametag2str(last[0]), strsteps(last[2]), last[1], strVars(last[3]))
-    (node, vars) = path[-1]
-    if node.ctx.failure != 0:
-        print(">>>", node.ctx.failure)
+    if len(path) > 0:
+        (node, vars) = path[-1]
+        if node.ctx.failure != None:
+            print(">>>", node.ctx.failure)
 
 def print_shortest(visited, bad):
     bad_state = find_shortest(visited, bad)
@@ -3567,11 +3568,9 @@ def dump(visited, code, scope, state, fulldump, verbose):
                     for (var i = 1; i < tbl.rows.length; i++) {
                         if (i == row) {
                             tbl.rows[i].style.backgroundColor = "#A5FF33";
-                            tbl.rows[i].style.color = "#FFFFFF";
                         }
                         else {
                             tbl.rows[i].style.backgroundColor = "";
-                            tbl.rows[i].style.color = "";
                         }
                     }
                   }

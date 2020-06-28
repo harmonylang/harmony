@@ -302,10 +302,10 @@ XX\=XXX\=XXX\kill
 Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
 processes (aka \emph{threads}\footnote{We
-\index{thread}
+\index{thread}%
 do not make a distinction between processes and threads.})
 read and update shared variables
-\index{shared variable}
+\index{shared variable}%
 concurrently and synchronize with one another makes programs more
 complicated than programs where only one thing happens at a time.
 
@@ -320,9 +320,9 @@ programs more complicated than sequential ones?
 There are, at least, two reasons:
 \begin{itemize}
 \item The execution of a sequential
-\index{sequential}
+\index{sequential}%
 program is mostly \emph{deterministic}.
-\index{determinism}
+\index{determinism}%
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
@@ -331,10 +331,10 @@ execution of the various processes are \emph{interleaved}.
 Some bugs may occur only occasionally and
 may never occur when the program is instrumented to find them
 (so-called \emph{Heisenbugs}).
-\index{Heisenbug}
+\index{Heisenbug}%
 \item In a sequential program, each statement and each function can be
 thought of as happening \emph{atomically}
-\index{atomicity}
+\index{atomicity}%
 because there is no other activity interfering with their execution.
 Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
@@ -343,7 +343,7 @@ may update memory locations while a statement or function is being executed.
 \end{itemize}
 The lack of determinism and atomicity in concurrent programs make them
 not only hard to reason about, but also hard to test.
-\index{test}
+\index{test}%
 Running the same test of concurrent code twice is likely to produce
 two different results.  More problematically, a test may trigger a
 bug only for certain ``lucky'' executions.  Due to the probabilistic
@@ -358,7 +358,7 @@ This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
 called CXL that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}:
-\index{model checking}
+\index{model checking}%
 instead of relying
 on luck, CXL will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
@@ -367,7 +367,7 @@ found, the model checker precisely shows how to trigger it in
 the smallest number of steps.
 
 Model checking is not a replacement for formal verification.
-\index{formal verification}
+\index{formal verification}%
 Formal verification proves that a program is correct.  Model checking only
 verifies that a program is correct for some \emph{model}.  Think of
 a model as a test program.  Because model checking tries every possible
@@ -386,7 +386,7 @@ Now suppose we create a test program, a model, that tries sorting
 scenarios the sorting algorithm works: the output is a sorted
 permutation of the input.  In some sense it is an excellent test:
 it will have considered all \emph{corner cases},
-\index{corner case}
+\index{corner case}%
 including lists where all
 numbers are the same, lists that are already sorted or reversely
 sorted, etc.  If there is a bug in the sorting algorithm, most
@@ -408,7 +408,7 @@ While model checking does not in general prove an algorithm correct,
 it can help with proving an algorithm correct.
 The reason is that the correctness of many programs is built around
 \emph{invariants}:
-\index{invariant}
+\index{invariant}%
 predicates that must hold for every state in the
 execution of a program.  A model checker can find violations of
 proposed invariants when evaluating a model and provide valuable early
@@ -565,7 +565,7 @@ $
 
 (For this to work, make sure \texttt{cxl} is in your command shell's search path.)
 Essentially, the $\texttt{choose}($S$)$
-\index{choose operator}
+\index{choose operator}%
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\textbf{assert}$ statement checks that the output is
 correct.  If the program is correct, the output of CXL is the size of the
@@ -576,7 +576,7 @@ which something went wrong.
 In CXL, constants have a default value,
 but those can be overridden on the command
 line using the \texttt{-c} option.
-\index{constant}
+\index{constant}%
 For example, if you want to test the code for \texttt{N = 100}, run:
 \begin{code}
 \begin{verbatim}
@@ -610,7 +610,7 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 
 Concurrent programming, aka multithreaded programming, involves multiple
 processes
-\index{process}
+\index{process}%
 running in parallel while sharing variables.
 Figure~\ref{fig:inc} presents a simple example.
 The program
@@ -639,7 +639,7 @@ underlying machine architecture are atomic---in fact they are.)
 \glsadd{machine instruction}
 
 What is going on is that the CXL program is compiled to machine instructions,
-\index{machine instruction}
+\index{machine instruction}%
 and it is the machine instructions that are executed by the underlying CXL
 machine.  The details of this appear in Chapter~\ref{ch:cxlmachine},
 but suffice it to
@@ -657,7 +657,7 @@ the machine must do at least three machine instructions.  Conceptually:
 When running multiple processes, each essentially runs an instantiation of
 the machine, and they do so in parallel.  As they execute, their machine
 instructions are interleaved
-\index{interleaving}
+\index{interleaving}%
 in unspecified and often random ways.
 A program is correct if it works for any interleaving.
 In fact, CXL will try all possible interleavings of the processes
@@ -678,7 +678,7 @@ stores $1$ into \textit{count};
 The result in this particular interleaving is that \textit{count} ends up
 being 1.
 This is known as a \emph{race condition}.
-\index{race condition}
+\index{race condition}%
 When running CXL, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
@@ -741,15 +741,15 @@ time---the important thing is to develop an understanding of concurrency.
 
 \chapter{The CXL Virtual Machine}
 \label{ch:cxlmachine}
-\index{CXL Virtual Machine}
+\index{CXL Virtual Machine}%
 
 CXL programs are compiled to CXL bytecode
-\index{bytecode}
+\index{bytecode}%
 (machine instructions for a virtual machine),
 which in turn is executed by the CXL virtual machine (CVM).
-\index{virtual machine}
-\index{CXL Virtual Machine}
-\index{CVM}
+\index{virtual machine}%
+\index{CXL Virtual Machine}%
+\index{CVM}%
 To understand the problem of concurrent computing, it
 is important to have a basic understanding of the CVM.
 
@@ -763,11 +763,11 @@ integers (but not floating point numbers),
 strings (enclosed by double quotes),
 sets of CXL values,
 and dictionaries
-\index{dictionary}
+\index{dictionary}%
 that map CXL values to other CXL values.
 %
 Another type of CXL value is the \emph{atom}.
-\index{atom}
+\index{atom}%
 It is essentially
 just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
@@ -845,19 +845,19 @@ an CXL value.
 \item Processes:  Any process
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
-\index{name tag}
+\index{name tag}%
 a program counter,
-\index{program counter}
+\index{program counter}%
 a stack of CXL values,
 and a single mutable general purpose \emph{register}
-\index{register}
+\index{register}%
 that contains a CXL value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
 along with an optional tag specified in the \texttt{spawn}
-\index{spawn statement}
-\index{tag}
+\index{spawn statement}%
+\index{tag}%
 statement.
 The default tag is the first argument to the method.
 A name tag is represented as a dictionary with keys \texttt{.name}
@@ -869,14 +869,14 @@ For example, in Figure~\ref{fig:inc}, the created processes have name tags
 \glsadd{context}
 
 The state of a process is called a \emph{context} (aka \emph{continuation}):
-\index{context}
-\index{continuation}
+\index{context}%
+\index{continuation}%
 it contains the value of
 its name tag, program counter, stack, and register.
 The state of a CVM
 consists of the value of its memory and the multiset (or \emph{bag})
-\index{bag}
-\index{multiset}
+\index{bag}%
+\index{multiset}%
 of contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
 The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
@@ -914,7 +914,7 @@ process has only one register.  However, this is not a limitation because
 CXL values are unbounded trees.
 Both the memory and the register of a process always contain
 a dictionary that maps atoms to CXL values.  We call this a \emph{directory}.
-\index{directory}
+\index{directory}%
 A directory represents the state of a collection of variables named by the atoms.
 %
 Because directories are CXL values themselves,
@@ -922,7 +922,7 @@ directories can be organized into a tree.
 Each node in a directory tree is then identified
 by a sequence of atoms, like a path name in the file system hierarchy.  We call
 such a sequence the \emph{address}
-\index{address}
+\index{address}%
 of a CXL value, and it is relative to the
 ``root'' of the directory tree.
 
@@ -956,7 +956,7 @@ cxl -a Up.cxl
 \end{verbatim}
 \end{code}
 Each process in the CVM is predominantly a \emph{stack machine},
-\index{stack machine}
+\index{stack machine}%
 but it also has a register.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
@@ -1114,8 +1114,8 @@ trying to do the same thing.  This is called a \emph{critical section}
 (aka critical region)~\cite{EWD123}:
 a set of instructions where only one process is allowed to execute at a
 time.
-\index{critical section}
-\index{critical region}
+\index{critical section}%
+\index{critical region}%
 
 \glsadd{critical section}
 \glsadd{thread safety}
@@ -1131,8 +1131,8 @@ multiple operations.  Maintaining ``consistency'' is certainly much easier
 process also tries to access the binary tree.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) and free of race conditions is called \emph{thread-safe}.
-\index{thread safety}
-\index{thread}
+\index{thread safety}%
+\index{thread}%
 
 \glsadd{mutual exclusion}
 
@@ -1140,17 +1140,17 @@ A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
 Figure~\ref{fig:csbarebones} shows the CVM bytecode.
 Here \texttt{@cs} is a \emph{label},
-\index{label}
+\index{label}%
 identifying a location in the CVM bytecode.  The first thing we need to
 ensure is that there can never be two processes in the critical section.
 This property is called \emph{mutual exclusion}.
-\index{mutual exclusion}
+\index{mutual exclusion}%
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
 CXL in fact supports this.
 It has an operator \textbf{atLabel}~$L$,
-\index{atLabel operator}
+\index{atLabel operator}%
 where $L$
 is the atom containing the name of the label (in this case, \texttt{.cs}).
 The operator returns a bag (multiset) of name tags of processes executing at that
@@ -1159,7 +1159,7 @@ in the bag to the number of times the element appears in the bag.
 Method \textbf{atLabel} only exists for specification purposes---do not
 use it in normal code.
 The assertion also makes use of the \textbf{nametag}() operator
-\index{nametag operator}
+\index{nametag operator}%
 that returns the name tag of the current process.
 If you run the code through CXL, the assertion should fail because
 there is no code yet for safely entering and exiting the critical section.
@@ -1181,11 +1181,11 @@ the critical section.
 We clearly need another property besides mutual exclusion.
 
 Mutual exclusion is an example of a \emph{safety property},
-\index{safety property}
+\index{safety property}%
 a property that ensures that \emph{nothing bad will happen}, in this case
 two processes being in the critical section.
 What we need now a \emph{liveness property}:
-\index{liveness property}
+\index{liveness property}%
 we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
@@ -1194,7 +1194,7 @@ set $S$ of processes that are trying to enter the critical section and
 processes in the intersection always leave eventually, then eventually one
 process in $S$ will enter the critical section.
 We call this \emph{progress}.
-\index{progress}
+\index{progress}%
 
 In order to detect violations of progress, and other liveness problems in
 algorithms in general, CXL requires that every execution must be
@@ -1210,7 +1210,7 @@ both choices.)
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=4in]{figures/mutex-crop.pdf}
+\includegraphics[width=3.5in]{figures/mutex-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of mutual exclusion with up to two processes.
 The first number in a state gives the number of processes; the second number is the
@@ -1219,7 +1219,7 @@ number of processes in the critical section.}
 \end{figure}
 
 Figure~\ref{fig:mutex} shows a high-level state diagram
-\index{state diagram} of mutual exclusion and progress.
+\index{state diagram} of mutual exclusion and progress.%
 The circles represent states, while the arrows represent possible state
 transitions (high-level steps).  The label in each circle summarizes the state;
 the label on an arrow describes the transition.  In this case,
@@ -1256,7 +1256,7 @@ specification.
 \glsadd{lock}
 
 You may already have heard of the concept of a \emph{lock}
-\index{lock}
+\index{lock}%
 and have realized that
 it could be used to implement a critical section.
 The idea is that the lock is like a baton that at most one process can own
@@ -1356,7 +1356,7 @@ we will find out, it is possible but not easy.
 
 \chapter{Peterson's Algorithm}
 \label{ch:peterson}
-\index{Peterson's Algorithm}
+\index{Peterson's Algorithm}%
 
 \begin{figure}
 \begin{code}
@@ -1399,17 +1399,17 @@ mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the CXL
 machine works.
 In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
-\index{state}
+\index{state}%
 at any point in time the CVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
-\index{process variable}
+\index{process variable}%
 for each process, including its
 program counter and the contents of its stack.
 Everytime a process executes a CVM machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
-\index{step}
+\index{step}%
 Steps in CXL are atomic.
 
 \glsadd{step}
@@ -1417,10 +1417,10 @@ Steps in CXL are atomic.
 
 The CVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
-\index{trace}
+\index{trace}%
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
-\index{non-determinism}
+\index{non-determinism}%
 in CXL.
 One is when
 there is more than one process that can make a step.  The other is
@@ -1428,7 +1428,7 @@ when a process executes a \texttt{choose} operation and there is
 more than one choice.
 Because there is non-determinism, there are multiple possible traces.
 We call a state \emph{reachable}
-\index{reachable state}
+\index{reachable state}%
 if it is either the initial state
 or it can be reached from the initial state through a trace.
 A state is final
@@ -1447,7 +1447,7 @@ most one process is in the critical section.  We shall call such states
 \emph{exclusive}.
 
 An \emph{invariant} of a program
-\index{invariant}
+\index{invariant}%
 is a predicate that holds over all states that are reachable by that program.
 We want to show that exclusivity is an invariant.
 In other words, we want to show that the set of reachable states of executing
@@ -1468,7 +1468,7 @@ see whether it is reachable or not.
 
 To solve this problem, we will use what is called an
 \emph{inductive invariant}.
-\index{inductive invariant}
+\index{inductive invariant}%
 An inductive invariant $\mathcal{I}$ is a predicate over states that satisfies the following:
 \begin{itemize}
 \item $\mathcal{I}$ holds in the initial state.
@@ -1637,7 +1637,7 @@ Can you generalize Peterson's algorithm to more than two processes?
 
 \chapter{CXL Methods and Pointers}
 \label{ch:method}
-\index{CXL method}
+\index{CXL method}%
 
 A method \texttt{m} with argument $a$ is invoked in its
 most basic form as follows (assigning the result to~\texttt{r}).
@@ -1674,11 +1674,11 @@ you can pass a reference to an object to a method, and that method
 can then update the object.  In CXL, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
 For this (as well as some other uses), CXL supports \emph{pointers}
-\index{pointer}
+\index{pointer}%
 to shared variables.
 If $x$ is a shared variable, then the expression \&$x$
  is a pointer to $x$ (also known as the \emph{address}
-\index{address}
+\index{address}%
 of $x$).
 Conversely, if $p$ is a pointer to a shared variable, then the
 expression \texttt{\^{}}$p$ is the value of the shared variable.
@@ -1703,8 +1703,8 @@ are needed, as \texttt{\^{}}\textit{pm}\texttt{.turn} would wrongly evaluate to
 
 You can put the first three methods in its own CXL source file
 and include it using the CXL \texttt{import} statement.
-\index{import statement}
-\index{module}
+\index{import statement}%
+\index{module}%
 This would
 make the code re-usable by other applications.
 
@@ -1721,7 +1721,7 @@ That would allow you to simulate object methods.
 
 \chapter{Spinlock}
 \label{ch:spinlock}
-\index{spinlock}
+\index{spinlock}%
 
 \glsadd{spinlock}
 
@@ -1741,7 +1741,7 @@ can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple processes.  Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
-\index{interlock instruction}
+\index{interlock instruction}%
 special machine instructions
 that can read memory and then write it in an indivisible step.
 
@@ -1753,7 +1753,7 @@ This feature is available in the CXL language in two ways.
 First, any CXL statement can be made atomic by placing a label in front
 of it.  Second, a group of CXL statements can be made atomic
 through its \textbf{atomic}
-\index{atomic statement}
+\index{atomic statement}%
 statement.
 We can use \textbf{atomic} statement blocks to implement a wide variety of
 interlock operations.
@@ -1764,8 +1764,8 @@ constructing an atomic increment operation for a counter, like so:
 \end{code}
 
 Many CPUs have an atomic ``test-and-set'' (TAS)
-\index{test-and-set}
-\index{TAS}
+\index{test-and-set}%
+\index{TAS}%
 operation.
 Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
 Here $s$ points to a shared boolean variable and $p$
@@ -1777,7 +1777,7 @@ and then sets the shared variable to \texttt{True} (``set'').
 Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
 a set of \texttt{N} processes.
 The approach is called \emph{spinlock},
-\index{spinlock}
+\index{spinlock}%
 because each process is ``spinning'' until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
@@ -1850,8 +1850,8 @@ and swap the values.
 
 \chapter{Locks and Blocking}
 \label{ch:synch}
-\index{lock}
-\index{synch module}
+\index{lock}%
+\index{synch module}%
 
 \begin{figure}
 \begin{code}
@@ -1923,7 +1923,7 @@ chapters.
 \glsadd{blocked process}
 
 We call a process \emph{blocked}
-\index{blocked process}
+\index{blocked process}%
 in a state if the process is waiting on a low-level synchronization
 variable and cannot make progress without the help of another process.
 A process trying to
@@ -1954,7 +1954,7 @@ The syntax of the expression is as follows:
 
 Here $L$ is a shared variable containing a list.
 Another process can revive the process using the \textbf{go}
-\index{go statement}
+\index{go statement}%
 statement:
 
 \begin{code}
@@ -1964,7 +1964,7 @@ statement:
 Here $C$ is a context and $R$ is a CXL value.
 It causes a process with context $C$ to be added to the state that has
 just executed the \textbf{stop}
-\index{stop expression}
+\index{stop expression}%
 expression.  The \textbf{stop} expression returns the value $R$.
 
 There is a second version of the \texttt{synch} module that uses suspension
@@ -1977,7 +1977,7 @@ The interface is implemented as follows:
 lock is taken and a list of contexts of processes that want to acquire the lock.
 \item
 \texttt{lock}
-\index{lock}
+\index{lock}%
 sets the lock if available and suspends itself if not.
 Note that \textbf{stop} is called within an \textbf{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
@@ -1985,7 +1985,7 @@ process is running no other processes can run, but when it suspends itself
 it allows other processes to run.
 \item
 \texttt{unlock}
-\index{unlock}
+\index{unlock}%
 checks to see if any processes are waiting to get the lock.
 If so, it uses the \texttt{head} and \texttt{tail}
 methods from the \texttt{list} module (see Appendix~\ref{ap:module})
@@ -1996,7 +1996,7 @@ Selecting the first process is a design choice.  Another implementation could
 have picked the last one, and yet another implementation could have used
 \texttt{choose} to pick an arbitrary one.  Selecting the first is a common
 choice in lock implementations as it prevents \emph{starvation}:
-\index{starvation}
+\index{starvation}%
 every process
 gets a chance to obtain the lock (assuming every process eventually releases
 it).  Chapter~\ref{ch:starvation} will talk more about starvation and how
@@ -2004,7 +2004,7 @@ to prevent it.
 
 CXL allows you to select which version of the \texttt{synch} module you would
 like to use with the \texttt{-m} flag.
-\index{module}
+\index{module}%
 For example,
 
 \begin{code}
@@ -2031,7 +2031,7 @@ version of the module.
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
-\index{reader/writer lock}
+\index{reader/writer lock}%
 
 \glsadd{reader/writer lock}
 
@@ -2053,7 +2053,7 @@ version of the module.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=2.5in]{figures/rdwr-crop.pdf}
+\includegraphics[width=2.3in]{figures/rdwr-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of reader/writer locks with
 up to two processes.
@@ -2126,9 +2126,9 @@ critical section, any other reader is also able to enter.
 
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
-\index{busy waiting}
+\index{busy waiting}%
 (aka \emph{spin-waiting}):
-\index{spin waiting}
+\index{spin waiting}%
 processes spin in a loop until some desirable application-level condition is met.
 Figure~\ref{fig:inc} also has an example of busy-waiting: the \texttt{main}
 process waits for the other two processes to finish by checking their \texttt{done}
@@ -2279,7 +2279,7 @@ write lock and then obtaining the read lock.
 
 \chapter{Semaphores}
 \label{ch:semaphore}
-\index{semaphore}
+\index{semaphore}%
 
 \glsadd{semaphore}
 
@@ -2307,36 +2307,34 @@ it has to wait until another process releases one of the units.
 Note that we cannot solve this problem simply using a lock per unit---allocating
 a unit requires access to the entire collection.
 
-Consider a variant of the Dining Philosophers (which were clearly Dutch---who
-else need two forks to eat a meal?) that we call Italian Philosophers (who only
-use one fork each to eat spaghetti---they need the other to speak\footnote{The joke
-was provided to me by my dear friend and colleague Lorenzo Alvisi.}).
-Again, there are five philosophers.
-This time, however, there is a glass sitting in the middle of the table with only
+Consider the following synchronization problem that we call
+\emph{Italian Philosophers} (a simplification of
+the famous Dining Philosophers problem described in Chapter~\ref{ch:deadlock}).
+There are five philosophers sitting around a table, each with a plate of
+spaghetti in front of them.
+There is a glass sitting in the middle of the table with only
 three forks in it.  A philosopher needs one of those forks to eat, but clearly,
 no more than three philosophers can eat at a time.
-See if you can come up with a deadlock-free solution using locks.  Represent
-each fork as a lock.  It's not easy.
-It is not hard to come up with a solution that uses a single lock
-and busy waiting, but we would like to avoid busy waiting.
+But a lock can only count to one.
 
 Introduced by Dijkstra,
-a \emph{semaphore} is a synchronization primitive that fits the bill~\cite{EWD35}.
+a \emph{semaphore} is a synchronization primitive that
+can solve this kind of problem~\cite{EWD35}.
 A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
 units of a resource initially available.
 When allocating a resource, a process decrements the
 counter using the \texttt{P}
-\index{P}
-\index{procure}
+\index{P}%
+\index{procure}%
 operation.  You can think of \texttt{P} standing
 for \emph{Procure}, as in procuring the resource associated with the semaphore.
 The \texttt{P} operation blocks the invoking process if the counter is zero.
 To release the resource, a process increments the resource using the
 \texttt{V}
-\index{V}
-\index{vacate}
+\index{V}%
+\index{vacate}%
 operation.  You can think of \texttt{V} standing for \emph{vacate},
 as in vacating the resource.
 One can think of a semaphore as a generalization of a lock.  In fact, a
@@ -2393,8 +2391,8 @@ that it is a permutation of the original array.
 
 \chapter{Bounded Buffer}
 \label{ch:bb}
-\index{bounded buffer}
-\index{producer/consumer problem}
+\index{bounded buffer}%
+\index{producer/consumer problem}%
 
 \glsadd{producer/consumer problem}
 
@@ -2454,12 +2452,12 @@ cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
 
 A good example of a resource with multiple units is the
 so-called \emph{bounded buffer} (aka \emph{ring buffer}).
-\index{ring buffer}
+\index{ring buffer}%
 Suppose you have a \emph{producer} (some process) wanting to
 communicate a stream of items with a \emph{consumer} (another process).
 A bounded buffer is essentially
 a queue implemented using a circular buffer
-\index{circular buffer}
+\index{circular buffer}%
 of a certain length and two pointers:
 one where the producer inserts items, and one where the consumer extracts
 items.  If the
@@ -2470,13 +2468,13 @@ proposed by Dijkstra~\cite{EWD329}.
 
 The producer/consumer pattern is common.  Processes may be arranged
 in \emph{pipelines},
-\index{pipeline}
+\index{pipeline}%
 where each upstream process is a producer and each downstream
 process is a consumer.
 Or processes may be arranged in a manager/worker pattern, with a manager
 producing jobs and workers executing them in parallel.
 Or, in the client/server model,
-\index{client/server model}
+\index{client/server model}%
 some process may act as a \emph{server} that clients can send requests to
 and receive responses from.
 
@@ -2529,11 +2527,11 @@ The consumer code is symmetric.
 Note the quite different usage of the \texttt{l\_} semaphores and \texttt{n\_}
 semaphores.
 People often call semaphores that are used as locks \emph{binary semaphores},
-\index{binary semaphore}
+\index{binary semaphore}%
 as they only take on the values 0 and 1.
 They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
-\index{counting semaphore}
+\index{counting semaphore}%
 They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
@@ -2593,7 +2591,7 @@ to block.
 
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
-\index{split binary semaphore}
+\index{split binary semaphore}%
 
 \begin{figure}
 \begin{code}
@@ -2607,7 +2605,7 @@ to block.
 
 Reader/writer locks and bounded buffers are both examples of what are
 sometimes called \emph{conditional critical sections}
-\index{conditional critical section}
+\index{conditional critical section}%
 (CCSs)~\cite{Hoare73}.
 All critical sections are, in a way, conditional.  Even the basic critical section
 has the condition that a process can only enter if no other process
@@ -2747,7 +2745,7 @@ for southbound cars.
 
 \chapter{Starvation}
 \label{ch:starvation}
-\index{starvation}
+\index{starvation}%
 
 \glsadd{starvation}
 
@@ -2764,7 +2762,7 @@ for southbound cars.
 \glsadd{property}
 
 A \emph{property}
-\index{property}
+\index{property}%
 is a set of traces.
 If a program has a certain property, that means that the traces that that
 program allows are a subset of the traces in the property.
@@ -2802,7 +2800,7 @@ While spinlocks suffer from starvation, it is a uniform random
 process and each process has an equal chance of entering the critical
 section.  Thus the probability of starvation is exponentially vanishing.
 We shall call such a solution \emph{fair}
-\index{fairness}
+\index{fairness}%
 (although it does not quite
 match the usual formal nor vernacular concepts of fairness).
 
@@ -2895,7 +2893,7 @@ semaphore.
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}~\cite{Hoare74}.
-\index{monitor}
+\index{monitor}%
 (A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
@@ -2903,12 +2901,12 @@ There is a split binary semaphore associated with each such class.
 The \textit{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are called \emph{condition variables}.
-\index{condition variable}
+\index{condition variable}%
 There are two operations on condition variables: \texttt{wait}
-\index{wait}
+\index{wait}%
 and
 \texttt{signal}.
-\index{signal}
+\index{signal}%
 If \texttt{c} is a pointer to a condition variable, then the semantics of the
 operations, in CXL, are as follows:
 
@@ -2929,7 +2927,7 @@ and \texttt{V}.
 
 In the late 70s, Xerox PARC developed a new programming language called
 Mesa~\cite{LR80}.
-\index{Mesa}
+\index{Mesa}%
 Mesa introduced various important concepts to programming languages,
 including software exceptions and incremental compilation.  Mesa also
 incorporated a version of monitors.
@@ -2944,7 +2942,7 @@ Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
 operation \texttt{notify} rather than \texttt{signal}.
-\index{notify}
+\index{notify}%
 When a process $p$ invokes \texttt{notify}, it does not immediately pass 
 the baton to some process $q$ requiring the baton (assuming there even
 is such a process).  Instead, $p$ holds onto
@@ -2998,9 +2996,9 @@ bedrooms into the hall.  Using \texttt{notify} on an empty
 bedroom is considered a no-op in Mesa.  (Hoare monitors do not allow
 using \texttt{signal} on an empty bathroom.) Mesa also provides an
 operation called \texttt{notifyAll}
-\index{notifyAll}
+\index{notifyAll}%
 (aka \texttt{broadcast)})
-\index{broadcast}
+\index{broadcast}%
 that, when applied to
 a bedroom, lets all processes in that bedroom into the hall.
 This is not possible with Hoare monitors: when needing to wake up a set
@@ -3126,7 +3124,7 @@ it is fair.
 
 \chapter{Deadlock}
 \label{ch:deadlock}
-\index{deadlock}
+\index{deadlock}%
 
 \glsadd{deadlock}
 
@@ -3144,7 +3142,7 @@ end up being blocked indefinitely because each is waiting for another to give
 up a resource.
 The famous Dutch computer scientist Edsger W.~Dijkstra illustrated this using
 a scenario he called ``Dining Philosophers.''
-\index{dining philosopher}
+\index{dining philosopher}%
 
 Imagine five philosopers sitting around a table, each with a plate of food in
 front of them and a fork between each two plates.  Each philosopher requires
@@ -3221,7 +3219,7 @@ Each diner waits if either the left or right fork is already taken.
 But which condition variable to wait on?
 The code demonstrates an important technique to use when waiting for
 multiple conditions.
-\index{multiple conditions, waiting on}
+\index{multiple conditions, waiting on}%
 The condition in the \textbf{while} statement is the negation of the
 condition that the diner is waiting and consists of two disjuncts.
 Within the \textbf{while} statement,
@@ -3265,7 +3263,7 @@ before the higher numbered fork, like so:
 This completes all the Havender methods.
 There is, however, another approach, which is sometimes called deadlock
 \emph{avoidance}
-\index{deadlock avoidance}
+\index{deadlock avoidance}%
 instead of deadlock \emph{prevention}.
 In the case of the Dining Philosophers, we want to avoid the situation where each
 diner picks up a fork.  So if we can prevent more than four diners from starting to
@@ -3315,8 +3313,8 @@ so continually?
 
 \chapter{Actors and Message Passing}
 \label{ch:actor}
-\index{actor model}
-\index{message passing}
+\index{actor model}%
+\index{message passing}%
 
 \glsadd{actor model}
 
@@ -3362,9 +3360,9 @@ languages, including Erlang and Scala.  Actor support is also available
 through popular libraries such as Akka, which is available for various
 programming languages.  In Python, Java, and C/C++,
 actors can be easily emulated using threads and \emph{synchronized queues}
-\index{synchronized queue}
+\index{synchronized queue}%
 (aka \emph{blocking queues})
-\index{blocking queue}
+\index{blocking queue}%
 for messaging.
 Each thread would have one such queue for receiving messages.
 Dequeuing from an empty synchronized queue blocks the thread until
@@ -3449,9 +3447,9 @@ in the opposite order.  Which do you think is better?
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}
-\index{alternating bit protocol}
-\index{protocol}
-\index{distributed system}
+\index{alternating bit protocol}%
+\index{protocol}%
+\index{distributed system}%
 
 \begin{figure}
 \begin{code}
@@ -3474,13 +3472,13 @@ of processes communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
 systems is that the former takes \emph{failures}
-\index{failure}
+\index{failure}%
 into account,
 including failures of processes and failures of shared memory.
 In this chapter, we will consider two actors, Alice and Bob.
 Alice wants to send a sequence of application messages to Bob,
 but the underlying network may lose messages.
-\index{network}
+\index{network}%
 The network does not re-order messages: when sending messages
 $m_1$ and $m_2$ in that order, then if both messages are received,
 $m_1$ is received before $m_2$.
@@ -3560,7 +3558,7 @@ for each client, or solve the problem using a single pair of channels.
 
 \chapter{Non-Blocking Synchronization}
 \label{ch:nonblocking}
-\index{non-blocking synchronization}
+\index{non-blocking synchronization}%
 
 \glsadd{non-blocking synchronization}
 
@@ -3621,7 +3619,7 @@ universally available on existing processors.
 \end{itemize}
 However, in the literature there are many examples of practical
 non-blocking (aka \emph{wait-free})
-\index{wait-free synchronization}
+\index{wait-free synchronization}%
 synchronization algorithms~\cite{}.
 
 There are also various algorithms where read-only access is wait-free
@@ -3639,13 +3637,13 @@ a particular value is in the list.
 \glsadd{linearizable}
 
 The implementation uses the \texttt{alloc} module for dynamic allocation
-\index{dynamic allocation}
+\index{dynamic allocation}%
 of nodes in the list using \texttt{recAlloc} and \texttt{recFree}.
 The read-only operation \texttt{lst\_contains} is wait\_free: it scans
 through the list without having to obtain a lock.
 Nonetheless, the implementation of the list is
 \emph{linearizable}~\cite{HW90},
-\index{linearizable}
+\index{linearizable}%
 a strong notion of consistency that
 makes it appear as if each of the operations executes atomically at
 some point between their invocation and return.
@@ -3659,7 +3657,7 @@ methods that
 finds and locks two consecutive nodes \texttt{before} and \texttt{after}
 such that \texttt{before.value $<$ v $\le$ after.value}.
 It does so by performing something called \emph{hand-over-hand locking}.
-\index{hand-over-hand locking}
+\index{hand-over-hand locking}%
 It first locks the first node, which is the \texttt{-inf} node.
 Then, iteratively, it obtains a lock on the next node and release the
 lock on the last one, and so on, similar to climbing a tree
@@ -3677,7 +3675,7 @@ with a \texttt{inf} node.
 Determining if an implementation of a concurrent data structure
 is linearizable involves finding what are known as the
 \emph{linearization points}
-\index{linearization point}
+\index{linearization point}%
 of the operations in an execution.  These are the unique
 points in time at which an operation appears to execute atomically.
 The linearization points for the \texttt{lst\_insert} and
@@ -3713,7 +3711,7 @@ and~\ref{fig:lst2} that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
 Are they linearizable?  If so, what are their linearization points?
 \item A \emph{seqlock}
-\index{seqlock}
+\index{seqlock}%
 consists of a lock and a version number.
 An update operation acquires the lock, increments the version number, makes the
 changes to the data structure, and then releases the lock.  A read-only operation
@@ -3728,7 +3726,7 @@ read-only operation.  Explain how a \texttt{seqlock} can lead to starvation.
 
 \chapter{Barrier Synchronization}
 \label{ch:barrier}
-\index{barrier synchronization}
+\index{barrier synchronization}%
 
 \glsadd{barrier synchronization}
 
@@ -3931,7 +3929,7 @@ the concatenation when applied to lists or tuples.
 through \texttt{y} inclusive.  It returns the empty set if \texttt{x > y}.
 
 An \emph{lvalue}
-\index{lvalue}
+\index{lvalue}%
 (short for left hand value of an assignment statement)
 is something that can be assigned.  This can be a
 shared variable, a process variable, or a dereferenced pointer
@@ -4006,7 +4004,7 @@ To iterate through a dictionary, list, or tuple, use:
 \label{ap:module}
 
 The \texttt{alloc} module
-\index{alloc module}
+\index{alloc module}%
 support thread-safe dynamic allocation of ``records.''
 Each record has two fields: \texttt{.data} and \texttt{.next} that
 can be used arbitrarily, although \texttt{.next} is intended to be
@@ -4027,7 +4025,7 @@ The usage is similar to \texttt{malloc} and \texttt{free} in C.
 \texttt{recAlloc} returns \texttt{None} when running out of memory.
 
 The \texttt{bag} module
-\index{bag module}
+\index{bag module}%
 has various useful methods that operate on bags or
 multisets:
 
@@ -4050,7 +4048,7 @@ multisets:
 \vspace{1em}
 
 \noindent
-\index{list module}
+\index{list module}%
 The \texttt{list} module has various useful methods that operate on lists
 or tuples:
 
@@ -4234,7 +4232,7 @@ in a CXL program.
 \end{itemize}
 
 A context is considered \emph{blocked}
-\index{blocked process}
+\index{blocked process}%
 if there does not exist a
 sequence instructions that the process can execute that either writes
 to a shared variable (even if that leaves the shared variable unchanged)
@@ -4283,7 +4281,7 @@ as many micro steps involve changes to a context that are invisible to
 other contexts.
 
 A \emph{macro step}
-\index{macro step}
+\index{macro step}%
 can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
 \texttt{AtomicInc}, and \texttt{Continue}.  The CVM
