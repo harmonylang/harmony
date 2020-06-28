@@ -227,6 +227,15 @@ def strValue(v):
         return "." + v
     assert False, v
 
+def strVars(v):
+    assert isinstance(v, DictValue)
+    result = ""
+    for (var, val) in v.d.items():
+        if result != "":
+            result += ", "
+        result += strValue(var)[1:] + "=" + strValue(val)
+    return "{" + result + "}"
+
 def keyValue(v):
     if isinstance(v, bool):
         return (0, v)
@@ -2692,10 +2701,10 @@ def print_path(visited, bad_state):
         elif node.ctx.nametag == last[0] and node.steps[0] == last[1]:
             last = (node.ctx.nametag, node.ctx.pc, last[2] + node.steps, vars)
         else:
-            print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
+            print(nametag2str(last[0]), strsteps(last[2]), last[1], strVars(last[3]))
             last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
     if last != None:
-        print(nametag2str(last[0]), strsteps(last[2]), last[1], last[3])
+        print(nametag2str(last[0]), strsteps(last[2]), last[1], strVars(last[3]))
     (node, vars) = path[-1]
     if node.ctx.failure != 0:
         print(">>>", node.ctx.failure)

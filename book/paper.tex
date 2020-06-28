@@ -828,54 +828,6 @@ CXL currently supports.
 
 \section*{CXL Bytecode}
 
-\begin{figure}
-\begin{code}
-\begin{verbatim}
-Up.cxl:1 def incrementer(self):
-    0 Jump 34
-    1 Frame incrementer(self) end=11
-Up.cxl:2     count = count + 1;
-    2 Load count
-    3 Push 1
-    4 2-ary +
-    5 Store count
-Up.cxl:3     done[self] = True;
-    6 LoadVar self
-    7 PushAddress done
-    8 Address 2
-    9 Push True
-   10 Store
-   11 Return
-\end{verbatim}
-\end{code}
-\caption{The first part of the CVM bytecode corresponding to Figure~\ref{fig:inc}.}
-\label{fig:inccode}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\begin{verbatim}
-#states = 79 diameter = 5
-==== Safety violation ====
-__init__/() [0,34-49]       50 dict{.count:0, .done:dict{0:False, 1:False}}
-incrementer/0 [1-4]          5 dict{.count:0, .done:dict{0:False, 1:False}}
-incrementer/1 [1-10]        11 dict{.count:1, .done:dict{0:False, 1:True }}
-incrementer/0 [5-10]        11 dict{.count:1, .done:dict{0:True,  1:True }}
-main/() [13-17,20-24,26-31] 31 dict{.count:1, .done:dict{0:True,  1:True }}
->>> CXL Assertion failed : 1
-Open file://.../cxl.html for more information
-\end{verbatim}
-\end{code}
-\caption{The text output of running CXL on Figure~\ref{fig:inc}.}
-\label{fig:incoutput}
-\end{figure}
-
-\begin{figure}
-\includegraphics[width=\textwidth]{figures/Up1.png}
-\caption{The HTML output of running CXL on Figure~\ref{fig:inc}.}
-\label{fig:inchtml1}
-\end{figure}
-
 A CXL program is translated
 into \emph{bytecode}, which is list of machine instructions that the
 CXL virtual machine (CVM) executes.
@@ -933,6 +885,29 @@ The context bag has an initial context in it with name tag
 Each machine instruction updates the state in some way.
 % Figure~\ref{fig:incstate} shows an example of a reachable state for the program in Figure~\ref{fig:inc}.
 
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+Up.cxl:1 def incrementer(self):
+    0 Jump 34
+    1 Frame incrementer(self) end=11
+Up.cxl:2     count = count + 1;
+    2 Load count
+    3 Push 1
+    4 2-ary +
+    5 Store count
+Up.cxl:3     done[self] = True;
+    6 LoadVar self
+    7 PushAddress done
+    8 Address 2
+    9 Push True
+   10 Store
+   11 Return
+\end{verbatim}
+\end{code}
+\caption{The first part of the CVM bytecode corresponding to Figure~\ref{fig:inc}.}
+\label{fig:inccode}
+\end{figure}
 
 It may seem strange that there is only one memory location and that each
 process has only one register.  However, this is not a limitation because
@@ -950,6 +925,24 @@ such a sequence the \emph{address}
 \index{address}
 of a CXL value, and it is relative to the
 ``root'' of the directory tree.
+
+\begin{figure}
+\begin{code}
+\begin{verbatim}
+#states = 79 diameter = 5
+==== Safety violation ====
+__init__/()   [0,34-49]     50 { count=0, done=[False, False] }
+incrementer/0 [1-4]          5 { count=0, done=[False, False] }
+incrementer/1 [1-10]        11 { count=1, done=[False, True]  }
+incrementer/0 [5-10]        11 { count=1, done=[True,  True]  }
+main/() [13-17,20-24,26-31] 31 { count=1, done=[True,  True]  }
+>>> CXL Assertion failed : 1
+Open file://.../cxl.html for more information
+\end{verbatim}
+\end{code}
+\caption{The text output of running CXL on Figure~\ref{fig:inc}.}
+\label{fig:incoutput}
+\end{figure}
 
 \glsadd{stack machine}
 
@@ -1003,28 +996,19 @@ You can think of CXL as trying every possible interleaving of processes executin
 instructions.
 Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \texttt{Up.cxl} program.
-It reports that the assertion on line 9 failed and that
-\textit{count} has value 1 instead of 2.
-Next it reports an execution that failed this assertion.  The output has
-four columns:
-\begin{enumerate}
-\item The name tag of the process;
-\item The sequence of program counters of the CVM instructions that the process executed;
-\item The current program counter of the process;
-\item The contents of the shared memory.
-\end{enumerate}
 
-If we look at the middle three rows, we see that:
-\begin{itemize}
-\item Process 0 executed instructions 1 through 4, loading the value of
-\textit{count} but stopping just before storing 1 into \textit{count};
-\item Process 1 executed instructions 1 through 10, storing 1 into
-into \textit{count} and storing \texttt{True} into \textit{done}[1];
-\item Process 0 continues execution, storing value 1 into \textit{count}
-and storing \texttt{True} into \textit{done}[0].
-\end{itemize}
-
-This makes precise the concurrency problem that we encountered.
+\begin{figure}
+\includegraphics[width=\textwidth]{figures/Up1.png}
+\caption{The HTML output of running CXL on Figure~\ref{fig:inc}.
+There are four sections.  The top left shows the source code and bytecode
+of the program.  The top right shows the steps in an execution.
+The middle section shows the values of the variables at a particular step.
+The bottom section shows the state of each process.
+Each row in the stack trace of a process shows the current program counter,
+the method that is being evaluated, and the line of code that is
+being evaluated.}
+\label{fig:inchtml1}
+\end{figure}
 
 CXL can report a variety of failure types:
 \begin{itemize}
@@ -1032,6 +1016,7 @@ CXL can report a variety of failure types:
 at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
+It also includes certain infinite loops.
 CXL will print at trace of the shortest bad execution that it found.
 \item \texttt{Non-terminating States}: CXL found one or more states
 from which there does not exist an execution such that all processes
@@ -1043,6 +1028,43 @@ these are states in which some processes are left that cannot
 terminate.  Chapter~\ref{ch:synch} will explain what it means for
 a process to be stopped.
 \end{itemize}
+
+In this case, CXL reports a safety violation, in particular it
+reports that the assertion on line 9 failed and that
+\textit{count} has value 1 instead of 2.
+Next it reports an execution that failed this assertion.
+The program got to the faulty execution in 5 ``steps.''
+The output has
+four columns:
+\begin{enumerate}
+\item The name tag of the process;
+\item The sequence of program counters of the CVM instructions that the process executed;
+\item The current program counter of the process;
+\item The contents of the shared memory.
+\end{enumerate}
+
+The first step is initialization.
+It sets shared variable \textit{count} to 0 and
+shared variable \textit{done} to \texttt{[False, False]}.
+If we look at the next three steps, we see that:
+\begin{itemize}
+\item Process \texttt{implementer/0}
+executed instructions 1 through 4, loading the value of
+\textit{count} but stopping just before storing 1 into \textit{count};
+\item Process \texttt{implementer/1}
+executed instructions 1 through 10, storing 1 into
+into \textit{count} and storing \texttt{True} into \textit{done}[1];
+\item Process \texttt{implementer/0}
+continues execution, storing value 1 into \textit{count}
+and storing \texttt{True} into \textit{done}[0].
+\end{itemize}
+Finally, process \texttt{main()} runs and finds the problem.
+This makes precise the concurrency issue that we encountered.
+
+CXL also generates an HTML file that allows exploring more details
+of the execution interactively.
+Open the suggested HTML file and you should see something like
+Figure~\ref{fig:inchtml1}.
 
 \section*{Exercises}
 
