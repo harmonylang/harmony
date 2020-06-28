@@ -890,7 +890,7 @@ Each machine instruction updates the state in some way.
 \begin{verbatim}
 Up.cxl:1 def incrementer(self):
     0 Jump 34
-    1 Frame incrementer(self) end=11
+    1 Frame incrementer(self)
 Up.cxl:2     count = count + 1;
     2 Load count
     3 Push 1
@@ -972,9 +972,8 @@ instruction.
 
 Appendix~\ref{ap:cxlbytecode} provides a list of all CVM machine instructions,
 in case you want to read about the details.
-The \texttt{Frame} instruction lists the name of the method,
-names of its arguments, and
-the program counter of the method's \texttt{Return} instruction.
+The \texttt{Frame} instruction lists the name of the method and the
+names of its arguments.
 The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
 \texttt{Up.cxl} is as follows (see Figure~\ref{fig:inccode}):
 
@@ -4106,7 +4105,7 @@ Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
 Dup & duplicate the top element of the stack \\
 \hline
-Frame $m$($a$) end=$r$& start method $m$ with arguments $a$,
+Frame $m$($a$) & start method $m$ with arguments $a$,
 initializing variables.  Last instruction is at $r$ \\
 \hline
 Go & pop context and value, push value on context's stack, and add to context bag \\

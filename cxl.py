@@ -688,10 +688,9 @@ class SwapOp(Op):
         context.pc += 1
 
 class FrameOp(Op):
-    def __init__(self, name, args, end):
+    def __init__(self, name, args):
         self.name = name
         self.args = args
-        self.end = end
 
     def __repr__(self):
         (lexeme, file, line, column) = self.name
@@ -700,7 +699,7 @@ class FrameOp(Op):
             if args != "":
                 args += ", "
             args += a[0]
-        return "Frame " + str(lexeme) + "(" + str(args) + ") end=" + str(self.end)
+        return "Frame " + str(lexeme) + "(" + str(args) + ")"
 
     def eval(self, state, context):
         arg = context.pop()
@@ -754,7 +753,7 @@ class SpawnOp(Op):
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = frame.name
-        ctx = ContextValue(DictValue({"name": lexeme, "tag": tag}), method.pc, frame.end)
+        ctx = ContextValue(DictValue({"name": lexeme, "tag": tag}), method.pc)
         ctx.push(arg)
         state.add(ctx)
         context.pc += 1
@@ -1074,7 +1073,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0, len(code))
+        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0)
         ctx.atomic = 1
         while ctx.pc != len(code) and ctx.failure == None:
             code[ctx.pc].eval(state, ctx)
@@ -2030,7 +2029,7 @@ class MethodAST(AST):
     def compile(self, scope, code):
         pc = len(code)
         code.append(None)       # going to plug in a Jump op here
-        code.append(None)       # going to plug in a Frame op here
+        code.append(FrameOp(self.name, self.args))
         (lexeme, file, line, column) = self.name
         scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
@@ -2042,8 +2041,7 @@ class MethodAST(AST):
         self.stat.compile(ns, code)
         code.append(ReturnOp())
 
-        code[pc+0] = JumpOp(len(code))
-        code[pc+1] = FrameOp(self.name, self.args, len(code) - 1)
+        code[pc] = JumpOp(len(code))
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -2141,8 +2139,7 @@ class ConstAST(AST):
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
-        ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}),
-                            0, len(code2))
+        ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}), 0)
         ctx.atomic = 1
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
@@ -2422,10 +2419,9 @@ class StatementRule(Rule):
         return (CallAST(a), self.skip(token, t))
 
 class ContextValue(Value):
-    def __init__(self, nametag, pc, end):
+    def __init__(self, nametag, pc):
         self.nametag = nametag
         self.pc = pc
-        self.end = end
         self.atomic = 0
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
@@ -2440,7 +2436,7 @@ class ContextValue(Value):
         return self.__repr__()
 
     def __hash__(self):
-        h = (self.nametag, self.pc, self.end,
+        h = (self.nametag, self.pc,
                     self.atomic, self.vars, self.stopped).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -2461,11 +2457,10 @@ class ContextValue(Value):
             return False
         if self.failure != other.failure:
             return False
-        assert self.end == other.end
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = ContextValue(self.nametag, self.pc, self.end)
+        c = ContextValue(self.nametag, self.pc)
         c.atomic = self.atomic
         c.stack = self.stack.copy()
         c.fp = self.fp
@@ -2808,7 +2803,8 @@ def onestep(state, ctx, choice, visited, todo, node):
     steps = []
     localStates = set() # used to detect infinite loops
     loopcnt = 0         # only check for infinite loops after a while
-    while cc.pc != cc.end:
+    terminated = False
+    while True:
         # execute one microstep
         steps.append(cc.pc)
 
@@ -2828,6 +2824,9 @@ def onestep(state, ctx, choice, visited, todo, node):
             cc.stack[-1] = choice
             cc.pc += 1
             choice = None
+        elif isinstance(sc.code[cc.pc], ReturnOp) and len(cc.stack) < 4:
+            terminated = True
+            break
         else:
             assert choice == None
             try:
@@ -2837,8 +2836,7 @@ def onestep(state, ctx, choice, visited, todo, node):
                 sys.exit(1)
                 cc.failure = "Python assertion failed"
 
-        # TODO.  Checking for end twice in this loop seems wrong
-        if cc.failure != None or cc.pc == cc.end or cc.stopped:
+        if cc.failure != None or cc.stopped:
             break
 
         # See if this process is making a nondeterministic choice.
@@ -2881,7 +2879,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     sc.remove(ctx)
 
     # Put the resulting context into the bag unless it's done
-    if cc.pc == cc.end:
+    if terminated:
         sc.initializing = False     # initializing ends when __init__ finishes
     elif not cc.stopped:
         sc.add(cc)
@@ -2971,6 +2969,7 @@ def doCompile(filenames, consts, mods):
         for fname in filenames:
             with open(fname) as fd:
                 load(fd, fname, scope, code)
+    code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
 
@@ -2991,7 +2990,7 @@ def mapcheck():
             assert isinstance(map, PcValue)
             frame = code[map.pc]
             assert isinstance(frame, FrameOp)
-            ctx = ContextValue("__map__", map.pc, frame.end)
+            ctx = ContextValue("__map__", map.pc)
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(novalue)
             while ctx.pc != frame.end:
@@ -3012,7 +3011,7 @@ def mapcheck():
             assert isinstance(step, PcValue)
             frame = code[step.pc]
             assert isinstance(frame, FrameOp)
-            ctx = ContextValue("__step__", step.pc, frame.end)
+            ctx = ContextValue("__step__", step.pc)
             ctx.atomic = 1          # TODO.  Maybe map should be atomic
             ctx.push(hs)
             while ctx.pc != frame.end:
@@ -3047,7 +3046,7 @@ def mapcheck():
 
 def run(code, labels, map, step, blockflag):
     state = State(code, labels)
-    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, len(code))
+    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0)
     ctx.atomic = 1
     state.add(ctx)
 
