@@ -3231,14 +3231,29 @@ def htmlpath(s, visited, color, f):
     print("</table>", file=f)
     print("</p>", file=f)
 
-def htmlloc(code, scope, ctx, f):
+def htmlloc(code, scope, ctx, traceid, f):
     pc = ctx.pc
     fp = ctx.fp
-    print("<table border='1' width='100%'>", file=f)
-    if ctx.failure != None:
-        print("<tr style='color: red'><td>%s</td></tr>"%ctx.failure, file=f)
+    print("<table id='loc%d' border='1' width='100%%'>"%traceid, file=f)
+    trace = []
     while True:
-        print("<tr><td><a href='#P%d'>%d</a> "%(pc, pc), file=f)
+        trace += [(pc, fp)]
+        if fp < 4:
+            break
+        pc = ctx.stack[fp - 4]
+        assert isinstance(pc, PcValue)
+        pc = pc.pc
+        fp = ctx.stack[fp - 1]
+    trace.reverse()
+    row = 0
+    for (pc, fp) in trace:
+        if row == 0:
+            print("<tr style='background-color: #A5FF33'>", file=f)
+        else:
+            print("<tr>", file=f)
+        print("<td>", file=f)
+        print("<a href='#P%d'>%d</a> "%(pc, pc), file=f)
+        print("<a href='javascript:setrow(%d,%d)'>"%(traceid,row), file=f)
         while pc >= 0 and pc not in scope.locations:
             pc -= 1
         (file, line) = scope.locations[pc]
@@ -3247,28 +3262,56 @@ def htmlloc(code, scope, ctx, f):
         if fp >= 3:
             arg = ctx.stack[fp-3]
             if arg == novalue:
-                print("%s():"%(code[pc].name[0]), file=f)
+                print("%s()"%(code[pc].name[0]), end="", file=f)
             else:
-                print("%s(%s):"%(code[pc].name[0], strValue(arg)), file=f)
+                print("%s(%s)"%(code[pc].name[0], strValue(arg)), end="", file=f)
+        print("</a>:", file=f)
         lines = files.get(file)
         # print("%s:%d"%(file, line), file=f)
         if lines != None and line <= len(lines):
             print(lines[line - 1][0:-1], file=f)
         print("</td></tr>", file=f)
-        if fp < 4:
-            break
-        pc = ctx.stack[fp - 4]
-        assert isinstance(pc, PcValue)
-        pc = pc.pc
-        fp = ctx.stack[fp - 1]
+        row += 1
+
+    if ctx.failure != None:
+        print("<tr style='color: red'><td>%s</td></tr>"%ctx.failure, file=f)
     print("</table>", file=f)
 
+def htmlvars(vars, id, row, f):
+    assert(isinstance(vars, DictValue))
+    display = "block" if row == 0 else "none"
+    print("<div id='vars%d_%d' style='display:%s'>"%(traceid, row, display), file=f)
+    print("<table border='1'>", file=f)
+    for (key, value) in vars.d.items():
+        print("<tr>", file=f)
+        print("<td>%s</td>"%strValue(key)[1:], file=f)
+        print("<td>%s</td>"%strValue(value), file=f)
+        print("</tr>", file=f)
+    print("</table>", file=f)
+    print("</div>", file=f)
+
+# print the variables on the stack
+def htmltrace(code, scope, ctx, traceid, f):
+    pc = ctx.pc
+    fp = ctx.fp
+    trace = [ctx.vars]
+    while True:
+        if fp < 4:
+            break
+        trace += [ctx.stack[fp - 2]]
+        fp = ctx.stack[fp - 1]
+    trace.reverse()
+    for i in range(len(trace)):
+        htmlvars(trace[i], traceid, i, f)
+
+traceid = 0
+
 def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
+    global traceid
+    traceid += 1
+
     print("<tr>", file=f)
     print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
-    print("<td>", file=f)
-    htmlloc(code, scope, ctx, f)
-    print("</td>", file=f)
     print("<td>%d</td>"%bag[ctx], file=f)
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
@@ -3282,15 +3325,13 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
         else:
             print("<td>running</td>", file=f)
 
+    print("<td>", file=f)
+    htmlloc(code, scope, ctx, traceid, f)
+    print("</td>", file=f)
+
     # print variables
     print("<td>", file=f)
-    print("<table border='1'>", file=f)
-    for (key, value) in ctx.vars.d.items():
-        print("<tr>", file=f)
-        print("<td>%s</td>"%strValue(key)[1:], file=f)
-        print("<td>%s</td>"%strValue(value), file=f)
-        print("</tr>", file=f)
-    print("</table>", file=f)
+    htmltrace(code, scope, ctx, traceid, f)
     print("</td>", file=f)
 
     # print stack
@@ -3353,7 +3394,7 @@ def htmlstate(f):
 
 def htmlnode(s, visited, code, scope, f, verbose):
     n = visited[s]
-    print("<div id='div%d' style='display:none';>"%n.uid, file=f);
+    print("<div id='div%d' style='display:none'>"%n.uid, file=f);
     print("<div class='container'>", file=f)
 
     print("<a name='N%d'/>"%n.uid, file=f)
@@ -3383,7 +3424,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
     #     print("</tr></table>", file=f)
 
     print("<table border='1'>", file=f)
-    print("<tr><th>Context</th><th>Stack Trace</th><th>#</th><th>Status</th><th>Variables</th>", file=f)
+    print("<tr><th>Context</th><th>#</th><th>Status</th><th>Stack Trace</th><th>Variables</th>", file=f)
     if verbose:
         print("<th>FP</th><th>Stack</th>", file=f)
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
@@ -3525,6 +3566,22 @@ def dump(visited, code, scope, state, fulldump, verbose):
                         }
                     }
                   }
+
+                  function setrow(tblid, row) {
+                    var tbl = document.getElementById('loc' + tblid);
+                    for (var i = 0; i < tbl.rows.length; i++) {
+                        var div = document.getElementById('vars' + tblid + '_' + i);
+                        if (i == row) {
+                            tbl.rows[i].style.backgroundColor = "#A5FF33";
+                            div.style.display = 'block';
+                        }
+                        else {
+                            tbl.rows[i].style.backgroundColor = "";
+                            div.style.display = 'none';
+                        }
+                    }
+                  }
+
                   rowshow(%d, %d)
                 </script>
             """%(row, sid), file=f)

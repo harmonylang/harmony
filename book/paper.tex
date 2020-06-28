@@ -832,18 +832,18 @@ CXL currently supports.
 \begin{code}
 \begin{verbatim}
 Up.cxl:1 def incrementer(self):
-   0 Jump 34
-   1 Frame incrementer(self) end=11
+    0 Jump 34
+    1 Frame incrementer(self) end=11
 Up.cxl:2     count = count + 1;
-   2 Load count
-   3 Push 1
-   4 2-ary +
-   5 Store count
+    2 Load count
+    3 Push 1
+    4 2-ary +
+    5 Store count
 Up.cxl:3     done[self] = True;
-   6 LoadVar self
-   7 PushAddress done
-   8 Address 2
-   9 Push True
+    6 LoadVar self
+    7 PushAddress done
+    8 Address 2
+    9 Push True
    10 Store
    11 Return
 \end{verbatim}
