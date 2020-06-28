@@ -368,7 +368,8 @@ class AddressValue(Value):
         return (7, self.indexes)
 
 class Op:
-    pass
+    def explain(self):
+        return "no explanation yet"
 
 # Splits a non-empty set in its minimum element and its remainder
 class SplitOp(Op):
@@ -387,6 +388,9 @@ class SplitOp(Op):
 class DupOp(Op):
     def __repr__(self):
         return "Dup"
+
+    def explain(self):
+        return "push a copy of the top value on the stack"
 
     def eval(self, state, context):
         v = context.pop()
@@ -429,6 +433,12 @@ class LoadVarOp(Op):
             (lexeme, file, line, column) = self.name
             return "LoadVar " + str(lexeme)
 
+    def explain(self):
+        if self.name == None:
+            return "pop the address of a method variable and push the value of that variable"
+        else:
+            return "push the value of method variable " + self.name[0]
+
     def eval(self, state, context):
         if self.name == None:
             av = context.pop()
@@ -447,6 +457,9 @@ class PushOp(Op):
         (lexeme, file, line, column) = self.constant
         return "Push " + strValue(lexeme)
 
+    def explain(self):
+        return "push constant " + strValue(self.constant[0])
+
     def eval(self, state, context):
         (lexeme, file, line, column) = self.constant
         context.push(lexeme)
@@ -459,6 +472,9 @@ class PushAddressOp(Op):
     def __repr__(self):
         (lexeme, file, line, column) = self.name
         return "PushAddress " + str(lexeme)
+
+    def explain(self):
+        return "push the address of shared variable " + self.name[0]
 
     def eval(self, state, context):
         (lexeme, file, line, column) = self.name
@@ -476,6 +492,12 @@ class LoadOp(Op):
         else:
             (lexeme, file, line, column) = self.name
             return "Load " + lexeme
+
+    def explain(self):
+        if self.name == None:
+            return "pop an address and push the value at the address"
+        else:
+            return "push value of shared variable " + self.name[0]
 
     def eval(self, state, context):
         if self.name == None:
@@ -504,6 +526,12 @@ class StoreOp(Op):
             return "Store " + lexeme
         else:
             return "Store"
+
+    def explain(self):
+        if self.name == None:
+            return "pop a value and an address and store the value at the address"
+        else:
+            return "pop a value and store it in shared variable " + self.name[0]
 
     def eval(self, state, context):
         v = context.pop()
@@ -579,6 +607,9 @@ class AddressOp(Op):
     def __repr__(self):
         return "Address " + str(self.n)
 
+    def explain(self):
+        return "combine the top " + str(self.n) + " values on the stack into an address and push the result"
+
     def eval(self, state, context):
         indexes = []
         for i in range(self.n):
@@ -598,6 +629,12 @@ class StoreVarOp(Op):
         else:
             (lexeme, file, line, column) = self.v
             return "StoreVar " + str(lexeme)
+
+    def explain(self):
+        if self.v == None:
+            return "pop a value and the address of a method variable and store the value at that address"
+        else:
+            return "pop a value and store in method variable " + self.v[0]
 
     def eval(self, state, context):
         if self.v == None:
@@ -631,6 +668,9 @@ class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
 
+    def explain(self):
+        return "pop a set value and push one of its elements"
+
     def eval(self, state, context):
         v = context.pop()
         assert isinstance(v, SetValue), v
@@ -646,6 +686,12 @@ class AssertOp(Op):
 
     def __repr__(self):
         return "Assert"
+
+    def explain(self):
+        if self.exprthere:
+            return "pop a value and a condition and raise exception if condition is false"
+        else:
+            return "pop a condition and raise exception if condition is false"
 
     def eval(self, state, context):
         if self.exprthere:
@@ -669,6 +715,9 @@ class PopOp(Op):
     def __repr__(self):
         return "Pop"
 
+    def explain(self):
+        return "discard the top value on the stack"
+
     def eval(self, state, context):
         context.pop()
         context.pc += 1
@@ -679,6 +728,9 @@ class SwapOp(Op):
 
     def __repr__(self):
         return "Swap"
+
+    def explain(self):
+        return "swap the top two elements on the stack"
 
     def eval(self, state, context):
         x = context.pop()
@@ -700,6 +752,9 @@ class FrameOp(Op):
                 args += ", "
             args += a[0]
         return "Frame " + str(lexeme) + "(" + str(args) + ")"
+
+    def explain(self):
+        return "start of method " + str(self.name[0])
 
     def eval(self, state, context):
         arg = context.pop()
@@ -730,6 +785,9 @@ class ReturnOp(Op):
     def __repr__(self):
         return "Return"
 
+    def explain(self):
+        return "restore caller method state and push result"
+
     def eval(self, state, context):
         result = context.get("result")
         context.fp = context.pop()
@@ -744,6 +802,9 @@ class ReturnOp(Op):
 class SpawnOp(Op):
     def __repr__(self):
         return "Spawn"
+
+    def explain(self):
+        return "pop a pc, argument, and tag and spawn a new process"
 
     def eval(self, state, context):
         method = context.pop()
@@ -781,6 +842,9 @@ class JumpOp(Op):
     def __repr__(self):
         return "Jump " + str(self.pc)
 
+    def explain(self):
+        return "set program counter to " + str(self.pc)
+
     def eval(self, state, context):
         context.pc = self.pc
 
@@ -791,6 +855,10 @@ class JumpCondOp(Op):
 
     def __repr__(self):
         return "JumpCond " + str(self.cond) + " " + str(self.pc)
+
+    def explain(self):
+        return "pop a value and jump to " + str(self.pc) + \
+            " if the value is " + strValue(self.cond)
 
     def eval(self, state, context):
         c = context.pop()
@@ -803,6 +871,9 @@ class SetOp(Op):
     def __repr__(self):
         return "Set"
 
+    def explain(self):
+        return "pop a number n and n values and push a set with the value"
+
     def eval(self, state, context):
         nitems = context.pop()
         s = set()
@@ -814,6 +885,9 @@ class SetOp(Op):
 class DictOp(Op):
     def __repr__(self):
         return "Dict"
+
+    def explain(self):
+        return "pop a number n and n key/value pairs and push a dictionary"
 
     def eval(self, state, context):
         nitems = context.pop()
@@ -833,6 +907,11 @@ class NaryOp(Op):
     def __repr__(self):
         (lexeme, file, line, column) = self.op
         return "%d-ary "%self.n + str(lexeme)
+
+    def explain(self):
+        return "pop " + str(self.n) + \
+            (" value" if self.n == 1 else " values") + \
+            " and push the result of applying " + self.op[0]
 
     def atLabel(self, state, label):
         pc = state.labels[label]
@@ -1045,6 +1124,9 @@ class ApplyOp(Op):
 
     def __repr__(self):
         return "Apply"
+
+    def explain(self):
+        return "pop a pc or dictionary f and an index i and push f(i)"
 
     def eval(self, state, context):
         method = context.pop()
@@ -3459,21 +3541,21 @@ def htmlcode(code, scope, f):
             if (file, line) != lastloc:
                 lines = files.get(file)
                 if lines != None and line <= len(lines):
-                    print("<th colspan='2' align='left'>%s:%d"%(os.path.basename(file), line),
+                    print("<th colspan='3' align='left' style='background-color: yellow'>%s:%d"%(os.path.basename(file), line),
                             lines[line - 1][0:-1], "</th>", file=f)
                 else:
                     print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
                 print("</tr><tr>", file=f)
             lastloc = (file, line)
         print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", file=f)
+        print("<span title='%s'>"%code[pc].explain(), file=f)
         if isinstance(code[pc], JumpOp) or isinstance(code[pc], JumpCondOp):
             print("<a href='#P%d'>"%code[pc].pc, code[pc], "</a>", file=f)
         elif isinstance(code[pc], PushOp) and isinstance(code[pc].constant[0], PcValue):
             print("Push <a href='#P%d'>"%code[pc].constant[0].pc, strValue(code[pc].constant[0]), "</a>", file=f)
         else:
             print(code[pc], file=f)
-        print("</td>", file=f)
-        print("</tr>", file=f)
+        print("</span></td></tr>", file=f)
     print("</tbody>", file=f)
     print("</table>", file=f)
     print("</div>", file=f)

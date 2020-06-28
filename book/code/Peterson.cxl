@@ -8,7 +8,7 @@ def process(self):
         ;
 
         # critical section is here
-        @cs: assert atLabel.cs == dict{ nametag(): 1 }, atLabel.cs;
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
 
         # Leave critical section
         flags[self] = False;

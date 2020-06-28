@@ -9,7 +9,6 @@
   width:100%;
 }
 #table-wrapper table * {
-  background:yellow;
   color:black;
 }
 #table-wrapper table thead th .text {
