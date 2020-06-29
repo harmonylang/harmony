@@ -1536,6 +1536,16 @@ class NaryAST(AST):
             code.append(None)
             self.args[1].compile(scope, code)
             code[pc] = JumpOp(len(code))
+        elif n == 3 and op == "if":
+            self.args[1].compile(scope, code)
+            pc1 = len(code)
+            code.append(None)
+            self.args[0].compile(scope, code)
+            pc2 = len(code)
+            code.append(None)
+            self.args[2].compile(scope, code)
+            code[pc1] = JumpCondOp(False, pc2 + 1)
+            code[pc2] = JumpOp(len(code))
         else:
             for i in range(n):
                 self.args[i].compile(scope, code)
@@ -1582,7 +1592,7 @@ class NaryRule(Rule):
         (ast2, t) = ExpressionRule().parse(t[1:])
         args.append(ast2)
         (lexeme, file, line, column) = t[0]
-        if op[0] == "if":                    # TODO. Should both F/T cases be evaluated?
+        if op[0] == "if":
             self.expect("n-ary operation", lexeme == "else", t[0], "expected 'else'")
             (ast3, t) = ExpressionRule().parse(t[1:])
             args.append(ast3)
