@@ -3390,8 +3390,8 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item \texttt{enqueue(q, item)} adds \texttt{item} to the queue pointed to by \texttt{q};
-\item \texttt{dequeue(q)} waits for and returns an item on the queue pointed to by \texttt{q}.
+\item \texttt{enqueue}($q$, \textit{item}) adds \textit{item} to the queue pointed to by $q$;
+\item \texttt{dequeue}($q$) waits for and returns an item on the queue pointed to by $q$.
 \end{itemize}
 
 Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
@@ -3406,11 +3406,11 @@ using an actor (as illustrated in Figure~\ref{fig:actorpic}.
 \texttt{.produce} requests with \texttt{.consume} requests.
 Sometimes it may have buffered \texttt{.consume} requests and is waiting for
 \texttt{.produce} requests, and sometimes it is vice versa.
-The variable \texttt{balance} specifies what the situation is: if it is positive
+The variable \textit{balance} specifies what the situation is: if it is positive
 then it has buffered \texttt{.produce} requests;
 if it is negative
 then it has buffered \texttt{.consume} requests.
-Note that both \texttt{balance} and \texttt{requests} are variables that are
+Note that both \textit{balance} and \textit{requests} are variables that are
 local to the \texttt{pc\_actor} process.
 
 Each request message is a dictionary with two fields.  One of the fields is
@@ -3421,8 +3421,8 @@ In case of \texttt{.consume}, the second field is \texttt{.queue} and holds
 a pointer to the queue where the response message must be enqueued.
 \texttt{.produce} messages do not get a response.
 
-The \texttt{pc\_actor} process has two arguments.  \texttt{q} is a pointer
-to the queue on which it receives messages.  \texttt{nrequests} is the total
+The \texttt{pc\_actor} process has two arguments.  $q$ is a pointer
+to the queue on which it receives messages.  \textit{nrequests} is the total
 number of requests that it will handle.  We need the latter because in CXL
 all processes are required to terminate.  In a more realistic implementation,
 the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
@@ -3515,7 +3515,7 @@ The \emph{Alternating Bit Protocol} is suitable for our purposes.
 We assume that there are two unreliable network channels: one from Alice
 to Bob and one from Bob to Alice.
 Alice and Bob each maintain a zero-initialized sequence number,
-\texttt{s\_seq} and \textit{r\_seq} resp.
+\textit{s\_seq} and \textit{r\_seq} resp.
 Alice sends a network message to Bob containing an
 application message as \emph{payload} and Alice's sequence number
 as \emph{header}.
@@ -3534,27 +3534,28 @@ Because of the network properties,  a one-bit sequence number suffices.
 
 Because of the network's properties, we can model each
 channel as a variable that either contains a network message or nothing
-(we use \texttt{()} in the model).  Let \texttt{s\_chan} be the channel
+(we use \texttt{()} in the model).  Let \textit{s\_chan} be the channel
 from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
-\texttt{net\_send(pchan, m, reliable)} models sending a message \texttt{m} to
-\texttt{\^{}pchan}, where \texttt{pchan} is either \texttt{\&s\_chan}
-or \texttt{\&r\_chan}.
-The method places either \texttt{m} (to model a successful send)
-or \texttt{()} (to model loss) in \texttt{\^{}pchan}.
-The use of the \texttt{reliable} flag will be explained later.
-\texttt{net\_recv(pchan)} models checking \texttt{\^{}pchan} for
+\texttt{net\_send}(\textit{pchan}, $m$, \textit{reliable}) models sending
+a message $m$ to
+\texttt{\^{}}\textit{pchan}, where \textit{pchan} is either \&\textit{s\_chan}
+or \&\textit{r\_chan}.
+The method places either $m$ (to model a successful send)
+or \texttt{()} (to model loss) in \texttt{\^{}}\textit{pchan}.
+The use of the \textit{reliable} flag will be explained later.
+\texttt{net\_recv}(\textit{pchan}) models checking \texttt{\^{}pchan} for
 the next message.
 
-Method \texttt{app\_send(m)} tries \emph{retransmitting} \texttt{m} until
+Method \texttt{app\_send}($m$) tries \emph{retransmitting} $m$ until
 an acknowledgment is received.
-Method \texttt{app\_recv(reliable)} returns the next successfully received
+Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
 message.
 Figure~\ref{fig:abptest} shows how the methods may be used to send and receive
 a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
-Only the last invocation of \texttt{app\_recv(reliable)} is invoked with
-\texttt{reliable == True}.  It causes the last acknowledgment to be sent
+Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
+\textit{reliable} == \texttt{True}.  It causes the last acknowledgment to be sent
 reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
 once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
