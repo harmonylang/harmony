@@ -3499,8 +3499,9 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
     else:
-        if False:       # TODO need to check on choosing states
-            assert not state.choosing
+        if state.choosing:
+            print("<td>choosing</td>", file=f)
+        else:
             if ctx in node.edges:
                 (nxtstate, nxtctx, steps) = node.edges[ctx]
                 if nxtstate == state:
@@ -3508,9 +3509,7 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
                 else:
                     print("<td>running</td>", file=f)
             else:
-                print("<td>running</td>", file=f)
-        else:
-            print("<td>running</td>", file=f)
+                print("<td>failed</td>", file=f)
 
     print("<td>", file=f)
     htmlloc(code, scope, ctx, traceid, f)
