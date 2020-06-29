@@ -1175,14 +1175,6 @@ class NaryOp(Op):
                 context.push(e1 in e2.s)
             else:
                 assert False, self
-        elif self.n == 3:
-            assert op == "if"
-            e3 = context.pop()
-            e2 = context.pop()
-            e1 = context.pop()
-            if not self.checktype(state, sa, isinstance(e2, bool)):
-                return
-            context.push(e1 if e2 else e3)
         else:
             assert False, self
         context.pc += 1
