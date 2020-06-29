@@ -4101,7 +4101,7 @@ at index \texttt{b} and ending just before index \texttt{f}\\
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-Address $n$ & compute address \\
+Address $n$ & compute address from $n$ components \\
 \hline
 Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
@@ -4115,9 +4115,9 @@ Continue & no-op (but causes a context switch) \\
 \hline
 Choose & choose an element from the set on top of the stack \\
 \hline
-Del & delete a shared variable \\
+Del [$v$] & delete shared variable $v$ \\
 \hline
-DelVar $v$ & delete process variable $v$ \\
+DelVar [$v$] & delete process variable $v$ \\
 \hline
 Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
@@ -4152,7 +4152,7 @@ Spawn & pop tag, argument, and method and spawn a new context \\
 \hline
 Split & pop set and push minimum and remainder \\
 \hline
-Stop & save context into shared variable and remove from context bag \\
+Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
 \hline
 Store [$v$] & pop a value from the stack and store it in a shared variable \\
 \hline
@@ -4170,7 +4170,8 @@ The top value must be an address value.  The remaining values are keys into dict
 The instruction then computes the address of \texttt{\^}$v_1~v_2~...~v_n$.
 \item Even though CXL code does not allow taking addresses of process variables, both
 shared and process variables can have addresses.
-\item \texttt{Load} and \texttt{LoadVar} instructions have an optional
+\item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
+and \texttt{Stop} instructions have an optional
 variable name: if omitted the top of the stack must contain the address of
 the variable.
 \item \texttt{Store} and \texttt{StoreVar} instructions have an optional
@@ -4216,9 +4217,9 @@ A context consists of the following:
 \hline
 name tag & a dictionary with atoms \texttt{.name} and \texttt{.tag} \\
 \hline
-program counter & a Program Counter value pointing into the code \\
+program counter & an integer value pointing into the code \\
 \hline
-end & a Program Counter value indicating the end of the process code \\
+frame pointer & an integer value pointing into the stack \\
 \hline
 atomic & if non-zero, the process is in atomic mode \\
 \hline
@@ -4237,6 +4238,9 @@ Details:
 is executing;
 \item The tag in a name tag is its argument by default.  Optionally
 \texttt{spawn} allows the tag to be specified explicitly;
+\item The frame pointer points to the current \emph{stack frame},
+which consists of the caller's frame and variables, the argument to
+the method, and the return address.
 \item A process terminates when it reaches the \texttt{Return} instruction
 of the method or when it hits a fault.  Faults include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
@@ -4251,9 +4255,8 @@ in a CXL program.
 A context is considered \emph{blocked}
 \index{blocked process}%
 if there does not exist a
-sequence instructions that the process can execute that either writes
-to a shared variable (even if that leaves the shared variable unchanged)
-or terminates the process.
+sequence instructions that the process can execute by itself
+that leads to its termination.
 
 \chapter{The CXL Virtual Machine}
 
