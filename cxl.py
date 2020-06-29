@@ -1013,7 +1013,7 @@ class NaryOp(Op):
         (op, file, line, column) = self.op
         assert len(context.stack) >= self.n
         sa = context.stack[-self.n:]
-        if op in { "+", "*", "and", "or" }:
+        if op in { "+", "*" }:
             assert self.n > 1
             e2 = context.pop()
             for i in range(1, self.n):
@@ -1044,19 +1044,8 @@ class NaryOp(Op):
                         if not self.checktype(state, sa, isinstance(e2, SetValue)):
                             return
                         e2 = SetValue(e2.s.intersection(e1.s))
-                elif op == "and":   # may not need this
-                    if not self.checktype(state, sa, isinstance(e1, bool)):
-                        return
-                    if not self.checktype(state, sa, isinstance(e2, bool)):
-                        return
-                    e2 = e2 and e1
-                else:   # may not need this
-                    assert op == "or", op
-                    if not self.checktype(state, sa, isinstance(e1, bool)):
-                        return
-                    if not self.checktype(state, sa, isinstance(e2, bool)):
-                        return
-                    e2 = e2 or e1
+                else:
+                    assert False, op
             context.push(e2)
         elif self.n == 1:
             e = context.pop()
@@ -1520,14 +1509,17 @@ class NaryAST(AST):
     def gencode(self, scope, code):
         (op, file, line, column) = self.op
         n = len(self.args)
-        if n == 2 and (op == "and" or op == "or"):
+        if op == "and" or op == "or":
             self.args[0].compile(scope, code)
-            code.append(JumpCondOp(op == "and", len(code) + 3))
+            pcs = []
+            for i in range(1, n):
+                pcs.append(len(code))
+                code.append(None)
+                self.args[i].compile(scope, code)
+            code.append(JumpOp(len(code) + 2))
+            for pc in pcs:
+                code[pc] = JumpCondOp(op == "or", len(code))
             code.append(PushOp((op == "or", file, line, column)))
-            pc = len(code)
-            code.append(None)
-            self.args[1].compile(scope, code)
-            code[pc] = JumpOp(len(code))
         elif n == 3 and op == "if":
             self.args[1].compile(scope, code)
             pc1 = len(code)
