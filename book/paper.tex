@@ -57,7 +57,7 @@ XX\=XXX\=XXX\kill
 {
   name=blocked process,
   description={is a process that is waiting on a low-level synchronization primitive
-    and cannot make progress without the help of another process.
+    and cannot terminate without the help of another process.
       For example, a process that is waiting for a spinlock to become available}
 }
 \newglossaryentry{busy waiting}
@@ -1942,7 +1942,7 @@ chapters.
 We call a process \emph{blocked}
 \index{blocked process}%
 in a state if the process is waiting on a low-level synchronization
-variable and cannot make progress without the help of another process.
+variable and cannot terminate without the help of another process.
 A process trying to
 acquire a test-and-set spinlock held by another process is a good example
 of a process being blocked.
