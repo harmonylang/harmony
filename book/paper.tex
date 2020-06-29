@@ -2924,7 +2924,7 @@ There are two operations on condition variables: \texttt{wait}
 and
 \texttt{signal}.
 \index{signal}%
-If \texttt{c} is a pointer to a condition variable, then the semantics of the
+If $c$ is a pointer to a condition variable, then the semantics of the
 operations, in CXL, are as follows:
 
 \begin{code}
@@ -3061,8 +3061,8 @@ it does not have built-in language support for them but instead associates condi
 with explicit locks.
 Figure~\ref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
-\texttt{Condition(lk)} creates a new condition variable associated with the given pointer
-to a lock \texttt{lk}.
+\texttt{Condition}(\textit{lk}) creates a new condition variable associated with the given pointer
+to a lock \textit{lk}.
 The condition variable itself is represented by a dictionary containing the pointer to the lock
 and a bag of name tags of processes waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
@@ -3091,13 +3091,13 @@ Many implementation of condition variables depend on this, and optimized impleme
 of condition variables often allow so-called ``spurious wakeups,'' where \texttt{wait}
 may sometimes return even if the conditon variable has not been notified.
 
-In \texttt{release\_rlock}, notice that \texttt{notify(\&wcond)} is invoked when there
+In \texttt{release\_rlock}, notice that \texttt{notify}(\&\textit{wcond}) is invoked when there
 are no readers left, \emph{without} checking if there are writers waiting to enter.
 With Mesa monitors this is ok, because calling \texttt{notify} is a no-op if no process
 is waiting.
 
-\texttt{release\_wlock} executes \texttt{notifyAll(\&wcond)} as well as
-\texttt{notify(\&wcond)}.
+\texttt{release\_wlock} executes \texttt{notifyAll}(\&\textit{wcond}) as well as
+\texttt{notify}(\&\textit{wcond)}.
 Again, because we do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter, or, alternatively,
 up to one waiting writer can enter.  So \texttt{release\_wlock} wakes up all
