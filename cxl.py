@@ -562,46 +562,92 @@ class StoreOp(Op):
             context.pc += 1
 
 class DelOp(Op):
-    def __init__(self, n):
-        self.n = n                  # number of indexes
+    def __init__(self, name):
+        self.name = name
 
     def __repr__(self):
-        return "Del " + str(self.n)
+        if self.name != None:
+            (lexeme, file, line, column) = self.name
+            return "Del " + lexeme
+        else:
+            return "Del"
+
+    def explain(self):
+        if self.name == None:
+            return "pop an address and delete the shared variable at the address"
+        else:
+            return "delete the shared variable " + self.name[0]
 
     def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        av = indexes[0]
-        assert isinstance(av, AddressValue), indexes
-        state.delete(av.indexes + indexes[1:])
-        context.pc += 1
+        if self.name == None:
+            av = context.pop()
+            if not isinstance(av, AddressValue):
+                context.failure = "Error: not an address " + \
+                                    str(self.token) + " -> " + str(av)
+                return
+            lv = av.indexes
+            name = lv[0]
+        else:
+            (lexeme, file, line, column) = self.name
+            lv = [lexeme]
+            name = lexeme
+
+        if not state.initializing and (name not in state.vars.d):
+            context.failure = "Error: deleting an uninitialized shared variable " \
+                    + name + ": " + str(self.token)
+        else:
+            state.delete(lv)
+            context.pc += 1
 
 class StopOp(Op):
-    def __init__(self, n):
-        self.n = n                  # number of indexes
+    def __init__(self, name):
+        self.name = name
 
     def __repr__(self):
-        return "Stop " + str(self.n)
+        if self.name != None:
+            (lexeme, file, line, column) = self.name
+            return "Stop " + lexeme
+        else:
+            return "Stop"
+
+    def explain(self):
+        if self.name == None:
+            return "pop an address and store context at that address"
+        else:
+            return "store context at " + self.name[0]
 
     def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        av = indexes[0]
-        assert isinstance(av, AddressValue), indexes
+        if self.name == None:
+            av = context.pop()
+            if not isinstance(av, AddressValue):
+                context.failure = "Error: not an address " + \
+                                    str(self.token) + " -> " + str(av)
+                return
+            lv = av.indexes
+            name = lv[0]
+        else:
+            (lexeme, file, line, column) = self.name
+            lv = [lexeme]
+            name = lexeme
 
-        # First update the context before saving it
-        context.stopped = True
-        context.pc += 1
-        assert isinstance(state.code[context.pc], ContinueOp)
+        if not state.initializing and (name not in state.vars.d):
+            context.failure = "Error: using an uninitialized shared variable " \
+                    + name + ": " + str(self.token)
+        else:
+            # Update the context before saving it
+            context.stopped = True
+            context.pc += 1
+            assert isinstance(state.code[context.pc], ContinueOp)
 
-        # Save the context
-        state.stop(av.indexes + indexes[1:], context)
+            # Save the context
+            state.stop(lv, context)
 
 class ContinueOp(Op):
     def __repr__(self):
         return "Continue"
+
+    def explain(self):
+        return "a no-op, must follow a Stop operation"
 
     def eval(self, state, context):
         context.pc += 1
@@ -654,20 +700,30 @@ class StoreVarOp(Op):
         context.pc += 1
 
 class DelVarOp(Op):
-    def __init__(self, v, n):
+    def __init__(self, v):
         self.v = v
-        self.n = n
 
     def __repr__(self):
-        (lexeme, file, line, column) = self.v
-        return "DelVar " + str(lexeme) + ", " + str(self.n)
+        if self.v == None:
+            return "DelVar"
+        else:
+            (lexeme, file, line, column) = self.v
+            return "DelVar " + str(lexeme)
+
+    def explain(self):
+        if self.v == None:
+            return "pop an address of a method variable and delete that variable"
+        else:
+            return "delete method variable " + self.v[0]
 
     def eval(self, state, context):
-        (lexeme, file, line, column) = self.v
-        indexes = []
-        for i in range(self.n):
-            indexes.append(context.pop())
-        context.delete([lexeme] + indexes)
+        if self.v == None:
+            av = context.pop();
+            assert isinstance(av, AddressValue)
+            context.delete(av.indexes)
+        else:
+            (lexeme, file, line, column) = self.v
+            context.delete([lexeme])
         context.pc += 1
 
 class ChooseOp(Op):
@@ -829,6 +885,9 @@ class AtomicIncOp(Op):
     def __repr__(self):
         return "AtomicInc"
 
+    def explain(self):
+        return "increment atomic counter of context; process runs uninterrupted if larger than 0"
+
     def eval(self, state, context):
         context.atomic += 1
         context.pc += 1
@@ -837,7 +896,11 @@ class AtomicDecOp(Op):
     def __repr__(self):
         return "AtomicDec"
 
+    def explain(self):
+        return "decrement atomic counter of context"
+
     def eval(self, state, context):
+        assert context.atomic > 0
         context.atomic -= 1
         context.pc += 1
 
@@ -1312,9 +1375,9 @@ class SetComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
-        code.append(DelVarOp(self.var, 0))
-        code.append(DelVarOp(S, 0))
-        code.append(DelVarOp(N, 0))
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
 
 class DictComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -1370,9 +1433,9 @@ class DictComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var, 0))
-        code.append(DelVarOp(S, 0))
-        code.append(DelVarOp(N, 0))
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
 
 class ListComprehensionAST(AST):
     def __init__(self, value, var, expr):
@@ -1442,10 +1505,10 @@ class ListComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var, 0))
-        code.append(DelVarOp(S, 0))
-        code.append(DelVarOp(N, 0))
-        code.append(DelVarOp(I, 0))
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
+        code.append(DelVarOp(I))
 
 # N-ary operator
 class NaryAST(AST):
@@ -1849,24 +1912,38 @@ class DelAST(AST):
     def compile(self, scope, code):
         assert isinstance(self.lv, LValueAST)
         n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(PushAddressOp(lv.name))
-                code.append(DelOp(n))
+                if n > 1:
+                    code.append(PushAddressOp(lv.name))
+                    for i in range(1, n):
+                        self.lv.indexes[i].compile(scope, code)
+                    code.append(AddressOp(n))
+                    code.append(DelOp(None))
+                else:
+                    code.append(DelOp(lv.name))
             else:
                 (t, v) = tv
                 if t == "variable":
-                    code.append(DelVarOp(v, n - 1))
+                    if n > 1:
+                        code.append(PushAddressOp(v))
+                        for i in range(1, n):
+                            self.lv.indexes[i].compile(scope, code)
+                        code.append(AddressOp(n))
+                        code.append(DelVarOp(None))
+                    else:
+                        code.append(DelVarOp(v))
                 else:
                     assert False, tv
         else:
-            assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(DelOp(n))
+            if n > 1:
+                for i in range(1, n):
+                    self.lv.indexes[i].compile(scope, code)
+                code.append(AddressOp(n))
+            code.append(DelOp(None))
 
 class StopAST(AST):
     def __init__(self, lv):
@@ -1878,14 +1955,17 @@ class StopAST(AST):
     def compile(self, scope, code):
         assert isinstance(self.lv, LValueAST)
         n = len(self.lv.indexes)
-        for i in range(1, n):
-            self.lv.indexes[n - i].compile(scope, code)
         lv = self.lv.indexes[0]
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv == None:
-                code.append(PushAddressOp(lv.name))
-                code.append(StopOp(n))
+                if n > 1:
+                    for i in range(1, n):
+                        self.lv.indexes[n - i].compile(scope, code)
+                    code.append(PushAddressOp(lv.name))
+                    code.append(StopOp(None))
+                else:
+                    code.append(StopOp(lv.name))
                 code.append(ContinueOp())
             else:
                 print("Error: Can't store state in process variable")
@@ -1893,7 +1973,11 @@ class StopAST(AST):
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
-            code.append(StopOp(n))
+            if n > 1:
+                for i in range(1, n):
+                    self.lv.indexes[i].compile(scope, code)
+                code.append(AddressOp(n))
+            code.append(StopOp(None))
             code.append(ContinueOp())
 
 class AddressAST(AST):
@@ -2014,7 +2098,7 @@ class LetAST(AST):
     def delete(self, scope, code, var):
         (type, v) = var;
         if type == "name":
-            code.append(DelVarOp(v, 0))  # remove variable
+            code.append(DelVarOp(v))  # remove variable
             (lexeme, file, line, column) = v
             del scope.names[lexeme]
         else:
@@ -2072,8 +2156,8 @@ class ForAST(AST):
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
 
-        code.append(DelVarOp(self.var, 0))
-        code.append(DelVarOp(S, 0))
+        code.append(DelVarOp(self.var))
+        code.append(DelVarOp(S))
 
 class AtomicAST(AST):
     def __init__(self, stat):

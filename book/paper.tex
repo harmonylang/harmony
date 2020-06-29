@@ -612,8 +612,11 @@ an array \textit{done} with two booleans.
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
 Method \texttt{main} waits until \textit{done} flags are set to \texttt{True}.
-After that, it verifies that the value of \textit{count} equals 2.  If not,
-it reports the actual value of \textit{count}.
+After that, it verifies that the value of \textit{count} equals 2.
+Like Python, CXL supports \texttt{assert} statements with two arguments:
+the first is a Boolean condition, and the second is a value that is
+reported if the condition fails, in this case
+the actual value of \textit{count}.
 The program spawns three processes.
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
@@ -1782,8 +1785,8 @@ Many CPUs have an atomic ``test-and-set'' (TAS)
 \index{TAS}%
 operation.
 Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
-Here $s$ points to a shared boolean variable and $p$
-to a private boolean variable, belonging to some process.
+Here $s$ points to a shared Boolean variable and $p$
+to a private Boolean variable, belonging to some process.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to \texttt{True} (``set'').
@@ -3823,7 +3826,7 @@ Below is a complete list of CXL value types with examples:
 \hline
 Boolean & \texttt{False}, \texttt{True} \\
 \hline
-integers & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
+Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
 Atom & \texttt{.example}, \texttt{.test1} \\
 \hline
@@ -3884,11 +3887,11 @@ CXL currently supports the following operators:
 \hline
 \texttt{e > e, e >= e} & any two CXL values \\
 \hline
-\texttt{e and e and ...} & two or more Booleans \\
+\texttt{e and e and ...} & two or more booleans \\
 \hline
-\texttt{e or e or ...} & two or more Booleans \\
+\texttt{e or e or ...} & two or more booleans \\
 \hline
-\texttt{not e} & a Boolean \\
+\texttt{not e} & a boolean \\
 \hline
 \texttt{-e} & an integer \\
 \hline
@@ -3906,7 +3909,7 @@ CXL currently supports the following operators:
 \hline
 \texttt{e [not] in e} & first is any CXL value, second is set \\
 \hline
-\texttt{e if e else e} & middle \texttt{e} must be a Boolean \\
+\texttt{e if e else e} & middle \texttt{e} must be a boolean \\
 \hline
 \texttt{\^{}e} & an address \\
 \hline
@@ -3984,7 +3987,7 @@ CXL currently supports the following statements:
 \hline
 \texttt{del lv} & delete\\
 \hline
-\texttt{assert b [, x]} & \texttt{b} is a Boolean.  If \texttt{False}, optionally print expression \texttt{e}\\
+\texttt{assert b [, x]} & \texttt{b} is a boolean.  If \texttt{False}, optionally print expression \texttt{e}\\
 \hline
 \texttt{const v = e} & \texttt{v} is an identifier, \texttt{e} is a constant expression\\
 \hline
@@ -3992,9 +3995,9 @@ CXL currently supports the following statements:
 \hline
 \texttt{let v = e, ...: S} & \texttt{e} is an expression, \texttt{S} a list of statements\\
 \hline
-\texttt{if b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements\\
+\texttt{if b: S} & \texttt{b} is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{while b: S} & \texttt{b} is a Boolean, \texttt{S} a list of statements\\
+\texttt{while b: S} & \texttt{b} is a boolean, \texttt{S} a list of statements\\
 \hline
 \texttt{for v in e: S} & \texttt{e} is a set evaluated in order,
                             \texttt{S} a list of statements\\
@@ -4223,7 +4226,7 @@ stack & a list of CXL values \\
 \hline
 register & a CXL dictionary mapping atoms (representing process variables) to CXL values \\
 \hline
-stopped & a Boolean indicating if the context is stopped \\
+stopped & a boolean indicating if the context is stopped \\
 \hline
 \end{tabular}
 \vspace{1em}
@@ -4238,7 +4241,7 @@ is executing;
 of the method or when it hits a fault.  Faults include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
 variable, as well as when an assertion fails;
-\item The execution of a process in atomic mode does not get interleaved
+\item The execution of a process in \emph{atomic mode} does not get interleaved
 with that of other processes.
 \item The register of a process always contains a dictionary, mapping
 atoms to arbitrary values.  The atoms correspond to the variable names
@@ -4271,9 +4274,9 @@ stopbag & a bag of stopped contexts \\
 \hline
 choosing & if not \texttt{None}, indicates a context that is choosing \\
 \hline
-failure & Boolean indicating some context has failed \\
+failure & boolean indicating some context has failed \\
 \hline
-initializing & Boolean indicating that the state is not fully initialized. \\
+initializing & boolean indicating that the state is not fully initialized. \\
 \hline
 \end{tabular}
 \vspace{1em}
