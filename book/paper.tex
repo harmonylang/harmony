@@ -711,7 +711,17 @@ it is easier to find concurrency bugs using CXL.
 Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
 \begin{enumerate}
 \item Run Figure~\ref{fig:incpy} using Python.  Does the assertion fail?
-\item Using a script, run Figure~\ref{fig:incpy} 1000 times.  How many times does the assertion
+\item Using a script, run Figure~\ref{fig:incpy} 1000 times.
+For example, if you are using the bash shell, you can do the following:
+\begin{code}
+\begin{verbatim}
+for i in {1..1000}
+do
+    python Up.py
+done
+\end{verbatim}
+\end{code}
+How many times does the assertion
 fail (if any).
 \end{enumerate}
 \item Figure~\ref{fig:incmany} is a version of Figure~\ref{fig:incpy} that has each
