@@ -2666,7 +2666,7 @@ class ContextValue(Value):
         return self.stack.pop()
 
     def key(self):
-        return (100, self.__hash__())
+        return (100, (key(self.nametag), self.pc, self.__hash__()))
 
 class State:
     def __init__(self, code, labels):
