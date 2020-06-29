@@ -376,6 +376,9 @@ class SplitOp(Op):
     def __repr__(self):
         return "Split"
 
+    def explain(self):
+        return "pops a set value and pushes the smallest element and the remaining set"
+
     def eval(self, state, context):
         v = context.pop()
         assert isinstance(v, SetValue)
@@ -401,6 +404,9 @@ class DupOp(Op):
 class GoOp(Op):
     def __repr__(self):
         return "Go"
+
+    def explain(self):
+        return "pops a context and a value, restores the corresponding process, and pushes the value on its stack"
 
     def eval(self, state, context):
         ctx = context.pop()

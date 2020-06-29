@@ -309,11 +309,11 @@ read and update shared variables
 concurrently and synchronize with one another makes programs more
 complicated than programs where only one thing happens at a time.
 
-\glsadd{concurrent execution}
-\glsadd{shared variable}
-\glsadd{sequential execution}
-\glsadd{determinism}
-\glsadd{atomicity}
+\glsadd{concurrent execution}%
+\glsadd{shared variable}%
+\glsadd{sequential execution}%
+\glsadd{determinism}%
+\glsadd{atomicity}%
 
 Why are concurrent
 programs more complicated than sequential ones?
@@ -333,7 +333,7 @@ may never occur when the program is instrumented to find them
 (so-called \emph{Heisenbugs}).
 \index{Heisenbug}%
 \item In a sequential program, each statement and each function can be
-thought of as happening \emph{atomically}
+thought of as happening \emph{atomically} (indivisibly)
 \index{atomicity}%
 because there is no other activity interfering with their execution.
 Even though a statement or function may
@@ -352,7 +352,7 @@ triggered even when running a test millions of times.  And even if
 a bug does get triggered, the source of the bug may be hard to find
 because it is hard to reproduce.
 
-\glsadd{model checking}
+\glsadd{model checking}%
 
 This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
@@ -370,16 +370,16 @@ Model checking is not a replacement for formal verification.
 \index{formal verification}%
 Formal verification proves that a program is correct.  Model checking only
 verifies that a program is correct for some \emph{model}.  Think of
-a model as a test program.  Because model checking tries every possible
-execution, this means that the test program needs to be
-simple or it will take longer than we may care to wait for or run
-out of memory.
+a model as a test program.
+Because model checking tries every possible execution, the test
+program needs to be simple. Otherwise it may take longer than we
+care to wait for or run out of memory.
 In particular, the model needs to have a relatively small number of
 reachable states.
 
 So if model checking does not prove a program correct, why is it
-useful?  To answer that question consider, for example, a sorting
-algorithm.
+useful?
+To answer that question, let us consider a sorting algorithm.
 Now suppose we create a test program, a model, that tries sorting
 \emph{all} lists of up to five numbers chosen from the set \{ 1,
 2, 3, 4, 5 \}.  Model checking proves that for those particular
@@ -402,7 +402,7 @@ that sorts all lists of up to five numbers correctly but fails to
 do so for a list of 6 numbers.  (Hint: simply use an \textbf{if}
 statement.)
 
-\glsadd{invariant}
+\glsadd{invariant}%
 
 While model checking does not in general prove an algorithm correct,
 it can help with proving an algorithm correct.
@@ -431,7 +431,7 @@ The syntax and semantics of CXL is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
 use.  We will assume that the reader is familiar with the basics
 of Python programming.  We also will assume that the reader
-understand some basics of machine architecture and how programs
+understands some basics of machine architecture and how programs
 are executed.  For example, we assume that the reader is familiar
 with the concepts of CPU, memory, register, stack, and machine
 instructions.
@@ -598,15 +598,7 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 \chapter{The Problem of Concurrent Programming}
 \label{ch:concurrent}
 
-\begin{figure}
-\begin{code}
-\cxlsource{Up}
-\end{code}
-\caption{[Up.cxl] Incrementing twice in parallel.}
-\label{fig:inc}
-\end{figure}
-
-\glsadd{process}
+\glsadd{process}%
 
 Concurrent programming, aka multithreaded programming, involves multiple
 processes
@@ -624,19 +616,29 @@ it reports the actual value of \textit{count}.
 The program spawns three processes.
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
+Note that although the processes are \emph{spawned} one at a time,
+they will execute concurrently.  It is, for example, quite possible
+that \texttt{incrementer(1)} finishes before \texttt{incrementer(0)}
+even gets going.
+
+\begin{figure}[h]
+\begin{code}
+\cxlsource{Up}
+\end{code}
+\caption{[Up.cxl] Incrementing twice in parallel.}
+\label{fig:inc}
+\end{figure}
 
 \begin{quote}
 \begin{itemize}
 \item Before you run the program, what do you think will happen?  Is the
 program correct in that \textit{count} will always end up being 2?
-\item What are the possible values of \textit{count} at the time of the
-\textbf{assert} statement?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
-underlying machine architecture are atomic---in fact they are.)
+underlying machine architecture are atomic (indivisible)---in fact they are.)
 \end{itemize}
 \end{quote}
 
-\glsadd{machine instruction}
+\glsadd{machine instruction}%
 
 What is going on is that the CXL program is compiled to machine instructions,
 \index{machine instruction}%
@@ -683,7 +685,7 @@ When running CXL, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
 
-\glsadd{race condition}
+\glsadd{race condition}%
 
 If one thinks of the assertion as providing the specification of the
 program, then clearly its implementation does not satisfy its specification.
@@ -866,7 +868,7 @@ and \texttt{.tag}, but we shall often abbreviate it using the notation
 For example, in Figure~\ref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
-\glsadd{context}
+\glsadd{context}%
 
 The state of a process is called a \emph{context} (aka \emph{continuation}):
 \index{context}%
@@ -944,7 +946,7 @@ Open file://.../cxl.html for more information
 \label{fig:incoutput}
 \end{figure}
 
-\glsadd{stack machine}
+\glsadd{stack machine}%
 
 Compiling the code in Figure~\ref{fig:inc} results in the CVM bytecode
 listed in Figure~\ref{fig:inccode}.
@@ -1118,8 +1120,8 @@ time.
 \index{critical section}%
 \index{critical region}%
 
-\glsadd{critical section}
-\glsadd{thread safety}
+\glsadd{critical section}%
+\glsadd{thread safety}%
 
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
@@ -1135,7 +1137,7 @@ processes (or threads) and free of race conditions is called \emph{thread-safe}.
 \index{thread safety}%
 \index{thread}%
 
-\glsadd{mutual exclusion}
+\glsadd{mutual exclusion}%
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
@@ -1254,7 +1256,7 @@ specification.
 \label{fig:upturn}
 \end{figure}
 
-\glsadd{lock}
+\glsadd{lock}%
 
 You may already have heard of the concept of a \emph{lock}
 \index{lock}%
@@ -1392,8 +1394,8 @@ exclusion and progress.
 \label{fig:states}
 \end{figure}
 
-\glsadd{state}
-\glsadd{process variable}
+\glsadd{state}%
+\glsadd{process variable}%
 
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
@@ -1413,8 +1415,8 @@ changes).  We call that a \emph{step}.
 \index{step}%
 Steps in CXL are atomic.
 
-\glsadd{step}
-\glsadd{trace}
+\glsadd{step}%
+\glsadd{trace}%
 
 The CVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
@@ -1724,7 +1726,7 @@ That would allow you to simulate object methods.
 \label{ch:spinlock}
 \index{spinlock}%
 
-\glsadd{spinlock}
+\glsadd{spinlock}%
 
 \begin{figure}
 \begin{code}
@@ -1746,7 +1748,7 @@ so-called \emph{interlock instructions}:
 special machine instructions
 that can read memory and then write it in an indivisible step.
 
-\glsadd{interlock instruction}
+\glsadd{interlock instruction}%
 
 While the CVM does not have any specific built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
@@ -1921,7 +1923,7 @@ The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
 
-\glsadd{blocked process}
+\glsadd{blocked process}%
 
 We call a process \emph{blocked}
 \index{blocked process}%
@@ -2034,7 +2036,7 @@ version of the module.
 \label{ch:rdwrbusy}
 \index{reader/writer lock}%
 
-\glsadd{reader/writer lock}
+\glsadd{reader/writer lock}%
 
 \begin{figure}
 \begin{code}
@@ -2123,7 +2125,7 @@ critical section, any other reader is also able to enter.
 \label{fig:rwblock}
 \end{figure}
 
-\glsadd{busy waiting}
+\glsadd{busy waiting}%
 
 While correct, it is not considered a good solution.
 The solution is an example of what is called \emph{busy-waiting}
@@ -2282,7 +2284,7 @@ write lock and then obtaining the read lock.
 \label{ch:semaphore}
 \index{semaphore}%
 
-\glsadd{semaphore}
+\glsadd{semaphore}%
 
 \begin{figure}
 \begin{code}
@@ -2395,7 +2397,7 @@ that it is a permutation of the original array.
 \index{bounded buffer}%
 \index{producer/consumer problem}%
 
-\glsadd{producer/consumer problem}
+\glsadd{producer/consumer problem}%
 
 \begin{figure}
 \begin{center}
@@ -2602,7 +2604,7 @@ to block.
 \label{fig:RWsplitsema}
 \end{figure}
 
-\glsadd{conditional critical section}
+\glsadd{conditional critical section}%
 
 Reader/writer locks and bounded buffers are both examples of what are
 sometimes called \emph{conditional critical sections}
@@ -2748,7 +2750,7 @@ for southbound cars.
 \label{ch:starvation}
 \index{starvation}%
 
-\glsadd{starvation}
+\glsadd{starvation}%
 
 \begin{figure}
 \begin{code}
@@ -2760,7 +2762,7 @@ for southbound cars.
 \label{fig:RWfair}
 \end{figure}
 
-\glsadd{property}
+\glsadd{property}%
 
 A \emph{property}
 \index{property}%
@@ -2805,7 +2807,7 @@ We shall call such a solution \emph{fair}
 (although it does not quite
 match the usual formal nor vernacular concepts of fairness).
 
-\glsadd{fairness}
+\glsadd{fairness}%
 
 Unfortunately, such is not the case for the
 reader/writer solutions that we presented thus far.
@@ -2888,8 +2890,8 @@ semaphore.
 \chapter{Monitors}
 \label{ch:monitors}
 
-\glsadd{monitor}
-\glsadd{condition variable}
+\glsadd{monitor}%
+\glsadd{condition variable}%
 
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
@@ -3127,7 +3129,7 @@ it is fair.
 \label{ch:deadlock}
 \index{deadlock}%
 
-\glsadd{deadlock}
+\glsadd{deadlock}%
 
 \begin{figure}
 \begin{code}
@@ -3317,7 +3319,7 @@ so continually?
 \index{actor model}%
 \index{message passing}%
 
-\glsadd{actor model}
+\glsadd{actor model}%
 
 \begin{figure}
 \begin{center}
@@ -3561,7 +3563,7 @@ for each client, or solve the problem using a single pair of channels.
 \label{ch:nonblocking}
 \index{non-blocking synchronization}%
 
-\glsadd{non-blocking synchronization}
+\glsadd{non-blocking synchronization}%
 
 \begin{figure}
 \begin{code}
@@ -3635,7 +3637,7 @@ values can be added using \texttt{lst\_insert} or deleted using
 There is also a read-only operation: \texttt{lst\_contains} checks if
 a particular value is in the list.
 
-\glsadd{linearizable}
+\glsadd{linearizable}%
 
 The implementation uses the \texttt{alloc} module for dynamic allocation
 \index{dynamic allocation}%
@@ -3729,7 +3731,7 @@ read-only operation.  Explain how a \texttt{seqlock} can lead to starvation.
 \label{ch:barrier}
 \index{barrier synchronization}%
 
-\glsadd{barrier synchronization}
+\glsadd{barrier synchronization}%
 
 \begin{figure}
 \begin{center}
