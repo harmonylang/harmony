@@ -2711,6 +2711,7 @@ class State:
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()
         s.stopbag = self.stopbag.copy()
+        s.choosing = self.choosing
         s.initializing = self.initializing
         return s
 
@@ -2798,7 +2799,10 @@ class Node:
         self.len = len          # length of path to initial state
         self.ctx = ctx          # the context that made the hop from the parent state
         self.steps = steps      # list of microsteps
-        self.edges = {}         # forward edges (ctx -> <nextState, nextContext, steps>)
+
+        # if state.choosing, maps choice, else context
+        self.edges = {}         # map to <nextState, nextContext, steps>
+
         self.sources = set()    # backward edges
         self.expanded = False   # lazy deletion
         self.issues = set()     # set of problems with this state
@@ -2948,11 +2952,15 @@ def onestep(state, ctx, choice, visited, todo, node):
     # Keep track of whether this is the same context as the parent context
     samectx = ctx == node.ctx
 
-    # Copy the state
+    # Copy the state before modifying it
     sc = state.copy()   # sc is "state copy"
+    sc.choosing = None
 
     # Make a copy of the context before modifying it (cc is "context copy")
     cc = ctx.copy()
+
+    # Copy the choice as well
+    choice_copy = choice
 
     steps = []
     localStates = set() # used to detect infinite loops
@@ -2962,6 +2970,7 @@ def onestep(state, ctx, choice, visited, todo, node):
         # execute one microstep
         steps.append(cc.pc)
 
+        # print status update
         global lasttime
         if time.time() - lasttime > 0.3:
             p_ctx.pad(nametag2str(cc.nametag))
@@ -2972,17 +2981,18 @@ def onestep(state, ctx, choice, visited, todo, node):
             print(p_ctx, p_pc, p_ns, p_dia, p_ql, end="\r")
             lasttime = time.time()
 
-        # If the current instruction is a "choose" instruction, make the specified choice
+        # If the current instruction is a "choose" instruction,
+        # make the specified choice
         if isinstance(sc.code[cc.pc], ChooseOp):
-            assert choice != None;
-            cc.stack[-1] = choice
+            assert choice_copy != None;
+            cc.stack[-1] = choice_copy
             cc.pc += 1
-            choice = None
+            choice_copy = None
         elif isinstance(sc.code[cc.pc], ReturnOp) and len(cc.stack) < 4:
             terminated = True
             break
         else:
-            assert choice == None
+            assert choice_copy == None
             try:
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
@@ -3003,11 +3013,13 @@ def onestep(state, ctx, choice, visited, todo, node):
                 cc.failure = "pc = " + str(cc.pc) + \
                     ": Error: choose can only be applied to non-empty sets"
                 break
+
+            # if there is no other process, we can just keep going
             if len(v.s) > 1:
                 sc.choosing = cc
                 break
             else:
-                choice = list(v.s)[0]
+                choice_copy = list(v.s)[0]
 
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
@@ -3055,7 +3067,7 @@ def onestep(state, ctx, choice, visited, todo, node):
         next.ctx = cc
         next.steps = steps
         todo.insert(0, sc)
-    node.edges[ctx] = (sc, cc, steps)
+    node.edges[choice if state.choosing else ctx] = (sc, cc, steps)
     next.sources.add(state)
     if cc.failure != None:
         next.issues.add("process failure")
@@ -3065,7 +3077,9 @@ def explore(s, visited, mapping, reach):
     hs = mapping[s]
     n = visited[s]
     result = set()
+    assert not s.choosing
     for (ctx, edge) in n.edges.items():
+        assert isinstance(ctx, ContextValue)
         (nextState, nextContext, nextSteps) = edge
         next = mapping[nextState]
         if next == hs:
@@ -3227,6 +3241,7 @@ def run(code, labels, map, step, blockflag):
 
         if state.choosing != None:
             ctx = state.choosing
+            assert ctx in state.ctxbag, ctx
             choices = ctx.stack[-1]
             assert isinstance(choices, SetValue), choices
             assert len(choices.s) > 0
@@ -3250,15 +3265,17 @@ def run(code, labels, map, step, blockflag):
         issues_found = True
 
     if not faultyState:
-        # See if all processes "can" terminate.  First looks for states where
-        # there are no processes.
+        # See if all processes "can" terminate.  First look for
+        # states where there are no processes.
         term = set()
         for (s, n) in visited.items():
             if blockflag:
                 # see if all processes are blocked
                 if len(s.ctxbag) > 0:
                     someRunning = False
+                    assert not s.choosing
                     for (ctx, next) in n.edges.items():
+                        assert isinstance(ctx, ContextValue)
                         (nxtstate, nxtctx, steps) = next
                         if nxtstate != s:
                             someRunning = True
@@ -3289,9 +3306,11 @@ def run(code, labels, map, step, blockflag):
 
             # See which processes are blocked
             node = visited[bad_state]
+            assert not bad_state.choosing
             running = 0
             blocked = 0
             for (ctx, next) in node.edges.items():
+                assert isinstance(ctx, ContextValue)
                 (nxtstate, nxtctx, steps) = next
                 if nxtstate == bad_state:
                     blocked += 1
@@ -3479,10 +3498,14 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
     else:
-        if ctx in node.edges:
-            (nxtstate, nxtctx, steps) = node.edges[ctx]
-            if nxtstate == state:
-                print("<td>blocked</td>", file=f)
+        if False:       # TODO need to check on choosing states
+            assert not state.choosing
+            if ctx in node.edges:
+                (nxtstate, nxtctx, steps) = node.edges[ctx]
+                if nxtstate == state:
+                    print("<td>blocked</td>", file=f)
+                else:
+                    print("<td>running</td>", file=f)
             else:
                 print("<td>running</td>", file=f)
         else:
@@ -3513,6 +3536,7 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
             print("</td></tr>", file=f)
         print("</table>", file=f)
         print("</td>", file=f)
+        assert not s.choosing
         if ctx in n.edges:
             (ns, nc, steps) = n.edges[ctx]
             print("<td>%s</td>"%htmlstrsteps(steps), file=f)
