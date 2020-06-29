@@ -2415,7 +2415,7 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=3in]{figures/pc-crop.pdf}
+\includegraphics[width=2.5in]{figures/pc-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of producers/consumers.}
 \label{fig:pc}
@@ -2513,35 +2513,35 @@ right order.}
 \end{figure}
 
 Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
-buffer using semaphores.  It features a circular bounded buffer \texttt{buf} with
+buffer using semaphores.  It features a circular bounded buffer \textit{buf} with
 slots numbered 1 through \texttt{NSLOTS}.  There are two indexes into
-the buffer: \texttt{b\_in} specifies where the next produced item is inserted,
-while \texttt{b\_out} specifies from where the next can be consumed.
+the buffer: \textit{b\_in} specifies where the next produced item is inserted,
+while \textit{b\_out} specifies from where the next can be consumed.
 As there may be multiple producers and multiple
 consumers, updates to the indexes, which are shared variables, must be protected.
-To this end, we use two semaphores as locks: \texttt{l\_in} for \texttt{b\_in}
-and \texttt{l\_out} for \texttt{b\_out}.
+To this end, we use two semaphores as locks: \textit{l\_in} for \textit{b\_in}
+and \textit{l\_out} for \textit{b\_out}.
 
 Without additional synchronization, the indexes may overflow and point to invalid
 entries in the circular buffer.
-For this, there is a semaphore \texttt{n\_full} that
+For this, there is a semaphore \textit{n\_full} that
 keeps track of the number of filled entries in the buffer and a semaphore
-\texttt{n\_empty} that keeps track of the number of empty entries in the buffer.
+\textit{n\_empty} that keeps track of the number of empty entries in the buffer.
 
-To add an item to the bounded buffer (\texttt{produce(item)}), the producing
+To add an item to the bounded buffer (\texttt{produce}(\textit{item})), the producing
 process first has to wait until there is room in the bounded buffer.
-To this end, it invokes \texttt{P(n\_empty)}, which waits until
-\texttt{n\_empty > 0} and atomically decrements \texttt{n\_empty} once this
+To this end, it invokes \texttt{P}(\textit{n\_empty}), which waits until
+$\mathit{n\_empty} > 0$ and atomically decrements \textit{n\_empty} once this
 is the case.  In other words, the producer procures an empty slot.
 Next, it adds the item to the next position in the buffer.
 Since there may be more than one empty slot, multiple producers may attempt
-to do the same thing concurrently.  Hence the use of the \texttt{l\_in}
+to do the same thing concurrently.  Hence the use of the \textit{l\_in}
 semaphore used as a lock.  Finally, once the item is added, the process
-increments the \texttt{n\_full} semaphore to signal to consumers that
+increments the \textit{n\_full} semaphore to signal to consumers that
 an item is available.
 The consumer code is symmetric.
 
-Note the quite different usage of the \texttt{l\_} semaphores and \texttt{n\_}
+Note the quite different usage of the \textit{l\_} semaphores and \textit{n\_}
 semaphores.
 People often call semaphores that are used as locks \emph{binary semaphores},
 \index{binary semaphore}%
@@ -2576,7 +2576,7 @@ Each consumer consumes two tuples and checks that the tuples are different
 and that, if the two tuples come from the same producer, then they have to
 be in the order sent.
 Moreover, consumers add the tuples they received to the set
-\texttt{received} (atomically---a lock could have been used here as well).)
+\textit{received} (atomically---a lock could have been used here as well).)
 The \texttt{main()} process waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
@@ -2586,7 +2586,7 @@ exactly the set of tuples that the producers produce.
 \texttt{produce()} fails if the buffer is full rather than block.
 \texttt{produce()} should return \texttt{False} if it fails
 and return \texttt{True} if it succeeds.
-\item Implement a \emph{bounded stack}.  Method \texttt{push(item)}
+\item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
 \item \label{ex:gpu} Implement a thread-safe GPU allocator by modifying
@@ -2594,7 +2594,7 @@ Figure~\ref{fig:gpu}.
 There are \texttt{N} GPUs identified by the numbers
 1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
-Method \texttt{gpuRelease(gpu)} releases the given GPU.  It never needs
+Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
 to block.
 \end{problems}
 
