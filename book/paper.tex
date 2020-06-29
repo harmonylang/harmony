@@ -3602,22 +3602,23 @@ The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
 Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
 is not necessarily practical.
-There are two variables.  \texttt{items} is an unbounded array with each
-entry initialized to \texttt{()}.  \texttt{back} is an index into the
+There are two variables.  \textit{items} is an unbounded array with each
+entry initialized to \texttt{()}.  \textit{back} is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two interlock instructions:
 \begin{itemize}
-\item \texttt{inc(p)}: atomically increments \texttt{\^{}p} and returns
+\item \texttt{inc}($p$): atomically increments \texttt{\^{}}$p$ and returns
 the old value;
-\item \texttt{swap(p)}: sets \texttt{\^{}p} to \texttt{()} and returns
+\item \texttt{swap}($p$): sets \texttt{\^{}}$p$ to \texttt{()} and returns
 the old value.
 \end{itemize}
 
-Method \texttt{produce(item)} uses \texttt{inc(\&back)} to allocate
-the next available slot in the \texttt{items} array.
+Method \texttt{produce}(\textit{item}) uses \texttt{inc}(\&\textit{back})
+to allocate
+the next available slot in the \textit{items} array.
 It stores the item as a singleton tuple.
 Method \texttt{consume()} repeatedly scans the array, up to the
-\texttt{back} index, trying to find an item to return.
+\textit{back} index, trying to find an item to return.
 To check an entry, it uses \texttt{swap()}
 to atomically remove an item from a slot if there is one.
 This way, if two or more processes attempt to extract an item from
@@ -3629,7 +3630,7 @@ would with solutions based on critical sections.
 On the contrary, it helps them because it creates less contention.
 Unfortunately, the solution is not practical for the following reasons:
 \begin{itemize}
-\item The \texttt{items} array must be of infinite size if an unbounded number
+\item The \textit{items} array must be of infinite size if an unbounded number
 of items may be produced;
 \item Each slot in the array is only used once, which is inefficient;
 \item the \texttt{inc} and \texttt{swap} interlock instructions are not
@@ -3668,12 +3669,12 @@ some point between their invocation and return.
 
 The list has two ``book-end'' nodes with values \texttt{-inf} and
 \texttt{inf} (like the Python \texttt{math.inf} constants).
-Each node has a lock, a value, and \texttt{next}, a pointer to the next node
+Each node has a lock, a value, and \textit{next}, a pointer to the next node
 (which is \texttt{None} for the final \texttt{inf} node).
-The \texttt{lst\_find(lst, v)} method is a helper function for update
+The \texttt{lst\_find}(\textit{lst}, $v$) method is a helper function for update
 methods that
-finds and locks two consecutive nodes \texttt{before} and \texttt{after}
-such that \texttt{before.value $<$ v $\le$ after.value}.
+finds and locks two consecutive nodes \textit{before} and \textit{after}
+such that $\mathit{before}.\mathtt{data.value} < v \le \mathit{after}.\mathtt{data.value}$.
 It does so by performing something called \emph{hand-over-hand locking}.
 \index{hand-over-hand locking}%
 It first locks the first node, which is the \texttt{-inf} node.
@@ -3684,7 +3685,7 @@ hand-over-hand.
 Having the two adjoining nodes locked, implementing \texttt{lst\_insert}
 and \texttt{lst\_remove} is straightforward.
 The \texttt{lst\_contains} method can simply scan through the list
-because the \texttt{next} pointers are updated atomically in such a
+because the \textit{next} pointers are updated atomically in such a
 way that they always point to a legal suffix of the list.
 An invariant of the algorithm is that at any point in time the
 list is ``complete'', starting with a \texttt{-inf} node and ending
@@ -3698,7 +3699,7 @@ of the operations in an execution.  These are the unique
 points in time at which an operation appears to execute atomically.
 The linearization points for the \texttt{lst\_insert} and
 \texttt{lst\_remove} operations coincide exactly with the update
-of the \texttt{before.next} pointer.
+of the \textit{before}.\texttt{next} pointer.
 The linearization point of a \texttt{lst\_contains} method
 execution depends on whether the value is found or not.
 If found, it coincides with retrieving the pointer to the node
@@ -3739,7 +3740,7 @@ version number has not changed.  If it has, read-only operation is retried.
 Use a seqlock to implement a bank much like Exercise~\ref{ex:bank}, with
 one seqlock for the entire bank (i.e., no locks on individual accounts).
 Method \texttt{transfer} is an update operation; method \texttt{total} is a
-read-only operation.  Explain how a \texttt{seqlock} can lead to starvation.
+read-only operation.  Explain how a seqlock can lead to starvation.
 \end{problems}
 
 \chapter{Barrier Synchronization}
@@ -3796,14 +3797,14 @@ by incrementing \texttt{sema[$j$]} (using \texttt{V}),
 while process $i$ waits for a signal be decrementing \texttt{sema[$i$]}
 (using \texttt{P}).
 
-The \texttt{round} array is kept to check the correctness of this
+The \textit{round} array is kept to check the correctness of this
 approach.  Each process increments its entry every time it enters
 a round.  If the algorithm is correct, it can never be that two processes
 are more than one round apart.
 
 \section*{Exercises}
 \begin{problems}
-\item See if you can implement barrier synchronization for $N$ processes
+\item See if you can implement barrier synchronization for \texttt{N} processes
 with just three semaphores.  Busy waiting is not allowed.  How about just two?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
 for solving semaphore problems.  Look for the double turnstile solution.)
