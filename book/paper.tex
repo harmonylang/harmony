@@ -1206,10 +1206,11 @@ What we need now a \emph{liveness property}:
 we want to ensure that
 \emph{eventually something good will happen}.
 There are various possible liveness properties we could use,
-but here we will propose the following informally: if there exists a non-empty
+but here we will propose the following informally: if
+(1) there exists a non-empty
 set $S$ of processes that are trying to enter the critical section and
-processes in the intersection always leave eventually, then eventually one
-process in $S$ will enter the critical section.
+(2) processes in the critical section always leave eventually, then
+eventually one process in $S$ will enter the critical section.
 We call this \emph{progress}.
 \index{progress}%
 
@@ -1360,7 +1361,7 @@ Now plug the following code \textbf{while} \texttt{True}: \textbf{pass};;
 just before entering the critical section
 in Figure~\ref{fig:cs} and run CXL again.
 Mutual exclusion is guaranteed but progress is violated.
-CXL should print a short trace
+CXL should print a trace
 to a state from which a terminating state cannot be reached.
 Describe in English the difference in the failure reports before
 and after inserting the code.
@@ -3914,6 +3915,8 @@ CXL currently supports the following operators:
 \texttt{$e$ if $e$ else $e$} & middle $e$ must be a boolean \\
 \hline
 \texttt{\^{}$e$} & an address \\
+\hline
+\texttt{hash $e$} & any CXL value \\
 \hline
 \texttt{choose $e$} & a set \\
 \hline

@@ -76,6 +76,7 @@ def isreserved(s):
         "fun",
         "for",
         "go",
+        "hash",
         "if",
         "import",
         "in",
@@ -102,7 +103,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "choose",
-            "min", "max", "nametag", "not", "keys", "len", "processes" ]
+        "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
@@ -1101,6 +1102,8 @@ class NaryOp(Op):
                 if not self.checktype(state, sa, isinstance(e, DictValue)):
                     return
                 context.push(SetValue(set(e.d.keys())))
+            elif op == "hash":
+                context.push((e,).__hash__())
             elif op == "bagsize":
                 if not self.checktype(state, sa, isinstance(e, DictValue)):
                     return
