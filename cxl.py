@@ -101,7 +101,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "bagsize", "cardinality",
+    return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "choose",
             "min", "max", "nametag", "not", "keys", "len", "processes" ]
 
 def isbinaryop(s):
@@ -110,7 +110,7 @@ def isbinaryop(s):
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "dict{", "==", "!=", "<=", ">=", "..", "choose(" ]
+tokens = [ "dict{", "==", "!=", "<=", ">=", ".." ]
 
 def lexer(s, file):
     result = []
@@ -1502,7 +1502,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "nametag", "processes" }:
+        if op in { "atLabel", "choose", "nametag", "processes" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
@@ -1520,7 +1520,8 @@ class NaryAST(AST):
             for pc in pcs:
                 code[pc] = JumpCondOp(op == "or", len(code))
             code.append(PushOp((op == "or", file, line, column)))
-        elif n == 3 and op == "if":
+        elif op == "if":
+            assert n == 3, n
             self.args[1].compile(scope, code)
             pc1 = len(code)
             code.append(None)
@@ -1530,6 +1531,10 @@ class NaryAST(AST):
             self.args[2].compile(scope, code)
             code[pc1] = JumpCondOp(False, pc2 + 1)
             code[pc2] = JumpOp(len(code))
+        elif op == "choose":
+            assert n == 1
+            self.args[0].compile(scope, code)
+            code.append(ChooseOp())
         else:
             for i in range(n):
                 self.args[i].compile(scope, code)
@@ -1752,12 +1757,6 @@ class BasicExpressionRule(Rule):
         if lexeme == "&":
             (ast, t) = LValueRule().parse(t[1:])
             return (AddressAST(ast), t)
-        if lexeme == "choose(":
-            (ast, t) = NaryRule({")"}).parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("choose expresssion", lexeme == ")", t[0],
-                "expected ')'")
-            return (ChooseAST(ast), t[1:])
         return (False, t)
 
 class LValueAST(AST):
@@ -1779,17 +1778,6 @@ class PointerAST(AST):
     def compile(self, scope, code):
         self.expr.compile(scope, code)
         code.append(LoadOp(None, self.token))
-
-class ChooseAST(AST):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __repr__(self):
-        return "Choose(" + str(self.expr) + ")"
-
-    def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(ChooseOp())
 
 class ExpressionRule(Rule):
     def parse(self, t):
