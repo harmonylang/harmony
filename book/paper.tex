@@ -2440,30 +2440,30 @@ that it is a permutation of the original array.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
+cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 BBsematest.cxl
+cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 BBsematest.cxl
+cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 BBsematest.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 BBsematest.cxl
+cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 BBsematest.cxl
+cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 BBsematest.cxl
+cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 BBsematest.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 BBsematest.cxl
+cxl -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 BBsematest.cxl
+cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.cxl
 \end{verbatim}
 \end{code}
 \caption{Script for testing producer/consumer synchronization
-(assuming the code is in file \texttt{PCsema.cxl}).}
+(assuming the code is in file \texttt{BBsematest.cxl}).}
 \label{fig:pcscript}
 \end{figure}
 
@@ -2509,7 +2509,7 @@ there are three items to produce initially.
 \end{code}
 \caption{[BBsemadata.cxl] Test whether the bounded buffer delivers the right data in the
 right order.}
-\label{fig:PCsemadata}
+\label{fig:BBsemadata}
 \end{figure}
 
 Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
@@ -2569,7 +2569,7 @@ $\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
 should terminate, while other values should lead to processes blocking.
 To this this, one can write a script like the one in Figure~\ref{fig:pcscript}.
 
-Figure~\ref{fig:PCsemadata} tests whether the correct data is sent in
+Figure~\ref{fig:BBsemadata} tests whether the correct data is sent in
 the correct order.  There are the same number of producers and consumers.
 Each producer $i$ produces two tuples: $(i, 0)$ and $(i, 1)$ in that order.
 Each consumer consumes two tuples and checks that the tuples are different

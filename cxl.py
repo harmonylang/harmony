@@ -3072,26 +3072,6 @@ def onestep(state, ctx, choice, visited, todo, node):
     if cc.failure != None:
         next.issues.add("process failure")
 
-def explore(s, visited, mapping, reach):
-    reach[s] = None         # prevent infinite loops
-    hs = mapping[s]
-    n = visited[s]
-    result = set()
-    assert not s.choosing
-    for (ctx, edge) in n.edges.items():
-        assert isinstance(ctx, ContextValue)
-        (nextState, nextContext, nextSteps) = edge
-        next = mapping[nextState]
-        if next == hs:
-            if nextState not in reach:
-                explore(nextState, visited, mapping, reach)
-            r = reach[nextState]
-            if r != None:
-                result = result.union(r)
-        else:
-            result.add(next)
-    reach[s] = result
-
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     try:
@@ -3104,7 +3084,7 @@ def parseConstant(c, v):
     code = []
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0, len(code))
+    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0)
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
@@ -3140,6 +3120,27 @@ def doCompile(filenames, consts, mods):
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
+
+# No longer using this code
+def explore(s, visited, mapping, reach):
+    reach[s] = None         # prevent infinite loops
+    hs = mapping[s]
+    n = visited[s]
+    result = set()
+    assert not s.choosing
+    for (ctx, edge) in n.edges.items():
+        assert isinstance(ctx, ContextValue)
+        (nextState, nextContext, nextSteps) = edge
+        next = mapping[nextState]
+        if next == hs:
+            if nextState not in reach:
+                explore(nextState, visited, mapping, reach)
+            r = reach[nextState]
+            if r != None:
+                result = result.union(r)
+        else:
+            result.add(next)
+    reach[s] = result
 
 # No longer using this code
 def mapcheck():
