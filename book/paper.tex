@@ -4229,6 +4229,8 @@ register & a CXL dictionary mapping atoms (representing process variables) to CX
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
+failure & if not None, string that describes how the process failed \\
+\hline
 \end{tabular}
 \vspace{1em}
 
@@ -4276,8 +4278,6 @@ ctxbag & a bag of non-stopped contexts \\
 stopbag & a bag of stopped contexts \\
 \hline
 choosing & if not \texttt{None}, indicates a context that is choosing \\
-\hline
-failure & boolean indicating some context has failed \\
 \hline
 initializing & boolean indicating that the state is not fully initialized. \\
 \hline
