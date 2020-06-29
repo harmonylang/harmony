@@ -4360,10 +4360,45 @@ the state are one per context.
 A terminating state is a state with an empty context bag or a state
 where all contexts are blocked.
 
-\newpage
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{Acknowledgments}
+\chapter*{Acknowledgments}
+
+I received considerable help and inspiration from various people
+while writing this book.
+
+First and foremost I would like to think my student Haobin Ni with
+whom I've had numerous discussions about the design of CXL.
+Haobin even contributed some code to the CXL compiler.
+
+Most of what I know about concurrent programming I learned from
+my colleague Fred Schneider.  He suggested I write this book after
+demonstrating CXL to him.
+
+Leslie Lamport introduced me to using model checking to test properties
+of a concurrent system.  My experimentation with using TLC on Peterson's
+Algorithm became an aha momment for me.
+
+I first demonstrated CXL to the students in my CS6480 class on systems
+and formal verification and
+received valuable feedback from them.
+
+I would also like to thank my proofreaders Anneke van Renesse and
+Zhuoyu Xu.
+
+Finally, I would like to thank my family who had to suffer as I obsessed
+over writing the code and the book.
+
+% I wrote the CXL compiler and this book in May and June of 2020,
+% during the pandemic and the George Floyd demonstrations.
+
+\cleardoublepage
+\phantomsection
 \printindex
 
-\newpage
+\cleardoublepage
+\phantomsection
 \printglossaries
 
 \end{document}
