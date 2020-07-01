@@ -2820,12 +2820,20 @@ def strsteps(steps):
     while i < len(steps):
         if result != "":
             result += ","
-        result += str(steps[i])
+        (pc, choice) = steps[i]
+        result += "%d"%pc
         j = i + 1
-        while j < len(steps) and steps[j] == steps[j - 1] + 1:
-            j += 1
-        if j > i + 1:
-            result += "-" + str(steps[j - 1])
+        if choice != None:
+            result += "(choose %s)"%strValue(choice)
+        else:
+            while j < len(steps):
+                (pc2, choice2) = steps[j]
+                if pc2 != pc + 1 or choice2 != None:
+                    break
+                (pc, choice) = (pc2, choice2)
+                j += 1
+            if j > i + 1:
+                result += "-%d"%pc
         i = j
     return "[" + result + "]"
 
@@ -2849,19 +2857,10 @@ def find_shortest(visited, bad):
     return best_state
 
 def print_path(visited, bad_state):
-    path = get_path(visited, bad_state)[1:]
-    last = None
-    for (node, vars) in path:
-        if last == None:
-            last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
-        elif node.ctx.nametag == last[0] and node.steps[0] == last[1]:
-            last = (node.ctx.nametag, node.ctx.pc, last[2] + node.steps, vars)
-        else:
-            print(nametag2str(last[0]), strsteps(last[2]), last[1], strVars(last[3]))
-            last = (node.ctx.nametag, node.ctx.pc, node.steps, vars)
-    if last != None:
-        print(nametag2str(last[0]), strsteps(last[2]), last[1], strVars(last[3]))
-    if len(path) > 0:
+    path = genpath(bad_state, visited)
+    for (ctx, steps, states) in path:
+        print(ctx, strsteps(steps))
+    if False and len(path) > 0:
         (node, vars) = path[-1]
         if node.ctx.failure != None:
             print(">>>", node.ctx.failure)
@@ -2971,7 +2970,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     terminated = False
     while True:
         # execute one microstep
-        steps.append(cc.pc)
+        steps.append((cc.pc, choice_copy))
 
         # print status update
         global lasttime
@@ -3351,35 +3350,28 @@ def htmlstrsteps(steps):
         return "[]"
     result = ""
     i = 0
-    cnt = 0
     while i < len(steps):
         if result != "":
             result += " "
-        result += "<a href='#P%d'>%d"%(steps[i], steps[i])
+        (pc, choice) = steps[i]
         j = i + 1
-        while j < len(steps) and steps[j] == steps[j - 1] + 1:
-            j += 1
-        if j > i + 1:
-            result += "-" + str(steps[j - 1])
-        result += "</a>"
+        result += "<a href='#P%d'>%d"%(pc, pc)
+        if choice != None:
+            result += "</a>(choose %s)"%strValue(choice)
+        else:
+            while j < len(steps):
+                (pc2, choice2) = steps[j]
+                if pc2 != pc + 1 or choice2 != None:
+                    break
+                (pc, choice) = (pc2, choice2)
+                j += 1
+            if j > i + 1:
+                result += "-%d"%pc
+            result += "</a>"
         i = j
-        cnt += 1
-        # if cnt > 10:
-        #     break
     return result
 
-def htmlpath(s, visited, color, f):
-    # Generate a label for the path table
-    issues = visited[s].issues
-    if len(issues) == 0:
-        issues = { "no issues" }
-    label = ""
-    for issue in issues:
-        if label != "":
-            label += ", "
-        label += issue
-    label = "issue: " + label
-
+def genpath(s, visited):
     path = []
     while s != None:
         n = visited[s]
@@ -3402,10 +3394,24 @@ def htmlpath(s, visited, color, f):
         laststeps += steps
         laststates.append(sid)
     path2.append((lastctx, laststeps, laststates))
+    return path2
+
+def htmlpath(s, visited, color, f):
+    # Generate a label for the path table
+    issues = visited[s].issues
+    if len(issues) == 0:
+        issues = { "no issues" }
+    label = ""
+    for issue in issues:
+        if label != "":
+            label += ", "
+        label += issue
+    label = "Issue: " + label
+    path = genpath(s, visited)
     print("<table id='issuestbl' border='1' width='100%%' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
-    print("<tr><th>context</th><th>steps</th>", file=f)
+    print("<tr><th>Process</th><th>Steps</th>", file=f)
     row = 1
-    for (ctx, steps, states) in path2:
+    for (ctx, steps, states) in path:
         row += 1
         if len(states) > 0:
             sid = states[-1]
@@ -3497,8 +3503,10 @@ def htmlrow(ctx, bag, state, node, code, scope, f, verbose):
     traceid += 1
 
     print("<tr>", file=f)
-    print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
-    print("<td>%d</td>"%bag[ctx], file=f)
+    if bag[ctx] > 1:
+        print("<td>%s [%d copies]</td>"%(nametag2str(ctx.nametag), bag[ctx]), file=f)
+    else:
+        print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
     else:
@@ -3614,7 +3622,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
     #     print("</tr></table>", file=f)
 
     print("<table border='1'>", file=f)
-    print("<tr><th>Context</th><th>#</th><th>Status</th><th>Stack Trace</th><th>Variables</th>", file=f)
+    print("<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>", file=f)
     if verbose:
         print("<th>FP</th><th>Stack</th>", file=f)
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
