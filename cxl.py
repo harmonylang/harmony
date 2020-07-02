@@ -3478,11 +3478,10 @@ def htmlvars(vars, id, row, f):
     assert(isinstance(vars, DictValue))
     display = "block" if row == 0 else "none"
     print("<div id='vars%d_%d' style='display:%s'>"%(traceid, row, display), file=f)
-    print("<table border='1'>", file=f)
+    print("<table>", file=f)
     for (key, value) in vars.d.items():
         print("<tr>", file=f)
-        print("<td>%s</td>"%strValue(key)[1:], file=f)
-        print("<td>%s</td>"%strValue(value), file=f)
+        print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
     print("</div>", file=f)
@@ -3606,11 +3605,10 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("<table border='1' width='100%'>", file=f)
     print("<col style='width:20%'>", file=f)
     print("<col style='width:80%'>", file=f)
-    print("<tr><th>Shared</th><th>Value</th></tr>", file=f)
+    print("<tr><th>Shared Variables</th></tr>", file=f)
     for (key, value) in s.vars.d.items():
         print("<tr>", file=f)
-        print("<td>%s</td>"%strValue(key)[1:], file=f)
-        print("<td>%s</td>"%strValue(value), file=f)
+        print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
 
