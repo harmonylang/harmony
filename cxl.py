@@ -2795,12 +2795,13 @@ class State:
             self.ctxbag[ctx] = cnt - 1
 
 class Node:
-    def __init__(self, parent, ctx, steps, len):
+    def __init__(self, parent, before, after, steps, len):
         global node_uid
 
         self.parent = parent    # next hop on way to initial state
         self.len = len          # length of path to initial state
-        self.ctx = ctx          # the context that made the hop from the parent state
+        self.before = before    # the context that made the hop from the parent state
+        self.after = after      # the resulting context
         self.steps = steps      # list of microsteps
 
         # if state.choosing, maps choice, else context
@@ -2859,7 +2860,7 @@ def find_shortest(visited, bad):
 def print_path(visited, bad_state):
     path = genpath(bad_state, visited)
     for (ctx, steps, states) in path:
-        print(ctx, strsteps(steps))
+        print(nametag2str(ctx.nametag), strsteps(steps))
     if False and len(path) > 0:
         (node, vars) = path[-1]
         if node.ctx.failure != None:
@@ -2952,7 +2953,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     assert ctx.failure == None, ctx.failure
 
     # Keep track of whether this is the same context as the parent context
-    samectx = ctx == node.ctx
+    samectx = ctx == node.after
 
     # Copy the state before modifying it
     sc = state.copy()   # sc is "state copy"
@@ -3055,7 +3056,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
     if next == None:
-        next = Node(state, cc, steps, length)
+        next = Node(state, ctx, cc, steps, length)
         visited[sc] = next
         if samectx:
             todo.insert(0, sc)
@@ -3066,7 +3067,8 @@ def onestep(state, ctx, choice, visited, todo, node):
         # assert not next.expanded, (node.len, length, next.len, next.expanded)
         next.len = length
         next.parent = state
-        next.ctx = cc
+        next.before = ctx
+        next.after = cc
         next.steps = steps
         todo.insert(0, sc)
     node.edges[choice if state.choosing else ctx] = (sc, cc, steps)
@@ -3222,7 +3224,7 @@ def run(code, labels, map, step, blockflag):
     state.add(ctx)
 
     # For traversing Kripke graph
-    visited = { state: Node(None, None, None, 0) }
+    visited = { state: Node(None, None, None, [], 0) }
     todo = collections.deque([state])
     bad = set()
 
@@ -3372,28 +3374,50 @@ def htmlstrsteps(steps):
     return result
 
 def genpath(s, visited):
+    # Extract the path to s
     path = []
     while s != None:
         n = visited[s]
-        if n.ctx == None:
+        if n.after == None:
             break
-        path = [(nametag2str(n.ctx.nametag), n.steps, n.uid)] + path
+        path = [(s, n)] + path
         s = n.parent
+
+    # Now compress the path, combining macrosteps by the same context
     path2 = []
-    lastctx = None
-    laststeps = []
-    laststates = []
-    for (ctx, steps, sid) in path:
-        if ctx != lastctx:
-            if lastctx != None:
-                path2.append((lastctx, laststeps, laststates))
-            lastctx = ctx
-            laststeps = []
+    if False:
+        lastctx = None
+        laststeps = []
+        laststates = []
+        for (s, n) in path:
+            if n.ctx != lastctx:
+                if lastctx != None:
+                    path2.append((lastctx, laststeps, laststates))
+                lastctx = ctx
+                laststeps = []
+                laststates = []
+                lastctx = ctx
+            laststeps += steps
+            laststates.append(sid)
+        path2.append((lastctx, laststeps, laststates))
+    elif True:
+        lastctx = None
+        laststeps = []
+        laststates = []
+        for (s, n) in path:
+            if lastctx == None or lastctx == n.before:
+                laststeps += n.steps
+                lastctx = n.after
+                laststates.append(n.uid)
+                continue
+            path2.append((lastctx, laststeps, laststates))
+            lastctx = n.after
+            laststeps = n.steps.copy()
             laststates = []
-            lastctx = ctx
-        laststeps += steps
-        laststates.append(sid)
-    path2.append((lastctx, laststeps, laststates))
+        path2.append((lastctx, laststeps, laststates))
+    else:
+        for (s, n) in path:
+            print(">>>", n.before, n.after, n.steps)
     return path2
 
 def htmlpath(s, visited, color, f):
@@ -3417,7 +3441,7 @@ def htmlpath(s, visited, color, f):
             sid = states[-1]
         else:
             sid = visited[s].uid
-        print("<tr><td><a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(row, sid, ctx), file=f)
+        print("<tr><td><a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(row, sid, nametag2str(ctx.nametag)), file=f)
         print("<td>%s</td>"%htmlstrsteps(steps), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
