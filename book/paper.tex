@@ -1271,6 +1271,12 @@ specification.
 \end{figure}
 
 \begin{figure}
+\includegraphics[width=\textwidth]{figures/naiveFlags.png}
+\caption{The HTML output of running CXL on Figure~\ref{fig:upflags}.}
+\label{fig:naiveflagshtml}
+\end{figure}
+
+\begin{figure}
 \begin{code}
 \cxlsource{naiveTurn}
 \end{code}
@@ -1345,7 +1351,8 @@ it would first have to set \textit{flags}[1] to \texttt{True} and
 then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
 until time $t_2$.
 
-However, if you run the program through CXL, it turns out the solution
+However, if you run the program through CXL (Figure~\ref{fig:naiveflagshtml}),
+it turns out the solution
 does has a problem: if both try to enter the critical section at the same
 time, they may end up waiting for one another indefinitely.  Thus the
 solution violates \emph{progress}.
