@@ -2859,10 +2859,10 @@ def find_shortest(visited, bad):
 
 def print_path(visited, bad_state):
     path = genpath(bad_state, visited)
-    for (ctx, steps, states) in path:
+    for (ctx, steps, states, vars) in path:
         print(nametag2str(ctx.nametag), strsteps(steps))
     if len(path) > 0:
-        (ctx, steps, states) = path[-1]
+        (ctx, steps, states, vars) = path[-1]
         if ctx.failure != None:
             print(">>>", ctx.failure)
 
@@ -3388,17 +3388,19 @@ def genpath(s, visited):
     lastctx = None
     laststeps = []
     laststates = []
+    lastvars = DictValue({})
     for (s, n) in path:
         if lastctx == None or lastctx == n.before:
             laststeps += n.steps
             lastctx = n.after
             laststates.append(n.uid)
+            lastvars = s.vars
             continue
-        path2.append((lastctx, laststeps, laststates))
+        path2.append((lastctx, laststeps, laststates, lastvars))
         lastctx = n.after
         laststeps = n.steps.copy()
         laststates = []
-    path2.append((lastctx, laststeps, laststates))
+    path2.append((lastctx, laststeps, laststates, lastvars))
     return path2
 
 def htmlpath(s, visited, color, f):
@@ -3412,11 +3414,16 @@ def htmlpath(s, visited, color, f):
             label += ", "
         label += issue
     label = "Issue: " + label
+    keys = sorted(s.vars.d.keys(), key=lambda x: keyValue(x))
     path = genpath(s, visited)
-    print("<table id='issuestbl' border='1' width='100%%' style='color: %s'><tr><th colspan='3' align='center'>%s</th>"%(color, label), file=f)
+    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th colspan='%d'>Shared Variables</th>"%(color, label, len(keys)), file=f)
+    print("<col style='width:15%'>", file=f)
     print("<tr><th>Process</th><th>Steps</th>", file=f)
+    for v in keys:
+        print("<th>%s</th>"%v, file=f)
+    print("</tr>", file=f)
     row = 1
-    for (ctx, steps, states) in path:
+    for (ctx, steps, states, vars) in path:
         row += 1
         if len(states) > 0:
             sid = states[-1]
@@ -3424,6 +3431,9 @@ def htmlpath(s, visited, color, f):
             sid = visited[s].uid
         print("<tr><td><a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(row, sid, nametag2str(ctx.nametag)), file=f)
         print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+
+        for k in keys:
+            print("<td align='center'>%s</td>"%strValue(vars.d[k]), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
     print("</p>", file=f)
@@ -3600,24 +3610,20 @@ def htmlnode(s, visited, code, scope, f, verbose):
     print("<div class='container'>", file=f)
 
     print("<a name='N%d'/>"%n.uid, file=f)
-    print("<hr/>", file=f)
 
-    print("<table border='1' width='100%'>", file=f)
-    print("<col style='width:20%'>", file=f)
-    print("<col style='width:80%'>", file=f)
-    print("<tr><th>Shared Variables</th></tr>", file=f)
-    for (key, value) in s.vars.d.items():
-        print("<tr>", file=f)
-        print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
-        print("</tr>", file=f)
-    print("</table>", file=f)
+    if False:
+        print("<table border='1' width='100%'>", file=f)
+        print("<tr><th>Shared Variables</th></tr>", file=f)
+        for (key, value) in s.vars.d.items():
+            print("<tr>", file=f)
+            print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
+            print("</tr>", file=f)
+        print("</table>", file=f)
 
     if verbose:
         print("<td>", file=f)
         htmlpath(s, visited, "black", f)
         print("</td>", file=f)
-
-    print("<hr/>", file=f)
 
     # if s.failure != None:
     #     print("<table border='1' style='color: red'><tr><td>Failure:</td>", file=f)
@@ -3671,7 +3677,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
     print("</div>", file=f)
 
-def dump(visited, code, scope, state, fulldump, verbose):
+def htmldump(visited, code, scope, state, fulldump, verbose):
     with open("cxl.html", "w") as f:
         print("""
             <html>
@@ -3680,6 +3686,9 @@ def dump(visited, code, scope, state, fulldump, verbose):
             </head>
             <body>
         """, file=f)
+
+        if state != None:
+            htmlpath(state, visited, "red", f)
 
         print("<table>", file=f)
         print("<col style='width:50%'>", file=f)
@@ -3691,14 +3700,6 @@ def dump(visited, code, scope, state, fulldump, verbose):
         print("</td>", file=f)
 
         print("<td valign='top'>", file=f)
-        if state != None:
-            htmlpath(state, visited, "red", f)
-        print("</td>", file=f)
-
-        print("</tr>", file=f)
-
-        print("<tr>", file=f)
-        print("<td colspan='2'>", file=f)
         if fulldump:
             for s in visited.keys():
                 htmlnode(s, visited, code, scope, f, verbose)
@@ -3731,7 +3732,7 @@ def dump(visited, code, scope, state, fulldump, verbose):
                   <div class='container'>
                     <p>
                         State information not available.
-                        Use cxl -d for a complete dump.
+                        Use cxl -d for a complete htmldump.
                     </p>
                   </div>
                 </div>
@@ -3794,7 +3795,7 @@ def usage():
     print("    -a: list machine code")
     print("    -b: blocking execution")
     print("    -c name=value: define a constant")
-    print("    -d: dump full state into html file")
+    print("    -d: htmldump full state into html file")
     print("    -h: help")
     print("    -m module=version: select a module version")
     exit(1)
@@ -3860,7 +3861,7 @@ def main():
         (spc, file, line, column) = v
 
     (visited, bad_state) = run(code, scope.labels, mpc, spc, blockflag)
-    dump(visited, code, scope, bad_state, fulldump, False)
+    htmldump(visited, code, scope, bad_state, fulldump, False)
 
 if __name__ == "__main__":
     main()
