@@ -1311,7 +1311,10 @@ we find that the assertion still fails.
 Figure~\ref{fig:naiveLockhtml} shows the CXL output.
 Process~0 finds that the lock is available, but just before it stores
 \texttt{True} in \textit{lockTaken} in instruction~9, process~1 gets
-to run.  Because \textit{lockTaken} is still \texttt{False}, it too
+to run.
+(Recall that you can hover your mouse over a machine instruction in order
+to see what it does.)
+Because \textit{lockTaken} is still \texttt{False}, it too
 believes it can acquire the lock, and stores \texttt{True} in
 \texttt{lockTaken} and moves on to the critical section.
 Finally, process~0 moves on, also stores \texttt{True} and also moves
