@@ -1257,6 +1257,12 @@ specification.
 \end{figure}
 
 \begin{figure}
+\includegraphics[width=\textwidth]{figures/naiveLock.png}
+\caption{The HTML output of running CXL on Figure~\ref{fig:uplock}.}
+\label{fig:naiveLockhtml}
+\end{figure}
+
+\begin{figure}
 \begin{code}
 \cxlsource{naiveFlags}
 \end{code}
@@ -1294,8 +1300,18 @@ and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
 releases the lock by setting \textit{lockTaken} back to \texttt{False}.
 
-Unfortunately, if we run the program through CXL, we find that the assertion still
-fails.  Diagnosing the problem, we see that the \textit{lockTaken} variable
+Unfortunately, if we run the program through CXL,
+we find that the assertion still fails.
+Figure~\ref{fig:naiveLockhtml} shows the CXL output.
+Process~0 finds that the lock is available, but just before it stores
+\texttt{True} in \textit{lockTaken} in instruction~9, process~1 gets
+to run.  Because \textit{lockTaken} is still \texttt{False}, it too
+believes it can acquire the lock, and stores \texttt{True} in
+\texttt{lockTaken} and moves on to the critical section.
+Finally, process~0 moves on, also stores \texttt{True} and also moves
+into the critical section.  Process~0 is the one that detects the
+problem.
+The \textit{lockTaken} variable
 suffers from the same problem as the \textit{count} variable
 in Figure~\ref{fig:inc}: operations
 on it consist of several instructions.  It is thus possible

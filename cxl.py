@@ -3416,12 +3416,16 @@ def htmlpath(s, visited, color, f):
     label = "Issue: " + label
     keys = sorted(s.vars.d.keys(), key=lambda x: keyValue(x))
     path = genpath(s, visited)
-    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th colspan='%d'>Shared Variables</th>"%(color, label, len(keys)), file=f)
+    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th>"%(color, label), file=f)
+    if len(keys) == 1:
+        print("<th>Shared Variable</th>", file=f)
+    else:
+        print("<th colspan='%d'>Shared Variables</th>"%len(keys), file=f)
     print("<col style='width:15%'>", file=f)
     print("<tr><th>Process</th><th>Steps</th>", file=f)
     for v in keys:
-        print("<th>%s</th>"%v, file=f)
-    print("</tr>", file=f)
+        print("<td align='center' style='font-style: italic'>%s</td>"%v, file=f)
+    print("</tr><tr><td><td></tr>", file=f)
     row = 1
     for (ctx, steps, states, vars) in path:
         row += 1
@@ -3758,7 +3762,7 @@ def htmldump(visited, code, scope, state, fulldump, verbose):
                     show(id);
                     var tbl = document.getElementById("issuestbl");
                     for (var i = 1; i < tbl.rows.length; i++) {
-                        if (i == row) {
+                        if (i == row + 1) {
                             tbl.rows[i].style.backgroundColor = "#A5FF33";
                         }
                         else {
