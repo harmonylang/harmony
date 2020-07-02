@@ -2861,10 +2861,10 @@ def print_path(visited, bad_state):
     path = genpath(bad_state, visited)
     for (ctx, steps, states) in path:
         print(nametag2str(ctx.nametag), strsteps(steps))
-    if False and len(path) > 0:
-        (node, vars) = path[-1]
-        if node.ctx.failure != None:
-            print(">>>", node.ctx.failure)
+    if len(path) > 0:
+        (ctx, steps, states) = path[-1]
+        if ctx.failure != None:
+            print(">>>", ctx.failure)
 
 def print_shortest(visited, bad):
     bad_state = find_shortest(visited, bad)
@@ -3385,39 +3385,20 @@ def genpath(s, visited):
 
     # Now compress the path, combining macrosteps by the same context
     path2 = []
-    if False:
-        lastctx = None
-        laststeps = []
-        laststates = []
-        for (s, n) in path:
-            if n.ctx != lastctx:
-                if lastctx != None:
-                    path2.append((lastctx, laststeps, laststates))
-                lastctx = ctx
-                laststeps = []
-                laststates = []
-                lastctx = ctx
-            laststeps += steps
-            laststates.append(sid)
-        path2.append((lastctx, laststeps, laststates))
-    elif True:
-        lastctx = None
-        laststeps = []
-        laststates = []
-        for (s, n) in path:
-            if lastctx == None or lastctx == n.before:
-                laststeps += n.steps
-                lastctx = n.after
-                laststates.append(n.uid)
-                continue
-            path2.append((lastctx, laststeps, laststates))
+    lastctx = None
+    laststeps = []
+    laststates = []
+    for (s, n) in path:
+        if lastctx == None or lastctx == n.before:
+            laststeps += n.steps
             lastctx = n.after
-            laststeps = n.steps.copy()
-            laststates = []
+            laststates.append(n.uid)
+            continue
         path2.append((lastctx, laststeps, laststates))
-    else:
-        for (s, n) in path:
-            print(">>>", n.before, n.after, n.steps)
+        lastctx = n.after
+        laststeps = n.steps.copy()
+        laststates = []
+    path2.append((lastctx, laststeps, laststates))
     return path2
 
 def htmlpath(s, visited, color, f):
