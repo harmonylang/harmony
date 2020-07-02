@@ -19,3 +19,10 @@
   width:35%;
   border:1px solid red;
 }
+table {
+    border-collapse: collapse;
+    border-style: hidden;
+}
+table td, table th {
+    border: 1px solid black;
+}
