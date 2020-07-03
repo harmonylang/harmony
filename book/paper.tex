@@ -34,6 +34,10 @@ XX\=XXX\=XXX\kill
 \end{tabbing}
 }
 
+\newcommand{\cxllink}[1]{
+    [\href{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{#1}]
+}
+
 \newglossaryentry{actor model}
 {
   name=actor model,
@@ -533,7 +537,7 @@ you get more familiar with programming in CXL.
 \begin{code}
 \cxlsource{triangle}
 \end{code}
-\caption{[triangle.cxl] Computing triangle numbers.}
+\caption{\cxllink{triangle.cxl} Computing triangle numbers.}
 \label{fig:triangle}
 \end{figure}
 
@@ -629,7 +633,7 @@ even gets going.
 \begin{code}
 \cxlsource{Up}
 \end{code}
-\caption{[Up.cxl] Incrementing twice in parallel.}
+\caption{\cxllink{Up.cxl} Incrementing twice in parallel.}
 \label{fig:inc}
 \end{figure}
 
@@ -1101,7 +1105,7 @@ brief explanation.
 \begin{code}
 \cxlsource{UpEnter}
 \end{code}
-\caption{[UpEnter.cxl] Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
+\caption{\cxllink{UpEnter.cxl} Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
 \label{fig:incenter}
 \end{figure}
 
@@ -1112,7 +1116,7 @@ brief explanation.
 \begin{code}
 \cxlsource{csbarebones}
 \end{code}
-\caption{[csbarebones.cxl] A bare bones critical section with two processes.}
+\caption{\cxllink{csbarebones.cxl} A bare bones critical section with two processes.}
 \label{fig:csbarebones}
 \end{figure}
 
@@ -1120,7 +1124,7 @@ brief explanation.
 \begin{code}
 \cxlsource{cs}
 \end{code}
-\caption{[cx.cxl] CXL model of a critical section.}
+\caption{\cxllink{cx.cxl} CXL model of a critical section.}
 \label{fig:cs}
 \end{figure}
 
@@ -1257,7 +1261,7 @@ specification.
 \begin{code}
 \cxlsource{naiveLock}
 \end{code}
-\caption{[naiveLock.cxl] Na\"{\i}ve implementation of a shared lock.}
+\caption{\cxllink{naiveLock.cxl} Na\"{\i}ve implementation of a shared lock.}
 \label{fig:uplock}
 \end{figure}
 
@@ -1271,7 +1275,7 @@ specification.
 \begin{code}
 \cxlsource{naiveFlags}
 \end{code}
-\caption{[naiveFlags.cxl] Na\"{\i}ve use of flags to solve mutual exclusion.}
+\caption{\cxllink{naiveFlags.cxl} Na\"{\i}ve use of flags to solve mutual exclusion.}
 \label{fig:upflags}
 \end{figure}
 
@@ -1285,7 +1289,7 @@ specification.
 \begin{code}
 \cxlsource{naiveTurn}
 \end{code}
-\caption{[naiveTurn.cxl] Na\"{\i}ve use of turn variable to solve mutual exclusion.}
+\caption{\cxllink{naiveTurn.cxl} Na\"{\i}ve use of turn variable to solve mutual exclusion.}
 \label{fig:upturn}
 \end{figure}
 
@@ -1412,7 +1416,7 @@ we will find out, it is possible but not easy.
 \begin{code}
 \cxlsource{Peterson}
 \end{code}
-\caption{[Peterson.cxl] Peterson's Algorithm}
+\caption{\cxllink{Peterson.cxl} Peterson's Algorithm}
 \label{fig:peterson}
 \end{figure}
 
@@ -1547,7 +1551,7 @@ much harder than doing one with an invariant that is.
 \begin{code}
 \cxlsource{PetersonInductive}
 \end{code}
-\caption{[PetersonInductive.cxl] Peterson's Algorithm with Inductive Invariant}
+\caption{\cxllink{PetersonInductive.cxl} Peterson's Algorithm with Inductive Invariant}
 \label{fig:petersonproof}
 \end{figure}
 
@@ -1681,7 +1685,7 @@ Can you generalize Peterson's algorithm to more than two processes?
 \begin{code}
 \cxlsource{csonebit}
 \end{code}
-\caption{[csonebit.cxl] Mutual exclusion using a flag per process.}
+\caption{\cxllink{csonebit.cxl} Mutual exclusion using a flag per process.}
 \label{fig:csonebit}
 \end{figure}
 
@@ -1715,7 +1719,7 @@ the same expression in CXL.
 \begin{code}
 \cxlsource{PetersonMethod}
 \end{code}
-\caption{[PetersonMethod.cxl] Peterson's Algorithm accessed through methods.}
+\caption{\cxllink{PetersonMethod.cxl} Peterson's Algorithm accessed through methods.}
 \label{fig:petersonmethods}
 \end{figure}
 
@@ -1779,7 +1783,7 @@ That would allow you to simulate object methods.
 \begin{code}
 \cxlsource{spinlock}
 \end{code}
-\caption{[spinlock.cxl] Mutual Exclusion using a ``spinlock'' based on test-and-set.}
+\caption{\cxllink{spinlock.cxl} Mutual Exclusion using a ``spinlock'' based on test-and-set.}
 \label{fig:tas}
 \end{figure}
 
@@ -1863,7 +1867,7 @@ section if \textit{private}[$i$] == \texttt{False}, and (ii) no other process mo
 \begin{code}
 \cxlsource{spinlockInv}
 \end{code}
-\caption{[spinlockInv.cxl] Checking invariants.}
+\caption{\cxllink{spinlockInv.cxl} Checking invariants.}
 \label{fig:tasinv}
 \end{figure}
 
@@ -1921,7 +1925,7 @@ the balance can have changed.
 \begin{code}
 \cxlsource{atm}
 \end{code}
-\caption{[atm.cxl] Withdrawing money from an ATM.}
+\caption{\cxllink{atm.cxl} Withdrawing money from an ATM.}
 \label{fig:atm}
 \end{figure}
 
@@ -1934,7 +1938,7 @@ the balance can have changed.
 \begin{code}
 \cxlsource{csTAS}
 \end{code}
-\caption{[csTAS.cxl] Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
+\caption{\cxllink{csTAS.cxl} Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
@@ -1981,7 +1985,7 @@ use \textbf{atomic} by all means.
 \begin{code}
 \cxlsource{UpLock}
 \end{code}
-\caption{[UpLock.cxl] Program of Figure~\ref{fig:inc} fixed with a lock.}
+\caption{\cxllink{UpLock.cxl} Program of Figure~\ref{fig:inc} fixed with a lock.}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2126,7 +2130,7 @@ version of the module.
 \begin{code}
 \cxlsource{RW}
 \end{code}
-\caption{[RW.cxl] Busy-Waiting Reader/Writer Lock implementation.}
+\caption{\cxllink{RW.cxl} Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
 \end{figure}
 
@@ -2134,7 +2138,7 @@ version of the module.
 \begin{code}
 \cxlsource{RWtest}
 \end{code}
-\caption{[RWtest.cxl] Test code for Figure~\ref{fig:rwbusy}.}
+\caption{\cxllink{RWtest.cxl} Test code for Figure~\ref{fig:rwbusy}.}
 \label{fig:rwbusytest}
 \end{figure}
 
@@ -2205,7 +2209,7 @@ critical section, any other reader is also able to enter.
 \begin{code}
 \cxlsource{RWbusychk}
 \end{code}
-\caption{[RWbusychk.cxl] Checking for Busy Waiting.}
+\caption{\cxllink{RWbusychk.cxl} Checking for Busy Waiting.}
 \label{fig:rwblock}
 \end{figure}
 
@@ -2275,7 +2279,7 @@ bound lock.
 \begin{code}
 \cxlsource{RWlock}
 \end{code}
-\caption{[RWlock.cxl] Reader/Writer with Two Locks.}
+\caption{\cxllink{RWlock.cxl} Reader/Writer with Two Locks.}
 \label{fig:rw2lock}
 \end{figure}
 
@@ -2283,7 +2287,7 @@ bound lock.
 \begin{code}
 \cxlsource{RWmulti}
 \end{code}
-\caption{[RWmulti.cxl] Checking that multiple readers can acquire the read lock.}
+\caption{\cxllink{RWmulti.cxl} Checking that multiple readers can acquire the read lock.}
 \label{fig:rwmulti}
 \end{figure}
 
@@ -2382,7 +2386,7 @@ write lock and then obtaining the read lock.
 \begin{code}
 \cxlsource{DinersSema}
 \end{code}
-\caption{[DinersSema.cxl] Italian Philosophers.}
+\caption{\cxllink{DinersSema.cxl} Italian Philosophers.}
 \label{fig:dinerssema}
 \end{figure}
 
@@ -2464,7 +2468,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{qsort}
 \end{code}
-\caption{[qsort.cxl] Iterative qsort() implementation.}
+\caption{\cxllink{qsort.cxl} Iterative qsort() implementation.}
 \label{fig:qsort}
 \end{figure}
 
@@ -2472,7 +2476,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{qsorttest}
 \end{code}
-\caption{[qsorttest.cxl] Test program for Figure~\ref{fig:qsort}.}
+\caption{\cxllink{qsorttest.cxl} Test program for Figure~\ref{fig:qsort}.}
 \label{fig:qsorttest}
 \end{figure}
 
@@ -2495,7 +2499,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{BBsema}
 \end{code}
-\caption{[BBsema.cxl] Bounded Buffer implementation using semaphores.}
+\caption{\cxllink{BBsema.cxl} Bounded Buffer implementation using semaphores.}
 \label{fig:boundedbuffer}
 \end{figure}
 
@@ -2503,7 +2507,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{BBsematest}
 \end{code}
-\caption{[BBsematest.cxl] Test program for Figure~\ref{fig:boundedbuffer}.}
+\caption{\cxllink{BBsematest.cxl} Test program for Figure~\ref{fig:boundedbuffer}.}
 \label{fig:bbtest}
 \end{figure}
 
@@ -2577,7 +2581,7 @@ there are three items to produce initially.
 \begin{code}
 \cxlsource{BBsemadata}
 \end{code}
-\caption{[BBsemadata.cxl] Test whether the bounded buffer delivers the right data in the
+\caption{\cxllink{BBsemadata.cxl} Test whether the bounded buffer delivers the right data in the
 right order.}
 \label{fig:BBsemadata}
 \end{figure}
@@ -2672,7 +2676,7 @@ to block.
 \begin{code}
 \cxlsource{gpu}
 \end{code}
-\caption{[gpu.cxl] A thread-unsafe GPU allocator.}
+\caption{\cxllink{gpu.cxl} A thread-unsafe GPU allocator.}
 \label{fig:gpu}
 \end{figure}
 
@@ -2684,7 +2688,7 @@ to block.
 \begin{code}
 \cxlsource{RWsbs}
 \end{code}
-\caption{[RWsbs.cxl] Reader/Writer Lock implementation using Split Binary Semaphores.}
+\caption{\cxllink{RWsbs.cxl} Reader/Writer Lock implementation using Split Binary Semaphores.}
 \label{fig:RWsplitsema}
 \end{figure}
 
@@ -2842,7 +2846,7 @@ for southbound cars.
 \cxlsource{RWfair}
 }
 \end{code}
-\caption{[RWfair.cxl] Reader/Writer Lock SBS implementation addressing fairness.}
+\caption{\cxllink{RWfair.cxl} Reader/Writer Lock SBS implementation addressing fairness.}
 \label{fig:RWfair}
 \end{figure}
 
@@ -2950,7 +2954,7 @@ in the order in which they appear in the queue.
 \cxlsource{RWqueue}
 }
 \end{code}
-\caption{[RWqueue.cxl] Reader/Writer Lock SBS implementation using a queue.}
+\caption{\cxllink{RWqueue.cxl} Reader/Writer Lock SBS implementation using a queue.}
 \label{fig:RWqueue}
 \end{figure}
 
@@ -2958,7 +2962,7 @@ in the order in which they appear in the queue.
 \begin{code}
 \cxlsource{RWqtest}
 \end{code}
-\caption{[RWqtest.cxl] Test program for Figure~\ref{fig:RWqueue}.}
+\caption{\cxllink{RWqtest.cxl} Test program for Figure~\ref{fig:RWqueue}.}
 \label{fig:RWqtest}
 \end{figure}
 
@@ -3121,7 +3125,7 @@ In C and C++, support for locks and condition variables is through libraries.
 \begin{code}
 \cxlsource{RWcv}
 \end{code}
-\caption{[RWcv.cxl] Reader/Writer Lock implementation using Mesa-style condition variables.}
+\caption{\cxllink{RWcv.cxl} Reader/Writer Lock implementation using Mesa-style condition variables.}
 \label{fig:RWcv}
 \end{figure}
 
@@ -3219,7 +3223,7 @@ it is fair.
 \begin{code}
 \cxlsource{Diners}
 \end{code}
-\caption{[Diners.cxl] Dining Philosophers.}
+\caption{\cxllink{Diners.cxl} Dining Philosophers.}
 \label{fig:diners}
 \end{figure}
 
@@ -3261,7 +3265,7 @@ processes being blocked trying to acquire the lock.
 \begin{code}
 \cxlsource{DinersCV}
 \end{code}
-\caption{[DinersCV.cxl] Dining Philosophers that grab both forks at the same time.}
+\caption{\cxllink{DinersCV.cxl} Dining Philosophers that grab both forks at the same time.}
 \label{fig:dinerscv}
 \end{figure}
 
@@ -3369,7 +3373,7 @@ wants to allocate, making them generally quite impractical.
 \begin{code}
 \cxlsource{DinersAvoid}
 \end{code}
-\caption{[DinersAvoid.cxl] Dining Philosophers that carefully avoid getting into a deadlock
+\caption{\cxllink{DinersAvoid.cxl} Dining Philosophers that carefully avoid getting into a deadlock
 scenario.}
 \label{fig:dinersavoid}
 \end{figure}
@@ -3394,7 +3398,7 @@ so continually?
 \begin{code}
 \cxlsource{bank}
 \end{code}
-\caption{[bank.cxl] Bank accounts.}
+\caption{\cxllink{bank.cxl} Bank accounts.}
 \label{fig:bank}
 \end{figure}
 
@@ -3417,7 +3421,7 @@ so continually?
 \begin{code}
 \cxlsource{actor}
 \end{code}
-\caption{[actor.cxl] A producer/consumer actor.}
+\caption{\cxllink{actor.cxl} A producer/consumer actor.}
 \label{fig:actor}
 \end{figure}
 
@@ -3425,7 +3429,7 @@ so continually?
 \begin{code}
 \cxlsource{actortest}
 \end{code}
-\caption{[actortest.cxl] Test code for producer/consumer actor.}
+\caption{\cxllink{actortest.cxl} Test code for producer/consumer actor.}
 \label{fig:actortest}
 \end{figure}
 
@@ -3542,7 +3546,7 @@ in the opposite order.  Which do you think is better?
 \begin{code}
 \cxlsource{abp}
 \end{code}
-\caption{[abp.cxl] Alternating Bit Protocol.}
+\caption{\cxllink{abp.cxl} Alternating Bit Protocol.}
 \label{fig:abp}
 \end{figure}
 
@@ -3550,7 +3554,7 @@ in the opposite order.  Which do you think is better?
 \begin{code}
 \cxlsource{abptest}
 \end{code}
-\caption{[abptest.cxl] Test code for alternating bit protocol.}
+\caption{\cxllink{abptest.cxl} Test code for alternating bit protocol.}
 \label{fig:abptest}
 \end{figure}
 
@@ -3654,7 +3658,7 @@ for each client, or solve the problem using a single pair of channels.
 \begin{code}
 \cxlsource{hw}
 \end{code}
-\caption{[hw.cxl] Non-blocking queue.}
+\caption{\cxllink{hw.cxl} Non-blocking queue.}
 \label{fig:hw}
 \end{figure}
 
@@ -3781,7 +3785,7 @@ If not found, it coincides with retrieving the pointer to the
 \begin{code}
 \cxlsource{lst1}
 \end{code}
-\caption{[lst1.cxl] List with non-blocking read operations, part 1.}
+\caption{\cxllink{lst1.cxl} List with non-blocking read operations, part 1.}
 \label{fig:lst1}
 \end{figure}
 
@@ -3789,7 +3793,7 @@ If not found, it coincides with retrieving the pointer to the
 \begin{code}
 \cxlsource{lst2}
 \end{code}
-\caption{[lst2.cxl] List with non-blocking read operations, part 2.}
+\caption{\cxllink{lst2.cxl} List with non-blocking read operations, part 2.}
 \label{fig:lst2}
 \end{figure}
 
@@ -3833,7 +3837,7 @@ rounds each process has completed.}
 \begin{code}
 \cxlsource{barrier}
 \end{code}
-\caption{[barrier.cxl] Barrier synchronization with semaphores.}
+\caption{\cxllink{barrier.cxl} Barrier synchronization with semaphores.}
 \label{fig:barrier}
 \end{figure}
 
