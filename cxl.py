@@ -3641,6 +3641,7 @@ def htmlnode(s, visited, code, scope, f, verbose):
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
     else:
         print("</tr>", file=f)
+        print("<tr><td></td><td></td><td></td><td></td></tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
         htmlrow(ctx, s.ctxbag, s, n, code, scope, f, verbose)
     for ctx in sorted(s.stopbag.keys(), key=lambda x: nametag2str(x.nametag)):

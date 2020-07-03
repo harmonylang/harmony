@@ -1910,7 +1910,8 @@ and swap the values.
 a certain amount of money not exceeding their balance.  A negative balance
 is not allowed.  Figure~\ref{fig:atm} shows two operations on bank accounts:
 one to check the balance and one to withdraw money.
-Note that all operations on accounts are carefully protected by a lock.
+Note that all operations on accounts are carefully protected by a lock
+(i.e., there are no data races).
 The \texttt{customer}
 method models going to a particular ATM and withdrawing money not exceeding
 the balance.  Method \texttt{checker} looks for negative balances.
