@@ -1,0 +1,1107 @@
+
+            <html>
+            <head>
+            <link rel="stylesheet" type="text/css" href="cxl.css">
+            </head>
+            <body>
+        
+<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: process failure</th>
+<th colspan='2'>Shared Variables</th>
+<col style='width:15%'>
+<tr><th>Process</th><th>Steps</th>
+<td align='center' style='font-style: italic'>count</td>
+<td align='center' style='font-style: italic'>done</td>
+</tr><tr><td><td></tr>
+<tr><td><a href='javascript:rowshow(2,2)'>__init__/()</a></td>
+<td><a href='#P0'>0</a> <a href='#P34'>34-50</a></td>
+<td align='center'>0</td>
+<td align='center'>[False, False]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(3,8)'>incrementer/0</a></td>
+<td><a href='#P1'>1-4</a></td>
+<td align='center'>0</td>
+<td align='center'>[False, False]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(4,35)'>incrementer/1</a></td>
+<td><a href='#P1'>1-11</a></td>
+<td align='center'>1</td>
+<td align='center'>[False, True]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(5,67)'>incrementer/0</a></td>
+<td><a href='#P5'>5-11</a></td>
+<td align='center'>1</td>
+<td align='center'>[True, True]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(6,79)'>main/()</a></td>
+<td><a href='#P13'>13-21</a> <a href='#P23'>23-24</a> <a href='#P26'>26-31</a></td>
+<td align='center'>1</td>
+<td align='center'>[True, True]</td>
+</tr>
+</table>
+</p>
+<table>
+<col style='width:50%'>
+<col style='width:50%'>
+<tr>
+<td valign='top'>
+<div id='table-wrapper'>
+<div id='table-scroll'>
+<table border='1'>
+<tbody>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:1 def incrementer(self): </th>
+</tr><tr>
+<td><a name='P0'> 0 </a></td><td>
+<span title='set program counter to 34'>
+<a href='#P34'> Jump 34 </a>
+</span></td></tr>
+<tr>
+<td><a name='P1'> 1 </a></td><td>
+<span title='start of method incrementer'>
+Frame incrementer(self)
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:2     count = count + 1; </th>
+</tr><tr>
+<td><a name='P2'> 2 </a></td><td>
+<span title='push value of shared variable count'>
+Load count
+</span></td></tr>
+<tr>
+<td><a name='P3'> 3 </a></td><td>
+<span title='push constant 1'>
+Push 1
+</span></td></tr>
+<tr>
+<td><a name='P4'> 4 </a></td><td>
+<span title='pop 2 values and push the result of applying +'>
+2-ary +
+</span></td></tr>
+<tr>
+<td><a name='P5'> 5 </a></td><td>
+<span title='pop a value and store it in shared variable count'>
+Store count
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:3     done[self] = True; </th>
+</tr><tr>
+<td><a name='P6'> 6 </a></td><td>
+<span title='push the address of shared variable done'>
+PushAddress done
+</span></td></tr>
+<tr>
+<td><a name='P7'> 7 </a></td><td>
+<span title='push the value of method variable self'>
+LoadVar self
+</span></td></tr>
+<tr>
+<td><a name='P8'> 8 </a></td><td>
+<span title='combine the top 2 values on the stack into an address and push the result'>
+Address 2
+</span></td></tr>
+<tr>
+<td><a name='P9'> 9 </a></td><td>
+<span title='push constant True'>
+Push True
+</span></td></tr>
+<tr>
+<td><a name='P10'> 10 </a></td><td>
+<span title='pop a value and an address and store the value at the address'>
+Store
+</span></td></tr>
+<tr>
+<td><a name='P11'> 11 </a></td><td>
+<span title='restore caller method state and push result'>
+Return
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:5 def main(): </th>
+</tr><tr>
+<td><a name='P12'> 12 </a></td><td>
+<span title='set program counter to 34'>
+<a href='#P34'> Jump 34 </a>
+</span></td></tr>
+<tr>
+<td><a name='P13'> 13 </a></td><td>
+<span title='start of method main'>
+Frame main()
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:6     while not (done[0] and done[1]): </th>
+</tr><tr>
+<td><a name='P14'> 14 </a></td><td>
+<span title='push constant 0'>
+Push 0
+</span></td></tr>
+<tr>
+<td><a name='P15'> 15 </a></td><td>
+<span title='push value of shared variable done'>
+Load done
+</span></td></tr>
+<tr>
+<td><a name='P16'> 16 </a></td><td>
+<span title='pop a pc or dictionary f and an index i and push f(i)'>
+Apply
+</span></td></tr>
+<tr>
+<td><a name='P17'> 17 </a></td><td>
+<span title='pop a value and jump to 22 if the value is False'>
+<a href='#P22'> JumpCond False 22 </a>
+</span></td></tr>
+<tr>
+<td><a name='P18'> 18 </a></td><td>
+<span title='push constant 1'>
+Push 1
+</span></td></tr>
+<tr>
+<td><a name='P19'> 19 </a></td><td>
+<span title='push value of shared variable done'>
+Load done
+</span></td></tr>
+<tr>
+<td><a name='P20'> 20 </a></td><td>
+<span title='pop a pc or dictionary f and an index i and push f(i)'>
+Apply
+</span></td></tr>
+<tr>
+<td><a name='P21'> 21 </a></td><td>
+<span title='set program counter to 23'>
+<a href='#P23'> Jump 23 </a>
+</span></td></tr>
+<tr>
+<td><a name='P22'> 22 </a></td><td>
+<span title='push constant False'>
+Push False
+</span></td></tr>
+<tr>
+<td><a name='P23'> 23 </a></td><td>
+<span title='pop 1 value and push the result of applying not'>
+1-ary not
+</span></td></tr>
+<tr>
+<td><a name='P24'> 24 </a></td><td>
+<span title='pop a value and jump to 26 if the value is False'>
+<a href='#P26'> JumpCond False 26 </a>
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:7         pass; </th>
+</tr><tr>
+<td><a name='P25'> 25 </a></td><td>
+<span title='set program counter to 14'>
+<a href='#P14'> Jump 14 </a>
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:9     assert count == 2, count; </th>
+</tr><tr>
+<td><a name='P26'> 26 </a></td><td>
+<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
+AtomicInc
+</span></td></tr>
+<tr>
+<td><a name='P27'> 27 </a></td><td>
+<span title='push value of shared variable count'>
+Load count
+</span></td></tr>
+<tr>
+<td><a name='P28'> 28 </a></td><td>
+<span title='push constant 2'>
+Push 2
+</span></td></tr>
+<tr>
+<td><a name='P29'> 29 </a></td><td>
+<span title='pop 2 values and push the result of applying =='>
+2-ary ==
+</span></td></tr>
+<tr>
+<td><a name='P30'> 30 </a></td><td>
+<span title='push value of shared variable count'>
+Load count
+</span></td></tr>
+<tr>
+<td><a name='P31'> 31 </a></td><td>
+<span title='pop a value and a condition and raise exception if condition is false'>
+Assert2
+</span></td></tr>
+<tr>
+<td><a name='P32'> 32 </a></td><td>
+<span title='decrement atomic counter of context'>
+AtomicDec
+</span></td></tr>
+<tr>
+<td><a name='P33'> 33 </a></td><td>
+<span title='restore caller method state and push result'>
+Return
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:11 count = 0; </th>
+</tr><tr>
+<td><a name='P34'> 34 </a></td><td>
+<span title='push constant 0'>
+Push 0
+</span></td></tr>
+<tr>
+<td><a name='P35'> 35 </a></td><td>
+<span title='pop a value and store it in shared variable count'>
+Store count
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:12 done = [ False, False ]; </th>
+</tr><tr>
+<td><a name='P36'> 36 </a></td><td>
+<span title='push constant [False, False]'>
+Push [False, False]
+</span></td></tr>
+<tr>
+<td><a name='P37'> 37 </a></td><td>
+<span title='pop a value and store it in shared variable done'>
+Store done
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:13 spawn incrementer(0); </th>
+</tr><tr>
+<td><a name='P38'> 38 </a></td><td>
+<span title='push constant 0'>
+Push 0
+</span></td></tr>
+<tr>
+<td><a name='P39'> 39 </a></td><td>
+<span title='push a copy of the top value on the stack'>
+Dup
+</span></td></tr>
+<tr>
+<td><a name='P40'> 40 </a></td><td>
+<span title='push constant PC(1)'>
+Push <a href='#P1'> PC(1) </a>
+</span></td></tr>
+<tr>
+<td><a name='P41'> 41 </a></td><td>
+<span title='pop a pc, argument, and tag and spawn a new process'>
+Spawn
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:14 spawn incrementer(1); </th>
+</tr><tr>
+<td><a name='P42'> 42 </a></td><td>
+<span title='push constant 1'>
+Push 1
+</span></td></tr>
+<tr>
+<td><a name='P43'> 43 </a></td><td>
+<span title='push a copy of the top value on the stack'>
+Dup
+</span></td></tr>
+<tr>
+<td><a name='P44'> 44 </a></td><td>
+<span title='push constant PC(1)'>
+Push <a href='#P1'> PC(1) </a>
+</span></td></tr>
+<tr>
+<td><a name='P45'> 45 </a></td><td>
+<span title='pop a pc, argument, and tag and spawn a new process'>
+Spawn
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>Up.cxl:15 spawn main(); </th>
+</tr><tr>
+<td><a name='P46'> 46 </a></td><td>
+<span title='push constant ()'>
+Push ()
+</span></td></tr>
+<tr>
+<td><a name='P47'> 47 </a></td><td>
+<span title='push a copy of the top value on the stack'>
+Dup
+</span></td></tr>
+<tr>
+<td><a name='P48'> 48 </a></td><td>
+<span title='push constant PC(13)'>
+Push <a href='#P13'> PC(13) </a>
+</span></td></tr>
+<tr>
+<td><a name='P49'> 49 </a></td><td>
+<span title='pop a pc, argument, and tag and spawn a new process'>
+Spawn
+</span></td></tr>
+<tr>
+<td><a name='P50'> 50 </a></td><td>
+<span title='restore caller method state and push result'>
+Return
+</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</td>
+<td valign='top'>
+<div id='div79' style='display:none'>
+<div class='container'>
+<a name='N79'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>main/()</td>
+<td>failed</td>
+<td>
+<table id='loc1' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P31'>31</a> 
+<a href='javascript:setrow(1,0)'>
+main()</a>:
+    assert count == 2, count;
+</td></tr>
+<tr style='color: red'><td>CXL Assertion failed : 1</td></tr>
+</table>
+</td>
+<td>
+<div id='vars1_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div69' style='display:none'>
+<div class='container'>
+<a name='N69'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc2' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P26'>26</a> 
+<a href='javascript:setrow(2,0)'>
+main()</a>:
+    assert count == 2, count;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars2_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div67' style='display:none'>
+<div class='container'>
+<a name='N67'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc3' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(3,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars3_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div37' style='display:none'>
+<div class='container'>
+<a name='N37'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc4' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P10'>10</a> 
+<a href='javascript:setrow(4,0)'>
+incrementer(0)</a>:
+    done[self] = True;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars4_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc5' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(5,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars5_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div35' style='display:none'>
+<div class='container'>
+<a name='N35'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc6' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(6,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars6_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc7' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(7,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars7_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div32' style='display:none'>
+<div class='container'>
+<a name='N32'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc8' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(8,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars8_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc9' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P10'>10</a> 
+<a href='javascript:setrow(9,0)'>
+incrementer(1)</a>:
+    done[self] = True;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars9_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 1</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc10' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(10,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars10_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div29' style='display:none'>
+<div class='container'>
+<a name='N29'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc11' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(11,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars11_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc12' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(12,0)'>
+incrementer(1)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars12_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 1</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc13' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(13,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars13_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div9' style='display:none'>
+<div class='container'>
+<a name='N9'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc14' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(14,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars14_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc15' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P2'>2</a> 
+<a href='javascript:setrow(15,0)'>
+incrementer(1)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars15_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 1</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc16' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(16,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars16_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div8' style='display:none'>
+<div class='container'>
+<a name='N8'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc17' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P5'>5</a> 
+<a href='javascript:setrow(17,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars17_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc18' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P1'>1</a> 
+<a href='javascript:setrow(18,0)'>
+</a>:
+def incrementer(self):
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars18_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc19' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(19,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars19_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div3' style='display:none'>
+<div class='container'>
+<a name='N3'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc20' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P2'>2</a> 
+<a href='javascript:setrow(20,0)'>
+incrementer(0)</a>:
+    count = count + 1;
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars20_0' style='display:block'>
+<table>
+<tr>
+<td>result = ()</td>
+</tr>
+<tr>
+<td>self = 0</td>
+</tr>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc21' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P1'>1</a> 
+<a href='javascript:setrow(21,0)'>
+</a>:
+def incrementer(self):
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars21_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc22' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(22,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars22_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div2' style='display:none'>
+<div class='container'>
+<a name='N2'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>incrementer/0</td>
+<td>running</td>
+<td>
+<table id='loc23' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P1'>1</a> 
+<a href='javascript:setrow(23,0)'>
+</a>:
+def incrementer(self):
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars23_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>incrementer/1</td>
+<td>running</td>
+<td>
+<table id='loc24' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P1'>1</a> 
+<a href='javascript:setrow(24,0)'>
+</a>:
+def incrementer(self):
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars24_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+<tr>
+<td>main/()</td>
+<td>running</td>
+<td>
+<table id='loc25' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P13'>13</a> 
+<a href='javascript:setrow(25,0)'>
+</a>:
+def main():
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars25_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div id='div1' style='display:none'>
+<div class='container'>
+<a name='N1'/>
+<table border='1'>
+<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+<tr>
+<td>__init__/()</td>
+<td>running</td>
+<td>
+<table id='loc26' border='1' width='100%'>
+<tr style='background-color: #A5FF33'>
+<td>
+<a href='#P0'>0</a> 
+<a href='javascript:setrow(26,0)'>
+</a>:
+def incrementer(self):
+</td></tr>
+</table>
+</td>
+<td>
+<div id='vars26_0' style='display:block'>
+<table>
+</table>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</td>
+</tr>
+</table>
+
+                <div id='divNone' style='display:none';>
+                  <div class='container'>
+                    <p>
+                        State information not available.
+                        Use cxl -d for a complete htmldump.
+                    </p>
+                  </div>
+                </div>
+
+                <script>
+                  var current = 1;
+
+                  function show(id) {
+                      x = document.getElementById('div' + current);
+                      if (x == null) {
+                          x = document.getElementById('divNone')
+                      }
+                      x.style.display = 'none';
+                      x = document.getElementById('div' + id)
+                      if (x == null) {
+                          x = document.getElementById('divNone')
+                      }
+                      x.style.display = 'block';
+                      current = id;
+                  }
+
+                  function rowshow(row, id) {
+                    show(id);
+                    var tbl = document.getElementById("issuestbl");
+                    for (var i = 1; i < tbl.rows.length; i++) {
+                        if (i == row + 1) {
+                            tbl.rows[i].style.backgroundColor = "#A5FF33";
+                        }
+                        else {
+                            tbl.rows[i].style.backgroundColor = "";
+                        }
+                    }
+                  }
+
+                  function setrow(tblid, row) {
+                    var tbl = document.getElementById('loc' + tblid);
+                    for (var i = 0; i < tbl.rows.length; i++) {
+                        var div = document.getElementById('vars' + tblid + '_' + i);
+                        if (i == row) {
+                            tbl.rows[i].style.backgroundColor = "#A5FF33";
+                            div.style.display = 'block';
+                        }
+                        else {
+                            tbl.rows[i].style.backgroundColor = "";
+                            div.style.display = 'none';
+                        }
+                    }
+                  }
+
+                  rowshow(6, 79)
+                </script>
+            
+</body>
+</html>
