@@ -36,8 +36,12 @@ XX\=XXX\=XXX\kill
 \end{tabbing}
 }
 
-\newcommand{\cxllink}[1]{
-    [\href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{#1}]
+\newcommand{\cxllink}[1]{%
+[\href{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{\underline{#1}}]%
+}
+
+\newcommand{\cxlref}[2]{%
+\href{https://www.cs.cornell.edu/home/rvr/cxl/output/#1}{\underline{#2}}%
 }
 
 \newglossaryentry{actor model}
@@ -1021,7 +1025,7 @@ Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/Up1.png}
 \caption{The
-\href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/Up.html}{HTML output of running CXL on Figure~\ref{fig:inc}}.
+\cxlref{Up.html}{HTML output of running CXL on Figure~\ref{fig:inc}}.
 There are three sections.
 The top shows the steps to the problematic state.
 The bottom left shows the source code and bytecode
@@ -1269,7 +1273,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveLock.png}
-\caption{The \href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveLock.html}{HTML output of running CXL on Figure~\ref{fig:uplock}}.}
+\caption{The \href{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveLock.html}{HTML output of running CXL on Figure~\ref{fig:uplock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
 
@@ -1283,7 +1287,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveFlags.png}
-\caption{The \href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveFlags.html}{HTML output of running CXL on Figure~\ref{fig:upflags}}.}
+\caption{The \href{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveFlags.html}{HTML output of running CXL on Figure~\ref{fig:upflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
 
