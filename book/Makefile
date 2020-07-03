@@ -2,6 +2,7 @@ paper.pdf: paper.tex
 	pdflatex paper
 
 all:
+	(cd sources; make)
 	pdflatex paper
 	bibtex paper
 	makeindex paper
