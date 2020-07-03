@@ -32,12 +32,12 @@
 \newcommand{\cxlsource}[1]{
 \begin{tabbing}
 XX\=XXX\=XXX\kill
-    \input{code/#1.tex}
+    \input{sources/#1.tex}
 \end{tabbing}
 }
 
 \newcommand{\cxllink}[1]{%
-[\href{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{\underline{#1}}]%
+[\href{https://www.cs.cornell.edu/home/rvr/cxl/sources/#1}{\underline{#1}}]%
 }
 
 \newcommand{\cxlref}[2]{%
@@ -751,7 +751,7 @@ time---the important thing is to develop an understanding of concurrency.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/Up.py}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../code/Up.py}
 \end{code}
 \caption{[Up.py] Python implementation of Figure~\ref{fig:inc}.}
 \label{fig:incpy}
@@ -759,7 +759,7 @@ time---the important thing is to develop an understanding of concurrency.
 
 \begin{figure}
 \begin{code}
-\VerbatimInput[xleftmargin=5mm,numbers=left]{code/UpMany.py}
+\VerbatimInput[xleftmargin=5mm,numbers=left]{../code/UpMany.py}
 \end{code}
 \caption{[UpMany.py] Incrementing \texttt{N} times.}
 \label{fig:incmany}
