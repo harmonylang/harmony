@@ -3416,13 +3416,13 @@ def htmlpath(s, visited, color, f):
     label = "Issue: " + label
     keys = sorted(s.vars.d.keys(), key=lambda x: keyValue(x))
     path = genpath(s, visited)
-    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th>"%(color, label), file=f)
+    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th></th>"%(color, label), file=f)
     if len(keys) == 1:
         print("<th>Shared Variable</th>", file=f)
     else:
         print("<th colspan='%d'>Shared Variables</th>"%len(keys), file=f)
     print("<col style='width:15%'>", file=f)
-    print("<tr><th>Process</th><th>Steps</th>", file=f)
+    print("<tr><th>Process</th><th>Steps</th><th></th>", file=f)
     for v in keys:
         print("<td align='center' style='font-style: italic'>%s</td>"%v, file=f)
     print("</tr><tr><td><td></tr>", file=f)
@@ -3434,7 +3434,7 @@ def htmlpath(s, visited, color, f):
         else:
             sid = visited[s].uid
         print("<tr><td><a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(row, sid, nametag2str(ctx.nametag)), file=f)
-        print("<td>%s</td>"%htmlstrsteps(steps), file=f)
+        print("<td>%s</td><td></td>"%htmlstrsteps(steps), file=f)
 
         for k in keys:
             print("<td align='center'>%s</td>"%strValue(vars.d[k]), file=f)
@@ -3693,12 +3693,16 @@ def htmldump(visited, code, scope, state, fulldump, verbose):
             <body>
         """, file=f)
 
-        if state != None:
-            htmlpath(state, visited, "red", f)
-
         print("<table>", file=f)
         print("<col style='width:50%'>", file=f)
         print("<col style='width:50%'>", file=f)
+
+        if state != None:
+            print("<tr><td colspan='2'>", file=f)
+            htmlpath(state, visited, "red", f)
+            print("</td></tr>", file=f)
+            print("<tr><td></td></tr>", file=f)
+
         print("<tr>", file=f)
 
         print("<td valign='top'>", file=f)
