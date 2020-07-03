@@ -1,7 +1,6 @@
 \documentclass{report}
 \usepackage{fullpage}
 \usepackage{imakeidx}\makeindex
-\usepackage{hyperref}
 \usepackage[nottoc,notlot,notlof]{tocbibind}
 \usepackage[toc]{glossaries}\makeglossaries
 \usepackage{graphicx}
@@ -15,6 +14,9 @@
 \usepackage{enumitem}
 \usepackage{etoolbox}
 \usepackage{bold-extra}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{linkbordercolor=blue, pdfborderstyle={/S/U/W 1}}
 
 \AtBeginEnvironment{enumerate}{\everymath{\displaystyle}}
 \newlist{problems}{enumerate}{2}
@@ -35,7 +37,7 @@ XX\=XXX\=XXX\kill
 }
 
 \newcommand{\cxllink}[1]{
-    [\href{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{#1}]
+    [\href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/code/#1}{#1}]
 }
 
 \newglossaryentry{actor model}
@@ -1019,7 +1021,7 @@ Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/Up1.png}
 \caption{The
-\href{https://www.cs.cornell.edu/home/rvr/cxl/output/Up.html}{HTML output of running CXL on Figure~\ref{fig:inc}}.
+\href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/Up.html}{HTML output of running CXL on Figure~\ref{fig:inc}}.
 There are three sections.
 The top shows the steps to the problematic state.
 The bottom left shows the source code and bytecode
@@ -1267,7 +1269,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveLock.png}
-\caption{The \href{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveLock.html}{HTML output of running CXL on Figure~\ref{fig:uplock}}.}
+\caption{The \href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveLock.html}{HTML output of running CXL on Figure~\ref{fig:uplock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
 
@@ -1281,7 +1283,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveFlags.png}
-\caption{The \href{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveFlags.html}{HTML output of running CXL on Figure~\ref{fig:upflags}}.}
+\caption{The \href[pdfnewwindow=true]{https://www.cs.cornell.edu/home/rvr/cxl/output/naiveFlags.html}{HTML output of running CXL on Figure~\ref{fig:upflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
 
