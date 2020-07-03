@@ -1147,6 +1147,10 @@ Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
 process also tries to access the binary tree.
+Typically, you want some invariant property of the data structure to hold
+at the beginning and at the end of the critical section, but in the middle
+the invariant may be temporarily broken---this is no issue as no other
+process will be able to see it.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) and free of race conditions is called \emph{thread-safe}.
 \index{thread safety}%
@@ -1891,7 +1895,34 @@ to find violations of the invariant if it does not hold.
 and swap the values.
 \item Implement a spinlock using the atomic swap operation.
 \item Write out the invariants that need to hold and check them using CXL.
+\item People who use an ATM often first check their balance and then withdraw
+a certain amount of money not exceeding their balance.  A negative balance
+is not allowed.  Figure~\ref{fig:atm} shows two operations on bank accounts:
+one to check the balance and one to withdraw money.
+Note that all operations on accounts are carefully protected by a lock.
+The \texttt{customer}
+method models going to a particular ATM and withdrawing money not exceeding
+the balance.  Method \texttt{checker} looks for negative balances.
+Running the code through CXL reveals that there is a bug.
+It is a common type of concurrency bug known as \emph{Time Of Check Time Of
+Execution} (TOCTOE).
+\index{Time Of Check Time Of Execution}
+\index{TOCTOE}
+In this case, by the time the withdraw operation is performed,
+the balance can have changed.
+\begin{enumerate}
+\item Fix the code in Figure~\ref{fig:atm}.
+\item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
+\end{enumerate}
 \end{problems}
+
+\begin{figure}
+\begin{code}
+\cxlsource{atm}
+\end{code}
+\caption{[atm.cxl] Withdrawing money from an ATM.}
+\label{fig:atm}
+\end{figure}
 
 \chapter{Locks and Blocking}
 \label{ch:synch}
@@ -1954,7 +1985,17 @@ use \textbf{atomic} by all means.
 \end{figure}
 
 Locks are probably the most prevalent and basic form of synchronization
-in concurrent programs.  For this reason, CXL has a module called
+in concurrent programs.  Typically, whenever you have a shared data
+structure, you want to protect the data structure with a lock and
+acquire the lock before access and release it immediately afterward.
+In other words, you want the access to the data structure to be a
+critical section.
+When there is a bug in a program because some code omitted obtaining
+a lock before accessing the data structure, that is known as a
+\emph{data race}.
+\index{data race}
+
+Because locks are so common, CXL has a module called
 \texttt{synch} that includes support for locks.
 Figure~\ref{fig:spinlocks} shows how they are implemented, and
 Figure~\ref{fig:incfixed} gives an example of how they may be used,

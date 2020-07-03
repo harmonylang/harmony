@@ -184,7 +184,11 @@ def lexer(s, file, silent):
                 found = t
         if found != "":
             result += [ (found, file, line, column) ]
-            if not silent: print(found, end="")
+            if not silent:
+                if found in [ "<=", ">=" ]:
+                    print("$%s$"%found, end="")
+                else:
+                    print(found, end="")
             s = s[len(found):]
             column += len(found)
             continue
