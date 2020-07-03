@@ -748,7 +748,7 @@ class AssertOp(Op):
         self.exprthere = exprthere
 
     def __repr__(self):
-        return "Assert"
+        return "Assert2" if self.exprthere else "Assert"
 
     def explain(self):
         if self.exprthere:
@@ -3864,8 +3864,9 @@ def main():
         assert t == "constant"
         (spc, file, line, column) = v
 
-    (visited, bad_state) = run(code, scope.labels, mpc, spc, blockflag)
-    htmldump(visited, code, scope, bad_state, fulldump, False)
+    if not printCode:
+        (visited, bad_state) = run(code, scope.labels, mpc, spc, blockflag)
+        htmldump(visited, code, scope, bad_state, fulldump, False)
 
 if __name__ == "__main__":
     main()

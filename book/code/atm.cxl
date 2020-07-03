@@ -1,0 +1,34 @@
+import synch;
+
+const NACCOUNTS = 2;
+const NCUSTOMERS = 2;
+const NATMS = 2;
+const MAX_BALANCE = 1;
+
+def atm_check_balance(acct):
+    lock(&accounts[acct].lock);
+    result = accounts[acct].balance;
+    unlock(&accounts[acct].lock);
+;
+def atm_withdraw(acct, amount):
+    lock(&accounts[acct].lock);
+    accounts[acct].balance -= amount;
+    unlock(&accounts[acct].lock);
+;
+def customer(atm, acct, amount):
+    let balance = atm_check_balance(acct):
+        if amount <= balance:
+            atm_withdraw(acct, amount);
+        ;
+    ;
+;
+def checker():
+    assert min({ accounts[acct].balance for acct in 0..(NACCOUNTS - 1) }) >= 0;
+;
+accounts = [ dict{ .lock: Lock(), .balance: choose(0..MAX_BALANCE) }
+                    for account in 0..(NACCOUNTS - 1) ]
+;
+spawn checker();
+for i in 1..NATMS:
+    spawn customer(i, choose(0..(NACCOUNTS - 1)), choose(0..MAX_BALANCE));
+;
