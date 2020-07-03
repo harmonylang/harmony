@@ -3440,7 +3440,6 @@ def htmlpath(s, visited, color, f):
             print("<td align='center'>%s</td>"%strValue(vars.d[k]), file=f)
         print("</tr>", file=f)
     print("</table>", file=f)
-    print("</p>", file=f)
 
 def htmlloc(code, scope, ctx, traceid, f):
     pc = ctx.pc
@@ -3492,12 +3491,13 @@ def htmlvars(vars, id, row, f):
     assert(isinstance(vars, DictValue))
     display = "block" if row == 0 else "none"
     print("<div id='vars%d_%d' style='display:%s'>"%(traceid, row, display), file=f)
-    print("<table>", file=f)
-    for (key, value) in vars.d.items():
-        print("<tr>", file=f)
-        print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
-        print("</tr>", file=f)
-    print("</table>", file=f)
+    if len(vars.d) > 0:
+        print("<table>", file=f)
+        for (key, value) in vars.d.items():
+            print("<tr>", file=f)
+            print("<td>%s = %s</td>"%(strValue(key)[1:], strValue(value)), file=f)
+            print("</tr>", file=f)
+        print("</table>", file=f)
     print("</div>", file=f)
 
 # print the variables on the stack
@@ -3639,6 +3639,8 @@ def htmlnode(s, visited, code, scope, f, verbose):
     if verbose:
         print("<th>FP</th><th>Stack</th>", file=f)
         print("<th>Steps</th><th>Next State</th></tr>", file=f)
+    else:
+        print("</tr>", file=f)
     for ctx in sorted(s.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
         htmlrow(ctx, s.ctxbag, s, n, code, scope, f, verbose)
     for ctx in sorted(s.stopbag.keys(), key=lambda x: nametag2str(x.nametag)):
