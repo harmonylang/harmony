@@ -1,0 +1,23 @@
+#!/bin/sh
+
+: DO NOT EDIT THE PYTHON SOURCE CODE.  IT IS AUTOMATICALLY SOURCED
+: FROM cxl.py
+
+if python3 -V 2>/dev/null
+then
+	PYTHON=python3
+elif python -V 2>/dev/null
+then
+	v=`python -V`
+	case $v in
+	"3."*) PYTHON=python ;;
+	*) echo 'CXL requires python3 to run' >&2; exit 1
+	esac
+else
+	echo 'CXL requires python3 to run' >&2; exit 1
+fi
+
+: DO NOT EDIT THE PYTHON SOURCE CODE.  IT IS AUTOMATICALLY SOURCED
+: FROM cxl.py
+
+$PYTHON - $@ <<'++++++'
