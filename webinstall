@@ -1,0 +1,6 @@
+dir=/people/rv22/cxl
+cp cxl cxl.py $dir
+cp book/paper.pdf $dir/book.pdf
+cp code/* $dir/code
+cp python/* $dir/python
+cp distributions/*.zip $dir/distributions
