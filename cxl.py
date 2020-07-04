@@ -384,7 +384,6 @@ def load_string(all, filename, scope, code):
         # print(traceback.format_exc())
         sys.exit(1)
     ast.compile(scope, code)
-    namestack.pop()
 
 def load(f, filename, scope, code):
     if filename in files:
@@ -396,6 +395,7 @@ def load(f, filename, scope, code):
         files[filename] += [line]
         all += line
     load_string(all, filename, scope, code)
+    namestack.pop()
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
