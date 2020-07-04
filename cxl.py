@@ -16,7 +16,7 @@ node_uid = 1            # unique node identifier
 ################################
 ######### Synch module ######### 
 ################################
-mod_sync = """
+mod_synch = """
 import list;
 import bag;
 
@@ -367,8 +367,8 @@ for i in 0..(NPOOL-1):
 ##############################
 
 internal_modules = {
-    "synch":  mod_sync,
-    "synchS": mod_syncS,
+    "synch":  mod_synch,
+    "synchS": mod_synchS,
     "list":   mod_list,
     "bag":    mod_bag,
     "alloc":  mod_alloc,
