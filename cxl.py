@@ -13,15 +13,368 @@ modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
 
-def load(f, filename, scope, code):
-    if filename in files:
-        return
-    namestack.append(filename)
-    files[filename] = []
-    all = ""
-    for line in f:
-        files[filename] += [line]
-        all += line
+################################
+######### Synch module ######### 
+################################
+mod_sync = """
+import list;
+import bag;
+
+def tas(lk):
+    atomic:
+        result = ^lk;
+        ^lk = True;
+    ;
+;
+def Lock():
+    result = False;
+;
+def lock(lk):
+    while tas(lk):
+        pass;
+    ;
+;
+def unlock(lk):
+    ^lk = False;
+;
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: bagEmpty() };
+;
+def wait(c):
+    let lk = (), blocked = True, cnt = 0:
+        atomic:
+            lk = (^c).lock;
+            cnt = bagCount((^c).waiters, nametag());
+            bagAdd(&(^c).waiters, nametag());
+            ^lk = False;
+        ;
+        while blocked:
+            atomic:
+                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
+                    ^lk = True;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def notify(c):
+    atomic:
+        let waiters = (^c).waiters:
+            if waiters != bagEmpty():
+                bagRemove(&(^c).waiters, bagChoose(waiters));
+            ;
+        ;
+    ;
+;
+def notifyAll(c):
+    (^c).waiters = bagEmpty();
+;
+def Semaphore(cnt):
+    result = cnt;
+;
+def P(sema):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (^sema) > 0:
+                    ^sema -= 1;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        ^sema += 1;
+    ;
+;
+def Queue():
+    result = [];
+;
+def dequeue(q):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if ^q != []:
+                    result = head(^q);
+                    ^q = tail(^q);
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        ^q = append(^q, item);
+    ;
+;
+"""
+#################################
+
+#################################
+######### SynchS module ######### 
+#################################
+mod_synchS = """
+import list;
+
+def Lock():
+    result = dict{ .locked: False, .suspended: [] };
+;
+def lock(lk):
+    atomic:
+        if (^lk).locked:
+            stop (^lk).suspended;
+            assert (^lk).locked;
+        else:
+            (^lk).locked = True;
+        ;
+    ;
+;
+def unlock(lk):
+    atomic:
+        if (^lk).suspended == []:
+            (^lk).locked = False;
+        else:
+            go (head((^lk).suspended)) ();
+            (^lk).suspended = tail((^lk).suspended);
+        ;
+    ;
+;
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: [] };
+;
+def wait(c):
+    atomic:
+        unlock((^c).lock);
+        stop (^c).waiters;
+    ;
+;
+def notify(c):
+    atomic:
+        let lk = (^c).lock, waiters = (^c).waiters:
+            if waiters != []:
+                (^lk).suspended += [waiters[0],];
+                (^c).waiters = tail(waiters);
+            ;
+        ;
+    ;
+;
+def notifyAll(c):
+    atomic:
+        let lk = (^c).lock, waiters = (^c).waiters:
+            (^lk).suspended += waiters;
+            (^c).waiters = [];
+        ;
+    ;
+;
+def Semaphore(cnt):
+    result = dict{ .count: cnt, .waiters: [] };
+;
+def P(sema):
+    atomic:
+        if (^sema).count > 0:
+            (^sema).count -= 1;
+        else:
+            stop (^sema).waiters;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        let cnt = (^sema).count, waiters = (^sema).waiters:
+            if waiters != []:
+                assert cnt == 0;
+                go (waiters[0]) ();
+                (^sema).waiters = tail(waiters);
+            else:
+                (^sema).count = cnt + 1;
+            ;
+        ;
+    ;
+;
+def Queue():
+    result = dict{ list: [], waiters: [] };
+;
+def dequeue(q):
+    atomic:
+        let list = (^q).list:
+            if list == []:
+                stop (^q).waiters;
+            ;
+            result = head(list);
+            (^q).list = tail(list);
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        (^q).list = append((^q).list, item);
+        let waiters = (^q).waiters:
+            if waiters != []:
+                go (waiters[0]) item;
+                (^q).waiters = tail(waiters);
+            ;
+        ;
+    ;
+;
+"""
+#################################
+
+################################
+######### List module ######### 
+################################
+mod_list = """
+# return s[b:e]
+def subseq(s, b, e):
+    result = [];
+    for x in b..(e-1):
+        result[x - b] = s[x];
+    ;
+;
+
+def append(s, e):
+    result = s + [e,];
+;
+def head(s):
+    result = s[0];
+;
+def tail(s):
+    result = subseq(s, 1, len(s));
+;
+
+# quicksort of a list
+def listQsort(a):
+    if a == []:
+        result = [];
+    else:
+        let i = 1, pivot = a[0], lower = [], higher = []:
+            while i < len(a):
+                if a[i] < pivot:
+                    lower += [a[i],];
+                else:
+                    higher += [a[i],];
+                ;
+                i = i + 1;
+            ;
+            result = listQsort(lower) + [pivot,] + listQsort(higher);
+        ;
+    ;
+;
+
+# sum of a list
+def listSum(a):
+    result = 0;
+    for i in keys(a):
+        result += a[i];
+    ;
+;
+
+def list2set(a):
+    result = { a[i] for i in keys(a) };
+;
+
+# turn a list into a bag (multiset)
+def list2bag(a):
+    result = dict{};
+    for i in keys(a):
+        if a[i] in keys(result):
+            result[a[i]] += 1;
+        else:
+            result[a[i]] = 1;
+        ;
+    ;
+;
+
+def listMin(a):
+    result = min(list2set(a));
+;
+def listMax(a):
+    result = max(list2set(a));
+;
+"""
+#################################
+
+##############################
+######### Bag module ######### 
+##############################
+mod_bag = """
+def bagEmpty():
+    result = dict{};
+;
+def bagFromSet(s):
+    result = dict{ 1 for elt in s };
+;
+def bagCount(bag, elt):
+    if elt in keys(bag):
+        result = bag[elt];
+    else:
+        result = 0;
+    ;
+;
+def bagChoose(bag):
+    # TODO.  Assert that no elements are mapped to 0
+    assert 0 not in { bag[k] for k in keys(bag) };
+    result = choose(keys(bag));
+;
+def bagAdd(pb, elt):
+    if elt in keys(^pb):
+        (^pb)[elt] += 1;
+    else:
+        (^pb)[elt] = 1;
+    ;
+;
+def bagRemove(pb, elt):
+    if (elt in keys(^pb)) and ((^pb)[elt] > 0):
+        (^pb)[elt] -= 1;
+    ;
+    if (^pb)[elt] <= 0:
+        del (^pb)[elt];
+    ;
+;
+"""
+##############################
+
+################################
+######### Alloc module ######### 
+################################
+mod_alloc = """
+const NPOOL  = 100;      # maximum number of "records" to allocate
+
+def recFree(r):
+    lock(&rec_lock);
+    (^r).next = rec_flist;
+    rec_flist = r;
+    unlock(&rec_lock);
+;
+def recAlloc():
+    lock(&rec_lock);
+    result = rec_flist;
+    if result != None:
+        rec_flist = (^result).next;
+    ;
+    unlock(&rec_lock);
+;
+rec_pool = [ dict{ .data: (), .next: None } for i in 0..(NPOOL-1) ];
+rec_flist = None;           # free list
+rec_lock = Lock();
+for i in 0..(NPOOL-1):
+    recFree(&rec_pool[i]);
+;
+"""
+##############################
+
+internal_modules = {
+    "synch":  mod_sync,
+    "synchS": mod_syncS,
+    "list":   mod_list,
+    "bag":    mod_bag,
+    "alloc":  mod_alloc,
+}
+
+def load_string(all, filename, scope, code):
     tokens = lexer(all, filename)
     try:
         (ast, rem) = StatListRule(set()).parse(tokens)
@@ -32,6 +385,17 @@ def load(f, filename, scope, code):
         sys.exit(1)
     ast.compile(scope, code)
     namestack.pop()
+
+def load(f, filename, scope, code):
+    if filename in files:
+        return
+    namestack.append(filename)
+    files[filename] = []
+    all = ""
+    for line in f:
+        files[filename] += [line]
+        all += line
+    load_string(all, filename, scope, code)
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -2259,8 +2623,12 @@ class ImportAST(AST):
                 with open(filename) as f:
                     load(f, filename, scope, code)
                 return
-        print("Can't find module", lexeme, "imported from", namestack)
-        sys.exit(1)
+        if lexeme in internal_modules:
+            load_string(internal_modules[lexeme],
+                "<internal>/" + lexeme + ".cxl", scope, code)
+        else:
+            print("Can't find module", lexeme, "imported from", namestack)
+            sys.exit(1)
 
 class LabelStatAST(AST):
     def __init__(self, labels, ast, file, line):
