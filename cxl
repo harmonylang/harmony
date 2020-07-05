@@ -62,6 +62,7 @@ import traceback
 import collections
 import time
 import math
+import html
 
 # TODO.  This should not be global ideally
 files = {}              # files that have been read already
@@ -432,6 +433,7 @@ internal_modules = {
 }
 
 def load_string(all, filename, scope, code):
+    files[filename] = all.split("\n")
     tokens = lexer(all, filename)
     try:
         (ast, rem) = StatListRule(set()).parse(tokens)
@@ -446,10 +448,8 @@ def load(f, filename, scope, code):
     if filename in files:
         return
     namestack.append(filename)
-    files[filename] = []
     all = ""
     for line in f:
-        files[filename] += [line]
         all += line
     load_string(all, filename, scope, code)
     namestack.pop()
@@ -3841,7 +3841,7 @@ def htmlpath(s, visited, color, f):
     label = "Issue: " + label
     keys = sorted(s.vars.d.keys(), key=lambda x: keyValue(x))
     path = genpath(s, visited)
-    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th></th>"%(color, label), file=f)
+    print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th></th>"%(color, html.escape(label)), file=f)
     if len(keys) == 1:
         print("<th>Shared Variable</th>", file=f)
     else:
@@ -3902,9 +3902,8 @@ def htmlloc(code, scope, ctx, traceid, f):
                 print("%s(%s)"%(code[pc].name[0], strValue(arg)), end="", file=f)
         print("</a>:", file=f)
         lines = files.get(file)
-        # print("%s:%d"%(file, line), file=f)
         if lines != None and line <= len(lines):
-            print(lines[line - 1][0:-1], file=f)
+            print(html.escape(lines[line - 1]), file=f)
         print("</td></tr>", file=f)
         row += 1
 
@@ -4089,20 +4088,20 @@ def htmlcode(code, scope, f):
             if (file, line) != lastloc:
                 lines = files.get(file)
                 if lines != None and line <= len(lines):
-                    print("<th colspan='3' align='left' style='background-color: yellow'>%s:%d"%(os.path.basename(file), line),
-                            lines[line - 1][0:-1], "</th>", file=f)
+                    print("<th colspan='3' align='left' style='background-color: yellow'>%s:%d"%(html.escape(os.path.basename(file)), line),
+                        html.escape(lines[line - 1]), "</th>", file=f)
                 else:
-                    print(file, "<th colspan='2' align='left'>Line", line, "</th>", file=f)
+                    print("<th colspan='2' align='left'>Line", line, "</th>", file=f)
                 print("</tr><tr>", file=f)
             lastloc = (file, line)
         print("<td><a name='P%d'>"%pc, pc, "</a></td><td>", file=f)
-        print("<span title='%s'>"%code[pc].explain(), file=f)
+        print("<span title='%s'>"%html.escape(code[pc].explain()), file=f)
         if isinstance(code[pc], JumpOp) or isinstance(code[pc], JumpCondOp):
             print("<a href='#P%d'>"%code[pc].pc, code[pc], "</a>", file=f)
         elif isinstance(code[pc], PushOp) and isinstance(code[pc].constant[0], PcValue):
             print("Push <a href='#P%d'>"%code[pc].constant[0].pc, strValue(code[pc].constant[0]), "</a>", file=f)
         else:
-            print(code[pc], file=f)
+            print(html.escape(str(code[pc])), file=f)
         print("</span></td></tr>", file=f)
     print("</tbody>", file=f)
     print("</table>", file=f)
@@ -4112,11 +4111,40 @@ def htmlcode(code, scope, f):
 def htmldump(visited, code, scope, state, fulldump, verbose):
     with open("cxl.html", "w") as f:
         print("""
-            <html>
-            <head>
-            <link rel="stylesheet" type="text/css" href="cxl.css">
-            </head>
-            <body>
+<html>
+  <head>
+    <style>
+#table-wrapper {
+  position:relative;
+}
+#table-scroll {
+  height:200px;
+  overflow:auto;  
+}
+#table-wrapper table {
+  width:100%;
+}
+#table-wrapper table * {
+  color:black;
+}
+#table-wrapper table thead th .text {
+  position:absolute;   
+  top:-20px;
+  z-index:2;
+  height:20px;
+  width:35%;
+  border:1px solid red;
+}
+table {
+    border-collapse: collapse;
+    border-style: hidden;
+}
+table td, table th {
+    border: 1px solid black;
+}
+    </style>
+  </head>
+  <body>
         """, file=f)
 
         print("<table>", file=f)
@@ -4275,7 +4303,7 @@ def main():
                 if (file, line) != lastloc:
                     lines = files.get(file)
                     if lines != None and line <= len(lines):
-                        print("%s:%d"%(file, line), lines[line - 1][0:-1])
+                        print("%s:%d"%(file, line), lines[line - 1])
                     else:
                         print(file, ":", line)
                 lastloc = (file, line)

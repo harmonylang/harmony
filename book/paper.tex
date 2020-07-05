@@ -15,8 +15,10 @@
 \usepackage{etoolbox}
 \usepackage{bold-extra}
 \usepackage{xcolor}
-\usepackage{hyperref}
-\hypersetup{linkbordercolor=blue, pdfborderstyle={/S/U/W 1}}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
+\def\itemautorefname{Exercise}%
+\def\chapterautorefname{Chapter}%
+\def\figureautorefname{Figure}%
 
 \AtBeginEnvironment{enumerate}{\everymath{\displaystyle}}
 \newlist{problems}{enumerate}{2}
@@ -303,8 +305,14 @@ XX\=XXX\=XXX\kill
 \author{Robbert van Renesse}
 
 \begin{document}
-
 \maketitle
+
+Permission is granted to copy, distribute and/or modify this
+document under the terms of the
+Creative Commons AttributionNonCommercial-ShareAlike 4.0 International
+(CC BY-NC-SA 4.0) at
+\url{http://creativecommons.org/licenses/by-nc-sa/4.0}.
+
 \tableofcontents
 
 \chapter{On Concurrent Programming}
@@ -459,60 +467,60 @@ Concurrent Programming''~\cite{Schneider97}.
 The book proceeds as follows:
 
 \begin{itemize}
-\item Chapter~\ref{ch:cxlintro} introduces the CXL programming
+\item \autoref{ch:cxlintro} introduces the CXL programming
 language, as it provides the language for presenting synchronization
 problems and solutions.
-\item Chapter~\ref{ch:concurrent} illustrates the problem of
+\item \autoref{ch:concurrent} illustrates the problem of
 concurrent programming through a simple example in which two processes
 are concurrently incrementing a counter.
-\item Chapter~\ref{ch:cxlmachine} presents the
+\item \autoref{ch:cxlmachine} presents the
 CXL virtual machine to understand the problem
 underlying concurrency better.
-\item Chapter~\ref{ch:critical} introduces the concept of a
+\item \autoref{ch:critical} introduces the concept of a
 \emph{critical section} and presents various flawed implementations
 of critical sections to demonstrate that implementing a critical section
 is not trivial.
-\item Chapter~\ref{ch:peterson} introduces Peterson's Algorithm, an
+\item \autoref{ch:peterson} introduces Peterson's Algorithm, an
 elegant solution to implementating a critical section.
-\item Chapter~\ref{ch:method} gives some more details on the CXL
+\item \autoref{ch:method} gives some more details on the CXL
 language.
-\item Chapter~\ref{ch:spinlock} introduces ``hardware'' locks
+\item \autoref{ch:spinlock} introduces ``hardware'' locks
 for implemented critical sections.
-\item Chapter~\ref{ch:synch} presents CXL modules
+\item \autoref{ch:synch} presents CXL modules
 that supports locks and other synchronization primitives.
-\item Chapters~\ref{ch:rdwrbusy} and~\ref{ch:rdwr2} present the
+\item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
 abstraction and implementation of reader/writer
 locks, which allow multiple processes in a critical section if they are
 all only executing read-only accesses.
-Chapter~\ref{ch:rdwrbusy} also talks about busy-waiting, which is
+\autoref{ch:rdwrbusy} also talks about busy-waiting, which is
 an undesirable approach to synchronize processes.
-\item Chapter~\ref{ch:semaphore} introduces \emph{semaphores},
+\item \autoref{ch:semaphore} introduces \emph{semaphores},
 a generalization of locks
 that is good not only for mutual exclusion but also for waiting for
 certain application-level conditions.
-\item Chapters~\ref{ch:bb} and~\ref{ch:sbs} introduce the
+\item \autoref{ch:bb} and \autoref{ch:sbs} introduce the
 \emph{bounded buffer problem} (aka \emph{producer/consumer problem})
 and various solutions.
-\item Chapter~\ref{ch:starvation} talks about \emph{starvation}:
+\item \autoref{ch:starvation} talks about \emph{starvation}:
 the problem that in some
 synchronization approaches processes may not be able to get access to a
 resource they need.
-\item Chapter~\ref{ch:monitors} presents
+\item \autoref{ch:monitors} presents
 \emph{monitors} and \emph{condition variables},
 another approach to process synchronication.
-\item Chapter~\ref{ch:deadlock} describes \emph{deadlock}
+\item \autoref{ch:deadlock} describes \emph{deadlock}
 where a set of processes are indefinitely waiting for one another to
 release a resource.
-\item Chapter~\ref{ch:actor} presents the \emph{actor model}
+\item \autoref{ch:actor} presents the \emph{actor model}
 and \emph{message passing} as an approach to synchronization.
-\item Chapter~\ref{ch:abp} presents a problem and a solution to the distributed
+\item \autoref{ch:abp} presents a problem and a solution to the distributed
 systems problem of having two processes communicate reliably over an unreliable
 network.
-\item Chapter~\ref{ch:nonblocking} introduces \emph{non-blocking} or
+\item \autoref{ch:nonblocking} introduces \emph{non-blocking} or
 \emph{wait-free} synchronization algorithms,
 which prevent processes waiting for one another more than a bounded number of
 steps.
-\item Chapter~\ref{ch:barrier} describes \emph{barrier synchronization},
+\item \autoref{ch:barrier} describes \emph{barrier synchronization},
 useful in high-performance computing applications such as parallel simulations.
 \end{itemize}
 
@@ -547,7 +555,7 @@ you get more familiar with programming in CXL.
 \label{fig:triangle}
 \end{figure}
 
-Figure~\ref{fig:triangle} shows a simple example of a CXL program.
+\autoref{fig:triangle} shows a simple example of a CXL program.
 (The code for examples in this book can be found in the \texttt{code} folder under
 the name listed in the caption of the example.)
 The example is sequential and has a method \texttt{triangle} that takes
@@ -601,7 +609,7 @@ $
 \section*{Exercises}
 \begin{problems}
 \item See what happens if, instead of initializing \textit{result} to 0,
-you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in Chapter~\ref{ch:cxlmachine}.)
+you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in \autoref{ch:cxlmachine}.)
 \item Write a CXL program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{problems}
@@ -615,7 +623,7 @@ Concurrent programming, aka multithreaded programming, involves multiple
 processes
 \index{process}%
 running in parallel while sharing variables.
-Figure~\ref{fig:inc} presents a simple example.
+\autoref{fig:inc} presents a simple example.
 The program
 initializes two shared variables: an integer \textit{count} and
 an array \textit{done} with two booleans.
@@ -657,7 +665,7 @@ underlying machine architecture are atomic (indivisible)---in fact they are.)
 What is going on is that the CXL program is compiled to machine instructions,
 \index{machine instruction}%
 and it is the machine instructions that are executed by the underlying CXL
-machine.  The details of this appear in Chapter~\ref{ch:cxlmachine},
+machine.  The details of this appear in \autoref{ch:cxlmachine},
 but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
@@ -721,10 +729,10 @@ it is easier to find concurrency bugs using CXL.
 
 \begin{problems}
 \item CXL programs can usually be easily translated into Python.  For example,
-Figure~\ref{fig:incpy} is a Python version of Figure~\ref{fig:inc}.
+\autoref{fig:incpy} is a Python version of \autoref{fig:inc}.
 \begin{enumerate}
-\item Run Figure~\ref{fig:incpy} using Python.  Does the assertion fail?
-\item Using a script, run Figure~\ref{fig:incpy} 1000 times.
+\item Run \autoref{fig:incpy} using Python.  Does the assertion fail?
+\item Using a script, run \autoref{fig:incpy} 1000 times.
 For example, if you are using the bash shell, you can do the following:
 \begin{code}
 \begin{verbatim}
@@ -737,14 +745,14 @@ done
 How many times does the assertion
 fail (if any).
 \end{enumerate}
-\item Figure~\ref{fig:incmany} is a version of Figure~\ref{fig:incpy} that has each
-incrementer thread increment \textit{count} \texttt{N} times.  Run Figure~\ref{fig:incpy}
+\item \autoref{fig:incmany} is a version of \autoref{fig:incpy} that has each
+incrementer thread increment \textit{count} \texttt{N} times.  Run \autoref{fig:incpy}
 10 times (using Python).
 Report how many times the assertion fails and what the value of \textit{count}
 was for each of the failed runs.
 Also experiment with lower values of \texttt{N}.
 How large does \texttt{N} need to be for assertions to fail?
-\item Can you think of a fix to Figure~\ref{fig:inc}?  Try one or two different fixes
+\item Can you think of a fix to \autoref{fig:inc}?  Try one or two different fixes
 and run them through CXL.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
 \end{problems}
@@ -753,7 +761,7 @@ time---the important thing is to develop an understanding of concurrency.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/Up.py}
 \end{code}
-\caption{\cxllink{python/Up.py} Python implementation of Figure~\ref{fig:inc}.}
+\caption{\cxllink{python/Up.py} Python implementation of \autoref{fig:inc}.}
 \label{fig:incpy}
 \end{figure}
 
@@ -889,7 +897,7 @@ The default tag is the first argument to the method.
 A name tag is represented as a dictionary with keys \texttt{.name}
 and \texttt{.tag}, but we shall often abbreviate it using the notation
 \texttt{name/tag}.
-For example, in Figure~\ref{fig:inc}, the created processes have name tags
+For example, in \autoref{fig:inc}, the created processes have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
 \glsadd{context}%
@@ -909,7 +917,7 @@ The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
-% Figure~\ref{fig:incstate} shows an example of a reachable state for the program in Figure~\ref{fig:inc}.
+% \autoref{fig:incstate} shows an example of a reachable state for the program in \autoref{fig:inc}.
 
 \begin{figure}
 \begin{code}
@@ -931,7 +939,7 @@ Up.cxl:3     done[self] = True;
    11 Return
 \end{verbatim}
 \end{code}
-\caption{The first part of the CVM bytecode corresponding to Figure~\ref{fig:inc}.}
+\caption{The first part of the CVM bytecode corresponding to \autoref{fig:inc}.}
 \label{fig:inccode}
 \end{figure}
 
@@ -966,14 +974,14 @@ main/() [13-17,20-24,26-31] 31 { count=1, done=[True,  True]  }
 Open file://.../cxl.html for more information
 \end{verbatim}
 \end{code}
-\caption{The text output of running CXL on Figure~\ref{fig:inc}.}
+\caption{The text output of running CXL on \autoref{fig:inc}.}
 \label{fig:incoutput}
 \end{figure}
 
 \glsadd{stack machine}%
 
-Compiling the code in Figure~\ref{fig:inc} results in the CVM bytecode
-listed in Figure~\ref{fig:inccode}.
+Compiling the code in \autoref{fig:inc} results in the CVM bytecode
+listed in \autoref{fig:inccode}.
 You can obtain this code by invoking \texttt{cxl} with the \texttt{-a} flag
 like so:
 \begin{code}
@@ -1001,7 +1009,7 @@ in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method and the
 names of its arguments.
 The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
-\texttt{Up.cxl} is as follows (see Figure~\ref{fig:inccode}):
+\texttt{Up.cxl} is as follows (see \autoref{fig:inccode}):
 
 \begin{enumerate} \setcounter{enumi}{1}
 \item The \texttt{Load} instruction pushes the value of the
@@ -1019,13 +1027,13 @@ stores it in the \textit{count} variable.
 Once initialization completes, any processes that were spawned can run.
 You can think of CXL as trying every possible interleaving of processes executing
 instructions.
-Figure~\ref{fig:incoutput} shows the output produced by running CXL on the
+\autoref{fig:incoutput} shows the output produced by running CXL on the
 \texttt{Up.cxl} program.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/Up1.png}
 \caption{The
-\cxlref{Up.html}{HTML output of running CXL on Figure~\ref{fig:inc}}.
+\cxlref{Up.html}{HTML output of running CXL on \autoref{fig:inc}}.
 There are three sections.
 The top shows the steps to the problematic state.
 The bottom left shows the source code and bytecode
@@ -1052,7 +1060,7 @@ the shortest trace, but also the list of processes that are running
 at that state, along with their name tags and program counters.
 \item \texttt{Stopped States}: Similar to non-terminating states,
 these are states in which some processes are left that cannot
-terminate.  Chapter~\ref{ch:synch} will explain what it means for
+terminate.  \autoref{ch:synch} will explain what it means for
 a process to be stopped.
 \end{itemize}
 
@@ -1091,18 +1099,18 @@ This makes precise the concurrency issue that we encountered.
 CXL also generates an HTML file that allows exploring more details
 of the execution interactively.
 Open the suggested HTML file and you should see something like
-Figure~\ref{fig:inchtml1}.
+\autoref{fig:inchtml1}.
 If you hover the mouse over a machine instruction, it provides a
 brief explanation.
 
 \section*{Exercises}
 
 \begin{problems}
-\item Figure~\ref{fig:incenter} shows an attempt at trying to fix the code of
-    Figure~\ref{fig:inc}.  Run it through CXL and see what happens.  Based on
+\item \autoref{fig:incenter} shows an attempt at trying to fix the code of
+    \autoref{fig:inc}.  Run it through CXL and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
     in broad steps, how running the program can get into a bad state.
-\item What if we moved line~2 of Figure~\ref{fig:incenter} to after the \textbf{if}
+\item What if we moved line~2 of \autoref{fig:incenter} to after the \textbf{if}
     statement (between lines~7 and~8)?  Do you think that would work?  Run it through
     CXL and describe either why it works or why it does not work.
 \end{problems}
@@ -1111,7 +1119,7 @@ brief explanation.
 \begin{code}
 \cxlsource{UpEnter}
 \end{code}
-\caption{\cxllink{code/UpEnter.cxl} Broken attempt at fixing the code of Figure~\ref{fig:inc}.}
+\caption{\cxllink{code/UpEnter.cxl} Broken attempt at fixing the code of \autoref{fig:inc}.}
 \label{fig:incenter}
 \end{figure}
 
@@ -1171,7 +1179,7 @@ processes (or threads) and free of race conditions is called \emph{thread-safe}.
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
-Figure~\ref{fig:csbarebones} shows the CXL code.
+\autoref{fig:csbarebones} shows the CXL code.
 Here \texttt{@cs} is a \emph{label},
 \index{label}%
 identifying a location in the CVM bytecode.  The first thing we need to
@@ -1233,10 +1241,10 @@ We call this \emph{progress}.
 In order to detect violations of progress, and other liveness problems in
 algorithms in general, CXL requires that every execution must be
 able to reach a state in which all processes have terminated.
-Clearly, even if mutual exclusion holds in Figure~\ref{fig:csbarebones},
+Clearly, even if mutual exclusion holds in \autoref{fig:csbarebones},
 the spawned processes never terminate.  We
 will model processes in critical sections using the framework in
-Figure~\ref{fig:cs}: a process can \emph{choose} to enter a
+\autoref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
 (Recall that CXL will try every possible execution, and so it will evaluate
@@ -1252,7 +1260,7 @@ number of processes in the critical section.}
 \label{fig:mutex}
 \end{figure}
 
-Figure~\ref{fig:mutex} shows a high-level state diagram
+\autoref{fig:mutex} shows a high-level state diagram
 \index{state diagram} of mutual exclusion and progress.%
 The circles represent states, while the arrows represent possible state
 transitions (high-level steps).  The label in each circle summarizes the state;
@@ -1273,7 +1281,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveLock.png}
-\caption{The \cxlref{naiveLock.html}{HTML output of running CXL on Figure~\ref{fig:uplock}}.}
+\caption{The \cxlref{naiveLock.html}{HTML output of running CXL on \autoref{fig:uplock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
 
@@ -1287,7 +1295,7 @@ specification.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveFlags.png}
-\caption{The \cxlref{naiveFlags.html}{HTML output of running CXL on Figure~\ref{fig:upflags}}.}
+\caption{The \cxlref{naiveFlags.html}{HTML output of running CXL on \autoref{fig:upflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
 
@@ -1313,7 +1321,7 @@ Note that the word ``lock'' does not describe the concept well---it really
 is more like a baton or token that only one process can hold.
 
 Using a lock is a good thought, but how does one implement one?
-Figure~\ref{fig:uplock} presents a mutual exclusion attempt based on a
+\autoref{fig:uplock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
 Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
 To enter the critical section, a process waits until \textit{lockTaken} is \texttt{False}
@@ -1323,7 +1331,7 @@ releases the lock by setting \textit{lockTaken} back to \texttt{False}.
 
 Unfortunately, if we run the program through CXL,
 we find that the assertion still fails.
-Figure~\ref{fig:naiveLockhtml} shows the CXL output.
+\autoref{fig:naiveLockhtml} shows the CXL output.
 Process~0 finds that the lock is available, but just before it stores
 \texttt{True} in \textit{lockTaken} in instruction~9, process~1 gets
 to run.
@@ -1337,12 +1345,12 @@ into the critical section.  Process~0 is the one that detects the
 problem.
 The \textit{lockTaken} variable
 suffers from the same problem as the \textit{count} variable
-in Figure~\ref{fig:inc}: operations
+in \autoref{fig:inc}: operations
 on it consist of several instructions.  It is thus possible
 for both processes to believe the lock is available and to obtain the lock
 at the same time.
 
-Figure~\ref{fig:upflags} presents a solution based on each process having
+\autoref{fig:upflags} presents a solution based on each process having
 a flag indicating that it is trying to enter the critical section.
 A process can write its own flag and read the flag of its peer.
 After setting its flag, the process waits until the other process
@@ -1369,7 +1377,7 @@ it would first have to set \textit{flags}[1] to \texttt{True} and
 then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
 until time $t_2$.
 
-However, if you run the program through CXL (Figure~\ref{fig:naiveflagshtml}),
+However, if you run the program through CXL (\autoref{fig:naiveflagshtml}),
 it turns out the solution
 does has a problem: if both try to enter the critical section at the same
 time, they may end up waiting for one another indefinitely.  Thus the
@@ -1396,12 +1404,12 @@ turn.
 
 \section*{Exercises}
 \begin{problems}
-\item Run Figure~\ref{fig:cs} using CXL.  As there is no protection of the critical
+\item Run \autoref{fig:cs} using CXL.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
 Now plug the following code \textbf{while} \texttt{True}: \textbf{pass};;
 just before entering the critical section
-in Figure~\ref{fig:cs} and run CXL again.
+in \autoref{fig:cs} and run CXL again.
 Mutual exclusion is guaranteed but progress is violated.
 CXL should print a trace
 to a state from which a terminating state cannot be reached.
@@ -1429,8 +1437,8 @@ we will find out, it is possible but not easy.
 In 1981, Peterson came up with a beautiful solution to the mutual exclusion
 problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
-Figures~\ref{fig:upflags} and~\ref{fig:upturn}, and is presented
-in Figure~\ref{fig:peterson}.
+\autoref{fig:upflags} and \autoref{fig:upturn}, and is presented
+in \autoref{fig:peterson}.
 A process first indicates its interest in entering the critical section
 by setting its flag.
 It then politely gives way to the other process should it also want to
@@ -1458,7 +1466,7 @@ Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the CXL
 machine works.
-In Chapter~\ref{ch:cxlmachine} we talked about the concept of \emph{state}:
+In \autoref{ch:cxlmachine} we talked about the concept of \emph{state}:
 \index{state}%
 at any point in time the CVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
@@ -1497,7 +1505,7 @@ when there are no processes left to make state changes.
 It is often useful to classify states into sets.
 \emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
 are all examples of classes of states.
-Figure~\ref{fig:states} depicts a Venn diagram of various classes of states
+\autoref{fig:states} depicts a Venn diagram of various classes of states
 and a trace.
 One way to classify states is to define a predicate over states.
 All states in which $x$ = 1, or all states where
@@ -1576,9 +1584,9 @@ More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot \m
 For Peterson's Algorithm, an inductive invariant that works well is
 $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
 
-Figure~\ref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in CXL.
+\autoref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in CXL.
 The label \texttt{@gate} refers to the instruction that sets \textit{turn} to $1-i$.
-You can run Figure~\ref{fig:petersonproof} to determine
+You can run \autoref{fig:petersonproof} to determine
 that $\mathcal{I}_p(i)$ is indeed an invariant for $i = 0, 1$.
 
 To see that the inductive invariant implies exclusivity, suppose not.  Then
@@ -1638,7 +1646,7 @@ page.  The page claimed that the following predicate is invariant:
 if process $i$ is in the critical section, then $\lnot \mathcal{C}(i)$ (i.e.,
 $\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{@gate}).
 To demonstrate that this predicate is not invariant, you can remove the
-disjunct from Figure~\ref{fig:petersonproof} and run it to get a
+disjunct from \autoref{fig:petersonproof} and run it to get a
 counterexample.
 
 This anecdote suggests the following.  If you need to do an induction
@@ -1651,15 +1659,15 @@ predicate is not invariant, and therefore not an inductive invariant either.
 
 \section*{Exercises}
 \begin{problems}
-\item Figure~\ref{fig:csonebit} presents another correct solution to the
+\item \autoref{fig:csonebit} presents another correct solution to the
 mutual exclusion problem.  It is similar to the one in
-Figure~\ref{fig:upflags}, but has a process \emph{back out and try again}
+\autoref{fig:upflags}, but has a process \emph{back out and try again}
 if it finds that the other process is either trying to enter the critical
 section or already has.  Compare this algorithm with Peterson's.  What are
 the advantages and disadvantages?
 \item
 Can you find an inductive invariant for the algorithm in
-Figure~\ref{fig:csonebit} to prove it correct?
+\autoref{fig:csonebit} to prove it correct?
 Here's a pseudo-code version of the algorithm to help you.  Each line
 is an atomic action:
 \begin{code}
@@ -1681,7 +1689,7 @@ to \texttt{True} and \textit{turn} to 1 - \textit{self}) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
 See if you can figure out for yourself if the two assignments can be
-reversed.  Then run the program in Figure~\ref{fig:peterson} after reversing
+reversed.  Then run the program in \autoref{fig:peterson} after reversing
 the two assignments and describe in English what happens.
 \item Bonus question:
 Can you generalize Peterson's algorithm to more than two processes?
@@ -1713,7 +1721,7 @@ If you invoke \texttt{m}($a$, $b$), the argument is ($a$, $b$),
 the tuple consisting of values $a$ and $a$.
 
 You may note that all this looks familiar.  Indeed, the syntax
-is the same as that for dictionaries (see Chapter~\ref{ch:cxlmachine}).
+is the same as that for dictionaries (see \autoref{ch:cxlmachine}).
 Both dictionaries and methods map CXL values to CXL values,
 and their syntax is indistinguishable.
 If \texttt{f} is either a method or a
@@ -1745,7 +1753,7 @@ expression \texttt{\^{}}$p$ is the value of the shared variable.
 In particular, \texttt{\^{}\&}$x$ == $x$.
 This is similar to how C pointers work.
 
-Figure~\ref{fig:petersonmethods} again shows Peterson's algorithm,
+\autoref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
 The name \textit{mutex} is often used to denote a variable or value
@@ -1793,7 +1801,7 @@ That would allow you to simulate object methods.
 \label{fig:tas}
 \end{figure}
 
-Figure~\ref{fig:uplock} showed a faulty attempt at solving mutual
+\autoref{fig:uplock} showed a faulty attempt at solving mutual
 exclusion using a lock.  The problem with the implementation of the
 lock is that checking the lock and setting it if it is available is
 not \emph{atomic}.  Thus multiple processes contending for the lock
@@ -1817,7 +1825,7 @@ through its \textbf{atomic}
 statement.
 We can use \textbf{atomic} statement blocks to implement a wide variety of
 interlock operations.
-For example, we could fix the program in Figure~\ref{fig:inc} by
+For example, we could fix the program in \autoref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
 \begin{code}
 \cxlsource{atomicinc}
@@ -1827,14 +1835,14 @@ Many CPUs have an atomic ``test-and-set'' (TAS)
 \index{test-and-set}%
 \index{TAS}%
 operation.
-Method \texttt{tas} in Figure~\ref{fig:tas} shows its specification.
+Method \texttt{tas} in \autoref{fig:tas} shows its specification.
 Here $s$ points to a shared Boolean variable and $p$
 to a private Boolean variable, belonging to some process.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to \texttt{True} (``set'').
 
-Figure~\ref{fig:tas} goes on how to implement mutual exclusion for
+\autoref{fig:tas} goes on how to implement mutual exclusion for
 a set of \texttt{N} processes.
 The approach is called \emph{spinlock},
 \index{spinlock}%
@@ -1877,7 +1885,7 @@ section if \textit{private}[$i$] == \texttt{False}, and (ii) no other process mo
 \label{fig:tasinv}
 \end{figure}
 
-CXL can check these invariants as well.  Figure~\ref{fig:tas} already
+CXL can check these invariants as well.  \autoref{fig:tas} already
 has the code to check $\mathcal{I}_2(i)$.  But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
@@ -1886,7 +1894,7 @@ like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 
 We can do this by adding another process that, in a loop,
-checks the invariant.  Figure~\ref{fig:tasinv} shows the code.
+checks the invariant.  \autoref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
 in a state.  It introduces a new feature of CXL: the ability to have
 variables local to a method.  In this case, the process variable \textit{sum}
@@ -1908,7 +1916,7 @@ and swap the values.
 \item Write out the invariants that need to hold and check them using CXL.
 \item People who use an ATM often first check their balance and then withdraw
 a certain amount of money not exceeding their balance.  A negative balance
-is not allowed.  Figure~\ref{fig:atm} shows two operations on bank accounts:
+is not allowed.  \autoref{fig:atm} shows two operations on bank accounts:
 one to check the balance and one to withdraw money.
 Note that all operations on accounts are carefully protected by a lock
 (i.e., there are no data races).
@@ -1923,7 +1931,7 @@ Execution} (TOCTOE).
 In this case, by the time the withdraw operation is performed,
 the balance can have changed.
 \begin{enumerate}
-\item Fix the code in Figure~\ref{fig:atm}.
+\item Fix the code in \autoref{fig:atm}.
 \item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
 \end{enumerate}
 \end{problems}
@@ -1945,18 +1953,18 @@ the balance can have changed.
 \begin{code}
 \cxlsource{csTAS}
 \end{code}
-\caption{\cxllink{code/csTAS.cxl} Fixed version of Figure~\ref{fig:uplock} using test-and-set.}
+\caption{\cxllink{code/csTAS.cxl} Fixed version of \autoref{fig:uplock} using test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
-In Figure~\ref{fig:tas} we have shown a solution based on a shared
+In \autoref{fig:tas} we have shown a solution based on a shared
 variable and a private variable for each process.   The private
 variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective processes.
 There is no need to keep \textit{private} as a shared
 variable---we only did so to be able to show and check the invariants.
-Figure~\ref{fig:tas2} shows a more straightforward implementation of spinlock.
-The solution is similar to the na\"{i}ve solution of Figure~\ref{fig:uplock},
+\autoref{fig:tas2} shows a more straightforward implementation of spinlock.
+The solution is similar to the na\"{i}ve solution of \autoref{fig:uplock},
 but uses test-and-set to check and set the lock variable atomically.
 This approach is general for any number of processes.
 
@@ -1992,7 +2000,7 @@ use \textbf{atomic} by all means.
 \begin{code}
 \cxlsource{UpLock}
 \end{code}
-\caption{\cxllink{code/UpLock.cxl} Program of Figure~\ref{fig:inc} fixed with a lock.}
+\caption{\cxllink{code/UpLock.cxl} Program of \autoref{fig:inc} fixed with a lock.}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2009,9 +2017,9 @@ a lock before accessing the data structure, that is known as a
 
 Because locks are so common, CXL has a module called
 \texttt{synch} that includes support for locks.
-Figure~\ref{fig:spinlocks} shows how they are implemented, and
-Figure~\ref{fig:incfixed} gives an example of how they may be used,
-in this case to fix the program of Figure~\ref{fig:inc}.
+\autoref{fig:spinlocks} shows how they are implemented, and
+\autoref{fig:incfixed} gives an example of how they may be used,
+in this case to fix the program of \autoref{fig:inc}.
 Notice that the module completely hides the implementation of the
 lock.
 The \texttt{synch} module includes a variety of other useful
@@ -2067,7 +2075,7 @@ expression.  The \textbf{stop} expression returns the value $R$.
 
 There is a second version of the \texttt{synch} module that uses suspension
 instead of spinlocks.
-Figure~\ref{fig:suspension} shows the same \texttt{Lock} interface implemented
+\autoref{fig:suspension} shows the same \texttt{Lock} interface implemented
 using suspension.
 The interface is implemented as follows:
 \begin{itemize}
@@ -2097,7 +2105,7 @@ choice in lock implementations as it prevents \emph{starvation}:
 \index{starvation}%
 every process
 gets a chance to obtain the lock (assuming every process eventually releases
-it).  Chapter~\ref{ch:starvation} will talk more about starvation and how
+it).  \autoref{ch:starvation} will talk more about starvation and how
 to prevent it.
 
 CXL allows you to select which version of the \texttt{synch} module you would
@@ -2122,7 +2130,7 @@ in which processes wait for a lock.
 \item Write a synchronization module using your own implementation of \texttt{Lock}
 (for example, using Peterson's algorithm or using \texttt{swap}).
 \item
-Run Figure~\ref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
+Run \autoref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
 and (3) your own module.  Report how many states were explored by CXL for each
 version of the module.
 \end{problems}
@@ -2145,7 +2153,7 @@ version of the module.
 \begin{code}
 \cxlsource{RWtest}
 \end{code}
-\caption{\cxllink{code/RWtest.cxl} Test code for Figure~\ref{fig:rwbusy}.}
+\caption{\cxllink{code/RWtest.cxl} Test code for \autoref{fig:rwbusy}.}
 \label{fig:rwbusytest}
 \end{figure}
 
@@ -2176,10 +2184,10 @@ a \emph{reader/writer lock}~\cite{CHP71}.
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
-Figure~\ref{fig:rwbusy} presents a solution that uses a
+\autoref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
-Figure~\ref{fig:rwbusytest} shows how the code may be used.
+\autoref{fig:rwbusytest} shows how the code may be used.
 We will call the lock the \emph{mutex} to distinguish it clearly from
 the reader/writer lock that we are implementing.
 The mutex is used to protect shared access to the counters.
@@ -2191,7 +2199,7 @@ The specification is that if a reader is at label \texttt{@rcs},
 no writer is allowed to be at label \texttt{@wcs}.  Vice versa, if
 a writer is at label \texttt{@wcs}, no reader is allowed to be at
 label \texttt{@rcs} \emph{and} there cannot be another writer at
-label \texttt{@wcs}.  Figure~\ref{fig:rdwr} shows a high-level
+label \texttt{@wcs}.  \autoref{fig:rdwr} shows a high-level
 specification for two processes.
 
 A process that wants to read first waits until there are no writers:
@@ -2228,14 +2236,14 @@ The solution is an example of what is called \emph{busy-waiting}
 (aka \emph{spin-waiting}):
 \index{spin waiting}%
 processes spin in a loop until some desirable application-level condition is met.
-Figure~\ref{fig:inc} also has an example of busy-waiting: the \texttt{main}
+\autoref{fig:inc} also has an example of busy-waiting: the \texttt{main}
 process waits for the other two processes to finish by checking their \texttt{done}
 flags.
 
 The astute reader might wonder if obtaining the mutex itself is an
 example of busy-waiting.  After all, the CXL \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the mutex is available
-(see Figure~\ref{fig:spinlocks}).
+(see \autoref{fig:spinlocks}).
 However, there is a big difference.  As we pointed out, the processes that
 are waiting for a spinlock are \emph{blocked}.
 In most operating systems and programming language runtimes,
@@ -2246,16 +2254,16 @@ Busy waiting disables all this: even when using the \texttt{synchS}
 module, readers and writers only get suspended temporarily in case
 there is contention for the mutex.
 A process trying to obtain a read or write lock in
-Figure~\ref{fig:rwbusy} has to obtain the mutex repeatedly
+\autoref{fig:rwbusy} has to obtain the mutex repeatedly
 until the read or write lock is available.
 
 Thus, it is considered ok to have processes be blocked while waiting
 for application-specific conditions, but not for them to
 busy-wait for application-specific conditions.
 
-CXL does not complain about Figure~\ref{fig:rwbusy}, but, using
+CXL does not complain about \autoref{fig:rwbusy}, but, using
 the right test, CXL can be used to check for busy-waiting.
-Figure~\ref{fig:rwblock} presents such a test.
+\autoref{fig:rwblock} presents such a test.
 Note that the initialization code obtains a read lock, preventing
 all readers and writers from entering the critical section.
 In that case, those processes should ideally be blocked and CXL
@@ -2266,7 +2274,7 @@ all processes are blocked.
 
 \section*{Exercises}
 \begin{problems}
-\item Draw additional states and steps in Figure~\ref{fig:rdwr}
+\item Draw additional states and steps in \autoref{fig:rdwr}
 for three processes.
 \item Using busy waiting, implement a ``bound lock'' that allows
 up to \texttt{M} processes to acquire it at the same time.  A bound lock
@@ -2298,7 +2306,7 @@ bound lock.
 \label{fig:rwmulti}
 \end{figure}
 
-Figure~\ref{fig:rw2lock} presents a reader/writer lock implementation
+\autoref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
 You can test the code by running \texttt{cxl -m RW=RWlock RWtest}.
 It uses two ordinary locks: \textit{rwlock} is used by both readers and writers,
@@ -2344,10 +2352,10 @@ in the critical section, and there are never two readers in the critical
 section.  Moreover, it checks progress: all executions eventually terminate.
 What it does \emph{not} check is if the code allows more than one reader
 in the critical section.  Indeed, we could have implemented the reader/writer
-lock as in Figure~\ref{fig:rwmulti} using an ordinary lock, never allowing
+lock as in \autoref{fig:rwmulti} using an ordinary lock, never allowing
 more than one process in the critical section.
 
-Figure~\ref{fig:rwmulti} contains a new test that ensures that indeed more
+\autoref{fig:rwmulti} contains a new test that ensures that indeed more
 than one reader can enter the critical section at a time.  It does so by
 having processes sometimes wait in the critical section until all other readers
 are there.  If other readers cannot enter, then that process enters in an
@@ -2360,7 +2368,7 @@ in a test, it cannot find problems that the test is not looking for.
 
 \section*{Exercises}
 \begin{problems}
-\item Why do you suppose the code in Figure~\ref{fig:rwmulti} uses a flag
+\item Why do you suppose the code in \autoref{fig:rwmulti} uses a flag
 per process rather than a simple counter?
 Can you write a version of this test that uses a counter instead
 of a flag per process?
@@ -2407,7 +2415,7 @@ a unit requires access to the entire collection.
 
 Consider the following synchronization problem that we call
 \emph{Italian Philosophers} (a simplification of
-the famous Dining Philosophers problem described in Chapter~\ref{ch:deadlock}).
+the famous Dining Philosophers problem described in \autoref{ch:deadlock}).
 There are five philosophers sitting around a table, each with a plate of
 spaghetti in front of them.
 There is a glass sitting in the middle of the table with only
@@ -2439,10 +2447,10 @@ One can think of a semaphore as a generalization of a lock.  In fact, a
 lock can be implemented by a semaphore initialized to 1.  Then \texttt{P}
 procures the lock, and \texttt{V} vacates the lock.
 
-Figure~\ref{fig:semaphore} shows the \texttt{synch} module implementation of
+\autoref{fig:semaphore} shows the \texttt{synch} module implementation of
 semaphores.
 It represents a semaphore as an integer.
-Figure~\ref{fig:dinerssema} shows a solution to the Italian Philosphers problem
+\autoref{fig:dinerssema} shows a solution to the Italian Philosphers problem
 using a semaphore.
 
 You may find the free ``The Little Book of Semaphores'' by
@@ -2455,8 +2463,8 @@ Italian philosophers are eating at the same time?
 \item Implement a test program that checks to see that
 the solution allows more than one Italian philosopher to eat at the same time?
 \item \label{ex:qsort}
-Figure~\ref{fig:qsort} shows an iterative implementation of the Qsort
-algorithm, and Figure~\ref{fig:qsorttest} an accompanying test program.
+\autoref{fig:qsort} shows an iterative implementation of the Qsort
+algorithm, and \autoref{fig:qsorttest} an accompanying test program.
 The array to be sorted is stored in  shared variable $a$.
 Another shared variable, \textit{todo}, contains the ranges of the
 array that need to be sorted (initially the entire array).
@@ -2483,7 +2491,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{qsorttest}
 \end{code}
-\caption{\cxllink{code/qsorttest.cxl} Test program for Figure~\ref{fig:qsort}.}
+\caption{\cxllink{code/qsorttest.cxl} Test program for \autoref{fig:qsort}.}
 \label{fig:qsorttest}
 \end{figure}
 
@@ -2514,7 +2522,7 @@ that it is a permutation of the original array.
 \begin{code}
 \cxlsource{BBsematest}
 \end{code}
-\caption{\cxllink{code/BBsematest.cxl} Test program for Figure~\ref{fig:boundedbuffer}.}
+\caption{\cxllink{code/BBsematest.cxl} Test program for \autoref{fig:boundedbuffer}.}
 \label{fig:bbtest}
 \end{figure}
 
@@ -2578,7 +2586,7 @@ and receive responses from.
 
 In general, we allow multiple producers and multiple consumers
 all sharing the same bounded buffer.
-Figure~\ref{fig:pc} gives a high-level description.  The
+\autoref{fig:pc} gives a high-level description.  The
 two numbers in a state specify
 the number of items that the producers still can produce and
 the number of items that the consumers have consumed.  In this case
@@ -2593,7 +2601,7 @@ right order.}
 \label{fig:BBsemadata}
 \end{figure}
 
-Figure~\ref{fig:boundedbuffer} presents the implementation of a bounded
+\autoref{fig:boundedbuffer} presents the implementation of a bounded
 buffer using semaphores.  It features a circular bounded buffer \textit{buf} with
 slots numbered 1 through \texttt{NSLOTS}.  There are two indexes into
 the buffer: \textit{b\_in} specifies where the next produced item is inserted,
@@ -2633,7 +2641,7 @@ The second type of semaphores are called \emph{counting semaphores}.
 They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
-Figure~\ref{fig:bbtest} invokes the code of Figure~\ref{fig:boundedbuffer}.
+\autoref{fig:bbtest} invokes the code of \autoref{fig:boundedbuffer}.
 We can run this through CXL, but what would it test?  There are no
 assert statements in the code.
 We can split the functionality of this code into two pieces.  One is
@@ -2643,14 +2651,14 @@ items even if there are no consumers.  The other part is the data: we want
 to make sure that the items are sent through the buffer in order and without
 loss.  We will first focus on the synchronization.
 
-The first part can be tested with the code given in Figure~\ref{fig:pc}, by
+The first part can be tested with the code given in \autoref{fig:pc}, by
 experimenting with different non-negative values for the three constants.
 In particular, any run with a positive \texttt{NSLOTS} and
 $\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
 should terminate, while other values should lead to processes blocking.
-To this this, one can write a script like the one in Figure~\ref{fig:pcscript}.
+To this this, one can write a script like the one in \autoref{fig:pcscript}.
 
-Figure~\ref{fig:BBsemadata} tests whether the correct data is sent in
+\autoref{fig:BBsemadata} tests whether the correct data is sent in
 the correct order.  There are the same number of producers and consumers.
 Each producer $i$ produces two tuples: $(i, 0)$ and $(i, 1)$ in that order.
 Each consumer consumes two tuples and checks that the tuples are different
@@ -2663,7 +2671,7 @@ exactly the set of tuples that the producers produce.
 
 \section*{Exercises}
 \begin{problems}
-\item Change the code in Figure~\ref{fig:boundedbuffer} so that
+\item Change the code in \autoref{fig:boundedbuffer} so that
 \texttt{produce()} fails if the buffer is full rather than block.
 \texttt{produce()} should return \texttt{False} if it fails
 and return \texttt{True} if it succeeds.
@@ -2671,7 +2679,7 @@ and return \texttt{True} if it succeeds.
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
 \item \label{ex:gpu} Implement a thread-safe GPU allocator by modifying
-Figure~\ref{fig:gpu}.
+\autoref{fig:gpu}.
 There are \texttt{N} GPUs identified by the numbers
 1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
@@ -2734,7 +2742,7 @@ If so, it passes the baton directly to one of those processes.
 If not, it simply gives up the baton.
 
 We will illustrate the technique using the reader/writer problem.
-Figure~\ref{fig:RWsplitsema} shows the
+\autoref{fig:RWsplitsema} shows the
 \texttt{rlock\_acquire}, \texttt{rlock\_release},
 \texttt{wlock\_acquire}, and \texttt{wlock\_release} methods implemented using
 SBS.
@@ -2827,7 +2835,7 @@ and so it vacates \textit{mutex}.
 \item Assume that you have only binary semaphores.
 Implement counting semaphores using binary semaphores using split binary semaphores.
 \item Implement a solution to the producer/consumer problem
-(Figure~\ref{fig:boundedbuffer}) using split binary semaphores.
+(\autoref{fig:boundedbuffer}) using split binary semaphores.
 \item \label{ex:onelane} Cornell's campus features some one-lane bridges.
 Cars can only go in one direction at a time. Consider northbound
 and southbound cars wanting to cross a one-lane bridge.
@@ -2889,7 +2897,7 @@ tries to re-enter.  This state is identical to the initial
 state, and there is nothing that prevents the same process
 from acquiring the lock yet again.
 
-It is worth noting that Peterson's Algorithm (Chapter~\ref{ch:peterson})
+It is worth noting that Peterson's Algorithm (\autoref{ch:peterson})
 does not suffer from starvation, thanks to the \texttt{turn} variable
 that alternates between 0 and 1 when two processes are contending for
 the critical section.
@@ -2920,7 +2928,7 @@ SBSs allow much control over which thread runs next and is therefore a
 good starting point for developing fair synchronization algorithm
 In this chapter, we will present two SBS-based fair reader/writer lock
 implementations.
-The first, in Figure~\ref{fig:RWfair}, is based on Figure~\ref{fig:RWsplitsema}.
+The first, in \autoref{fig:RWfair}, is based on \autoref{fig:RWsplitsema}.
 There are two differences:
 
 \begin{enumerate}
@@ -2941,7 +2949,7 @@ starve other writers, they cannot starve one another.  And since contention for
 a semaphore is resolved probabilistically, each reader and each writer will
 eventually have a chance to enter the critical section almost surely.
 
-Figures~\ref{fig:RWqueue} and~\ref{fig:RWqtest} present a different approach
+\autoref{fig:RWqueue} and \autoref{fig:RWqtest} present a different approach
 in which processes are allowed into the critical region in a purely First
 Come First Served manner.  When a reader arrives, it is allowed in only if
 there is no writer in the critical section or waiting to enter.  When a writer
@@ -2969,14 +2977,14 @@ in the order in which they appear in the queue.
 \begin{code}
 \cxlsource{RWqtest}
 \end{code}
-\caption{\cxllink{code/RWqtest.cxl} Test program for Figure~\ref{fig:RWqueue}.}
+\caption{\cxllink{code/RWqtest.cxl} Test program for \autoref{fig:RWqueue}.}
 \label{fig:RWqtest}
 \end{figure}
 
 \section*{Exercises}
 \begin{problems}
 \item Write a fair solution to the one-lane bridge problem of
-Exercise~\ref{ex:onelane}.
+\autoref{ex:onelane}.
 If you want to use the queue method, you can change the signature of the
 methods to enter the bridge, adding an argument that contains a pointer to a
 semaphore.
@@ -3057,7 +3065,7 @@ bedrooms illustrate two condition variables.  The circles are processes.}
 \label{fig:monitors}
 \end{figure}
 
-Figure~\ref{fig:monitors} illustrates the difference with a drawing.
+\autoref{fig:monitors} illustrates the difference with a drawing.
 Here a bathroom represents the critical section, allowing only one
 process at a time.  The bedrooms represent condition variables.
 There is some condition associated with each bedroom.
@@ -3140,7 +3148,7 @@ The CXL \texttt{synch} module supports Mesa condition variables.
 However, like C, Java, and Python,
 it does not have built-in language support for them but instead associates condition variables
 with explicit locks.
-Figure~\ref{fig:cv} shows the implementation of
+\autoref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
 \texttt{Condition}(\textit{lk}) creates a new condition variable associated with the given pointer
 to a lock \textit{lk}.
@@ -3156,7 +3164,7 @@ the bag, allowing one of the processes with that context to return from \texttt{
 
 To illustrate how Mesa condition variables are used in practice, we demonstrate using,
 once again, an implementation of reader/writer locks.
-Figure~\ref{fig:RWcv} shows the code.  \textit{rwlock} is the global lock or mutex for the
+\autoref{fig:RWcv} shows the code.  \textit{rwlock} is the global lock or mutex for the
 reader/writer lock.  There are two condition variables: readers wait on \textit{rcond} and
 writers wait on \textit{wcond}.  The implementation also keeps track of the number of
 readers and writers in the critical section.
@@ -3185,7 +3193,7 @@ up to one waiting writer can enter.  So \texttt{release\_wlock} wakes up all
 potential candidates.
 There are two things to note here.  First, unlike split binary semaphores or Hoare
 monitors, where multiple waiting readers would have to be signaled one at a time in a
-baton-passing fashion (see Figure~\ref{fig:RWsplitsema}), with Mesa monitors
+baton-passing fashion (see \autoref{fig:RWsplitsema}), with Mesa monitors
 all readers are awaked in one fell swoop using \texttt{notifyAll}.
 Second, both readers and writers are awakened---this is ok because both execute
 \texttt{wait} within a \textbf{while} loop, re-checking the condition that they
@@ -3207,7 +3215,7 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 \section*{Exercises}
 \begin{problems}
 \item Implement semaphores using Mesa condition variables.
-\item Write a new version of the GPU allocator in Exercise~\ref{ex:gpu}
+\item Write a new version of the GPU allocator in \autoref{ex:gpu}
 using Mesa condition variables.
 In this version,
 a process is allowed to allocate a set of GPUs and release a set of GPUs that it
@@ -3251,7 +3259,7 @@ forks.  Each philosopher repeat this procedure.  Dijkstra had them repeating
 this for ever, but for the purposes of this book, philosphers can leave
 the table when they're not eating.
 
-Figure~\ref{fig:diners} implements the dining philosophers in CXL, using a
+\autoref{fig:diners} implements the dining philosophers in CXL, using a
 process for each philosopher and a lock for each fork.  If you
 run it, CXL complains that the execution may not terminate, with all five
 processes being blocked trying to acquire the lock.
@@ -3290,7 +3298,7 @@ to allocate a resource held by the next.
 
 Preventing deadlock thus means preventing that one of these conditions occurs.
 However, mutual exclusion is not easily prevented (although, for some resources it is
-possible, as demonstrated in Chapter~\ref{ch:nonblocking}).
+possible, as demonstrated in \autoref{ch:nonblocking}).
 Havender proposed the following techniques that avoid the remaining
 three conditions~\cite{Havender68}:
 
@@ -3309,7 +3317,7 @@ have such an ability, and neither do semaphores. so we re-implement the
 Dining Philosophers using condition variables that allow one to wait for
 arbitrary application-specific conditions.
 
-Figure~\ref{fig:dinerscv} demonstrates how this might be done.
+\autoref{fig:dinerscv} demonstrates how this might be done.
 We use a single mutex for the diners, and, for each fork, a boolean
 and a condition variable.  The boolean indicates if the fork has been
 taken.
@@ -3367,7 +3375,7 @@ In the case of the Dining Philosophers, we want to avoid the situation where eac
 diner picks up a fork.  So if we can prevent more than four diners from starting to
 eat at the same time, then we can avoid the conditions for deadlock from ever
 happening.
-Figure~\ref{fig:dinersavoid} demonstrates this concept.  It uses a semaphore to
+\autoref{fig:dinersavoid} demonstrates this concept.  It uses a semaphore to
 restrict the number of diners at any time to four.
 
 This concept can be generalized using something called the
@@ -3387,7 +3395,7 @@ scenario.}
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:bank} Figure~\ref{fig:bank} shows an implementation of a bank with various
+\item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
 processes.  Can you fix the problem?
@@ -3444,7 +3452,7 @@ Some programming languages favor a different way of implementing
 synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
 processes that have only private memory and communicate through
 \emph{message passing}.
-See Figure~\ref{fig:actorpic} for an illustration.
+See \autoref{fig:actorpic} for an illustration.
 Given that there is no shared memory in the actor model (other than the message
 queues, which have built-in synchronization), there is no need
 for critical sections.  Instead, some sequential process owns a particular
@@ -3480,9 +3488,9 @@ Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
 \texttt{dequeue} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
-Figure~\ref{fig:actor} shows a CXL solution to the
+\autoref{fig:actor} shows a CXL solution to the
 ``multiple producer / multiple consumer problem'' (with an unbounded buffer)
-using an actor (as illustrated in Figure~\ref{fig:actorpic}.
+using an actor (as illustrated in \autoref{fig:actorpic}.
 \texttt{pc\_actor} is essentially a matchmaker: it matches
 \texttt{.produce} requests with \texttt{.consume} requests.
 Sometimes it may have buffered \texttt{.consume} requests and is waiting for
@@ -3515,7 +3523,7 @@ takes two queue pointer arguments.  The first is a pointer to the queue
 of the \texttt{pc\_actor}.  The second is a pointer to the queue of the
 invoker: it is the queue to which the response must be posted.
 
-Figure~\ref{fig:actortest} shows how this code may be used.  It spawns
+\autoref{fig:actortest} shows how this code may be used.  It spawns
 \texttt{NITEMS} producer and consumer processes.  Note that in that
 case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
 requests.
@@ -3631,7 +3639,7 @@ Method \texttt{app\_send}($m$) tries \emph{retransmitting} $m$ until
 an acknowledgment is received.
 Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
 message.
-Figure~\ref{fig:abptest} shows how the methods may be used to send and receive
+\autoref{fig:abptest} shows how the methods may be used to send and receive
 a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
@@ -3644,7 +3652,7 @@ for the last acknowledgment, or the receiver waiting for the last message.
 
 \section*{Exercises}
 \begin{problems}
-\item Exercise~\ref{ex:cltsvr} explored the \emph{client/server}.  It is popular
+\item \autoref{ex:cltsvr} explored the \emph{client/server}.  It is popular
 in distributed systems as well.
 Develop a protocol for a single client and server using the same network
 model as for the ABP protocol.
@@ -3679,7 +3687,7 @@ In this chapter, we will have a look at how one can develop concurrent
 code in which processes do not have to wait for other processes.
 
 As a first example, we will revisit the producer/consumer problem.
-The code in Figure~\ref{fig:hw} is based on code developed by Herlihy and
+The code in \autoref{fig:hw} is based on code developed by Herlihy and
 Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
 is not necessarily practical.
@@ -3726,7 +3734,7 @@ There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
 most accesses are read-only and the performance of updates is less
 critical~\cite{}.
-Figures~\ref{fig:lst1} and~\ref{fig:lst2} implements an ordered linked
+\autoref{fig:lst1} and \autoref{fig:lst2} implements an ordered linked
 list of integers without duplicates.
 There are two update operations:
 values can be added using \texttt{lst\_insert} or deleted using
@@ -3806,8 +3814,8 @@ If not found, it coincides with retrieving the pointer to the
 
 \section*{Exercises}
 \begin{problems}
-\item Add read-only methods to the data structure in Figures~\ref{fig:lst1}
-and~\ref{fig:lst2} that report the size of the list, the minimum value in the
+\item Add read-only methods to the data structure in \autoref{fig:lst1}
+and \autoref{fig:lst2} that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
 Are they linearizable?  If so, what are their linearization points?
 \item A \emph{seqlock}
@@ -3818,7 +3826,7 @@ changes to the data structure, and then releases the lock.  A read-only operatio
 does not use the lock.  Instead, it retrieves the version number,
 reads the data structure, and then checks if the
 version number has not changed.  If it has, read-only operation is retried.
-Use a seqlock to implement a bank much like Exercise~\ref{ex:bank}, with
+Use a seqlock to implement a bank much like \autoref{ex:bank}, with
 one seqlock for the entire bank (i.e., no locks on individual accounts).
 Method \texttt{transfer} is an update operation; method \texttt{total} is a
 read-only operation.  Explain how a seqlock can lead to starvation.
@@ -3862,14 +3870,14 @@ cut up into fragments.  During a round, the processes run concurrently
 one for each fragment.  The next round is not allowed to start
 until all processes have completed processing their fragment.
 
-Figure~\ref{fig:barrierdiagram} shows a high-level depiction with three
+\autoref{fig:barrierdiagram} shows a high-level depiction with three
 processes.  Initially all processes are in round~0.  Then each process
 can start and finish the round.  However, none of the processes can
 progress to the next round until all processes have finished the
 current round.
 
 Counting semaphores work well for implementing barrier synchronization.
-Figure~\ref{fig:barrier} shows an example.  There is a 0-initialized
+\autoref{fig:barrier} shows an example.  There is a 0-initialized
 semaphore for each of the \texttt{N} processes.
 Before process $i$ enters a round, it first sends a signal to every
 other process and then waits until it receives a signal from
@@ -3901,7 +3909,7 @@ for solving semaphore problems.  Look for the double turnstile solution.)
 
 \chapter{List of Values}
 
-Chapter~\ref{ch:cxlmachine} provides an introduction to CXL values.
+\autoref{ch:cxlmachine} provides an introduction to CXL values.
 Below is a complete list of CXL value types with examples:
 
 \vspace{1em}
