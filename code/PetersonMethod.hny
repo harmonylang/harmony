@@ -12,7 +12,7 @@ def P_mutex():
     result = dict{ .turn: choose({0, 1}), .flags: [ False, False ] };
 ;
 
-#### The code above can go into its own CXL module ####
+#### The code above can go into its own Harmony module ####
 
 def process(self):
     while choose({ False, True }):
