@@ -679,7 +679,7 @@ class DictValue(Value):
                     result += ", ";
                 result += strValue(self.d[k])
             return "[" + result + "]"
-        keys = sorted(self.d.keys(), key=lambda x: keyValue(x))
+        keys = sorted(self.d.keys(), key=keyValue)
         for k in keys:
             if result != "":
                 result += ", ";
@@ -706,7 +706,7 @@ class DictValue(Value):
     # represents a list or tuple
     def key(self):
         return (5, [ (keyValue(v), keyValue(self.d[v]))
-                        for v in sorted(self.d.keys(), key=lambda x: keyValue(x))])
+                        for v in sorted(self.d.keys(), key=keyValue)])
 
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
@@ -719,7 +719,7 @@ class SetValue(Value):
         if len(self.s) == 0:
             return "{}"
         result = ""
-        vals = sorted(self.s, key=lambda x: keyValue(x))
+        vals = sorted(self.s, key=keyValue)
         for v in vals:
             if result != "":
                 result += ", ";
@@ -735,7 +735,7 @@ class SetValue(Value):
         return self.s == other.s
 
     def key(self):
-        return (6, [keyValue(v) for v in sorted(self.s, key=lambda x: keyValue(x))])
+        return (6, [keyValue(v) for v in sorted(self.s, keyValue)])
 
 class AddressValue(Value):
     def __init__(self, indexes):
@@ -782,7 +782,7 @@ class SplitOp(Op):
         v = context.pop()
         assert isinstance(v, SetValue)
         assert v.s != set()
-        lst = sorted(v.s, key=lambda x: keyValue(x))
+        lst = sorted(v.s, key=keyValue)
         context.push(lst[0])
         context.push(SetValue(set(lst[1:])))
         context.pc += 1
@@ -1392,10 +1392,10 @@ class NaryOp(Op):
 
     def concat(self, d1, d2):
         result = []
-        keys = sorted(d1.d.keys(), key=lambda x: keyValue(x))
+        keys = sorted(d1.d.keys(), key=keyValue)
         for k in keys:
             result.append(d1.d[k])
-        keys = sorted(d2.d.keys(), key=lambda x: keyValue(x))
+        keys = sorted(d2.d.keys(), key=keyValue)
         for k in keys:
             result.append(d2.d[k])
         return DictValue({ i:result[i] for i in range(len(result)) })
@@ -1470,12 +1470,12 @@ class NaryOp(Op):
             elif op == "min":
                 if not self.checktype(state, sa, isinstance(e, SetValue)):
                     return
-                lst = sorted(e.s, key=lambda x: keyValue(x))
+                lst = sorted(e.s, key=keyValue)
                 context.push(lst[0])
             elif op == "max":
                 if not self.checktype(state, sa, isinstance(e, SetValue)):
                     return
-                lst = sorted(e.s, key=lambda x: keyValue(x))
+                lst = sorted(e.s, key=keyValue)
                 context.push(lst[-1])
             elif op == "nametag":
                 if not self.checktype(state, sa, e == novalue):
@@ -3823,7 +3823,7 @@ def htmlpath(s, visited, color, f):
             label += ", "
         label += issue
     label = "Issue: " + label
-    keys = sorted(s.vars.d.keys(), key=lambda x: keyValue(x))
+    keys = sorted(s.vars.d.keys(), key=keyValue)
     path = genpath(s, visited)
     print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th></th>"%(color, html.escape(label)), file=f)
     if len(keys) == 1:
