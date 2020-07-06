@@ -1,5 +1,5 @@
-all:	cxl
+all:	harmony
 
-cxl:    cxl.preamble cxl.py
-	(cat cxl.preamble cxl.py; echo ++++++) > cxl
+harmony:    harmony.preamble harmony.py
+	(cat harmony.preamble harmony.py; echo ++++++) > harmony
 

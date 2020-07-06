@@ -1,20 +1,20 @@
-cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 PCsema.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl
+harmony -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+harmony -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 PCsema.cxl
+harmony    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
+harmony    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+harmony -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
+harmony -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
+harmony    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
+harmony    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
+harmony -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 PCsema.cxl
+harmony -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 PCsema.cxl
+harmony -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 PCsema.cxl
+harmony -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 PCsema.cxl
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 PCsema.cxl

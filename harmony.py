@@ -1,20 +1,35 @@
 """
-	This is the CXL compiler.
+	This is the Harmony compiler.
 
     Copyright (C) 2020  Robbert van Renesse
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
 """
 
 import sys
@@ -403,7 +418,7 @@ def load_string(all, filename, scope, code):
         # best guess...
         print("Parsing", filename, "hit EOF (usually missing ';' at end of last line)")
         # print(traceback.format_exc())
-        sys.exit(1)
+        exit(1)
     ast.compile(scope, code)
 
 def load(f, filename, scope, code):
@@ -1148,7 +1163,7 @@ class AssertOp(Op):
                         " must be a boolean: " + strValue(cond)
             return
         if not cond:
-            context.failure = "CXL Assertion failed "
+            context.failure = "Harmony Assertion failed "
             if self.exprthere:
                 context.failure += ": " + strValue(expr)
             return
@@ -1597,7 +1612,7 @@ class AST:
             code[ctx.pc].eval(state, ctx)
         if ctx.failure != None:
             print("constant evaluation failed: ", self, ctx.failure)
-            sys.exit(1)
+            exit(1)
         return ctx.pop()
 
     def compile(self, scope, code):
@@ -1944,7 +1959,7 @@ class Rule:
     def expect(self, rule, b, got, want):
         if not b:
             print("Parse error in %s."%rule, "Got", got, ":", want)
-            sys.exit(1)
+            exit(1)
 
 class NaryRule(Rule):
     def __init__(self, closers):
@@ -2337,7 +2352,7 @@ class StopAST(AST):
                 code.append(ContinueOp())
             else:
                 print("Error: Can't store state in process variable")
-                sys.exit(1)
+                exit(1)
         else:
             assert isinstance(lv, PointerAST), lv
             lv.expr.compile(scope, code)
@@ -2368,7 +2383,7 @@ class AddressAST(AST):
             tv = scope.lookup(lv.name)
             if tv != None:
                 print(lv, ": Parse error: can only take address of shared variable")
-                sys.exit(1)
+                exit(1)
             code.append(PushAddressOp(lv.name))
         else:
             assert isinstance(lv, PointerAST), lv
@@ -2637,17 +2652,17 @@ class ImportAST(AST):
         if lexeme in modules:
             lexeme = modules[lexeme]
         for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
-            filename = dir + "/" + lexeme + ".cxl"
+            filename = dir + "/" + lexeme + ".hny"
             if os.path.exists(filename):
                 with open(filename) as f:
                     load(f, filename, scope, code)
                 return
         if lexeme in internal_modules:
             load_string(internal_modules[lexeme],
-                "<internal>/" + lexeme + ".cxl", scope, code)
+                "<internal>/" + lexeme + ".hny", scope, code)
         else:
             print("Can't find module", lexeme, "imported from", namestack)
-            sys.exit(1)
+            exit(1)
 
 class LabelStatAST(AST):
     def __init__(self, labels, ast, file, line):
@@ -2679,7 +2694,7 @@ class ConstAST(AST):
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
             print(self.const, ": Parse error: expression not a constant", str(self.expr))
-            sys.exit(1)
+            exit(1)
         code2 = []
         self.expr.compile(scope, code2)
         state = State(code2, scope.labels)
@@ -3117,7 +3132,7 @@ class State:
             except KeyError:
                 print()
                 print("no index", indexes[0], "in variable", path)
-                sys.exit(1)
+                exit(1)
             indexes = indexes[1:]
         return v
 
@@ -3144,7 +3159,7 @@ class State:
             d[indexes[0]] = self.doStop(record.d[indexes[0]], indexes[1:], ctx)
         else:
             # TODO.  Should be print + set failure
-            # TODO.  Make ctx a CXL value
+            # TODO.  Make ctx a Harmony value
             list = d[indexes[0]]
             assert(isinstance(list, DictValue))
             d2 = list.d.copy()
@@ -3387,7 +3402,7 @@ def onestep(state, ctx, choice, visited, todo, node):
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
                 traceback.print_exc()
-                sys.exit(1)
+                exit(1)
                 cc.failure = "Python assertion failed"
 
         if cc.failure != None or cc.stopped:
@@ -3470,7 +3485,7 @@ def parseConstant(c, v):
     except IndexError:
         # best guess...
         print("Parsing constant", v, "hit end of string")
-        sys.exit(1)
+        exit(1)
     scope = Scope(None)
     code = []
     ast.compile(scope, code)
@@ -3488,7 +3503,7 @@ def doCompile(filenames, consts, mods):
             parseConstant(c[0:i], c[i+1:])
         except IndexError:
             print("Usage: -c C=V to define a constant")
-            sys.exit(1)
+            exit(1)
 
     global modules
     for m in mods:
@@ -3497,17 +3512,24 @@ def doCompile(filenames, consts, mods):
             modules[m[0:i]] = m[i+1:]
         except IndexError:
             print("Usage: -m module=version to specify a module version")
-            sys.exit(1)
+            exit(1)
 
     scope = Scope(None)
     code = []
     if filenames == []:
-        print("Loading code from standard input...")
-        load(sys.stdin, "<stdin>", scope, code)
+        if False:
+            print("Loading code from standard input...")
+            load(sys.stdin, "<stdin>", scope, code)
+        else:
+            usage()
     else:
         for fname in filenames:
-            with open(fname) as fd:
-                load(fd, fname, scope, code)
+            if os.path.exists(fname):
+                with open(fname) as fd:
+                    load(fd, fname, scope, code)
+            else:
+                print("Can't open", fname, file=sys.stderr)
+                exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
@@ -4071,7 +4093,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
 
 def htmldump(visited, code, scope, state, fulldump, verbose):
-    with open("cxl.html", "w") as f:
+    with open("harmony.html", "w") as f:
         print("""
 <html>
   <head>
@@ -4158,7 +4180,7 @@ table td, table th {
                   <div class='container'>
                     <p>
                         State information not available.
-                        Use cxl -d for a complete htmldump.
+                        Use harmony -d for a complete htmldump.
                     </p>
                   </div>
                 </div>
@@ -4213,10 +4235,10 @@ table td, table th {
             """%(row, sid), file=f)
         print("</body>", file=f)
         print("</html>", file=f)
-    print("Open file://" + os.getcwd() + "/cxl.html for more information")
+    print("Open file://" + os.getcwd() + "/harmony.html for more information")
 
 def usage():
-    print("Usage: cxl [options] [cxl-file...]")
+    print("Usage: harmony [options] harmony-file ...")
     print("  options: ")
     print("    -a: list machine code")
     print("    -b: blocking execution")

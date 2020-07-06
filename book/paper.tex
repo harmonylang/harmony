@@ -31,19 +31,19 @@
 \tolerance=9999
 \newcommand{\tm}{\raisebox{.9ex}{\tiny tm}}
 
-\newcommand{\cxlsource}[1]{
+\newcommand{\harmonysource}[1]{
 \begin{tabbing}
 XX\=XXX\=XXX\kill
     \input{sources/#1.tex}
 \end{tabbing}
 }
 
-\newcommand{\cxllink}[1]{%
-[\href{https://www.cs.cornell.edu/home/rvr/cxl/#1}{\underline{#1}}]%
+\newcommand{\harmonylink}[1]{%
+[\href{https://www.cs.cornell.edu/home/rvr/harmony/#1}{\underline{#1}}]%
 }
 
-\newcommand{\cxlref}[2]{%
-\href{https://www.cs.cornell.edu/home/rvr/cxl/output/#1}{\underline{#2}}%
+\newcommand{\harmonyref}[2]{%
+\href{https://www.cs.cornell.edu/home/rvr/harmony/output/#1}{\underline{#2}}%
 }
 
 \newglossaryentry{actor model}
@@ -158,7 +158,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{machine instruction}
 {
   name=machine instruction,
-  description={is an atomic operation on the CXL virtual machine, executed by a process}
+  description={is an atomic operation on the Harmony virtual machine, executed by a process}
 }
 \newglossaryentry{model checking}
 {
@@ -240,7 +240,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{shared variable}
 {
   name=shared variable,
-  description={is a variable that is stored in the memory of the CXL virtual machine and
+  description={is a variable that is stored in the memory of the Harmony virtual machine and
       shared between multiple processes, as opposed to a process variable}
 }
 \newglossaryentry{spinlock}
@@ -253,7 +253,7 @@ XX\=XXX\=XXX\kill
 {
   name=stack machine,
   description={is a model of computing where the state of a process is kept on
-    a stack.  CXL uses a combination of a stack machine and a register-based machine}
+    a stack.  Harmony uses a combination of a stack machine and a register-based machine}
 }
 \newglossaryentry{starvation}
 {
@@ -264,14 +264,14 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{state}
 {
   name=state,
-  description={an assignment of values to variables.  In a CXL virtual machine, this includes
+  description={an assignment of values to variables.  In a Harmony virtual machine, this includes
       the contents of its shared memory and the set of contexts}
 }
 \newglossaryentry{step}
 {
   name=step,
   description={is the execution of a machine instruction by a process, updating
-        its state.  CXL distinguishes micro steps (machine instructions) and macro
+        its state.  Harmony distinguishes micro steps (machine instructions) and macro
         step (a sequence of instructions with at most one effect visible by
         other processes)}
 }
@@ -301,7 +301,7 @@ XX\=XXX\=XXX\kill
 \endtcolorbox
 }
 
-\title{Concurrent Programming with CXL}
+\title{Concurrent Programming with Harmony}
 \author{Robbert van Renesse}
 
 \begin{document}
@@ -374,11 +374,11 @@ because it is hard to reproduce.
 
 This book is intended to help people with understanding and
 developing concurrent code.  In particular, it uses a new tool
-called CXL that helps with \emph{testing} concurrent code.
+called Harmony that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}:
 \index{model checking}%
 instead of relying
-on luck, CXL will run \emph{all possible executions} of a particular
+on luck, Harmony will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
 \emph{can} expose the bug it \emph{will}.  Importantly, if the bug is
 found, the model checker precisely shows how to trigger it in
@@ -436,16 +436,16 @@ We will include examples
 of such invariants as they often provide excellent insight into
 why a particular algorithm works.
 
-So what is CXL?
-CXL is a concurrent programming language.  It was designed to teach
+So what is Harmony?
+Harmony is a concurrent programming language.  It was designed to teach
 the basics of concurrent programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
-algorithms.  CXL programs are not intended to be ``run'' like programs
-in most other programming languages---instead CXL programs are
+algorithms.  Harmony programs are not intended to be ``run'' like programs
+in most other programming languages---instead Harmony programs are
 model checked to test that the program has certain desirable
 properties and does not suffer from bugs.
 
-The syntax and semantics of CXL is similar to that of Python.
+The syntax and semantics of Harmony is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
 use.  We will assume that the reader is familiar with the basics
 of Python programming.  We also will assume that the reader
@@ -454,9 +454,9 @@ are executed.  For example, we assume that the reader is familiar
 with the concepts of CPU, memory, register, stack, and machine
 instructions.
 
-CXL is heavily influenced by Leslie Lamport's work on
+Harmony is heavily influenced by Leslie Lamport's work on
 TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09}.
-CXL is designed to have a lower learning curve than those
+Harmony is designed to have a lower learning curve than those
 systems, but is not as powerful.  When you finish this book
 and want to learn more, we strongly encourage checking
 those out.
@@ -467,14 +467,14 @@ Concurrent Programming''~\cite{Schneider97}.
 The book proceeds as follows:
 
 \begin{itemize}
-\item \autoref{ch:cxlintro} introduces the CXL programming
+\item \autoref{ch:harmonyintro} introduces the Harmony programming
 language, as it provides the language for presenting synchronization
 problems and solutions.
 \item \autoref{ch:concurrent} illustrates the problem of
 concurrent programming through a simple example in which two processes
 are concurrently incrementing a counter.
-\item \autoref{ch:cxlmachine} presents the
-CXL virtual machine to understand the problem
+\item \autoref{ch:harmonymachine} presents the
+Harmony virtual machine to understand the problem
 underlying concurrency better.
 \item \autoref{ch:critical} introduces the concept of a
 \emph{critical section} and presents various flawed implementations
@@ -482,11 +482,11 @@ of critical sections to demonstrate that implementing a critical section
 is not trivial.
 \item \autoref{ch:peterson} introduces Peterson's Algorithm, an
 elegant solution to implementating a critical section.
-\item \autoref{ch:method} gives some more details on the CXL
+\item \autoref{ch:method} gives some more details on the Harmony
 language.
 \item \autoref{ch:spinlock} introduces ``hardware'' locks
 for implemented critical sections.
-\item \autoref{ch:synch} presents CXL modules
+\item \autoref{ch:synch} presents Harmony modules
 that supports locks and other synchronization primitives.
 \item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
 abstraction and implementation of reader/writer
@@ -524,44 +524,44 @@ steps.
 useful in high-performance computing applications such as parallel simulations.
 \end{itemize}
 
-\chapter{Introduction to Programming with CXL}
-\label{ch:cxlintro}
+\chapter{Introduction to Programming with Harmony}
+\label{ch:harmonyintro}
 
-Like Python, CXL is an imperative,
+Like Python, Harmony is an imperative,
 dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
-\item Syntax: Every statement in CXL must be terminated by a semicolon
+\item Syntax: Every statement in Harmony must be terminated by a semicolon
 (even \textbf{while} statements and \textbf{def} statements).
 In Python semicolons are optional and rarely used.
-There is no syntactic significance to indentation in CXL.
-Correct indentation in CXL is encouraged but not enforced.
-CXL only supports basic operator precedence or associativity.
+There is no syntactic significance to indentation in Harmony.
+Correct indentation in Harmony is encouraged but not enforced.
+Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
-\item CXL does not (currently) support floating point, iterators, or I/O;
-CXL does support \textbf{for} loops and various comprehensions over sets.
+\item Harmony does not (currently) support floating point, iterators, or I/O;
+Harmony does support \textbf{for} loops and various comprehensions over sets.
 \item Python is object-oriented, supporting classes with methods and
-inheritance; CXL has objects but does not support classes.  CXL supports
+inheritance; Harmony has objects but does not support classes.  Harmony supports
 pointers to objects.
 \end{itemize}
 There are also many unimportant ones that you will discover as
-you get more familiar with programming in CXL.
+you get more familiar with programming in Harmony.
 
 \begin{figure}
 \begin{code}
-\cxlsource{triangle}
+\harmonysource{triangle}
 \end{code}
-\caption{\cxllink{code/triangle.cxl} Computing triangle numbers.}
+\caption{\harmonylink{code/triangle.hny} Computing triangle numbers.}
 \label{fig:triangle}
 \end{figure}
 
-\autoref{fig:triangle} shows a simple example of a CXL program.
+\autoref{fig:triangle} shows a simple example of a Harmony program.
 (The code for examples in this book can be found in the \texttt{code} folder under
 the name listed in the caption of the example.)
 The example is sequential and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
 \textit{result} that eventually contains the result of the
-method (there is no \textbf{return} statement in CXL).  The method
+method (there is no \textbf{return} statement in Harmony).  The method
 also has a variable called \textit{n} containing the value of the
 argument.  The \textit{x..y} notation generates a set containing the numbers
 from~\textit{x} to~\textit{y} (inclusive).  The last two lines in the program are
@@ -569,37 +569,37 @@ the most interesting.
 The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
 and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
-``Running'' this CXL program will try all possible executions, which
+``Running'' this Harmony program will try all possible executions, which
 includes all possible values for $x$.  Try it out (here \texttt{\$}
 represents a shell prompt):
 
 \begin{code}
 \begin{verbatim}
-$ cxl triangle.cxl
+$ harmony triangle.hny
 #states = 13
 no issues found
 $
 \end{verbatim}
 \end{code}
 
-(For this to work, make sure \texttt{cxl} is in your command shell's search path.)
+(For this to work, make sure \texttt{harmony} is in your command shell's search path.)
 Essentially, the $\texttt{choose}($S$)$
 \index{choose operator}%
 operator provides the input to the program by selecting some value from the
 set~$S$, while the $\textbf{assert}$ statement checks that the output is
-correct.  If the program is correct, the output of CXL is the size of the
-``state graph'' (13 states in this case).  If not, CXL also
+correct.  If the program is correct, the output of Harmony is the size of the
+``state graph'' (13 states in this case).  If not, Harmony also
 reports what went wrong, typically by displaying a summary of an execution in
 which something went wrong.
 
-In CXL, constants have a default value,
+In Harmony, constants have a default value,
 but those can be overridden on the command
 line using the \texttt{-c} option.
 \index{constant}%
 For example, if you want to test the code for \texttt{N = 100}, run:
 \begin{code}
 \begin{verbatim}
-$ cxl -c N=100 triangle.cxl
+$ harmony -c N=100 triangle.hny
 #states = 103
 no issues found
 $
@@ -609,8 +609,8 @@ $
 \section*{Exercises}
 \begin{problems}
 \item See what happens if, instead of initializing \textit{result} to 0,
-you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in \autoref{ch:cxlmachine}.)
-\item Write a CXL program that computes squares by repeated adding.  So the program
+you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in \autoref{ch:harmonymachine}.)
+\item Write a Harmony program that computes squares by repeated adding.  So the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{problems}
 
@@ -631,7 +631,7 @@ Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
 Method \texttt{main} waits until \textit{done} flags are set to \texttt{True}.
 After that, it verifies that the value of \textit{count} equals 2.
-Like Python, CXL supports \texttt{assert} statements with two arguments:
+Like Python, Harmony supports \texttt{assert} statements with two arguments:
 the first is a Boolean condition, and the second is a value that is
 reported if the condition fails, in this case
 the actual value of \textit{count}.
@@ -645,9 +645,9 @@ even gets going.
 
 \begin{figure}[h]
 \begin{code}
-\cxlsource{Up}
+\harmonysource{Up}
 \end{code}
-\caption{\cxllink{code/Up.cxl} Incrementing twice in parallel.}
+\caption{\harmonylink{code/Up.hny} Incrementing twice in parallel.}
 \label{fig:inc}
 \end{figure}
 
@@ -662,10 +662,10 @@ underlying machine architecture are atomic (indivisible)---in fact they are.)
 
 \glsadd{machine instruction}%
 
-What is going on is that the CXL program is compiled to machine instructions,
+What is going on is that the Harmony program is compiled to machine instructions,
 \index{machine instruction}%
-and it is the machine instructions that are executed by the underlying CXL
-machine.  The details of this appear in \autoref{ch:cxlmachine},
+and it is the machine instructions that are executed by the underlying Harmony
+machine.  The details of this appear in \autoref{ch:harmonymachine},
 but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
@@ -684,7 +684,7 @@ instructions are interleaved
 \index{interleaving}%
 in unspecified and often random ways.
 A program is correct if it works for any interleaving.
-In fact, CXL will try all possible interleavings of the processes
+In fact, Harmony will try all possible interleavings of the processes
 executing machine instructions.
 
 The following is a possible interleaving of incrementers~0 and~1:
@@ -703,7 +703,7 @@ The result in this particular interleaving is that \textit{count} ends up
 being 1.
 This is known as a \emph{race condition}.
 \index{race condition}%
-When running CXL, it will
+When running Harmony, it will
 report violations of assertions.  It also provides an example
 of an interleaving, like the one above, in which an assertion fails.
 
@@ -724,11 +724,11 @@ be fixed.
 \section*{Exercises}
 
 The following exercises are intended to show you that on the one hand it
-is easy to translate CXL programs into Python, but on the other hand,
-it is easier to find concurrency bugs using CXL.
+is easy to translate Harmony programs into Python, but on the other hand,
+it is easier to find concurrency bugs using Harmony.
 
 \begin{problems}
-\item CXL programs can usually be easily translated into Python.  For example,
+\item Harmony programs can usually be easily translated into Python.  For example,
 \autoref{fig:incpy} is a Python version of \autoref{fig:inc}.
 \begin{enumerate}
 \item Run \autoref{fig:incpy} using Python.  Does the assertion fail?
@@ -753,7 +753,7 @@ was for each of the failed runs.
 Also experiment with lower values of \texttt{N}.
 How large does \texttt{N} need to be for assertions to fail?
 \item Can you think of a fix to \autoref{fig:inc}?  Try one or two different fixes
-and run them through CXL.  Do not worry about having to come up with a correct fix at this
+and run them through Harmony.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
 \end{problems}
 
@@ -761,7 +761,7 @@ time---the important thing is to develop an understanding of concurrency.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/Up.py}
 \end{code}
-\caption{\cxllink{python/Up.py} Python implementation of \autoref{fig:inc}.}
+\caption{\harmonylink{python/Up.py} Python implementation of \autoref{fig:inc}.}
 \label{fig:incpy}
 \end{figure}
 
@@ -769,56 +769,56 @@ time---the important thing is to develop an understanding of concurrency.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/UpMany.py}
 \end{code}
-\caption{\cxllink{python/UpMany.py} Incrementing \texttt{N} times.}
+\caption{\harmonylink{python/UpMany.py} Incrementing \texttt{N} times.}
 \label{fig:incmany}
 \end{figure}
 
-\chapter{The CXL Virtual Machine}
-\label{ch:cxlmachine}
-\index{CXL Virtual Machine}%
+\chapter{The Harmony Virtual Machine}
+\label{ch:harmonymachine}
+\index{Harmony Virtual Machine}%
 
-CXL programs are compiled to CXL bytecode
+Harmony programs are compiled to Harmony bytecode
 \index{bytecode}%
 (machine instructions for a virtual machine),
-which in turn is executed by the CXL virtual machine (CVM).
+which in turn is executed by the Harmony virtual machine (HVM).
 \index{virtual machine}%
-\index{CXL Virtual Machine}%
-\index{CVM}%
+\index{Harmony Virtual Machine}%
+\index{HVM}%
 To understand the problem of concurrent computing, it
-is important to have a basic understanding of the CVM.
+is important to have a basic understanding of the HVM.
 
-\section*{CXL Values}
-\label{ap:cxlvalues}
+\section*{Harmony Values}
+\label{ap:harmonyvalues}
 
-CXL programs, and indeed the CVM,  manipulate CXL values.
-CXL values are recursively defined:
+Harmony programs, and indeed the HVM,  manipulate Harmony values.
+Harmony values are recursively defined:
 they include booleans (\texttt{False} and \texttt{True}),
 integers (but not floating point numbers),
 strings (enclosed by double quotes),
-sets of CXL values,
+sets of Harmony values,
 and dictionaries
 \index{dictionary}%
-that map CXL values to other CXL values.
+that map Harmony values to other Harmony values.
 %
-Another type of CXL value is the \emph{atom}.
+Another type of Harmony value is the \emph{atom}.
 \index{atom}%
 It is essentially
 just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
 
-CXL makes extensive use of dictionaries.
+Harmony makes extensive use of dictionaries.
 A dictionary maps values, known as \emph{keys}, to values.
-The CXL dictionary syntax and properties are a little different from Python.
-Unlike Python, any CXL value can be a key, including another
+The Harmony dictionary syntax and properties are a little different from Python.
+Unlike Python, any Harmony value can be a key, including another
 dictionary.
-CXL dictionaries are written as
+Harmony dictionaries are written as
 $\mathtt{dict}\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
 If $d$ is a dictionary, and $k$ is a key, then the
-following expression retrieves the CXL value that $k$ maps to in $d$:
+following expression retrieves the Harmony value that $k$ maps to in $d$:
 \begin{code}
 $d$ $k$
 \end{code}
-This is unfamiliar to Python programers, but in CXL square brackets can be used
+This is unfamiliar to Python programers, but in Harmony square brackets can be used
 in the same way as parentheses, so you can express the same thing in the form
 that is familiar to Python programmers:
 \begin{code}
@@ -832,24 +832,24 @@ The meaning of $d$ $a$ $b$ $...$ is ((($d$ $a$) $b$) $...$).
 
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
-\texttt{(5, False)} is the same CXL value as
+\texttt{(5, False)} is the same Harmony value as
 \texttt{dict\{ 0:5, 1:False \}}.
 The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
 Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by including a comma.
 For example, \texttt{(1,)}.
 
-Again, square brackets and parentheses work the same in CXL, so
+Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
-is the same CXL value as \texttt{(a, b, c)} (which looks like a Python tuple),
-which in turn is the same CXL value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
+is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
+which in turn is the same Harmony value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
 So if $x$ = \texttt{[ False, True ]},
 then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.
 
-CXL is not an object-oriented language, so objects don't have
-built-in methods.  However, CXL does have some powerful operators to
+Harmony is not an object-oriented language, so objects don't have
+built-in methods.  However, Harmony does have some powerful operators to
 make up for some of that.
 For example, dictionaries have two handy unary operators.
 If $d$ is a
@@ -857,35 +857,35 @@ dictionary, then \texttt{keys}~$d$ (or equivalently \texttt{keys}($d$)
 returns the set of keys and \texttt{len}~$d$ returns the size of
 this set.
 
-Appendix~\ref{ap:cxlvalues} provides details on all the values that
-CXL currently supports.
+Appendix~\ref{ap:harmonyvalues} provides details on all the values that
+Harmony currently supports.
 
-\section*{CXL Bytecode}
+\section*{Harmony Bytecode}
 
-A CXL program is translated
+A Harmony program is translated
 into \emph{bytecode}, which is list of machine instructions that the
-CXL virtual machine (CVM) executes.
-The CVM is not an ordinary virtual machine, but its architecture
+Harmony virtual machine (HVM) executes.
+The HVM is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional computers and
 virtual machines such as the Java Virtual Machine.
 
-Instead of bits and bytes, a CVM manipulates CXL values.
-A CVM has the following components:
+Instead of bits and bytes, a HVM manipulates Harmony values.
+A HVM has the following components:
 \begin{itemize}
-\item Code:  This is an immutable and finite list of CVM instructions,
-generated from a CXL program.  The types of instructions will be described later.
-\item Shared memory: A CVM has just one memory location containing
-an CXL value.
+\item Code:  This is an immutable and finite list of HVM instructions,
+generated from a Harmony program.  The types of instructions will be described later.
+\item Shared memory: A HVM has just one memory location containing
+an Harmony value.
 \item Processes:  Any process
 can spawn an unbounded number of other processes and processes may terminate.
 Each process has an immutable (but not necessarily unique) \emph{name tag},
 \index{name tag}%
 a program counter,
 \index{program counter}%
-a stack of CXL values,
+a stack of Harmony values,
 and a single mutable general purpose \emph{register}
 \index{register}%
-that contains a CXL value.
+that contains a Harmony value.
 \end{itemize}
 
 A name tag consists of the name of the main method of the process,
@@ -907,13 +907,13 @@ The state of a process is called a \emph{context} (aka \emph{continuation}):
 \index{continuation}%
 it contains the value of
 its name tag, program counter, stack, and register.
-The state of a CVM
+The state of a HVM
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}%
 \index{multiset}%
 of contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
-The initial state of the CXL memory is the empty dictionary, \texttt{dict\{\}}.
+The initial state of the Harmony memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
@@ -922,15 +922,15 @@ Each machine instruction updates the state in some way.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Up.cxl:1 def incrementer(self):
+Up.hny:1 def incrementer(self):
     0 Jump 34
     1 Frame incrementer(self)
-Up.cxl:2     count = count + 1;
+Up.hny:2     count = count + 1;
     2 Load count
     3 Push 1
     4 2-ary +
     5 Store count
-Up.cxl:3     done[self] = True;
+Up.hny:3     done[self] = True;
     6 LoadVar self
     7 PushAddress done
     8 Address 2
@@ -939,25 +939,25 @@ Up.cxl:3     done[self] = True;
    11 Return
 \end{verbatim}
 \end{code}
-\caption{The first part of the CVM bytecode corresponding to \autoref{fig:inc}.}
+\caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}.}
 \label{fig:inccode}
 \end{figure}
 
 It may seem strange that there is only one memory location and that each
 process has only one register.  However, this is not a limitation because
-CXL values are unbounded trees.
+Harmony values are unbounded trees.
 Both the memory and the register of a process always contain
-a dictionary that maps atoms to CXL values.  We call this a \emph{directory}.
+a dictionary that maps atoms to Harmony values.  We call this a \emph{directory}.
 \index{directory}%
 A directory represents the state of a collection of variables named by the atoms.
 %
-Because directories are CXL values themselves,
+Because directories are Harmony values themselves,
 directories can be organized into a tree.
 Each node in a directory tree is then identified
 by a sequence of atoms, like a path name in the file system hierarchy.  We call
 such a sequence the \emph{address}
 \index{address}%
-of a CXL value, and it is relative to the
+of a Harmony value, and it is relative to the
 ``root'' of the directory tree.
 
 \begin{figure}
@@ -970,26 +970,26 @@ incrementer/0 [1-4]          5 { count=0, done=[False, False] }
 incrementer/1 [1-10]        11 { count=1, done=[False, True]  }
 incrementer/0 [5-10]        11 { count=1, done=[True,  True]  }
 main/() [13-17,20-24,26-31] 31 { count=1, done=[True,  True]  }
->>> CXL Assertion failed : 1
-Open file://.../cxl.html for more information
+>>> Harmony Assertion failed : 1
+Open file://.../harmony.html for more information
 \end{verbatim}
 \end{code}
-\caption{The text output of running CXL on \autoref{fig:inc}.}
+\caption{The text output of running Harmony on \autoref{fig:inc}.}
 \label{fig:incoutput}
 \end{figure}
 
 \glsadd{stack machine}%
 
-Compiling the code in \autoref{fig:inc} results in the CVM bytecode
+Compiling the code in \autoref{fig:inc} results in the HVM bytecode
 listed in \autoref{fig:inccode}.
-You can obtain this code by invoking \texttt{cxl} with the \texttt{-a} flag
+You can obtain this code by invoking \texttt{harmony} with the \texttt{-a} flag
 like so:
 \begin{code}
 \begin{verbatim}
-cxl -a Up.cxl
+harmony -a Up.hny
 \end{verbatim}
 \end{code}
-Each process in the CVM is predominantly a \emph{stack machine},
+Each process in the HVM is predominantly a \emph{stack machine},
 \index{stack machine}%
 but it also has a register.
 All instructions are atomically executed.
@@ -1004,12 +1004,12 @@ At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
-Appendix~\ref{ap:cxlbytecode} provides a list of all CVM machine instructions,
+Appendix~\ref{ap:harmonybytecode} provides a list of all HVM machine instructions,
 in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method and the
 names of its arguments.
 The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
-\texttt{Up.cxl} is as follows (see \autoref{fig:inccode}):
+\texttt{Up.hny} is as follows (see \autoref{fig:inccode}):
 
 \begin{enumerate} \setcounter{enumi}{1}
 \item The \texttt{Load} instruction pushes the value of the
@@ -1020,20 +1020,20 @@ onto the stack of the process.
 It pops two values from the stack (1 and the value of \textit{count}),
 adds them and pushes the result back onto the stack.
 \item The \texttt{Store} instruction pops
-a CXL value (the sum of the \textit{count} variable and 1) and
+a Harmony value (the sum of the \textit{count} variable and 1) and
 stores it in the \textit{count} variable.
 \end{enumerate}
 
 Once initialization completes, any processes that were spawned can run.
-You can think of CXL as trying every possible interleaving of processes executing
+You can think of Harmony as trying every possible interleaving of processes executing
 instructions.
-\autoref{fig:incoutput} shows the output produced by running CXL on the
-\texttt{Up.cxl} program.
+\autoref{fig:incoutput} shows the output produced by running Harmony on the
+\texttt{Up.hny} program.
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/Up1.png}
 \caption{The
-\cxlref{Up.html}{HTML output of running CXL on \autoref{fig:inc}}.
+\harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
 There are three sections.
 The top shows the steps to the problematic state.
 The bottom left shows the source code and bytecode
@@ -1045,17 +1045,17 @@ being evaluated.}
 \label{fig:inchtml1}
 \end{figure}
 
-CXL can report a variety of failure types:
+Harmony can report a variety of failure types:
 \begin{itemize}
 \item \texttt{Safety violation}: this means something went wrong with
 at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
 It also includes certain infinite loops.
-CXL will print at trace of the shortest bad execution that it found.
-\item \texttt{Non-terminating States}: CXL found one or more states
+Harmony will print at trace of the shortest bad execution that it found.
+\item \texttt{Non-terminating States}: Harmony found one or more states
 from which there does not exist an execution such that all processes
-terminate.  CXL will not only print the non-terminating state with
+terminate.  Harmony will not only print the non-terminating state with
 the shortest trace, but also the list of processes that are running
 at that state, along with their name tags and program counters.
 \item \texttt{Stopped States}: Similar to non-terminating states,
@@ -1064,7 +1064,7 @@ terminate.  \autoref{ch:synch} will explain what it means for
 a process to be stopped.
 \end{itemize}
 
-In this case, CXL reports a safety violation, in particular it
+In this case, Harmony reports a safety violation, in particular it
 reports that the assertion on line 9 failed and that
 \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
@@ -1073,7 +1073,7 @@ The output has
 four columns:
 \begin{enumerate}
 \item The name tag of the process;
-\item The sequence of program counters of the CVM instructions that the process executed;
+\item The sequence of program counters of the HVM instructions that the process executed;
 \item The current program counter of the process;
 \item The contents of the shared memory.
 \end{enumerate}
@@ -1096,7 +1096,7 @@ and storing \texttt{True} into \textit{done}[0].
 Finally, process \texttt{main()} runs and finds the problem.
 This makes precise the concurrency issue that we encountered.
 
-CXL also generates an HTML file that allows exploring more details
+Harmony also generates an HTML file that allows exploring more details
 of the execution interactively.
 Open the suggested HTML file and you should see something like
 \autoref{fig:inchtml1}.
@@ -1107,19 +1107,19 @@ brief explanation.
 
 \begin{problems}
 \item \autoref{fig:incenter} shows an attempt at trying to fix the code of
-    \autoref{fig:inc}.  Run it through CXL and see what happens.  Based on
+    \autoref{fig:inc}.  Run it through Harmony and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
     in broad steps, how running the program can get into a bad state.
 \item What if we moved line~2 of \autoref{fig:incenter} to after the \textbf{if}
     statement (between lines~7 and~8)?  Do you think that would work?  Run it through
-    CXL and describe either why it works or why it does not work.
+    Harmony and describe either why it works or why it does not work.
 \end{problems}
 
 \begin{figure}
 \begin{code}
-\cxlsource{UpEnter}
+\harmonysource{UpEnter}
 \end{code}
-\caption{\cxllink{code/UpEnter.cxl} Broken attempt at fixing the code of \autoref{fig:inc}.}
+\caption{\harmonylink{code/UpEnter.hny} Broken attempt at fixing the code of \autoref{fig:inc}.}
 \label{fig:incenter}
 \end{figure}
 
@@ -1128,17 +1128,17 @@ brief explanation.
 
 \begin{figure}
 \begin{code}
-\cxlsource{csbarebones}
+\harmonysource{csbarebones}
 \end{code}
-\caption{\cxllink{code/csbarebones.cxl} A bare bones critical section with two processes.}
+\caption{\harmonylink{code/csbarebones.hny} A bare bones critical section with two processes.}
 \label{fig:csbarebones}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{cs}
+\harmonysource{cs}
 \end{code}
-\caption{\cxllink{code/csbarebones.cxl} CXL model of a critical section.}
+\caption{\harmonylink{code/csbarebones.hny} Harmony model of a critical section.}
 \label{fig:cs}
 \end{figure}
 
@@ -1179,17 +1179,17 @@ processes (or threads) and free of race conditions is called \emph{thread-safe}.
 
 A critical section is often modeled as processes in an infinite loop
 entering and exiting the critical section.
-\autoref{fig:csbarebones} shows the CXL code.
+\autoref{fig:csbarebones} shows the Harmony code.
 Here \texttt{@cs} is a \emph{label},
 \index{label}%
-identifying a location in the CVM bytecode.  The first thing we need to
+identifying a location in the HVM bytecode.  The first thing we need to
 ensure is that there can never be two processes in the critical section.
 This property is called \emph{mutual exclusion}.
 \index{mutual exclusion}%
 We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current process can be there.
 
-CXL in fact supports this.
+Harmony in fact supports this.
 It has an operator \textbf{atLabel}~$L$,
 \index{atLabel operator}%
 where $L$
@@ -1202,7 +1202,7 @@ use it in normal code.
 The assertion also makes use of the \textbf{nametag}() operator
 \index{nametag operator}%
 that returns the name tag of the current process.
-If you run the code through CXL, the assertion should fail because
+If you run the code through Harmony, the assertion should fail because
 there is no code yet for safely entering and exiting the critical section.
 
 However, mutual exclusion by itself is easy to ensure.
@@ -1239,7 +1239,7 @@ We call this \emph{progress}.
 \index{progress}%
 
 In order to detect violations of progress, and other liveness problems in
-algorithms in general, CXL requires that every execution must be
+algorithms in general, Harmony requires that every execution must be
 able to reach a state in which all processes have terminated.
 Clearly, even if mutual exclusion holds in \autoref{fig:csbarebones},
 the spawned processes never terminate.  We
@@ -1247,7 +1247,7 @@ will model processes in critical sections using the framework in
 \autoref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
-(Recall that CXL will try every possible execution, and so it will evaluate
+(Recall that Harmony will try every possible execution, and so it will evaluate
 both choices.)
 
 \begin{figure}
@@ -1273,37 +1273,37 @@ specification.
 
 \begin{figure}
 \begin{code}
-\cxlsource{naiveLock}
+\harmonysource{naiveLock}
 \end{code}
-\caption{\cxllink{code/naiveLock.cxl} Na\"{\i}ve implementation of a shared lock.}
+\caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock.}
 \label{fig:uplock}
 \end{figure}
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveLock.png}
-\caption{The \cxlref{naiveLock.html}{HTML output of running CXL on \autoref{fig:uplock}}.}
+\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:uplock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{naiveFlags}
+\harmonysource{naiveFlags}
 \end{code}
-\caption{\cxllink{code/naiveFlags.cxl} Na\"{\i}ve use of flags to solve mutual exclusion.}
+\caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion.}
 \label{fig:upflags}
 \end{figure}
 
 \begin{figure}
 \includegraphics[width=\textwidth]{figures/naiveFlags.png}
-\caption{The \cxlref{naiveFlags.html}{HTML output of running CXL on \autoref{fig:upflags}}.}
+\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:upflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{naiveTurn}
+\harmonysource{naiveTurn}
 \end{code}
-\caption{\cxllink{code/naiveTurn.cxl} Na\"{\i}ve use of turn variable to solve mutual exclusion.}
+\caption{\harmonylink{code/naiveTurn.hny} Na\"{\i}ve use of turn variable to solve mutual exclusion.}
 \label{fig:upturn}
 \end{figure}
 
@@ -1329,9 +1329,9 @@ and then sets it to \texttt{True} to indicate that the lock has been taken.
 The process then executes the critical section.  Finally the process
 releases the lock by setting \textit{lockTaken} back to \texttt{False}.
 
-Unfortunately, if we run the program through CXL,
+Unfortunately, if we run the program through Harmony,
 we find that the assertion still fails.
-\autoref{fig:naiveLockhtml} shows the CXL output.
+\autoref{fig:naiveLockhtml} shows the Harmony output.
 Process~0 finds that the lock is available, but just before it stores
 \texttt{True} in \textit{lockTaken} in instruction~9, process~1 gets
 to run.
@@ -1377,7 +1377,7 @@ it would first have to set \textit{flags}[1] to \texttt{True} and
 then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
 until time $t_2$.
 
-However, if you run the program through CXL (\autoref{fig:naiveflagshtml}),
+However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
 it turns out the solution
 does has a problem: if both try to enter the critical section at the same
 time, they may end up waiting for one another indefinitely.  Thus the
@@ -1396,7 +1396,7 @@ the same time, mutual exclusion is satisfied.
 The solution also has the nice property that
 processes 0 and 1 alternate entering the critical section.
 
-Run the program through CXL.  It turns out that this solution also violates
+Run the program through Harmony.  It turns out that this solution also violates
 \emph{progress}, albeit for a different reason:
 if process~$i$ terminates instead of entering the critical section when it
 is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
@@ -1404,19 +1404,19 @@ turn.
 
 \section*{Exercises}
 \begin{problems}
-\item Run \autoref{fig:cs} using CXL.  As there is no protection of the critical
+\item Run \autoref{fig:cs} using Harmony.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
 Now plug the following code \textbf{while} \texttt{True}: \textbf{pass};;
 just before entering the critical section
-in \autoref{fig:cs} and run CXL again.
+in \autoref{fig:cs} and run Harmony again.
 Mutual exclusion is guaranteed but progress is violated.
-CXL should print a trace
+Harmony should print a trace
 to a state from which a terminating state cannot be reached.
 Describe in English the difference in the failure reports before
 and after inserting the code.
 \item See if you can come up with some different approaches that satisfy both
-mutual exclusion and progress.  Try them with CXL and see if they work or not.
+mutual exclusion and progress.  Try them with Harmony and see if they work or not.
 If they don't, try to understand why.
 Do not despair if you can't figure it out---as
 we will find out, it is possible but not easy.
@@ -1428,9 +1428,9 @@ we will find out, it is possible but not easy.
 
 \begin{figure}
 \begin{code}
-\cxlsource{Peterson}
+\harmonysource{Peterson}
 \end{code}
-\caption{\cxllink{code/Peterson.cxl} Peterson's Algorithm}
+\caption{\harmonylink{code/Peterson.hny} Peterson's Algorithm}
 \label{fig:peterson}
 \end{figure}
 
@@ -1443,12 +1443,12 @@ A process first indicates its interest in entering the critical section
 by setting its flag.
 It then politely gives way to the other process should it also want to
 enter the critical section---if both do so at the same time one will
-win because writes to memory in CXL are atomic.
+win because writes to memory in Harmony are atomic.
 The process continues to be polite, waiting in a \textbf{while} loop
 until either the other process is nowhere near the critical section
 ($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
-Running the algorithm with CXL shows that it satisfies both mutual
+Running the algorithm with Harmony shows that it satisfies both mutual
 exclusion and progress.
 
 \begin{figure}
@@ -1464,32 +1464,32 @@ exclusion and progress.
 
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
-For that, we have to understand a little bit more about how the CXL
+For that, we have to understand a little bit more about how the Harmony
 machine works.
-In \autoref{ch:cxlmachine} we talked about the concept of \emph{state}:
+In \autoref{ch:harmonymachine} we talked about the concept of \emph{state}:
 \index{state}%
-at any point in time the CVM is in a specific state.
+at any point in time the HVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
 \index{process variable}%
 for each process, including its
 program counter and the contents of its stack.
-Everytime a process executes a CVM machine instruction, the
+Everytime a process executes a HVM machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}%
-Steps in CXL are atomic.
+Steps in Harmony are atomic.
 
 \glsadd{step}%
 \glsadd{trace}%
 
-The CVM starts in an initial state in which there is only
+The HVM starts in an initial state in which there is only
 one process and its program counter is~0.  A \emph{trace}
 \index{trace}%
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}%
-in CXL.
+in Harmony.
 One is when
 there is more than one process that can make a step.  The other is
 when a process executes a \texttt{choose} operation and there is
@@ -1547,7 +1547,7 @@ Unlike an invariant, an inductive invariant must also hold over unreachable stat
 
 One candidate for such an invariant is exclusivity itself.
 After all, it certainly holds over the initial state.
-And as CXL has already determined, exclusivity is an invariant:
+And as Harmony has already determined, exclusivity is an invariant:
 it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
@@ -1563,9 +1563,9 @@ much harder than doing one with an invariant that is.
 
 \begin{figure}
 \begin{code}
-\cxlsource{PetersonInductive}
+\harmonysource{PetersonInductive}
 \end{code}
-\caption{\cxllink{code/PetersonInductive.cxl} Peterson's Algorithm with Inductive Invariant}
+\caption{\harmonylink{code/PetersonInductive.hny} Peterson's Algorithm with Inductive Invariant}
 \label{fig:petersonproof}
 \end{figure}
 
@@ -1584,7 +1584,7 @@ More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot \m
 For Peterson's Algorithm, an inductive invariant that works well is
 $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
 
-\autoref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in CXL.
+\autoref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in Harmony.
 The label \texttt{@gate} refers to the instruction that sets \textit{turn} to $1-i$.
 You can run \autoref{fig:petersonproof} to determine
 that $\mathcal{I}_p(i)$ is indeed an invariant for $i = 0, 1$.
@@ -1634,13 +1634,13 @@ the step \textit{turn} will equal 0, and therefore the second case will hold
 after the step.  qed.
 
 We have now demonstrated mutual exclusion in Peterson's Algorithm in two
-different ways: one by letting CXL explore all possible executions, the
+different ways: one by letting Harmony explore all possible executions, the
 other using an inductive invariant and proof by induction.  The former
 is certainly easier, but it does not provide intuition for why the
 algorithm works.  The second provides much more insight.  We therefore
-encourage to include inductive invariants in your CXL code.
+encourage to include inductive invariants in your Harmony code.
 
-A cool anecdote is the following.  When the author of CXL had to teach
+A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
 if process $i$ is in the critical section, then $\lnot \mathcal{C}(i)$ (i.e.,
@@ -1652,7 +1652,7 @@ counterexample.
 This anecdote suggests the following.  If you need to do an induction
 proof of an algorithm, you have to come up with an inductive invariant.
 Before trying to prove the algorithm, you can check that the predicate is
-at least invariant by testing it using CXL.  Doing so could potentially
+at least invariant by testing it using Harmony.  Doing so could potentially
 avoid wasting your time on a proof that will not work because the
 predicate is not invariant, and therefore not an inductive invariant either.
 (The author fixed the Wikipedia page.)
@@ -1697,15 +1697,15 @@ Can you generalize Peterson's algorithm to more than two processes?
 
 \begin{figure}
 \begin{code}
-\cxlsource{csonebit}
+\harmonysource{csonebit}
 \end{code}
-\caption{\cxllink{code/csonebit.cxl} Mutual exclusion using a flag per process.}
+\caption{\harmonylink{code/csonebit.hny} Mutual exclusion using a flag per process.}
 \label{fig:csonebit}
 \end{figure}
 
-\chapter{CXL Methods and Pointers}
+\chapter{Harmony Methods and Pointers}
 \label{ch:method}
-\index{CXL method}%
+\index{Harmony method}%
 
 A method \texttt{m} with argument $a$ is invoked in its
 most basic form as follows (assigning the result to~\texttt{r}).
@@ -1721,27 +1721,27 @@ If you invoke \texttt{m}($a$, $b$), the argument is ($a$, $b$),
 the tuple consisting of values $a$ and $a$.
 
 You may note that all this looks familiar.  Indeed, the syntax
-is the same as that for dictionaries (see \autoref{ch:cxlmachine}).
-Both dictionaries and methods map CXL values to CXL values,
+is the same as that for dictionaries (see \autoref{ch:harmonymachine}).
+Both dictionaries and methods map Harmony values to Harmony values,
 and their syntax is indistinguishable.
 If \texttt{f} is either a method or a
-dictionary, and $x$ is an arbitrary CXL value, then
+dictionary, and $x$ is an arbitrary Harmony value, then
 \texttt{f} $x$, \texttt{f}($x$), and \texttt{f}[$x$] are all
-the same expression in CXL.
+the same expression in Harmony.
 
 \begin{figure}
 \begin{code}
-\cxlsource{PetersonMethod}
+\harmonysource{PetersonMethod}
 \end{code}
-\caption{\cxllink{code/PetersonMethod.cxl} Peterson's Algorithm accessed through methods.}
+\caption{\harmonylink{code/PetersonMethod.hny} Peterson's Algorithm accessed through methods.}
 \label{fig:petersonmethods}
 \end{figure}
 
-CXL is not an object-oriented language like Python is.  In Python
+Harmony is not an object-oriented language like Python is.  In Python
 you can pass a reference to an object to a method, and that method
-can then update the object.  In CXL, it is also sometimes convenient
+can then update the object.  In Harmony, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
-For this (as well as some other uses), CXL supports \emph{pointers}
+For this (as well as some other uses), Harmony supports \emph{pointers}
 \index{pointer}%
 to shared variables.
 If $x$ is a shared variable, then the expression \&$x$
@@ -1769,8 +1769,8 @@ Note that the parentheses in this expression
 are needed, as \texttt{\^{}}\textit{pm}\texttt{.turn} would wrongly evaluate to
 \texttt{\^{}}(\textit{pm}\texttt{.turn}).
 
-You can put the first three methods in its own CXL source file
-and include it using the CXL \texttt{import} statement.
+You can put the first three methods in its own Harmony source file
+and include it using the Harmony \texttt{import} statement.
 \index{import statement}%
 \index{module}%
 This would
@@ -1795,9 +1795,9 @@ That would allow you to simulate object methods.
 
 \begin{figure}
 \begin{code}
-\cxlsource{spinlock}
+\harmonysource{spinlock}
 \end{code}
-\caption{\cxllink{code/spinlock.cxl} Mutual Exclusion using a ``spinlock'' based on test-and-set.}
+\caption{\harmonylink{code/spinlock.hny} Mutual Exclusion using a ``spinlock'' based on test-and-set.}
 \label{fig:tas}
 \end{figure}
 
@@ -1815,11 +1815,11 @@ that can read memory and then write it in an indivisible step.
 
 \glsadd{interlock instruction}%
 
-While the CVM does not have any specific built-in interlock instructions,
+While the HVM does not have any specific built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
-This feature is available in the CXL language in two ways.
-First, any CXL statement can be made atomic by placing a label in front
-of it.  Second, a group of CXL statements can be made atomic
+This feature is available in the Harmony language in two ways.
+First, any Harmony statement can be made atomic by placing a label in front
+of it.  Second, a group of Harmony statements can be made atomic
 through its \textbf{atomic}
 \index{atomic statement}%
 statement.
@@ -1828,7 +1828,7 @@ interlock operations.
 For example, we could fix the program in \autoref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
 \begin{code}
-\cxlsource{atomicinc}
+\harmonysource{atomicinc}
 \end{code}
 
 Many CPUs have an atomic ``test-and-set'' (TAS)
@@ -1879,13 +1879,13 @@ section if \textit{private}[$i$] == \texttt{False}, and (ii) no other process mo
 
 \begin{figure}
 \begin{code}
-\cxlsource{spinlockInv}
+\harmonysource{spinlockInv}
 \end{code}
-\caption{\cxllink{code/spinlockInv.cxl} Checking invariants.}
+\caption{\harmonylink{code/spinlockInv.hny} Checking invariants.}
 \label{fig:tasinv}
 \end{figure}
 
-CXL can check these invariants as well.  \autoref{fig:tas} already
+Harmony can check these invariants as well.  \autoref{fig:tas} already
 has the code to check $\mathcal{I}_2(i)$.  But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
@@ -1896,16 +1896,16 @@ been initialized).
 We can do this by adding another process that, in a loop,
 checks the invariant.  \autoref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
-in a state.  It introduces a new feature of CXL: the ability to have
+in a state.  It introduces a new feature of Harmony: the ability to have
 variables local to a method.  In this case, the process variable \textit{sum}
 is used to compute the number of shared variables that have value
 \texttt{False}.
 The function is invoked by in a loop by a process that runs alongside
 the other processes.
-In CXL, \textbf{assert} statements are executed atomically, so the
+In Harmony, \textbf{assert} statements are executed atomically, so the
 evaluation of the assertion is not interleaved with the execution
 of other processes.
-Because CXL tries every possible execution, the process is guaranteed
+Because Harmony tries every possible execution, the process is guaranteed
 to find violations of the invariant if it does not hold.
 
 \section*{Exercises}
@@ -1913,7 +1913,7 @@ to find violations of the invariant if it does not hold.
 \item Implement an atomic swap operation.  It should take two pointer arguments
 and swap the values.
 \item Implement a spinlock using the atomic swap operation.
-\item Write out the invariants that need to hold and check them using CXL.
+\item Write out the invariants that need to hold and check them using Harmony.
 \item People who use an ATM often first check their balance and then withdraw
 a certain amount of money not exceeding their balance.  A negative balance
 is not allowed.  \autoref{fig:atm} shows two operations on bank accounts:
@@ -1923,7 +1923,7 @@ Note that all operations on accounts are carefully protected by a lock
 The \texttt{customer}
 method models going to a particular ATM and withdrawing money not exceeding
 the balance.  Method \texttt{checker} looks for negative balances.
-Running the code through CXL reveals that there is a bug.
+Running the code through Harmony reveals that there is a bug.
 It is a common type of concurrency bug known as \emph{Time Of Check Time Of
 Execution} (TOCTOE).
 \index{Time Of Check Time Of Execution}
@@ -1938,9 +1938,9 @@ the balance can have changed.
 
 \begin{figure}
 \begin{code}
-\cxlsource{atm}
+\harmonysource{atm}
 \end{code}
-\caption{\cxllink{code/atm.cxl} Withdrawing money from an ATM.}
+\caption{\harmonylink{code/atm.hny} Withdrawing money from an ATM.}
 \label{fig:atm}
 \end{figure}
 
@@ -1951,9 +1951,9 @@ the balance can have changed.
 
 \begin{figure}
 \begin{code}
-\cxlsource{csTAS}
+\harmonysource{csTAS}
 \end{code}
-\caption{\cxllink{code/csTAS.cxl} Fixed version of \autoref{fig:uplock} using test-and-set.}
+\caption{\harmonylink{code/csTAS.hny} Fixed version of \autoref{fig:uplock} using test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
@@ -1979,7 +1979,7 @@ just not within the critical section.
 The former is rarely available to a programmer, while the latter
 is very common.
 
-In CXL, atomic statements allow you to \emph{implement} your own
+In Harmony, atomic statements allow you to \emph{implement} your own
 synchronization primitives like test-and-set.  Other common examples
 include compare-and swap and fetch-and-add.  Atomic statements
 are not intended to \emph{replace} locks or other synchonization primitives.
@@ -1990,7 +1990,7 @@ use \textbf{atomic} by all means.
 
 \begin{figure}
 \begin{code}
-\cxlsource{lockintf}
+\harmonysource{lockintf}
 \end{code}
 \caption{The \texttt{Lock} interface in the \texttt{synch} module.}
 \label{fig:spinlocks}
@@ -1998,9 +1998,9 @@ use \textbf{atomic} by all means.
 
 \begin{figure}
 \begin{code}
-\cxlsource{UpLock}
+\harmonysource{UpLock}
 \end{code}
-\caption{\cxllink{code/UpLock.cxl} Program of \autoref{fig:inc} fixed with a lock.}
+\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock.}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2015,7 +2015,7 @@ a lock before accessing the data structure, that is known as a
 \emph{data race}.
 \index{data race}
 
-Because locks are so common, CXL has a module called
+Because locks are so common, Harmony has a module called
 \texttt{synch} that includes support for locks.
 \autoref{fig:spinlocks} shows how they are implemented, and
 \autoref{fig:incfixed} gives an example of how they may be used,
@@ -2039,7 +2039,7 @@ The only way forward is if the other process releases the lock.
 
 \begin{figure}
 \begin{code}
-\cxlsource{locksusp}
+\harmonysource{locksusp}
 \end{code}
 \caption{The \texttt{Lock} interface in the \texttt{synchS} module uses suspension.}
 \label{fig:suspension}
@@ -2048,10 +2048,10 @@ The only way forward is if the other process releases the lock.
 In most operating systems, processes are virtual and can be suspended
 until some condition changes.  For example, a process can be suspended
 until the lock is available to it.
-In CXL, a process can suspend itself and save its context (state) in a
+In Harmony, a process can suspend itself and save its context (state) in a
 list.  Recall that the context of a process consists of its name tag,
 its program counter, and the contents of its register and stack.
-A context is a regular CXL value.
+A context is a regular Harmony value.
 The syntax of the expression is as follows:
 
 \begin{code}
@@ -2067,7 +2067,7 @@ statement:
 \textbf{go} $C$ $R$
 \end{code}
 
-Here $C$ is a context and $R$ is a CXL value.
+Here $C$ is a context and $R$ is a Harmony value.
 It causes a process with context $C$ to be added to the state that has
 just executed the \textbf{stop}
 \index{stop expression}%
@@ -2108,18 +2108,18 @@ gets a chance to obtain the lock (assuming every process eventually releases
 it).  \autoref{ch:starvation} will talk more about starvation and how
 to prevent it.
 
-CXL allows you to select which version of the \texttt{synch} module you would
+Harmony allows you to select which version of the \texttt{synch} module you would
 like to use with the \texttt{-m} flag.
 \index{module}%
 For example,
 
 \begin{code}
 \begin{verbatim}
-cxl -m synch=synchS x.cxl
+harmony -m synch=synchS x.hny
 \end{verbatim}
 \end{code}
 
-runs the file \texttt{x.cxl} using the suspension version of the \texttt{synch} module.
+runs the file \texttt{x.hny} using the suspension version of the \texttt{synch} module.
 You will find that using the \texttt{synchS} module often leads to searching a
 significantly larger search space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
@@ -2131,7 +2131,7 @@ in which processes wait for a lock.
 (for example, using Peterson's algorithm or using \texttt{swap}).
 \item
 Run \autoref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
-and (3) your own module.  Report how many states were explored by CXL for each
+and (3) your own module.  Report how many states were explored by Harmony for each
 version of the module.
 \end{problems}
 
@@ -2143,17 +2143,17 @@ version of the module.
 
 \begin{figure}
 \begin{code}
-\cxlsource{RW}
+\harmonysource{RW}
 \end{code}
-\caption{\cxllink{code/RW.cxl} Busy-Waiting Reader/Writer Lock implementation.}
+\caption{\harmonylink{code/RW.hny} Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWtest}
+\harmonysource{RWtest}
 \end{code}
-\caption{\cxllink{code/RWtest.cxl} Test code for \autoref{fig:rwbusy}.}
+\caption{\harmonylink{code/RWtest.hny} Test code for \autoref{fig:rwbusy}.}
 \label{fig:rwbusytest}
 \end{figure}
 
@@ -2222,9 +2222,9 @@ critical section, any other reader is also able to enter.
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWbusychk}
+\harmonysource{RWbusychk}
 \end{code}
-\caption{\cxllink{code/RWbusychk.cxl} Checking for Busy Waiting.}
+\caption{\harmonylink{code/RWbusychk.hny} Checking for Busy Waiting.}
 \label{fig:rwblock}
 \end{figure}
 
@@ -2241,7 +2241,7 @@ process waits for the other two processes to finish by checking their \texttt{do
 flags.
 
 The astute reader might wonder if obtaining the mutex itself is an
-example of busy-waiting.  After all, the CXL \texttt{synch} implementation
+example of busy-waiting.  After all, the Harmony \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the mutex is available
 (see \autoref{fig:spinlocks}).
 However, there is a big difference.  As we pointed out, the processes that
@@ -2249,7 +2249,7 @@ are waiting for a spinlock are \emph{blocked}.
 In most operating systems and programming language runtimes,
 when a process acquires a mutex, the process is placed on a scheduling
 queue and stops using CPU cycles until the mutex becomes available.
-CXL supports this with the \texttt{synchS} module.
+Harmony supports this with the \texttt{synchS} module.
 Busy waiting disables all this: even when using the \texttt{synchS}
 module, readers and writers only get suspended temporarily in case
 there is contention for the mutex.
@@ -2261,14 +2261,14 @@ Thus, it is considered ok to have processes be blocked while waiting
 for application-specific conditions, but not for them to
 busy-wait for application-specific conditions.
 
-CXL does not complain about \autoref{fig:rwbusy}, but, using
-the right test, CXL can be used to check for busy-waiting.
+Harmony does not complain about \autoref{fig:rwbusy}, but, using
+the right test, Harmony can be used to check for busy-waiting.
 \autoref{fig:rwblock} presents such a test.
 Note that the initialization code obtains a read lock, preventing
 all readers and writers from entering the critical section.
-In that case, those processes should ideally be blocked and CXL
+In that case, those processes should ideally be blocked and Harmony
 can test for that by running it with the \texttt{-b} flag.
-This flag tells CXL to check
+This flag tells Harmony to check
 that all states are non-terminating and lead to a state in which
 all processes are blocked.
 
@@ -2292,23 +2292,23 @@ bound lock.
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWlock}
+\harmonysource{RWlock}
 \end{code}
-\caption{\cxllink{code/RWlock.cxl} Reader/Writer with Two Locks.}
+\caption{\harmonylink{code/RWlock.hny} Reader/Writer with Two Locks.}
 \label{fig:rw2lock}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWmulti}
+\harmonysource{RWmulti}
 \end{code}
-\caption{\cxllink{code/RWmulti.cxl} Checking that multiple readers can acquire the read lock.}
+\caption{\harmonylink{code/RWmulti.hny} Checking that multiple readers can acquire the read lock.}
 \label{fig:rwmulti}
 \end{figure}
 
 \autoref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
-You can test the code by running \texttt{cxl -m RW=RWlock RWtest}.
+You can test the code by running \texttt{harmony -m RW=RWlock RWtest}.
 It uses two ordinary locks: \textit{rwlock} is used by both readers and writers,
 while \textit{rlock} is only used by readers.
 \textit{rwlock} is held either when readers are at label \texttt{@rcs}
@@ -2346,7 +2346,7 @@ and enters the critical section \emph{without} acquiring \textit{rwlock}.
 It does not matter in which order they leave: the second will release
 \textit{rwlock}.
 
-While CXL does not detect any issues, we must remember what it is checking
+While Harmony does not detect any issues, we must remember what it is checking
 for: it checks to make sure that there are never a reader and a writer
 in the critical section, and there are never two readers in the critical
 section.  Moreover, it checks progress: all executions eventually terminate.
@@ -2359,11 +2359,11 @@ more than one process in the critical section.
 than one reader can enter the critical section at a time.  It does so by
 having processes sometimes wait in the critical section until all other readers
 are there.  If other readers cannot enter, then that process enters in an
-infinite loop that CXL will readily detect.  Try it out!
+infinite loop that Harmony will readily detect.  Try it out!
 
-An important lesson here is that one should not celebrate too early if CXL
+An important lesson here is that one should not celebrate too early if Harmony
 does not find any issues.  While a test may be successful, a test may not
-explore all desirable executions.  While CXL can help explore all cornercases
+explore all desirable executions.  While Harmony can help explore all cornercases
 in a test, it cannot find problems that the test is not looking for.
 
 \section*{Exercises}
@@ -2391,7 +2391,7 @@ write lock and then obtaining the read lock.
 
 \begin{figure}
 \begin{code}
-\cxlsource{semaphore}
+\harmonysource{semaphore}
 \end{code}
 \caption{The \texttt{Semaphore} interface in the \texttt{synch} module.}
 \label{fig:semaphore}
@@ -2399,9 +2399,9 @@ write lock and then obtaining the read lock.
 
 \begin{figure}
 \begin{code}
-\cxlsource{DinersSema}
+\harmonysource{DinersSema}
 \end{code}
-\caption{\cxllink{code/DinersSema.cxl} Italian Philosophers.}
+\caption{\harmonylink{code/DinersSema.hny} Italian Philosophers.}
 \label{fig:dinerssema}
 \end{figure}
 
@@ -2481,17 +2481,17 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\cxlsource{qsort}
+\harmonysource{qsort}
 \end{code}
-\caption{\cxllink{code/qsort.cxl} Iterative qsort() implementation.}
+\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
 \label{fig:qsort}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{qsorttest}
+\harmonysource{qsorttest}
 \end{code}
-\caption{\cxllink{code/qsorttest.cxl} Test program for \autoref{fig:qsort}.}
+\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
 \label{fig:qsorttest}
 \end{figure}
 
@@ -2512,47 +2512,47 @@ that it is a permutation of the original array.
 
 \begin{figure}
 \begin{code}
-\cxlsource{BBsema}
+\harmonysource{BBsema}
 \end{code}
-\caption{\cxllink{code/BBsema.cxl} Bounded Buffer implementation using semaphores.}
+\caption{\harmonylink{code/BBsema.hny} Bounded Buffer implementation using semaphores.}
 \label{fig:boundedbuffer}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{BBsematest}
+\harmonysource{BBsematest}
 \end{code}
-\caption{\cxllink{code/BBsematest.cxl} Test program for \autoref{fig:boundedbuffer}.}
+\caption{\harmonylink{code/BBsematest.hny} Test program for \autoref{fig:boundedbuffer}.}
 \label{fig:bbtest}
 \end{figure}
 
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-cxl -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 BBsematest.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 BBsematest.cxl
-cxl    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 BBsematest.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 BBsematest.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 BBsematest.cxl
-cxl    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 BBsematest.cxl
-cxl -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 BBsematest.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 BBsematest.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 BBsematest.cxl
-cxl -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 BBsematest.cxl
-cxl    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.cxl
+harmony -b -c NSLOTS=0 -c NPRODS=1 -c NCONSS=1 BBsematest.hny
+harmony -b -c NSLOTS=1 -c NPRODS=0 -c NCONSS=1 BBsematest.hny
+harmony    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=0 BBsematest.hny
+harmony    -c NSLOTS=1 -c NPRODS=1 -c NCONSS=1 BBsematest.hny
+harmony -b -c NSLOTS=1 -c NPRODS=1 -c NCONSS=2 BBsematest.hny
+harmony -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=0 BBsematest.hny
+harmony    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=1 BBsematest.hny
+harmony    -c NSLOTS=1 -c NPRODS=2 -c NCONSS=2 BBsematest.hny
+harmony -b -c NSLOTS=1 -c NPRODS=2 -c NCONSS=3 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=0 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=1 -c NCONSS=1 BBsematest.hny
+harmony -b -c NSLOTS=2 -c NPRODS=1 -c NCONSS=2 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=0 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=1 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=2 -c NCONSS=2 BBsematest.hny
+harmony -b -c NSLOTS=2 -c NPRODS=2 -c NCONSS=3 BBsematest.hny
+harmony -b -c NSLOTS=2 -c NPRODS=3 -c NCONSS=0 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=1 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 BBsematest.hny
+harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.hny
 \end{verbatim}
 \end{code}
 \caption{Script for testing producer/consumer synchronization
-(assuming the code is in file \texttt{BBsematest.cxl}).}
+(assuming the code is in file \texttt{BBsematest.hny}).}
 \label{fig:pcscript}
 \end{figure}
 
@@ -2594,9 +2594,9 @@ there are three items to produce initially.
 
 \begin{figure}
 \begin{code}
-\cxlsource{BBsemadata}
+\harmonysource{BBsemadata}
 \end{code}
-\caption{\cxllink{code/BBsemadata.cxl} Test whether the bounded buffer delivers the right data in the
+\caption{\harmonylink{code/BBsemadata.hny} Test whether the bounded buffer delivers the right data in the
 right order.}
 \label{fig:BBsemadata}
 \end{figure}
@@ -2642,7 +2642,7 @@ They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
 \autoref{fig:bbtest} invokes the code of \autoref{fig:boundedbuffer}.
-We can run this through CXL, but what would it test?  There are no
+We can run this through Harmony, but what would it test?  There are no
 assert statements in the code.
 We can split the functionality of this code into two pieces.  One is
 the synchronization part: producers should never run more than \texttt{NSLOTS}
@@ -2689,9 +2689,9 @@ to block.
 
 \begin{figure}
 \begin{code}
-\cxlsource{gpu}
+\harmonysource{gpu}
 \end{code}
-\caption{\cxllink{code/gpu.cxl} A thread-unsafe GPU allocator.}
+\caption{\harmonylink{code/gpu.hny} A thread-unsafe GPU allocator.}
 \label{fig:gpu}
 \end{figure}
 
@@ -2701,9 +2701,9 @@ to block.
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWsbs}
+\harmonysource{RWsbs}
 \end{code}
-\caption{\cxllink{code/RWsbs.cxl} Reader/Writer Lock implementation using Split Binary Semaphores.}
+\caption{\harmonylink{code/RWsbs.hny} Reader/Writer Lock implementation using Split Binary Semaphores.}
 \label{fig:RWsplitsema}
 \end{figure}
 
@@ -2725,7 +2725,7 @@ only if there is an item in the bounded buffer (\texttt{consume}).
 
 CCSs are easy to implement using busy waiting:
 \begin{code}
-\cxlsource{busywait}
+\harmonysource{busywait}
 \end{code}
 
 We have seen solutions to the reader/writer problem and the producer/consumer
@@ -2858,10 +2858,10 @@ for southbound cars.
 \begin{figure}
 \begin{code}
 {\small
-\cxlsource{RWfair}
+\harmonysource{RWfair}
 }
 \end{code}
-\caption{\cxllink{code/RWfair.cxl} Reader/Writer Lock SBS implementation addressing fairness.}
+\caption{\harmonylink{code/RWfair.hny} Reader/Writer Lock SBS implementation addressing fairness.}
 \label{fig:RWfair}
 \end{figure}
 
@@ -2966,18 +2966,18 @@ in the order in which they appear in the queue.
 \begin{figure}
 \begin{code}
 {\small
-\cxlsource{RWqueue}
+\harmonysource{RWqueue}
 }
 \end{code}
-\caption{\cxllink{code/RWqueue.cxl} Reader/Writer Lock SBS implementation using a queue.}
+\caption{\harmonylink{code/RWqueue.hny} Reader/Writer Lock SBS implementation using a queue.}
 \label{fig:RWqueue}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWqtest}
+\harmonysource{RWqtest}
 \end{code}
-\caption{\cxllink{code/RWqtest.cxl} Test program for \autoref{fig:RWqueue}.}
+\caption{\harmonylink{code/RWqtest.hny} Test program for \autoref{fig:RWqueue}.}
 \label{fig:RWqtest}
 \end{figure}
 
@@ -3014,10 +3014,10 @@ and
 \texttt{signal}.
 \index{signal}%
 If $c$ is a pointer to a condition variable, then the semantics of the
-operations, in CXL, are as follows:
+operations, in Harmony, are as follows:
 
 \begin{code}
-\cxlsource{hoaremon}
+\harmonysource{hoaremon}
 \end{code}
 
 \texttt{wait} releases the mutex and blocks while trying
@@ -3127,24 +3127,24 @@ The \texttt{with} statement makes it easy to acquire and release a lock
 for a section of code.
 In C and C++, support for locks and condition variables is through libraries.
 
-% \chapter{Mesa Condition Variables in CXL}
+% \chapter{Mesa Condition Variables in Harmony}
 % \label{ch:mesa}
 
 \begin{figure}
-\cxlsource{mesa}
+\harmonysource{mesa}
 \caption{Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:cv}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{RWcv}
+\harmonysource{RWcv}
 \end{code}
-\caption{\cxllink{code/RWcv.cxl} Reader/Writer Lock implementation using Mesa-style condition variables.}
+\caption{\harmonylink{code/RWcv.hny} Reader/Writer Lock implementation using Mesa-style condition variables.}
 \label{fig:RWcv}
 \end{figure}
 
-The CXL \texttt{synch} module supports Mesa condition variables.
+The Harmony \texttt{synch} module supports Mesa condition variables.
 However, like C, Java, and Python,
 it does not have built-in language support for them but instead associates condition variables
 with explicit locks.
@@ -3204,7 +3204,7 @@ Much of the complexity of programming with Mesa condition variables is in figuri
 when to invoke \texttt{notify} and when to invoke \texttt{notifyAll}.  As a rule of
 thumb: be conservative---it is better to wake up too many processes than too few.
 Waking up too many processes may lead to some inefficiency, but waking up to few
-may cause the application to get stuck.  CXL can be particularly helpful here, as
+may cause the application to get stuck.  Harmony can be particularly helpful here, as
 it examines every corner case.  You can safely try to replace each \texttt{notifyAll}
 with \texttt{notify} and see if every possible execution of the the application still
 terminates.
@@ -3236,9 +3236,9 @@ it is fair.
 
 \begin{figure}
 \begin{code}
-\cxlsource{Diners}
+\harmonysource{Diners}
 \end{code}
-\caption{\cxllink{code/Diners.cxl} Dining Philosophers.}
+\caption{\harmonylink{code/Diners.hny} Dining Philosophers.}
 \label{fig:diners}
 \end{figure}
 
@@ -3259,9 +3259,9 @@ forks.  Each philosopher repeat this procedure.  Dijkstra had them repeating
 this for ever, but for the purposes of this book, philosphers can leave
 the table when they're not eating.
 
-\autoref{fig:diners} implements the dining philosophers in CXL, using a
+\autoref{fig:diners} implements the dining philosophers in Harmony, using a
 process for each philosopher and a lock for each fork.  If you
-run it, CXL complains that the execution may not terminate, with all five
+run it, Harmony complains that the execution may not terminate, with all five
 processes being blocked trying to acquire the lock.
 
 \begin{quote}
@@ -3278,9 +3278,9 @@ processes being blocked trying to acquire the lock.
 
 \begin{figure}
 \begin{code}
-\cxlsource{DinersCV}
+\harmonysource{DinersCV}
 \end{code}
-\caption{\cxllink{code/DinersCV.cxl} Dining Philosophers that grab both forks at the same time.}
+\caption{\harmonylink{code/DinersCV.hny} Dining Philosophers that grab both forks at the same time.}
 \label{fig:dinerscv}
 \end{figure}
 
@@ -3336,13 +3336,13 @@ back to the top of the \textbf{while} loop.
 A common mistake is to write the following code instead:
 
 \begin{code}
-\cxlsource{baddblwait}
+\harmonysource{baddblwait}
 \end{code}
 
 \begin{quote}
 \begin{itemize}
 \item Can you see why this does not work?  What can go wrong?
-\item Run it through CXL in case you are not sure!
+\item Run it through Harmony in case you are not sure!
 \end{itemize}
 \end{quote}
 
@@ -3362,7 +3362,7 @@ before the higher numbered fork, like so:
 
 \vspace{1em}
 \begin{code}
-\cxlsource{dinersfix}
+\harmonysource{dinersfix}
 \end{code}
 \vspace{1em}
 
@@ -3386,9 +3386,9 @@ wants to allocate, making them generally quite impractical.
 
 \begin{figure}
 \begin{code}
-\cxlsource{DinersAvoid}
+\harmonysource{DinersAvoid}
 \end{code}
-\caption{\cxllink{code/DinersAvoid.cxl} Dining Philosophers that carefully avoid getting into a deadlock
+\caption{\harmonylink{code/DinersAvoid.hny} Dining Philosophers that carefully avoid getting into a deadlock
 scenario.}
 \label{fig:dinersavoid}
 \end{figure}
@@ -3411,9 +3411,9 @@ so continually?
 
 \begin{figure}
 \begin{code}
-\cxlsource{bank}
+\harmonysource{bank}
 \end{code}
-\caption{\cxllink{code/bank.cxl} Bank accounts.}
+\caption{\harmonylink{code/bank.hny} Bank accounts.}
 \label{fig:bank}
 \end{figure}
 
@@ -3434,17 +3434,17 @@ so continually?
 
 \begin{figure}
 \begin{code}
-\cxlsource{actor}
+\harmonysource{actor}
 \end{code}
-\caption{\cxllink{code/actor.cxl} A producer/consumer actor.}
+\caption{\harmonylink{code/actor.hny} A producer/consumer actor.}
 \label{fig:actor}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{actortest}
+\harmonysource{actortest}
 \end{code}
-\caption{\cxllink{code/actortest.cxl} Test code for producer/consumer actor.}
+\caption{\harmonylink{code/actortest.hny} Test code for producer/consumer actor.}
 \label{fig:actortest}
 \end{figure}
 
@@ -3488,7 +3488,7 @@ Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
 \texttt{dequeue} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
-\autoref{fig:actor} shows a CXL solution to the
+\autoref{fig:actor} shows a Harmony solution to the
 ``multiple producer / multiple consumer problem'' (with an unbounded buffer)
 using an actor (as illustrated in \autoref{fig:actorpic}.
 \texttt{pc\_actor} is essentially a matchmaker: it matches
@@ -3512,7 +3512,7 @@ a pointer to the queue where the response message must be enqueued.
 
 The \texttt{pc\_actor} process has two arguments.  $q$ is a pointer
 to the queue on which it receives messages.  \textit{nrequests} is the total
-number of requests that it will handle.  We need the latter because in CXL
+number of requests that it will handle.  We need the latter because in Harmony
 all processes are required to terminate.  In a more realistic implementation,
 the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
 
@@ -3559,17 +3559,17 @@ in the opposite order.  Which do you think is better?
 
 \begin{figure}
 \begin{code}
-\cxlsource{abp}
+\harmonysource{abp}
 \end{code}
-\caption{\cxllink{code/abp.cxl} Alternating Bit Protocol.}
+\caption{\harmonylink{code/abp.hny} Alternating Bit Protocol.}
 \label{fig:abp}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{abptest}
+\harmonysource{abptest}
 \end{code}
-\caption{\cxllink{code/abptest.cxl} Test code for alternating bit protocol.}
+\caption{\harmonylink{code/abptest.hny} Test code for alternating bit protocol.}
 \label{fig:abptest}
 \end{figure}
 
@@ -3671,9 +3671,9 @@ for each client, or solve the problem using a single pair of channels.
 
 \begin{figure}
 \begin{code}
-\cxlsource{hw}
+\harmonysource{hw}
 \end{code}
-\caption{\cxllink{code/hw.cxl} Non-blocking queue.}
+\caption{\harmonylink{code/hw.hny} Non-blocking queue.}
 \label{fig:hw}
 \end{figure}
 
@@ -3798,17 +3798,17 @@ If not found, it coincides with retrieving the pointer to the
 
 \begin{figure}
 \begin{code}
-\cxlsource{lst1}
+\harmonysource{lst1}
 \end{code}
-\caption{\cxllink{code/lst1.cxl} List with non-blocking read operations, part 1.}
+\caption{\harmonylink{code/lst1.hny} List with non-blocking read operations, part 1.}
 \label{fig:lst1}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\cxlsource{lst2}
+\harmonysource{lst2}
 \end{code}
-\caption{\cxllink{code/lst2.cxl} List with non-blocking read operations, part 2.}
+\caption{\harmonylink{code/lst2.hny} List with non-blocking read operations, part 2.}
 \label{fig:lst2}
 \end{figure}
 
@@ -3850,9 +3850,9 @@ rounds each process has completed.}
 
 \begin{figure}
 \begin{code}
-\cxlsource{barrier}
+\harmonysource{barrier}
 \end{code}
-\caption{\cxllink{code/barrier.cxl} Barrier synchronization with semaphores.}
+\caption{\harmonylink{code/barrier.hny} Barrier synchronization with semaphores.}
 \label{fig:barrier}
 \end{figure}
 
@@ -3909,8 +3909,8 @@ for solving semaphore problems.  Look for the double turnstile solution.)
 
 \chapter{List of Values}
 
-\autoref{ch:cxlmachine} provides an introduction to CXL values.
-Below is a complete list of CXL value types with examples:
+\autoref{ch:harmonymachine} provides an introduction to Harmony values.
+Below is a complete list of Harmony value types with examples:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -3935,7 +3935,7 @@ Context & (generated by \textbf{stop} expression) \\
 \vspace{1em}
 
 Tuples, lists, strings, and bags are all special cases of dictionaries.
-Both tuples and lists map indexes (starting at 0) to CXL values.
+Both tuples and lists map indexes (starting at 0) to Harmony values.
 Their format is either \texttt{($e$, $e$, ..., $e$,)} or
 \texttt{[$e$, $e$, ..., $e$,]}.
 If the tuple or list has two or more elements, then the final comma
@@ -3945,7 +3945,7 @@ a tuple of its characters.  Characters are one-character atoms.
 A bag or multiset is a dictionary that maps a value to how many
 times it occurs in the bag.
 
-All CXL values are ordered with respect to one another.  First they
+All Harmony values are ordered with respect to one another.  First they
 are ordered by type according to the table above.
 So, for example, \texttt{\texttt{True} < 0 < .xyz < \{ 0 \})}.
 Within types, the following rules apply:
@@ -3967,16 +3967,16 @@ Addresses are lexicographically ordered accordingly;
 
 \chapter{List of Operators}
 
-CXL currently supports the following operators:
+Harmony currently supports the following operators:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{$e$ == $e$}, \texttt{$e$ != $e$} & two CXL values of the same type \\
+\texttt{$e$ == $e$}, \texttt{$e$ != $e$} & two Harmony values of the same type \\
 \hline
-\texttt{$e$ < $e$, $e$ <= $e$} & any two CXL values \\
+\texttt{$e$ < $e$, $e$ <= $e$} & any two Harmony values \\
 \hline
-\texttt{$e$ > $e$, $e$ >= $e$} & any two CXL values \\
+\texttt{$e$ > $e$, $e$ >= $e$} & any two Harmony values \\
 \hline
 \texttt{$e$ and $e$ and ...} & two or more booleans \\
 \hline
@@ -3998,13 +3998,13 @@ CXL currently supports the following operators:
 \hline
 \texttt{$e$~..~$e$} & two integers \\
 \hline
-\texttt{$e$ [not] in $e$} & first is any CXL value, second is set \\
+\texttt{$e$ [not] in $e$} & first is any Harmony value, second is set \\
 \hline
 \texttt{$e$ if $e$ else $e$} & middle $e$ must be a boolean \\
 \hline
 \texttt{\^{}$e$} & an address \\
 \hline
-\texttt{hash $e$} & any CXL value \\
+\texttt{hash $e$} & any Harmony value \\
 \hline
 \texttt{choose $e$} & a set \\
 \hline
@@ -4044,7 +4044,7 @@ shared variable, a process variable, or a dereferenced pointer
 variable.  It can also be indexed.  Examples include
 \textit{var}, \textit{var}[$e$], and \texttt{\^{}}\textit{p}.
 
-CXL also supports the following comprehensions:
+Harmony also supports the following comprehensions:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -4064,7 +4064,7 @@ For dictionary comprehensions, each $e$ will be mapped to \texttt{f}($e$).
 
 \chapter{List of Statements}
 
-CXL currently supports the following statements:
+Harmony currently supports the following statements:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -4105,7 +4105,7 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 \end{tabular}
 \vspace{1em}
 
-CXL does not support Python-style iterators.
+Harmony does not support Python-style iterators.
 To iterate through a dictionary, list, or tuple, use:
 \texttt{for $v$ in keys($e$):~S}.
 
@@ -4230,7 +4230,7 @@ enqueue($q$, \textit{item}) & add \textit{item} to $a$ \\
 \end{tabular}
 
 \chapter{List of Machine Instructions}
-\label{ap:cxlbytecode}
+\label{ap:harmonybytecode}
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -4302,7 +4302,7 @@ Clarifications:
 \item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
 The top value must be an address value.  The remaining values are keys into dictionaries.
 The instruction then computes the address of \texttt{\^}$v_1~v_2~...~v_n$.
-\item Even though CXL code does not allow taking addresses of process variables, both
+\item Even though Harmony code does not allow taking addresses of process variables, both
 shared and process variables can have addresses.
 \item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
 and \texttt{Stop} instructions have an optional
@@ -4357,9 +4357,9 @@ frame pointer & an integer value pointing into the stack \\
 \hline
 atomic & if non-zero, the process is in atomic mode \\
 \hline
-stack & a list of CXL values \\
+stack & a list of Harmony values \\
 \hline
-register & a CXL dictionary mapping atoms (representing process variables) to CXL values \\
+register & a Harmony dictionary mapping atoms (representing process variables) to Harmony values \\
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
@@ -4385,7 +4385,7 @@ variable, as well as when an assertion fails;
 with that of other processes.
 \item The register of a process always contains a dictionary, mapping
 atoms to arbitrary values.  The atoms correspond to the variable names
-in a CXL program.
+in a Harmony program.
 \end{itemize}
 
 A context is considered \emph{blocked}
@@ -4394,14 +4394,14 @@ if there does not exist a
 sequence instructions that the process can execute by itself
 that leads to its termination.
 
-\chapter{The CXL Virtual Machine}
+\chapter{The Harmony Virtual Machine}
 
-The CXL Virtual Machine (CVM) has the following state:
+The Harmony Virtual Machine (HVM) has the following state:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-code & a list of CVM machine instructions \\
+code & a list of HVM machine instructions \\
 \hline
 labels & a dictionary of atoms to program counters \\
 \hline
@@ -4426,10 +4426,10 @@ Other processes, created through \texttt{spawn} statements, do not
 start executing until then.
 
 A \emph{micro step}
-is the execution of a single CVM machine instruction
+is the execution of a single HVM machine instruction
 by a context.
 Each micro step generates a new state.
-When there are multiple contexts, the CVM can interleave them.
+When there are multiple contexts, the HVM can interleave them.
 However, trying to interleave every microstep would be needlessly expensive,
 as many micro steps involve changes to a context that are invisible to
 other contexts.
@@ -4438,12 +4438,12 @@ A \emph{macro step}
 \index{macro step}%
 can involve multiple micro steps.  The following
 instructions start a new macro step: \texttt{Load}, \texttt{Store},
-\texttt{AtomicInc}, and \texttt{Continue}.  The CVM
+\texttt{AtomicInc}, and \texttt{Continue}.  The HVM
 interleaves macro steps, not micro steps.  Like micro steps, each
 macro step involves a single context.  Unlike a micro step, a macro
 step can leave the state unchanged.
 
-Executing a CXL program results in a graph where the nodes are CXL
+Executing a Harmony program results in a graph where the nodes are Harmony
 states and the edges are macro steps.
 When a state is \texttt{choosing}, the edges from that state are
 by a single context, one for each choice.  If not, the edges from
@@ -4460,18 +4460,18 @@ I received considerable help and inspiration from various people
 while writing this book.
 
 First and foremost I would like to think my student Haobin Ni with
-whom I've had numerous discussions about the design of CXL.
-Haobin even contributed some code to the CXL compiler.
+whom I've had numerous discussions about the design of Harmony.
+Haobin even contributed some code to the Harmony compiler.
 
 Most of what I know about concurrent programming I learned from
 my colleague Fred Schneider.  He suggested I write this book after
-demonstrating CXL to him.
+demonstrating Harmony to him.
 
 Leslie Lamport introduced me to using model checking to test properties
 of a concurrent system.  My experimentation with using TLC on Peterson's
 Algorithm became an aha momment for me.
 
-I first demonstrated CXL to the students in my CS6480 class on systems
+I first demonstrated Harmony to the students in my CS6480 class on systems
 and formal verification and
 received valuable feedback from them.
 
@@ -4481,7 +4481,7 @@ Zhuoyu Xu.
 Finally, I would like to thank my family who had to suffer as I obsessed
 over writing the code and the book.
 
-% I wrote the CXL compiler and this book in May and June of 2020,
+% I wrote the Harmony compiler and this book in May and June of 2020,
 % during the pandemic and the George Floyd demonstrations.
 
 \cleardoublepage

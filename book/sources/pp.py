@@ -108,7 +108,7 @@ constants = { "False", "True", "None", "inf",
 
 def doimport(module, file):
     for dir in [ os.path.dirname(file), "../../modules", "." ]:
-        filename = dir + "/" + module + ".cxl"
+        filename = dir + "/" + module + ".hny"
         if os.path.exists(filename):
             with open(filename) as f:
                 load(f, filename, True)
@@ -292,7 +292,7 @@ def doCompile(filenames):
                 load(fd, fname, False)
 
 def usage():
-    print("Usage: cxl [options] [cxl-file...]")
+    print("Usage: harmony [options] [harmony-file...]")
     print("  options: ")
     print("    -a: list machine code")
     print("    -b: blocking execution")
