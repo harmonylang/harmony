@@ -1010,8 +1010,11 @@ class StoreOp(Op):
             context.failure = "Error: using an uninitialized shared variable " \
                     + name + ": " + str(self.token)
         else:
-            state.set(lv, v)
-            context.pc += 1
+            try:
+                state.set(lv, v)
+                context.pc += 1
+            except AttributeError:
+                context.failure = "Error: " + name + " is not a dictionary " + str(self.token)
 
 class DelOp(Op):
     def __init__(self, name):
@@ -1145,11 +1148,18 @@ class StoreVarOp(Op):
             value = context.pop()
             av = context.pop();
             assert isinstance(av, AddressValue)
-            context.set(av.indexes, value)
+            try:
+                context.set(av.indexes, value)
+                context.pc += 1
+            except AttributeError:
+                context.failure = "Error: " + str(av.indexes) + " not a dictionary"
         else:
             (lexeme, file, line, column) = self.v
-            context.set([lexeme], context.pop())
-        context.pc += 1
+            try:
+                context.set([lexeme], context.pop())
+                context.pc += 1
+            except AttributeError:
+                context.failure = "Error: " + str(self.v) + " not a dictionary"
 
 class DelVarOp(Op):
     def __init__(self, v):
