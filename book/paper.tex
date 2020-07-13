@@ -1916,8 +1916,9 @@ to find violations of the invariant if it does not hold.
 \begin{problems}
 \item Implement an atomic swap operation.  It should take two pointer arguments
 and swap the values.
-\item Implement a spinlock using the atomic swap operation.
-\item Write out the invariants that need to hold and check them using Harmony.
+\item \label{ex:swap} Implement a spinlock using the atomic swap operation.
+\item For the solution to \autoref{ex:swap},
+write out the invariants that need to hold and check them using Harmony.
 \item People who use an ATM often first check their balance and then withdraw
 a certain amount of money not exceeding their balance.  A negative balance
 is not allowed.  \autoref{fig:atm} shows two operations on bank accounts:
