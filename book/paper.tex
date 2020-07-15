@@ -1936,7 +1936,10 @@ Execution} (TOCTOE).
 In this case, by the time the withdraw operation is performed,
 the balance can have changed.
 \begin{enumerate}
-\item Fix the code in \autoref{fig:atm}.
+\item Fix the code in \autoref{fig:atm}.  Note, you should leave the
+customer code the same. You are only allowed to change the
+\texttt{atm\_} methods, and you cannot use the \textbf{atomic}
+statement.
 \item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
 \end{enumerate}
 \end{problems}
