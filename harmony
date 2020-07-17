@@ -2802,18 +2802,19 @@ class LValueRule(Rule):
         return (LValueAST(indexes, token), t)
 
 class AssignmentRule(Rule):
-    def __init__(self, lv, op):
-        self.lv = lv
+    def __init__(self, lvs, op):
+        self.lvs = lvs
         self.op = op
 
     def parse(self, t):
+        assert len(self.lvs) == 1, self.lvs           # TODO
         (rv, t) = NaryRule({";", ","}).parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
             (ast, t) = TupleRule(rv, ";").parse(t)
-            return (AssignmentAST(self.lv, ast, self.op), t)
+            return (AssignmentAST(self.lvs[0], ast, self.op), t)
         assert lexeme == ";", t
-        return (AssignmentAST(self.lv, rv, self.op), t[1:])
+        return (AssignmentAST(self.lvs[0], rv, self.op), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -3026,18 +3027,24 @@ class StatementRule(Rule):
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
         (ast, t) = LValueRule().parse(t)
+        lvs = [ast]
         (lexeme, file, line, column) = op = t[0]
+        while lexeme == ",":
+            (ast, t) = LValueRule().parse(t[1:])
+            lvs.append(ast)
+            (lexeme, file, line, column) = op = t[0]
         if lexeme in [ "=", "+", "-", "*", "/", "and", "or" ]:
             if lexeme != "=":
                 (eq, file, line, column) = t[1];
                 self.expect("assignment statement", eq == "=", t[1],
                                                     "expected '='")
                 t = t[1:]
-            return AssignmentRule(ast, op).parse(t[1:])
+            return AssignmentRule(lvs, op).parse(t[1:])
         self.expect("statement", lexeme == ";", t[0], "expected semicolon")
 
         # Turn LValue into an RValue
         assert isinstance(ast, LValueAST)
+        assert lvs == [ast]         # TODO
         a = ast.indexes[0]
         args = ast.indexes[1:]
         while args != []:
