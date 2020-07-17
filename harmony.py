@@ -2754,7 +2754,12 @@ class AssignmentRule(Rule):
         self.op = op
 
     def parse(self, t):
-        (rv, t) = NaryRule({";"}).parse(t)
+        (rv, t) = NaryRule({";", ","}).parse(t)
+        (lexeme, file, line, column) = t[0]
+        if lexeme == ",":
+            (ast, t) = TupleRule(rv, ";").parse(t)
+            return (AssignmentAST(self.lv, ast, self.op), t)
+        assert lexeme == ";", t
         return (AssignmentAST(self.lv, rv, self.op), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
