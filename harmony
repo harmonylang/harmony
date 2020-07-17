@@ -2273,48 +2273,50 @@ class ExpressionRule(Rule):
         return (ast, t)
 
 class AssignmentAST(AST):
-    def __init__(self, lv, rv, op):
-        self.lv = lv
+    def __init__(self, lvs, rv, op):
+        self.lvs = lvs       # list of LValues, for "x, y = ..." expressions
         self.rv = rv
         self.op = op
 
     def __repr__(self):
-        return "Assign(" + str(self.lv) + ", " + str(self.rv) + \
+        return "Assign(" + str(self.lvs) + ", " + str(self.rv) + \
                             ", " + self.op + ")"
 
     def compile(self, scope, code):
-        assert isinstance(self.lv, LValueAST)
-        lv = self.lv.indexes[0]
-        n = len(self.lv.indexes)
-        if isinstance(lv, NameAST):
-            tv = scope.lookup(lv.name)
+        assert len(self.lvs) == 1, self.lvs
+        lv = self.lvs[0]
+        assert isinstance(lv, LValueAST)
+        base = lv.indexes[0]
+        n = len(lv.indexes)
+        if isinstance(base, NameAST):
+            tv = scope.lookup(base.name)
             if tv == None:
                 if n > 1:
-                    code.append(PushAddressOp(lv.name))
+                    code.append(PushAddressOp(base.name))
                     for i in range(1, n):
-                        self.lv.indexes[i].compile(scope, code)
+                        lv.indexes[i].compile(scope, code)
                     code.append(AddressOp(n))
                 if self.op[0] == "=":
                     self.rv.compile(scope, code)
                 else:
                     if n > 1:
                         code.append(DupOp())
-                        code.append(LoadOp(None, lv.name))
+                        code.append(LoadOp(None, base.name))
                     else:
-                        code.append(LoadOp(lv.name, lv.name))
+                        code.append(LoadOp(base.name, base.name))
                     self.rv.compile(scope, code)
                     code.append(NaryOp(self.op, 2))
                 if n > 1:
-                    code.append(StoreOp(None, lv.name))
+                    code.append(StoreOp(None, base.name))
                 else:
-                    code.append(StoreOp(lv.name, lv.name))
+                    code.append(StoreOp(base.name, base.name))
             else:
                 (t, v) = tv
                 if t == "variable":
                     if n > 1:
                         code.append(PushAddressOp(v))
                         for i in range(1, n):
-                            self.lv.indexes[i].compile(scope, code)
+                            self.base.indexes[i].compile(scope, code)
                         code.append(AddressOp(n))
                     if self.op[0] == "=":
                         self.rv.compile(scope, code)
@@ -2333,20 +2335,20 @@ class AssignmentAST(AST):
                 else:
                     assert False, tv
         else:
-            assert isinstance(lv, PointerAST), lv
-            lv.expr.compile(scope, code)
+            assert isinstance(base, PointerAST), base
+            base.expr.compile(scope, code)
             if n > 1:
                 for i in range(1, n):
-                    self.lv.indexes[i].compile(scope, code)
+                    self.base.indexes[i].compile(scope, code)
                 code.append(AddressOp(n))
             if self.op[0] == "=":
                 self.rv.compile(scope, code)
             else:
                 code.append(DupOp())
-                code.append(LoadOp(None, lv.token))
+                code.append(LoadOp(None, base.token))
                 self.rv.compile(scope, code)
                 code.append(NaryOp(self.op, 2))
-            code.append(StoreOp(None, lv.token))
+            code.append(StoreOp(None, base.token))
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -2807,14 +2809,13 @@ class AssignmentRule(Rule):
         self.op = op
 
     def parse(self, t):
-        assert len(self.lvs) == 1, self.lvs           # TODO
         (rv, t) = NaryRule({";", ","}).parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
             (ast, t) = TupleRule(rv, ";").parse(t)
-            return (AssignmentAST(self.lvs[0], ast, self.op), t)
+            return (AssignmentAST(self.lvs, ast, self.op), t)
         assert lexeme == ";", t
-        return (AssignmentAST(self.lvs[0], rv, self.op), t[1:])
+        return (AssignmentAST(self.lvs, rv, self.op), t[1:])
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
