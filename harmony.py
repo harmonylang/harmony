@@ -771,20 +771,51 @@ class Op:
         return "no explanation yet"
 
 # Splits a non-empty set in its minimum element and its remainder
-class SplitOp(Op):
+class CutOp(Op):
     def __repr__(self):
-        return "Split"
+        return "Cut"
 
     def explain(self):
         return "pops a set value and pushes the smallest element and the remaining set"
 
     def eval(self, state, context):
         v = context.pop()
-        assert isinstance(v, SetValue)
+        assert isinstance(v, SetValue), v
         assert v.s != set()
         lst = sorted(v.s, key=keyValue)
         context.push(lst[0])
         context.push(SetValue(set(lst[1:])))
+        context.pc += 1
+
+# Splits a tuple into its elements
+class SplitOp(Op):
+    def __repr__(self):
+        return "Split"
+
+    def explain(self):
+        return "splits a tuple value into its elements"
+
+    def eval(self, state, context):
+        v = context.pop()
+        assert isinstance(v, DictValue), v
+        for i in range(len(v.d)):
+            context.push(v.d[i])
+        context.pc += 1
+
+# Move an item in the stack to the top
+class MoveOp(Op):
+    def __init__(self, offset):
+        self.offset = offset
+
+    def __repr__(self):
+        return "Move %d"%self.offset
+
+    def explain(self):
+        return "move stack element to top"
+
+    def eval(self, state, context):
+        v = context.stack.pop(len(context.stack) - self.offset)
+        context.push(v)
         context.pc += 1
 
 class DupOp(Op):
@@ -1753,7 +1784,7 @@ class SetComprehensionAST(AST):
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
-        code.append(SplitOp())  
+        code.append(CutOp())  
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
@@ -1810,7 +1841,7 @@ class DictComprehensionAST(AST):
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
-        code.append(SplitOp())  
+        code.append(CutOp())  
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
@@ -1874,7 +1905,7 @@ class ListComprehensionAST(AST):
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
-        code.append(SplitOp())  
+        code.append(CutOp())  
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
@@ -1907,6 +1938,7 @@ class NaryAST(AST):
     def __init__(self, op, args):
         self.op = op
         self.args = args
+        assert all(isinstance(x, AST) for x in args)
 
     def __repr__(self):
         return "NaryOp(" + str(self.op) + ", " + str(self.args) + ")"
@@ -1990,16 +2022,25 @@ class NaryRule(Rule):
         self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
                     "expected binary operation or 'if'")
         (ast2, t) = ExpressionRule().parse(t[1:])
+        if ast2 == False:
+            print("expected an expression after binary operation", op)
+            exit(1)
         args.append(ast2)
         (lexeme, file, line, column) = t[0]
         if op[0] == "if":
             self.expect("n-ary operation", lexeme == "else", t[0], "expected 'else'")
             (ast3, t) = ExpressionRule().parse(t[1:])
+            if ast3 == False:
+                print("expected an expression after else in", op)
+                exit(1)
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
         elif (op[0] == lexeme) and (lexeme in { "+", "*", "and", "or" }):
             while op[0] == lexeme:
                 (ast3, t) = ExpressionRule().parse(t[1:])
+                if ast3 == False:
+                    print("expected an expression after n-ary operation in", op)
+                    exit(1)
                 args.append(ast3)
                 (lexeme, file, line, column) = t[0]
         self.expect("n-ary operation", lexeme in self.closers, t[0],
@@ -2229,10 +2270,7 @@ class AssignmentAST(AST):
         return "Assign(" + str(self.lvs) + ", " + str(self.rv) + \
                             ", " + self.op + ")"
 
-    def compile(self, scope, code):
-        assert all(isinstance(lv, LValueAST) for lv in self.lvs)
-        assert len(self.lvs) == 1, self.lvs
-        lv = self.lvs[0]
+    def phase1(self, lv, scope, code):
         base = lv.indexes[0]
         n = len(lv.indexes)
         if isinstance(base, NameAST):
@@ -2243,42 +2281,26 @@ class AssignmentAST(AST):
                     for i in range(1, n):
                         lv.indexes[i].compile(scope, code)
                     code.append(AddressOp(n))
-                if self.op[0] == "=":
-                    self.rv.compile(scope, code)
-                else:
+                if self.op[0] != "=":
                     if n > 1:
                         code.append(DupOp())
                         code.append(LoadOp(None, base.name))
                     else:
                         code.append(LoadOp(base.name, base.name))
-                    self.rv.compile(scope, code)
-                    code.append(NaryOp(self.op, 2))
-                if n > 1:
-                    code.append(StoreOp(None, base.name))
-                else:
-                    code.append(StoreOp(base.name, base.name))
             else:
                 (t, v) = tv
                 if t == "variable":
                     if n > 1:
                         code.append(PushAddressOp(v))
                         for i in range(1, n):
-                            self.base.indexes[i].compile(scope, code)
+                            lv.indexes[i].compile(scope, code)
                         code.append(AddressOp(n))
-                    if self.op[0] == "=":
-                        self.rv.compile(scope, code)
-                    else:
+                    if self.op[0] != "=":
                         if n > 1:
                             code.append(DupOp())
                             code.append(LoadVarOp(None))
                         else:
                             code.append(LoadVarOp(v))
-                        self.rv.compile(scope, code)
-                        code.append(NaryOp(self.op, 2))
-                    if n > 1:
-                        code.append(StoreVarOp(None))
-                    else:
-                        code.append(StoreVarOp(v))
                 else:
                     assert False, tv
         else:
@@ -2286,16 +2308,67 @@ class AssignmentAST(AST):
             base.expr.compile(scope, code)
             if n > 1:
                 for i in range(1, n):
-                    self.base.indexes[i].compile(scope, code)
+                    lv.indexes[i].compile(scope, code)
                 code.append(AddressOp(n))
-            if self.op[0] == "=":
-                self.rv.compile(scope, code)
-            else:
+            if self.op[0] != "=":
                 code.append(DupOp())
                 code.append(LoadOp(None, base.token))
-                self.rv.compile(scope, code)
-                code.append(NaryOp(self.op, 2))
+
+    def phase2(self, lv, scope, code, skip):
+        if self.op[0] != "=":
+            if skip > 0:
+                code.append(MoveOp(skip + 2))
+                code.append(MoveOp(2))
+            code.append(NaryOp(self.op, 2))
+
+        base = lv.indexes[0]
+        n = len(lv.indexes)
+        if isinstance(base, NameAST):
+            tv = scope.lookup(base.name)
+            if tv == None:
+                if n > 1:
+                    if skip > 0:
+                        code.append(MoveOp(skip + 2))
+                        code.append(MoveOp(2))
+                    code.append(StoreOp(None, base.name))
+                else:
+                    code.append(StoreOp(base.name, base.name))
+            else:
+                (t, v) = tv
+                if t == "variable":
+                    if n > 1:
+                        if skip > 0:
+                            code.append(MoveOp(skip + 2))
+                            code.append(MoveOp(2))
+                        code.append(StoreVarOp(None))
+                    else:
+                        code.append(StoreVarOp(v))
+                else:
+                    assert False, tv
+        else:
+            assert isinstance(base, PointerAST), base
+            if skip > 0:
+                code.append(MoveOp(skip + 2))
+                code.append(MoveOp(2))
             code.append(StoreOp(None, base.token))
+
+    def compile(self, scope, code):
+        assert all(isinstance(lv, LValueAST) for lv in self.lvs)
+        if len(self.lvs) > 1:
+            if isinstance(self.rv, DictAST):
+                if len(self.rv.record) != len(self.lvs):
+                    print("assignment lhs/rhs count mismatch", [x.token for x in self.lvs])
+                    exit(1)
+
+        for lv in self.lvs:
+            self.phase1(lv, scope, code)
+        self.rv.compile(scope, code)
+        n = len(self.lvs)
+        if n > 1:
+            code.append(SplitOp())
+        for lv in reversed(self.lvs):
+            n -= 1
+            self.phase2(lv, scope, code, n)
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -2539,7 +2612,7 @@ class ForAST(AST):
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
-        code.append(SplitOp())  
+        code.append(CutOp())  
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
