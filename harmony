@@ -1277,23 +1277,6 @@ class PopOp(Op):
         context.pop()
         context.pc += 1
 
-class SwapOp(Op):
-    def __init__(self):
-        pass
-
-    def __repr__(self):
-        return "Swap"
-
-    def explain(self):
-        return "swap the top two elements on the stack"
-
-    def eval(self, state, context):
-        x = context.pop()
-        y = context.pop()
-        context.push(x)
-        context.push(y)
-        context.pc += 1
-
 class FrameOp(Op):
     def __init__(self, name, args):
         self.name = name
@@ -2611,7 +2594,7 @@ class LetAST(AST):
             for index in range(0, len(v)):
                 code.append(DupOp())
                 code.append(PushOp((index, None, None, None)))      # TODO: file, line, col
-                code.append(SwapOp())
+                code.append(MoveOp(2))      # swap the top two elements on the stack
                 code.append(ApplyOp(None))
                 self.assign(scope, code, v[index])
             code.append(PopOp())        # TODO: last value does not need dupping
