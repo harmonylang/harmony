@@ -4296,6 +4296,8 @@ Load [$v$] & push the value of a shared variable onto the stack \\
 \hline
 LoadVar [$v$] & push the value of a process variable onto the stack \\
 \hline
+Move $i$ & move stack element at offset $i$ to top of the stack \\
+\hline
 $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
 \hline
 Pop & pop a value of the stack and discard it \\
@@ -4317,8 +4319,6 @@ Stop [$v$] & save context into shared variable $v$ and remove from context bag \
 Store [$v$] & pop a value from the stack and store it in a shared variable \\
 \hline
 StoreVar [$v$] & pop a value from the stack and store it in a process variable \\
-\hline
-Swap & swap the two values on top of the stack \\
 \hline
 \end{tabular}
 \vspace{1em}
