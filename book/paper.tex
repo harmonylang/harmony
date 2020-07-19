@@ -3688,7 +3688,22 @@ to increment the counter.
 It will often be necessary to write code that is both interrupt-safe \emph{and}
 thread-safe.  As you might expect, this involves both managing locks and
 interrupt levels.
+To increment \textit{count}, the interrupt level must be \textit{True} and
+\textit{countlock} must be held.
 \autoref{fig:trap6} gives an example of how this might be done.
+The important rule to remember is for a process to disable interrupts \emph{before}
+attempting to acquire a lock.
+
+Try moving \texttt{lock}() to the beginning of \texttt{increment}()
+and \texttt{unlock}() to the end of \texttt{increment}() and see what happens.
+While Harmony will only report one faulty run, this incorrect code can lead to
+the assertion failing as well as processes getting blocked indefinitely.
+
+\section*{Exercises}
+\begin{problems}
+\item Make methods \texttt{produce}() and \texttt{consume}() in \autoref{fig:boundedbuffer}
+both thread-safe and interrupt-safe.
+\end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}
