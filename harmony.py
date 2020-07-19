@@ -469,7 +469,9 @@ def isreserved(s):
         "const",
         "def",
         "del",
+        "disable",
         "else",
+        "enable",
         "False",
         "fun",
         "for",
@@ -491,6 +493,7 @@ def isreserved(s):
         "pass",
         "spawn",
         "stop",
+        "trap",
         "True",
         "while"
     ]
@@ -1274,15 +1277,29 @@ class ReturnOp(Op):
         return "restore caller method state and push result"
 
     def eval(self, state, context):
+        if len(context.stack) == 0:
+            assert context.nametag == DictValue({"name": "__init__", "tag": novalue})
+            context.terminated = True
+            return
         result = context.get("result")
         context.fp = context.pop()
         context.vars = context.pop()
         context.pop()       # argument saved for debugging
         assert isinstance(context.vars, DictValue)
-        pc = context.pop()
-        assert isinstance(pc, PcValue)
-        context.pc = pc.pc
-        context.push(result)
+        calltype = context.pop()
+        if calltype == "normal":
+            pc = context.pop()
+            assert isinstance(pc, PcValue)
+            context.pc = pc.pc
+            context.push(result)
+        elif calltype == "interrupt":
+            pc = context.pop()
+            assert isinstance(pc, PcValue)
+            context.pc = pc.pc
+        elif calltype == "process":
+            context.terminated = True
+        else:
+            assert False, calltype
 
 class SpawnOp(Op):
     def __repr__(self):
@@ -1300,8 +1317,26 @@ class SpawnOp(Op):
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = frame.name
         ctx = ContextValue(DictValue({"name": lexeme, "tag": tag}), method.pc)
+        ctx.push("process")
         ctx.push(arg)
         state.add(ctx)
+        context.pc += 1
+
+class TrapOp(Op):
+    def __repr__(self):
+        return "Trap"
+
+    def explain(self):
+        return "pop a pc and argument and set trap"
+
+    def eval(self, state, context):
+        method = context.pop()
+        assert isinstance(method, PcValue)
+        arg = context.pop()
+        frame = state.code[method.pc]
+        assert isinstance(frame, FrameOp)
+        context.trap = (method, arg)
+        context.interruptable = True
         context.pc += 1
 
 class AtomicIncOp(Op):
@@ -1621,6 +1656,7 @@ class ApplyOp(Op):
                     ": Error: must be either a method or a dictionary"
                 return
             context.push(PcValue(context.pc + 1))
+            context.push("normal")
             context.push(e)
             context.pc = method.pc
 
@@ -2695,6 +2731,19 @@ class SpawnAST(AST):
         self.method.compile(scope, code)
         code.append(SpawnOp())
 
+class TrapAST(AST):
+    def __init__(self, method, arg):
+        self.method = method
+        self.arg = arg
+
+    def __repr__(self):
+        return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
+
+    def compile(self, scope, code):
+        self.arg.compile(scope, code)
+        self.method.compile(scope, code)
+        code.append(TrapOp())
+
 class GoAST(AST):
     def __init__(self, ctx, result):
         self.ctx = ctx
@@ -3009,6 +3058,12 @@ class StatementRule(Rule):
                 tag = None
             self.expect("spawn statement", lexeme == ";", t[0], "expected semicolon")
             return (SpawnAST(tag, method, arg), self.skip(token, t))
+        if lexeme == "trap":
+            (method, t) = BasicExpressionRule().parse(t[1:])
+            (arg, t) = BasicExpressionRule().parse(t)
+            (lexeme, file, line, column) = t[0]
+            self.expect("trap statement", lexeme == ";", t[0], "expected semicolon")
+            return (TrapAST(method, arg), self.skip(token, t))
         if lexeme == "go":
             (ctx, t) = BasicExpressionRule().parse(t[1:])
             (result, t) = BasicExpressionRule().parse(t)
@@ -3061,9 +3116,12 @@ class ContextValue(Value):
         self.nametag = nametag
         self.pc = pc
         self.atomic = 0
+        self.interruptable = False
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = novalue
+        self.trap = None
+        self.terminated = False
         self.stopped = False
         self.failure = None
 
@@ -3074,8 +3132,8 @@ class ContextValue(Value):
         return self.__repr__()
 
     def __hash__(self):
-        h = (self.nametag, self.pc,
-                    self.atomic, self.vars, self.stopped).__hash__()
+        h = (self.nametag, self.pc, self.atomic, self.interruptable, self.vars,
+            self.trap, self.terminated, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -3089,9 +3147,15 @@ class ContextValue(Value):
             return False
         if self.atomic != other.atomic:
             return False
+        if self.interruptable != other.interruptable:
+            return False
+        if self.terminated != other.terminated:
+            return False
         if self.stopped != other.stopped:
             return False
         if self.fp != other.fp:
+            return False
+        if self.trap != other.trap:
             return False
         if self.failure != other.failure:
             return False
@@ -3100,9 +3164,12 @@ class ContextValue(Value):
     def copy(self):
         c = ContextValue(self.nametag, self.pc)
         c.atomic = self.atomic
+        c.interruptable = self.interruptable
         c.stack = self.stack.copy()
         c.fp = self.fp
+        c.trap = self.trap
         c.vars = self.vars
+        c.terminated = self.terminated
         c.stopped = self.stopped
         c.failure = self.failure
         return c
@@ -3303,14 +3370,17 @@ def strsteps(steps):
         if result != "":
             result += ","
         (pc, choice) = steps[i]
-        result += "%d"%pc
+        if pc == None:
+            result += "Interrupt"
+        else:
+            result += str(pc)
         j = i + 1
         if choice != None:
             result += "(choose %s)"%strValue(choice)
         else:
             while j < len(steps):
                 (pc2, choice2) = steps[j]
-                if pc2 != pc + 1 or choice2 != None:
+                if pc == None or pc2 != pc + 1 or choice2 != None:
                     break
                 (pc, choice) = (pc2, choice2)
                 j += 1
@@ -3430,7 +3500,7 @@ p_dia = Pad("diameter")
 p_ql  = Pad("#queue")
 
 # Have context ctx make one (macro) step in the given state
-def onestep(state, ctx, choice, visited, todo, node):
+def onestep(state, ctx, choice, interrupt, visited, todo, node):
     assert ctx.failure == None, ctx.failure
 
     # Keep track of whether this is the same context as the parent context
@@ -3447,10 +3517,19 @@ def onestep(state, ctx, choice, visited, todo, node):
     choice_copy = choice
 
     steps = []
+
+    if interrupt:
+        (method, arg) = ctx.trap
+        cc.push(PcValue(cc.pc))
+        cc.push("interrupt")
+        cc.push(arg)
+        cc.pc = method.pc
+        cc.interruptable = False
+        steps.append((None, None))      # indicates an interrupt
+
     localStates = set() # used to detect infinite loops
     loopcnt = 0         # only check for infinite loops after a while
-    terminated = False
-    while True:
+    while not cc.terminated:
         # execute one microstep
         steps.append((cc.pc, choice_copy))
 
@@ -3462,7 +3541,7 @@ def onestep(state, ctx, choice, visited, todo, node):
             p_ns.pad(str(len(visited)))
             p_dia.pad(str(node.len))
             p_ql.pad(str(len(todo)))
-            print(p_ctx, p_pc, p_ns, p_dia, p_ql, end="\r")
+            print(p_ctx, p_pc, p_ns, p_dia, p_ql, len(localStates), end="\r")
             lasttime = time.time()
 
         # If the current instruction is a "choose" instruction,
@@ -3472,9 +3551,6 @@ def onestep(state, ctx, choice, visited, todo, node):
             cc.stack[-1] = choice_copy
             cc.pc += 1
             choice_copy = None
-        elif isinstance(sc.code[cc.pc], ReturnOp) and len(cc.stack) < 4:
-            terminated = True
-            break
         else:
             assert choice_copy == None
             try:
@@ -3508,9 +3584,9 @@ def onestep(state, ctx, choice, visited, todo, node):
         # if we're about to do a state change, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
-        if cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp } and len(sc.ctxbag) > 1:
+        if cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
             break
-        if cc.atomic == 0 and isinstance(sc.code[cc.pc], AtomicIncOp):
+        if cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
             break
 
         # ContinueOp always causes a break
@@ -3529,7 +3605,7 @@ def onestep(state, ctx, choice, visited, todo, node):
     sc.remove(ctx)
 
     # Put the resulting context into the bag unless it's done
-    if terminated:
+    if cc.terminated:
         sc.initializing = False     # initializing ends when __init__ finishes
     elif not cc.stopped:
         sc.add(cc)
@@ -3739,10 +3815,12 @@ def run(code, labels, map, step, blockflag):
             assert isinstance(choices, SetValue), choices
             assert len(choices.s) > 0
             for choice in choices.s:
-                onestep(state, ctx, choice, visited, todo, node)
+                onestep(state, ctx, choice, False, visited, todo, node)
         else:
             for (ctx, _) in state.ctxbag.items():
-                onestep(state, ctx, None, visited, todo, node)
+                onestep(state, ctx, None, False, visited, todo, node)
+                if ctx.interruptable:
+                    onestep(state, ctx, None, True, visited, todo, node)
 
     print("#states =", len(visited), "diameter =", maxdiameter, " "*100 + "\b"*100)
 
@@ -3845,13 +3923,16 @@ def htmlstrsteps(steps):
             result += " "
         (pc, choice) = steps[i]
         j = i + 1
-        result += "<a href='#P%d'>%d"%(pc, pc)
+        if pc == None:
+            result += "Interrupt"
+        else:
+            result += "<a href='#P%d'>%d"%(pc, pc)
         if choice != None:
             result += "</a>(choose %s)"%strValue(choice)
         else:
             while j < len(steps):
                 (pc2, choice2) = steps[j]
-                if pc2 != pc + 1 or choice2 != None:
+                if pc == None or pc2 != pc + 1 or choice2 != None:
                     break
                 (pc, choice) = (pc2, choice2)
                 j += 1
@@ -3936,9 +4017,9 @@ def htmlloc(code, scope, ctx, traceid, f):
     trace = []
     while True:
         trace += [(pc, fp)]
-        if fp < 4:
+        if fp < 5:
             break
-        pc = ctx.stack[fp - 4]
+        pc = ctx.stack[fp - 5]
         assert isinstance(pc, PcValue)
         pc = pc.pc
         fp = ctx.stack[fp - 1]
