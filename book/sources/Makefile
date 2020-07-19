@@ -64,6 +64,7 @@ CODE = \
     trap2.tex \
     trap3.tex \
     trap4.tex \
+    trap5.tex \
     triangle.tex
 
 all: $(CODE)

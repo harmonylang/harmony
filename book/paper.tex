@@ -13,7 +13,7 @@
 \usepackage{geometry}
 \usepackage{enumitem}
 \usepackage{etoolbox}
-\usepackage{bold-extra}
+% \usepackage{bold-extra}
 \usepackage{xcolor}
 \usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
 \def\itemautorefname{Exercise}%
@@ -3596,7 +3596,7 @@ in the opposite order.  Which do you think is better?
 \harmonysource{trap2}
 \end{code}
 \caption{\harmonylink{code/trap2.hny} A race condition with interrupts.}
-\label{fig:trap}
+\label{fig:trap2}
 \end{figure}
 
 \begin{figure}
@@ -3604,7 +3604,7 @@ in the opposite order.  Which do you think is better?
 \harmonysource{trap3}
 \end{code}
 \caption{\harmonylink{code/trap3.hny} Locks do not work with interrupts.}
-\label{fig:trap}
+\label{fig:trap3}
 \end{figure}
 
 \begin{figure}
@@ -3612,7 +3612,7 @@ in the opposite order.  Which do you think is better?
 \harmonysource{trap4}
 \end{code}
 \caption{\harmonylink{code/trap4.hny} Disabling and enabling interrupts.}
-\label{fig:trap}
+\label{fig:trap4}
 \end{figure}
 
 Processes can be \emph{interrupted}.  An interrupt is a notification of some event
@@ -3620,6 +3620,7 @@ such as a keystroke, a timer expiring, the reception of a network packet, the co
 of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
 An exception is caused by the process executing an invalid machine instruction such as
 divide-by-zero.  An interrupt is caused by some peripheral device.
+\index{exception}
 
 Harmony allows modeling interrupts using operator \texttt{trap}:
 \begin{code}
@@ -3628,9 +3629,57 @@ Harmony allows modeling interrupts using operator \texttt{trap}:
 invokes \textit{handler argument} at some later, unspecified time.
 Only one of these asynchronous events can be outstanding at a time; a new call to
 \textbf{trap} overwrites any outstanding one.
-Figure~\ref{fig:trap} gives an example of how \textbf{trap} might be used.
+\autoref{fig:trap} gives an example of how \textbf{trap} might be used.
 Here, the \textit{main}() process loops until the interrupt has occurred and
 the \textit{done} flag has been set.
+
+But now consider \autoref{fig:trap2}.  The difference with \autoref{fig:trap} is
+that both the \textit{main}() and \textit{handler}() methods increment \textit{count}.
+This is not unlike the example we gave in \autoref{fig:inc}, except that only a single
+process is involved now.  And, indeed, it suffers from a similar race condition; run
+it through Harmony to see for yourself.  If the interrupt occurs after \textit{main}()
+read \textit{count} (and thus still has value 0) but before \textit{main()} writes the
+updated value~1, then the interrupt handler will also read value~0 and write value~1.
+We say that the code in \autoref{fig:trap2} is not \textit{interrupt-safe} (as opposed
+to not being \textit{thread-safe}).
+\index{interrupt-safety}
+
+You would be excused if you wanted to solve the problem using locks, similar to
+\autoref{fig:incfixed}.  \autoref{fig:trap3} shows how one might go about this.
+But locks are intended to solve synchronization issues between multiple processes.
+If you run the code through Harmony, you will find that the code may not terminate.
+The issue is that a process can only acquire a lock once.  If the interrupt happens
+after \textit{main}() acquires the lock but before \textit{main}() releases it, the
+\textit{handler}() method will block trying to acquire the lock, even though
+it is executed the same process that holds the lock.
+
+Instead, the way one fixes interrupt-safety issues is through disabling interrupts
+temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
+of a process to \texttt{True} using the \textbf{setintlevel} interface.
+\autoref{fig:trap4} illustrates how this is done.
+Note that it is not necessary to change the interrupt level during servicing an
+interrupt, because it is automatically set to \texttt{True} upon entry to the interrupt
+handler and restored to \texttt{False} upon exit.
+It is important that the \textit{main}() code re-enables interrupts after incrementing
+\textit{count}.  What would happen if \textit{main}() left interrupt disabled?
+
+\textbf{setintlevel}(\textit{il}) sets the interrupt level to \textit{il} and returns
+the prior interrupt level.  Returning the old level is handy when writing interrupt-safe
+methods that can be called from ordinary code as well as from an interrupt handler.
+\autoref{fig:trap5} shows how one might write a interrupt-safe method
+to increment the counter.
+
+\begin{figure}
+\begin{code}
+\harmonysource{trap5}
+\end{code}
+\caption{\harmonylink{code/trap5.hny} Example of an interrupt-safe method.}
+\label{fig:trap5}
+\end{figure}
+
+It will often be necessary to write code that is both interrupt-safe \emph{and}
+thread-safe.  As you might expect, this involves both managing locks and
+interrupt levels.
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}

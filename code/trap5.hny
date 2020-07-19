@@ -1,0 +1,24 @@
+import synch;
+
+def increment():
+    let prior = setintlevel(True):
+        count += 1;
+        setintlevel(prior);
+    ;
+;
+def handler():
+    increment();
+    done = True;
+;
+def main():
+    trap handler();
+    increment();
+    while not done:
+        pass;
+    ;
+    assert count == 2;
+;
+mutex = Lock();
+count = 0;
+done = False;
+spawn main();
