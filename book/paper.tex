@@ -3619,7 +3619,8 @@ Processes can be \emph{interrupted}.  An interrupt is a notification of some eve
 such as a keystroke, a timer expiring, the reception of a network packet, the completion
 of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
 An exception is caused by the process executing an invalid machine instruction such as
-divide-by-zero.  An interrupt is caused by some peripheral device.
+divide-by-zero.  An interrupt is caused by some peripheral device and can be handled in
+Harmony; an exception is an error.
 \index{exception}
 
 Harmony allows modeling interrupts using operator \texttt{trap}:
@@ -4251,6 +4252,8 @@ Harmony currently supports the following statements:
 \hline
 \texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
 $e$ is an expression, $t$ is a tag (an expression) \\
+\hline
+\texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
 \hline
 \texttt{go $c$ $e$} & $c$ is a context, $e$ is an expression \\
 \hline
