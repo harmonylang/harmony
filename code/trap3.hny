@@ -1,0 +1,22 @@
+import synch;
+
+def handler():
+    lock(&mutex);
+      count += 1;
+    unlock(&mutex);
+    done = True;
+;
+def main():
+    trap handler();
+    lock(&mutex);
+      count += 1;
+    unlock(&mutex);
+    while not done:
+        pass;
+    ;
+    assert count == 2;
+;
+mutex = Lock();
+count = 0;
+done = False;
+spawn main();

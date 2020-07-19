@@ -1,0 +1,20 @@
+import synch;
+
+def handler():
+    count += 1;
+    done = True;
+;
+def main():
+    trap handler();
+    setintlevel(True);
+      count += 1;
+    setintlevel(False);
+    while not done:
+        pass;
+    ;
+    assert count == 2;
+;
+mutex = Lock();
+count = 0;
+done = False;
+spawn main();
