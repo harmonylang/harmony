@@ -522,9 +522,7 @@ def isreserved(s):
         "const",
         "def",
         "del",
-        "disable",
         "else",
-        "enable",
         "False",
         "fun",
         "for",
@@ -544,7 +542,9 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "processes",
         "spawn",
+        "setintlevel",
         "stop",
         "trap",
         "True",
@@ -557,7 +557,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "choose",
-        "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
+    "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
@@ -825,6 +825,21 @@ class AddressValue(Value):
 class Op:
     def explain(self):
         return "no explanation yet"
+
+class SetIntLevelOp(Op):
+    def __repr__(self):
+        return "SetIntLevel"
+
+    def explain(self):
+        return "pops new boolean interrupt level"
+
+    def eval(self, state, context):
+        before = context.interruptDisabled
+        v = context.pop()
+        assert isinstance(v, bool), v
+        context.interruptDisabled = v
+        context.push(before)
+        context.pc += 1
 
 # Splits a non-empty set in its minimum element and its remainder
 class CutOp(Op):
@@ -1346,6 +1361,8 @@ class ReturnOp(Op):
             context.pc = pc.pc
             context.push(result)
         elif calltype == "interrupt":
+            assert context.handlingInterrupt
+            context.handlingInterrupt = False
             pc = context.pop()
             assert isinstance(pc, PcValue)
             context.pc = pc.pc
@@ -1389,7 +1406,6 @@ class TrapOp(Op):
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         context.trap = (method, arg)
-        context.interruptable = True
         context.pc += 1
 
 class AtomicIncOp(Op):
@@ -2307,6 +2323,9 @@ class ExpressionRule(Rule):
     def parse(self, t):
         func = t[0]
         (lexeme, file, line, column) = func
+        if lexeme == "setintlevel":
+            (ast, t) = ExpressionRule().parse(t[1:])
+            return (SetIntLevelAST(ast), t)
         if lexeme == "stop":
             (ast, t) = LValueRule().parse(t[1:])
             return (StopAST(ast), t)
@@ -2484,6 +2503,17 @@ class DelAST(AST):
                     self.lv.indexes[i].compile(scope, code)
                 code.append(AddressOp(n))
             code.append(DelOp(None))
+
+class SetIntLevelAST(AST):
+    def __init__(self, arg):
+        self.arg = arg
+
+    def __repr__(self):
+        return "SetIntLevel " + str(self.arg)
+
+    def compile(self, scope, code):
+        self.arg.compile(scope, code)
+        code.append(SetIntLevelOp())
 
 class StopAST(AST):
     def __init__(self, lv):
@@ -2893,7 +2923,7 @@ class LValueRule(Rule):
             self.expect("lvalue expression", lexeme == ")", t[0], "expected ')'")
             indexes = ast.indexes
             t = t[1:]
-        elif lexeme == "stop":
+        elif lexeme in { "setintlevel", "stop" }:
             (ast, t) = ExpressionRule().parse(t)
             indexes = [ast]
         else:
@@ -3169,7 +3199,8 @@ class ContextValue(Value):
         self.nametag = nametag
         self.pc = pc
         self.atomic = 0
-        self.interruptable = False
+        self.interruptDisabled = False
+        self.handlingInterrupt = False
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = novalue
@@ -3185,7 +3216,8 @@ class ContextValue(Value):
         return self.__repr__()
 
     def __hash__(self):
-        h = (self.nametag, self.pc, self.atomic, self.interruptable, self.vars,
+        h = (self.nametag, self.pc, self.atomic,
+            self.interruptDisabled, self.handlingInterrupt, self.vars,
             self.trap, self.terminated, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -3200,7 +3232,9 @@ class ContextValue(Value):
             return False
         if self.atomic != other.atomic:
             return False
-        if self.interruptable != other.interruptable:
+        if self.interruptDisabled != other.interruptDisabled:
+            return False
+        if self.handlingInterrupt != other.handlingInterrupt:
             return False
         if self.terminated != other.terminated:
             return False
@@ -3217,7 +3251,8 @@ class ContextValue(Value):
     def copy(self):
         c = ContextValue(self.nametag, self.pc)
         c.atomic = self.atomic
-        c.interruptable = self.interruptable
+        c.interruptDisabled = self.interruptDisabled
+        c.handlingInterrupt = self.handlingInterrupt
         c.stack = self.stack.copy()
         c.fp = self.fp
         c.trap = self.trap
@@ -3577,7 +3612,8 @@ def onestep(state, ctx, choice, interrupt, visited, todo, node):
         cc.push("interrupt")
         cc.push(arg)
         cc.pc = method.pc
-        cc.interruptable = False
+        cc.trap = None
+        cc.handlingInterrupt = True
         steps.append((None, None))      # indicates an interrupt
 
     localStates = set() # used to detect infinite loops
@@ -3872,7 +3908,7 @@ def run(code, labels, map, step, blockflag):
         else:
             for (ctx, _) in state.ctxbag.items():
                 onestep(state, ctx, None, False, visited, todo, node)
-                if ctx.interruptable:
+                if ctx.trap != None and not ctx.interruptDisabled and not ctx.handlingInterrupt:
                     onestep(state, ctx, None, True, visited, todo, node)
 
     print("#states =", len(visited), "diameter =", maxdiameter, " "*100 + "\b"*100)
