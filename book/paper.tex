@@ -4143,8 +4143,6 @@ Harmony currently supports the following operators:
 \hline
 \texttt{\^{}$e$} & an address \\
 \hline
-\texttt{hash $e$} & any Harmony value \\
-\hline
 \texttt{choose $e$} & a set \\
 \hline
 \texttt{min $e$, max $e$} & a set \\
@@ -4161,9 +4159,11 @@ Harmony currently supports the following operators:
 \hline
 \texttt{processes $e$} & $e$ must be \texttt{()} \\
 \hline
-\texttt{\&}\textit{lv} & \textit{lv} is an lvalue \\
+\texttt{setintlevel} \textit{e} & \textit{e} is a boolean \\
 \hline
 \texttt{stop} \textit{lv} & \textit{lv} is an lvalue \\
+\hline
+\texttt{\&}\textit{lv} & \textit{lv} is an lvalue \\
 \hline
 \end{tabular}
 \vspace{1em}
@@ -4371,7 +4371,7 @@ enqueue($q$, \textit{item}) & add \textit{item} to $a$ \\
 \chapter{List of Machine Instructions}
 \label{ap:harmonybytecode}
 
-\vspace{1em}
+{\small
 \begin{tabular}{|l|l|}
 \hline
 Address $n$ & compute address from $n$ components \\
@@ -4423,6 +4423,8 @@ Return & pop return address, push \texttt{result}, and restore program counter \
 \hline
 Set & pop $n$ and $n$ elements and push a set of the elements \\
 \hline
+SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
+\hline
 Spawn & pop tag, argument, and method and spawn a new context \\
 \hline
 Split & pop set and push minimum and remainder \\
@@ -4433,9 +4435,12 @@ Store [$v$] & pop a value from the stack and store it in a shared variable \\
 \hline
 StoreVar [$v$] & pop a value from the stack and store it in a process variable \\
 \hline
+Trap & pop interrupt argument and method \\
+\hline
 \end{tabular}
-\vspace{1em}
+}
 
+\newpage
 Clarifications:
 \begin{itemize}
 \item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
