@@ -513,6 +513,8 @@ where a set of processes are indefinitely waiting for one another to
 release a resource.
 \item \autoref{ch:actor} presents the \emph{actor model}
 and \emph{message passing} as an approach to synchronization.
+\item \autoref{ch:interrupts} discusses how to handle interrupts to a process,
+a problem closely related to synchronization among multiple processes.
 \item \autoref{ch:abp} presents a problem and a solution to the distributed
 systems problem of having two processes communicate reliably over an unreliable
 network.
@@ -3576,6 +3578,59 @@ Configure two versions of the pipeline, one that first checks if a number
 is prime and then if it is one less than a factor of two, the other
 in the opposite order.  Which do you think is better?
 \end{problems}
+
+\chapter{Interrupts}
+\label{ch:interrupts}
+\index{interrupt}
+
+\begin{figure}
+\begin{code}
+\harmonysource{trap}
+\end{code}
+\caption{\harmonylink{code/trap.hny} How to use \textbf{trap}.}
+\label{fig:trap}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{trap2}
+\end{code}
+\caption{\harmonylink{code/trap2.hny} A race condition with interrupts.}
+\label{fig:trap}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{trap3}
+\end{code}
+\caption{\harmonylink{code/trap3.hny} Locks do not work with interrupts.}
+\label{fig:trap}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{trap4}
+\end{code}
+\caption{\harmonylink{code/trap4.hny} Disabling and enabling interrupts.}
+\label{fig:trap}
+\end{figure}
+
+Processes can be \emph{interrupted}.  An interrupt is a notification of some event
+such as a keystroke, a timer expiring, the reception of a network packet, the completion
+of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
+An exception is caused by the process executing an invalid machine instruction such as
+divide-by-zero.  An interrupt is caused by some peripheral device.
+
+Harmony allows modeling interrupts using operator \texttt{trap}:
+\begin{code}
+\textbf{trap} \textit{handler} \textit{argument}
+\end{code}
+invokes \textit{handler argument} at some later, unspecified time.
+Only one of these asynchronous events can be outstanding at a time; a new call to
+\textbf{trap} overwrites any outstanding one.
+Figure~\ref{fig:trap} gives an example of how \textbf{trap} might be used.
+Here, the \textit{main}() process loops until the interrupt has occurred and
+the \textit{done} flag has been set.
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}

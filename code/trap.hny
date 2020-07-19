@@ -1,0 +1,14 @@
+def handler():
+    count += 1;
+    done = True;
+;
+def main():
+    trap handler();
+    while not done:
+        pass;
+    ;
+    assert count == 1;
+;
+count = 0;
+done = False;
+spawn main();

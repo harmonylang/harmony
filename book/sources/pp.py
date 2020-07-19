@@ -79,8 +79,11 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "processes",
         "spawn",
+        "setintlevel",
         "stop",
+        "trap",
         "while"
     ]
 

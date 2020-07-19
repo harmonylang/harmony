@@ -60,6 +60,10 @@ CODE = \
     semaphore.tex \
     spinlock.tex \
     spinlockInv.tex \
+    trap.tex \
+    trap2.tex \
+    trap3.tex \
+    trap4.tex \
     triangle.tex
 
 all: $(CODE)
