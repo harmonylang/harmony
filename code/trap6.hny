@@ -1,0 +1,33 @@
+import synch;
+
+def increment():
+    let prior = setintlevel(True):
+        lock(&countlock);
+            count += 1;
+        unlock(&countlock);
+        setintlevel(prior);
+    ;
+;
+def handler(self):
+    increment();
+    done[self] = True;
+;
+def process(self):
+    trap handler(self);
+    increment();
+    while not done[self]:
+        pass;
+    ;
+;
+def main(self):
+    while not (done[0] and done[1]):
+        pass;
+    ;
+    assert count == 4, count;
+;
+count = 0;
+countlock = Lock();
+done = [ False, False ];
+spawn process(0);
+spawn process(1);
+spawn main();

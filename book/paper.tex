@@ -3677,9 +3677,18 @@ to increment the counter.
 \label{fig:trap5}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{trap6}
+\end{code}
+\caption{\harmonylink{code/trap6.hny} Code that is both interrupt-safe and thread-safe.}
+\label{fig:trap6}
+\end{figure}
+
 It will often be necessary to write code that is both interrupt-safe \emph{and}
 thread-safe.  As you might expect, this involves both managing locks and
 interrupt levels.
+\autoref{fig:trap6} gives an example of how this might be done.
 
 \chapter{Networking: Alternating Bit Protocol}
 \label{ch:abp}

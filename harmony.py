@@ -781,10 +781,10 @@ class SetIntLevelOp(Op):
         return "pops new boolean interrupt level"
 
     def eval(self, state, context):
-        before = context.interruptDisabled
+        before = context.interruptLevel
         v = context.pop()
         assert isinstance(v, bool), v
-        context.interruptDisabled = v
+        context.interruptLevel = v
         context.push(before)
         context.pc += 1
 
@@ -1308,8 +1308,8 @@ class ReturnOp(Op):
             context.pc = pc.pc
             context.push(result)
         elif calltype == "interrupt":
-            assert context.handlingInterrupt
-            context.handlingInterrupt = False
+            assert context.interruptLevel
+            context.interruptLevel = False
             pc = context.pop()
             assert isinstance(pc, PcValue)
             context.pc = pc.pc
@@ -3146,8 +3146,7 @@ class ContextValue(Value):
         self.nametag = nametag
         self.pc = pc
         self.atomic = 0
-        self.interruptDisabled = False
-        self.handlingInterrupt = False
+        self.interruptLevel = False
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = novalue
@@ -3163,8 +3162,7 @@ class ContextValue(Value):
         return self.__repr__()
 
     def __hash__(self):
-        h = (self.nametag, self.pc, self.atomic,
-            self.interruptDisabled, self.handlingInterrupt, self.vars,
+        h = (self.nametag, self.pc, self.atomic, self.interruptLevel, self.vars,
             self.trap, self.terminated, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -3179,9 +3177,7 @@ class ContextValue(Value):
             return False
         if self.atomic != other.atomic:
             return False
-        if self.interruptDisabled != other.interruptDisabled:
-            return False
-        if self.handlingInterrupt != other.handlingInterrupt:
+        if self.interruptLevel != other.interruptLevel:
             return False
         if self.terminated != other.terminated:
             return False
@@ -3198,8 +3194,7 @@ class ContextValue(Value):
     def copy(self):
         c = ContextValue(self.nametag, self.pc)
         c.atomic = self.atomic
-        c.interruptDisabled = self.interruptDisabled
-        c.handlingInterrupt = self.handlingInterrupt
+        c.interruptLevel = self.interruptLevel
         c.stack = self.stack.copy()
         c.fp = self.fp
         c.trap = self.trap
@@ -3554,13 +3549,14 @@ def onestep(state, ctx, choice, interrupt, visited, todo, node):
     steps = []
 
     if interrupt:
+        assert not cc.interruptLevel
         (method, arg) = ctx.trap
         cc.push(PcValue(cc.pc))
         cc.push("interrupt")
         cc.push(arg)
         cc.pc = method.pc
         cc.trap = None
-        cc.handlingInterrupt = True
+        cc.interruptLevel = True
         steps.append((None, None))      # indicates an interrupt
 
     localStates = set() # used to detect infinite loops
@@ -3855,7 +3851,7 @@ def run(code, labels, map, step, blockflag):
         else:
             for (ctx, _) in state.ctxbag.items():
                 onestep(state, ctx, None, False, visited, todo, node)
-                if ctx.trap != None and not ctx.interruptDisabled and not ctx.handlingInterrupt:
+                if ctx.trap != None and not ctx.interruptLevel:
                     onestep(state, ctx, None, True, visited, todo, node)
 
     print("#states =", len(visited), "diameter =", maxdiameter, " "*100 + "\b"*100)
