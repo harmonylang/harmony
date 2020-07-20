@@ -2299,13 +2299,13 @@ class ExpressionRule(Rule):
         return (ast, t)
 
 class AssignmentAST(AST):
-    def __init__(self, lvs, rv, op):
-        self.lvs = lvs       # list of LValues, for "x, y = ..." expressions
+    def __init__(self, lhslist, rv, op):
+        self.lhslist = lhslist       # a, b = c, d = e = ...
         self.rv = rv
         self.op = op
 
     def __repr__(self):
-        return "Assign(" + str(self.lvs) + ", " + str(self.rv) + \
+        return "Assign(" + str(self.lhslist) + ", " + str(self.rv) + \
                             ", " + self.op + ")"
 
     def phase1(self, lv, scope, code):
@@ -2391,20 +2391,22 @@ class AssignmentAST(AST):
             code.append(StoreOp(None, base.token))
 
     def compile(self, scope, code):
-        assert all(isinstance(lv, LValueAST) for lv in self.lvs)
-        if len(self.lvs) > 1:
+        assert len(self.lhslist) == 1, self
+        lvs = self.lhslist[0]
+        assert all(isinstance(lv, LValueAST) for lv in lvs)
+        if len(lvs) > 1:
             if isinstance(self.rv, DictAST):
-                if len(self.rv.record) != len(self.lvs):
-                    print("assignment lhs/rhs count mismatch", [x.token for x in self.lvs])
+                if len(self.rv.record) != len(lvs):
+                    print("assignment lhs/rhs count mismatch", [x.token for x in lvs])
                     exit(1)
 
-        for lv in self.lvs:
+        for lv in lvs:
             self.phase1(lv, scope, code)
         self.rv.compile(scope, code)
-        n = len(self.lvs)
+        n = len(lvs)
         if n > 1:
             code.append(SplitOp())
-        for lv in reversed(self.lvs):
+        for lv in reversed(lvs):
             n -= 1
             self.phase2(lv, scope, code, n)
 
@@ -2886,7 +2888,7 @@ class LValueRule(Rule):
         return (LValueAST(indexes, token), t)
 
 class AssignmentRule(Rule):
-    def __init__(self, lvs, op):
+    def __init__(self, lhslist, op):
         self.lhslist = lhslist
         self.op = op
 
@@ -2896,8 +2898,8 @@ class AssignmentRule(Rule):
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
             (ast, t) = TupleRule(rv, ";").parse(t)
-            return (AssignmentAST(self.lhslist[0], ast, self.op), t)
-        return (AssignmentAST(self.lhslist[0], rv, self.op), t)
+            return (AssignmentAST(self.lhslist, ast, self.op), t)
+        return (AssignmentAST(self.lhslist, rv, self.op), t)
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
