@@ -807,8 +807,11 @@ class CutOp(Op):
 
 # Splits a tuple into its elements
 class SplitOp(Op):
+    def __init__(self, n):
+        self.n = n
+
     def __repr__(self):
-        return "Split"
+        return "Split %d"%self.n
 
     def explain(self):
         return "splits a tuple value into its elements"
@@ -816,6 +819,7 @@ class SplitOp(Op):
     def eval(self, state, context):
         v = context.pop()
         assert isinstance(v, DictValue), v
+        assert len(v.d) == self.n, (self.n, len(v.d))
         for i in range(len(v.d)):
             context.push(v.d[i])
         context.pc += 1
@@ -2124,7 +2128,7 @@ class ListComprehensionRule(Rule):
         (lexeme, file, line, column) = t[1]
         self.expect("list comprehension", lexeme == "in", t[1], "expected 'in'")
         (expr, t) = NaryRule({"]"}).parse(t[2:])
-        return (ListComprehensionAST(self.ast, name, expr), t[1:])
+        return (ListComprehensionAST(self.ast, name, expr), t)
 
 class SetRule(Rule):
     def parse(self, t):
@@ -2190,14 +2194,14 @@ class TupleRule(Rule):
         while lexeme == ",":
             (lexeme, file, line, column) = t[1]
             if lexeme == self.closer:
-                return (DictAST(d), t[2:])
+                return (DictAST(d), t[1:])
             (next, t) = NaryRule({ self.closer, "," }).parse(t[1:])
             d[ConstantAST((i, file, line, column))] = next
             i += 1
             (lexeme, file, line, column) = t[0]
         self.expect("dict expression", lexeme == self.closer, t[0],
                 "expected %s"%self.closer)
-        return (DictAST(d), t[1:])
+        return (DictAST(d), t)
 
 class BasicExpressionRule(Rule):
     def parse(self, t):
@@ -2238,9 +2242,8 @@ class BasicExpressionRule(Rule):
                 return (ast, t)
             (lexeme, file, line, column) = t[0]
             if lexeme != closer:
-                return TupleRule(ast, closer).parse(t)
-            else:
-                return (ast, t[1:])
+                (ast, t) = TupleRule(ast, closer).parse(t)
+            return (ast, t[1:])
         if lexeme == "&":
             (ast, t) = LValueRule().parse(t[1:])
             return (AddressAST(ast), t)
@@ -2300,9 +2303,9 @@ class ExpressionRule(Rule):
 
 class AssignmentAST(AST):
     def __init__(self, lhslist, rv, op):
-        self.lhslist = lhslist       # a, b = c, d = e = ...
-        self.rv = rv
-        self.op = op
+        self.lhslist = lhslist      # a, b = c, d = e = ...
+        self.rv = rv                # rhs expression
+        self.op = op                # ... op= ...
 
     def __repr__(self):
         return "Assign(" + str(self.lhslist) + ", " + str(self.rv) + \
@@ -2319,12 +2322,6 @@ class AssignmentAST(AST):
                     for i in range(1, n):
                         lv.indexes[i].compile(scope, code)
                     code.append(AddressOp(n))
-                if self.op[0] != "=":
-                    if n > 1:
-                        code.append(DupOp())
-                        code.append(LoadOp(None, base.name))
-                    else:
-                        code.append(LoadOp(base.name, base.name))
             else:
                 (t, v) = tv
                 if t == "variable":
@@ -2333,12 +2330,6 @@ class AssignmentAST(AST):
                         for i in range(1, n):
                             lv.indexes[i].compile(scope, code)
                         code.append(AddressOp(n))
-                    if self.op[0] != "=":
-                        if n > 1:
-                            code.append(DupOp())
-                            code.append(LoadVarOp(None))
-                        else:
-                            code.append(LoadVarOp(v))
                 else:
                     assert False, tv
         else:
@@ -2348,17 +2339,8 @@ class AssignmentAST(AST):
                 for i in range(1, n):
                     lv.indexes[i].compile(scope, code)
                 code.append(AddressOp(n))
-            if self.op[0] != "=":
-                code.append(DupOp())
-                code.append(LoadOp(None, base.token))
 
     def phase2(self, lv, scope, code, skip):
-        if self.op[0] != "=":
-            if skip > 0:
-                code.append(MoveOp(skip + 2))
-                code.append(MoveOp(2))
-            code.append(NaryOp(self.op, 2))
-
         base = lv.indexes[0]
         n = len(lv.indexes)
         if isinstance(base, NameAST):
@@ -2390,25 +2372,92 @@ class AssignmentAST(AST):
                 code.append(MoveOp(2))
             code.append(StoreOp(None, base.token))
 
-    def compile(self, scope, code):
-        assert len(self.lhslist) == 1, self
-        lvs = self.lhslist[0]
-        assert all(isinstance(lv, LValueAST) for lv in lvs)
-        if len(lvs) > 1:
-            if isinstance(self.rv, DictAST):
-                if len(self.rv.record) != len(lvs):
-                    print("assignment lhs/rhs count mismatch", [x.token for x in lvs])
-                    exit(1)
+    # handle an "x op= y" assignment
+    def opassign(self, lv, scope, code):
+        base = lv.indexes[0]
+        n = len(lv.indexes)
+        if isinstance(base, NameAST):
+            tv = scope.lookup(base.name)
+            if tv == None:
+                if n > 1:
+                    code.append(PushAddressOp(base.name))
+                    for i in range(1, n):
+                        lv.indexes[i].compile(scope, code)
+                    code.append(AddressOp(n))
+                    code.append(DupOp())
+                    code.append(LoadOp(None, base.name))
+                else:
+                    code.append(LoadOp(base.name, base.name))
+                self.rv.compile(scope, code)
+                code.append(NaryOp(self.op, 2))
+                if n > 1:
+                    code.append(StoreOp(None, base.name))
+                else:
+                    code.append(StoreOp(base.name, base.name))
+            else:
+                (t, v) = tv
+                if t == "variable":
+                    if n > 1:
+                        code.append(PushAddressOp(v))
+                        for i in range(1, n):
+                            lv.indexes[i].compile(scope, code)
+                        code.append(AddressOp(n))
+                        code.append(DupOp())
+                        code.append(LoadVarOp(None))
+                    else:
+                        code.append(LoadVarOp(v))
+                    self.rv.compile(scope, code)
+                    code.append(NaryOp(self.op, 2))
+                    if n > 1:
+                        code.append(StoreVarOp(None))
+                    else:
+                        code.append(StoreVarOp(v))
+                else:
+                    assert False, tv
+        else:
+            assert isinstance(base, PointerAST), base
+            base.expr.compile(scope, code)
+            if n > 1:
+                for i in range(1, n):
+                    lv.indexes[i].compile(scope, code)
+                code.append(AddressOp(n))
+            code.append(DupOp())
+            code.append(LoadOp(None, base.token))
+            self.rv.compile(scope, code)
+            code.append(NaryOp(self.op, 2))
+            code.append(StoreOp(None, base.token))
 
-        for lv in lvs:
-            self.phase1(lv, scope, code)
+    def compile(self, scope, code):
+        (lexeme, file, line, column) = self.op
+        if lexeme != '=':
+            assert len(self.lhslist) == 1, self.lhslist
+            lvs = self.lhslist[0]
+            assert len(lvs) == 1, self.lhslist
+            self.opassign(lvs[0], scope, code)
+            return
+
+        # Compute the addresses of "complex" lhs expressions
+        for lvs in self.lhslist:
+            for lv in lvs:
+                self.phase1(lv, scope, code)
+
+        # Compute the right-hand side
         self.rv.compile(scope, code)
-        n = len(lvs)
-        if n > 1:
-            code.append(SplitOp())
-        for lv in reversed(lvs):
-            n -= 1
-            self.phase2(lv, scope, code, n)
+
+        # Make enough copies for each left-hand side
+        for i in range(len(self.lhslist) - 1):
+            code.append(DupOp())
+
+        # Now assign to the left-hand side in reverse order
+        skip = len(self.lhslist)
+        for lvs in reversed(self.lhslist):
+            skip -= 1
+            n = len(lvs)
+            if n > 1:
+                code.append(SplitOp(n))
+            for lv in reversed(lvs):
+                n -= 1
+                self.phase2(lv, scope, code, skip + n)
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -2893,7 +2942,6 @@ class AssignmentRule(Rule):
         self.op = op
 
     def parse(self, t):
-        assert len(self.lhslist) == 1, self.lhslist
         (rv, t) = NaryRule({";", ","}).parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
