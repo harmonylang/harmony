@@ -2887,16 +2887,17 @@ class LValueRule(Rule):
 
 class AssignmentRule(Rule):
     def __init__(self, lvs, op):
-        self.lvs = lvs
+        self.lhslist = lhslist
         self.op = op
 
     def parse(self, t):
+        assert len(self.lhslist) == 1
         (rv, t) = NaryRule({";", ","}).parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
             (ast, t) = TupleRule(rv, ";").parse(t)
-            return (AssignmentAST(self.lvs, ast, self.op), t)
-        return (AssignmentAST(self.lvs, rv, self.op), t)
+            return (AssignmentAST(self.lhslist[0], ast, self.op), t)
+        return (AssignmentAST(self.lhslist[0], rv, self.op), t)
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -3073,8 +3074,6 @@ class StatementRule(Rule):
             return (MethodAST(name, args, stat, map), self.skip(token, t))
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("call statement", lexeme == ";", t[0], "expected semicolon")
             return (CallAST(expr), self.skip(token, t))
         if lexeme == "spawn":
             (method, t) = BasicExpressionRule().parse(t[1:])
@@ -3085,25 +3084,18 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = t[0]
             else:
                 tag = None
-            self.expect("spawn statement", lexeme == ";", t[0], "expected semicolon")
             return (SpawnAST(tag, method, arg), self.skip(token, t))
         if lexeme == "trap":
             (method, t) = BasicExpressionRule().parse(t[1:])
             (arg, t) = BasicExpressionRule().parse(t)
-            (lexeme, file, line, column) = t[0]
-            self.expect("trap statement", lexeme == ";", t[0], "expected semicolon")
             return (TrapAST(method, arg), self.skip(token, t))
         if lexeme == "go":
             (ctx, t) = BasicExpressionRule().parse(t[1:])
             (result, t) = BasicExpressionRule().parse(t)
-            (lexeme, file, line, column) = t[0]
-            self.expect("go statement", lexeme == ";", t[0], "expected semicolon")
             return (GoAST(ctx, result), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))
         if lexeme == "import":
-            (lexeme, file, line, column) = t[1]
-            self.expect("import statement", isname(lexeme), t[1], "expected name")
             return (ImportAST(t[1]), self.skip(token, t[2:]))
         if lexeme == "assert":
             (cond, t) = NaryRule({",", ";"}).parse(t[1:])
@@ -3111,35 +3103,52 @@ class StatementRule(Rule):
             if lexeme == ",":
                 (expr, t) = NaryRule({";"}).parse(t[1:])
             else:
-                self.expect("assert statement", lexeme == ";", t[0], "expected semicolon")
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
-        (ast, t) = LValueRule().parse(t)
-        lvs = [ast]
-        (lexeme, file, line, column) = op = t[0]
-        while lexeme == ",":
-            (ast, t) = LValueRule().parse(t[1:])
-            lvs.append(ast)
-            (lexeme, file, line, column) = op = t[0]
-        if lexeme in [ "=", "+", "-", "*", "/", "and", "or" ]:
-            if lexeme != "=":
-                (eq, file, line, column) = t[1];
-                self.expect("assignment statement", eq == "=", t[1],
-                                                    "expected '='")
-                t = t[1:]
-            (ast, t) = AssignmentRule(lvs, op).parse(t[1:])
-            return (ast, self.skip(token, t))
-        # self.expect("statement", lexeme == ";", t[0], "expected semicolon")
 
-        # Turn LValue into an RValue
-        assert isinstance(ast, LValueAST)
-        assert lvs == [ast]         # TODO
-        a = ast.indexes[0]
-        args = ast.indexes[1:]
-        while args != []:
-            a = ApplyAST(a, args[0], ast.token)
-            args = args[1:]
-        return (CallAST(a), self.skip(token, t))
+        # If we get here the next statement is either an assignment or an expression,
+        # and in the latter case probably a call to a method.  We first "guess" that
+        # the next thing that follows is an LValue.  If need be we convert it later
+        # to an expression.  Basically, there are three possibilities:
+        #   a, b = c, d = 1, 2;
+        #   x += 3;
+        #   f(3);
+        # We can see which by scanning the token list for '=' signs until we reach a ';'.
+        eqs = []
+        for i, (lexeme, file, line, column) in enumerate(t):
+            if lexeme == "=":
+                eqs.append(i)
+            if lexeme == ";":
+                break;
+        if eqs == []:
+            (expr, t) = ExpressionRule().parse(t)
+            return (CallAST(expr), self.skip(token, t))
+
+        lhslist = []
+        while eqs != []:
+            eqs = eqs[1:]
+            (ast, t) = LValueRule().parse(t)
+            lvs = [ast]
+            (lexeme, file, line, column) = t[0]
+            while lexeme == ",":
+                (ast, t) = LValueRule().parse(t[1:])
+                lvs.append(ast)
+                (lexeme, file, line, column) = t[0]
+            lhslist.append(lvs)
+            if lexeme != '=':
+                break
+
+        (lexeme, file, line, column) = op = t[0]
+        self.expect("assignment statement",
+            lexeme in [ "=", "+", "-", "*", "/", "and", "or" ], op, "expected '='")
+        if lexeme != "=":
+            (eq, file, line, column) = t[1];
+            self.expect("assignment statement", eq == "=", t[1],
+                                                "expected '='")
+            t = t[1:]
+        assert eqs == [], eqs
+        (ast, t) = AssignmentRule(lhslist, op).parse(t[1:])
+        return (ast, self.skip(token, t))
 
 class ContextValue(Value):
     def __init__(self, nametag, pc):
