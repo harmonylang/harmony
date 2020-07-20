@@ -2893,7 +2893,7 @@ class AssignmentRule(Rule):
         self.op = op
 
     def parse(self, t):
-        assert len(self.lhslist) == 1
+        assert len(self.lhslist) == 1, self.lhslist
         (rv, t) = NaryRule({";", ","}).parse(t)
         (lexeme, file, line, column) = t[0]
         if lexeme == ",":
@@ -3126,8 +3126,9 @@ class StatementRule(Rule):
             (expr, t) = ExpressionRule().parse(t)
             return (CallAST(expr), self.skip(token, t))
 
+        # Parse all of the left-hand-sides
         lhslist = []
-        while eqs != []:
+        while True:
             eqs = eqs[1:]
             (ast, t) = LValueRule().parse(t)
             lvs = [ast]
@@ -3137,8 +3138,10 @@ class StatementRule(Rule):
                 lvs.append(ast)
                 (lexeme, file, line, column) = t[0]
             lhslist.append(lvs)
-            if lexeme != '=':
+            if len(eqs) == 0:
                 break
+            assert lexeme == "=", t[0]
+            t = t[1:]
 
         (lexeme, file, line, column) = op = t[0]
         self.expect("assignment statement",
