@@ -3623,7 +3623,7 @@ divide-by-zero.  An interrupt is caused by some peripheral device and can be han
 Harmony; an exception is an error.
 \index{exception}
 
-Harmony allows modeling interrupts using operator \texttt{trap}:
+Harmony allows modeling interrupts using the \texttt{trap} statement:
 \begin{code}
 \textbf{trap} \textit{handler} \textit{argument}
 \end{code}
@@ -3639,7 +3639,7 @@ that both the \textit{main}() and \textit{handler}() methods increment \textit{c
 This is not unlike the example we gave in \autoref{fig:inc}, except that only a single
 process is involved now.  And, indeed, it suffers from a similar race condition; run
 it through Harmony to see for yourself.  If the interrupt occurs after \textit{main}()
-read \textit{count} (and thus still has value 0) but before \textit{main()} writes the
+reads \textit{count} (and thus still has value 0) but before \textit{main()} writes the
 updated value~1, then the interrupt handler will also read value~0 and write value~1.
 We say that the code in \autoref{fig:trap2} is not \textit{interrupt-safe} (as opposed
 to not being \textit{thread-safe}).
@@ -3652,7 +3652,7 @@ If you run the code through Harmony, you will find that the code may not termina
 The issue is that a process can only acquire a lock once.  If the interrupt happens
 after \textit{main}() acquires the lock but before \textit{main}() releases it, the
 \textit{handler}() method will block trying to acquire the lock, even though
-it is executed the same process that holds the lock.
+it is being acquired by the same process that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
@@ -3692,18 +3692,33 @@ interrupt levels.
 To increment \textit{count}, the interrupt level must be \textit{True} and
 \textit{countlock} must be held.
 \autoref{fig:trap6} gives an example of how this might be done.
-The important rule to remember is for a process to disable interrupts \emph{before}
+One important rule to remember is for a process to disable interrupts \emph{before}
 attempting to acquire a lock.
 
-Try moving \texttt{lock}() to the beginning of \texttt{increment}()
-and \texttt{unlock}() to the end of \texttt{increment}() and see what happens.
+Try moving \texttt{lock}() to the beginning of the \texttt{increment} method
+and \texttt{unlock}() to the end of \texttt{increment} and see what happens.
 While Harmony will only report one faulty run, this incorrect code can lead to
 the assertion failing as well as processes getting blocked indefinitely.
 
+There is another important rule to keep in mind.  Just locks should never be held
+for long, interrupts should never be disabled for long.  With locks the issue is to
+maximize concurrent performance.  The interrupts the issue is fast response to
+asynchronous events.  Because interrupts may be disabled only briefly, interrupt
+handlers must run quickly and cannot wait for other events.  So it is ok to invoke
+synchronization calls such as \texttt{V} and \texttt{notify}, but calls such as
+\texttt{P} and \texttt{wait} should only be used if it's known that they will not
+block for long.  Informally, interrupt handlers can be
+\emph{producers} but not \emph{consumers} of synchronization events.
+
 \section*{Exercises}
 \begin{problems}
-\item Make methods \texttt{produce}() and \texttt{consume}() in \autoref{fig:boundedbuffer}
-both thread-safe and interrupt-safe.
+\item The \texttt{produce} method in \autoref{fig:boundedbuffer} cannot be used
+from interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
+it may block for a long time if the buffer is full.  Yet, it would be useful if,
+say, a keyboard interrupt handler could place an event on a shared queue.  Implement
+a new method \texttt{iproduce}(\textit{item}) that is interrupt-safe and does not
+block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
+if the item was successfully enqueued.
 \end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
