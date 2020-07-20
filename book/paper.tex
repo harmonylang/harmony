@@ -3713,7 +3713,7 @@ block for long.  Informally, interrupt handlers can be
 \section*{Exercises}
 \begin{problems}
 \item The \texttt{produce} method in \autoref{fig:boundedbuffer} cannot be used
-from interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
+in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.  Implement
 a new method \texttt{iproduce}(\textit{item}) that is interrupt-safe and does not
