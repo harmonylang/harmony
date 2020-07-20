@@ -2949,8 +2949,7 @@ class AssignmentRule(Rule):
         if lexeme == ",":
             (ast, t) = TupleRule(rv, ";").parse(t)
             return (AssignmentAST(self.lvs, ast, self.op), t)
-        assert lexeme == ";", t
-        return (AssignmentAST(self.lvs, rv, self.op), t[1:])
+        return (AssignmentAST(self.lvs, rv, self.op), t)
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -3181,8 +3180,9 @@ class StatementRule(Rule):
                 self.expect("assignment statement", eq == "=", t[1],
                                                     "expected '='")
                 t = t[1:]
-            return AssignmentRule(lvs, op).parse(t[1:])
-        self.expect("statement", lexeme == ";", t[0], "expected semicolon")
+            (ast, t) = AssignmentRule(lvs, op).parse(t[1:])
+            return (ast, self.skip(token, t))
+        # self.expect("statement", lexeme == ";", t[0], "expected semicolon")
 
         # Turn LValue into an RValue
         assert isinstance(ast, LValueAST)
