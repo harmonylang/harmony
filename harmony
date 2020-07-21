@@ -2481,6 +2481,26 @@ class AssignmentAST(AST):
             code.append(NaryOp(self.op, 2))
             code.append(StoreOp(None, base.token))
 
+    def recurse1(self, lvs, scope, code):
+        for lv in lvs:
+            if isinstance(lv, list):
+                self.recurse1(lv, scope, code)
+            else:
+                assert isinstance(lv, LValueAST)
+                self.phase1(lv, scope, code)
+
+    def recurse2(self, lvs, scope, code, skip):
+        n = len(lvs)
+        if n > 1:
+            code.append(SplitOp(n))
+        for lv in reversed(lvs):
+            n -= 1
+            if isinstance(lv, list):
+                self.recurse2(lv, scope, code, skip)
+            else:
+                assert isinstance(lv, LValueAST)
+                self.phase2(lv, scope, code, skip + n)
+
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.op
         if lexeme != '=':
@@ -2492,8 +2512,7 @@ class AssignmentAST(AST):
 
         # Compute the addresses of "complex" lhs expressions
         for lvs in self.lhslist:
-            for lv in lvs:
-                self.phase1(lv, scope, code)
+            self.recurse1(lvs, scope, code)
 
         # Compute the right-hand side
         self.rv.compile(scope, code)
@@ -2506,12 +2525,7 @@ class AssignmentAST(AST):
         skip = len(self.lhslist)
         for lvs in reversed(self.lhslist):
             skip -= 1
-            n = len(lvs)
-            if n > 1:
-                code.append(SplitOp(n))
-            for lv in reversed(lvs):
-                n -= 1
-                self.phase2(lv, scope, code, skip + n)
+            self.recurse2(lvs, scope, code, skip)
 
 class DelAST(AST):
     def __init__(self, lv):
