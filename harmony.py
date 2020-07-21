@@ -1722,7 +1722,7 @@ class NameAST(AST):
         self.name = name
 
     def __repr__(self):
-        return str(self.name)
+        return "NameAST" + str(self.name)
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.name
@@ -2255,7 +2255,8 @@ class LValueAST(AST):
         self.token = token  # for error messages
 
     def __repr__(self):
-        return "LValueAST(" + str(self.indexes) + " " + str(self.token) + ")"
+        # return "LValueAST(" + str(self.indexes) + " " + str(self.token) + ")"
+        return "LValueAST(" + str(self.indexes) + ")"
 
 class PointerAST(AST):
     def __init__(self, expr, token):
@@ -2915,18 +2916,18 @@ class LValueRule(Rule):
         if lexeme == "^":
             (ast, t) = ExpressionRule().parse(t[1:])
             indexes = [PointerAST(ast, token)]
-        elif lexeme == "(":
+        elif lexeme in { "(", "[" }:
+            closer = ")" if lexeme == "(" else "]"
             (ast, t) = LValueRule().parse(t[1:])
             (lexeme, file, line, column) = t[0]
-            self.expect("lvalue expression", lexeme == ")", t[0], "expected ')'")
+            self.expect("lvalue expression", lexeme == closer, t[0], "expected '%s'"%closer)
             indexes = ast.indexes
             t = t[1:]
         elif lexeme in { "setintlevel", "stop" }:
             (ast, t) = ExpressionRule().parse(t)
             indexes = [ast]
         else:
-            self.expect("lvalue expression", isname(lexeme), t[0],
-                                "expecting a name")
+            self.expect("lvalue expression", isname(lexeme), t[0], "expecting a name")
             indexes = [NameAST(t[0])]
             t = t[1:]
         while t != []:
@@ -2935,6 +2936,60 @@ class LValueRule(Rule):
                 break
             indexes.append(index)
         return (LValueAST(indexes, token), t)
+
+# This returns a tree of lists of LValues
+class LhsRule(Rule):
+    def parse(self, t):
+        node = []
+        token = t[0]
+        while True:
+            (lexeme, file, line, column) = t[0]
+            if lexeme in { "(", "[" }:
+                closer = ")" if lexeme == "(" else "]"
+                (child, t) = LhsRule().parse(t[1:])
+                (lexeme, file, line, column) = t[0]
+                self.expect("assignment statement", lexeme == closer, t[0],
+                                "expected '%s'"%closer)
+                t = t[1:]
+                if len(child) > 1:
+                    node.append(child)
+                    (lexeme, file, line, column) = t[0]
+                    if lexeme == ",":
+                        t = t[1:]
+                        continue
+                    return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
+                ast = child[0]
+                assert isinstance(ast, LValueAST)
+                if len(ast.indexes) > 1:
+                    node.append(ast)
+                    (lexeme, file, line, column) = t[0]
+                    if lexeme == ",":
+                        t = t[1:]
+                        continue
+                    else:
+                        return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
+                else:
+                    indexes = ast.indexes
+            elif lexeme == "^":
+                (ast, t) = ExpressionRule().parse(t[1:])
+                indexes = [PointerAST(ast, token)]
+            elif lexeme in { "setintlevel", "stop" }:
+                (ast, t) = ExpressionRule().parse(t)
+                indexes = [ast]
+            else:
+                self.expect("assignment statement", isname(lexeme), t[0], "expecting a name")
+                indexes = [NameAST(t[0])]
+                t = t[1:]
+            while t != []:
+                (index, t) = BasicExpressionRule().parse(t)
+                if index == False:
+                    break
+                indexes.append(index)
+            node.append(LValueAST(indexes, token))
+            (lexeme, file, line, column) = t[0]
+            if lexeme != ',':
+                return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
+            t = t[1:]
 
 class AssignmentRule(Rule):
     def __init__(self, lhslist, op):
@@ -3178,16 +3233,11 @@ class StatementRule(Rule):
         lhslist = []
         while True:
             eqs = eqs[1:]
-            (ast, t) = LValueRule().parse(t)
-            lvs = [ast]
-            (lexeme, file, line, column) = t[0]
-            while lexeme == ",":
-                (ast, t) = LValueRule().parse(t[1:])
-                lvs.append(ast)
-                (lexeme, file, line, column) = t[0]
+            (lvs, t) = LhsRule().parse(t)
             lhslist.append(lvs)
             if len(eqs) == 0:
                 break
+            (lexeme, file, line, column) = t[0]
             assert lexeme == "=", t[0]
             t = t[1:]
 
