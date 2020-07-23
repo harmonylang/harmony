@@ -4140,6 +4140,7 @@ Addresses are lexicographically ordered accordingly;
 \chapter{List of Operators}
 
 Harmony currently supports the following operators:
+\vspace{1em}
 
 {\small
 \begin{tabular}{|l|l|}
@@ -4170,9 +4171,11 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$e$ \string^ $e$ \string^ * ...} & two or more integers or sets \\
 \hline
-\texttt{$e$ / $e$} & two integers (integer division) \\
+\texttt{$e$ / $e$, $e$ // $e$} & two integers (integer division) \\
 \hline
-\texttt{$e$ \% $e$} & two integers (division remainder) \\
+\texttt{$e$ \% $e$, $e$ mod $e$} & two integers (division remainder) \\
+\hline
+\texttt{$e$ ** $e$, $e << e$, $e >> e$} & two integers \\
 \hline
 \texttt{$\{ e..e \}$} & two integers \\
 \hline

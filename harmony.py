@@ -509,8 +509,8 @@ def isunaryop(s):
 def isbinaryop(s):
     return s in [
         "==", "!=", "in", "and", "or", "&", "|", "^",
-        "-", "+", "*", "/", "%", "<", "<=", ">", ">=",
-        "//", "**", "<<", ">>"
+        "-", "+", "*", "/", "//", "%", "mod", "<", "<=", ">", ">=",
+        "**", "<<", ">>"
     ];
 
 tokens = [ "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", ".." ]
@@ -1655,7 +1655,7 @@ class NaryOp(Op):
                     context.push(0)
                 else:
                     context.push(e1 // e2)
-            elif op == "%":
+            elif op in { "%", "mod" }:
                 if not self.checktype(state, context, sa, isinstance(e1, int)):
                     return
                 if not self.checktype(state, context, sa, isinstance(e2, int)):
@@ -3324,7 +3324,7 @@ class StatementRule(Rule):
 
         (lexeme, file, line, column) = op = t[0]
         self.expect("assignment statement",
-            lexeme in { "=", "+", "-", "*", "/", "//", "**", "<<", ">>",
+            lexeme in { "=", "+", "-", "*", "/", "//", "%", "mod", "**", "<<", ">>",
                             "and", "or", "&", "|", "^" }, op, "expected '='")
         if lexeme != "=":
             (eq, file, line, column) = t[1];
