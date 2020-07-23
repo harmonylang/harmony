@@ -509,10 +509,11 @@ def isunaryop(s):
 def isbinaryop(s):
     return s in [
         "==", "!=", "in", "and", "or", "&", "|", "^",
-        "-", "+", "*", "/", "%", "<", "<=", ">", ">="
+        "-", "+", "*", "/", "%", "<", "<=", ">", ">=",
+        "//", "**", "<<", ">>"
     ];
 
-tokens = [ "dict{", "==", "!=", "<=", ">=", ".." ]
+tokens = [ "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", ".." ]
 
 def lexer(s, file):
     result = []
@@ -1645,7 +1646,7 @@ class NaryOp(Op):
                     if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                         return
                     context.push(SetValue(e1.s.difference(e2.s)))
-            elif op == "/":
+            elif op in { "/", "//" }:
                 if not self.checktype(state, context, sa, isinstance(e1, int) or isinstance(e1, float)):
                     return
                 if not self.checktype(state, context, sa, isinstance(e2, int) or isinstance(e2, float)):
@@ -1660,6 +1661,24 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e2, int)):
                     return
                 context.push(e1 % e2)
+            elif op == "**":
+                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    return
+                context.push(e1 ** e2)
+            elif op == "<<":
+                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    return
+                context.push(e1 << e2)
+            elif op == ">>":
+                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                    return
+                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    return
+                context.push(e1 >> e2)
             elif op == "..":
                 if not self.checktype(state, context, sa, isinstance(e1, int)):
                     return
@@ -3305,7 +3324,8 @@ class StatementRule(Rule):
 
         (lexeme, file, line, column) = op = t[0]
         self.expect("assignment statement",
-            lexeme in [ "=", "+", "-", "*", "/", "and", "or", "&", "|", "^" ], op, "expected '='")
+            lexeme in { "=", "+", "-", "*", "/", "//", "**", "<<", ">>",
+                            "and", "or", "&", "|", "^" }, op, "expected '='")
         if lexeme != "=":
             (eq, file, line, column) = t[1];
             self.expect("assignment statement", eq == "=", t[1],
