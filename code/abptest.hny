@@ -3,12 +3,12 @@ import abp;
 const NMSGS = 5;
 
 def sender():
-    for i in 1..NMSGS:
+    for i in {1..NMSGS}:
         app_send(i);
     ;
 ;
 def receiver():
-    for i in 1..NMSGS:
+    for i in {1..NMSGS}:
         let payload = app_recv(i == NMSGS):
             assert payload == i;
         ;

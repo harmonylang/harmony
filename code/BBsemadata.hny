@@ -21,15 +21,15 @@ def main():
     while cardinality(received) < (2 * NCONSS):
         pass;
     ;
-    assert received == ({ (i, 0) for i in 1..NPRODS } +
-                            { (i, 1) for i in 1..NPRODS })
+    assert received == ({ (i, 0) for i in {1..NPRODS} } +
+                            { (i, 1) for i in {1..NPRODS} })
     ;
 ;
 received = {};
-for i in 1..NPRODS:
+for i in {1..NPRODS}:
     spawn producer(i);
 ;
-for i in 1..NCONSS:
+for i in {1..NCONSS}:
     spawn consumer();
 ;
 spawn main();

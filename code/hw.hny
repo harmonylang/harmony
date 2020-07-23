@@ -28,11 +28,11 @@ def consume():
     result = result[0];     # convert (item,) into item
 ;
 back = 0;
-items = [ () for i in 0..MAX_ITEMS ];
+items = [ () for i in {0..MAX_ITEMS} ];
 
-for i in 1..MAX_ITEMS:
+for i in {1..MAX_ITEMS}:
     spawn produce(i);
 ;
-for i in 1..choose(0..MAX_ITEMS):
+for i in 1..choose({0..MAX_ITEMS}):
     spawn consume();
 ;

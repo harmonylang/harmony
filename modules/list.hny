@@ -1,7 +1,7 @@
 # return s[b:e]
 def subseq(s, b, e):
     result = [];
-    for x in b..(e-1):
+    for x in {b..e-1}:
         result[x - b] = s[x];
     ;
 ;

@@ -25,12 +25,12 @@ def customer(atm, acct, amount):
     ;
 ;
 def checker():
-    assert min({ accounts[acct].balance for acct in 0..(N_ACCTS - 1) }) >= 0;
+    assert min({ accounts[acct].balance for acct in {0..N_ACCTS-1} }) >= 0;
 ;
-accounts = [ dict{ .lock: Lock(), .balance: choose(0..MAX_BALANCE) }
-                    for acct in 0..(N_ACCTS - 1) ]
+accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
+                    for acct in {0..N_ACCTS-1} ]
 ;
 spawn checker();
-for i in 1..N_ATMS:
-    spawn customer(i, choose(0..(N_ACCTS - 1)), choose(0..MAX_BALANCE));
+for i in {1..N_ATMS}:
+    spawn customer(i, choose({0..N_ACCTS-1}), choose({0..MAX_BALANCE}));
 ;

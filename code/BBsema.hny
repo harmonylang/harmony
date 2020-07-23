@@ -18,7 +18,7 @@ def consume():
     V(&l_out);
     V(&n_empty);
 ;
-buf = dict{ () for x in 1..NSLOTS };
+buf = dict{ () for x in {1..NSLOTS} };
 b_in = 1;
 b_out = 1;
 l_in = Semaphore(1);

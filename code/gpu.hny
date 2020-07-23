@@ -7,4 +7,4 @@ def gpuAlloc():
 def gpuRelease(gpu):
     availGPUs += { gpu };
 ;
-availGPUs = 1..N;
+availGPUs = {1..N};

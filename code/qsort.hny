@@ -6,7 +6,7 @@ def swap(p, q):               # swap ^p and ^q
 ;
 def partition(lo, hi):
     result = lo;
-    for i in lo..(hi - 1):
+    for i in {lo..hi - 1}:
         if a[i] <= a[hi]:
             swap(&a[result], &a[i]);
             result += 1;

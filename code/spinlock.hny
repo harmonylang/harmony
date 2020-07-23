@@ -1,4 +1,4 @@
-const N = 3;
+onst N = 3;
 
 def tas(s, p):
     atomic:
@@ -24,7 +24,7 @@ def process(self):
     ;
 ;
 shared = False;
-private = [ True for i in 0..(N-1) ];
-for i in 0..(N-1):
+private = [ True for i in {0..N-1} ];
+for i in {0..N-1}:
     spawn process(i);
 ;

@@ -12,6 +12,6 @@ def diner(which):
     ;
 ;
 forks = Semaphore(NFORKS);
-for i in 1..NDINERS:
+for i in {1..NDINERS}:
     spawn diner(i);
 ;

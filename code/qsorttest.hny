@@ -5,7 +5,7 @@ const NITEMS = 4;
 
 def sorted():                    # return whether array 'a' is sorted
     result = True;
-    for i in 1..(len(a) - 1):
+    for i in {1..len(a)-1}:
         if a[i - 1] > a[i]:
             result = False;
         ;
@@ -17,7 +17,7 @@ def main(copy):
     assert list2bag(a) == list2bag(copy); # is it a permutation?
 ;
 
-const values = 1..NITEMS;
-a = [ choose(values) for i in 1..choose(1..NITEMS) ];
+const values = {1..NITEMS};
+a = [ choose(values) for i in {1..choose({1..NITEMS})} ];
 todo = { (0, len(a) - 1) };
 spawn main(a);

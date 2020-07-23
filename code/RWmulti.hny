@@ -10,7 +10,7 @@ def reader(self):
     if choose({ False, True }):
         let blocked = True:
             while blocked:
-                if { flags[i] for i in 1..NREADERS } == { True }:
+                if { flags[i] for i in {1..NREADERS} } == { True }:
                     blocked = False;
                 ;
             ;
@@ -27,10 +27,10 @@ def writer():
 ;
 rwlock = Lock();
 nreaders = 0;
-flags = dict{ False for i in 1..NREADERS };
-for i in 1..NREADERS:
+flags = dict{ False for i in {1..NREADERS} };
+for i in {1..NREADERS}:
     spawn reader(i);
 ;
-for i in 1..NWRITERS:
+for i in 1..NWRITERS}:
     spawn writer();
 ;

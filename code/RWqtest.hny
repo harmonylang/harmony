@@ -17,7 +17,7 @@ def process(self):
         ;
     ;
 ;
-semas = [ Semaphore(0) for i in 0..(NPROCS-1) ];
-for i in 0..(NPROCS-1):
+semas = [ Semaphore(0) for i in {0..NPROCS-1} ];
+for i in {0..NPROCS-1}:
     spawn process(i);
 ;

@@ -3,9 +3,9 @@ import BBsema;
 const NPRODS = 3;     # number of producers
 const NCONSS = 3;     # number of consumers
 
-for i in 1..NPRODS:
+for i in {1..NPRODS}:
     spawn produce(i);
 ;
-for i in 1..NCONSS:
+for i in {1..NCONSS}:
     spawn consume();
 ;

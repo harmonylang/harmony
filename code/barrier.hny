@@ -5,13 +5,13 @@ const N = 3;        # number of processes
 const R = 4;        # number of rounds
 
 def process(self):
-    for r in 1..R:
-        for i in 0..(N-1):
+    for r in {1..R}:
+        for i in {0..N-1}:
             if i != self:
                 V(&sema[i]);
             ;
         ;
-        for i in 0..(N-1):
+        for i in {0..N-1}:
             if i != self:
                 P(&sema[self]);
             ;
@@ -20,8 +20,8 @@ def process(self):
         assert (listMax(round) - listMin(round)) <= 1;
     ;
 ;
-round = [ 0 for i in 0..(N-1) ];
-sema = [ Semaphore(0) for i in 0..(N-1) ];
-for i in 0..(N-1):
+round = [ 0 for i in {0..N-1} ];
+sema = [ Semaphore(0) for i in {0..N-1} ];
+for i in {0..N-1}:
     spawn process(i);
 ;

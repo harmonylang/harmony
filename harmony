@@ -561,7 +561,7 @@ def isunaryop(s):
 
 def isbinaryop(s):
     return s in [
-        "==", "!=", "..", "in", "and", "or",
+        "==", "!=", "in", "and", "or",
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
@@ -1820,6 +1820,24 @@ class SetAST(AST):
         code.append(PushOp((len(self.collection), None, None, None)))
         code.append(SetOp())
 
+class RangeAST(AST):
+    def __init__(self, lhs, rhs, token):
+        self.lhs = lhs
+        self.rhs = rhs
+        self.token = token
+
+    def __repr__(self):
+        return "Range(%s,%s)"%(self.lhs, self.rhs)
+
+    def isConstant(self, scope):
+        return self.lhs.isConstant(scope) and self.rhs.isConstant(scope)
+
+    def gencode(self, scope, code):
+        self.lhs.compile(scope, code)
+        self.rhs.compile(scope, code)
+        (lexeme, file, line, column) = self.token
+        code.append(NaryOp(("..", file, line, column), 2))
+
 class DictAST(AST):
     def __init__(self, record):
         self.record = record
@@ -2192,7 +2210,7 @@ class SetRule(Rule):
             return (SetAST([]), t[2:])
         s = []
         while True:
-            (next, t) = NaryRule({"for", ",", "}"}).parse(t[1:])
+            (next, t) = NaryRule({"for", "..", ",", "}"}).parse(t[1:])
             if next == False:
                 return (next, t)
             s.append(next)
@@ -2201,6 +2219,12 @@ class SetRule(Rule):
                 self.expect("set comprehension", len(s) == 1, t[0],
                     "can have only one expression")
                 return SetComprehensionRule(s[0]).parse(t[1:])
+            if lexeme == "..":
+                self.expect("range", len(s) == 1, t[0],
+                    "can have only two expressions")
+                token = t[0]
+                (ast, t) = NaryRule({"}"}).parse(t[1:])
+                return (RangeAST(next, ast, token), t[1:])
             if lexeme == "}":
                 return (SetAST(s), t[1:])
             self.expect("set expression", lexeme == ",", t[0],

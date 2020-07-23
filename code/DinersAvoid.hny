@@ -16,8 +16,8 @@ def diner(which):
         ;
     ;
 ;
-forks = dict{ Lock() for i in 1..N };
+forks = dict{ Lock() for i in {1..N} };
 sema = Semaphore(N - 1);
-for i in 1..N:
+for i in {1..N}:
     spawn diner(i);
 ;
