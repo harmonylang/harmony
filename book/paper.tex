@@ -4261,19 +4261,19 @@ Harmony currently supports the following statements:
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{assert $b$ [, $x$]} & $b$ is a Boolean expression.  Optionally report value of expression $e$\\
+\texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
 \texttt{const v = $e$} & \texttt{v} is an identifier, $e$ is a constant expression\\
 \hline
 \texttt{def m($v$, ...): S} & \texttt{m} and \texttt{v} are identifiers, \texttt{S} a list of statements\\
 \hline
-\texttt{let $v$ = $e$, ...: S} & $v$ is an identifier, $e$ is an expression, \texttt{S} a list of statements\\
+\texttt{let $v$ = $e$ [let ...]: S} & $v$ is an identifier, $e$ is an expression, \texttt{S} a list of statements\\
 \hline
-\texttt{if $b$: S} & $b$ is a Boolean expression, \texttt{S} a list of statements\\
+\texttt{if $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{while $b$: S} & $b$ is a Boolean expression, \texttt{S} a list of statements\\
+\texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{for $v$ in $e$: S} & $v$ is an identifier, $e$ is a set evaluated in order,
+\texttt{for $v$ in $e$: S} & $v$ is an identifier, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
 \texttt{atomic: S} & \texttt{S} a list of statements\\
