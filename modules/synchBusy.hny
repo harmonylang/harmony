@@ -1,7 +1,7 @@
 def tas(lk):
     atomic:
-        result = ^lk;
-        ^lk = True;
+        result = !lk;
+        !lk = True;
     ;
 ;
 def Lock():
@@ -13,14 +13,14 @@ def lock(lk):
     ;
 ;
 def unlock(lk):
-    ^lk = False;
+    !lk = False;
 ;
 def Condition(lk):
     result = lk;
 ;
 def wait(c):
-    unlock(^c);
-    lock(^c);
+    unlock(!c);
+    lock(!c);
 ;
 def notify(c):
 ;
@@ -33,8 +33,8 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (^sema) > 0:
-                    ^sema -= 1;
+                if (!sema) > 0:
+                    !sema -= 1;
                     blocked = False;
                 ;
             ;
@@ -43,6 +43,6 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        ^sema += 1;
+        !sema += 1;
     ;
 ;

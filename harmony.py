@@ -503,12 +503,12 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "^", "-", "atLabel", "bagsize", "cardinality", "choose",
+    return s in [ "!", "-", "~", "atLabel", "bagsize", "cardinality", "choose",
     "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
 
 def isbinaryop(s):
     return s in [
-        "==", "!=", "in", "and", "or",
+        "==", "!=", "in", "and", "or", "&", "|", "^",
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
@@ -747,7 +747,7 @@ class AddressValue(Value):
     def __repr__(self):
         if len(self.indexes) == 0:
             return "None"
-        result = "&" + self.indexes[0]
+        result = "?" + self.indexes[0]
         for index in self.indexes[1:]:
             if isinstance(index, str):
                 result = result + strValue(index)
@@ -1491,7 +1491,7 @@ class NaryOp(Op):
         (op, file, line, column) = self.op
         assert len(context.stack) >= self.n
         sa = context.stack[-self.n:]
-        if op in { "+", "*" }:
+        if op in { "+", "*", "&", "|", "^" }:
             assert self.n > 1
             e2 = context.pop()
             for i in range(1, self.n):
@@ -1501,10 +1501,6 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, isinstance(e2, int)):
                             return
                         e2 += e1
-                    elif isinstance(e1, SetValue):
-                        if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
-                            return
-                        e2 = SetValue(e2.s.union(e1.s))
                     else:
                         if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
                             return
@@ -1512,16 +1508,44 @@ class NaryOp(Op):
                             return
                         e2 = self.concat(e1, e2)
                 elif op == "*":
+                    if not self.checktype(state, context, sa, isinstance(e1, int)):
+                        return
+                    if not self.checktype(state, context, sa, isinstance(e2, int)):
+                        return
+                    e2 *= e1
+                elif op == "&":
                     if isinstance(e1, int):
                         if not self.checktype(state, context, sa, isinstance(e2, int)):
                             return
-                        e2 *= e1
+                        e2 &= e1
                     else:
                         if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
                             return
                         if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                             return
                         e2 = SetValue(e2.s.intersection(e1.s))
+                elif op == "|":
+                    if isinstance(e1, int):
+                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                            return
+                        e2 |= e1
+                    else:
+                        if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
+                            return
+                        if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
+                            return
+                        e2 = SetValue(e2.s.union(e1.s))
+                elif op == "^": 
+                    if isinstance(e1, int):
+                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                            return
+                        e2 ^= e1
+                    else:
+                        if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
+                            return
+                        if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
+                            return
+                        e2 = SetValue(e2.s.union(e1.s).difference(e2.s.intersection(e1.s)))
                 else:
                     assert False, op
             context.push(e2)
@@ -1531,6 +1555,10 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, int) or isinstance(e, float)):
                     return
                 context.push(-e)
+            if op == "~":
+                if not self.checktype(state, context, sa, isinstance(e, int)):
+                    return
+                context.push(~e)
             elif op == "not":
                 if not self.checktype(state, context, sa, isinstance(e, bool)):
                     return
@@ -2267,7 +2295,7 @@ class BasicExpressionRule(Rule):
             closer = ")" if lexeme == "(" else "]"
             (ast, t) = TupleRule({closer}).parse(t[1:])
             return (ast, t[1:])
-        if lexeme == "&":
+        if lexeme == "?":
             (ast, t) = LValueRule().parse(t[1:])
             return (AddressAST(ast), t)
         return (False, t)
@@ -2305,7 +2333,7 @@ class ExpressionRule(Rule):
             return (StopAST(ast), t)
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
-            if lexeme == "^":
+            if lexeme == "!":
                 return (PointerAST(ast, func), t)
             else:
                 return (NaryAST(func, [ast]), t)
@@ -2950,7 +2978,7 @@ class LValueRule(Rule):
     def parse(self, t):
         token = t[0]
         (lexeme, file, line, column) = token
-        if lexeme == "^":
+        if lexeme == "!":
             (ast, t) = ExpressionRule().parse(t[1:])
             indexes = [PointerAST(ast, token)]
         elif lexeme in { "(", "[" }:
@@ -3007,7 +3035,7 @@ class LhsRule(Rule):
                         return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
                 else:
                     indexes = ast.indexes
-            elif lexeme == "^":
+            elif lexeme == "!":
                 (ast, t) = ExpressionRule().parse(t[1:])
                 indexes = [PointerAST(ast, token)]
             elif lexeme in { "setintlevel", "stop" }:
@@ -3084,7 +3112,8 @@ class BlockRule(Rule):
 # This parses the lefthand side of an assignment in a let expression.  Grammar:
 #   lhs = (tuple ",")* [tuple]
 #   tuple = name | "(" lhs ")"
-class LetLhsRule(Rule):
+# TODO: also use this for def arguments and for
+class BoundVarRule(Rule):
     def parse(self, t):
         tuples = []
         while True:
@@ -3092,12 +3121,12 @@ class LetLhsRule(Rule):
             if (isname(lexeme)):
                 tuples.append(("name", t[0]))
             elif lexeme == "(":
-                (nest, t) = LetLhsRule().parse(t[1:])
+                (nest, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == ")", t[0], "expected ')'")
                 tuples.append(nest)
             elif lexeme == "[":
-                (nest, t) = LetLhsRule().parse(t[1:])
+                (nest, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "]", t[0], "expected ']'")
                 tuples.append(("nest", nest))
@@ -3163,7 +3192,7 @@ class StatementRule(Rule):
         if lexeme == "let":
             vars = []
             while True:
-                (tuples, t) = LetLhsRule().parse(t[1:])
+                (tuples, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "=", t[0], "expected '='")
                 (ast, t) = TupleRule({":", "let"}).parse(t[1:])
@@ -3276,7 +3305,7 @@ class StatementRule(Rule):
 
         (lexeme, file, line, column) = op = t[0]
         self.expect("assignment statement",
-            lexeme in [ "=", "+", "-", "*", "/", "and", "or" ], op, "expected '='")
+            lexeme in [ "=", "+", "-", "*", "/", "and", "or", "&", "|", "^" ], op, "expected '='")
         if lexeme != "=":
             (eq, file, line, column) = t[1];
             self.expect("assignment statement", eq == "=", t[1],

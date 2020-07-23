@@ -2,15 +2,15 @@ const N = 3;
 
 def tas(s, p):
     atomic:
-        ^p = ^s;
-        ^s = True;
+        !p = !s;
+        !s = True;
     ;
 ;
 def process(self):
     while choose({ False, True }):
         # Enter critical section
         while private[self]:
-            tas(&shared, &private[self]);
+            tas(?shared, ?private[self]);
         ;
 
         # Critical section

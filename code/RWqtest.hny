@@ -5,11 +5,11 @@ const NPROCS = 3;
 def process(self):
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
-            acquire_rlock(&semas[self]);
+            acquire_rlock(?semas[self]);
             @rcs: assert atLabel.wcs == dict{};
             release_rlock();
         else:                       # .write
-            acquire_wlock(&semas[self]);
+            acquire_wlock(?semas[self]);
             @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                          (atLabel.rcs == dict{})
                   ;

@@ -1,4 +1,4 @@
-import BBsema;
+?mport BBsema;
 
 const NPRODS = 2;       # number of producers
 const NCONSS = NPRODS;  # number of consumers

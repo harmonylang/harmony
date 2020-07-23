@@ -1,16 +1,16 @@
 import synch;
 
 def handler():
-    lock(&countlock);
+    lock(?countlock);
       count += 1;
-    unlock(&countlock);
+    unlock(?countlock);
     done = True;
 ;
 def main():
     trap handler();
-    lock(&countlock);
+    lock(?countlock);
       count += 1;
-    unlock(&countlock);
+    unlock(?countlock);
     while not done:
         pass;
     ;

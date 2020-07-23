@@ -1,15 +1,15 @@
-def swap(p, q):               # swap ^p and ^q
-    ^p, ^q = ^q, ^p; 
+def swap(p, q):               # swap !p and !q
+    !p, !q = !q, !p; 
 ;
 def partition(lo, hi):
     result = lo;
     for i in {lo..hi - 1}:
         if a[i] <= a[hi]:
-            swap(&a[result], &a[i]);
+            swap(?a[result], ?a[i]);
             result += 1;
         ;
     ;
-    swap(&a[result], &a[hi]); 
+    swap(?a[result], ?a[hi]); 
 ;
 def sortrange(range):
     let lo, hi = range

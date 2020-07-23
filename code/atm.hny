@@ -6,15 +6,15 @@ const N_ATMS = 2;
 const MAX_BALANCE = 1;
 
 def atm_check_balance(acct):    # return the balance on acct
-    lock(&accounts[acct].lock);
+    lock(?accounts[acct].lock);
     result = accounts[acct].balance;
-    unlock(&accounts[acct].lock);
+    unlock(?accounts[acct].lock);
 ;
 def atm_withdraw(acct, amount): # withdraw amount from acct
-    lock(&accounts[acct].lock);
+    lock(?accounts[acct].lock);
     accounts[acct].balance -= amount;
     result = True;              # return success
-    unlock(&accounts[acct].lock);
+    unlock(?accounts[acct].lock);
 ;
 
 def customer(atm, acct, amount):

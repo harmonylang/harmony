@@ -17,17 +17,17 @@ def bagChoose(bag):
     result = choose(keys(bag));
 ;
 def bagAdd(pb, elt):
-    if elt in keys(^pb):
-        (^pb)[elt] += 1;
+    if elt in keys(!pb):
+        (!pb)[elt] += 1;
     else:
-        (^pb)[elt] = 1;
+        (!pb)[elt] = 1;
     ;
 ;
 def bagRemove(pb, elt):
-    if (elt in keys(^pb)) and ((^pb)[elt] > 0):
-        (^pb)[elt] -= 1;
+    if (elt in keys(!pb)) and ((!pb)[elt] > 0):
+        (!pb)[elt] -= 1;
     ;
-    if (^pb)[elt] <= 0:
-        del (^pb)[elt];
+    if (!pb)[elt] <= 0:
+        del (!pb)[elt];
     ;
 ;

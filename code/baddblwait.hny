@@ -1,6 +1,6 @@
 while forks[left]:
-    wait(&conds[left]);
+    wait(?conds[left]);
 ;
 while forks[right]:
-    wait(&conds[right]);
+    wait(?conds[right]);
 ;

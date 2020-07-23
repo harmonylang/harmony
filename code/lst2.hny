@@ -1,37 +1,37 @@
 import lst1;
 
 def lst_find(lst, v):
-    let before = lst let after = (^before).next:
-        lock(&(^before).data.lock);
-        lock(&(^after).data.lock);
-        while (^after).data.value < v:
-            unlock(&(^before).data.lock);
+    let before = lst let after = (!before).next:
+        lock(?(!before).data.lock);
+        lock(?(!after).data.lock);
+        while (!after).data.value < v:
+            unlock(?(!before).data.lock);
             before = after;
-            after = (^before).next;
-            lock(&(^after).data.lock);
+            after = (!before).next;
+            lock(?(!after).data.lock);
         ;
         result = (before, after);
     ;
 ;
 def lst_insert(lst, v):
     let before, after = lst_find(lst, v):
-        if (^after).data.value != v:
-            (^before).next = lst_node(v, after);
+        if (!after).data.value != v:
+            (!before).next = lst_node(v, after);
         ;
-        unlock(&(^before).data.lock);
-        unlock(&(^after).data.lock);
+        unlock(?(!before).data.lock);
+        unlock(?(!after).data.lock);
     ;
 ;
 def lst_remove(lst, v):
     let before, after = lst_find(lst, v):
-        if (^after).data.value == v:
-            (^before).next = (^after).next;
-            unlock(&(^after).data.lock);
+        if (!after).data.value == v:
+            (!before).next = (!after).next;
+            unlock(?(!after).data.lock);
             recFree(after);
         else:
-            unlock(&(^after).data.lock);
+            unlock(?(!after).data.lock);
         ;
-        unlock(&(^before).data.lock);
+        unlock(?(!before).data.lock);
     ;
 ;
 

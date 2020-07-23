@@ -1,12 +1,12 @@
 def tas(s):
     atomic:
-        result = ^s;
-        ^s = True;
+        result = !s;
+        !s = True;
     ;
 ;
 def process():
     while choose({ False, True }):
-        while tas(&lock):
+        while tas(?lock):
             pass;
         ;
         @cs: assert atLabel.cs == dict{ nametag(): 1 };

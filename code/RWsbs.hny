@@ -2,40 +2,40 @@ import synch;
 
 def V_one():
     if (w_entered == 0) and (r_waiting > 0):
-        V(&r_sema);
+        V(?r_sema);
     elif ((r_entered + w_entered) == 0) and (w_waiting > 0):
-        V(&w_sema);
+        V(?w_sema);
     else:
-        V(&mutex);
+        V(?mutex);
     ;
 ;
 def acquire_rlock():
-    P(&mutex);
+    P(?mutex);
     if w_entered > 0:
         r_waiting += 1;
-        V(&mutex); P(&r_sema);
+        V(?mutex); P(?r_sema);
         r_waiting -= 1;
     ;
     r_entered += 1;
     V_one();
 ;
 def release_rlock():
-    P(&mutex);
+    P(?mutex);
     r_entered -= 1;
     V_one();
 ;
 def acquire_wlock():
-    P(&mutex);
+    P(?mutex);
     if (r_entered + w_entered) > 0:
         w_waiting += 1;
-        V(&mutex); P(&w_sema);
+        V(?mutex); P(?w_sema);
         w_waiting -= 1;
     ;
     w_entered += 1;
     V_one();
 ;
 def release_wlock():
-    P(&mutex);
+    P(?mutex);
     w_entered -= 1;
     V_one();
 ;

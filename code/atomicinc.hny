@@ -1,7 +1,7 @@
 def atomic_inc(ptr):
     atomic:
-        ^ptr += 1;
+        !ptr += 1;
     ;
 ;
 count = 0;
-atomic_inc(&count);
+atomic_inc(?count);

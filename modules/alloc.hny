@@ -1,22 +1,22 @@
 const NPOOL  = 100;      # maximum number of "records" to allocate
 
 def recFree(r):
-    lock(&rec_lock);
-    (^r).next = rec_flist;
+    lock(?rec_lock);
+    (!r).next = rec_flist;
     rec_flist = r;
-    unlock(&rec_lock);
+    unlock(?rec_lock);
 ;
 def recAlloc():
-    lock(&rec_lock);
+    lock(?rec_lock);
     result = rec_flist;
     if result != None:
-        rec_flist = (^result).next;
+        rec_flist = (!result).next;
     ;
-    unlock(&rec_lock);
+    unlock(?rec_lock);
 ;
 rec_pool = [ dict{ .data: (), .next: None } for i in {0..NPOOL-1} ];
 rec_flist = None;           # free list
 rec_lock = Lock();
 for i in {0..NPOOL-1}:
-    recFree(&rec_pool[i]);
+    recFree(?rec_pool[i]);
 ;

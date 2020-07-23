@@ -2,25 +2,25 @@ const MAX_ITEMS = 3;
 
 def inc(pcnt):
     atomic:
-        result = ^pcnt;
-        ^pcnt += 1;
+        result = !pcnt;
+        !pcnt += 1;
     ;
 ;
 def swap(pv):
     atomic:
-        result = ^pv;
-        ^pv = ();
+        result = !pv;
+        !pv = None;
     ;
 ;
 def produce(item):
-    items[inc(&back)] = (item,);
+    items[inc(?back)] = (item,);
 ;
 def consume():
-    result = ();
-    while result == ():
+    result = None;
+    while result == None:
         let range, i = back, 0:
-            while (i < range) and (result == ()):
-                result = swap(&items[i]);
+            while (i < range) and (result == None):
+                result = swap(?items[i]);
                 i += 1;
             ;
         ;
@@ -28,7 +28,7 @@ def consume():
     result = result[0];     # convert (item,) into item
 ;
 back = 0;
-items = [ () for i in {0..MAX_ITEMS} ];
+items = [ None for i in {0..MAX_ITEMS} ];
 
 for i in {1..MAX_ITEMS}:
     spawn produce(i);

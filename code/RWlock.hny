@@ -1,26 +1,26 @@
 import synch;
 
 def acquire_rlock():
-    lock(&rlock);
+    lock(?rlock);
     if nreaders == 0:
-        lock(&rwlock);
+        lock(?rwlock);
     ;
     nreaders += 1;
-    unlock(&rlock);
+    unlock(?rlock);
 ;
 def release_rlock():
-    lock(&rlock);
+    lock(?rlock);
     nreaders -= 1;
     if nreaders == 0:
-        unlock(&rwlock);
+        unlock(?rwlock);
     ;
-    unlock(&rlock);
+    unlock(?rlock);
 ;
 def acquire_wlock():
-    lock(&rwlock);
+    lock(?rwlock);
 ;
 def release_wlock():
-    unlock(&rwlock);
+    unlock(?rwlock);
 ;
 rwlock = Lock();
 rlock = Lock();

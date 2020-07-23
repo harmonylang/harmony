@@ -5,17 +5,17 @@ const NACCOUNTS = 2;
 const NPROCESSES = 2;
 
 def transfer(a1, a2, amount):
-    lock(&accounts[a1].lock);
+    lock(?accounts[a1].lock);
     if amount <= accounts[a1].balance:
         accounts[a1].balance -= amount; 
-        lock(&accounts[a2].lock);
+        lock(?accounts[a2].lock);
         accounts[a2].balance += amount; 
-        unlock(&accounts[a2].lock);
+        unlock(?accounts[a2].lock);
         result = True;
     else:
         result = False;
     ;
-    unlock(&accounts[a1].lock);
+    unlock(?accounts[a1].lock);
 ;
 def process():
     let a1 = choose({0..NACCOUNTS-1})

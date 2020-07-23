@@ -5,9 +5,9 @@ const NFORKS = 3;
 
 def diner(which):
     while choose({ False, True }):
-        P(&forks);
+        P(?forks);
         # dine
-        V(&forks);
+        V(?forks);
         # think
     ;
 ;

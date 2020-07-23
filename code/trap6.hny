@@ -2,9 +2,9 @@ import synch;
 
 def increment():
     let prior = setintlevel(True):
-        lock(&countlock);
+        lock(?countlock);
             count += 1;
-        unlock(&countlock);
+        unlock(?countlock);
         setintlevel(prior);
     ;
 ;

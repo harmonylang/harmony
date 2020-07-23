@@ -8,12 +8,12 @@ def process(self):
     for r in {1..R}:
         for i in {0..N-1}:
             if i != self:
-                V(&sema[i]);
+                V(?sema[i]);
             ;
         ;
         for i in {0..N-1}:
             if i != self:
-                P(&sema[self]);
+                P(?sema[self]);
             ;
         ;
         round[self] = (round[self] + 1);

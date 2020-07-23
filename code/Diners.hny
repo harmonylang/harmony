@@ -5,11 +5,11 @@ const N = 5;
 def diner(which):
     let left, right = (which, (which % N) + 1):
         while choose({ False, True }):
-            lock(&forks[left]);
-            lock(&forks[right]);
+            lock(?forks[left]);
+            lock(?forks[right]);
             # dine
-            unlock(&forks[left]);
-            unlock(&forks[right]);
+            unlock(?forks[left]);
+            unlock(?forks[right]);
             # think
         ;
     ;

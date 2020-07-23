@@ -3,8 +3,8 @@ import bag;
 
 def tas(lk):
     atomic:
-        result = ^lk;
-        ^lk = True;
+        result = !lk;
+        !lk = True;
     ;
 ;
 def Lock():
@@ -16,7 +16,7 @@ def lock(lk):
     ;
 ;
 def unlock(lk):
-    ^lk = False;
+    !lk = False;
 ;
 def Condition(lk):
     result = dict{ .lock: lk, .waiters: bagEmpty() };
@@ -24,15 +24,15 @@ def Condition(lk):
 def wait(c):
     let lk, blocked, cnt = None, True, 0:
         atomic:
-            lk = (^c).lock;
-            cnt = bagCount((^c).waiters, nametag());
-            bagAdd(&(^c).waiters, nametag());
-            ^lk = False;
+            lk = (!c).lock;
+            cnt = bagCount((!c).waiters, nametag());
+            bagAdd(?(!c).waiters, nametag());
+            !lk = False;
         ;
         while blocked:
             atomic:
-                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
-                    ^lk = True;
+                if (not (!lk)) and (bagCount((!c).waiters, nametag()) <= cnt):
+                    !lk = True;
                     blocked = False;
                 ;
             ;
@@ -41,15 +41,15 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = (^c).waiters:
+        let waiters = (!c).waiters:
             if waiters != bagEmpty():
-                bagRemove(&(^c).waiters, bagChoose(waiters));
+                bagRemove(?(!c).waiters, bagChoose(waiters));
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (^c).waiters = bagEmpty();
+    (!c).waiters = bagEmpty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -58,8 +58,8 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (^sema) > 0:
-                    ^sema -= 1;
+                if (!sema) > 0:
+                    !sema -= 1;
                     blocked = False;
                 ;
             ;
@@ -68,7 +68,7 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        ^sema += 1;
+        !sema += 1;
     ;
 ;
 def Queue():
@@ -78,9 +78,9 @@ def dequeue(q):
     let blocked = True:
         while blocked:
             atomic:
-                if ^q != []:
-                    result = head(^q);
-                    ^q = tail(^q);
+                if !q != []:
+                    result = head(!q);
+                    !q = tail(!q);
                     blocked = False;
                 ;
             ;
@@ -89,6 +89,6 @@ def dequeue(q):
 ;
 def enqueue(q, item):
     atomic:
-        ^q = append(^q, item);
+        !q = append(!q, item);
     ;
 ;

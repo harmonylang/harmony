@@ -5,8 +5,8 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (^sema) > 0:
-                    ^sema -= 1;
+                if (!sema) > 0:
+                    !sema -= 1;
                     blocked = False;
                 ;
             ;
@@ -15,6 +15,6 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        ^sema += 1;
+        !sema += 1;
     ;
 ;
