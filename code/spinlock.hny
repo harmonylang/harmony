@@ -1,4 +1,4 @@
-onst N = 3;
+const N = 3;
 
 def tas(s, p):
     atomic:

@@ -19,7 +19,7 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: {} };
 ;
 def wait(c):
-    let lk = (), blocked = True:
+    let lk, blocked = None, True:
         atomic:
             lk = (^c).lock;
             (^c).waiters += { nametag() };

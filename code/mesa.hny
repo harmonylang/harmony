@@ -4,8 +4,8 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: bagEmpty() };
 ;
 def wait(c):
-    let lk = (^c).lock, blocked = True,
-                cnt = bagCount((^c).waiters, nametag()):
+    let lk, blocked = (^c).lock, True
+    let cnt = bagCount((^c).waiters, nametag()):
         bagAdd(&(^c).waiters, nametag());
         ^lk = False;
         while blocked:

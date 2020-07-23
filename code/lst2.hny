@@ -1,7 +1,7 @@
 import lst1;
 
 def lst_find(lst, v):
-    let before = lst, after = (^before).next:
+    let before = lst let after = (^before).next:
         lock(&(^before).data.lock);
         lock(&(^after).data.lock);
         while (^after).data.value < v:

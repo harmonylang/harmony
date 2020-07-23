@@ -6,7 +6,7 @@ def net_recv(pchan):
 ;
 def app_send(payload):
     s_seq = 1 - s_seq;
-    let m = dict{ .seq: s_seq, .payload: payload }, blocked = True:
+    let m, blocked = dict{ .seq: s_seq, .payload: payload }, True:
         while blocked:
             net_send(&s_chan, m, False);
             let response = net_recv(&r_chan):

@@ -578,7 +578,7 @@ represents a shell prompt):
 \begin{code}
 \begin{verbatim}
 $ harmony triangle.hny
-#states = 13
+#states = 13 diameter = 1
 no issues found
 $
 \end{verbatim}
@@ -602,7 +602,7 @@ For example, if you want to test the code for \texttt{N = 100}, run:
 \begin{code}
 \begin{verbatim}
 $ harmony -c N=100 triangle.hny
-#states = 103
+#states = 103 diameter = 1
 no issues found
 $
 \end{verbatim}
@@ -1140,7 +1140,7 @@ brief explanation.
 \begin{code}
 \harmonysource{cs}
 \end{code}
-\caption{\harmonylink{code/csbarebones.hny} Harmony model of a critical section.}
+\caption{\harmonylink{code/cs.hny} Harmony model of a critical section.}
 \label{fig:cs}
 \end{figure}
 
@@ -3146,7 +3146,9 @@ In C and C++, support for locks and condition variables is through libraries.
 % \label{ch:mesa}
 
 \begin{figure}
+\begin{code}
 \harmonysource{mesa}
+\end{code}
 \caption{Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:cv}
 \end{figure}
@@ -4166,7 +4168,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$e$ \% $e$} & two integers (division remainder) \\
 \hline
-\texttt{$e$~..~$e$} & two integers \\
+\texttt{$\{ e..e \}$} & two integers \\
 \hline
 \texttt{$e$ [not] in $e$} & first is any Harmony value, second is set \\
 \hline
@@ -4203,7 +4205,7 @@ Harmony currently supports the following operators:
 the concatenation when applied to lists or tuples.
 \texttt{-} computes set difference when applied to two sets.
 \texttt{*} computes the intersection when applied to sets.
-\texttt{$x$..$y$} computes the set consisting of the integers $x$
+\texttt{$\{ x .. y \}$} computes the set consisting of the integers $x$
 through $y$ inclusive.  It returns the empty set if $x > y$.
 
 An \emph{lvalue}
@@ -4219,11 +4221,11 @@ Harmony also supports the following comprehensions:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-Set comprehension & \texttt{\{ f($e$) for $e$ in $s$ \}} \\
+Set comprehension & \texttt{\{ f($v$) for $v$ in $s$ \}} \\
 \hline
-List comprehension & \texttt{[ f($e$) for $e$ in $s$ ]} \\
+List comprehension & \texttt{[ f($v$) for $v$ in $s$ ]} \\
 \hline
-Dict comprehension & \texttt{dict\{ f($e$) for $e$ in $s$ \}} \\
+Dict comprehension & \texttt{dict\{ f($v$) for $v$ in $s$ \}} \\
 \hline
 \end{tabular}
 \vspace{1em}

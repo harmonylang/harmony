@@ -5,7 +5,7 @@ def checkInvariant():
         if not shared:
             sum = 1;
         ;
-        for i in 0..(N-1):
+        for i in {0..N-1}:
             if not private[i]:
                 sum += 1;
             ;
@@ -22,8 +22,8 @@ def invariantChecker():
 # tas() and process() code omitted to save space
 
 shared = False;
-private = [ True for i in 0..(N-1) ];
+private = [ True for i in {0..N-1} ];
 spawn invariantChecker();
-for i in 0..(N-1):
+for i in {0..N-1}:
     spawn process(i);
 ;

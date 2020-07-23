@@ -3,7 +3,7 @@ import synch;
 const N = 5;
 
 def diner(which):
-    let left = which, right = (which % N) + 1:
+    let left, right = (which, (which % N) + 1):
         while choose({ False, True }):
             P(&sema);
             lock(&forks[left]);

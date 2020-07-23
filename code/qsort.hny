@@ -1,8 +1,5 @@
 def swap(p, q):               # swap ^p and ^q
-    let t = ^p:
-        ^p = ^q; 
-        ^q = t; 
-    ;
+    ^p, ^q = ^q, ^p; 
 ;
 def partition(lo, hi):
     result = lo;
@@ -15,7 +12,8 @@ def partition(lo, hi):
     swap(&a[result], &a[hi]); 
 ;
 def sortrange(range):
-    let lo, hi = range, pivot = partition(lo, hi):
+    let lo, hi = range
+    let pivot = partition(lo, hi):
         if (pivot - 1) > lo:
             todo += { (lo, pivot - 1) };
         ;

@@ -18,7 +18,7 @@ def produce(item):
 def consume():
     result = ();
     while result == ():
-        let range = back, i = 0:
+        let range, i = back, 0:
             while (i < range) and (result == ()):
                 result = swap(&items[i]);
                 i += 1;
@@ -33,6 +33,6 @@ items = [ () for i in {0..MAX_ITEMS} ];
 for i in {1..MAX_ITEMS}:
     spawn produce(i);
 ;
-for i in 1..choose({0..MAX_ITEMS}):
+for i in {1..choose({0..MAX_ITEMS})}:
     spawn consume();
 ;

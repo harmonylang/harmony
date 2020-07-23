@@ -22,7 +22,7 @@ def Condition(lk):
     result = dict{ .lock: lk, .waiters: bagEmpty() };
 ;
 def wait(c):
-    let lk = (), blocked = True, cnt = 0:
+    let lk, blocked, cnt = None, True, 0:
         atomic:
             lk = (^c).lock;
             cnt = bagCount((^c).waiters, nametag());

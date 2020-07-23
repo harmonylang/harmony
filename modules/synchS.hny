@@ -34,7 +34,7 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let lk = (^c).lock, waiters = (^c).waiters:
+        let lk, waiters = (^c).lock, (^c).waiters:
             if waiters != []:
                 (^lk).suspended += [waiters[0],];
                 (^c).waiters = tail(waiters);
@@ -44,7 +44,7 @@ def notify(c):
 ;
 def notifyAll(c):
     atomic:
-        let lk = (^c).lock, waiters = (^c).waiters:
+        let lk, waiters = (^c).lock, (^c).waiters:
             (^lk).suspended += waiters;
             (^c).waiters = [];
         ;
@@ -64,7 +64,7 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        let cnt = (^sema).count, waiters = (^sema).waiters:
+        let cnt, waiters = (^sema).count, (^sema).waiters:
             if waiters != []:
                 assert cnt == 0;
                 go (waiters[0]) ();

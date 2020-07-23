@@ -31,6 +31,6 @@ flags = dict{ False for i in {1..NREADERS} };
 for i in {1..NREADERS}:
     spawn reader(i);
 ;
-for i in 1..NWRITERS}:
+for i in {1..NWRITERS}:
     spawn writer();
 ;

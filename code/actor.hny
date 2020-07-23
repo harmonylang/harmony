@@ -1,7 +1,7 @@
 import synch;
 
 def pc_actor(q, nrequests):
-    let requests = {}, balance = 0:
+    let requests, balance = {}, 0:
         while nrequests > 0:
             let req = dequeue(q):
                 if req.type == .produce:

@@ -1532,7 +1532,7 @@ class NaryOp(Op):
             result.append(d2.d[k])
         return DictValue({ i:result[i] for i in range(len(result)) })
 
-    def checktype(self, state, args, chk):
+    def checktype(self, state, context, args, chk):
         assert len(args) == self.n, (self, args)
         if not chk:
             context.failure = "Error: unexpected types in " + str(self.op) + \
@@ -1551,28 +1551,28 @@ class NaryOp(Op):
                 e1 = context.pop()
                 if op == "+":
                     if isinstance(e1, int):
-                        if not self.checktype(state, sa, isinstance(e2, int)):
+                        if not self.checktype(state, context, sa, isinstance(e2, int)):
                             return
                         e2 += e1
                     elif isinstance(e1, SetValue):
-                        if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                        if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                             return
                         e2 = SetValue(e2.s.union(e1.s))
                     else:
-                        if not self.checktype(state, sa, isinstance(e1, DictValue)):
+                        if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
                             return
-                        if not self.checktype(state, sa, isinstance(e2, DictValue)):
+                        if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                             return
                         e2 = self.concat(e1, e2)
                 elif op == "*":
                     if isinstance(e1, int):
-                        if not self.checktype(state, sa, isinstance(e2, int)):
+                        if not self.checktype(state, context, sa, isinstance(e2, int)):
                             return
                         e2 *= e1
                     else:
-                        if not self.checktype(state, sa, isinstance(e1, SetValue)):
+                        if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
                             return
-                        if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                        if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                             return
                         e2 = SetValue(e2.s.intersection(e1.s))
                 else:
@@ -1581,40 +1581,40 @@ class NaryOp(Op):
         elif self.n == 1:
             e = context.pop()
             if op == "-":
-                if not self.checktype(state, sa, isinstance(e, int) or isinstance(e, float)):
+                if not self.checktype(state, context, sa, isinstance(e, int) or isinstance(e, float)):
                     return
                 context.push(-e)
             elif op == "not":
-                if not self.checktype(state, sa, isinstance(e, bool)):
+                if not self.checktype(state, context, sa, isinstance(e, bool)):
                     return
                 context.push(not e)
             elif op == "atLabel":
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
                     return
-                if not self.checktype(state, sa, isinstance(e, str)):
+                if not self.checktype(state, context, sa, isinstance(e, str)):
                     return
                 context.push(self.atLabel(state, e))
             elif op == "cardinality":
-                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
                     return
                 context.push(len(e.s))
             elif op == "min":
-                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
                     return
                 lst = sorted(e.s, key=keyValue)
                 context.push(lst[0])
             elif op == "max":
-                if not self.checktype(state, sa, isinstance(e, SetValue)):
+                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
                     return
                 lst = sorted(e.s, key=keyValue)
                 context.push(lst[-1])
             elif op == "nametag":
-                if not self.checktype(state, sa, e == novalue):
+                if not self.checktype(state, context, sa, e == novalue):
                     return
                 context.push(context.nametag)
             elif op == "processes":
-                if not self.checktype(state, sa, e == novalue):
+                if not self.checktype(state, context, sa, e == novalue):
                     return
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
@@ -1625,17 +1625,17 @@ class NaryOp(Op):
                     d[ctx.nametag] = cnt if c == None else (c + cnt)
                 context.push(DictValue(d))
             elif op == "len":
-                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
                 context.push(len(e.d))
             elif op == "keys":
-                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
                 context.push(SetValue(set(e.d.keys())))
             elif op == "hash":
                 context.push((e,).__hash__())
             elif op == "bagsize":
-                if not self.checktype(state, sa, isinstance(e, DictValue)):
+                if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
                 context.push(sum(e.d.values()))
             else:
@@ -1644,11 +1644,11 @@ class NaryOp(Op):
             e2 = context.pop()
             e1 = context.pop()
             if op == "==":
-                # if not self.checktype(state, sa, type(e1) == type(e2)):
+                # if not self.checktype(state, context, sa, type(e1) == type(e2)):
                 #     return
                 context.push(e1 == e2)
             elif op == "!=":
-                # if not self.checktype(state, sa, type(e1) == type(e2)):
+                # if not self.checktype(state, context, sa, type(e1) == type(e2)):
                 #     return
                 context.push(e1 != e2)
             elif op == "<":
@@ -1661,38 +1661,38 @@ class NaryOp(Op):
                 context.push(keyValue(e1) >= keyValue(e2))
             elif op == "-":
                 if isinstance(e1, int) or isinstance(e1, float):
-                    if not self.checktype(state, sa, isinstance(e2, int) or isinstance(e2, float)):
+                    if not self.checktype(state, context, sa, isinstance(e2, int) or isinstance(e2, float)):
                         return
                     context.push(e1 - e2)
                 else:
-                    if not self.checktype(state, sa, isinstance(e1, SetValue)):
+                    if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
                         return
-                    if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                    if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                         return
                     context.push(SetValue(e1.s.difference(e2.s)))
             elif op == "/":
-                if not self.checktype(state, sa, isinstance(e1, int) or isinstance(e1, float)):
+                if not self.checktype(state, context, sa, isinstance(e1, int) or isinstance(e1, float)):
                     return
-                if not self.checktype(state, sa, isinstance(e2, int) or isinstance(e2, float)):
+                if not self.checktype(state, context, sa, isinstance(e2, int) or isinstance(e2, float)):
                     return
                 if isinstance(e1, int) and (e2 == math.inf or e2 == -math.inf):
                     context.push(0)
                 else:
                     context.push(e1 // e2)
             elif op == "%":
-                if not self.checktype(state, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, isinstance(e1, int)):
                     return
-                if not self.checktype(state, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, isinstance(e2, int)):
                     return
                 context.push(e1 % e2)
             elif op == "..":
-                if not self.checktype(state, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, isinstance(e1, int)):
                     return
-                if not self.checktype(state, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, isinstance(e2, int)):
                     return
                 context.push(SetValue(set(range(e1, e2+1))))
             elif op == "in":
-                if not self.checktype(state, sa, isinstance(e2, SetValue)):
+                if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                     return
                 context.push(e1 in e2.s)
             else:
@@ -2188,9 +2188,9 @@ class DictComprehensionRule(Rule):
         return (DictComprehensionAST(self.value, name, expr), t[1:])
 
 class ListComprehensionRule(Rule):
-    def __init__(self, ast, closer):
+    def __init__(self, ast, closers):
         self.ast = ast
-        self.closer = closer
+        self.closers = closers
 
     def parse(self, t):
         name = t[0]
@@ -2198,7 +2198,7 @@ class ListComprehensionRule(Rule):
         self.expect("list comprehension", isname(lexeme), name, "expected a name")
         (lexeme, file, line, column) = t[1]
         self.expect("list comprehension", lexeme == "in", t[1], "expected 'in'")
-        (expr, t) = NaryRule({"]"}).parse(t[2:])
+        (expr, t) = NaryRule(self.closers).parse(t[2:])
         return (ListComprehensionAST(self.ast, name, expr), t)
 
 class SetRule(Rule):
@@ -2258,26 +2258,34 @@ class DictRule(Rule):
         return (DictAST(d), t[1:])
 
 class TupleRule(Rule):
-    def __init__(self, ast, closer):
-        self.ast = ast
-        self.closer = closer
+    def __init__(self, closers):
+        self.closers = closers
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
+        if lexeme in self.closers:
+            return (ConstantAST(
+                (novalue, file, line, column)), t)
+        (ast, t) = NaryRule(self.closers.union({",", "for"})).parse(t)
+        if not ast:
+            return (False, t)
+        (lexeme, file, line, column) = t[0]
+        if lexeme in self.closers:
+            return (ast, t)
         if lexeme == "for":
-            return ListComprehensionRule(self.ast, self.closer).parse(t[1:])
-        d = { ConstantAST((0, file, line, column)): self.ast }
+            return ListComprehensionRule(ast, self.closers).parse(t[1:])
+        d = { ConstantAST((0, file, line, column)): ast }
         i = 1
         while lexeme == ",":
             (lexeme, file, line, column) = t[1]
-            if lexeme == self.closer:
+            if lexeme in self.closers:
                 return (DictAST(d), t[1:])
-            (next, t) = NaryRule({ self.closer, "," }).parse(t[1:])
+            (next, t) = NaryRule(self.closers.union({ "," })).parse(t[1:])
             d[ConstantAST((i, file, line, column))] = next
             i += 1
             (lexeme, file, line, column) = t[0]
-        self.expect("dict expression", lexeme == self.closer, t[0],
-                "expected %s"%self.closer)
+        self.expect("tuple expression", lexeme in self.closers, t[0],
+                "expected %s"%self.closers)
         return (DictAST(d), t)
 
 class BasicExpressionRule(Rule):
@@ -2310,16 +2318,7 @@ class BasicExpressionRule(Rule):
             return DictRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
-            (lexeme, file, line, column) = t[1]
-            if lexeme == closer:
-                return (ConstantAST(
-                    (novalue, file, line, column)), t[2:])
-            (ast, t) = NaryRule({closer, ",", "for"}).parse(t[1:])
-            if not ast:
-                return (ast, t)
-            (lexeme, file, line, column) = t[0]
-            if lexeme != closer:
-                (ast, t) = TupleRule(ast, closer).parse(t)
+            (ast, t) = TupleRule({closer}).parse(t[1:])
             return (ast, t[1:])
         if lexeme == "&":
             (ast, t) = LValueRule().parse(t[1:])
@@ -3088,12 +3087,8 @@ class AssignmentRule(Rule):
         self.op = op
 
     def parse(self, t):
-        (rv, t) = NaryRule({";", ","}).parse(t)
-        (lexeme, file, line, column) = t[0]
-        if lexeme == ",":
-            (ast, t) = TupleRule(rv, ";").parse(t)
-            return (AssignmentAST(self.lhslist, ast, self.op), t)
-        return (AssignmentAST(self.lhslist, rv, self.op), t)
+        (ast, t) = TupleRule({";"}).parse(t)
+        return (AssignmentAST(self.lhslist, ast, self.op), t)
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -3224,12 +3219,12 @@ class StatementRule(Rule):
                 (tuples, t) = LetLhsRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "=", t[0], "expected '='")
-                (ast, t) = NaryRule({":", ","}).parse(t[1:])
+                (ast, t) = TupleRule({":", "let"}).parse(t[1:])
                 vars.append((tuples, ast))
                 (lexeme, file, line, column) = t[0]
                 if lexeme == ":":
                     break
-                self.expect("let statement", lexeme == ",", t[0], "expected ',' or ':'")
+                self.expect("let statement", lexeme == "let", t[0], "expected 'let' or ':'")
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (LetAST(vars, stat), self.skip(token, t))
         if lexeme == "atomic":

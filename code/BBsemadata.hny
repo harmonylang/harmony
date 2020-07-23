@@ -8,12 +8,10 @@ def producer(i):
     produce((i, 1));
 ;
 def consumer():
-    let first = consume():
-        let second = consume():
-            assert (first[0] != second[0]) or (first[1] < second[1]);
-            atomic:
-                received += { first, second };
-            ;
+    let first = consume() let second = consume():
+        assert (first[0] != second[0]) or (first[1] < second[1]);
+        atomic:
+            received += { first, second };
         ;
     ;
 ;
