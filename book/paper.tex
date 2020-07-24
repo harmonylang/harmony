@@ -2137,8 +2137,8 @@ in which processes wait for a lock.
 
 \section*{Exercises}
 \begin{problems}
-\item Write a synchronization module using your own implementation of \texttt{Lock}
-(for example, using Peterson's algorithm or using \texttt{swap}).
+\item Write a new synchronization module, similar to \autoref{fig:spinlocks}, but using
+atomic swap.
 \item
 Run \autoref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
 and (3) your own module.  Report how many states were explored by Harmony for each
