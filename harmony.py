@@ -799,12 +799,17 @@ class CutOp(Op):
 
     def eval(self, state, context):
         v = context.pop()
-        assert isinstance(v, SetValue), v
-        assert v.s != set()
-        lst = sorted(v.s, key=keyValue)
-        context.push(lst[0])
-        context.push(SetValue(set(lst[1:])))
-        context.pc += 1
+        if not isinstance(v, SetValue):
+            context.failure = "pc = " + str(context.pc) + \
+                ": Error: expected set value, got " + str(v)
+        elif v.s == set():
+            context.failure = "pc = " + str(context.pc) + \
+                ": Error: expected non-empty set value"
+        else:
+            lst = sorted(v.s, key=keyValue)
+            context.push(lst[0])
+            context.push(SetValue(set(lst[1:])))
+            context.pc += 1
 
 # Splits a tuple into its elements
 class SplitOp(Op):
@@ -1750,6 +1755,28 @@ class ApplyOp(Op):
             context.pc = method.pc
 
 class AST:
+    def assign(self, scope, var):
+        if isinstance(var, tuple):
+            scope.checkUnused(var)
+            (lexeme, file, line, column) = var
+            scope.names[lexeme] = ("variable", var)
+        else:
+            assert isinstance(var, list)
+            assert len(var) > 0
+            for v in var:
+                self.assign(scope, v)
+
+    def delete(self, scope, code, var):
+        if isinstance(var, tuple):
+            code.append(DelVarOp(var))  # remove variable
+            (lexeme, file, line, column) = var
+            del scope.names[lexeme]
+        else:
+            assert isinstance(var, list)
+            assert len(var) > 0
+            for v in var:
+                self.delete(scope, code, v)
+
     def isConstant(self, scope):
         return False
 
@@ -2751,28 +2778,6 @@ class LetAST(AST):
     def __repr__(self):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
-    def assign(self, scope, var):
-        if isinstance(var, tuple):
-            scope.checkUnused(var)
-            (lexeme, file, line, column) = var
-            scope.names[lexeme] = ("variable", var)
-        else:
-            assert isinstance(var, list)
-            assert len(var) > 0
-            for v in var:
-                self.assign(scope, v)
-
-    def delete(self, scope, code, var):
-        if isinstance(var, tuple):
-            code.append(DelVarOp(var))  # remove variable
-            (lexeme, file, line, column) = var
-            del scope.names[lexeme]
-        else:
-            assert isinstance(var, list)
-            assert len(var) > 0
-            for v in var:
-                self.delete(scope, code, v)
-
     def compile(self, scope, code):
         for (var, expr) in self.vars:
             expr.compile(scope, code)
@@ -2796,18 +2801,16 @@ class ForAST(AST):
         return "For(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        scope.checkUnused(self.var)
+        self.assign(scope, self.var)
         uid = len(code)
-        (var, file, line, column) = self.var
-
         self.expr.compile(scope, code)     # first push the set
-        S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
+        S = ("%set:"+str(uid), None, None, None)   # save in variable "%set"
         code.append(StoreVarOp(S))
 
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
-        code.append(PushOp((SetValue(set()), file, line, column)))
-        code.append(NaryOp(("!=", file, line, column), 2))
+        code.append(PushOp((SetValue(set()), None, None, None)))
+        code.append(NaryOp(("!=", None, None, None), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
@@ -2815,15 +2818,11 @@ class ForAST(AST):
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
-        # TODO.  Figure out how to do this better
-        ns = Scope(scope)
-        ns.names[var] = ("variable", self.var)
-
-        self.stat.compile(ns, code)
+        self.stat.compile(scope, code)
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
 
-        code.append(DelVarOp(self.var))
+        self.delete(scope, code, self.var)
         code.append(DelVarOp(S))
 
 class AtomicAST(AST):
@@ -3208,22 +3207,20 @@ class StatementRule(Rule):
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (WhileAST(cond, stat), self.skip(token, t))
         if lexeme == "for":
-            var = t[1]
-            (lexeme, file, line, column) = var
-            self.expect("for statement", isname(lexeme), var, "expected name")
-            (lexeme, file, line, column) = t[2]
-            self.expect("for statement", lexeme == "in", t[2], "expected 'in'")
-            (s, t) = NaryRule({":"}).parse(t[3:])
+            (bv, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            self.expect("for statement", lexeme == "in", t[0], "expected 'in'")
+            (s, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
-            return (ForAST(var, s, stat), self.skip(token, t))
+            return (ForAST(bv, s, stat), self.skip(token, t))
         if lexeme == "let":
             vars = []
             while True:
-                (tuples, t) = BoundVarRule().parse(t[1:])
+                (bv, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "=", t[0], "expected '='")
                 (ast, t) = TupleRule({":", "let"}).parse(t[1:])
-                vars.append((tuples, ast))
+                vars.append((bv, ast))
                 (lexeme, file, line, column) = t[0]
                 if lexeme == ":":
                     break
