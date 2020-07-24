@@ -1468,8 +1468,8 @@ class DictOp(Op):
         nitems = context.pop()
         d = {}
         for i in range(nitems):
-            k = context.pop()
             v = context.pop()
+            k = context.pop()
             d[k] = v
         context.push(DictValue(d))
         context.pc += 1
@@ -1894,24 +1894,25 @@ class DictAST(AST):
 
     def gencode(self, scope, code):
         for (k, v) in self.record.items():
-            v.compile(scope, code)
             k.compile(scope, code)
+            v.compile(scope, code)
         code.append(PushOp((len(self.record), None, None, None)))
         code.append(DictOp())
 
 class SetComprehensionAST(AST):
-    def __init__(self, value, var, expr):
+    def __init__(self, value, var, expr, token):
         self.value = value
         self.var = var
         self.expr = expr
+        self.token = token
 
     def __repr__(self):
         return "SetComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
-        scope.checkUnused(self.var)
+        self.assign(scope, self.var)
         uid = len(code)
-        (var, file, line, column) = self.var
+        (lexeme, file, line, column) = self.token
 
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
@@ -1941,33 +1942,30 @@ class SetComprehensionAST(AST):
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
-        # TODO.  Figure out how to do this better
-        ns = Scope(scope)
-        ns.names[var] = ("variable", self.var)
-
-        self.value.compile(ns, code)
+        self.value.compile(scope, code)
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
         code.append(SetOp())
 
-        code.append(DelVarOp(self.var))
+        self.delete(scope, code, self.var)
         code.append(DelVarOp(S))
         code.append(DelVarOp(N))
 
 class DictComprehensionAST(AST):
-    def __init__(self, value, var, expr):
+    def __init__(self, value, var, expr, token):
         self.value = value
         self.var = var
         self.expr = expr
+        self.token = token
 
     def __repr__(self):
         return "DictComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
-        scope.checkUnused(self.var)
+        self.assign(scope, self.var)
         uid = len(code)
-        (var, file, line, column) = self.var
+        (lexeme, file, line, column) = self.token
 
         # Evaluate the set and store in a temporary variable
         # TODO.  Should store as sorted list for determinism
@@ -1985,8 +1983,8 @@ class DictComprehensionAST(AST):
         #   while X != {}:
         #       var := oneof X
         #       X := X - var
-        #       push value
         #       push key
+        #       push value
         pc = len(code)
         code.append(LoadVarOp(S))
         code.append(PushOp((SetValue(set()), file, line, column)))
@@ -1996,39 +1994,35 @@ class DictComprehensionAST(AST):
         code.append(LoadVarOp(S))
         code.append(CutOp())  
         code.append(StoreVarOp(S))
+        code.append(DupOp())
         code.append(StoreVarOp(self.var))
 
-        # TODO.  Figure out how to do this better
-        ns = Scope(scope)
-        ns.names[var] = ("variable", self.var)
-
-        self.value.compile(ns, code)
-        code.append(LoadVarOp(self.var))
+        self.value.compile(scope, code)
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var))
+        self.delete(scope, code, self.var)
         code.append(DelVarOp(S))
         code.append(DelVarOp(N))
 
 class ListComprehensionAST(AST):
-    def __init__(self, value, var, expr):
+    def __init__(self, value, var, expr, token):
         self.value = value
         self.var = var
         self.expr = expr
+        self.token = token
 
     def __repr__(self):
         return "ListComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
-        scope.checkUnused(self.var)
+        self.assign(scope, self.var)
         uid = len(code)
-        (var, file, line, column) = self.var
+        (lexeme, file, line, column) = self.token
 
         # Evaluate the set and store in a temporary variable
-        # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
         S = ("%set:"+str(uid), file, line, column)
         code.append(StoreVarOp(S))
@@ -2048,8 +2042,8 @@ class ListComprehensionAST(AST):
         #   while X != {}:
         #       var := oneof X
         #       X := X - var
-        #       push value
         #       push index
+        #       push value
         #       increment index
         pc = len(code)
         code.append(LoadVarOp(S))
@@ -2062,13 +2056,9 @@ class ListComprehensionAST(AST):
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
-        # TODO.  Figure out how to do this better
-        ns = Scope(scope)
-        ns.names[var] = ("variable", self.var)
-
         # push value and index
-        self.value.compile(ns, code)
         code.append(LoadVarOp(I))
+        self.value.compile(scope, code)
 
         # increment index
         code.append(PushOp((1, file, line, column)))
@@ -2081,7 +2071,7 @@ class ListComprehensionAST(AST):
         code.append(LoadVarOp(N))
         code.append(DictOp())
 
-        code.append(DelVarOp(self.var))
+        self.delete(scope, code, self.var)
         code.append(DelVarOp(S))
         code.append(DelVarOp(N))
         code.append(DelVarOp(I))
@@ -2209,26 +2199,22 @@ class SetComprehensionRule(Rule):
         self.value = value
 
     def parse(self, t):
-        name = t[0]
-        (lexeme, file, line, column) = name
-        self.expect("set comprehension", isname(lexeme), name, "expected a name")
-        (lexeme, file, line, column) = t[1]
-        self.expect("set comprehension", lexeme == "in", t[1], "expected 'in'")
-        (expr, t) = NaryRule({"}"}).parse(t[2:])
-        return (SetComprehensionAST(self.value, name, expr), t[1:])
+        (bv, t) = BoundVarRule().parse(t)
+        (lexeme, file, line, column) = token = t[0]
+        self.expect("set comprehension", lexeme == "in", t[0], "expected 'in'")
+        (expr, t) = NaryRule({"}"}).parse(t[1:])
+        return (SetComprehensionAST(self.value, bv, expr, token), t[1:])
 
 class DictComprehensionRule(Rule):
     def __init__(self, value):
         self.value = value
 
     def parse(self, t):
-        name = t[0]
-        (lexeme, file, line, column) = name
-        self.expect("dict comprehension", isname(lexeme), name, "expected a name")
-        (lexeme, file, line, column) = t[1]
-        self.expect("dict comprehension", lexeme == "in", t[1], "expected 'in'")
-        (expr, t) = NaryRule({"}"}).parse(t[2:])
-        return (DictComprehensionAST(self.value, name, expr), t[1:])
+        (bv, t) = BoundVarRule().parse(t)
+        (lexeme, file, line, column) = token = t[0]
+        self.expect("dict comprehension", lexeme == "in", t[0], "expected 'in'")
+        (expr, t) = NaryRule({"}"}).parse(t[1:])
+        return (DictComprehensionAST(self.value, bv, expr, token), t[1:])
 
 class ListComprehensionRule(Rule):
     def __init__(self, ast, closers):
@@ -2236,13 +2222,11 @@ class ListComprehensionRule(Rule):
         self.closers = closers
 
     def parse(self, t):
-        name = t[0]
-        (lexeme, file, line, column) = name
-        self.expect("list comprehension", isname(lexeme), name, "expected a name")
-        (lexeme, file, line, column) = t[1]
-        self.expect("list comprehension", lexeme == "in", t[1], "expected 'in'")
-        (expr, t) = NaryRule(self.closers).parse(t[2:])
-        return (ListComprehensionAST(self.ast, name, expr), t)
+        (bv, t) = BoundVarRule().parse(t)
+        (lexeme, file, line, column) = token = t[0]
+        self.expect("list comprehension", lexeme == "in", t[0], "expected 'in'")
+        (expr, t) = NaryRule(self.closers).parse(t[1:])
+        return (ListComprehensionAST(self.ast, bv, expr, token), t)
 
 class SetRule(Rule):
     def parse(self, t):
