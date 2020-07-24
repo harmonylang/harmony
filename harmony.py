@@ -2499,32 +2499,31 @@ class AssignmentAST(AST):
             code.append(StoreOp(None, base.token))
 
     def recurse1(self, lvs, scope, code):
-        for lv in lvs:
-            if isinstance(lv, list):
+        if isinstance(lvs, list):
+            for lv in lvs:
                 self.recurse1(lv, scope, code)
-            else:
-                assert isinstance(lv, LValueAST)
-                self.phase1(lv, scope, code)
+        else:
+            assert isinstance(lvs, LValueAST)
+            self.phase1(lvs, scope, code)
 
     def recurse2(self, lvs, scope, code, skip):
-        n = len(lvs)
-        if n > 1:
+        if isinstance(lvs, list):
+            n = len(lvs)
             code.append(SplitOp(n))
-        for lv in reversed(lvs):
-            n -= 1
-            if isinstance(lv, list):
-                self.recurse2(lv, scope, code, skip)
-            else:
-                assert isinstance(lv, LValueAST)
-                self.phase2(lv, scope, code, skip + n)
+            for lv in reversed(lvs):
+                n -= 1
+                self.recurse2(lv, scope, code, skip + n)
+        else:
+            assert isinstance(lvs, LValueAST)
+            self.phase2(lvs, scope, code, skip)
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.op
         if lexeme != '=':
             assert len(self.lhslist) == 1, self.lhslist
-            lvs = self.lhslist[0]
-            assert len(lvs) == 1, self.lhslist
-            self.opassign(lvs[0], scope, code)
+            lv = self.lhslist[0]
+            assert isinstance(lv, LValueAST)
+            self.opassign(lv, scope, code)
             return
 
         # Compute the addresses of "complex" lhs expressions
@@ -3035,35 +3034,26 @@ class LhsRule(Rule):
                 self.expect("assignment statement", lexeme == closer, t[0],
                                 "expected '%s'"%closer)
                 t = t[1:]
-                if len(child) > 1:
+                if isinstance(child, list):
                     node.append(child)
                     (lexeme, file, line, column) = t[0]
-                    if lexeme == ",":
-                        t = t[1:]
-                        continue
-                    return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
-                ast = child[0]
-                assert isinstance(ast, LValueAST)
-                if len(ast.indexes) > 1:
-                    node.append(ast)
-                    (lexeme, file, line, column) = t[0]
-                    if lexeme == ",":
-                        t = t[1:]
-                        continue
-                    else:
-                        return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
-                else:
-                    indexes = ast.indexes
+                    if lexeme != ',':
+                        return (node[0], t) if len(node) == 1 else (node, t)
+                    t = t[1:]
+                    continue
+                assert isinstance(child, LValueAST)
+                indexes = child.indexes
             elif lexeme == "!":
                 (ast, t) = ExpressionRule().parse(t[1:])
                 indexes = [PointerAST(ast, token)]
             elif lexeme in { "setintlevel", "stop" }:
                 (ast, t) = ExpressionRule().parse(t)
                 indexes = [ast]
-            else:
-                self.expect("assignment statement", isname(lexeme), t[0], "expecting a name")
+            elif isname(lexeme):
                 indexes = [NameAST(t[0])]
                 t = t[1:]
+            else:
+                return (node, t)
             while t != []:
                 (index, t) = BasicExpressionRule().parse(t)
                 if index == False:
@@ -3072,7 +3062,7 @@ class LhsRule(Rule):
             node.append(LValueAST(indexes, token))
             (lexeme, file, line, column) = t[0]
             if lexeme != ',':
-                return (node[0], t) if len(node) == 1 and isinstance(node[0], list) else (node, t)
+                return (node[0], t) if len(node) == 1 else (node, t)
             t = t[1:]
 
 class AssignmentRule(Rule):
@@ -3171,6 +3161,9 @@ class StatementRule(Rule):
     def parse(self, t):
         token = t[0]
         (lexeme, file, line, column) = token
+        if lexeme == ";":
+            print("empty statement", token)
+            exit(1)
         if lexeme == "const":
             const = t[1]
             (lexeme, file, line, column) = t[1]
