@@ -2845,10 +2845,11 @@ class LetAST(AST):
             self.delete(scope, code, var)
 
 class ForAST(AST):
-    def __init__(self, var, expr, stat):
+    def __init__(self, var, expr, stat, token):
         self.var = var
         self.expr = expr
         self.stat = stat
+        self.token = token
 
     def __repr__(self):
         return "For(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
@@ -2857,13 +2858,14 @@ class ForAST(AST):
         self.assign(scope, self.var)
         uid = len(code)
         self.expr.compile(scope, code)     # first push the set
-        S = ("%set:"+str(uid), None, None, None)   # save in variable "%set"
+        (lexeme, file, line, column) = self.token
+        S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
         code.append(StoreVarOp(S))
 
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
-        code.append(PushOp((SetValue(set()), None, None, None)))
-        code.append(NaryOp(("!=", None, None, None), 2))
+        code.append(PushOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
@@ -3265,7 +3267,7 @@ class StatementRule(Rule):
             self.expect("for statement", lexeme == "in", t[0], "expected 'in'")
             (s, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
-            return (ForAST(bv, s, stat), self.skip(token, t))
+            return (ForAST(bv, s, stat, token), self.skip(token, t))
         if lexeme == "let":
             vars = []
             while True:
