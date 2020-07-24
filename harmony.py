@@ -1131,19 +1131,42 @@ class StoreVarOp(Op):
     def __init__(self, v):
         self.v = v
 
+    def convert(self, x):
+        if isinstance(x, tuple):
+            return x[0]
+        else:
+            assert isinstance(x, list)
+            result = "";
+            for v in x:
+                if result != "":
+                    result += ", "
+                result += self.convert(v)
+            return "(" + result + ")"
+
     def __repr__(self):
         if self.v == None:
             return "StoreVar"
         else:
-            (lexeme, file, line, column) = self.v
-            return "StoreVar " + str(lexeme)
+            return "StoreVar " + self.convert(self.v)
 
     def explain(self):
         if self.v == None:
             return "pop a value and the address of a method variable and store the value at that address"
         else:
-            return "pop a value and store in method variable " + self.v[0]
+            return "pop a value and store in " + self.convert(self.v)
 
+    def store(self, context, var, val):
+        if isinstance(var, tuple):
+            (lexeme, file, line, column) = var
+            context.set([lexeme], val)
+        else:
+            assert isinstance(var, list)
+            assert isinstance(val, DictValue)
+            assert len(var) == len(val.d), (var, val.d)
+            for i in range(len(var)):
+                self.store(context, var[i], val.d[i])
+
+    # TODO.  Check error message.  Doesn't seem right
     def eval(self, state, context):
         if self.v == None:
             value = context.pop()
@@ -1155,9 +1178,8 @@ class StoreVarOp(Op):
             except AttributeError:
                 context.failure = "Error: " + str(av.indexes) + " not a dictionary"
         else:
-            (lexeme, file, line, column) = self.v
             try:
-                context.set([lexeme], context.pop())
+                self.store(context, self.v, context.pop())
                 context.pc += 1
             except AttributeError:
                 context.failure = "Error: " + str(self.v) + " not a dictionary"
@@ -2729,40 +2751,33 @@ class LetAST(AST):
     def __repr__(self):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
-    def assign(self, scope, code, var):
-        (type, v) = var;
-        if type == "name":
-            scope.checkUnused(v)
-            (lexeme, file, line, column) = v
-            scope.names[lexeme] = ("variable", v)
-            code.append(StoreVarOp(v))
+    def assign(self, scope, var):
+        if isinstance(var, tuple):
+            scope.checkUnused(var)
+            (lexeme, file, line, column) = var
+            scope.names[lexeme] = ("variable", var)
         else:
-            assert type == "nest"
-            assert len(v) > 0
-            for index in range(0, len(v)):
-                code.append(DupOp())
-                code.append(PushOp((index, None, None, None)))      # TODO: file, line, col
-                code.append(MoveOp(2))      # swap the top two elements on the stack
-                code.append(ApplyOp(None))
-                self.assign(scope, code, v[index])
-            code.append(PopOp())        # TODO: last value does not need dupping
+            assert isinstance(var, list)
+            assert len(var) > 0
+            for v in var:
+                self.assign(scope, v)
 
     def delete(self, scope, code, var):
-        (type, v) = var;
-        if type == "name":
-            code.append(DelVarOp(v))  # remove variable
-            (lexeme, file, line, column) = v
+        if isinstance(var, tuple):
+            code.append(DelVarOp(var))  # remove variable
+            (lexeme, file, line, column) = var
             del scope.names[lexeme]
         else:
-            assert type == "nest"
-            assert len(v) > 0
-            for x in v:
-                self.delete(scope, code, x)
+            assert isinstance(var, list)
+            assert len(var) > 0
+            for v in var:
+                self.delete(scope, code, v)
 
     def compile(self, scope, code):
         for (var, expr) in self.vars:
             expr.compile(scope, code)
-            self.assign(scope, code, var)
+            code.append(StoreVarOp(var))
+            self.assign(scope, var)
 
         # Run the body
         self.stat.compile(scope, code)
@@ -3128,7 +3143,7 @@ class BoundVarRule(Rule):
         while True:
             (lexeme, file, line, column) = t[0]
             if (isname(lexeme)):
-                tuples.append(("name", t[0]))
+                tuples.append(t[0])
             elif lexeme == "(":
                 (nest, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
@@ -3138,15 +3153,15 @@ class BoundVarRule(Rule):
                 (nest, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, column) = t[0]
                 self.expect("let statement", lexeme == "]", t[0], "expected ']'")
-                tuples.append(("nest", nest))
+                tuples.append(nest)
             else:
-                return (("nest", tuples), t)
+                return (tuples, t)
             (lexeme, file, line, column) = t[1]
             if lexeme != ",":
                 if len(tuples) == 1:
                     return (tuples[0], t[1:])
                 else:
-                    return (("nest", tuples), t[1:])
+                    return (tuples, t[1:])
             t = t[2:]
 
 class StatementRule(Rule):
