@@ -2973,6 +2973,21 @@ class ConstAST(AST):
     def __repr__(self):
         return "Const(" + str(self.const) + ", " + str(self.expr) + ")"
 
+    def set(self, scope, const, v):
+        if isinstance(const, tuple):
+            (lexeme, file, line, column) = const
+            if lexeme in constants:
+                value = constants[lexeme]
+            else:
+                value = v
+            scope.names[lexeme] = ("constant", (value, file, line, column))
+        else:
+            assert isinstance(const, list), const
+            assert isinstance(v, DictValue), v
+            assert len(const) == len(v.d), (const, v)
+            for i in range(len(const)):
+                self.set(scope, const[i], v.d[i])
+
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
             print(self.const, ": Parse error: expression not a constant", str(self.expr))
@@ -2985,12 +3000,7 @@ class ConstAST(AST):
         while ctx.pc != len(code2):
             code2[ctx.pc].eval(state, ctx)
         v = ctx.pop()
-        (lexeme, file, line, column) = self.const
-        if lexeme in constants:
-            value = constants[lexeme]
-        else:
-            value = v
-        scope.names[lexeme] = ("constant", (value, file, line, column))
+        self.set(scope, self.const, v)
 
 class LValueRule(Rule):
     def parse(self, t):
@@ -3165,12 +3175,10 @@ class StatementRule(Rule):
             print("empty statement", token)
             exit(1)
         if lexeme == "const":
-            const = t[1]
-            (lexeme, file, line, column) = t[1]
-            self.expect("constant definition", isname(lexeme), t[1], "expected name")
-            (lexeme, file, line, column) = t[2]
-            self.expect("constant definition", lexeme == "=", t[2], "expected '='")
-            (ast, t) = NaryRule({";"}).parse(t[3:])
+            (const, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            self.expect("constant definition", lexeme == "=", t[0], "expected '='")
+            (ast, t) = TupleRule({";"}).parse(t[1:])
             return (ConstAST(const, ast), self.skip(token, t))
         if lexeme == "if":
             alts = []
