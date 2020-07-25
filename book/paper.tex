@@ -4147,9 +4147,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$e$ == $e$}, \texttt{$e$ != $e$} & two Harmony values of the same type \\
 \hline
-\texttt{$e$ < $e$, $e$ <= $e$} & any two Harmony values \\
-\hline
-\texttt{$e$ > $e$, $e$ >= $e$} & any two Harmony values \\
+\texttt{$e$ < $e$, $e$ <= $e$, $e$ > $e$, $e$ >= $e$} & any two Harmony values \\
 \hline
 \texttt{$e$ and $e$ and ...} & two or more booleans \\
 \hline
@@ -4187,11 +4185,9 @@ Harmony currently supports the following operators:
 \hline
 \texttt{choose $e$} & a set \\
 \hline
-\texttt{min $e$, max $e$} & a set \\
+\texttt{min $e$, max $e$, cardinality $e$} & a set \\
 \hline
-\texttt{cardinality $e$} & a set \\
-\hline
-\texttt{keys $e$, len $e$} & a dictionary (includes tuple or list) \\
+\texttt{keys $e$, len $e$} & a dictionary (includes tuple and list) \\
 \hline
 \texttt{bagsize $e$} & a bag \\
 \hline
@@ -4207,7 +4203,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{?}\textit{lv} & \textit{lv} is an lvalue \\
 \hline
-\texttt{lambda $b$: $e$ end} & $b$ is a bounded variable, $e$ an expression\\
+\texttt{lambda $a$: $e$ end} & $a$ is a bounded variable, $e$ an expression\\
 \hline
 \end{tabular}
 }
@@ -4265,17 +4261,17 @@ Harmony currently supports the following statements:
 \hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
-\texttt{const b = $e$} & \texttt{b} is a bounded variable, $e$ is a constant expression\\
+\texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
 \hline
-\texttt{def m $b$: S} & \texttt{m} is an identifier, $b$ a bounded variable, \texttt{S} a list of statements\\
+\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} a list of statements\\
 \hline
-\texttt{let $b$ = $e$ [let ...]: S} & $b$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
+\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
 \hline
 \texttt{if $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{for $b$ in $e$: S} & $b$ is a bounded variable, $e$ is a set,
+\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
 \texttt{atomic: S} & \texttt{S} a list of statements\\
