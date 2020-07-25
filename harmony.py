@@ -470,6 +470,7 @@ def isreserved(s):
         "def",
         "del",
         "else",
+        "end",
         "False",
         "fun",
         "for",
@@ -480,6 +481,7 @@ def isreserved(s):
         "in",
         "inf",
         "keys",
+        "lambda",
         "len",
         "let",
         "max",
@@ -490,9 +492,11 @@ def isreserved(s):
         "or",
         "pass",
         "processes",
-        "spawn",
         "setintlevel",
+        "spawn",
         "stop",
+        "such",
+        "that",
         "trap",
         "True",
         "while"
@@ -2361,6 +2365,12 @@ class ExpressionRule(Rule):
     def parse(self, t):
         func = t[0]
         (lexeme, file, line, column) = func
+        if lexeme == "lambda":
+            (bv, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, column) = t[0]
+            self.expect("lambda expression", lexeme == ":", t[0], "expected ':'")
+            (ast, t) = NaryRule(["end"]).parse(t[1:])
+            return (LambdaAST(bv, ast, func), t[1:])
         if lexeme == "setintlevel":
             (ast, t) = ExpressionRule().parse(t[1:])
             return (SetIntLevelAST(ast), t)
@@ -2848,6 +2858,32 @@ class MethodAST(AST):
         code.append(ReturnOp())
 
         code[pc] = JumpOp(len(code))
+
+class LambdaAST(AST):
+    def __init__(self, args, stat, token):
+        self.args = args
+        self.stat = stat
+        self.token = token
+
+    def __repr__(self):
+        return "Lambda " + str(self.args) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        pc = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(FrameOp(self.token, self.args))
+
+        (lexeme, file, line, column) = self.token
+        ns = Scope(scope)
+        self.assign(ns, self.args)
+        R = ("result", file, line, column)
+        ns.names["result"] = ("variable", R)
+        self.stat.compile(ns, code)
+        code.append(StoreVarOp(R))
+        code.append(ReturnOp())
+
+        code[pc] = JumpOp(len(code))
+        code.append(PushOp((PcValue(pc + 1), file, line, column)))
 
 class CallAST(AST):
     def __init__(self, expr):
