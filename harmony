@@ -827,6 +827,34 @@ class Op:
     def explain(self):
         return "no explanation yet"
 
+    def convert(self, x):
+        if isinstance(x, tuple):
+            return x[0]
+        else:
+            assert isinstance(x, list)
+            result = "";
+            for v in x:
+                if result != "":
+                    result += ", "
+                result += self.convert(v)
+            return "(" + result + ")"
+
+    def store(self, context, var, val):
+        if isinstance(var, tuple):
+            (lexeme, file, line, column) = var
+            context.set([lexeme], val)
+        else:
+            assert isinstance(var, list)
+            if not isinstance(val, DictValue):
+                context.failure = "Error: pc = %d: tried to assign %s to %s"%(
+                    context.pc, val, self.convert(var))
+            elif len(var) != len(val.d):
+                context.failure = "Error: pc = %d: can't assign %s to %s"%(
+                    context.pc, val, self.convert(var))
+            else:
+                for i in range(len(var)):
+                    self.store(context, var[i], val.d[i])
+
 class SetIntLevelOp(Op):
     def __repr__(self):
         return "SetIntLevel"
@@ -1189,18 +1217,6 @@ class StoreVarOp(Op):
     def __init__(self, v):
         self.v = v
 
-    def convert(self, x):
-        if isinstance(x, tuple):
-            return x[0]
-        else:
-            assert isinstance(x, list)
-            result = "";
-            for v in x:
-                if result != "":
-                    result += ", "
-                result += self.convert(v)
-            return "(" + result + ")"
-
     def __repr__(self):
         if self.v == None:
             return "StoreVar"
@@ -1212,17 +1228,6 @@ class StoreVarOp(Op):
             return "pop a value and the address of a method variable and store the value at that address"
         else:
             return "pop a value and store in " + self.convert(self.v)
-
-    def store(self, context, var, val):
-        if isinstance(var, tuple):
-            (lexeme, file, line, column) = var
-            context.set([lexeme], val)
-        else:
-            assert isinstance(var, list)
-            assert isinstance(val, DictValue)
-            assert len(var) == len(val.d), (var, val.d)
-            for i in range(len(var)):
-                self.store(context, var[i], val.d[i])
 
     # TODO.  Check error message.  Doesn't seem right
     def eval(self, state, context):
@@ -1334,12 +1339,7 @@ class FrameOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.name
-        args = ""
-        for a in self.args:
-            if args != "":
-                args += ", "
-            args += a[0]
-        return "Frame " + str(lexeme) + "(" + str(args) + ")"
+        return "Frame " + str(lexeme) + " " + self.convert(self.args)
 
     def explain(self):
         return "start of method " + str(self.name[0])
@@ -1350,23 +1350,8 @@ class FrameOp(Op):
         context.push(context.vars)
         context.push(context.fp)
         context.fp = len(context.stack) # points to old fp, old vars, and return address
-        if len(self.args) != 1:
-            if (not isinstance(arg, DictValue)) or (len(self.args) != len(arg.d)):
-                context.failure = "Error: argument count mismatch " + \
-                        str(self.name) + ": expected " + str(len(self.args)) + \
-                        " arguments but got " + \
-                        str(len(arg.d) if isinstance(arg, DictValue) else 1)
-                return
-        if self.args == []:
-            context.vars = DictValue({ "result": novalue })
-        elif len(self.args) == 1:
-            (lexeme, file, line, column) = self.args[0]
-            context.vars = DictValue({ "result": novalue, lexeme: arg })
-        else:
-            context.vars = DictValue({ "result": novalue })
-            for i in range(len(self.args)):
-                (lexeme, file, line, column) = self.args[i]
-                context.vars.d[lexeme] = arg.d[i]
+        context.vars = DictValue({ "result": novalue })
+        self.store(context, self.args, arg)
         context.pc += 1
 
 class ReturnOp(Op):
@@ -1815,7 +1800,6 @@ class AST:
             scope.names[lexeme] = ("variable", var)
         else:
             assert isinstance(var, list)
-            assert len(var) > 0
             for v in var:
                 self.assign(scope, v)
 
@@ -2911,9 +2895,7 @@ class MethodAST(AST):
         scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
         ns = Scope(scope)
-        for arg in self.args:
-            (lexeme, afile, aline, acolumn) = arg
-            ns.names[lexeme] = ("variable", arg)
+        self.assign(ns, self.args)
         ns.names["result"] = ("variable", ("result", file, line, column))
         self.stat.compile(ns, code)
         code.append(ReturnOp())
@@ -3285,31 +3267,9 @@ class StatementRule(Rule):
             name = t[1]
             (lexeme, file, line, column) = name
             self.expect("method definition", isname(lexeme), name, "expected name")
-            (lexeme, file, line, column) = t[2]
-            self.expect("method definition", lexeme == "(", t[2], "expected '('")
-            arg = t[3]
-            (lexeme, file, line, column) = arg
-            if lexeme == ")":
-                args = []
-                (stat, t) = BlockRule({";"}).parse(t[4:])
-            else:
-                self.expect("method definition", isname(lexeme), arg,
-                        "expected name or ')'")
-                args = [arg]
-                t = t[4:]
-                (lexeme, file, line, column) = t[0]
-                while lexeme != ")":
-                    self.expect("method definition", lexeme == ",", t[0],
-                                "expected ',' or ')'")
-                    arg = t[1]
-                    (lexeme, file, line, column) = arg
-                    self.expect("method definition", isname(lexeme), arg,
-                                "expected argument name")
-                    args.append(arg)
-                    t = t[2:]
-                    (lexeme, file, line, column) = t[0]
-                (stat, t) = BlockRule({";"}).parse(t[1:])
-            return (MethodAST(name, args, stat, map), self.skip(token, t))
+            (bv, t) = BoundVarRule().parse(t[2:])
+            (stat, t) = BlockRule({";"}).parse(t)
+            return (MethodAST(name, bv, stat, map), self.skip(token, t))
         if lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             return (CallAST(expr), self.skip(token, t))
