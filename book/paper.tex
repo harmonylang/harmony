@@ -4207,6 +4207,8 @@ Harmony currently supports the following operators:
 \hline
 \texttt{?}\textit{lv} & \textit{lv} is an lvalue \\
 \hline
+\texttt{lambda $b$: $e$ end} & $b$ is a bounded variable, $e$ an expression\\
+\hline
 \end{tabular}
 }
 \vspace{1em}
@@ -4263,17 +4265,17 @@ Harmony currently supports the following statements:
 \hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
-\texttt{const v = $e$} & \texttt{v} is an identifier, $e$ is a constant expression\\
+\texttt{const b = $e$} & \texttt{b} is a bounded variable, $e$ is a constant expression\\
 \hline
-\texttt{def m($v$, ...): S} & \texttt{m} and \texttt{v} are identifiers, \texttt{S} a list of statements\\
+\texttt{def m $b$: S} & \texttt{m} is an identifier, $b$ a bounded variable, \texttt{S} a list of statements\\
 \hline
-\texttt{let $v$ = $e$ [let ...]: S} & $v$ is an identifier, $e$ is an expression, \texttt{S} a list of statements\\
+\texttt{let $b$ = $e$ [let ...]: S} & $b$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
 \hline
 \texttt{if $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{for $v$ in $e$: S} & $v$ is an identifier, $e$ is a set,
+\texttt{for $b$ in $e$: S} & $b$ is a bounded variable, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
 \texttt{atomic: S} & \texttt{S} a list of statements\\
