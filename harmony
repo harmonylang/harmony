@@ -1941,10 +1941,11 @@ class DictAST(AST):
         code.append(DictOp())
 
 class SetComprehensionAST(AST):
-    def __init__(self, value, var, expr, token):
+    def __init__(self, value, var, expr, suchthat, token):
         self.value = value
         self.var = var
         self.expr = expr
+        self.suchthat = suchthat
         self.token = token
 
     def __repr__(self):
@@ -1956,15 +1957,13 @@ class SetComprehensionAST(AST):
         (lexeme, file, line, column) = self.token
 
         # Evaluate the set and store in a temporary variable
-        # TODO.  Should store as sorted list for determinism
         self.expr.compile(scope, code)
         S = ("%set:"+str(uid), file, line, column)
         code.append(StoreVarOp(S))
 
-        # Also store the size
+        # Keep track of the size
         N = ("%size:"+str(uid), file, line, column)
-        code.append(LoadVarOp(S))
-        code.append(NaryOp(("cardinality", file, line, column), 1))
+        code.append(PushOp((0, file, line, column)))
         code.append(StoreVarOp(N))
 
         # Now generate the code:
@@ -1983,7 +1982,17 @@ class SetComprehensionAST(AST):
         code.append(StoreVarOp(S))
         code.append(StoreVarOp(self.var))
 
+        if self.suchthat != None:
+            self.suchthat.compile(scope, code)
+            code.append(JumpCondOp(False, pc))
+
         self.value.compile(scope, code)
+
+        code.append(LoadVarOp(N))
+        code.append(PushOp((1, file, line, column)))
+        code.append(NaryOp(("+", file, line, column), 2))
+        code.append(StoreVarOp(N))
+
         code.append(JumpOp(pc))
         code[tst] = JumpCondOp(False, len(code))
         code.append(LoadVarOp(N))
@@ -2243,8 +2252,15 @@ class SetComprehensionRule(Rule):
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
         self.expect("set comprehension", lexeme == "in", t[0], "expected 'in'")
-        (expr, t) = NaryRule({"}"}).parse(t[1:])
-        return (SetComprehensionAST(self.value, bv, expr, token), t[1:])
+        (expr, t) = NaryRule({"}", "such"}).parse(t[1:])
+        (lexeme, file, line, column) = t[0]
+        if lexeme == "such":
+            (lexeme, file, line, column) = t[1]
+            self.expect("set comprehension", lexeme == "that", t[1], "expected 'that'")
+            (suchthat, t) = NaryRule({"}"}).parse(t[2:])
+        else:
+            suchthat = None
+        return (SetComprehensionAST(self.value, bv, expr, suchthat, token), t[1:])
 
 class DictComprehensionRule(Rule):
     def __init__(self, value):
