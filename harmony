@@ -1841,6 +1841,57 @@ class AST:
         else:
             self.gencode(scope, code)
 
+    def comprehension(self, scope, code, isSet):
+        self.assign(scope, self.var)
+        uid = len(code)
+        (lexeme, file, line, column) = self.token
+
+        # Evaluate the set and store in a temporary variable
+        self.expr.compile(scope, code)
+        S = ("%set:"+str(uid), file, line, column)
+        code.append(StoreVarOp(S))
+
+        # Keep track of the size
+        N = ("%size:"+str(uid), file, line, column)
+        code.append(PushOp((0, file, line, column)))
+        code.append(StoreVarOp(N))
+
+        # Now generate the code:
+        #   while X != {}:
+        #       var := oneof X
+        #       X := X - var
+        #       push value
+        pc = len(code)
+        code.append(LoadVarOp(S))
+        code.append(PushOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("!=", file, line, column), 2))
+        tst = len(code)
+        code.append(None)       # going to plug in a Jump op here
+        code.append(LoadVarOp(S))
+        code.append(CutOp())  
+        code.append(StoreVarOp(S))
+        code.append(StoreVarOp(self.var))
+
+        if self.suchthat != None:
+            self.suchthat.compile(scope, code)
+            code.append(JumpCondOp(False, pc))
+
+        self.compmiddle(scope, code, N)
+
+        code.append(LoadVarOp(N))
+        code.append(PushOp((1, file, line, column)))
+        code.append(NaryOp(("+", file, line, column), 2))
+        code.append(StoreVarOp(N))
+
+        code.append(JumpOp(pc))
+        code[tst] = JumpCondOp(False, len(code))
+        code.append(LoadVarOp(N))
+        code.append(SetOp() if isSet else DictOp())
+
+        self.delete(scope, code, self.var)
+        code.append(DelVarOp(S))
+        code.append(DelVarOp(N))
+
 class ConstantAST(AST):
     def __init__(self, const):
         self.const = const
@@ -1951,56 +2002,11 @@ class SetComprehensionAST(AST):
     def __repr__(self):
         return "SetComprehension(" + str(self.var) + ")"
 
-    def compile(self, scope, code):
-        self.assign(scope, self.var)
-        uid = len(code)
-        (lexeme, file, line, column) = self.token
-
-        # Evaluate the set and store in a temporary variable
-        self.expr.compile(scope, code)
-        S = ("%set:"+str(uid), file, line, column)
-        code.append(StoreVarOp(S))
-
-        # Keep track of the size
-        N = ("%size:"+str(uid), file, line, column)
-        code.append(PushOp((0, file, line, column)))
-        code.append(StoreVarOp(N))
-
-        # Now generate the code:
-        #   while X != {}:
-        #       var := oneof X
-        #       X := X - var
-        #       push value
-        pc = len(code)
-        code.append(LoadVarOp(S))
-        code.append(PushOp((SetValue(set()), file, line, column)))
-        code.append(NaryOp(("!=", file, line, column), 2))
-        tst = len(code)
-        code.append(None)       # going to plug in a Jump op here
-        code.append(LoadVarOp(S))
-        code.append(CutOp())  
-        code.append(StoreVarOp(S))
-        code.append(StoreVarOp(self.var))
-
-        if self.suchthat != None:
-            self.suchthat.compile(scope, code)
-            code.append(JumpCondOp(False, pc))
-
+    def compmiddle(self, scope, code, N):
         self.value.compile(scope, code)
 
-        code.append(LoadVarOp(N))
-        code.append(PushOp((1, file, line, column)))
-        code.append(NaryOp(("+", file, line, column), 2))
-        code.append(StoreVarOp(N))
-
-        code.append(JumpOp(pc))
-        code[tst] = JumpCondOp(False, len(code))
-        code.append(LoadVarOp(N))
-        code.append(SetOp())
-
-        self.delete(scope, code, self.var)
-        code.append(DelVarOp(S))
-        code.append(DelVarOp(N))
+    def compile(self, scope, code):
+        self.comprehension(scope, code, True)
 
 class DictComprehensionAST(AST):
     def __init__(self, value, var, expr, token):
@@ -2058,16 +2064,24 @@ class DictComprehensionAST(AST):
         code.append(DelVarOp(N))
 
 class ListComprehensionAST(AST):
-    def __init__(self, value, var, expr, token):
+    def __init__(self, value, var, expr, suchthat, token):
         self.value = value
         self.var = var
         self.expr = expr
+        self.suchthat = suchthat
         self.token = token
 
     def __repr__(self):
         return "ListComprehension(" + str(self.var) + ")"
 
+    def compmiddle(self, scope, code, N):
+        code.append(LoadVarOp(N))
+        self.value.compile(scope, code)
+
     def compile(self, scope, code):
+        self.comprehension(scope, code, False)
+
+    def compile2(self, scope, code):
         self.assign(scope, self.var)
         uid = len(code)
         (lexeme, file, line, column) = self.token
@@ -2282,8 +2296,15 @@ class ListComprehensionRule(Rule):
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
         self.expect("list comprehension", lexeme == "in", t[0], "expected 'in'")
-        (expr, t) = NaryRule(self.closers).parse(t[1:])
-        return (ListComprehensionAST(self.ast, bv, expr, token), t)
+        (expr, t) = NaryRule(self.closers | {"such"}).parse(t[1:])
+        (lexeme, file, line, column) = t[0]
+        if lexeme == "such":
+            (lexeme, file, line, column) = t[1]
+            self.expect("list comprehension", lexeme == "that", t[1], "expected 'that'")
+            (suchthat, t) = NaryRule(self.closers).parse(t[2:])
+        else:
+            suchthat = None
+        return (ListComprehensionAST(self.ast, bv, expr, suchthat, token), t)
 
 class SetRule(Rule):
     def parse(self, t):
