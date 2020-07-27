@@ -55,6 +55,7 @@ CODE = \
     naiveFlags.tex \
     naiveLock.tex \
     naiveTurn.tex \
+    oo.tex \
     qsort.tex \
     qsorttest.tex \
     semaphore.tex \

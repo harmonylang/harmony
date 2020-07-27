@@ -45,6 +45,14 @@ def values(d):
     ;
 ;
 
+# like Python .items()
+def items(d):
+    result = [];
+    for k in keys d:
+        result += [ (k, d[k]), ];
+    ;
+;
+
 # like Python enumerate()
 def enumerate(d):
     result = [];

@@ -19,6 +19,7 @@
 \def\itemautorefname{Exercise}%
 \def\chapterautorefname{Chapter}%
 \def\figureautorefname{Figure}%
+\def\sectionautorefname{Section}%
 
 \AtBeginEnvironment{enumerate}{\everymath{\displaystyle}}
 \newlist{problems}{enumerate}{2}
@@ -1747,17 +1748,19 @@ Harmony is not an object-oriented language like Python is.  In Python
 you can pass a reference to an object to a method, and that method
 can then update the object.  In Harmony, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
-For this (as well as some other uses), Harmony supports \emph{pointers}
-\index{pointer}%
-to shared variables.
-If $x$ is a shared variable, then the expression ?$x$
- is a pointer to $x$ (also known as the \emph{address}
+For this, each shared variable has an \emph{address}.
 \index{address}%
-of $x$).
-Conversely, if $p$ is a pointer to a shared variable, then the
+If $x$ is a shared variable, then the expression ?$x$ is the address of $x$.
+If a variable contains an address, we call that variable a \emph{pointer}.
+\index{pointer}%
+If $p$ is a pointer to a shared variable, then the
 expression \texttt{!{}}$p$ is the value of the shared variable.
 In particular, \texttt{!{}?}$x$ == $x$.
-This is similar to how C pointers work.
+This is similar to how C pointers work (\texttt{*\string&}$x$ == $x$).
+
+Because there are no objects in Harmony,
+there are no object methods either.
+However, methods in Harmony are program counter constants.
 
 \autoref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
@@ -1781,17 +1784,6 @@ and include it using the Harmony \texttt{import} statement.
 \index{module}%
 This would
 make the code re-usable by other applications.
-
-For those who are
-extra adventurous: you can add the \texttt{P\_enter} and
-\texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
-like so:
-\begin{code}
-\begin{verbatim}
-dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
-\end{verbatim}
-\end{code}
-That would allow you to simulate object methods.
 
 \chapter{Spinlock}
 \label{ch:spinlock}
@@ -4080,6 +4072,7 @@ for solving semaphore problems.  Look for the double turnstile solution.)
 \appendix
 
 \chapter{List of Values}
+\label{ap:values}
 
 \autoref{ch:harmonymachine} provides an introduction to Harmony values.
 Below is a complete list of Harmony value types with examples:
@@ -4250,9 +4243,11 @@ Harmony currently supports the following statements:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\textit{lv} = $e$ & \textit{lv} is an lvalue and $e$ is an expression\\
+\textit{lv} = [lv =]... $e$ & \textit{lv} is an lvalue and $e$ is an expression\\
 \hline
-\textit{lv} \texttt{[op]=} $e$ & \texttt{op} is one of \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, 
+\textit{lv} \texttt{[op]=} $e$ & \texttt{op} is one of \texttt{+}, \texttt{-},
+\texttt{*}, \texttt{/}, \texttt{//}, \texttt{\%},
+\texttt{\string\&}, \texttt{|}, \texttt{\string\^},
 \texttt{and}, and \texttt{or}\\
 \hline
 \texttt{pass} & do nothing\\
@@ -4343,6 +4338,7 @@ multisets:
 \end{tabular}
 
 \section{The \texttt{list} module}
+\label{ap:list}
 
 \index{list module}%
 The \texttt{list} module has various useful methods that operate on lists
@@ -4369,6 +4365,8 @@ at index $b$ and ending just before index $f$\\
 \texttt{list($t$)} & convert set into a list \\
 \hline
 \texttt{values($t$)} & convert values of a dict into a list sorted by key \\
+\hline
+\texttt{items($t$)} & convert dict into (key, value) list sorted by key \\
 \hline
 \texttt{enumerate($t$)} & like Python enumerate \\
 \hline
@@ -4646,6 +4644,144 @@ by a single context, one for each choice.  If not, the edges from
 the state are one per context.
 A terminating state is a state with an empty context bag or a state
 where all contexts are blocked.
+
+\chapter{Harmony Language Details}
+
+The Harmony language borrows heavily from Python.  However, there are
+some important differences that we will describe in this chapter.
+
+\section{Harmony is not object-oriented}
+
+Python is object-oriented, but Harmony is not.  This can lead to some
+unexpected differences.  For example, consider the following code:
+
+\begin{code}
+\harmonysource{oo}
+\end{code}
+
+In Python, lists are objects.  Thus $x$ and $y$ point to the same list,
+and the assertion will fail.
+In Harmony, lists are values.  So when $x$ is updated in Line~3, it does
+not affect the value of $y$.  The assertion succeeds.
+Harmony does support references to values (\autoref{ch:method}),
+allowing programs to implement shared objects.
+
+Because Harmony does not have objects, it also does not have object methods.
+However, Harmony methods and lambdas are program counter constants.
+These constants can be added to dictionaries.
+For example, in Figure~\ref{fig:petersonmethods}
+you can add the \texttt{P\_enter} and
+\texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
+like so:
+\begin{code}
+\begin{verbatim}
+dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
+\end{verbatim}
+\end{code}
+That would allow you to simulate object methods.
+
+\section{Constants, Global and Local Variables}
+
+Each (non-reserved) identifier in a Harmony program refers to either
+a constant, a global variable, or a local variable.
+Constants are declared using \texttt{const} statements.
+Those constants are computed at compile-time.
+
+Local variables all declared.  They can be declared in
+\texttt{def} statements (i.e., arguments),
+\texttt{let} statements, and in \texttt{for} loops.
+Also, each method has an implicitly declared
+\textit{result} variable.
+Local variables are tightly scoped and cannot be shared
+between processes.
+While in theory one method can be declared within another,
+they cannot share variables either.
+All other variables are global and must be initialized
+before any processes are spawned.
+
+While arguments to a method and variables in \texttt{for} loops
+can be modified, we discourage it for improved code readability.
+
+\section{Tuples, Lists, and Pattern Matching}
+
+Harmony's tuples and, equivalently, lists, are just special cases of dictionaries.
+They can be bracketed either by '(' and ')' or by '[' and ']', and
+even the brackets are often optional.  Importantly, with a singleton list, the
+one element must be followed by a comma.
+So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
+
+Because tuples and lists are dictionaries, the \texttt{del} statement is
+different Python.  For example, if $x$ = [.a, .b, .c], then
+\texttt{del} $x$[1] results in $x$ = \texttt{dict}\{ 0:.a, 2:.c \}, \emph{not}
+$x$ = [.a, .c].
+
+Harmony allows pattern matching against nested tuples in various
+language constructs.  The following are the same in Python and Harmony:
+\begin{itemize}
+\item \texttt{$x,$ = 1,}: assigns 1 to $x$;
+\item \texttt{$x$, $y$ = 1, (2, 3)}: assigns 1 to $x$ and (2, 3) to $y$;
+\item \texttt{$x$, ($y$, $z$) = 1, (2, 3)}: assigns 1 to $x$, 2 to $y$, and
+3 to $z$;
+\item \texttt{$x$, ($y$, $z$) = 1, 2;} generates an runtime error because 2 cannot
+be matched with ($y$, $z$);
+\item \texttt{$x[0]$, $x[1]$ = $x[1]$, $x[0]$;} swaps the first two elements of list $x$.
+\end{itemize}
+
+As in Python, pattern matching can also be used in \texttt{for} statements.
+For example:
+\begin{code}
+\texttt{for} key, value in [ (1, 2), (3, 4) ]:
+    ...
+\end{code}
+
+Harmony also allows pattern matching in defining and invoking methods.
+For example, you can write:
+\begin{code}
+\texttt{def} f[$a$, ($b$, $c$)]: ...
+\end{code}
+and then call \texttt{f[1, (2, 3)]}.
+Note that the more familiar: \texttt{def} g($a$) defines a method $g$ with
+a single argument $a$.  Invoking g(1, 2) would assign the tuple (1, 2) to
+$a$.  This is not consistent with Python syntax.  For single argument methods,
+you may want to declare as follows: \texttt{def} g($a,$).
+Calling g(1,) assigns 1 to $a$, while calling g(1, 2) would result in a
+runtime error as (1, 2) cannot be matched with ($a$,).
+
+Pattern matching can also be used in \texttt{const} and \texttt{let}
+statements.
+
+\section{For Loops and Comprehensions}
+
+While Harmony does not support general iterators such as Python does,
+Harmony allows iterating over sets and dictionaries (and thus lists
+and tuples).  The details are a little different from Python:
+
+\begin{itemize}
+\item When iterating over a set, the set is always traversed in order
+(see \autoref{ap:values} for a description how Harmony values are ordered);
+\item In case of a dictionary, the iteration is over the values of the
+dictionary, but in the order of the keys.  In the case of lists, this
+works much the same as in Python;
+\item If you want to iterate over the keys of a dictionary $d$, use
+\texttt{for} $k$ \texttt{in} \texttt{keys} $d$;
+\item The \texttt{list} module (\autoref{ap:list}) provides methods \texttt{values}(),
+\texttt{items}(), \texttt{enumerate}(), and \texttt{reversed}() for
+other types of iteration supported by Python.
+\end{itemize}
+
+Harmony supports filtering in \texttt{for loops}.
+For example:
+\begin{code}
+\texttt{for} $i$ in \{ 1..10 \} \texttt{such that} ($i$ \% 2) == 0: ...
+\end{code}
+\noindent iterates over the even numbers between 1 and 10.
+
+Harmony also supports set, list, and dictionary comprehensions.
+Set and list comprehensions are similar to Python, except that filtering uses
+the keywords \texttt{such that} instead of \texttt{if}.
+Dictionary comprehensions are a little different.
+The dictionary comprehension \texttt{dict}\{ f($i$) \texttt{for} $i$ \texttt{in} $I$ \}
+creates a dictionary of $i$:f($i$) entries.
 
 \cleardoublepage
 \phantomsection
