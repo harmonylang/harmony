@@ -1586,6 +1586,11 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, str)):
                     return
                 context.push(self.atLabel(state, e))
+            elif op == "IsEmpty":
+                if isinstance(e, DictValue):
+                    context.push(e.d == {})
+                elif self.checktype(state, context, sa, isinstance(e, SetValue)):
+                    context.push(e.s == set())
             elif op == "min":
                 if isinstance(e, DictValue):
                     if len(e.d) == 0:
@@ -1824,8 +1829,7 @@ class AST:
         #       push value
         pc = len(code)
         code.append(LoadVarOp(S))
-        code.append(PushOp((SetValue(set()), file, line, column)))
-        code.append(NaryOp(("!=", file, line, column), 2))
+        code.append(NaryOp(("IsEmpty", file, line, column), 1))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
@@ -1849,7 +1853,7 @@ class AST:
         code.append(StoreVarOp(N))
 
         code.append(JumpOp(pc))
-        code[tst] = JumpCondOp(False, len(code))
+        code[tst] = JumpCondOp(True, len(code))
         code.append(LoadVarOp(N))
         code.append(SetOp() if ctype == "set" else DictOp())
 
