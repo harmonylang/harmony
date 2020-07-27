@@ -1587,15 +1587,31 @@ class NaryOp(Op):
                     return
                 context.push(self.atLabel(state, e))
             elif op == "min":
-                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
-                    return
-                lst = sorted(e.s, key=keyValue)
-                context.push(lst[0])
+                if isinstance(e, DictValue):
+                    if len(e.d) == 0:
+                        context.failure = "Error: min() invoked with empty dict: " + str(self.op)
+                    else:
+                        context.push(min(e.d.values(), key=keyValue))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e, SetValue)):
+                        return
+                    if len(e.s) == 0:
+                        context.failure = "Error: min() invoked with empty set: " + str(self.op)
+                    else:
+                        context.push(min(e.s, key=keyValue))
             elif op == "max":
-                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
-                    return
-                lst = sorted(e.s, key=keyValue)
-                context.push(lst[-1])
+                if isinstance(e, DictValue):
+                    if len(e.d) == 0:
+                        context.failure = "Error: max() invoked with empty dict: " + str(self.op)
+                    else:
+                        context.push(max(e.d.values(), key=keyValue))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e, SetValue)):
+                        return
+                    if len(e.s) == 0:
+                        context.failure = "Error: max() invoked with empty set: " + str(self.op)
+                    else:
+                        context.push(max(e.s, key=keyValue))
             elif op == "nametag":
                 if not self.checktype(state, context, sa, e == novalue):
                     return
