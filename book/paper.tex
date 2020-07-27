@@ -4348,7 +4348,7 @@ or tuples:
 \begin{tabular}{|l|l|}
 \hline
 \texttt{subseq($t$, $b$, $b$)} & return a \emph{slice} of list $t$ starting
-at index $b$ and ending just before index $f$\\
+at index $b$ and ending just before $f$\\
 \hline
 \texttt{append($t$, $e$)} & append $e$ to list $t$\\
 \hline
@@ -4716,7 +4716,9 @@ different Python.  For example, if $x$ = [.a, .b, .c], then
 $x$ = [.a, .c].
 
 Harmony allows pattern matching against nested tuples in various
-language constructs.  The following are the same in Python and Harmony:
+language constructs.
+\index{pattern matching}%
+The following are the same in Python and Harmony:
 \begin{itemize}
 \item \texttt{$x,$ = 1,}: assigns 1 to $x$;
 \item \texttt{$x$, $y$ = 1, (2, 3)}: assigns 1 to $x$ and (2, 3) to $y$;
@@ -4777,6 +4779,7 @@ For example:
 \noindent iterates over the even numbers between 1 and 10.
 
 Harmony also supports set, list, and dictionary comprehensions.
+\index{comprehensions}%
 Set and list comprehensions are similar to Python, except that filtering uses
 the keywords \texttt{such that} instead of \texttt{if}.
 Dictionary comprehensions are a little different.
