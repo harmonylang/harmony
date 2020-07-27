@@ -4388,33 +4388,33 @@ The \texttt{synch} module provides the following methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-tas(\textit{lk}) & test-and-set on \texttt{!{}}\textit{lk} \\
+\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!{}}\textit{lk} \\
 \hline
-Lock() & return a lock object \\
+\texttt{Lock}() & return a lock object \\
 \hline
-lock(\textit{lk}) & acquire \texttt{!{}}\textit{lk} \\
+\texttt{lock}(\textit{lk}) & acquire \texttt{!{}}\textit{lk} \\
 \hline
-unlock(\textit{lk}) & release \texttt{!{}}\textit{lk} \\
+\texttt{unlock}(\textit{lk}) & release \texttt{!{}}\textit{lk} \\
 \hline
-Condition(\textit{lk}) & return a condition variable on \texttt{!{}}\textit{lk} \\
+\texttt{Condition}(\textit{lk}) & return a condition variable on \texttt{!{}}\textit{lk} \\
 \hline
-wait($c$) & wait on condition variable \texttt{!{}}$c$ \\
+\texttt{wait}($c$) & wait on condition variable \texttt{!{}}$c$ \\
 \hline
-notify($c$) & notify a process waiting on condition variable \texttt{!{}}$c$ \\
+\texttt{notify}($c$) & notify a process waiting on condition variable \texttt{!{}}$c$ \\
 \hline
-notifyAll($c$) & notify all processes waiting on condition variable \texttt{!{}}$c$ \\
+\texttt{notifyAll}($c$) & notify all processes waiting on condition variable \texttt{!{}}$c$ \\
 \hline
-Semaphore(\textit{cnt}) & return a semaphore object initialized to \textit{cnt} \\
+\texttt{Semaphore}(\textit{cnt}) & return a semaphore object initialized to \textit{cnt} \\
 \hline
-P(\textit{sema}) & procure \texttt{!{}}\textit{sema}  \\
+\texttt{P}(\textit{sema}) & procure \texttt{!{}}\textit{sema}  \\
 \hline
-V(\textit{sema}) & vacate \texttt{!{}}\textit{sema}  \\
+\texttt{V}(\textit{sema}) & vacate \texttt{!{}}\textit{sema}  \\
 \hline
-Queue() & return a synchronized queue object \\
+\texttt{Queue}() & return a synchronized queue object \\
 \hline
-dequeue($q$) & return next element of $q$, blocking if empty \\
+\texttt{dequeue}($q$) & return next element of $q$, blocking if empty \\
 \hline
-enqueue($q$, \textit{item}) & add \textit{item} to $a$ \\
+\texttt{enqueue}($q$, \textit{item}) & add \textit{item} to $a$ \\
 \hline
 \end{tabular}
 
