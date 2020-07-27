@@ -399,8 +399,8 @@ So if model checking does not prove a program correct, why is it
 useful?
 To answer that question, let us consider a sorting algorithm.
 Now suppose we create a test program, a model, that tries sorting
-\emph{all} lists of up to five numbers chosen from the set \{ 1,
-2, 3, 4, 5 \}.  Model checking proves that for those particular
+\emph{all} lists of up to five numbers chosen from the set
+\{ 1, 2, 3, 4, 5 \}.  Model checking proves that for those particular
 scenarios the sorting algorithm works: the output is a sorted
 permutation of the input.  In some sense it is an excellent test:
 it will have considered all \emph{corner cases},
@@ -541,7 +541,7 @@ Correct indentation in Harmony is encouraged but not enforced.
 Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item Harmony does not (currently) support floating point, iterators, or I/O;
-Harmony does support \textbf{for} loops and various comprehensions over sets.
+Harmony does support \textbf{for} loops and various comprehensions.
 \item Python is object-oriented, supporting classes with methods and
 inheritance; Harmony has objects but does not support classes.  Harmony supports
 pointers to objects.
@@ -4185,9 +4185,9 @@ Harmony currently supports the following operators:
 \hline
 \texttt{choose $e$} & a set \\
 \hline
-\texttt{min $e$, max $e$, cardinality $e$} & a set \\
+\texttt{min $e$, max $e$, len $e$} & a set or a dict \\
 \hline
-\texttt{keys $e$, len $e$} & a dictionary (includes tuple and list) \\
+\texttt{keys $e$} & a dictionary (includes tuple and list) \\
 \hline
 \texttt{bagsize $e$} & a bag \\
 \hline

@@ -879,21 +879,33 @@ class CutOp(Op):
         return "Cut"
 
     def explain(self):
-        return "pops a set value and pushes the smallest element and the remaining set"
+        return "pops a set or dict value and pushes the smallest element and the remainder"
 
     def eval(self, state, context):
         v = context.pop()
-        if not isinstance(v, SetValue):
-            context.failure = "pc = " + str(context.pc) + \
-                ": Error: expected set value, got " + str(v)
-        elif v.s == set():
-            context.failure = "pc = " + str(context.pc) + \
-                ": Error: expected non-empty set value"
+        if isinstance(v, DictValue):
+            if v.d == {}:
+                context.failure = "pc = " + str(context.pc) + \
+                    ": Error: expected non-empty dict value"
+            else:
+                select = min(v.d.keys(), key=keyValue)
+                context.push(v.d[select])
+                copy = v.d.copy()
+                del copy[select]
+                context.push(DictValue(copy))
+                context.pc += 1
         else:
-            lst = sorted(v.s, key=keyValue)
-            context.push(lst[0])
-            context.push(SetValue(set(lst[1:])))
-            context.pc += 1
+            if not isinstance(v, SetValue):
+                context.failure = "pc = " + str(context.pc) + \
+                    ": Error: expected set value, got " + str(v)
+            elif v.s == set():
+                context.failure = "pc = " + str(context.pc) + \
+                    ": Error: expected non-empty set value"
+            else:
+                lst = sorted(v.s, key=keyValue)
+                context.push(lst[0])
+                context.push(SetValue(set(lst[1:])))
+                context.pc += 1
 
 # Splits a tuple into its elements
 class SplitOp(Op):
