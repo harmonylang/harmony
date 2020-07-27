@@ -1,0 +1,10 @@
+dir=harmony-0.9
+for i in code modules python
+do
+    cp ../$i/* $dir/$i
+done
+for i in harmony harmony.py
+do
+    cp ../$i $dir
+done
+zip -r $dir.zip $dir
