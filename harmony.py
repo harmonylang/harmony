@@ -1515,11 +1515,26 @@ class NaryOp(Op):
             return False
         return True
 
+    def checkdmult(self, state, context, args, d, e):
+        if not self.checktype(state, context, args, isinstance(e, int)):
+            return False
+        keys = set(range(len(d.d)))
+        if d.d.keys() != keys:
+            context.failure = "Error: one operand in " + str(self.op) + \
+                        " must be a list: " + str(list(reversed(args)))
+            return False
+        return True
+
+    def dmult(self, d, e):
+        n = len(d.d)
+        lst = { i:d.d[i % n] for i in range(e * n) }
+        return DictValue(lst)
+
     def eval(self, state, context):
         (op, file, line, column) = self.op
         assert len(context.stack) >= self.n
         sa = context.stack[-self.n:]
-        if op in { "+", "*", "&", "|", "^" }:
+        if op in { "+", "&", "|", "^" }:
             assert self.n > 1
             e2 = context.pop()
             for i in range(1, self.n):
@@ -1535,12 +1550,6 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                             return
                         e2 = self.concat(e1, e2)
-                elif op == "*":
-                    if not self.checktype(state, context, sa, isinstance(e1, int)):
-                        return
-                    if not self.checktype(state, context, sa, isinstance(e2, int)):
-                        return
-                    e2 *= e1
                 elif op == "&":
                     if isinstance(e1, int):
                         if not self.checktype(state, context, sa, isinstance(e2, int)):
@@ -1736,6 +1745,22 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                     return
                 context.push(e1 in e2.s)
+            elif op == "*":
+                if isinstance(e1, DictValue) or isinstance(e2, DictValue):
+                    if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
+                        return
+                    if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
+                        return
+                    if isinstance(e1, DictValue):
+                        context.push(self.dmult(e1, e2))
+                    else:
+                        context.push(self.dmult(e2, e1))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e1, int)):
+                        return
+                    if not self.checktype(state, context, sa, isinstance(e2, int)):
+                        return
+                    context.push(e1 * e2)
             else:
                 assert False, self
         else:
@@ -2116,7 +2141,7 @@ class NaryRule(Rule):
                 exit(1)
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
-        elif (op[0] == lexeme) and (lexeme in { "+", "*", "and", "or" }):
+        elif (op[0] == lexeme) and (lexeme in { "+", "|", "&", "^", "and", "or" }):
             while op[0] == lexeme:
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
