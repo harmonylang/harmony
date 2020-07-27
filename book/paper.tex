@@ -4438,6 +4438,8 @@ Continue & no-op (but causes a context switch) \\
 \hline
 Choose & choose an element from the set on top of the stack \\
 \hline
+Cut & pop set or dict and push minimum and remainder \\
+\hline
 Del [$v$] & delete shared variable $v$ \\
 \hline
 DelVar [$v$] & delete process variable $v$ \\
@@ -4477,7 +4479,7 @@ SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level 
 \hline
 Spawn & pop tag, argument, and method and spawn a new context \\
 \hline
-Split & pop set and push minimum and remainder \\
+Split & pop tuple and push its elements \\
 \hline
 Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
 \hline
@@ -4553,7 +4555,7 @@ atomic & if non-zero, the process is in atomic mode \\
 \hline
 stack & a list of Harmony values \\
 \hline
-register & a Harmony dictionary mapping atoms (representing process variables) to Harmony values \\
+register & a dictionary mapping atoms (names of variables) to values \\
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
