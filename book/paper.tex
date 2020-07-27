@@ -4663,7 +4663,7 @@ In Python, lists are objects.  Thus $x$ and $y$ point to the same list,
 and the assertion will fail.
 In Harmony, lists are values.  So when $x$ is updated in Line~3, it does
 not affect the value of $y$.  The assertion succeeds.
-Harmony does support references to values (\autoref{ch:method}),
+Harmony supports references to values (\autoref{ch:method}),
 allowing programs to implement shared objects.
 
 Because Harmony does not have objects, it also does not have object methods.
@@ -4705,8 +4705,8 @@ can be modified, we discourage it for improved code readability.
 \section{Tuples, Lists, and Pattern Matching}
 
 Harmony's tuples and, equivalently, lists, are just special cases of dictionaries.
-They can be bracketed either by '(' and ')' or by '[' and ']', and
-even the brackets are often optional.  Importantly, with a singleton list, the
+They can be bracketed either by '(' and ')' or by '[' and ']', but
+the brackets are often optional.  Importantly, with a singleton list, the
 one element must be followed by a comma.
 So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
 
@@ -4714,6 +4714,9 @@ Because tuples and lists are dictionaries, the \texttt{del} statement is
 different Python.  For example, if $x$ = [.a, .b, .c], then
 \texttt{del} $x$[1] results in $x$ = \texttt{dict}\{ 0:.a, 2:.c \}, \emph{not}
 $x$ = [.a, .c].
+Harmony also does not support special slicing syntax like Python.
+To modify lists, use the \texttt{subseq} method in the \texttt{list} module
+(\autoref{ap:list}).
 
 Harmony allows pattern matching against nested tuples in various
 language constructs.
@@ -4736,7 +4739,8 @@ For example:
     ...
 \end{code}
 
-Harmony also allows pattern matching in defining and invoking methods.
+Harmony (but not Python)
+also allows pattern matching in defining and invoking methods.
 For example, you can write:
 \begin{code}
 \texttt{def} f[$a$, ($b$, $c$)]: ...
