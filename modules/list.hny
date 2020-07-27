@@ -16,6 +16,45 @@ def tail(s):
     result = subseq(s, 1, len(s));
 ;
 
+# sum of a list or set
+def sum(a):
+    result = 0;
+    for v in a:
+        result += v;
+    ;
+;
+
+# convert list (or values of a dict) to a set
+def set(a):
+    result = { v for v in a };
+;
+
+# convert set into a (sorted) list
+def list(a):
+    result = [];
+    for v in a:
+        result += [v,];
+    ;
+;
+
+# convert values of a dictionary into a list
+def values(d):
+    result = [];
+    for k in keys d:
+        result += [ d[k], ];
+    ;
+;
+
+# like Python enumerate()
+def enumerate(d):
+    result = [];
+    index = 0;
+    for k in keys d:
+        result += [ (index, d[k]), ];
+        index += 1;
+    ;
+;
+
 # quicksort of a list
 def listQsort(a):
     if a == []:
@@ -35,16 +74,18 @@ def listQsort(a):
     ;
 ;
 
-# sum of a list
-def listSum(a):
-    result = 0;
-    for i in keys(a):
-        result += a[i];
-    ;
+# like Python sorted()
+def sorted(d):
+    result = listQsort(list(d));
 ;
 
-def list2set(a):
-    result = { a[i] for i in keys(a) };
+# like Python reversed()
+def reversed(d):
+    n = len(d);
+    result = [];
+    for i in { 1..n }:
+        result += [ d[n - i], ];
+    ;
 ;
 
 # turn a list into a bag (multiset)
@@ -57,11 +98,4 @@ def list2bag(a):
             result[a[i]] = 1;
         ;
     ;
-;
-
-def listMin(a):
-    result = min(list2set(a));
-;
-def listMax(a):
-    result = max(list2set(a));
 ;
