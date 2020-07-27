@@ -2838,7 +2838,10 @@ class LambdaAST(AST):
     def __repr__(self):
         return "Lambda " + str(self.args) + ", " + str(self.stat) + ")"
 
-    def compile(self, scope, code):
+    def isConstant(self, scope):
+        return True
+
+    def compile_body(self, scope, code):
         pc = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(FrameOp(self.token, self.args))
@@ -2851,9 +2854,13 @@ class LambdaAST(AST):
         self.stat.compile(ns, code)
         code.append(StoreVarOp(R))
         code.append(ReturnOp())
-
         code[pc] = JumpOp(len(code))
-        code.append(PushOp((PcValue(pc + 1), file, line, column)))
+        return pc + 1
+
+    def compile(self, scope, code):
+        pc = self.compile_body(scope, code)
+        (lexeme, file, line, column) = self.token
+        code.append(PushOp((PcValue(pc), file, line, column)))
 
 class CallAST(AST):
     def __init__(self, expr):
@@ -2980,15 +2987,19 @@ class ConstAST(AST):
         if not self.expr.isConstant(scope):
             print(self.const, ": Parse error: expression not a constant", str(self.expr))
             exit(1)
-        code2 = []
-        self.expr.compile(scope, code2)
-        state = State(code2, scope.labels)
-        ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}), 0)
-        ctx.atomic = 1
-        while ctx.pc != len(code2):
-            code2[ctx.pc].eval(state, ctx)
-        v = ctx.pop()
-        self.set(scope, self.const, v)
+        if isinstance(self.expr, LambdaAST):
+            pc = self.expr.compile_body(scope, code)
+            self.set(scope, self.const, PcValue(pc))
+        else:
+            code2 = []
+            self.expr.compile(scope, code2)
+            state = State(code2, scope.labels)
+            ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}), 0)
+            ctx.atomic = 1
+            while ctx.pc != len(code2):
+                code2[ctx.pc].eval(state, ctx)
+            v = ctx.pop()
+            self.set(scope, self.const, v)
 
 class LValueRule(Rule):
     def parse(self, t):
