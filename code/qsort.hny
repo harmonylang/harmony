@@ -15,10 +15,10 @@ def sortrange(range):
     let lo, hi = range
     let pivot = partition(lo, hi):
         if (pivot - 1) > lo:
-            todo += { (lo, pivot - 1) };
+            todo |= { (lo, pivot - 1) };
         ;
         if (pivot + 1) < hi:
-            todo += { (pivot + 1, hi) };
+            todo |= { (pivot + 1, hi) };
         ;
     ;
 ;

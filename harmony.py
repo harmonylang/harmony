@@ -1592,7 +1592,7 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, int) or isinstance(e, float)):
                     return
                 context.push(-e)
-            if op == "~":
+            elif op == "~":
                 if not self.checktype(state, context, sa, isinstance(e, int)):
                     return
                 context.push(~e)
@@ -2044,7 +2044,7 @@ class NaryAST(AST):
     def __init__(self, op, args):
         self.op = op
         self.args = args
-        assert all(isinstance(x, AST) for x in args)
+        assert all(isinstance(x, AST) for x in args), args
 
     def __repr__(self):
         return "NaryOp(" + str(self.op) + ", " + str(self.args) + ")"
@@ -2115,6 +2115,8 @@ class NaryRule(Rule):
 
     def parse(self, t):
         (ast, t) = ExpressionRule().parse(t)
+        if ast == False:
+            return (ast, t)
         (lexeme, file, line, column) = t[0]
         if lexeme in self.closers:
             return (ast, t)

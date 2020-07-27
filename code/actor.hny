@@ -6,7 +6,7 @@ def pc_actor(q, nrequests):
             let req = dequeue(q):
                 if req.type == .produce:
                     if balance >= 0:
-                        requests += { req };
+                        requests |= { req };
                     else:
                         let r = choose(requests):
                             assert r.type == .consume;
@@ -18,7 +18,7 @@ def pc_actor(q, nrequests):
                 else:
                     assert req.type == .consume;
                     if balance <= 0:
-                        requests += { req };
+                        requests |= { req };
                     else:
                         let r = choose(requests):
                             assert r.type == .produce;
