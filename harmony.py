@@ -2748,8 +2748,7 @@ class ForAST(AST):
 
         pc = len(code)      # top of loop
         code.append(LoadVarOp(S))
-        code.append(PushOp((SetValue(set()), file, line, column)))
-        code.append(NaryOp(("!=", file, line, column), 2))
+        code.append(NaryOp(("IsEmpty", file, line, column), 1))
         tst = len(code)
         code.append(None)       # going to plug in a Jump op here
         code.append(LoadVarOp(S))
@@ -2759,7 +2758,7 @@ class ForAST(AST):
 
         self.stat.compile(scope, code)
         code.append(JumpOp(pc))
-        code[tst] = JumpCondOp(False, len(code))
+        code[tst] = JumpCondOp(True, len(code))
 
         self.delete(scope, code, self.var)
         code.append(DelVarOp(S))
