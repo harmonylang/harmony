@@ -464,7 +464,6 @@ def isreserved(s):
         "atomic",
         "bagsize",
         "call",
-        "cardinality",
         "choose",
         "const",
         "def",
@@ -507,7 +506,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "!", "-", "~", "atLabel", "bagsize", "cardinality", "choose",
+    return s in [ "!", "-", "~", "atLabel", "bagsize", "choose",
     "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
 
 def isbinaryop(s):
@@ -1587,10 +1586,6 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, str)):
                     return
                 context.push(self.atLabel(state, e))
-            elif op == "cardinality":
-                if not self.checktype(state, context, sa, isinstance(e, SetValue)):
-                    return
-                context.push(len(e.s))
             elif op == "min":
                 if not self.checktype(state, context, sa, isinstance(e, SetValue)):
                     return
@@ -1617,9 +1612,12 @@ class NaryOp(Op):
                     d[ctx.nametag] = cnt if c == None else (c + cnt)
                 context.push(DictValue(d))
             elif op == "len":
-                if not self.checktype(state, context, sa, isinstance(e, DictValue)):
-                    return
-                context.push(len(e.d))
+                if isinstance(e, SetValue):
+                    context.push(len(e.s))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e, DictValue)):
+                        return
+                    context.push(len(e.d))
             elif op == "keys":
                 if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return

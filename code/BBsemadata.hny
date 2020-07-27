@@ -1,4 +1,4 @@
-?mport BBsema;
+import BBsema;
 
 const NPRODS = 2;       # number of producers
 const NCONSS = NPRODS;  # number of consumers
@@ -11,15 +11,15 @@ def consumer():
     let first = consume() let second = consume():
         assert (first[0] != second[0]) or (first[1] < second[1]);
         atomic:
-            received += { first, second };
+            received |= { first, second };
         ;
     ;
 ;
 def main():
-    while cardinality(received) < (2 * NCONSS):
+    while len(received) < (2 * NCONSS):
         pass;
     ;
-    assert received == ({ (i, 0) for i in {1..NPRODS} } +
+    assert received == ({ (i, 0) for i in {1..NPRODS} } |
                             { (i, 1) for i in {1..NPRODS} })
     ;
 ;
