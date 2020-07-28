@@ -4113,12 +4113,14 @@ def run(code, labels, map, step, blockflag):
                     if nn.cid != n.cid:
                         sccs[n.cid - 1] = True
                         break
-        print("# bad components:", ncomponents - sum(sccs))
         bad = set()
-        for (s, n) in visited.items():
-            if not sccs[n.cid - 1]:
-                bad.add(s)
-        
+        nbad = sum(sccs) - ncomponents
+        if nbad != 0:
+            print("# bad components:", nbad)
+            for (s, n) in visited.items():
+                if not sccs[n.cid - 1]:
+                    bad.add(s)
+
         if False:
             # See if all processes "can" terminate.  First look for
             # states where there are no processes.

@@ -69,9 +69,9 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{blocked process}
 {
   name=blocked process,
-  description={is a process that is waiting on a low-level synchronization primitive
-    and cannot terminate without the help of another process.
-      For example, a process that is waiting for a spinlock to become available}
+  description={is a process that cannot change the state unless another
+    process changes the state first.  For example, a process that is waiting
+    for a lock to become available.}
 }
 \newglossaryentry{busy waiting}
 {
@@ -1063,7 +1063,7 @@ Harmony will print at trace of the shortest bad execution that it found.
 \item \texttt{Non-terminating States}: Harmony found one or more states
 from which there does not exist an execution such that all processes
 terminate.  Harmony will not only print the non-terminating state with
-the shortest trace, but also the list of processes that are running
+the shortest trace, but also the list of processes
 at that state, along with their name tags and program counters.
 \item \texttt{Stopped States}: Similar to non-terminating states,
 these are states in which some processes are left that cannot
@@ -2039,8 +2039,8 @@ chapters.
 
 We call a process \emph{blocked}
 \index{blocked process}%
-in a state if the process is waiting on a low-level synchronization
-variable and cannot terminate without the help of another process.
+if the process can only change the state if another process changes
+the state first.
 A process trying to
 acquire a test-and-set spinlock held by another process is a good example
 of a process being blocked.
@@ -4589,12 +4589,6 @@ atoms to arbitrary values.  The atoms correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
-A context is considered \emph{blocked}
-\index{blocked process}%
-if there does not exist a
-sequence instructions that the process can execute by itself
-that leads to its termination.
-
 \chapter{The Harmony Virtual Machine}
 
 The Harmony Virtual Machine (HVM) has the following state:
@@ -4649,8 +4643,6 @@ states and the edges are macro steps.
 When a state is \texttt{choosing}, the edges from that state are
 by a single context, one for each choice.  If not, the edges from
 the state are one per context.
-A terminating state is a state with an empty context bag or a state
-where all contexts are blocked.
 
 \chapter{Harmony Language Details}
 
