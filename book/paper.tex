@@ -1981,18 +1981,19 @@ It is important to appreciate the difference between an
 \textbf{atomic} statement) and a \emph{critical section}
 (protected by a lock of some sort).
 The former ensures that while the
-atomic statement is executing no other process can execute.
+\texttt{atomic} statement is executing no other process can execute.
 The latter allows multiple processes to run concurrently,
 just not within the critical section.
-The former is rarely available to a programmer, while the latter
+The former is rarely available to a programmer (e.g., none of
+Python, C, or Java support it), while the latter
 is very common.
 
-In Harmony, atomic statements allow you to \emph{implement} your own
+In Harmony, \texttt{atomic} statements allow you to \emph{implement} your own
 synchronization primitives like test-and-set.  Other common examples
-include compare-and swap and fetch-and-add.  Atomic statements
+include compare-and swap and fetch-and-add.  \texttt{atomic} statements
 are not intended to \emph{replace} locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
-atomic statement but use the synchronization primitives that are available
+\emph{atomic} statements but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
 use \textbf{atomic} by all means.
 
@@ -2000,7 +2001,7 @@ use \textbf{atomic} by all means.
 \begin{code}
 \harmonysource{lockintf}
 \end{code}
-\caption{The \texttt{Lock} interface in the \texttt{synch} module.}
+\caption{The \texttt{Lock} interface and implementation in the \texttt{synch} module.}
 \label{fig:spinlocks}
 \end{figure}
 
@@ -2129,20 +2130,20 @@ harmony -m synch=synchS x.hny
 
 runs the file \texttt{x.hny} using the suspension version of the \texttt{synch} module.
 You will find that using the \texttt{synchS} module often leads to searching a
-significantly larger search space than using the \texttt{synch} module.
+significantly larger state space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
-in which processes wait for a lock.
+in which processes wait for a lock, while the \texttt{synch} module does not.
 
 \section*{Exercises}
 \begin{problems}
 \item Write a new synchronization module, similar to \autoref{fig:spinlocks}, but using
-atomic swap.
+atomic swap (similar to \autoref{ex:swap}).
 \item
 Run \autoref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
 and (3) your own module.  Report how many states were explored by Harmony for each
 version of the module.
 \item \label{ex:trylock} Implement \texttt{trylock}(\textit{lk}) as an additional
-interface to the \texttt{synch} and \texttt{synchS} modules.
+interface for both the \texttt{synch} and \texttt{synchS} modules.
 This interface is like \texttt{lock}(\textit{lk}) but never blocks.  It
 returns \texttt{True} if the lock was available (and now acquired) or \texttt{False}
 if the lock was already taken.
