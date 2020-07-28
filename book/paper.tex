@@ -345,7 +345,8 @@ program is mostly \emph{deterministic}.
 If you run it twice with the same input, the same output will be produced.
 Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
-The output of running concurrent programs depends on how the
+On the other hand,
+the output of running concurrent programs depends on how the
 execution of the various processes are \emph{interleaved}.
 Some bugs may occur only occasionally and
 may never occur when the program is instrumented to find them
@@ -382,7 +383,7 @@ instead of relying
 on luck, Harmony will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
 \emph{can} expose the bug it \emph{will}.  Importantly, if the bug is
-found, the model checker precisely shows how to trigger it in
+found, the model checker precisely shows how to trigger the bug in
 the smallest number of steps.
 
 Model checking is not a replacement for formal verification.
@@ -481,20 +482,20 @@ underlying concurrency better.
 \emph{critical section} and presents various flawed implementations
 of critical sections to demonstrate that implementing a critical section
 is not trivial.
-\item \autoref{ch:peterson} introduces Peterson's Algorithm, an
+\item \autoref{ch:peterson} introduces \emph{Peterson's Algorithm}, an
 elegant solution to implementating a critical section.
 \item \autoref{ch:method} gives some more details on the Harmony
-language.
-\item \autoref{ch:spinlock} introduces ``hardware'' locks
+language needed for the rest of the book.
+\item \autoref{ch:spinlock} introduces ``hardware'' \emph{locks}
 for implemented critical sections.
 \item \autoref{ch:synch} presents Harmony modules
 that supports locks and other synchronization primitives.
 \item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
-abstraction and implementation of reader/writer
-locks, which allow multiple processes in a critical section if they are
+abstraction and implementation of \emph{reader/writer locks},
+which allow multiple processes in a critical section if they are
 all only executing read-only accesses.
-\autoref{ch:rdwrbusy} also talks about busy-waiting, which is
-an undesirable approach to synchronize processes.
+\autoref{ch:rdwrbusy} also discusses \emph{busy-waiting}, which is
+an easy but undesirable approach to synchronize processes.
 \item \autoref{ch:semaphore} introduces \emph{semaphores},
 a generalization of locks
 that is good not only for mutual exclusion but also for waiting for
@@ -527,25 +528,25 @@ steps.
 useful in high-performance computing applications such as parallel simulations.
 \end{itemize}
 
-\chapter{Introduction to Programming with Harmony}
+\chapter{Introduction to Harmony}
 \label{ch:harmonyintro}
 
 Like Python, Harmony is an imperative,
 dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
-\item Syntax: Every statement in Harmony must be terminated by a semicolon
-(even \textbf{while} statements and \textbf{def} statements).
+\item Every statement in Harmony must be terminated by a semicolon
+(even \textbf{def} statements).
 In Python semicolons are optional and rarely used.
 There is no syntactic significance to indentation in Harmony.
 Correct indentation in Harmony is encouraged but not enforced.
 Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item Harmony does not (currently) support floating point, iterators, or I/O;
-Harmony does support \textbf{for} loops and various comprehensions.
+Harmony does support \textbf{for} loops and various ``comprehensions.''
 \item Python is object-oriented, supporting classes with methods and
 inheritance; Harmony has objects but does not support classes.  Harmony supports
-pointers to objects.
+pointers to objects and methods.
 \end{itemize}
 There are also many unimportant ones that you will discover as
 you get more familiar with programming in Harmony.
@@ -566,7 +567,7 @@ an integer number as argument.  Each method has a variable called
 \textit{result} that eventually contains the result of the
 method (there is no \textbf{return} statement in Harmony).  The method
 also has a variable called \textit{n} containing the value of the
-argument.  The \textit{x..y} notation generates a set containing the numbers
+argument.  The \{ \textit{x..y} \} notation generates a set containing the numbers
 from~\textit{x} to~\textit{y} (inclusive).  The last two lines in the program are
 the most interesting.
 The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
@@ -645,6 +646,8 @@ Note that although the processes are \emph{spawned} one at a time,
 they will execute concurrently.  It is, for example, quite possible
 that \texttt{incrementer(1)} finishes before \texttt{incrementer(0)}
 even gets going.
+And because Harmony tries every possible execution, it will consider
+such executions as well.
 
 \begin{figure}[h]
 \begin{code}
@@ -687,7 +690,7 @@ instructions are interleaved
 \index{interleaving}%
 in unspecified and often random ways.
 A program is correct if it works for any interleaving.
-In fact, Harmony will try all possible interleavings of the processes
+Harmony will try all possible interleavings of the processes
 executing machine instructions.
 
 The following is a possible interleaving of incrementers~0 and~1:
@@ -726,9 +729,9 @@ be fixed.
 
 \section*{Exercises}
 
-The following exercises are intended to show you that on the one hand it
-is easy to translate Harmony programs into Python, but on the other hand,
-it is easier to find concurrency bugs using Harmony.
+The following exercises are intended to show you that while it is just
+as easy to write concurrent programs in Python, it is much easier to
+find concurrency bugs using Harmony.
 
 \begin{problems}
 \item Harmony programs can usually be easily translated into Python.  For example,
@@ -745,8 +748,7 @@ do
 done
 \end{verbatim}
 \end{code}
-How many times does the assertion
-fail (if any).
+How many times does the assertion fail (if any)?
 \end{enumerate}
 \item \autoref{fig:incmany} is a version of \autoref{fig:incpy} that has each
 incrementer thread increment \textit{count} \texttt{N} times.  Run \autoref{fig:incpy}
@@ -2312,7 +2314,7 @@ bound lock.
 
 \autoref{fig:rw2lock} presents a reader/writer lock implementation
 that does not busy-wait.
-You can test the code by running \texttt{harmony -m RW=RWlock RWtest}.
+You can test the code by running \texttt{harmony -m RW=RWlock RWtest.hny}.
 It uses two ordinary locks: \textit{rwlock} is used by both readers and writers,
 while \textit{rlock} is only used by readers.
 \textit{rwlock} is held either when readers are at label \texttt{@rcs}
@@ -2333,7 +2335,7 @@ and releases it to exit.  The \emph{first} reader to enter the critical
 section acquires \textit{rwlock} and the \emph{last} reader to exit
 the critical section releases \textit{rwlock}.
 The implementation satisfies progress: if no process is in the critical
-section than any process enter.
+section then any process can enter.
 
 It is instructive to see what happens when a writer is in the critical
 section and two readers try to enter.  The first reader successfully

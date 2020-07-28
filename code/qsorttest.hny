@@ -13,7 +13,7 @@ def sorted():                    # return whether array 'a' is sorted
 ;
 def main(copy):
     qsort();                              # sort array 'a'
-    assert sorted();                      # is the array sorted?:
+    assert sorted();                      # is the array sorted?
     assert list2bag(a) == list2bag(copy); # is it a permutation?
 ;
 
