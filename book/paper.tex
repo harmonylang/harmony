@@ -1764,8 +1764,8 @@ If $x$ is a shared variable, then the expression ?$x$ is the address of $x$.
 If a variable contains an address, we call that variable a \emph{pointer}.
 \index{pointer}%
 If $p$ is a pointer to a shared variable, then the
-expression \texttt{!{}}$p$ is the value of the shared variable.
-In particular, \texttt{!{}?}$x$ == $x$.
+expression \texttt{!}$p$ is the value of the shared variable.
+In particular, \texttt{!?}$x$ == $x$.
 This is similar to how C pointers work (\texttt{*\string&}$x$ == $x$).
 
 \autoref{fig:petersonmethods} again shows Peterson's algorithm,
@@ -1778,11 +1778,11 @@ case, is a dictionary that contains Peterson's Algorithm's state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
 a pointer to a mutex and the process identifier (0 or 1).
-\texttt{(!{}}\textit{pm}\texttt{.turn} is the value of the \texttt{.turn} key
+(\texttt{!}\textit{pm})\texttt{.turn} is the value of the \texttt{.turn} key
 in the dictionary that \textit{pm} points to. 
 Note that the parentheses in this expression
-are needed, as \texttt{!{}}\textit{pm}\texttt{.turn} would wrongly evaluate to
-\texttt{!{}}(\textit{pm}\texttt{.turn}).
+are needed, as \texttt{!}\textit{pm}\texttt{.turn} would wrongly evaluate
+\texttt{!}(\textit{pm}\texttt{.turn}).
 
 You can put the first three methods in its own Harmony source file
 and include it using the Harmony \texttt{import} statement.
@@ -1865,15 +1865,15 @@ critical section at the same time.
 
 $\mathcal{I}_1$ is an inductive invariant.
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!{}}$p$ == \texttt{True} upon entry of \texttt{tas}
+\texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
 \texttt{tas} method is invoked in).
 So there are two cases:
 \begin{enumerate}
-\item \texttt{!{}}$s$ is \texttt{False} upon entry to \texttt{tas}.
-Then upon exit \texttt{!{}}$p$ == \texttt{False} and \texttt{!{}}$s$ == \texttt{True},
+\item \texttt{!}$s$ is \texttt{False} upon entry to \texttt{tas}.
+Then upon exit \texttt{!}$p$ == \texttt{False} and \texttt{!}$s$ == \texttt{True},
 maintaining the invariant.
-\item \texttt{!{}}$s$ is \texttt{True} upon entry to \texttt{tas}.
+\item \texttt{!}$s$ is \texttt{True} upon entry to \texttt{tas}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section.
@@ -3797,12 +3797,12 @@ channel as a variable that either contains a network message or nothing
 from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
 \texttt{net\_send}(\textit{pchan}, $m$, \textit{reliable}) models sending
 a message $m$ to
-\texttt{!{}}\textit{pchan}, where \textit{pchan} is either ?\textit{s\_chan}
+\texttt{!}\textit{pchan}, where \textit{pchan} is either ?\textit{s\_chan}
 or ?\textit{r\_chan}.
 The method places either $m$ (to model a successful send)
-or \texttt{()} (to model loss) in \texttt{!{}}\textit{pchan}.
+or \texttt{()} (to model loss) in \texttt{!}\textit{pchan}.
 The use of the \textit{reliable} flag will be explained later.
-\texttt{net\_recv}(\textit{pchan}) models checking \texttt{!{}pchan} for
+\texttt{net\_recv}(\textit{pchan}) models checking \texttt{!pchan} for
 the next message.
 
 Method \texttt{app\_send}($m$) tries \emph{retransmitting} $m$ until
@@ -3866,9 +3866,9 @@ entry initialized to \texttt{()}.  \textit{back} is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two interlock instructions:
 \begin{itemize}
-\item \texttt{inc}($p$): atomically increments \texttt{!{}}$p$ and returns
+\item \texttt{inc}($p$): atomically increments \texttt{!}$p$ and returns
 the old value;
-\item \texttt{swap}($p$): sets \texttt{!{}}$p$ to \texttt{()} and returns
+\item \texttt{swap}($p$): sets \texttt{!}$p$ to \texttt{()} and returns
 the old value.
 \end{itemize}
 
@@ -4180,7 +4180,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$e$ if $e$ else $e$} & middle $e$ must be a boolean \\
 \hline
-\texttt{!{}$e$} & an address \\
+\texttt{!$e$} & an address \\
 \hline
 \texttt{choose $e$} & a set \\
 \hline
@@ -4222,7 +4222,7 @@ An \emph{lvalue}
 is something that can be assigned.  This can be a
 shared variable, a process variable, or a dereferenced pointer
 variable.  It can also be indexed.  Examples include
-\textit{var}, \textit{var}[$e$], and \texttt{!{}}\textit{p}.
+\textit{var}, \textit{var}[$e$], and \texttt{!}\textit{p}.
 
 Harmony also supports the following comprehensions:
 
@@ -4337,9 +4337,9 @@ multisets:
 \hline
 \texttt{bagChoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
 \hline
-\texttt{bagAdd}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!{}}\textit{pb}\\
+\texttt{bagAdd}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
 \hline
-\texttt{bagRemove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!{}}\textit{pb}\\
+\texttt{bagRemove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
 \hline
 \end{tabular}
 
@@ -4392,27 +4392,27 @@ The \texttt{synch} module provides the following methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!{}}\textit{lk} \\
+\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
 \hline
 \texttt{Lock}() & return a lock object \\
 \hline
-\texttt{lock}(\textit{lk}) & acquire \texttt{!{}}\textit{lk} \\
+\texttt{lock}(\textit{lk}) & acquire \texttt{!}\textit{lk} \\
 \hline
-\texttt{unlock}(\textit{lk}) & release \texttt{!{}}\textit{lk} \\
+\texttt{unlock}(\textit{lk}) & release \texttt{!}\textit{lk} \\
 \hline
-\texttt{Condition}(\textit{lk}) & return a condition variable on \texttt{!{}}\textit{lk} \\
+\texttt{Condition}(\textit{lk}) & return a condition variable on \texttt{!}\textit{lk} \\
 \hline
-\texttt{wait}($c$) & wait on condition variable \texttt{!{}}$c$ \\
+\texttt{wait}($c$) & wait on condition variable \texttt{!}$c$ \\
 \hline
-\texttt{notify}($c$) & notify a process waiting on condition variable \texttt{!{}}$c$ \\
+\texttt{notify}($c$) & notify a process waiting on condition variable \texttt{!}$c$ \\
 \hline
-\texttt{notifyAll}($c$) & notify all processes waiting on condition variable \texttt{!{}}$c$ \\
+\texttt{notifyAll}($c$) & notify all processes waiting on condition variable \texttt{!}$c$ \\
 \hline
 \texttt{Semaphore}(\textit{cnt}) & return a semaphore object initialized to \textit{cnt} \\
 \hline
-\texttt{P}(\textit{sema}) & procure \texttt{!{}}\textit{sema}  \\
+\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
 \hline
-\texttt{V}(\textit{sema}) & vacate \texttt{!{}}\textit{sema}  \\
+\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
 \hline
 \texttt{Queue}() & return a synchronized queue object \\
 \hline
