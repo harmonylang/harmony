@@ -4088,7 +4088,6 @@ def run(code, labels, map, step, blockflag):
     print("#states =", len(visited), "diameter =", maxdiameter,
         "ncomponents =", ncomponents, " "*100 + "\b"*100)
 
-
     todump = set()
 
     # See if there has been a safety violation
@@ -4101,36 +4100,57 @@ def run(code, labels, map, step, blockflag):
         issues_found = True
 
     if not faultyState:
-        # See if all processes "can" terminate.  First look for
-        # states where there are no processes.
-        term = set()
+        # Figure out which strongly connected components are "good".
+        # These are non-sink components or components that have
+        # a terminated state.
+        sccs = [False] * ncomponents
         for (s, n) in visited.items():
-            if blockflag:
-                # see if all processes are blocked
-                if len(s.ctxbag) > 0:
-                    someRunning = False
-                    assert not s.choosing
-                    for (ctx, next) in n.edges.items():
-                        assert isinstance(ctx, ContextValue)
-                        (nxtstate, nxtctx, steps) = next
-                        if nxtstate != s:
-                            someRunning = True
-                            break
-                    if not someRunning:
-                        term.add(s)
-            elif len(s.ctxbag) == 0:
-                term.add(s)
+            if len(s.ctxbag) == 0:
+                sccs[n.cid - 1] = True
+            else:
+                for (ns, nc, steps) in n.edges.values():
+                    nn = visited[ns]
+                    if nn.cid != n.cid:
+                        sccs[n.cid - 1] = True
+                        break
+        print("# bad components:", ncomponents - sum(sccs))
+        bad = set()
+        for (s, n) in visited.items():
+            if not sccs[n.cid - 1]:
+                bad.add(s)
+        
+        if False:
+            # See if all processes "can" terminate.  First look for
+            # states where there are no processes.
+            term = set()
+            for (s, n) in visited.items():
+                if blockflag:
+                    # see if all processes are blocked
+                    if len(s.ctxbag) > 0:
+                        someRunning = False
+                        assert not s.choosing
+                        for (ctx, next) in n.edges.items():
+                            assert isinstance(ctx, ContextValue)
+                            (nxtstate, nxtctx, steps) = next
+                            if nxtstate != s:
+                                someRunning = True
+                                break
+                        if not someRunning:
+                            term.add(s)
+                elif len(s.ctxbag) == 0:
+                    term.add(s)
 
-        # Now find all the states that can reach terminating states.
-        nextgood = term
-        while nextgood != set():
-            newgood = set()
-            for s in nextgood:
-                for s2 in visited[s].sources.difference(term):
-                    newgood.add(s2)
-            term = term.union(newgood)
-            nextgood = newgood
-        bad = set(visited.keys()).difference(term)
+            # Now find all the states that can reach terminating states.
+            nextgood = term
+            while nextgood != set():
+                newgood = set()
+                for s in nextgood:
+                    for s2 in visited[s].sources.difference(term):
+                        newgood.add(s2)
+                term = term.union(newgood)
+                nextgood = newgood
+            bad = set(visited.keys()).difference(term)
+
         if len(bad) > 0:
             print("==== Non-terminating States ====", len(bad))
             for s in bad:
@@ -4339,9 +4359,9 @@ def htmltrace(code, scope, ctx, traceid, f):
     fp = ctx.fp
     trace = [ctx.vars]
     while True:
-        if fp < 4:
+        if fp < 5:
             break
-        trace += [ctx.stack[fp - 2]]
+        trace.append(ctx.stack[fp - 2])
         fp = ctx.stack[fp - 1]
     trace.reverse()
     for i in range(len(trace)):
