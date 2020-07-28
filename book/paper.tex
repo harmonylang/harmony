@@ -1368,7 +1368,7 @@ If we run this program, the assertion does not fail.  In fact, this
 solution does prevent both processes being in the critical section at
 the same time.
 
-To see why, first note the invariant that if process $i$ is in the
+To see why, first note the following invariant: if process $i$ is in the
 critical section, then \textit{flags}[$i$] == \texttt{True}.
 Without loss of generality,
 suppose that process~0 sets \textit{flags}[0] at time $t_0$.
