@@ -4011,34 +4011,41 @@ def mapcheck():
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
-def fill_order(visited, s, seen, stack):
-    seen.add(s)
-    n = visited[s]
-    for (ns, nc, steps) in n.edges.values():
-        if ns not in seen:
-            fill_order(visited, ns, seen, stack)
-    stack.append(s)
+def kosaraju1(visited, s, stack):
+    seen = {s}
+    stack2 = [s]
+    while stack2 != []:
+        s = stack2.pop()
+        n = visited[s]
+        stack.insert(0, s)
+        for (ns, nc, steps) in n.edges.values():
+            if ns not in seen:
+                stack2.append(ns)
+                seen.add(ns)
 
-def dfs(visited, s, seen, cid):
+def kosaraju2(visited, s, seen, cid):
     seen.add(s)
-    n = visited[s]
-    n.cid = cid
-    for ns in n.sources:
-        if ns not in seen:
-            dfs(visited, ns, seen, cid)
+    stack2 = [s]
+    while stack2 != []:
+        s = stack2.pop()
+        n = visited[s]
+        n.cid = cid
+        for ns in n.sources:
+            if ns not in seen:
+                stack2.append(ns)
+                seen.add(ns)
 
 # Find strongly connected components using Kosaraju's algorithm
 def find_scc(visited, initstate):
     stack = []
-    seen = set()
-    fill_order(visited, initstate, seen, stack)
+    kosaraju1(visited, initstate, stack)
     seen = set()
     cid = 0
     while stack != []:
         next = stack.pop()
         if next not in seen:
             cid += 1
-            dfs(visited, next, seen, cid)
+            kosaraju2(visited, next, seen, cid)
     return cid
 
 def run(code, labels, map, step, blockflag):
@@ -4114,7 +4121,7 @@ def run(code, labels, map, step, blockflag):
                         sccs[n.cid - 1] = True
                         break
         bad = set()
-        nbad = sum(sccs) - ncomponents
+        nbad = ncomponents - sum(sccs)
         if nbad != 0:
             print("# bad components:", nbad)
             for (s, n) in visited.items():
