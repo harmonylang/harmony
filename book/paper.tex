@@ -1175,7 +1175,8 @@ multiple operations.  Maintaining ``consistency'' is certainly much easier
 process also tries to access the binary tree.
 Typically, you want some invariant property of the data structure to hold
 at the beginning and at the end of the critical section, but in the middle
-the invariant may be temporarily broken---this is no issue as no other
+the invariant may be temporarily broken---this is no issue as critical
+sections guarantee that no other
 process will be able to see it.
 An implementation of a data structure that can be safely accessed by multiple
 processes (or threads) and free of race conditions is called \emph{thread-safe}.
@@ -1232,7 +1233,7 @@ Mutual exclusion is an example of a \emph{safety property},
 \index{safety property}%
 a property that ensures that \emph{nothing bad will happen}, in this case
 two processes being in the critical section.
-What we need now a \emph{liveness property}:
+What we need now is a \emph{liveness property}:
 \index{liveness property}%
 we want to ensure that
 \emph{eventually something good will happen}.
@@ -1250,7 +1251,7 @@ algorithms in general, Harmony requires that every execution must be
 able to reach a state in which all processes have terminated.
 Clearly, even if mutual exclusion holds in \autoref{fig:csbarebones},
 the spawned processes never terminate.  We
-will model processes in critical sections using the framework in
+will instead model processes in critical sections using the framework in
 \autoref{fig:cs}: a process can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
@@ -1268,7 +1269,8 @@ number of processes in the critical section.}
 \end{figure}
 
 \autoref{fig:mutex} shows a high-level state diagram
-\index{state diagram} of mutual exclusion and progress.%
+\index{state diagram}%
+of mutual exclusion and progress.
 The circles represent states, while the arrows represent possible state
 transitions (high-level steps).  The label in each circle summarizes the state;
 the label on an arrow describes the transition.  In this case,
@@ -1324,8 +1326,8 @@ The idea is that the lock is like a baton that at most one process can own
 (or hold) at a time.
 A process that wants to enter the critical section at a time must obtain the
 lock first and release it upon exiting the critical section.
-Note that the word ``lock'' does not describe the concept well---it really
-is more like a baton or token that only one process can hold.
+% Note that the word ``lock'' does not describe the concept well---it really
+% is more like a baton or token that only one process can hold.
 
 Using a lock is a good thought, but how does one implement one?
 \autoref{fig:uplock} presents a mutual exclusion attempt based on a
