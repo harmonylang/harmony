@@ -2192,8 +2192,8 @@ are simply reading the data structure.
 In many applications, reads are the majority of all accesses.
 Allowing reads to proceed concurrently can significantly improve performance.
 
-What we want is a special kind of lock that allows either one writer
-or one or more readers to be in the critical section.  This is called
+What we want is a special kind of lock that allows either (i) one writer
+or (ii) one or more readers to be in the critical section.  This is called
 a \emph{reader/writer lock}~\cite{CHP71}.
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
@@ -2249,7 +2249,8 @@ The solution is an example of what is called \emph{busy-waiting}
 \index{busy waiting}%
 (aka \emph{spin-waiting}):
 \index{spin waiting}%
-processes spin in a loop until some desirable application-level condition is met.
+processes spin in a loop until some desirable application-level condition is met,
+wasting CPU cycles.
 \autoref{fig:inc} also has an example of busy-waiting: the \texttt{main}
 process waits for the other two processes to finish by checking their \texttt{done}
 flags.
@@ -2268,8 +2269,7 @@ Busy waiting disables all this: even when using the \texttt{synchS}
 module, readers and writers only get suspended temporarily in case
 there is contention for the mutex.
 A process trying to obtain a read or write lock in
-\autoref{fig:rwbusy} has to obtain the mutex repeatedly
-until the read or write lock is available.
+\autoref{fig:rwbusy} tries to obtain the mutex repeatedly.
 
 Thus, it is considered ok to have processes be blocked while waiting
 for application-specific conditions, but not for them to
