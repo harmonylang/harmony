@@ -1,4 +1,4 @@
-const N = 3;
+import spinlock;
 
 def checkInvariant():
     let sum = 0:
@@ -14,16 +14,6 @@ def checkInvariant():
     ;
 ;
 def invariantChecker():
-    while choose({ False, True }):
-        assert checkInvariant();
-    ;
+    assert checkInvariant();
 ;
-
-# tas() and process() code omitted to save space
-
-shared = False;
-private = [ True for i in {0..N-1} ];
 spawn invariantChecker();
-for i in {0..N-1}:
-    spawn process(i);
-;

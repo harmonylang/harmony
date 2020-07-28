@@ -1897,14 +1897,14 @@ premisse is that there is a process at that label.  However, we would
 like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 
-We can do this by adding another process that, in a loop,
+We can do this by adding another process that
 checks the invariant.  \autoref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
 in a state.  It introduces a new feature of Harmony: the ability to have
 variables local to a method.  In this case, the process variable \textit{sum}
 is used to compute the number of shared variables that have value
 \texttt{False}.
-The function is invoked by in a loop by a process that runs alongside
+The method is invoked by a process that runs alongside
 the other processes.
 In Harmony, \textbf{assert} statements are executed atomically, so the
 evaluation of the assertion is not interleaved with the execution
