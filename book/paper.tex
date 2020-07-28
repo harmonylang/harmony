@@ -782,9 +782,9 @@ time---the important thing is to develop an understanding of concurrency.
 \label{ch:harmonymachine}
 \index{Harmony Virtual Machine}%
 
-Harmony programs are compiled to Harmony bytecode
+Harmony programs are compiled to Harmony \emph{bytecode}
 \index{bytecode}%
-(machine instructions for a virtual machine),
+(a list of machine instructions for a virtual machine),
 which in turn is executed by the Harmony virtual machine (HVM).
 \index{virtual machine}%
 \index{Harmony Virtual Machine}%
@@ -851,14 +851,15 @@ which in turn is the same Harmony value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
 So if $x$ = \texttt{[ False, True ]},
 then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
-comma, as in \texttt{[False,]}.
+comma, as in \texttt{[False,]}.  The expression \texttt{[False]} just means
+\texttt{False}.
 
 Harmony is not an object-oriented language, so objects don't have
 built-in methods.  However, Harmony does have some powerful operators to
 make up for some of that.
 For example, dictionaries have two handy unary operators.
 If $d$ is a
-dictionary, then \texttt{keys}~$d$ (or equivalently \texttt{keys}($d$)
+dictionary, then \texttt{keys}~$d$ (or equivalently \texttt{keys}($d$))
 returns the set of keys and \texttt{len}~$d$ returns the size of
 this set.
 
@@ -867,9 +868,7 @@ Harmony currently supports.
 
 \section*{Harmony Bytecode}
 
-A Harmony program is translated
-into \emph{bytecode}, which is list of machine instructions that the
-Harmony virtual machine (HVM) executes.
+A Harmony program is translated into HVM bytecode.
 The HVM is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional computers and
 virtual machines such as the Java Virtual Machine.
@@ -920,7 +919,7 @@ of contexts.  It is a multiset of contexts because two different processes can
 be in the same state.
 The initial state of the Harmony memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
-\texttt{\_\_main\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
+\texttt{\_\_init\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
 Each machine instruction updates the state in some way.
 % \autoref{fig:incstate} shows an example of a reachable state for the program in \autoref{fig:inc}.
 
@@ -964,6 +963,9 @@ such a sequence the \emph{address}
 \index{address}%
 of a Harmony value, and it is relative to the
 ``root'' of the directory tree.
+For example, in \autoref{fig:inc} the memory is a dictionary with two
+entries: \texttt{.count} and \texttt{.done}.  And the value of entry
+\texttt{.done} is a dictionary with keys 0 and 1.
 
 \begin{figure}
 \begin{code}
@@ -1004,7 +1006,7 @@ that initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
 In this case, the first instruction is a \texttt{JUMP} instruction that sets the
-program counter to 39.
+program counter to 34 (skipping over the code for the methods).
 At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
@@ -1022,8 +1024,8 @@ The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
 \item the \texttt{Push} instruction pushes the constant 1
 onto the stack of the process.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
-It pops two values from the stack (1 and the value of \textit{count}),
-adds them and pushes the result back onto the stack.
+It pops two values from the stack (the value of \textit{count} and 1),
+adds them, and pushes the result back onto the stack.
 \item The \texttt{Store} instruction pops
 a Harmony value (the sum of the \textit{count} variable and 1) and
 stores it in the \textit{count} variable.
