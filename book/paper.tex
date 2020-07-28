@@ -1846,11 +1846,11 @@ The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to \texttt{True} (``set'').
 
-\autoref{fig:tas} goes on how to implement mutual exclusion for
+\autoref{fig:tas} goes on to implement mutual exclusion for
 a set of \texttt{N} processes.
 The approach is called \emph{spinlock},
 \index{spinlock}%
-because each process is ``spinning'' until
+because each process is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
 Variable \textit{shared} is initialized to \texttt{False} while
