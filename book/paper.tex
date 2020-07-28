@@ -1443,7 +1443,7 @@ we will find out, it is possible but not easy.
 \label{fig:peterson}
 \end{figure}
 
-In 1981, Peterson came up with a beautiful solution to the mutual exclusion
+In 1981, Gary L.~Peterson came up with a beautiful solution to the mutual exclusion
 problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
 \autoref{fig:upflags} and \autoref{fig:upturn}, and is presented
@@ -1474,16 +1474,16 @@ exclusion and progress.
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
 For that, we have to understand a little bit more about how the Harmony
-machine works.
+virtual machine (HVM) works.
 In \autoref{ch:harmonymachine} we talked about the concept of \emph{state}:
 \index{state}%
 at any point in time the HVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
 the values of the process variables
 \index{process variable}%
-for each process, including its
+of each process, including its
 program counter and the contents of its stack.
-Everytime a process executes a HVM machine instruction, the
+Each time a process executes a HVM machine instruction, the
 state changes (if only because the program counter of the process
 changes).  We call that a \emph{step}.
 \index{step}%
@@ -1511,7 +1511,7 @@ or it can be reached from the initial state through a trace.
 A state is final
 when there are no processes left to make state changes.
 
-It is often useful to classify states into sets.
+It is often useful to classify states.
 \emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
 are all examples of classes of states.
 \autoref{fig:states} depicts a Venn diagram of various classes of states
@@ -1537,7 +1537,7 @@ on the number of steps.  First you prove that the predicate holds over
 the initial state.  Then you prove that for every reachable state,
 and for every step from that reachable state, the predicate also holds
 over the resulting state.
-For this you need a predicate that describes exactly which
+For this to work you would need a predicate that describes exactly which
 states are reachable.
 But we do not have such a predicate: we know how to describe the set
 of reachable states, but given an arbitrary state it is not easy to
@@ -1549,10 +1549,10 @@ To solve this problem, we will use what is called an
 An inductive invariant $\mathcal{I}$ is a predicate over states that satisfies the following:
 \begin{itemize}
 \item $\mathcal{I}$ holds in the initial state.
-\item For any state in which $\mathcal{I}$ holds and any process in the
-state takes a step, then $\mathcal{I}$ also holds in the resulting state.
+\item For any state in which $\mathcal{I}$ holds and for any process in the
+state, if the process takes a step, then $\mathcal{I}$ also holds in the resulting state.
 \end{itemize}
-Unlike an invariant, an inductive invariant must also hold over unreachable states.
+Unlike an ordinary invariant, an inductive invariant must also hold over unreachable states.
 
 One candidate for such an invariant is exclusivity itself.
 After all, it certainly holds over the initial state.
@@ -1561,7 +1561,7 @@ it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
-and process~1 at the start of the \textbf{while} loop.
+and process~1 be at the start of the \textbf{while} loop.
 Also imagine that in this particular state $\mathit{turn} = 1$.  Now let
 process~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
 process~1 will break out of the while loop and also enter the critical
@@ -1589,7 +1589,7 @@ Let predicate $\mathcal{I}_p(i)$ be the following.
 if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
 then $\mathcal{C}(i)$ does not hold or process $1-i$ is executing after setting
 $\mathit{flags}[i]$ but still before setting \textit{turn} to $1-i$.
-More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs) \Rightarrow (\lnot \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate)$.
+More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs \Rightarrow (\lnot \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate)$.
 For Peterson's Algorithm, an inductive invariant that works well is
 $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
 
@@ -1611,7 +1611,7 @@ So we conclude that $\mathit{turn} = 0 \land \mathit{turn} = 1$, a
 logical impossibility.  Thus $\mathcal{I}_p(i)$ implies exclusivity.
 
 To see that $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$ is, in fact, an inductive invariant, first note that
-it certainly holds in the initial state, because in the initial state no process
+it holds in the initial state, because in the initial state no process
 is in the critical section.
 Without loss of generality, suppose $i=0$ (a benefit from the fact that the algorithm is
 symmetric for both processes).  We still have to show that if we are in a state
@@ -1631,6 +1631,8 @@ process~1 takes a step:
 \end{enumerate}
 
 Let us consider each of these cases.
+We have to show that if process~1 takes a step, then one of those
+cases must hold after the step.
 In the first case, if process~1 takes a step, there are two possibilities:
 either $flags[1]$ will still be \texttt{False} (in which case the first case
 continues to hold), or $flags[1]$ will be \texttt{True}
@@ -1647,7 +1649,8 @@ different ways: one by letting Harmony explore all possible executions, the
 other using an inductive invariant and proof by induction.  The former
 is certainly easier, but it does not provide intuition for why the
 algorithm works.  The second provides much more insight.  We therefore
-encourage to include inductive invariants in your Harmony code.
+encourage to include invariants, particularly inductive ones, in your
+Harmony code.
 
 A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
@@ -1658,13 +1661,13 @@ To demonstrate that this predicate is not invariant, you can remove the
 disjunct from \autoref{fig:petersonproof} and run it to get a
 counterexample.
 
-This anecdote suggests the following.  If you need to do an induction
-proof of an algorithm, you have to come up with an inductive invariant.
+This anecdote suggests the following.  If you need to do a proof by induction
+of an algorithm, you have to come up with an inductive invariant.
 Before trying to prove the algorithm, you can check that the predicate is
 at least invariant by testing it using Harmony.  Doing so could potentially
 avoid wasting your time on a proof that will not work because the
 predicate is not invariant, and therefore not an inductive invariant either.
-(The author fixed the Wikipedia page.)
+(The author fixed the Wikipedia page with the help of Fred B.~Schneider.)
 
 \section*{Exercises}
 \begin{problems}
