@@ -3638,6 +3638,7 @@ class Node:
         self.sources = set()    # backward edges
         self.expanded = False   # lazy deletion
         self.issues = set()     # set of problems with this state
+        self.cid = 0            # strongly connected component id
         self.uid = node_uid
         node_uid += 1
 
@@ -4063,8 +4064,38 @@ def mapcheck():
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
+def fill_order(visited, s, seen, stack):
+    seen.add(s)
+    n = visited[s]
+    for (ns, nc, steps) in n.edges.values():
+        if ns not in seen:
+            fill_order(visited, ns, seen, stack)
+    stack.append(s)
+
+def dfs(visited, s, seen, cid):
+    seen.add(s)
+    n = visited[s]
+    n.cid = cid
+    for ns in n.sources:
+        if ns not in seen:
+            dfs(visited, ns, seen, cid)
+
+# Find strongly connected components using Kosaraju's algorithm
+def find_scc(visited, initstate):
+    stack = []
+    seen = set()
+    fill_order(visited, initstate, seen, stack)
+    seen = set()
+    cid = 0
+    while stack != []:
+        next = stack.pop()
+        if next not in seen:
+            cid += 1
+            dfs(visited, next, seen, cid)
+    return cid
+
 def run(code, labels, map, step, blockflag):
-    state = State(code, labels)
+    state = initstate = State(code, labels)
     ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0)
     ctx.atomic = 1
     state.add(ctx)
@@ -4104,7 +4135,12 @@ def run(code, labels, map, step, blockflag):
                 if ctx.trap != None and not ctx.interruptLevel:
                     onestep(state, ctx, None, True, visited, todo, node)
 
-    print("#states =", len(visited), "diameter =", maxdiameter, " "*100 + "\b"*100)
+    # Determine the strongly connected components
+    ncomponents = find_scc(visited, initstate)
+
+    print("#states =", len(visited), "diameter =", maxdiameter,
+        "ncomponents =", ncomponents, " "*100 + "\b"*100)
+
 
     todump = set()
 

@@ -15,9 +15,6 @@ def writer():
           ;
     release_wlock();
 ;
-rwlock = Lock();
-rlock = Lock();
-nreaders = 0;
 for i in {1..NREADERS}:
     spawn reader(i);
 ;
