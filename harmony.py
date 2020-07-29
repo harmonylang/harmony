@@ -4013,10 +4013,14 @@ def mapcheck():
 
 def kosaraju1(visited, stack):
     seen = set()
+    cnt = 0
     for s in visited.keys():
         if s in seen:
             continue
         seen.add(s)
+        cnt += 1
+        if cnt % (len(visited) // 32) == 0:
+            print(">", end="", flush="True")
         S = [s]
         while S:
             u = S[-1]
@@ -4025,6 +4029,9 @@ def kosaraju1(visited, stack):
             for (ns, nc, steps) in n.edges.values():
                 if ns not in seen:
                     seen.add(ns)
+                    cnt += 1
+                    if cnt % (len(visited) // 32) == 0:
+                        print(">", end="", flush="True")
                     done = False
                     S.append(ns)
                     break
@@ -4047,15 +4054,21 @@ def kosaraju2(visited, s, seen, cid):
 
 # Find strongly connected components using Kosaraju's algorithm
 def find_scc(visited, initstate):
+    print("<" * 64, end="\r", flush=True)
     stack = []
     kosaraju1(visited, stack)
     seen = set()
     cid = 0
+    cnt = 0
     while stack != []:
+        cnt += 1
+        if cnt % (len(visited) // 32) == 0:
+            print(">", end="", flush=True)
         next = stack.pop()
         if next not in seen:
             cid += 1
             kosaraju2(visited, next, seen, cid)
+    print()
     return cid
 
 def run(code, labels, map, step, blockflag):
@@ -4099,11 +4112,8 @@ def run(code, labels, map, step, blockflag):
                 if ctx.trap != None and not ctx.interruptLevel:
                     onestep(state, ctx, None, True, visited, todo, node)
 
-    # Determine the strongly connected components
-    ncomponents = find_scc(visited, initstate)
-
     print("#states =", len(visited), "diameter =", maxdiameter,
-        "ncomponents =", ncomponents, " "*100 + "\b"*100)
+                                " "*100 + "\b"*100)
 
     todump = set()
 
@@ -4117,6 +4127,10 @@ def run(code, labels, map, step, blockflag):
         issues_found = True
 
     if not faultyState:
+        # Determine the strongly connected components
+        ncomponents = find_scc(visited, initstate)
+        print("#components:", ncomponents)
+
         # Figure out which strongly connected components are "good".
         # These are non-sink components or components that have
         # a terminated state.
@@ -4133,7 +4147,7 @@ def run(code, labels, map, step, blockflag):
         bad = set()
         nbad = ncomponents - sum(sccs)
         if nbad != 0:
-            print("# bad components:", nbad)
+            print("#bad components:", nbad)
             for (s, n) in visited.items():
                 if sccs[n.cid - 1]:
                     continue
