@@ -1859,10 +1859,11 @@ class AST:
             elif ctype == "dict":
                 code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
             self.value.compile(scope, code)
-            code.append(LoadVarOp(N))
-            code.append(PushOp((1, file, line, column)))
-            code.append(NaryOp(("+", file, line, column), 2))
-            code.append(StoreVarOp(N))
+            if ctype in { "set", "list", "dict" }:
+                code.append(LoadVarOp(N))
+                code.append(PushOp((1, file, line, column)))
+                code.append(NaryOp(("+", file, line, column), 2))
+                code.append(StoreVarOp(N))
             return
 
         (type, rest) = iter[0]
@@ -1914,16 +1915,18 @@ class AST:
         uid = len(code)
         (lexeme, file, line, column) = self.token
         N = ("%size:"+str(uid), file, line, column)
-        code.append(PushOp((0, file, line, column)))
-        code.append(StoreVarOp(N))
+        if ctype in { "set", "list", "dict" }:
+            code.append(PushOp((0, file, line, column)))
+            code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
         if ctype == "set":
             code.append(LoadVarOp(N))
             code.append(SetOp())
+            code.append(DelVarOp(N))
         elif ctype in { "list", "dict" }:
             code.append(LoadVarOp(N))
             code.append(DictOp())
-        code.append(DelVarOp(N))
+            code.append(DelVarOp(N))
 
 class ConstantAST(AST):
     def __init__(self, const):
