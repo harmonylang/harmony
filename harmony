@@ -2162,6 +2162,34 @@ class Rule:
             print("Parse error in %s."%rule, "Got", got, ":", want)
             exit(1)
 
+    def forParse(self, t, closer):
+        (bv, t) = BoundVarRule().parse(t)
+        (lexeme, file, line, column) = token = t[0]
+        self.expect("for expression", lexeme == "in", t[0], "expected 'in'")
+        (expr, t) = NaryRule({closer, "such"}).parse(t[1:])
+        return ((bv, expr), t)
+
+    def suchthatParse(self, t, closer):
+        (lexeme, file, line, column) = t[0]
+        self.expect("such that expression", lexeme == "that", t[0], "expected 'that'")
+        return NaryRule({closer}).parse(t[1:])
+
+    def iterParse(self, t, closer):
+        (ve, t) = self.forParse(t, closer)
+        lst = [("for", ve)]
+        (lexeme, file, line, column) = t[0]
+        while lexeme != closer:
+            self.expect("for expression", lexeme == "for" or lexeme == "such",
+                            lexeme, "expected 'for' or 'such that'")
+            if lexeme == "for":
+                (ve, t) = self.forParse(t[1:], closer)
+                lst.append(("for", ve))
+            else:
+                assert lexeme == "such"
+                (st, t) = self.suchthatParse(t[1:], closer)
+                lst.append(("suchthat", st))
+        return (lst, t)
+
 class NaryRule(Rule):
     def __init__(self, closers):
         self.closers = closers
@@ -2217,6 +2245,15 @@ class SetComprehensionRule(Rule):
         self.value = value
 
     def parse(self, t):
+        token = t[0]
+        (lst, t) = self.iterParse(t, "}")
+        (x, y) = lst[0]
+        assert x == "for"
+        (bv, expr) = y
+        if True:
+            return (SetComprehensionAST(self.value, bv, expr, None, token), t[1:])
+        assert False, y
+        
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
         self.expect("set comprehension", lexeme == "in", t[0], "expected 'in'")
@@ -4072,7 +4109,7 @@ def kosaraju1(visited, stack):
             continue
         seen.add(s)
         cnt += 1
-        if cnt % (len(visited) // 32) == 0:
+        if cnt % ((len(visited) + 31) // 32) == 0:
             print(">", end="", flush="True")
         S = [s]
         while S:
@@ -4083,7 +4120,7 @@ def kosaraju1(visited, stack):
                 if ns not in seen:
                     seen.add(ns)
                     cnt += 1
-                    if cnt % (len(visited) // 32) == 0:
+                    if cnt % ((len(visited) + 31) // 32) == 0:
                         print(">", end="", flush="True")
                     done = False
                     S.append(ns)
@@ -4115,7 +4152,7 @@ def find_scc(visited, initstate):
     cnt = 0
     while stack != []:
         cnt += 1
-        if cnt % (len(visited) // 32) == 0:
+        if cnt % ((len(visited) + 31) // 32) == 0:
             print(">", end="", flush=True)
         next = stack.pop()
         if next not in seen:
