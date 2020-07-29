@@ -2136,17 +2136,15 @@ in which processes wait for a lock, while the \texttt{synch} module does not.
 
 \section*{Exercises}
 \begin{problems}
-\item Write a new synchronization module, similar to \autoref{fig:spinlocks}, but using
-atomic swap (similar to \autoref{ex:swap}).
 \item
-Run \autoref{fig:incfixed} using (1) \texttt{synch}, (2), \texttt{synchS},
-and (3) your own module.  Report how many states were explored by Harmony for each
-version of the module.
+Run \autoref{fig:incfixed} using (i) \texttt{synch}, and (ii), \texttt{synchS}.
+Report how many states were explored by Harmony for each module.
 \item \label{ex:trylock} Implement \texttt{trylock}(\textit{lk}) as an additional
 interface for both the \texttt{synch} and \texttt{synchS} modules.
 This interface is like \texttt{lock}(\textit{lk}) but never blocks.  It
 returns \texttt{True} if the lock was available (and now acquired) or \texttt{False}
 if the lock was already taken.
+Hint: you do not have to change the existing code.
 \end{problems}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
