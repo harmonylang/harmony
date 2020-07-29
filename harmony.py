@@ -4183,12 +4183,12 @@ def run(code, labels, map, step, blockflag):
                 (nxtstate, nxtctx, steps) = next
                 if nxtstate == bad_state:
                     blocked += 1
-                    print("blocked process:", ctx)
+                    print("blocked process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
                 else:
                     running += 1
-                    print("running process:", ctx)
+                    print("running process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
             for ctx in bad_state.stopbag.keys():
-                print("stopped process:", ctx)
+                print("stopped process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
                 stopped += 1
             print("#blocked:", blocked, "#stopped:", stopped, "#running:", running)
 
