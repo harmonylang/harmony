@@ -4777,12 +4777,13 @@ works much the same as in Python;
 other types of iteration supported by Python.
 \end{itemize}
 
-Harmony supports filtering in \texttt{for loops}.
+Harmony supports nesting and filtering in \texttt{for loops}.
 For example:
 \begin{code}
-\texttt{for} $i$ in \{ 1..10 \} \texttt{such that} ($i$ \% 2) == 0: ...
+\texttt{for} $i$ in \{ 1..10 \}
+\texttt{for} $j$ in \{ 1..10 \}
+\texttt{such that} $i < j$: ...
 \end{code}
-\noindent iterates over the even numbers between 1 and 10.
 
 Harmony also supports set, list, and dictionary comprehensions.
 \index{comprehensions}%
