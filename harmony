@@ -4293,7 +4293,8 @@ def genpath(s, visited):
         path2.append((lastctx, laststeps, laststates, lastvars))
         lastctx = n.after
         laststeps = n.steps.copy()
-        laststates = []
+        laststates = [n.uid]
+        lastvars = s.vars
     path2.append((lastctx, laststeps, laststates, lastvars))
     return path2
 
