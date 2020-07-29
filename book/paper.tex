@@ -2347,7 +2347,7 @@ section then any process can enter.
 
 It is instructive to see what happens when a writer is in the critical
 section and two readers try to enter.  The first reader successfully
-acquires \textit{rlock} and but blocks when trying to acquire
+acquires \textit{rlock} but blocks when trying to acquire
 \textit{rwlock}, which is held by the writer.  The second reader blocks
 trying acquire \textit{rlock} because it is held by the first reader.
 When the writer leaves the critical section, the first reader acquires
@@ -2362,12 +2362,13 @@ It does not matter in which order they leave: the second will release
 
 While Harmony does not detect any issues, we must remember what it is checking
 for: it checks to make sure that there are never a reader and a writer
-in the critical section, and there are never two readers in the critical
+in the critical section, and there are never two writers in the critical
 section.  Moreover, it checks progress: all executions eventually terminate.
 What it does \emph{not} check is if the code allows more than one reader
 in the critical section.  Indeed, we could have implemented the reader/writer
-lock as in \autoref{fig:rwmulti} using an ordinary lock, never allowing
-more than one process in the critical section.
+lock using an ordinary lock, never allowing
+more than one process in the critical section, and Harmony would not have
+complained.
 
 \autoref{fig:rwmulti} contains a new test that ensures that indeed more
 than one reader can enter the critical section at a time.  It does so by
@@ -2391,10 +2392,6 @@ of a flag per process?
 \item Write a test program for ``bound locks'' (Exercise~\ref{ex:boundlock})
 that checks that up to \texttt{M} processes
 can acquire the bound lock at the same time.
-\item It can be useful for a process to \emph{downgrade} its write lock
-to a read lock when its done writing but not done reading.  Implement
-\texttt{downgrade}.  Note, you cannot do this simply by releasing the
-write lock and then obtaining the read lock.
 \end{problems}
 
 \chapter{Semaphores}
@@ -2847,7 +2844,13 @@ and so it vacates \textit{mutex}.
 \section*{Exercises}
 \begin{problems}
 \item Assume that you have only binary semaphores.
-Implement counting semaphores using binary semaphores using split binary semaphores.
+Implement counting semaphores using split binary semaphores.
+\item With reader/writer locks,
+it can be useful for a process to \emph{downgrade} its write lock
+to a read lock when its done writing but not done reading.  Implement
+a \texttt{downgrade} method.  Note, you cannot do this simply by releasing the
+write lock and then obtaining the read lock, because the process needs
+to remain in the critical section.
 \item Implement a solution to the producer/consumer problem
 (\autoref{fig:boundedbuffer}) using split binary semaphores.
 \item \label{ex:onelane} Cornell's campus features some one-lane bridges.
