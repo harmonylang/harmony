@@ -742,7 +742,7 @@ class SetValue(Value):
         return self.s == other.s
 
     def key(self):
-        return (6, [keyValue(v) for v in sorted(self.s, keyValue)])
+        return (6, [keyValue(v) for v in sorted(self.s, key=keyValue)])
 
 class AddressValue(Value):
     def __init__(self, indexes):
@@ -1844,6 +1844,76 @@ class AST:
         else:
             self.gencode(scope, code)
 
+    def rec_comprehension(self, scope, code, iter, pc, N, ctype):
+        if iter == []:
+            (lexeme, file, line, column) = self.token
+            if ctype == "list":
+                code.append(LoadVarOp(N))
+            self.value.compile(scope, code)
+            code.append(LoadVarOp(N))
+            code.append(PushOp((1, file, line, column)))
+            code.append(NaryOp(("+", file, line, column), 2))
+            code.append(StoreVarOp(N))
+            return
+
+        (type, rest) = iter[0]
+        assert type == "for" or type == "suchthat", type
+
+        if type == "for":
+            (var, expr) = rest
+
+            self.assign(scope, var)
+            uid = len(code)
+            (lexeme, file, line, column) = self.token
+
+            # Evaluate the set and store in a temporary variable
+            expr.compile(scope, code)
+            S = ("%set:"+str(uid), file, line, column)
+            code.append(StoreVarOp(S))
+
+            # Now generate the code:
+            #   while X != {}:
+            #       var := oneof X
+            #       X := X - var
+            #       push value
+            pc = len(code)
+            code.append(LoadVarOp(S))
+            code.append(NaryOp(("IsEmpty", file, line, column), 1))
+            tst = len(code)
+            code.append(None)       # going to plug in a Jump op here
+            code.append(LoadVarOp(S))
+            code.append(CutOp())  
+            code.append(StoreVarOp(S))
+            if ctype == "dict":
+                code.append(DupOp())
+            code.append(StoreVarOp(var))
+
+            self.rec_comprehension(scope, code, iter[1:], pc, N, ctype)
+
+            code.append(JumpOp(pc))
+            code[tst] = JumpCondOp(True, len(code))
+
+            self.delete(scope, code, var)
+            code.append(DelVarOp(S))
+
+        else:
+            assert type == "suchthat"
+            rest.compile(scope, code)
+            code.append(JumpCondOp(False, pc))
+            self.rec_comprehension(scope, code, iter[1:], pc, N, ctype)
+
+    def comprehension2(self, scope, code, ctype):
+        # Keep track of the size
+        uid = len(code)
+        (lexeme, file, line, column) = self.token
+        N = ("%size:"+str(uid), file, line, column)
+        code.append(PushOp((0, file, line, column)))
+        code.append(StoreVarOp(N))
+        self.rec_comprehension(scope, code, self.iter, None, N, ctype)
+        code.append(LoadVarOp(N))
+        code.append(SetOp() if ctype == "set" else DictOp())
+        code.append(DelVarOp(N))
+
     def comprehension(self, scope, code, ctype):
         self.assign(scope, self.var)
         uid = len(code)
@@ -1998,18 +2068,16 @@ class DictAST(AST):
         code.append(DictOp())
 
 class SetComprehensionAST(AST):
-    def __init__(self, value, var, expr, suchthat, token):
+    def __init__(self, value, iter, token):
         self.value = value
-        self.var = var
-        self.expr = expr
-        self.suchthat = suchthat
+        self.iter = iter
         self.token = token
 
     def __repr__(self):
         return "SetComprehension(" + str(self.var) + ")"
 
     def compile(self, scope, code):
-        self.comprehension(scope, code, "set")
+        self.comprehension2(scope, code, "set")
 
 class DictComprehensionAST(AST):
     def __init__(self, value, var, expr, suchthat, token):
@@ -2113,13 +2181,13 @@ class Rule:
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
         self.expect("for expression", lexeme == "in", t[0], "expected 'in'")
-        (expr, t) = NaryRule({closer, "such"}).parse(t[1:])
+        (expr, t) = NaryRule({closer, "such", "for"}).parse(t[1:])
         return ((bv, expr), t)
 
     def suchthatParse(self, t, closer):
         (lexeme, file, line, column) = t[0]
         self.expect("such that expression", lexeme == "that", t[0], "expected 'that'")
-        return NaryRule({closer}).parse(t[1:])
+        return NaryRule({closer, "for", "such"}).parse(t[1:])
 
     def iterParse(self, t, closer):
         (ve, t) = self.forParse(t, closer)
@@ -2135,6 +2203,7 @@ class Rule:
                 assert lexeme == "such"
                 (st, t) = self.suchthatParse(t[1:], closer)
                 lst.append(("suchthat", st))
+            (lexeme, file, line, column) = t[0]
         return (lst, t)
 
 class NaryRule(Rule):
@@ -2194,25 +2263,7 @@ class SetComprehensionRule(Rule):
     def parse(self, t):
         token = t[0]
         (lst, t) = self.iterParse(t, "}")
-        (x, y) = lst[0]
-        assert x == "for"
-        (bv, expr) = y
-        if True:
-            return (SetComprehensionAST(self.value, bv, expr, None, token), t[1:])
-        assert False, y
-        
-        (bv, t) = BoundVarRule().parse(t)
-        (lexeme, file, line, column) = token = t[0]
-        self.expect("set comprehension", lexeme == "in", t[0], "expected 'in'")
-        (expr, t) = NaryRule({"}", "such"}).parse(t[1:])
-        (lexeme, file, line, column) = t[0]
-        if lexeme == "such":
-            (lexeme, file, line, column) = t[1]
-            self.expect("set comprehension", lexeme == "that", t[1], "expected 'that'")
-            (suchthat, t) = NaryRule({"}"}).parse(t[2:])
-        else:
-            suchthat = None
-        return (SetComprehensionAST(self.value, bv, expr, suchthat, token), t[1:])
+        return (SetComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
     def __init__(self, value):
