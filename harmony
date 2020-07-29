@@ -4752,18 +4752,20 @@ def main():
     # Get options.  First set default values
     consts = []
     mods = []
-    printCode = False
+    printCode = None
     blockflag = False
     fulldump = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "abc:dhm:", ["const=", "help", "module="])
+                        "Aabc:dhm:", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
     for o, a in opts:
         if o == "-a":
-            printCode = True
+            printCode = "verbose"
+        elif o == "-A":
+            printCode = "terse"
         elif o == "-b":
             blockflag = True
         elif o in { "-c", "--const" }:
@@ -4779,19 +4781,22 @@ def main():
 
     (code, scope) = doCompile(args, consts, mods)
 
-    if printCode:
+    if printCode != None:
         lastloc = None
         for pc in range(len(code)):
-            if scope.locations.get(pc) != None:
-                (file, line) = scope.locations[pc]
-                if (file, line) != lastloc:
-                    lines = files.get(file)
-                    if lines != None and line <= len(lines):
-                        print("%s:%d"%(file, line), lines[line - 1])
-                    else:
-                        print(file, ":", line)
-                lastloc = (file, line)
-            print("  ", pc, code[pc])
+            if printCode == "verbose":
+                if scope.locations.get(pc) != None:
+                    (file, line) = scope.locations[pc]
+                    if (file, line) != lastloc:
+                        lines = files.get(file)
+                        if lines != None and line <= len(lines):
+                            print("%s:%d"%(file, line), lines[line - 1])
+                        else:
+                            print(file, ":", line)
+                    lastloc = (file, line)
+                print("  ", pc, code[pc])
+            else:
+                print(code[pc])
 
     m = scope.names.get("__mutex__")
     if m == None:
@@ -4808,7 +4813,7 @@ def main():
         assert t == "constant"
         (spc, file, line, column) = v
 
-    if not printCode:
+    if printCode == None:
         (visited, bad_state) = run(code, scope.labels, mpc, spc, blockflag)
         htmldump(visited, code, scope, bad_state, fulldump, False)
 
