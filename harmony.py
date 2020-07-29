@@ -1283,9 +1283,6 @@ class AssertOp(Op):
         if not cond:
             context.failure = "Harmony Assertion failed "
             if self.exprthere:
-                print("XXX")
-                print(expr)
-                print("YYY")
                 context.failure += ": " + strValue(expr)
             return
         context.pc += 1
@@ -1920,8 +1917,12 @@ class AST:
         code.append(PushOp((0, file, line, column)))
         code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
-        code.append(LoadVarOp(N))
-        code.append(SetOp() if ctype == "set" else DictOp())
+        if ctype == "set":
+            code.append(LoadVarOp(N))
+            code.append(SetOp())
+        elif ctype in { "list", "dict" }:
+            code.append(LoadVarOp(N))
+            code.append(DictOp())
         code.append(DelVarOp(N))
 
 class ConstantAST(AST):
@@ -2214,7 +2215,7 @@ class SetComprehensionRule(Rule):
 
     def parse(self, t):
         token = t[0]
-        (lst, t) = self.iterParse(t, {"}"})
+        (lst, t) = self.iterParse(t[1:], {"}"})
         return (SetComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
@@ -2223,7 +2224,7 @@ class DictComprehensionRule(Rule):
 
     def parse(self, t):
         token = t[0]
-        (lst, t) = self.iterParse(t, {"}"})
+        (lst, t) = self.iterParse(t[1:], {"}"})
         return (DictComprehensionAST(self.value, lst, token), t[1:])
 
 class ListComprehensionRule(Rule):
@@ -2233,7 +2234,7 @@ class ListComprehensionRule(Rule):
 
     def parse(self, t):
         token = t[0]
-        (lst, t) = self.iterParse(t, self.closers) 
+        (lst, t) = self.iterParse(t[1:], self.closers) 
         return (ListComprehensionAST(self.value, lst, token), t)
 
 class SetRule(Rule):
@@ -2253,7 +2254,7 @@ class SetRule(Rule):
             if lexeme == "for":
                 self.expect("set comprehension", len(s) == 1, t[0],
                     "can have only one expression")
-                return SetComprehensionRule(s[0]).parse(t[1:])
+                return SetComprehensionRule(s[0]).parse(t)
             if lexeme == "..":
                 self.expect("range", len(s) == 1, t[0],
                     "can have only two expressions")
@@ -2282,7 +2283,7 @@ class DictRule(Rule):
             if lexeme == "for":
                 self.expect("dict comprehension", d == {}, t[0],
                     "expected single expression")
-                return DictComprehensionRule(key).parse(t[1:])
+                return DictComprehensionRule(key).parse(t)
             self.expect("dict expression", lexeme == ":", t[0],
                                         "expected a colon")
             (value, t) = NaryRule({",", "}"}).parse(t[1:])
@@ -2308,7 +2309,7 @@ class TupleRule(Rule):
         if lexeme in self.closers:
             return (ast, t)
         if lexeme == "for":
-            return ListComprehensionRule(ast, self.closers).parse(t[1:])
+            return ListComprehensionRule(ast, self.closers).parse(t)
         d = { ConstantAST((0, file, line, column)): ast }
         i = 1
         while lexeme == ",":
@@ -2790,39 +2791,16 @@ class LetAST(AST):
             self.delete(scope, code, var)
 
 class ForAST(AST):
-    def __init__(self, var, expr, stat, token):
-        self.var = var
-        self.expr = expr
-        self.stat = stat
+    def __init__(self, iter, stat, token):
+        self.value = stat
+        self.iter = iter
         self.token = token
 
     def __repr__(self):
-        return "For(" + str(self.var) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+        return "For(" + str(self.iter) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        self.assign(scope, self.var)
-        uid = len(code)
-        self.expr.compile(scope, code)     # first push the set
-        (lexeme, file, line, column) = self.token
-        S = ("%set:"+str(uid), file, line, column)   # save in variable "%set"
-        code.append(StoreVarOp(S))
-
-        pc = len(code)      # top of loop
-        code.append(LoadVarOp(S))
-        code.append(NaryOp(("IsEmpty", file, line, column), 1))
-        tst = len(code)
-        code.append(None)       # going to plug in a Jump op here
-        code.append(LoadVarOp(S))
-        code.append(CutOp())  
-        code.append(StoreVarOp(S))
-        code.append(StoreVarOp(self.var))
-
-        self.stat.compile(scope, code)
-        code.append(JumpOp(pc))
-        code[tst] = JumpCondOp(True, len(code))
-
-        self.delete(scope, code, self.var)
-        code.append(DelVarOp(S))
+        self.comprehension(scope, code, "for")
 
 class AtomicAST(AST):
     def __init__(self, stat):
@@ -3249,12 +3227,9 @@ class StatementRule(Rule):
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (WhileAST(cond, stat), self.skip(token, t))
         if lexeme == "for":
-            (bv, t) = BoundVarRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("for statement", lexeme == "in", t[0], "expected 'in'")
-            (s, t) = NaryRule({":"}).parse(t[1:])
+            (lst, t) = self.iterParse(t[1:], {":"})
             (stat, t) = StatListRule({";"}).parse(t[1:])
-            return (ForAST(bv, s, stat, token), self.skip(token, t))
+            return (ForAST(lst, stat, token), self.skip(token, t))
         if lexeme == "let":
             vars = []
             while True:
