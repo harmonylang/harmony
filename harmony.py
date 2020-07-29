@@ -4011,34 +4011,44 @@ def mapcheck():
                 desirable.remove(hs)
         assert desirable == set(), desirable
 
-def kosaraju1(visited, s, stack):
-    seen = {s}
-    stack2 = [s]
-    while stack2 != []:
-        s = stack2.pop()
-        n = visited[s]
-        stack.insert(0, s)
-        for (ns, nc, steps) in n.edges.values():
-            if ns not in seen:
-                stack2.append(ns)
-                seen.add(ns)
+def kosaraju1(visited, stack):
+    seen = set()
+    for s in visited.keys():
+        if s in seen:
+            continue
+        seen.add(s)
+        S = [s]
+        while S:
+            u = S[-1]
+            done = True
+            n = visited[u]
+            for (ns, nc, steps) in n.edges.values():
+                if ns not in seen:
+                    seen.add(ns)
+                    done = False
+                    S.append(ns)
+                    break
+            if done:
+                S.pop()
+                stack.append(u)
 
 def kosaraju2(visited, s, seen, cid):
-    seen.add(s)
     stack2 = [s]
     while stack2 != []:
         s = stack2.pop()
+        if s in seen:
+            continue
+        seen.add(s)
         n = visited[s]
         n.cid = cid
         for ns in n.sources:
             if ns not in seen:
                 stack2.append(ns)
-                seen.add(ns)
 
 # Find strongly connected components using Kosaraju's algorithm
 def find_scc(visited, initstate):
     stack = []
-    kosaraju1(visited, initstate, stack)
+    kosaraju1(visited, stack)
     seen = set()
     cid = 0
     while stack != []:
@@ -4112,7 +4122,7 @@ def run(code, labels, map, step, blockflag):
         # a terminated state.
         sccs = [False] * ncomponents
         for (s, n) in visited.items():
-            if len(s.ctxbag) == 0:
+            if len(s.ctxbag) == 0 and len(s.stopbag) == 0:
                 sccs[n.cid - 1] = True
             else:
                 for (ns, nc, steps) in n.edges.values():
@@ -4125,40 +4135,19 @@ def run(code, labels, map, step, blockflag):
         if nbad != 0:
             print("# bad components:", nbad)
             for (s, n) in visited.items():
-                if not sccs[n.cid - 1]:
-                    bad.add(s)
-
-        if False:
-            # See if all processes "can" terminate.  First look for
-            # states where there are no processes.
-            term = set()
-            for (s, n) in visited.items():
+                if sccs[n.cid - 1]:
+                    continue
                 if blockflag:
-                    # see if all processes are blocked
-                    if len(s.ctxbag) > 0:
-                        someRunning = False
-                        assert not s.choosing
-                        for (ctx, next) in n.edges.items():
-                            assert isinstance(ctx, ContextValue)
-                            (nxtstate, nxtctx, steps) = next
-                            if nxtstate != s:
-                                someRunning = True
-                                break
-                        if not someRunning:
-                            term.add(s)
-                elif len(s.ctxbag) == 0:
-                    term.add(s)
-
-            # Now find all the states that can reach terminating states.
-            nextgood = term
-            while nextgood != set():
-                newgood = set()
-                for s in nextgood:
-                    for s2 in visited[s].sources.difference(term):
-                        newgood.add(s2)
-                term = term.union(newgood)
-                nextgood = newgood
-            bad = set(visited.keys()).difference(term)
+                    # see if all processes are blocked or stopped
+                    assert not s.choosing
+                    for (ctx, next) in n.edges.items():
+                        assert isinstance(ctx, ContextValue)
+                        (nxtstate, nxtctx, steps) = next
+                        if nxtstate != s:
+                            bad.add(s)
+                            break
+                else:
+                    bad.add(s)
 
         if len(bad) > 0:
             print("==== Non-terminating States ====", len(bad))
@@ -4174,6 +4163,7 @@ def run(code, labels, map, step, blockflag):
             assert not bad_state.choosing
             running = 0
             blocked = 0
+            stopped = 0
             for (ctx, next) in node.edges.items():
                 assert isinstance(ctx, ContextValue)
                 (nxtstate, nxtctx, steps) = next
@@ -4183,22 +4173,10 @@ def run(code, labels, map, step, blockflag):
                 else:
                     running += 1
                     print("running process:", ctx)
-            print("#blocked:", blocked, "#running:", running)
-
-    # Look for states where there are no processes running but there are blocked processes.
-    bad = set()
-    for (s, n) in visited.items():
-        if len(s.ctxbag) == 0 and len(s.stopbag) > 0:
-            bad.add(s)
-            visited[s].issues.add("stopped process")
-    if len(bad) > 0:
-        print("==== Stopped States ====", len(bad))
-        bad_state = find_shortest(visited, bad)
-        todump.add(bad_state)
-        print_path(visited, bad_state)
-        for ctx in bad_state.stopbag.keys():
-            print("stopped process:", ctx)
-        issues_found = True
+            for ctx in bad_state.stopbag.keys():
+                print("stopped process:", ctx)
+                stopped += 1
+            print("#blocked:", blocked, "#stopped:", stopped, "#running:", running)
 
     if not issues_found:
         print("no issues found")
