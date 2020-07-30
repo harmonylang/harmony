@@ -3763,7 +3763,7 @@ if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
 \end{problems}
 
-\chapter{Networking: Alternating Bit Protocol}
+\chapter{Alternating Bit Protocol}
 \label{ch:abp}
 \index{alternating bit protocol}%
 \index{protocol}%
@@ -3785,7 +3785,10 @@ The method also needs to be interrupt-safe.
 \label{fig:abptest}
 \end{figure}
 
-A distributed system is a concurrent system in which a collection
+A
+\emph{distributed system}
+\index{distributed system}%
+is a concurrent system in which a collection
 of processes communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
@@ -3803,37 +3806,45 @@ $m_1$ is received before $m_2$.
 Also, the network does not create messages out of nothing: if
 message $m$ is received, then message $m$ was sent.
 
-We need a network protocol that Alice and Bob can run.
+It is useful to create an abstract network that reliably sends messages
+between processes, much like the FIFO queue in the \texttt{synch} module.
+For this, we need a network protocol that Alice and Bob can run.
 In particular, it has to be the case that if Alice sends application
 messages $m_1, ..., m_n$ in that order, then if Bob receives an
 application message
 $m$, then $m = m_i$ for some $i$ and Bob will already have received
 application messages $m_1, ..., m_i$ (safety).
-Also, if the network is fair, then if Alice sends application message
+Also, if the network is fair and Alice sends application message
 $m$, then eventually Bob should deliver $m$ (liveness).
 
 The \emph{Alternating Bit Protocol} is suitable for our purposes.
 We assume that there are two unreliable network channels: one from Alice
 to Bob and one from Bob to Alice.
-Alice and Bob each maintain a zero-initialized sequence number,
+Alice and Bob each maintain a zero-initialized
+\emph{sequence number},
+\index{sequence number}%
 \textit{s\_seq} and \textit{r\_seq} resp.
 Alice sends a network message to Bob containing an
 application message as \emph{payload} and Alice's sequence number
 as \emph{header}.
 When Bob receives such a network message, Bob returns an
-an \emph{acknowledgment} to Alice, which is a network message
-containing the sequence number in the message that Bob received.
+\emph{acknowledgment}
+\index{acknowledgment}%
+to Alice, which is a network message
+containing the same sequence number as in the message that Bob received.
 
 In the protocol, Alice keeps sending the same network message until she
 receives an acknowledgment with the same sequence number.
-When this happens, Alice increments her sequence number.  She is now
-ready to send the next message she wants to send to Bob.
+This is called \emph{retransmission}.
+\index{retransmission}%
+When she receives the desired sequence number, Alice increments her sequence number.
+She is now ready to send the next message she wants to send to Bob.
 Bob, on the other hand, waits until he receives a message matching
 Bob's sequence number.  If so, Bob \emph{delivers} the payload in the
 message and increments his sequence number.
 Because of the network properties,  a one-bit sequence number suffices.
 
-Because of the network's properties, we can model each
+We can model each
 channel as a variable that either contains a network message or nothing
 (we use \texttt{()} in the model).  Let \textit{s\_chan} be the channel
 from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
@@ -3847,7 +3858,7 @@ The use of the \textit{reliable} flag will be explained later.
 \texttt{net\_recv}(\textit{pchan}) models checking \texttt{!pchan} for
 the next message.
 
-Method \texttt{app\_send}($m$) tries \emph{retransmitting} $m$ until
+Method \texttt{app\_send}($m$) retransmits $m$ until
 an acknowledgment is received.
 Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
 message.
@@ -3864,7 +3875,7 @@ for the last acknowledgment, or the receiver waiting for the last message.
 
 \section*{Exercises}
 \begin{problems}
-\item \autoref{ex:cltsvr} explored the \emph{client/server}.  It is popular
+\item \autoref{ex:cltsvr} explored the \emph{client/server model}.  It is popular
 in distributed systems as well.
 Develop a protocol for a single client and server using the same network
 model as for the ABP protocol.
