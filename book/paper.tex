@@ -3526,7 +3526,7 @@ for critical sections.  Instead, some sequential process owns a particular
 piece of data and other processes access it by sending request messages
 to the process and optionally waiting for response messages.  Each process
 handles one message at a time, serializing all access to the data it owns.
-As message queues are FCFS, starvation is prevented.
+As message queues are FCFS (First-Come-First-Served), starvation is prevented.
 
 The actor synchronization model is popular in a variety of programming
 languages, including Erlang and Scala.  Actor support is also available
@@ -3557,7 +3557,7 @@ Thus, synchronized queues can be considered a generalization of counting semapho
 
 \autoref{fig:actor} shows a Harmony solution to the
 ``multiple producer / multiple consumer problem'' (with an unbounded buffer)
-using an actor (as illustrated in \autoref{fig:actorpic}.
+using an actor (as illustrated in \autoref{fig:actorpic}).
 \texttt{pc\_actor} is essentially a matchmaker: it matches
 \texttt{.produce} requests with \texttt{.consume} requests.
 Sometimes it may have buffered \texttt{.consume} requests and is waiting for
@@ -3601,20 +3601,20 @@ requests.
 Here a single actor implements some service, like computing the square of a
 number.
 A client can send a message containing an integer to the server, and the
-server returns a response message containing the square of that message.
+server returns a response message containing the square of that integer.
 Implement this.
 \item Actors and message queues are good for building pipelines.
 Develop a pipeline that computes Mersenne primes (primes that are one less
-than a factor of two).  Write four actors:
+than a power of two).  Write four actors:
 \begin{enumerate}
 \item an actor that generates a sequence of integers 1 through \texttt{N};
 \item an actor that receives integers and forwards only those that are prime;
 \item an actor that receives integers and forwards only those that are one
-less than a factor of two;
+less than a power of two;
 \item an actor that receives integers but otherwise ignores them.
 \end{enumerate}
 Configure two versions of the pipeline, one that first checks if a number
-is prime and then if it is one less than a factor of two, the other
+is prime and then if it is one less than a power of two, the other
 in the opposite order.  Which do you think is better?
 \end{problems}
 
