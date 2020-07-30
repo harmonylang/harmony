@@ -3952,6 +3952,7 @@ However, in the literature there are many examples of practical
 non-blocking (aka \emph{wait-free})
 \index{wait-free synchronization}%
 synchronization algorithms~\cite{}.
+% TODO
 
 There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
@@ -3964,7 +3965,6 @@ values can be added using \texttt{lst\_insert} or deleted using
 \texttt{lst\_remove}.
 There is also a read-only operation: \texttt{lst\_contains} checks if
 a particular value is in the list.
-
 \glsadd{linearizable}%
 
 The implementation uses the \texttt{alloc} module for dynamic allocation
@@ -3980,7 +3980,7 @@ makes it appear as if each of the operations executes atomically at
 some point between their invocation and return.
 
 The list has two ``book-end'' nodes with values \texttt{-inf} and
-\texttt{inf} (like the Python \texttt{math.inf} constants).
+\texttt{inf} (similar to the Python \texttt{math.inf} constant).
 Each node has a lock, a value, and \textit{next}, a pointer to the next node
 (which is \texttt{None} for the final \texttt{inf} node).
 The \texttt{lst\_find}(\textit{lst}, $v$) method is a helper function for update
@@ -4000,7 +4000,7 @@ The \texttt{lst\_contains} method can simply scan through the list
 because the \textit{next} pointers are updated atomically in such a
 way that they always point to a legal suffix of the list.
 An invariant of the algorithm is that at any point in time the
-list is ``complete'', starting with a \texttt{-inf} node and ending
+list is ``valid,'' starting with a \texttt{-inf} node and ending
 with a \texttt{inf} node.
 
 Determining if an implementation of a concurrent data structure
@@ -4048,7 +4048,7 @@ An update operation acquires the lock, increments the version number, makes the
 changes to the data structure, and then releases the lock.  A read-only operation
 does not use the lock.  Instead, it retrieves the version number,
 reads the data structure, and then checks if the
-version number has not changed.  If it has, read-only operation is retried.
+version number has changed.  If so, the read-only operation is retried.
 Use a seqlock to implement a bank much like \autoref{ex:bank}, with
 one seqlock for the entire bank (i.e., no locks on individual accounts).
 Method \texttt{transfer} is an update operation; method \texttt{total} is a
