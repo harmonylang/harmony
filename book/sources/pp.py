@@ -271,6 +271,8 @@ def lexer(s, file, silent):
             if not silent: print("\\" + s[0], end="")
         elif s[0] == "^":
             if not silent: print("\\^{}", end="")
+        elif s[0] == "|":
+            if not silent: print("$\\vert$", end="")
         else:
             if s[0] in ["@", "."]:
                 nextconst = True

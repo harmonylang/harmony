@@ -12,8 +12,7 @@ def partition(lo, hi):
     swap(?a[result], ?a[hi]); 
 ;
 def sortrange(range):
-    let lo, hi = range
-    let pivot = partition(lo, hi):
+    let lo, hi = range let pivot = partition(lo, hi):
         if (pivot - 1) > lo:
             todo |= { (lo, pivot - 1) };
         ;
