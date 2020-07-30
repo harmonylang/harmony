@@ -71,13 +71,13 @@ XX\=XXX\=XXX\kill
   name=blocked process,
   description={is a process that cannot change the state unless another
     process changes the state first.  For example, a process that is waiting
-    for a lock to become available.}
+    for a lock to become available}
 }
 \newglossaryentry{busy waiting}
 {
   name=busy waiting,
   description={(aka spin-waiting) is when a process waits in a loop for some
-      application-defined condition}
+      application-defined condition instead of blocking}
 }
 \newglossaryentry{concurrent execution}
 {
@@ -176,7 +176,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{mutual exclusion}
 {
   name=mutual exclusion,
-  description={is a property that two processes never enter the same critical section}
+  description={is the property that two processes never enter the same critical section}
 }
 \newglossaryentry{non-blocking synchronization}
 {
@@ -188,8 +188,8 @@ XX\=XXX\=XXX\kill
 {
   name=process,
   description={is a method in execution.  We do not make the distinction
-      between processes and threads.  A process has a program counter, a register,
-      and a stack}
+      between processes and threads.  A process has a current context and
+      updates its context every time it executes a machine instruction}
 }
 \newglossaryentry{process variable}
 {
@@ -201,7 +201,7 @@ XX\=XXX\=XXX\kill
 {
   name=producer/consumer problem,
   description={is a synchronization problem whereby one or more producing processes
-    submit items and one or more consuming process want to receive them.  No item
+    submit items and one or more consuming processes want to receive them.  No item
     can get lost or forged or be delivered to more than one consumer, and producers
     and consumers should block if resources are exhausted}
 }
