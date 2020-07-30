@@ -21,7 +21,7 @@ def acquire_wlock():
     let blocked = True:
         while blocked:
             lock(?rwlock);
-            if (nreaders == 0) and (nwriters == 0):
+            if (nreaders + nwriters) == 0:
                 nwriters = 1;
                 blocked = False;
             ;

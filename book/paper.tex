@@ -3089,7 +3089,8 @@ When a process $p$ invokes \texttt{notify}, it does not immediately pass
 the baton to some process $q$ requiring the baton (assuming there even
 is such a process).  Instead, $p$ holds onto
 the baton until it leaves the monitor.  At that point, any process that
-was notified will have a chance to obtain the baton.
+was notified will have a chance to obtain the baton, but they compete
+with other processes also trying to obtain the baton.
 
 \begin{figure}
 \begin{center}
@@ -3107,36 +3108,37 @@ process at a time.  The bedrooms represent condition variables.
 There is some condition associated with each bedroom.
 In the hall are processes waiting to enter the critical section.
 
-On the left is a Hoare monitor.  When a process leaves the monitor
-(let's call that process $p$), it must be in the bathroom.
-It can choose to either let in a process
-in one of the bedrooms or a process in the hall, assuming there are any.
-To make the choice, $p$ checks for each bedroom if its condition holds
-and if there are processes in the bedroom.
-If there are such bedrooms, $p$ selects one and one of its processes into
-the bathroom.  Let's call that process $q$.  Importantly, when $q$ enters
-the bathroom, the condition that $q$ was waiting for still holds.
+On the left is a Hoare monitor.
+When some process $p$ is in the bathroom, it can invoke \textbf{signal}
+on some non-empty bedroom associated with a condition that holds.
+This select a process $q$ in that bedroom.
+As a result of invoking \textbf{signal}, $p$ goes back into the hall
+and $q$ enters the bathroom.
+Importantly, when $q$ enters the bathroom, the condition that $q$ was
+waiting for is guaranteed to hold.
 
 On the right is a Mesa monitor.  The only way into the bathroom is through
-the hall.  When process $p$ leaves the bathroom,
-if also checks each of the bedrooms to see if there is a process $q$ that
-can run.  But instead of letting $q$ go straight into the bathroom, $q$
-goes into the hall, joining any other processes that are also waiting to
-enter the bathroom.  Finally, when $p$ has left the bathroom, one of the
-processes in the hall is let into the bathroom.  But that may not be $q$.
+the hall.  When process $p$ invokes \textbf{notify} on a bedroom, it
+selects a process $q$ in that bedroom, if any.
+Process $q$ goes into the hall,
+joining any other processes that are also waiting to
+enter the bathroom.
+If there are no processes in that bedroom, \textbf{notify} is a no-op.
+Importantly, in either case $p$ remains in the bathroom.
+Finally, when $p$ leaves the bathroom, one of the
+processes in the hall can enter the bathroom.  But that may not be $q$.
 Assuming every process eventually leaves the bathroom and the system is
 fair, eventually $q$ will enter the bathroom.  However, it is no longer
-guaranteed that its condition holds.  Therefore, the first thing $q$ must
+guaranteed that the condition it was waiting for still holds.
+Therefore, the first thing $q$ must
 do is check, again, to see if the condition holds.  If not, it should go back
 into the bedroom corresponding to the condition.
 
-Mesa monitors provide another important option:
-when process $p$ leaves the bathroom, it can choose to let any number of
-processes in the bedrooms into the hall.  It can do so by calling
-\texttt{notify} repeatedly, each time letting one process in one of the
-bedrooms into the hall.  Using \texttt{notify} on an empty
-bedroom is considered a no-op in Mesa.  (Hoare monitors do not allow
-using \texttt{signal} on an empty bathroom.) Mesa also provides an
+Besides notifying processes, Mesa monitors provide another important option:
+it can choose to let any number of processes in the bedrooms into the hall.
+It can do so by calling
+\texttt{notify} repeatedly, each time letting one process in the specified
+bedroom into the hall.  Mesa also provides an
 operation called \texttt{notifyAll}
 \index{notifyAll}%
 (aka \texttt{broadcast)})
@@ -3145,7 +3147,8 @@ that, when applied to
 a bedroom, lets all processes in that bedroom into the hall.
 This is not possible with Hoare monitors: when needing to wake up a set
 of processes, only one can be signaled at a time.  Each of those processes
-then has to signal the next until all processes have been signaled.
+then has to signal the next in a baton-passing style
+until all processes have been signaled.
 
 While Hoare monitors are conceptually simpler, the so-called
 ``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
@@ -3156,7 +3159,8 @@ In Java, each object has a hidden lock \emph{and} a hidden condition variable
 associated with it.
 Methods declared with the \texttt{synchronized} keyword automatically
 obtain the lock.  Java objects also support \texttt{wait}, \texttt{notify},
-and \texttt{notifyAll}.  Java also supports explicit allocations of locks
+and \texttt{notifyAll}.
+In addition, Java supports explicit allocations of locks
 and condition variables.
 In Python, locks and condition variables must be explicitly declared.
 The \texttt{with} statement makes it easy to acquire and release a lock
@@ -3178,7 +3182,7 @@ In C and C++, support for locks and condition variables is through libraries.
 \begin{code}
 \harmonysource{RWcv}
 \end{code}
-\caption{\harmonylink{code/RWcv.hny} Reader/Writer Lock implementation using Mesa-style condition variables.}
+\caption{\harmonylink{code/RWcv.hny} Reader/Writer Lock using Mesa-style condition variables.}
 \label{fig:RWcv}
 \end{figure}
 
@@ -3194,8 +3198,9 @@ The condition variable itself is represented by a dictionary containing the poin
 and a bag of name tags of processes waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
 
-\texttt{wait} adds the nametag of the process to the bag.  This increments the number of processes
-in the bag with the same context.  \texttt{wait} then waits until that count is restored to the
+\texttt{wait} adds the nametag of the process to the bag.
+This increments the number of processes in the bag with the same context.
+\texttt{wait} then waits until that count is restored to the
 value that it had upon entry to \texttt{wait}.  \texttt{notify} removes an arbitrary context from
 the bag, allowing one of the processes with that context to return from \texttt{wait}.
 \texttt{notifyAll} empties out the entire bag, allowing all processes in the bag to resume.
@@ -3246,6 +3251,14 @@ may cause the application to get stuck.  Harmony can be particularly helpful her
 it examines every corner case.  You can safely try to replace each \texttt{notifyAll}
 with \texttt{notify} and see if every possible execution of the the application still
 terminates.
+
+While Hoare moniters embody the split binary semaphore approach,
+Mesa monitors are much closer to the busy-waiting approach.
+When comparing the busy-waiting version of reader/writer locks in \autoref{fig:rwbusy}
+and the Mesa version in \autoref{fig:RWcv}, you will see important similarities.
+Busy-waiting is ``fixed'' by placing a \textbf{wait} statement in the waiting loop.
+The Mesa code then has to be careful to invoke \textbf{notify} or \textbf{notifyAll}
+in the right places.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
