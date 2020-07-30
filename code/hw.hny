@@ -6,7 +6,7 @@ def inc(pcnt):
         !pcnt += 1;
     ;
 ;
-def swap(pv):
+def exch(pv):
     atomic:
         result = !pv;
         !pv = None;
@@ -20,7 +20,7 @@ def consume():
     while result == None:
         let range, i = back, 0:
             while (i < range) and (result == None):
-                result = swap(?items[i]);
+                result = exch(?items[i]);
                 i += 1;
             ;
         ;

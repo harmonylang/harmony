@@ -3921,7 +3921,7 @@ The code uses two interlock instructions:
 \begin{itemize}
 \item \texttt{inc}($p$): atomically increments \texttt{!}$p$ and returns
 the old value;
-\item \texttt{swap}($p$): sets \texttt{!}$p$ to \texttt{()} and returns
+\item \texttt{exch}($p$): sets \texttt{!}$p$ to \texttt{()} and returns
 the old value.
 \end{itemize}
 
@@ -3931,7 +3931,7 @@ the next available slot in the \textit{items} array.
 It stores the item as a singleton tuple.
 Method \texttt{consume()} repeatedly scans the array, up to the
 \textit{back} index, trying to find an item to return.
-To check an entry, it uses \texttt{swap()}
+To check an entry, it uses \texttt{exch()}
 to atomically remove an item from a slot if there is one.
 This way, if two or more processes attempt to extract an item from
 the same slot, at most one will succeed.
@@ -3945,7 +3945,7 @@ Unfortunately, the solution is not practical for the following reasons:
 \item The \textit{items} array must be of infinite size if an unbounded number
 of items may be produced;
 \item Each slot in the array is only used once, which is inefficient;
-\item the \texttt{inc} and \texttt{swap} interlock instructions are not
+\item the \texttt{inc} and \texttt{exch} interlock instructions are not
 universally available on existing processors.
 \end{itemize}
 However, in the literature there are many examples of practical
