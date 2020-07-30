@@ -6,18 +6,14 @@ const R = 4;        # number of rounds
 
 def process(self):
     for r in {1..R}:
-        for i in {0..N-1}:
-            if i != self:
-                V(?sema[i]);
-            ;
+        for i in {0..N-1} such that i != self:
+            V(?sema[i]);
         ;
-        for i in {0..N-1}:
-            if i != self:
-                P(?sema[self]);
-            ;
+        for i in {0..N-1} such that i != self:
+            P(?sema[self]);
         ;
         round[self] = (round[self] + 1);
-        assert (listMax(round) - listMin(round)) <= 1;
+        assert (max(round) - min(round)) <= 1;
     ;
 ;
 round = [ 0 for i in {0..N-1} ];

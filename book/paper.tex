@@ -4086,15 +4086,15 @@ the intention is to get a group of processes to run some code at the
 same time, instead of having them execute it one at a time.
 More precisely, with barrier synchronization the processes execute in rounds.
 Between each round there is a so-called \emph{barrier} where processes wait
-until all processes have completed the round and before they start the
+until all processes have completed the previous round, before they start the
 next one.
 For example, in an iterative matrix algorithm, the matrix may be
-cut up into fragments.  During a round, the processes run concurrently
+cut up into fragments.  During a round, the processes run concurrently,
 one for each fragment.  The next round is not allowed to start
 until all processes have completed processing their fragment.
 
-\autoref{fig:barrierdiagram} shows a high-level depiction with three
-processes.  Initially all processes are in round~0.  Then each process
+\autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
+with three and processes.  Initially all processes are in round~0.  Then each process
 can start and finish the round.  However, none of the processes can
 progress to the next round until all processes have finished the
 current round.
