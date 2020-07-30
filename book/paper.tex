@@ -3113,7 +3113,10 @@ When some process $p$ is in the bathroom, it can invoke \textbf{signal}
 on some non-empty bedroom associated with a condition that holds.
 This select a process $q$ in that bedroom.
 As a result of invoking \textbf{signal}, $p$ goes back into the hall
-and $q$ enters the bathroom.
+and $q$ enters the bathroom.\footnote{Per Brinch Hansen' monitors have
+a \textbf{continue} operation instead of \textbf{signal}.  The difference
+is that processes that invoke \textbf{continue} leave the monitor rather
+than returning to the hall.}
 Importantly, when $q$ enters the bathroom, the condition that $q$ was
 waiting for is guaranteed to hold.
 
