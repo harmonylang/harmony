@@ -3951,8 +3951,8 @@ universally available on existing processors.
 However, in the literature there are many examples of practical
 non-blocking (aka \emph{wait-free})
 \index{wait-free synchronization}%
-synchronization algorithms~\cite{}.
-% TODO
+synchronization algorithms.
+% TODO~\cite{}.
 
 There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
@@ -4119,7 +4119,10 @@ are more than one round apart.
 \item See if you can implement barrier synchronization for \texttt{N} processes
 with just three semaphores.  Busy waiting is not allowed.  How about just two?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
-for solving semaphore problems.  Look for the double turnstile solution.)
+for solving synchronization problems with semaphores.
+Look for the \emph{double turnstile}
+\index{double turnstile}%
+solution.)
 \item Implement barrier synchronization with Mesa condition variables.
 (You may want to use a double turnstile approach here as well.)
 \end{problems}
@@ -4291,9 +4294,8 @@ Dict comprehension & \texttt{dict\{ f($v$) for $v$ in $s$ \}} \\
 \end{tabular}
 \vspace{1em}
 
-In each case, $s$ must be a set.
-For list comprehensions, the list will be sorted by $e$.
-For dictionary comprehensions, each $e$ will be mapped to \texttt{f}($e$).
+In each case, $s$ must be a set or a dictionary.
+\autoref{ap:details} provides more information on comprehensions.
 
 \chapter{List of Statements}
 
@@ -4340,11 +4342,6 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 \texttt{import m} & \texttt{m} identifies a module \\
 \hline
 \end{tabular}
-\vspace{1em}
-
-Harmony does not support Python-style iterators.
-To iterate through a dictionary, list, or tuple, use:
-\texttt{for $v$ in keys($e$):~S}.
 
 \chapter{List of Modules}
 \label{ap:module}
@@ -4406,7 +4403,7 @@ or tuples:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{subseq($t$, $b$, $b$)} & return a \emph{slice} of list $t$ starting
+\texttt{subseq($t$, $b$, $f$)} & return a \emph{slice} of list $t$ starting
 at index $b$ and ending just before $f$\\
 \hline
 \texttt{append($t$, $e$)} & append $e$ to list $t$\\
@@ -4697,6 +4694,7 @@ by a single context, one for each choice.  If not, the edges from
 the state are one per context.
 
 \chapter{Harmony Language Details}
+\label{ap:details}
 
 The Harmony language borrows heavily from Python.  However, there are
 some important differences that we will describe in this chapter.
