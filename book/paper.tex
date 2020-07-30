@@ -3320,10 +3320,10 @@ a scenario he called ``Dining Philosophers.''
 Imagine five philosopers sitting around a table, each with a plate of food in
 front of them and a fork between each two plates.  Each philosopher requires
 two forks to eat.  To start eating, a philosopher first picks up the fork on
-the left, then the fork on the right.  Each philospher likes to take breaks
+the left, then the fork on the right.  Each philosopher likes to take breaks
 from eating to think for a while.  To do so, the philosopher puts down both
 forks.  Each philosopher repeat this procedure.  Dijkstra had them repeating
-this for ever, but for the purposes of this book, philosphers can leave
+this for ever, but for the purposes of this book, philosophers can leave
 the table when they're not eating.
 
 \autoref{fig:diners} implements the dining philosophers in Harmony, using a
@@ -3357,7 +3357,7 @@ There are four conditions that must hold for deadlock to occur~\cite{CES71}:
 \item \emph{Mutual Exclusion}: each resource can only be used by one process at a time:
 \item \emph{Hold and Wait}: each process holds resources it already allocated while it
 waits for other resources that it needs;
-\item \emph{No Preemption}: Resources cannot be forcibly taken back from processes that
+\item \emph{No Preemption}: Resources cannot be forcibly taken away from processes that
 allocated them;
 \item \emph{Circular Wait}: There exists a directed circular chain of processes, each waiting
 to allocate a resource held by the next.
@@ -3383,7 +3383,7 @@ way to lock both the left and right forks at the same time.  Locks do not
 have such an ability, and neither do semaphores. so we re-implement the
 Dining Philosophers using condition variables that allow one to wait for
 arbitrary application-specific conditions.
-
+%
 \autoref{fig:dinerscv} demonstrates how this might be done.
 We use a single mutex for the diners, and, for each fork, a boolean
 and a condition variable.  The boolean indicates if the fork has been
