@@ -6,12 +6,9 @@ def V_one():
         V(?mutex);
     else:
         let h = head(queue):
-            if (h[0] == .read) and (w_entered == 0):
-                V(h[1]);
-            elif (h[0] == .write) and ((r_entered + w_entered) == 0):
-                V(h[1]);
-            else:
-                V(?mutex);
+            if (h[0] == .read) and (w_entered == 0): V(h[1]);
+            elif (h[0] == .write) and ((r_entered + w_entered) == 0): V(h[1]);
+            else: V(?mutex);
             ;
         ;
     ;
@@ -41,5 +38,5 @@ def release_wlock():
     P(?mutex); w_entered = 0; V_one();
 ;
 mutex = Semaphore(1);
-r_entered = 0; w_entered = 0;
+r_entered, w_entered = 0, 0;
 queue = [];

@@ -2959,7 +2959,7 @@ all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
 SBSs allow much control over which thread runs next and is therefore a
-good starting point for developing fair synchronization algorithm
+good starting point for developing fair synchronization algorithms.
 In this chapter, we will present two SBS-based fair reader/writer lock
 implementations.
 The first, in \autoref{fig:RWfair}, is based on \autoref{fig:RWsplitsema}.
@@ -3065,7 +3065,9 @@ Our implementations of reader/writer locks can be easily changed to
 use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
 and \texttt{V}.
 
-In the late 70s, Xerox PARC developed a new programming language called
+In the late 70s, researchers at Xerox PARC,
+where among others the desktop and Ethernet
+were invented, developed a new programming language called
 Mesa~\cite{LR80}.
 \index{Mesa}%
 Mesa introduced various important concepts to programming languages,
@@ -3077,7 +3079,7 @@ monitors that make Mesa monitors quite unlike split binary semaphores.
 As in Hoare monitors, there is a hidden mutex associated with each monitor,
 and the mutex is automatically acquired upon entry to a method and released
 upon exit.
-Mesa monitors also have condition variable that a process can wait on.
+Mesa monitors also have condition variables that a process can wait on.
 Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
