@@ -4650,7 +4650,7 @@ code & a list of HVM machine instructions \\
 \hline
 labels & a dictionary of atoms to program counters \\
 \hline
-variables & a dictionnary mapping atoms to values \\
+variables & a dictionary mapping atoms to values \\
 \hline
 ctxbag & a bag of non-stopped contexts \\
 \hline
@@ -4710,7 +4710,7 @@ unexpected differences.  For example, consider the following code:
 \end{code}
 
 In Python, lists are objects.  Thus $x$ and $y$ point to the same list,
-and the assertion will fail.
+and the assertion would fail if executed by Python.
 In Harmony, lists are values.  So when $x$ is updated in Line~3, it does
 not affect the value of $y$.  The assertion succeeds.
 Harmony supports references to values (\autoref{ch:method}),
@@ -4814,7 +4814,7 @@ and tuples).  The details are a little different from Python:
 
 \begin{itemize}
 \item When iterating over a set, the set is always traversed in order
-(see \autoref{ap:values} for a description how Harmony values are ordered);
+(see \autoref{ap:values} for how Harmony values are ordered);
 \item In case of a dictionary, the iteration is over the values of the
 dictionary, but in the order of the keys.  In the case of lists, this
 works much the same as in Python;
@@ -4859,7 +4859,7 @@ demonstrating Harmony to him.
 
 Leslie Lamport introduced me to using model checking to test properties
 of a concurrent system.  My experimentation with using TLC on Peterson's
-Algorithm became an aha momment for me.
+Algorithm became an aha moment for me.
 
 I first demonstrated Harmony to the students in my CS6480 class on systems
 and formal verification and
@@ -4869,9 +4869,10 @@ I would also like to thank my proofreaders Anneke van Renesse and
 Zhuoyu Xu.
 
 Finally, I would like to thank my family who had to suffer as I obsessed
-over writing the code and the book.
+over writing the code and the book during the turbulent months of
+May and June 2020.
 
-% I wrote the Harmony compiler and this book in May and June of 2020,
+% I wrote the Harmony compiler and this book
 % during the pandemic and the George Floyd demonstrations.
 
 \cleardoublepage
