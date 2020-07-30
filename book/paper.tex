@@ -4502,7 +4502,7 @@ Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
 Dup & duplicate the top element of the stack \\
 \hline
-Frame \texttt{m}($a$) & start method \texttt{m} with arguments $a$,
+Frame \texttt{m} $a$ & start method \texttt{m} with arguments $a$,
 initializing variables.  \\
 \hline
 Go & pop context and value, push value on context's stack, and add to context bag \\
@@ -4590,7 +4590,8 @@ The \texttt{Frame} instruction unpacks the argument to the method and places the
 
 A context captures the state of a process.  Each time the process
 executes an instruction, it goes from one context to another.
-All instructions update the program counter, and so no instruction
+All instructions update the program counter (\texttt{Jump} instructions
+are not allowed to jump to their own locations), and so no instruction
 leaves the context the same.
 There may be multiple processes
 with the same state at the same time.

@@ -1345,6 +1345,7 @@ class ReturnOp(Op):
         if calltype == "normal":
             pc = context.pop()
             assert isinstance(pc, PcValue)
+            assert pc.pc != context.pc
             context.pc = pc.pc
             context.push(result)
         elif calltype == "interrupt":
@@ -1352,6 +1353,7 @@ class ReturnOp(Op):
             context.interruptLevel = False
             pc = context.pop()
             assert isinstance(pc, PcValue)
+            assert pc.pc != context.pc
             context.pc = pc.pc
         elif calltype == "process":
             context.terminated = True
@@ -1429,6 +1431,7 @@ class JumpOp(Op):
         return "set program counter to " + str(self.pc)
 
     def eval(self, state, context):
+        assert self.pc != context.pc
         context.pc = self.pc
 
 class JumpCondOp(Op):
@@ -1446,6 +1449,7 @@ class JumpCondOp(Op):
     def eval(self, state, context):
         c = context.pop()
         if c == self.cond:
+            assert self.pc != context.pc
             context.pc = self.pc
         else:
             context.pc += 1
@@ -1805,6 +1809,7 @@ class ApplyOp(Op):
             context.push(PcValue(context.pc + 1))
             context.push("normal")
             context.push(e)
+            assert method.pc != context.pc
             context.pc = method.pc
 
 class AST:
