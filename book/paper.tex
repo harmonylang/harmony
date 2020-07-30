@@ -2684,7 +2684,7 @@ exactly the set of tuples that the producers produce.
 
 \section*{Exercises}
 \begin{problems}
-\item Change the code in \autoref{fig:boundedbuffer} so that
+\item \label{ex:nbproduce} Change the code in \autoref{fig:boundedbuffer} so that
 \texttt{produce()} fails if the buffer is full rather than block.
 \texttt{produce()} should return \texttt{False} if it fails
 and return \texttt{True} if it succeeds.
@@ -3659,7 +3659,8 @@ such as a keystroke, a timer expiring, the reception of a network packet, the co
 of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
 An exception is caused by the process executing an invalid machine instruction such as
 divide-by-zero.  An interrupt is caused by some peripheral device and can be handled in
-Harmony; an exception is an error.
+Harmony.
+In other words: an interrupt is a notification, while an exception is an error.
 \index{exception}
 
 Harmony allows modeling interrupts using the \texttt{trap} statement:
@@ -3701,7 +3702,7 @@ Note that it is not necessary to change the interrupt level during servicing an
 interrupt, because it is automatically set to \texttt{True} upon entry to the interrupt
 handler and restored to \texttt{False} upon exit.
 It is important that the \textit{main}() code re-enables interrupts after incrementing
-\textit{count}.  What would happen if \textit{main}() left interrupt disabled?
+\textit{count}.  What would happen if \textit{main}() left interrupts disabled?
 
 \textbf{setintlevel}(\textit{il}) sets the interrupt level to \textit{il} and returns
 the prior interrupt level.  Returning the old level is handy when writing interrupt-safe
@@ -3731,7 +3732,7 @@ interrupt levels.
 To increment \textit{count}, the interrupt level must be \textit{True} and
 \textit{countlock} must be held.
 \autoref{fig:trap6} gives an example of how this might be done.
-One important rule to remember is for a process to disable interrupts \emph{before}
+One important rule to remember is that a process should disable interrupts \emph{before}
 attempting to acquire a lock.
 
 Try moving \texttt{lock}() to the beginning of the \texttt{increment} method
@@ -3739,13 +3740,13 @@ and \texttt{unlock}() to the end of \texttt{increment} and see what happens.
 While Harmony will only report one faulty run, this incorrect code can lead to
 the assertion failing as well as processes getting blocked indefinitely.
 
-There is another important rule to keep in mind.  Just locks should never be held
+There is another important rule to keep in mind.  Just like locks should never be held
 for long, interrupts should never be disabled for long.  With locks the issue is to
-maximize concurrent performance.  The interrupts the issue is fast response to
+maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
 handlers must run quickly and cannot wait for other events.  So it is ok to invoke
 synchronization calls such as \texttt{V} and \texttt{notify}, but calls such as
-\texttt{P} and \texttt{wait} should only be used if it's known that they will not
+\texttt{P} and \texttt{wait} should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
 
@@ -3754,10 +3755,12 @@ block for long.  Informally, interrupt handlers can be
 \item The \texttt{produce} method in \autoref{fig:boundedbuffer} cannot be used
 in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
-say, a keyboard interrupt handler could place an event on a shared queue.  Implement
-a new method \texttt{iproduce}(\textit{item}) that is interrupt-safe and does not
+say, a keyboard interrupt handler could place an event on a shared queue.
+Similar to \autoref{ex:nbproduce}, implement
+a new method \texttt{iproduce}(\textit{item}) that does not
 block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
 if the item was successfully enqueued.
+The method also needs to be interrupt-safe.
 \end{problems}
 
 \chapter{Networking: Alternating Bit Protocol}
