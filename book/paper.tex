@@ -2805,11 +2805,16 @@ binary semaphores to vacate.
 Method \texttt{V\_one()} first checks to see if there are any readers or
 writers waiting.  If there are readers waiting and there are no writers
 in the critical section, it vacates the semaphore associated with
-readers waiting.  If there are writers waiing and there are no readers
+readers waiting, passing the baton to the next reader.
+If there are writers waiting and there are no readers
 nor writers in the critical section, it vacates the semaphore associated
-with writers waiting.  If both conditions hold, it could vacate either
-one---it would not matter.  However, it can only vacate one of the semaphores.
-If none of the conditions hold, \texttt{V\_one()} vacates \textit{mutex}.
+with writers waiting, passing the baton to the next writer.
+If both conditions hold, it could vacate either
+one---it would not matter.
+However, it can only vacate one of the semaphores.
+In this implementation, it prefers to pass the baton to another reader.
+If none of the conditions hold, \texttt{V\_one()} vacates \textit{mutex},
+leaving the batom for a future process to pick up.
 
 Let us return now to \texttt{rlock\_acquire}. In the case that the process,
 say $p$,
@@ -2819,7 +2824,8 @@ blocking on the semaphore associated
 with waiting readers.  When later some other process passes the baton to
 $p$ by incrementing \textit{r\_sema}, $p$ updates the state by decrementing
 \textit{r\_waiting} and incrementing \textit{r\_entered}.  $p$
-then invokes \texttt{V\_one()} one more time.
+then invokes \texttt{V\_one()} to pass the baton to another waiting
+reader, if any, or to leave it for another process to pick up.
 
 As an example, consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
@@ -2830,17 +2836,17 @@ the sum of the three semaphores is 0.  The writer then decrements
 \textit{w\_entered} and calls \texttt{V\_one()}.
 \item \texttt{V\_one()} finds that there are no writers in the critical section
 and there are two readers waiting.  It therefore vacates \textit{r\_sema}.
-The sum of the semaphores is now 1, because \textit{r\_sema} is 1.  This
+The sum of the semaphores is now~1, because \textit{r\_sema} is~1.  This
 guarantees that only a waiting reader, procuring \textit{r\_sema}, can enter
 the critical section.
 \item When it does, the reader decrements \textit{r\_waiting}
-from 2 to 1, and increments \textit{r\_entered} from 0 to 1.
+from 2 to 1, and increments \textit{r\_entered} from~0 to~1.
 The reader finally calls \texttt{V\_one()}.
 \item Again, \texttt{V\_one()} finds that there are no writers and
 that there are readers waiting, so again it vacates \textit{r\_sema},
 passing the baton to the one remaining waiting reader.
 \item The remaining reader decrements \textit{r\_waiting} from 1 to 0 and
-increments \textit{r\_entered} from 1 to 2.
+increments \textit{r\_entered} from~1 to~2.
 \item Finally, the remaining reader  calls \texttt{V\_one()}.
 \texttt{V\_one()} does not find any processes waiting,
 and so it vacates \textit{mutex}.
