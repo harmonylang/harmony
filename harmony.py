@@ -468,6 +468,7 @@ def isreserved(s):
         "const",
         "def",
         "del",
+        "elif",
         "else",
         "end",
         "False",

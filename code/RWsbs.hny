@@ -1,12 +1,9 @@
 import synch;
 
 def V_one():
-    if (w_entered == 0) and (r_waiting > 0):
-        V(?r_sema);
-    elif ((r_entered + w_entered) == 0) and (w_waiting > 0):
-        V(?w_sema);
-    else:
-        V(?mutex);
+    if (w_entered == 0) and (r_waiting > 0): V(?r_sema);
+    elif ((r_entered + w_entered) == 0) and (w_waiting > 0): V(?w_sema);
+    else: V(?mutex);
     ;
 ;
 def acquire_rlock():
@@ -39,5 +36,5 @@ def release_wlock():
     w_entered -= 1;
     V_one();
 ;
-mutex = Semaphore(1); r_sema = Semaphore(0); w_sema = Semaphore(0);
-r_entered = 0; r_waiting = 0; w_entered = 0; w_waiting = 0;
+mutex, r_sema, w_sema = Semaphore(1), Semaphore(0), Semaphore(0);
+r_entered, r_waiting, w_entered, w_waiting = 0, 0, 0, 0;

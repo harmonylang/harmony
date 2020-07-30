@@ -63,6 +63,7 @@ def isreserved(s):
         "def",
         "del",
         "dict",
+        "elif",
         "else",
         "fun",
         "for",

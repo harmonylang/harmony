@@ -2717,7 +2717,7 @@ to block.
 \begin{code}
 \harmonysource{RWsbs}
 \end{code}
-\caption{\harmonylink{code/RWsbs.hny} Reader/Writer Lock implementation using Split Binary Semaphores.}
+\caption{\harmonylink{code/RWsbs.hny} Reader/Writer Lock using Split Binary Semaphores.}
 \label{fig:RWsplitsema}
 \end{figure}
 
@@ -2753,7 +2753,8 @@ When a process has the baton and does not need it any more,
 it first checks to see if there are any processes that are waiting for the
 baton and can make progress.
 If so, it passes the baton directly to one of those processes.
-If not, it simply gives up the baton.
+If not, it releases the baton for some other process to pick up at a
+later time.
 
 We will illustrate the technique using the reader/writer problem.
 \autoref{fig:RWsplitsema} shows the
@@ -2764,11 +2765,11 @@ SBS.
 Step 1 is to enumerate all waiting conditions.  In the case of the reader/writer
 problem, there are two: a process that wants to read may have to wait for a
 writer to leave the critical region, while a process that wants to write may
-have to wait until all readers have left the critical section.  If there are $N$
+have to wait until all readers have left the critical section or until a writer has left.  If there are $N$
 waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
 each waiting condition and an extra one that processes use when they first try
 to enter the critical section and do not yet know if they need to wait.
-We shall call this the \textit{mutex}.
+We shall call this last semaphore the \textit{mutex}.
 
 An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
 must always be 0 or 1, and it should be 0 when a process is accessing the shared
@@ -2793,9 +2794,10 @@ Each of the
 \texttt{rlock\_acquire}, \texttt{rlock\_release},
 \texttt{wlock\_acquire}, and \texttt{wlock\_release} methods must maintain
 this state.
-To wit, check out \texttt{rlock\_acquire}.  It first checks to see if there
-are any writers.  If so, it increments \textit{r\_waiting}.  If not,
-it increments \textit{r\_entered}.
+For example, check out \texttt{rlock\_acquire}.
+It first checks to see if there
+are any writers.  If so, it increments \textit{r\_waiting}.
+If not, it increments \textit{r\_entered}.
 
 Either way, it vacates one of the semaphores next.
 \texttt{V\_one()} is the baton passing function that selects which of the
