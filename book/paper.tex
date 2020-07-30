@@ -4623,13 +4623,13 @@ Details:
 \begin{itemize}
 \item The name in a name tag is the name of the method that the process
 is executing;
-\item The tag in a name tag is its argument by default.  Optionally
+\item The tag in a name tag the argument to the method by default.  Optionally
 \texttt{spawn} allows the tag to be specified explicitly;
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame and variables, the argument to
 the method, and the return address.
 \item A process terminates when it reaches the \texttt{Return} instruction
-of the method or when it hits a fault.  Faults include divide by zero,
+of the method or when it hits an exception.  Exceptions include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
 variable, as well as when an assertion fails;
 \item The execution of a process in \emph{atomic mode} does not get interleaved
