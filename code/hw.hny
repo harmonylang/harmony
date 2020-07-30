@@ -9,17 +9,17 @@ def inc(pcnt):
 def exch(pv):
     atomic:
         result = !pv;
-        !pv = None;
+        !pv = ();
     ;
 ;
 def produce(item):
     items[inc(?back)] = (item,);
 ;
 def consume():
-    result = None;
-    while result == None:
+    result = ();
+    while result == ():
         let range, i = back, 0:
-            while (i < range) and (result == None):
+            while (i < range) and (result == ()):
                 result = exch(?items[i]);
                 i += 1;
             ;
@@ -28,7 +28,7 @@ def consume():
     result = result[0];     # convert (item,) into item
 ;
 back = 0;
-items = [ None for i in {0..MAX_ITEMS} ];
+items = [ () for i in {0..MAX_ITEMS} ];
 
 for i in {1..MAX_ITEMS}:
     spawn produce(i);
