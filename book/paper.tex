@@ -2855,17 +2855,21 @@ and so it vacates \textit{mutex}.
 \section*{Exercises}
 \begin{problems}
 \item Assume that you have only binary semaphores.
-Implement counting semaphores using split binary semaphores.
+Implement counting semaphores using the split binary semaphores technique.
 \item With reader/writer locks,
 it can be useful for a process to \emph{downgrade} its write lock
-to a read lock when its done writing but not done reading.  Implement
-a \texttt{downgrade} method.  Note, you cannot do this simply by releasing the
-write lock and then obtaining the read lock, because the process needs
+to a read lock when its done writing but not done reading.  Add
+a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
+How easy or hard would it be to do the same for the code in
+\autoref{fig:rw2lock}?
+Note, you cannot simply release the
+write lock and then obtain the read lock, because the process needs
 to remain in the critical section.
-\item Implement a solution to the producer/consumer problem
+\item \label{ex:onelane} Implement a solution to the producer/consumer problem
 (\autoref{fig:boundedbuffer}) using split binary semaphores.
 \item \label{ex:onelane} Cornell's campus features some one-lane bridges.
-Cars can only go in one direction at a time. Consider northbound
+On a one-lane bridge,
+cars can only go in one direction at a time. Consider northbound
 and southbound cars wanting to cross a one-lane bridge.
 The bridge allows arbitrary many cars, as long as they're going in the
 same direction.
@@ -2874,6 +2878,8 @@ Implement a lock that observes this requirement using SBS.  Write methods
 the bridge and \texttt{nb\_leave()} that the car must invoke after leaving
 the bridge.  Similarly write \texttt{sb\_enter()} and \texttt{sb\_leave()}
 for southbound cars.
+\item Extend the solution to \autoref{ex:onelane} by implementing the
+requirement that at most 3 cars are allowed on the bridge.
 
 \end{problems}
 
