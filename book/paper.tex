@@ -1996,6 +1996,8 @@ When solving synchronization problems you should not directly use
 \emph{atomic} statements but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
 use \textbf{atomic} by all means.
+You can also use \textbf{atomic} statements in your test code.
+In fact, \texttt{assert} statements are executed atomically.
 
 \begin{figure}
 \begin{code}
@@ -2587,19 +2589,21 @@ in \emph{pipelines},
 where each upstream process is a producer and each downstream
 process is a consumer.
 Or processes may be arranged in a manager/worker pattern, with a manager
-producing jobs and workers executing them in parallel.
+producing jobs and workers consuming and executing them in parallel.
 Or, in the client/server model,
 \index{client/server model}%
 some process may act as a \emph{server} that clients can send requests to
-and receive responses from.
+and receive responses from.  In that case, there is a bounded buffer
+for each client/server pair. Clients produce requests and
+consume responses, while the server consumes requests and produces responses.
 
 In general, we allow multiple producers and multiple consumers
 all sharing the same bounded buffer.
 \autoref{fig:pc} gives a high-level description.  The
 two numbers in a state specify
 the number of items that the producers still can produce and
-the number of items that the consumers have consumed.  In this case
-there are three items to produce initially.
+the number of items that the consumers have consumed.  In this
+description there are three items to produce initially.
 
 \begin{figure}
 \begin{code}
@@ -2651,14 +2655,15 @@ They can be used to send signals between processes.
 However, binary and counting semaphores are implemented the same way.
 
 \autoref{fig:bbtest} invokes the code of \autoref{fig:boundedbuffer}.
-We can run this through Harmony, but what would it test?  There are no
-assert statements in the code.
-We can split the functionality of this code into two pieces.  One is
-the synchronization part: producers should never run more than \texttt{NSLOTS}
-ahead of the consumers, but they should be able to produce up to \texttt{NSLOTS}
-items even if there are no consumers.  The other part is the data: we want
-to make sure that the items are sent through the buffer in order and without
-loss.  We will first focus on the synchronization.
+We can run this through Harmony, but what would it test?  There are
+no assert statements in the code.  We can split the functionality
+of this code into two and test each separately.  One is the
+synchronization part: producers should never run more than
+\texttt{NSLOTS} ahead of the consumers, but they should be able to
+produce up to \texttt{NSLOTS} items even if there are no consumers.
+The other part is the data: we want to make sure that the items are
+sent through the buffer in order and without loss.  We will first
+focus on the synchronization.
 
 The first part can be tested with the code given in \autoref{fig:pc}, by
 experimenting with different non-negative values for the three constants.
