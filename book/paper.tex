@@ -69,7 +69,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{blocked process}
 {
   name=blocked process,
-  description={is a process that cannot change the state unless another
+  description={is a process that cannot change the state or terminate unless another
     process changes the state first.  For example, a process that is waiting
     for a lock to become available}
 }
@@ -2041,8 +2041,8 @@ chapters.
 
 We call a process \emph{blocked}
 \index{blocked process}%
-if the process can only change the state if another process changes
-the state first.
+if the process can only change the state or terminate if another process
+changes the state first.
 A process trying to
 acquire a test-and-set spinlock held by another process is a good example
 of a process being blocked.
