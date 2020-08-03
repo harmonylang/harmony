@@ -4318,8 +4318,7 @@ def htmlrow(ctx, bag, node, code, scope, f, verbose):
             print("<td>choosing</td>", file=f)
         else:
             if ctx in node.edges:
-                (nxtnode, nxtctx, steps) = node.edges[ctx]
-                if nxtnode == node:
+                if node.isblocked(ctx):
                     print("<td>blocked</td>", file=f)
                 else:
                     print("<td>running</td>", file=f)
