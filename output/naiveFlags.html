@@ -1,33 +1,64 @@
 
-            <html>
-            <head>
-            <link rel="stylesheet" type="text/css" href="cxl.css">
-            </head>
-            <body>
+<html>
+  <head>
+    <style>
+#table-wrapper {
+  position:relative;
+}
+#table-scroll {
+  height:200px;
+  overflow:auto;  
+}
+#table-wrapper table {
+  width:100%;
+}
+#table-wrapper table * {
+  color:black;
+}
+#table-wrapper table thead th .text {
+  position:absolute;   
+  top:-20px;
+  z-index:2;
+  height:20px;
+  width:35%;
+  border:1px solid red;
+}
+table {
+    border-collapse: collapse;
+    border-style: hidden;
+}
+table td, table th {
+    border: 1px solid black;
+}
+    </style>
+  </head>
+  <body>
         
-<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: non-terminating state</th>
-<th>Shared Variable</th>
-<col style='width:15%'>
-<tr><th>Process</th><th>Steps</th>
-<td align='center' style='font-style: italic'>flags</td>
-</tr><tr><td><td></tr>
-<tr><td><a href='javascript:rowshow(2,2)'>__init__/()</a></td>
-<td><a href='#P0'>0</a> <a href='#P37'>37-47</a></td>
-<td align='center'>[False, False]</td>
-</tr>
-<tr><td><a href='javascript:rowshow(3,8)'>process/0</a></td>
-<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-12</a></td>
-<td align='center'>[True, False]</td>
-</tr>
-<tr><td><a href='javascript:rowshow(4,29)'>process/1</a></td>
-<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-12</a></td>
-<td align='center'>[True, True]</td>
-</tr>
-</table>
-</p>
 <table>
 <col style='width:50%'>
 <col style='width:50%'>
+<tr><td colspan='2'>
+<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: non-terminating state</th><th></th>
+<th>Shared Variable</th>
+<col style='width:15%'>
+<tr><th>Process</th><th>Steps</th><th></th>
+<td align='center' style='font-style: italic'>flags</td>
+</tr><tr><td><td></tr>
+<tr><td><a href='javascript:rowshow(2,1)'>__init__/()</a></td>
+<td><a href='#P0'>0</a> <a href='#P37'>37-47</a></td><td></td>
+<td align='center'>[False, False]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(3,7)'>process/0</a></td>
+<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-12</a></td><td></td>
+<td align='center'>[True, False]</td>
+</tr>
+<tr><td><a href='javascript:rowshow(4,28)'>process/1</a></td>
+<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-12</a></td><td></td>
+<td align='center'>[True, True]</td>
+</tr>
+</table>
+</td></tr>
+<tr><td></td></tr>
 <tr>
 <td valign='top'>
 <div id='table-wrapper'>
@@ -35,7 +66,7 @@
 <table border='1'>
 <tbody>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:1 def process(self): </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:1 def process(self): </th>
 </tr><tr>
 <td><a name='P0'> 0 </a></td><td>
 <span title='set program counter to 37'>
@@ -44,10 +75,10 @@
 <tr>
 <td><a name='P1'> 1 </a></td><td>
 <span title='start of method process'>
-Frame process(self)
+Frame process self
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:2     while choose({ False, True }): </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:2     while choose({ False, True }): </th>
 </tr><tr>
 <td><a name='P2'> 2 </a></td><td>
 <span title='push constant { False, True }'>
@@ -64,7 +95,7 @@ Choose
 <a href='#P36'> JumpCond False 36 </a>
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:4         flags[self] = True; </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:4         flags[self] = True; </th>
 </tr><tr>
 <td><a name='P5'> 5 </a></td><td>
 <span title='push the address of shared variable flags'>
@@ -72,7 +103,7 @@ PushAddress flags
 </span></td></tr>
 <tr>
 <td><a name='P6'> 6 </a></td><td>
-<span title='push the value of method variable self'>
+<span title='push the value of self'>
 LoadVar self
 </span></td></tr>
 <tr>
@@ -91,7 +122,7 @@ Push True
 Store
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:5         while flags[1 - self]: </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:5         while flags[1 - self]: </th>
 </tr><tr>
 <td><a name='P10'> 10 </a></td><td>
 <span title='push constant 1'>
@@ -99,7 +130,7 @@ Push 1
 </span></td></tr>
 <tr>
 <td><a name='P11'> 11 </a></td><td>
-<span title='push the value of method variable self'>
+<span title='push the value of self'>
 LoadVar self
 </span></td></tr>
 <tr>
@@ -123,14 +154,14 @@ Apply
 <a href='#P17'> JumpCond False 17 </a>
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:6             pass; </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:6             pass; </th>
 </tr><tr>
 <td><a name='P16'> 16 </a></td><td>
 <span title='set program counter to 10'>
 <a href='#P10'> Jump 10 </a>
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:10         @cs: assert atLabel.cs == dict{ nametag(): 1 }; </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:10         @cs: assert atLabel.cs == dict{ nametag(): 1 }; </th>
 </tr><tr>
 <td><a name='P17'> 17 </a></td><td>
 <span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
@@ -153,18 +184,18 @@ Push .cs
 </span></td></tr>
 <tr>
 <td><a name='P21'> 21 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P22'> 22 </a></td><td>
 <span title='push constant ()'>
 Push ()
 </span></td></tr>
 <tr>
-<td><a name='P23'> 23 </a></td><td>
+<td><a name='P22'> 22 </a></td><td>
 <span title='pop 1 value and push the result of applying nametag'>
 1-ary nametag
+</span></td></tr>
+<tr>
+<td><a name='P23'> 23 </a></td><td>
+<span title='push constant 1'>
+Push 1
 </span></td></tr>
 <tr>
 <td><a name='P24'> 24 </a></td><td>
@@ -197,7 +228,7 @@ AtomicDec
 AtomicDec
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:13         flags[self] = False; </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:13         flags[self] = False; </th>
 </tr><tr>
 <td><a name='P30'> 30 </a></td><td>
 <span title='push the address of shared variable flags'>
@@ -205,7 +236,7 @@ PushAddress flags
 </span></td></tr>
 <tr>
 <td><a name='P31'> 31 </a></td><td>
-<span title='push the value of method variable self'>
+<span title='push the value of self'>
 LoadVar self
 </span></td></tr>
 <tr>
@@ -234,7 +265,7 @@ Store
 Return
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:16 flags = [ False, False ]; </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:16 flags = [ False, False ]; </th>
 </tr><tr>
 <td><a name='P37'> 37 </a></td><td>
 <span title='push constant [False, False]'>
@@ -246,7 +277,7 @@ Push [False, False]
 Store flags
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:17 spawn process(0); </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:17 spawn process(0); </th>
 </tr><tr>
 <td><a name='P39'> 39 </a></td><td>
 <span title='push constant 0'>
@@ -268,7 +299,7 @@ Push <a href='#P1'> PC(1) </a>
 Spawn
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.cxl:18 spawn process(1); </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:18 spawn process(1); </th>
 </tr><tr>
 <td><a name='P43'> 43 </a></td><td>
 <span title='push constant 1'>
@@ -300,11 +331,13 @@ Return
 </div>
 </td>
 <td valign='top'>
-<div id='div29' style='display:none'>
+<div id='div28' style='display:none'>
 <div class='container'>
-<a name='N29'/>
+<a name='N28'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
 <td>blocked</td>
@@ -362,14 +395,16 @@ process(1)</a>:
 </table>
 </div>
 </div>
-<div id='div27' style='display:none'>
+<div id='div26' style='display:none'>
 <div class='container'>
-<a name='N27'/>
+<a name='N26'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>running</td>
+<td>blocked</td>
 <td>
 <table id='loc3' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
@@ -424,11 +459,13 @@ process(1)</a>:
 </table>
 </div>
 </div>
-<div id='div9' style='display:none'>
+<div id='div8' style='display:none'>
 <div class='container'>
-<a name='N9'/>
+<a name='N8'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
 <td>choosing</td>
@@ -486,14 +523,16 @@ process(1)</a>:
 </table>
 </div>
 </div>
-<div id='div8' style='display:none'>
+<div id='div7' style='display:none'>
 <div class='container'>
-<a name='N8'/>
+<a name='N7'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>running</td>
+<td>blocked</td>
 <td>
 <table id='loc7' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
@@ -534,19 +573,19 @@ def process(self):
 </td>
 <td>
 <div id='vars8_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
 </table>
 </div>
 </div>
-<div id='div6' style='display:none'>
+<div id='div5' style='display:none'>
 <div class='container'>
-<a name='N6'/>
+<a name='N5'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
 <td>running</td>
@@ -590,19 +629,19 @@ def process(self):
 </td>
 <td>
 <div id='vars10_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
 </table>
 </div>
 </div>
-<div id='div3' style='display:none'>
+<div id='div2' style='display:none'>
 <div class='container'>
-<a name='N3'/>
+<a name='N2'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
 <td>choosing</td>
@@ -646,19 +685,19 @@ def process(self):
 </td>
 <td>
 <div id='vars12_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
 </table>
 </div>
 </div>
-<div id='div2' style='display:none'>
+<div id='div1' style='display:none'>
 <div class='container'>
-<a name='N2'/>
+<a name='N1'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
 <td>running</td>
@@ -675,8 +714,6 @@ def process(self):
 </td>
 <td>
 <div id='vars13_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
@@ -696,19 +733,19 @@ def process(self):
 </td>
 <td>
 <div id='vars14_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
 </table>
 </div>
 </div>
-<div id='div1' style='display:none'>
+<div id='div0' style='display:none'>
 <div class='container'>
-<a name='N1'/>
+<a name='N0'/>
 <table border='1'>
 <tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
+</tr>
+<tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>__init__/()</td>
 <td>running</td>
@@ -725,8 +762,6 @@ def process(self):
 </td>
 <td>
 <div id='vars15_0' style='display:block'>
-<table>
-</table>
 </div>
 </td>
 </tr>
@@ -741,7 +776,7 @@ def process(self):
                   <div class='container'>
                     <p>
                         State information not available.
-                        Use cxl -d for a complete htmldump.
+                        Use harmony -d for a complete htmldump.
                     </p>
                   </div>
                 </div>
@@ -791,7 +826,7 @@ def process(self):
                     }
                   }
 
-                  rowshow(4, 29)
+                  rowshow(4, 28)
                 </script>
             
 </body>
