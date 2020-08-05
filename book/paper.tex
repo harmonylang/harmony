@@ -69,9 +69,9 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{blocked process}
 {
   name=blocked process,
-  description={is a process that cannot change the state or terminate unless another
-    process changes the state first.  For example, a process that is waiting
-    for a lock to become available}
+  description={is a process that cannot change the state or terminate or
+      can only do so after another process changes the state first.
+      For example, a process that is waiting for a lock to become available}
 }
 \newglossaryentry{busy waiting}
 {
@@ -2041,12 +2041,14 @@ chapters.
 
 We call a process \emph{blocked}
 \index{blocked process}%
-if the process can only change the state or terminate if another process
-changes the state first.
+if a process cannot change the state or terminate or can only do so if
+another process changes the state first.
 A process trying to
 acquire a test-and-set spinlock held by another process is a good example
 of a process being blocked.
 The only way forward is if the other process releases the lock.
+A process that is in an infinite loop is also considered blocked,
+although Harmony can often detect infinite loops specifically.
 
 \begin{figure}
 \begin{code}
