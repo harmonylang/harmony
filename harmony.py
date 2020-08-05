@@ -3592,6 +3592,7 @@ class Node:
         self.expanded = False   # lazy deletion
         self.issues = set()     # set of problems with this state
         self.cid = 0            # strongly connected component id
+        self.blocked = {}       # map of context -> boolean
 
     def __hash__(self):
         return self.uid
@@ -3603,27 +3604,28 @@ class Node:
         if self.uid in seen:
             return True
         seen.add(self.uid)
+        if ctx in self.blocked:
+            return self.blocked[ctx]
         s = self.state
         if s.choosing == ctx:
             for (choice, next) in self.edges.items():
                 (nn, nc, steps) = next
-                if nn.cid != self.cid:
-                    return False
                 ns = nn.state
-                if ns.vars != vars:
+                if ns.vars != vars or not nn.rec_isblocked(nc, vars, seen):
+                    self.blocked[ctx] = False
                     return False
-                if not nn.rec_isblocked(nc, vars, seen):
-                    return False
-            return True
-        else:
+        elif ctx in self.edges:
             next = self.edges[ctx]
             (nn, nc, steps) = next
-            if nn.cid != self.cid:
-                return False
             ns = nn.state
-            if ns.vars != vars:
+            if ns.vars != vars or not nn.rec_isblocked(nc, vars, seen):
+                self.blocked[ctx] = False
                 return False
-            return self.rec_isblocked(nc, vars, seen)
+        else:
+            self.blocked[ctx] = False
+            return False
+        self.blocked[ctx] = True
+        return True
 
     # See if the given process is "blocked", i.e., it cannot change
     # the shared state (the state variables), terminate, or stop unless
@@ -4082,7 +4084,8 @@ def run(code, labels, map, step, blockflag):
         bad = set()
         nbad = sum(not scc.good for scc in components)
         if nbad != 0:
-            print("#bad components:", nbad)
+            if not blockflag:
+                print("#bad components:", nbad)
             for n in nodes:
                 if components[n.cid].good:
                     continue
