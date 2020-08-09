@@ -1,0 +1,3 @@
+def issubset(s, t):
+    result = (s & t) == s;
+;

@@ -1,0 +1,34 @@
+const NUM_THREADS = 3;
+const NROUNDS = 2;
+
+entering = dict{ False for i in {1..NUM_THREADS} };
+number = dict{ 0 for i in {1..NUM_THREADS} };
+
+def lock(i):
+    entering[i] = True;
+    number[i] = 1 + max({ number[j] for j in {1..NUM_THREADS} });
+    entering[i] = False;
+    for j in {1..NUM_THREADS}:
+        while (entering[j]):
+            pass;
+        ;
+        while (number[j] != 0) and ((number[j], j) < (number[i], i)):
+            pass;
+        ;
+    ;
+;
+def unlock(i):
+    number[i] = 0;
+;
+
+
+def process(self):
+    for i in {1..NROUNDS}:
+        lock(self);
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        unlock(self);
+    ;
+;
+for i in {1..NUM_THREADS}:
+    spawn process(i);
+;

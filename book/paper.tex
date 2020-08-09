@@ -187,7 +187,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{process}
 {
   name=process,
-  description={is a method in execution.  We do not make the distinction
+  description={is code in execution.  We do not make the distinction
       between processes and threads.  A process has a current context and
       updates its context every time it executes a machine instruction}
 }
@@ -739,7 +739,7 @@ find concurrency bugs using Harmony.
 \begin{enumerate}
 \item Run \autoref{fig:incpy} using Python.  Does the assertion fail?
 \item Using a script, run \autoref{fig:incpy} 1000 times.
-For example, if you are using the bash shell, you can do the following:
+For example, if you are using the bash shell (in Linux, say), you can do the following:
 \begin{code}
 \begin{verbatim}
 for i in {1..1000}
@@ -1416,7 +1416,15 @@ turn.
 \item Run \autoref{fig:cs} using Harmony.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
-Now plug the following code \textbf{while} \texttt{True}: \textbf{pass};;
+Now insert the following code:
+\begin{code}
+\begin{tabbing}
+XX\=XXX\=XXX\kill
+\textbf{while} \texttt{True}: \\
+\> \textbf{pass}; \\
+;
+\end{tabbing}
+\end{code}
 just before entering the critical section
 in \autoref{fig:cs} and run Harmony again.
 Mutual exclusion is guaranteed but progress is violated.
