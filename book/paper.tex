@@ -1714,9 +1714,12 @@ the two assignments and describe in English what happens.
 \item Bonus question:
 Can you generalize Peterson's algorithm to more than two processes?
 \item Bonus question:
-Implement the
-\href{https://en.wikipedia.org/wiki/Lamport%27s_bakery_algorithm}{Bakery Algorithm}
-or \href{https://en.wikipedia.org/wiki/Dekker%27s_algorithm}{Dekker's Algorithm}.
+Implement
+\href{https://en.wikipedia.org/wiki/Dekker%27s_algorithm}{Dekker's Algorithm},
+\href{https://en.wikipedia.org/wiki/Szymanski%27s_algorithm}{Szymański's Algorithm}, or the
+\href{https://en.wikipedia.org/wiki/Lamport%27s_bakery_algorithm}{Bakery Algorithm}.
+Note that the last one uses unbounded state, so you should modify the processes so they
+only try to enter the critical section a bounded number of times.
 \end{problems}
 
 \begin{figure}
@@ -4443,6 +4446,24 @@ at index $b$ and ending just before $f$\\
 \texttt{listQsort($t$)} & sort list $t$ using quicksort\\
 \hline
 \end{tabular}
+
+\section{The \texttt{set} module}
+
+The \texttt{set} module
+\index{set module}%
+implements the following method:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
+\hline
+\end{tabular}
+
+\vspace{1em}
+For Python users: note that $s <= t$ does not check if $s$ is a subset of
+$t$ when $s$ and $t$ are sets, as ``$<=$'' implements a total order on all Harmony values
+including sets.
 
 \section{The \texttt{synch} module}
 
