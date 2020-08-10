@@ -464,6 +464,7 @@ def isreserved(s):
         "assert",
         "atLabel",
         "atomic",
+        "await",
         "bagsize",
         "call",
         "choose",
@@ -2786,13 +2787,29 @@ class WhileAST(AST):
         return "While(" + str(self.cond) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
+        negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
+        cond = self.cond.args[0] if negate else self.cond
         pc1 = len(code)
-        self.cond.compile(scope, code)
+        cond.compile(scope, code)
         pc2 = len(code)
         code.append(None)
         self.stat.compile(scope, code)
         code.append(JumpOp(pc1))
-        code[pc2] = JumpCondOp(False, len(code))
+        code[pc2] = JumpCondOp(negate, len(code))
+
+class AwaitAST(AST):
+    def __init__(self, cond):
+        self.cond = cond
+
+    def __repr__(self):
+        return "Await(" + str(self.cond) + ")"
+
+    def compile(self, scope, code):
+        negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
+        cond = self.cond.args[0] if negate else self.cond
+        pc1 = len(code)
+        cond.compile(scope, code)
+        code.append(JumpCondOp(negate, pc1))
 
 class LetAST(AST):
     def __init__(self, vars, stat):
@@ -3251,6 +3268,9 @@ class StatementRule(Rule):
             (cond, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule({";"}).parse(t[1:])
             return (WhileAST(cond, stat), self.skip(token, t))
+        if lexeme == "await":
+            (cond, t) = NaryRule({";"}).parse(t[1:])
+            return (AwaitAST(cond), self.skip(token, t))
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
             (stat, t) = StatListRule({";"}).parse(t[1:])
