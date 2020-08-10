@@ -38,10 +38,201 @@ internal_modules = {
 #############################
 # RELOAD THE FOLLOWING BY RUNNING "sh getmods.scr"
 
+    "synch": """import list;
+import bag;
 
-    "sync": """cat: modules/sync.hny: No such file or directory
+def tas(lk):
+    atomic:
+        result = !lk;
+        !lk = True;
+    ;
+;
+def Lock():
+    result = False;
+;
+def lock(lk):
+    await not tas(lk);
+;
+def unlock(lk):
+    !lk = False;
+;
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: bagEmpty() };
+;
+def wait(c):
+    let lk, blocked, cnt = None, True, 0:
+        atomic:
+            lk = (!c).lock;
+            cnt = bagCount((!c).waiters, nametag());
+            bagAdd(?(!c).waiters, nametag());
+            !lk = False;
+        ;
+        while blocked:
+            atomic:
+                if (not (!lk)) and (bagCount((!c).waiters, nametag()) <= cnt):
+                    !lk = True;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def notify(c):
+    atomic:
+        let waiters = (!c).waiters:
+            if waiters != bagEmpty():
+                bagRemove(?(!c).waiters, bagChoose(waiters));
+            ;
+        ;
+    ;
+;
+def notifyAll(c):
+    (!c).waiters = bagEmpty();
+;
+def Semaphore(cnt):
+    result = cnt;
+;
+def P(sema):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if (!sema) > 0:
+                    !sema -= 1;
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        !sema += 1;
+    ;
+;
+def Queue():
+    result = [];
+;
+def dequeue(q):
+    let blocked = True:
+        while blocked:
+            atomic:
+                if !q != []:
+                    result = head(!q);
+                    !q = tail(!q);
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        !q = append(!q, item);
+    ;
+;
 """,
-    "syncS": """cat: modules/syncS.hny: No such file or directory
+    "synchS": """import list;
+
+def Lock():
+    result = dict{ .locked: False, .suspended: [] };
+;
+def lock(lk):
+    atomic:
+        if (!lk).locked:
+            stop (!lk).suspended;
+            assert (!lk).locked;
+        else:
+            (!lk).locked = True;
+        ;
+    ;
+;
+def unlock(lk):
+    atomic:
+        if (!lk).suspended == []:
+            (!lk).locked = False;
+        else:
+            go (head((!lk).suspended)) ();
+            (!lk).suspended = tail((!lk).suspended);
+        ;
+    ;
+;
+def Condition(lk):
+    result = dict{ .lock: lk, .waiters: [] };
+;
+def wait(c):
+    atomic:
+        unlock((!c).lock);
+        stop (!c).waiters;
+    ;
+;
+def notify(c):
+    atomic:
+        let lk, waiters = (!c).lock, (!c).waiters:
+            if waiters != []:
+                (!lk).suspended += [waiters[0],];
+                (!c).waiters = tail(waiters);
+            ;
+        ;
+    ;
+;
+def notifyAll(c):
+    atomic:
+        let lk, waiters = (!c).lock, (!c).waiters:
+            (!lk).suspended += waiters;
+            (!c).waiters = [];
+        ;
+    ;
+;
+def Semaphore(cnt):
+    result = dict{ .count: cnt, .waiters: [] };
+;
+def P(sema):
+    atomic:
+        if (!sema).count > 0:
+            (!sema).count -= 1;
+        else:
+            stop (!sema).waiters;
+        ;
+    ;
+;
+def V(sema):
+    atomic:
+        let cnt, waiters = (!sema).count, (!sema).waiters:
+            if waiters != []:
+                assert cnt == 0;
+                go (waiters[0]) ();
+                (!sema).waiters = tail(waiters);
+            else:
+                (!sema).count = cnt + 1;
+            ;
+        ;
+    ;
+;
+def Queue():
+    result = dict{ list: [], waiters: [] };
+;
+def dequeue(q):
+    atomic:
+        let list = (!q).list:
+            if list == []:
+                stop (!q).waiters;
+            ;
+            result = head(list);
+            (!q).list = tail(list);
+        ;
+    ;
+;
+def enqueue(q, item):
+    atomic:
+        (!q).list = append((!q).list, item);
+        let waiters = (!q).waiters:
+            if waiters != []:
+                go (waiters[0]) item;
+                (!q).waiters = tail(waiters);
+            ;
+        ;
+    ;
+;
 """,
     "list": """# return s[b:e]
 def subseq(s, b, e):

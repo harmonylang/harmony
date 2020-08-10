@@ -1,4 +1,4 @@
-for mod in sync syncS list bag set alloc
+for mod in synch synchS list bag set alloc
 do
     echo '    "'$mod'": ""' | tr '\n' '"'
     cat modules/$mod.hny
