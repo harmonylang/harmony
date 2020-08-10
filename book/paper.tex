@@ -1582,14 +1582,14 @@ So we are looking for an inductive invariant that \emph{implies} exclusivity.
 In other words, the set of states where the inducive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
-Let $\mathcal{C}(i) = \mathit{flags}[1 - i] \land
-\mathit{turn} = 1 - i$, that is, the negation of the condition on the \textbf{await}
+Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor
+\mathit{turn} = i$, that is, the condition on the \textbf{await}
 statement for process~$i$.
-Let predicate $\mathcal{I}_p(i)$ be the following.
+Let predicate $\mathcal{I}_p(i)$ be the following:
 if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
-then $\mathcal{C}(i)$ does not hold or process $1-i$ is executing after setting
+then $\mathcal{C}(i)$ holds or process $1-i$ is executing after setting
 $\mathit{flags}[i]$ but still before setting \textit{turn} to $1-i$.
-More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs \Rightarrow (\lnot \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate)$.
+More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs \Rightarrow \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate$.
 For Peterson's Algorithm, an inductive invariant that works well is
 $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
 
@@ -1601,12 +1601,12 @@ that $\mathcal{I}_p(i)$ is indeed an invariant for $i = 0, 1$.
 To see that the inductive invariant implies exclusivity, suppose not.  Then
 when both process~0 and process~1 are in the critical section, the
 following must hold:
-$(\lnot \mathcal{C}(0) \lor \mathtt{process}(1)@gate) \land
- (\lnot \mathcal{C}(1) \lor \mathtt{process}(0)@gate)$.
+$(\mathcal{C}(0) \lor \mathtt{process}(1)@gate) \land
+ (\mathcal{C}(1) \lor \mathtt{process}(0)@gate)$.
 We know that both flags are set.
 We also know that neither process~0 nor process~1 is at label \texttt{@gate}
 (because they are both at label \texttt{@cs}),
-so this simplifies to $(\lnot \mathcal{C}(0)) \land (\lnot \mathcal{C}(1))$.
+so this simplifies to $\mathcal{C}(0) \land \mathcal{C}(1)$.
 So we conclude that $\mathit{turn} = 0 \land \mathit{turn} = 1$, a
 logical impossibility.  Thus $\mathcal{I}_p(i)$ implies exclusivity.
 
@@ -1655,7 +1655,7 @@ Harmony code.
 A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
-if process $i$ is in the critical section, then $\lnot \mathcal{C}(i)$ (i.e.,
+if process $i$ is in the critical section, then $\mathcal{C}(i)$ (i.e.,
 $\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{@gate}).
 To demonstrate that this predicate is not invariant, you can remove the
 disjunct from \autoref{fig:petersonproof} and run it to get a
