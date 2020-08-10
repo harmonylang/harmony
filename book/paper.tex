@@ -1218,11 +1218,7 @@ However, mutual exclusion by itself is easy to ensure.
 For example, we could insert the following code to enter the
 critical section:
 \begin{code}
-\begin{verbatim}
-while True:
-    pass;
-;
-\end{verbatim}
+\texttt{await False;}
 \end{code}
 This code will surely prevent two or more processes from being
 at label \texttt{@cs} at the same time.
@@ -1417,14 +1413,9 @@ turn.
 \item Run \autoref{fig:cs} using Harmony.  As there is no protection of the critical
 section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
-Now insert the following code:
+Now insert
 \begin{code}
-\begin{tabbing}
-XX\=XXX\=XXX\kill
-\textbf{while} \texttt{True}: \\
-\> \textbf{pass}; \\
-;
-\end{tabbing}
+\texttt{await False;}
 \end{code}
 just before entering the critical section
 in \autoref{fig:cs} and run Harmony again.
@@ -1462,7 +1453,7 @@ by setting its flag.
 It then politely gives way to the other process should it also want to
 enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
-The process continues to be polite, waiting in a \textbf{while} loop
+The process continues to be polite, waiting
 until either the other process is nowhere near the critical section
 ($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
@@ -1570,10 +1561,10 @@ it holds over every reachable state.
 Unfortunately, it is not an \emph{inductive} invariant.
 To see why, we need to consider an \emph{unreachable} state.
 It is easy to construct one: let process~0 be at label \texttt{@cs}
-and process~1 be at the start of the \textbf{while} loop.
+and process~1 be at the start of the \textbf{await} statement.
 Also imagine that in this particular state $\mathit{turn} = 1$.  Now let
 process~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
-process~1 will break out of the while loop and also enter the critical
+process~1 will stop waiting and also enter the critical
 section, entering a state that is not exclusive.
 So exclusivity is an invariant, but not an inductive invariant.
 Doing a inductive proof with an invariant that is not inductive is usually
@@ -1592,8 +1583,8 @@ In other words, the set of states where the inducive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
 Let $\mathcal{C}(i) = \mathit{flags}[1 - i] \land
-\mathit{turn} = 1 - i$, that is, the condition on the \textbf{while} loop
-for process~$i$.
+\mathit{turn} = 1 - i$, that is, the negation of the condition on the \textbf{await}
+statement for process~$i$.
 Let predicate $\mathcal{I}_p(i)$ be the following.
 if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
 then $\mathcal{C}(i)$ does not hold or process $1-i$ is executing after setting
