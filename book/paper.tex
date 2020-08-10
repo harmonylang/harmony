@@ -4330,9 +4330,11 @@ Harmony currently supports the following statements:
 \hline
 \texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
 \hline
-\texttt{if $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\hline
+\texttt{await $b$} & $b$ is a boolean\\
 \hline
 \texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
                             \texttt{S} a list of statements\\
