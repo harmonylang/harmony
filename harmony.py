@@ -1972,7 +1972,7 @@ class AST:
 
             # Evaluate the set and store in a temporary variable
             expr.compile(scope, code)
-            S = ("%set:"+str(uid), file, line, column)
+            S = ("__set__"+str(uid), file, line, column)
             code.append(StoreVarOp(S))
 
             # Now generate the code:
@@ -2010,7 +2010,7 @@ class AST:
         # Keep track of the size
         uid = len(code)
         (lexeme, file, line, column) = self.token
-        N = ("%size:"+str(uid), file, line, column)
+        N = ("__size__"+str(uid), file, line, column)
         if ctype in { "set", "list", "dict" }:
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
@@ -4020,7 +4020,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     node.edges[choice if node.state.choosing else ctx] = (next, cc, steps)
     next.sources.add(node)
     if cc.failure != None:
-        next.issues.add("process failure")
+        next.issues.add("Process Failure")
 
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
@@ -4193,11 +4193,14 @@ def run(code, labels, map, step, blockflag):
         # Figure out which strongly connected components are "good".
         # These are non-sink components or components that have
         # a terminated state.
-        ngood = 0
+        bad = set()
         for (s, n) in visited.items():
             if len(s.ctxbag) == 0 and len(s.stopbag) == 0:
                 assert len(n.edges) == 0
                 components[n.cid].good = True
+                if blockflag:
+                    bad.add(n)
+                    n.issues.add("Terminating State")
             else:
                 assert len(n.edges) != 0
                 for (nn, nc, steps) in n.edges.values():
@@ -4206,11 +4209,11 @@ def run(code, labels, map, step, blockflag):
                     if nn.cid != n.cid:
                         components[n.cid].good = True
                         break
-        bad = set()
-        nbad = sum(not scc.good for scc in components)
-        if nbad != 0:
+
+        nbadc = sum(not scc.good for scc in components)
+        if nbadc != 0:
             if not blockflag:
-                print("#bad components:", nbad)
+                print("#bad components:", nbadc)
             for n in nodes:
                 if components[n.cid].good:
                     continue
@@ -4220,16 +4223,21 @@ def run(code, labels, map, step, blockflag):
                     for ctx in s.ctxbag.keys():
                         assert isinstance(ctx, ContextValue)
                         if not n.isblocked(ctx):
+                            n.issues.add("Non-terminating State")
                             bad.add(n)
                             break
                 else:
+                    n.issues.add("Non-terminating State")
                     bad.add(n)
 
         if len(bad) > 0:
-            print("==== Non-terminating States ====", len(bad))
-            for n in bad:
-                n.issues.add("non-terminating state")
             bad_node = find_shortest(bad)
+            issues = ""
+            for issue in bad_node.issues:
+                if issues != "":
+                    issues += ", "
+                issues += issue
+            print("====", issues, "===")
             print_path(bad_node)
             todump.add(bad_node)
             issues_found = True
