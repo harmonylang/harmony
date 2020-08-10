@@ -4151,7 +4151,7 @@ Boolean & \texttt{False}, \texttt{True} \\
 \hline
 Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
-Atom & \texttt{.example}, \texttt{.test1} \\
+Atom & \texttt{.example}, \texttt{.test1}, \texttt{.0x4A} \\
 \hline
 Program Counter & (method names are program counter constants) \\
 \hline
@@ -4172,8 +4172,9 @@ Their format is either \texttt{($e$, $e$, ..., $e$,)} or
 \texttt{[$e$, $e$, ..., $e$,]}.
 If the tuple or list has two or more elements, then the final comma
 is optional.
-A string must be enclosed by double quotes and is represented as
-a tuple of its characters.  Characters are one-character atoms.
+A string is represented as a tuple of its characters.
+Characters are one-character atoms, which can be expressed
+in hexadecimal unicode using the syntax \texttt{.0xXX}.
 A bag or multiset is a dictionary that maps a value to how many
 times it occurs in the bag.
 
@@ -4870,6 +4871,12 @@ the keywords \texttt{such that} instead of \texttt{if}.
 Dictionary comprehensions are a little different.
 The dictionary comprehension \texttt{dict}\{ f($i$) \texttt{for} $i$ \texttt{in} $I$ \}
 creates a dictionary of $i$:f($i$) entries.
+
+\section{Comments}
+
+Harmony supports the same commenting conventions as Python.
+In addition, Harmony supports nested multi-line comments
+of the form \texttt{(* comment *)}.
 
 \cleardoublepage
 \phantomsection
