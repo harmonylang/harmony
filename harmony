@@ -665,37 +665,76 @@ def lexer(s, file):
             continue
 
         # string
-        if s[0] == '"':
-            i = 1
+        if s[0] == '"' or s[0] == "'":
+            if s.startswith('"""'):
+                term = '"""'
+            elif s.startswith("'''"):
+                term = "'''"
+            elif s[0] == '"':
+                term = '"'
+            else:
+                assert s[0] == "'", s[0]
+                term = "'"
+            column += len(term)
+            s = s[len(term):]
             str = '"'
-            while i < len(s) and s[i] != '"':
-                if s[i] == '\\':
-                    i += 1
-                    if i == len(s):
+            while s != "" and not s.startswith(term):
+                if s[0] == '\\':
+                    s = s[1:]
+                    if s == "":
                         break
-                    if s[i] == '"':
-                        str += '"'
-                    elif s[i] == '\\':
-                        str += '\\'
-                    elif s[i] == 't':
-                        str += '\t'
-                    elif s[i] == 'n':
-                        str += '\n'
-                    elif s[i] == 'f':
-                        str += '\f'
-                    elif s[i] == 'r':
-                        str += '\r'
+                    column += 1
+                    if s[0] == 'a':
+                        str += '\a'; column += 1; s = s[1:]
+                    elif s[0] == 'b':
+                        str += '\b'; column += 1; s = s[1:]
+                    elif s[0] == 'f':
+                        str += '\f'; column += 1; s = s[1:]
+                    elif s[0] == 'n':
+                        str += '\n'; column += 1; s = s[1:]
+                    elif s[0] == 'r':
+                        str += '\r'; column += 1; s = s[1:]
+                    elif s[0] == 't':
+                        str += '\t'; column += 1; s = s[1:]
+                    elif s[0] == 'v':
+                        str += '\v'; column += 1; s = s[1:]
+                    elif s[0] in "01234567":
+                        total = 0
+                        for i in range(3):
+                            if s[0] not in "01234567":
+                                break
+                            total *= 8
+                            total += ord(s[0]) - ord("0")
+                            column += 1
+                            s = s[1:]
+                        str += chr(total)
+                    elif s[0] in { 'x', "X" }:
+                        column += 1
+                        s = s[1:]
+                        total = 0
+                        while s != "" and s[0] in "0123456789abcdefABCDEF":
+                            total *= 16;
+                            if s[0] in "0123456789":
+                                total += ord(s[0]) - ord("0")
+                            elif s[0] in "abcdef":
+                                total += 10 + (ord(s[0]) - ord("a"))
+                            else:
+                                assert s[0] in "ABCDEF", s[0]
+                                total += 10 + (ord(s[0]) - ord("A"))
+                            column += 1
+                            s = s[1:]
+                        str += chr(total)
                     else:
-                        str += s[i]
+                        str += s[0]
+                        column += 1
+                        s = s[1:]
                 else:
-                    str += s[i]
-                i += 1
-            if i < len(s):
-                i += 1
-            str += '"'
+                    str += s[0]
+                    column += 1
+                    s = s[1:]
             result += [ (str, file, line, column) ]
-            s = s[i:]
-            column += i
+            column += len(term)
+            s = s[len(term):]
             continue
 
         # everything else is a single character token
@@ -708,7 +747,11 @@ def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
         return str(v)
     if isinstance(v, str):
-        return "." + v
+        if isname(v):
+            return "." + v
+        else:
+            assert len(v) == 1, v
+            return "..x%02X"%ord(v[0])
     assert False, v
 
 def strVars(v):
@@ -2447,7 +2490,7 @@ class BasicExpressionRule(Rule):
         if lexeme[0] == '"':
             return (DictAST({ ConstantAST((i-1, file, line, column)):
                         ConstantAST((lexeme[i:i+1], file, line, column))
-                                for i in range(1, len(lexeme) - 1) }), t[1:])
+                                for i in range(1, len(lexeme)) }), t[1:])
         if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
             self.expect("dot expression", isname(lexeme), t[1],
