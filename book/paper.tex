@@ -633,7 +633,8 @@ initializes two shared variables: an integer \textit{count} and
 an array \textit{done} with two booleans.
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
-Method \texttt{main} waits until \textit{done} flags are set to \texttt{True}.
+Method \texttt{main} waits until all \textit{done} flags are set to \texttt{True}.
+(\textbf{await} $c$ is semantically the same as \textbf{while not} $c$: \textbf{pass}.)
 After that, it verifies that the value of \textit{count} equals 2.
 Like Python, Harmony supports \texttt{assert} statements with two arguments:
 the first is a Boolean condition, and the second is a value that is
@@ -4245,7 +4246,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$\{ e..e \}$} & two integers \\
 \hline
-\texttt{$e$ [not] in $e$} & first is any Harmony value, second is set \\
+\texttt{$e$ [not] in $e$} & first is any Harmony value, second is a set or dict \\
 \hline
 \texttt{$e$ if $e$ else $e$} & middle $e$ must be a boolean \\
 \hline
@@ -4284,6 +4285,8 @@ Harmony currently supports the following operators:
 \texttt{\^} computes $(s \cup t) \backslash (s \cap t)$ when applied to sets $s$ and $t$.
 \texttt{$\{ x .. y \}$} computes the set consisting of the integers $x$
 through $y$ inclusive.  It returns the empty set if $x > y$.
+If $d$ is a dictionary, $e$ \texttt{in} $d$ tests if $e$ is in the set of
+\emph{values} of $d$, not the set of \emph{keys} (this is different from Python).
 
 An \emph{lvalue}
 \index{lvalue}%
@@ -4846,9 +4849,10 @@ and tuples).  The details are a little different from Python:
 \begin{itemize}
 \item When iterating over a set, the set is always traversed in order
 (see \autoref{ap:values} for how Harmony values are ordered);
-\item In case of a dictionary, the iteration is over the values of the
+\item In case of a dictionary, the iteration is over the \emph{values} of the
 dictionary, but in the order of the keys.  In the case of lists, this
-works much the same as in Python;
+works much the same as in Python, but in the case of general dictionaries,
+Python iterates over the keys rather than the values;
 \item If you want to iterate over the keys of a dictionary $d$, use
 \texttt{for} $k$ \texttt{in} \texttt{keys} $d$;
 \item The \texttt{list} module (\autoref{ap:list}) provides methods \texttt{values}(),

@@ -9,7 +9,7 @@ def incrementer(self):
     done[self] = True
 
 def main():
-    while not (done[0] and done[1]):
+    while not all(done):
         pass
     assert count == 2*N, count
     print("Done")
