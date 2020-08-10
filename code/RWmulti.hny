@@ -10,7 +10,7 @@ def reader(self):
     if choose({ False, True }):
         let blocked = True:
             while blocked:
-                if { flags[i] for i in {1..NREADERS} } == { True }:
+                if all(flags[i] for i in {1..NREADERS}):
                     blocked = False;
                 ;
             ;

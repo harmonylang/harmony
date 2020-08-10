@@ -5,6 +5,6 @@ def gpuAlloc():
     availGPUs -= { result };
 ;
 def gpuRelease(gpu):
-    availGPUs += { gpu };
+    availGPUs |= { gpu };
 ;
 availGPUs = {1..N};

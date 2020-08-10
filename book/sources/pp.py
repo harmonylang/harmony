@@ -51,7 +51,9 @@ def isnumber(s):
 
 def isreserved(s):
     return s in [
+        "all",
         "and",
+        "any",
         "assert",
         "atLabel",
         "atomic",

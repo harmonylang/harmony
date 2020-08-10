@@ -24,7 +24,7 @@ def process(self):
     ;
 ;
 shared = False;
-private = [ True for i in {0..N-1} ];
+private = [ True, ] * N;
 for i in {0..N-1}:
     spawn process(i);
 ;

@@ -4,12 +4,7 @@ import qsort;
 const NITEMS = 4;
 
 def sorted():                    # return whether array 'a' is sorted
-    result = True;
-    for i in {1..len(a)-1}:
-        if a[i - 1] > a[i]:
-            result = False;
-        ;
-    ;
+    result = all(a[i - 1] <= a[i] for i in {1..len(a)-1});
 ;
 def main(copy):
     qsort();                              # sort array 'a'

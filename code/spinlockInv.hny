@@ -5,10 +5,8 @@ def checkInvariant():
         if not shared:
             sum = 1;
         ;
-        for i in {0..N-1}:
-            if not private[i]:
-                sum += 1;
-            ;
+        for i in {0..N-1} such that not private[i]:
+            sum += 1;
         ;
         result = sum <= 1;
     ;
