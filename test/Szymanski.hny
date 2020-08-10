@@ -1,32 +1,29 @@
-import set;
-
 const N = 3;
-
-flag = dict{ 0 for i in {1..N} };
 
 def lock(self):
     flag[self] = 1;
-    while not issubset({ flag[i] for i in {1..N} }, { 0, 1, 2 }):
+    while not all(flag[i] in { 0, 1, 2 } for i in {1..N}):
         pass;
     ;
     flag[self] = 3;
-    if 1 in { flag[i] for i in {1..N} }:
+    if any(flag[i] == 1 for i in {1..N}):
         flag[self] = 2;
-        while 4 not in { flag[i] for i in {1..N} }:
+        while not any(flag[i] == 4 for i in {1..N}):
             pass;
         ;
     ;
     flag[self] = 4;
-    while not issubset({ flag[i] for i in {1..self-1} }, { 0, 1 }):
+    while not all(flag[i] in { 0, 1 } for i in {1..self-1}):
         pass;
     ;
 ;
 def unlock(self):
-    while not issubset({ flag[i] for i in {self+1..N}}, { 0, 1, 4 }):
+    while not all(flag[i] in { 0, 1, 4 } for i in {self+1..N}):
         pass;
     ;
     flag[self] = 0;
 ;
+flag = dict{ 0 for i in {1..N} };
 
 def process(self):
     while choose({ False, True }):

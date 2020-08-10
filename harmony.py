@@ -458,7 +458,9 @@ def isnumber(s):
 
 def isreserved(s):
     return s in [
+        "all",
         "and",
+        "any",
         "assert",
         "atLabel",
         "atomic",
@@ -507,7 +509,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "!", "-", "~", "atLabel", "bagsize", "choose",
+    return s in [ "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
     "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
 
 def isbinaryop(s):
@@ -1672,6 +1674,20 @@ class NaryOp(Op):
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
                     context.push(len(e.d))
+            elif op == "any":
+                if isinstance(e, SetValue):
+                    context.push(any(e.s))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e, DictValue)):
+                        return
+                    context.push(any(e.d.values()))
+            elif op == "all":
+                if isinstance(e, SetValue):
+                    context.push(all(e.s))
+                else:
+                    if not self.checktype(state, context, sa, isinstance(e, DictValue)):
+                        return
+                    context.push(all(e.d.values()))
             elif op == "keys":
                 if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                     return
