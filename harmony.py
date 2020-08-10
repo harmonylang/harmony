@@ -1930,8 +1930,10 @@ class AST:
 
         else:
             assert type == "suchthat"
-            rest.compile(scope, code)
-            code.append(JumpCondOp(False, pc))
+            negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
+            cond = rest.args[0] if negate else rest
+            cond.compile(scope, code)
+            code.append(JumpCondOp(negate, pc))
             self.rec_comprehension(scope, code, iter[1:], pc, N, vars, ctype)
 
     def comprehension(self, scope, code, ctype):
@@ -2119,14 +2121,16 @@ class NaryAST(AST):
             code.append(PushOp((op == "or", file, line, column)))
         elif op == "if":
             assert n == 3, n
-            self.args[1].compile(scope, code)
+            negate = isinstance(self.args[1], NaryAST) and self.args[1].op[0] == "not"
+            cond = self.args[1].args[0] if negate else self.args[1]
+            cond.compile(scope, code)
             pc1 = len(code)
             code.append(None)
             self.args[0].compile(scope, code)
             pc2 = len(code)
             code.append(None)
             self.args[2].compile(scope, code)
-            code[pc1] = JumpCondOp(False, pc2 + 1)
+            code[pc1] = JumpCondOp(negate, pc2 + 1)
             code[pc2] = JumpOp(len(code))
         elif op == "choose":
             assert n == 1
@@ -2766,14 +2770,16 @@ class IfAST(AST):
     def compile(self, scope, code):
         jumps = []
         for alt in self.alts:
-            (cond, stat) = alt
+            (rest, stat) = alt
+            negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
+            cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
             pc = len(code)
             code.append(None)
             stat.compile(scope, code)
             jumps += [len(code)]
             code.append(None)
-            code[pc] = JumpCondOp(False, len(code))
+            code[pc] = JumpCondOp(negate, len(code))
         if self.stat != None:
             self.stat.compile(scope, code)
         for pc in jumps:
