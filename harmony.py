@@ -3012,8 +3012,9 @@ class CallAST(AST):
         return "Call(" + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        self.expr.compile(scope, code)
-        code.append(PopOp())
+        if not self.expr.isConstant(scope):
+            self.expr.compile(scope, code)
+            code.append(PopOp())
 
 class SpawnAST(AST):
     def __init__(self, tag, method, arg):
