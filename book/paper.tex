@@ -581,7 +581,9 @@ represents a shell prompt):
 \begin{verbatim}
 $ harmony triangle.hny
 #states = 13 diameter = 1
+#components: 13
 no issues found
+Open file:///.../harmony.html for more information
 $
 \end{verbatim}
 \end{code}
@@ -605,7 +607,9 @@ For example, if you want to test the code for \texttt{N = 100}, run:
 \begin{verbatim}
 $ harmony -c N=100 triangle.hny
 #states = 103 diameter = 1
+#components: 103
 no issues found
+Open file:///.../harmony.html for more information
 $
 \end{verbatim}
 \end{code}
@@ -927,21 +931,48 @@ Each machine instruction updates the state in some way.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-Up.hny:1 def incrementer(self):
-    0 Jump 34
-    1 Frame incrementer(self)
-Up.hny:2     count = count + 1;
-    2 Load count
-    3 Push 1
-    4 2-ary +
-    5 Store count
-Up.hny:3     done[self] = True;
-    6 PushAddress done
-    7 LoadVar self
-    8 Address 2
-    9 Push True
+code/Up.hny:1 def incrementer(self):
+   0 Jump 25
+   1 Frame incrementer self
+code/Up.hny:2     count = count + 1;
+   2 Load count
+   3 Push 1
+   4 2-ary +
+   5 Store count
+code/Up.hny:3     done[self] = True;
+   6 PushAddress done
+   7 LoadVar self
+   8 Address 2
+   9 Push True
    10 Store
    11 Return
+code/Up.hny:5 def main():
+   12 Jump 25
+   13 Frame main ()
+code/Up.hny:6     await all(done);
+   14 Load done
+   15 1-ary all
+   16 JumpCond False 14
+code/Up.hny:7     assert count == 2, count;
+   17 AtomicInc
+   18 Load count
+   19 Push 2
+   20 2-ary ==
+   21 Load count
+   22 Assert2
+   23 AtomicDec
+   24 Return
+code/Up.hny:9 count = 0;
+   25 Push 0
+   26 Store count
+code/Up.hny:10 done = [ False, False ];
+   27 Push [False, False]
+   28 Store done
+code/Up.hny:11 spawn incrementer(0);
+   29 Push 0
+   30 Dup
+   31 Push PC(1)
+   32 Spawn
 \end{verbatim}
 \end{code}
 \caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}.}
@@ -971,13 +1002,13 @@ entries: \texttt{.count} and \texttt{.done}.  And the value of entry
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states = 79 diameter = 5
+#states = 71 diameter = 5
 ==== Safety violation ====
-__init__/()   [0,34-49]     50 { count=0, done=[False, False] }
-incrementer/0 [1-4]          5 { count=0, done=[False, False] }
-incrementer/1 [1-10]        11 { count=1, done=[False, True]  }
-incrementer/0 [5-10]        11 { count=1, done=[True,  True]  }
-main/() [13-17,20-24,26-31] 31 { count=1, done=[True,  True]  }
+__init__/()   [0,25-41] 41 { count: 0, done: [False, False] }
+incrementer/0 [1-4]      5 { count: 0, done: [False, False] }
+incrementer/1 [1-11]    11 { count: 1, done: [False, True ] }
+incrementer/0 [5-11]    11 { count: 1, done: [True,  True ] }
+main/()       [13-22]   22 { count: 1, done: [True,  True ] }
 >>> Harmony Assertion failed : 1
 Open file://.../harmony.html for more information
 \end{verbatim}
@@ -1007,7 +1038,7 @@ that initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
 In this case, the first instruction is a \texttt{JUMP} instruction that sets the
-program counter to 34 (skipping over the code for the methods).
+program counter to 25 (skipping over the code for the methods).
 At program counter 1 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
@@ -1073,7 +1104,7 @@ a process to be stopped.
 \end{itemize}
 
 In this case, Harmony reports a safety violation, in particular it
-reports that the assertion on line 9 failed and that
+reports that the assertion and that
 \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
 The program got to the faulty execution in 5 ``steps.''
@@ -1095,10 +1126,11 @@ If we look at the next three steps, we see that:
 executed instructions 1 through 4, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
 \item Process \texttt{implementer/1}
-executed instructions 1 through 10, storing 1 into
+executed instructions 1 through 11, storing 1 into
 into \textit{count} and storing \texttt{True} into \textit{done}[1];
 \item Process \texttt{implementer/0}
-continues execution, storing value 1 into \textit{count}
+continues execution, executing instructions 5 through 11
+storing value 1 into \textit{count}
 and storing \texttt{True} into \textit{done}[0].
 \end{itemize}
 Finally, process \texttt{main()} runs and finds the problem.

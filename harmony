@@ -3843,10 +3843,18 @@ def find_shortest(bad):
             best_len = node.len
     return best_node
 
+def strvars(vars):
+    result = ""
+    for k in sorted(vars.keys()):
+        if result != "":
+            result += ", "
+        result += "%s: %s"%(k, strValue(vars[k]))
+    return "{ " + result + " }"
+
 def print_path(bad_node):
     path = genpath(bad_node)
     for (ctx, steps, states, vars) in path:
-        print(nametag2str(ctx.nametag), strsteps(steps))
+        print(nametag2str(ctx.nametag), strsteps(steps), ctx.pc, strvars(vars.d))
     if len(path) > 0:
         (ctx, steps, states, vars) = path[-1]
         if ctx.failure != None:
