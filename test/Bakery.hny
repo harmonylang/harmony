@@ -1,5 +1,5 @@
 const NUM_THREADS = 3;
-const NROUNDS = 2;
+const NROUNDS = 1;
 
 entering = dict{ False for i in {1..NUM_THREADS} };
 number = dict{ 0 for i in {1..NUM_THREADS} };
@@ -9,12 +9,8 @@ def lock(i):
     number[i] = 1 + max({ number[j] for j in {1..NUM_THREADS} });
     entering[i] = False;
     for j in {1..NUM_THREADS}:
-        while (entering[j]):
-            pass;
-        ;
-        while (number[j] != 0) and ((number[j], j) < (number[i], i)):
-            pass;
-        ;
+        await not entering[j];
+        await (number[j] == 0) or ((number[j], j) >= (number[i], i));
     ;
 ;
 def unlock(i):

@@ -1,9 +1,7 @@
 # mutual exclusion by infinite loop: safe but not live
 
 def process():
-    while True:
-        pass;
-    ;
+    await False;
     @cs: pass;    # critical section
 ;
 flags = dict{ 0: False, 1: False };

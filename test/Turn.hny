@@ -3,9 +3,7 @@ def p(self):
         @ncs: pass;
 
         # Enter critical section
-        while turn == (1 - self):
-            pass;
-        ;
+        await turn == self;
 
         # Critical section
         @cs: assert atLabel.cs == dict{ nametag(): 1 };

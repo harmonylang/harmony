@@ -2,25 +2,17 @@ const N = 3;
 
 def lock(self):
     flag[self] = 1;
-    while not all(flag[i] in { 0, 1, 2 } for i in {1..N}):
-        pass;
-    ;
+    await all(flag[i] in { 0, 1, 2 } for i in {1..N});
     flag[self] = 3;
     if any(flag[i] == 1 for i in {1..N}):
         flag[self] = 2;
-        while not any(flag[i] == 4 for i in {1..N}):
-            pass;
-        ;
+        await any(flag[i] == 4 for i in {1..N});
     ;
     flag[self] = 4;
-    while not all(flag[i] in { 0, 1 } for i in {1..self-1}):
-        pass;
-    ;
+    await all(flag[i] in { 0, 1 } for i in {1..self-1});
 ;
 def unlock(self):
-    while not all(flag[i] in { 0, 1, 4 } for i in {self+1..N}):
-        pass;
-    ;
+    await all(flag[i] in { 0, 1, 4 } for i in {self+1..N});
     flag[self] = 0;
 ;
 flag = dict{ 0 for i in {1..N} };

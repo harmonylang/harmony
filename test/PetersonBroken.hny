@@ -4,9 +4,7 @@ def process(self):
     while choose({ False, True }):
         turn = 1 - self;
         flags[self] = True;
-        while flags[1 - self] and (turn == (1 - self)):
-            pass;
-        ;
+        await (not flags[1 - self]) or (turn == self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 }, atLabel.cs;
         flags[self] = False;
     ;

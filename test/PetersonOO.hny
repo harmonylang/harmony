@@ -1,12 +1,10 @@
 def P_enter(pm, pid):
-    (^pm).flags[pid] = True;
-    (^pm).turn = 1 - pid;
-    while (^pm).flags[1 - pid] and ((^pm).turn == (1 - pid)):
-        pass;
-    ;
+    (!pm).flags[pid] = True;
+    (!pm).turn = 1 - pid;
+    await (not (!pm).flags[1 - pid]) or ((!pm).turn == pid);
 ;
 def P_exit(pm, pid):
-    (^pm).flags[pid] = False;
+    (!pm).flags[pid] = False;
 ;
 def P_mutex():
     result = dict{
@@ -16,11 +14,11 @@ def P_mutex():
 ;
 def process(self, pm):
     while choose({ False, True }):
-        call (^pm).enter(pm, self);
+        call (!pm).enter(pm, self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        call (^pm).exit(pm, self);
+        call (!pm).exit(pm, self);
     ;
 ;
 mutex = P_mutex();
-spawn process(0, &(mutex)), 0;
-spawn process(1, &(mutex)), 1;
+spawn process(0, ?(mutex)), 0;
+spawn process(1, ?(mutex)), 1;

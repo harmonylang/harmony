@@ -4,9 +4,7 @@ def process(self):
     while True:
         flags[self] = True;
         turn = 1 - self;
-        while flags[1 - self] and (turn == (1 - self)):
-            pass;
-        ;
+        await (not flags[1 - self]) or (turn == self);
         @cs: assert (not (flags[1 - self])) or (turn == self);
         flags[self] = False;
     ;

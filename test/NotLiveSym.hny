@@ -3,9 +3,7 @@
 def process(self):
     while choose({ False, True }):
         flags[self] = True;
-        while flags[1 - self]:
-            pass;
-        ;
+        await not flags[1 - self];
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
         flags[self] = False;
     ;

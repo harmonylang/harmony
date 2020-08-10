@@ -2,9 +2,7 @@
 
 def process(self):
     while choose({ False, True }):
-        while mutex:
-            pass;
-        ;
+        await not mutex;
         mutex = True;
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
         mutex = False;
