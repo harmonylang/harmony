@@ -673,10 +673,14 @@ def lexer(s, file):
                         str += chr(total)
                     else:
                         str += s[0]
+                        if s[0] == '\n':
+                            line += 1
                         column += 1
                         s = s[1:]
                 else:
                     str += s[0]
+                    if s[0] == '\n':
+                        line += 1
                     column += 1
                     s = s[1:]
             result += [ (str, file, line, column) ]
@@ -698,7 +702,7 @@ def strValue(v):
             return "." + v
         else:
             assert len(v) == 1, v
-            return "..x%02X"%ord(v[0])
+            return ".0x%02X"%ord(v[0])
     assert False, v
 
 def strVars(v):
@@ -2440,9 +2444,12 @@ class BasicExpressionRule(Rule):
                                 for i in range(1, len(lexeme)) }), t[1:])
         if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
-            self.expect("dot expression", isname(lexeme), t[1],
+            if lexeme.startswith("0x"):
+                return (ConstantAST((chr(int(lexeme, 16)), file, line, column)), t[2:])
+            else:
+                self.expect("dot expression", isname(lexeme), t[1],
                     "expected a name after .")
-            return (ConstantAST((lexeme, file, line, column)), t[2:])
+                return (ConstantAST((lexeme, file, line, column)), t[2:])
         if isname(lexeme):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
