@@ -1,9 +1,7 @@
 def P_enter(pm, pid):
     (!pm).flags[pid] = True;
     (!pm).turn = 1 - pid;
-    while (!pm).flags[1 - pid] and ((!pm).turn == (1 - pid)):
-        pass;
-    ;
+    await (not (!pm).flags[1 - pid]) or ((!pm).turn == pid);
 ;
 def P_exit(pm, pid):
     (!pm).flags[pid] = False;

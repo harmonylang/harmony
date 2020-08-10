@@ -4,9 +4,7 @@ def handler():
 ;
 def main():
     trap handler();
-    while not done:
-        pass;
-    ;
+    await done;
     assert count == 1;
 ;
 count = 0;

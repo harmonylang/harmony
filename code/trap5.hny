@@ -13,9 +13,7 @@ def handler():
 def main():
     trap handler();
     increment();
-    while not done:
-        pass;
-    ;
+    await done;
     assert count == 2;
 ;
 mutex = Lock();

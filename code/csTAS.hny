@@ -6,9 +6,7 @@ def tas(s):
 ;
 def process():
     while choose({ False, True }):
-        while tas(?lock):
-            pass;
-        ;
+        await not tas(?lock);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
         lock = False;
     ;

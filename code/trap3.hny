@@ -11,9 +11,7 @@ def main():
     lock(?countlock);
       count += 1;
     unlock(?countlock);
-    while not done:
-        pass;
-    ;
+    await done;
     assert count == 2;
 ;
 countlock = Lock();

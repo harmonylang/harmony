@@ -1,9 +1,7 @@
 def process(self):
     while choose({ False, True }):
         # Enter critical section
-        while turn == (1 - self):
-            pass;
-        ;
+        await turn == self;
 
         # Critical section
         @cs: assert atLabel.cs == dict{ nametag(): 1 };

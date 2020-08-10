@@ -2,9 +2,7 @@ def process(self):
     while choose({ False, True }):
         # Enter critical section
         flags[self] = True;
-        while flags[1 - self]:
-            pass;
-        ;
+        await not flags[1 - self];
 
         # Critical section
         @cs: assert atLabel.cs == dict{ nametag(): 1 };

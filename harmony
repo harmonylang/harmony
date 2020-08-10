@@ -110,36 +110,34 @@ import bag;
 
 def tas(lk):
     atomic:
-        result = ^lk;
-        ^lk = True;
+        result = !lk;
+        !lk = True;
     ;
 ;
 def Lock():
     result = False;
 ;
 def lock(lk):
-    while tas(lk):
-        pass;
-    ;
+    await not tas(lk);
 ;
 def unlock(lk):
-    ^lk = False;
+    !lk = False;
 ;
 def Condition(lk):
     result = dict{ .lock: lk, .waiters: bagEmpty() };
 ;
 def wait(c):
-    let lk = (), blocked = True, cnt = 0:
+    let lk, blocked, cnt = None, True, 0:
         atomic:
-            lk = (^c).lock;
-            cnt = bagCount((^c).waiters, nametag());
-            bagAdd(&(^c).waiters, nametag());
-            ^lk = False;
+            lk = (!c).lock;
+            cnt = bagCount((!c).waiters, nametag());
+            bagAdd(?(!c).waiters, nametag());
+            !lk = False;
         ;
         while blocked:
             atomic:
-                if (not (^lk)) and (bagCount((^c).waiters, nametag()) <= cnt):
-                    ^lk = True;
+                if (not (!lk)) and (bagCount((!c).waiters, nametag()) <= cnt):
+                    !lk = True;
                     blocked = False;
                 ;
             ;
@@ -148,15 +146,15 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = (^c).waiters:
+        let waiters = (!c).waiters:
             if waiters != bagEmpty():
-                bagRemove(&(^c).waiters, bagChoose(waiters));
+                bagRemove(?(!c).waiters, bagChoose(waiters));
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (^c).waiters = bagEmpty();
+    (!c).waiters = bagEmpty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -165,8 +163,8 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (^sema) > 0:
-                    ^sema -= 1;
+                if (!sema) > 0:
+                    !sema -= 1;
                     blocked = False;
                 ;
             ;
@@ -175,7 +173,7 @@ def P(sema):
 ;
 def V(sema):
     atomic:
-        ^sema += 1;
+        !sema += 1;
     ;
 ;
 def Queue():
@@ -185,9 +183,9 @@ def dequeue(q):
     let blocked = True:
         while blocked:
             atomic:
-                if ^q != []:
-                    result = head(^q);
-                    ^q = tail(^q);
+                if !q != []:
+                    result = head(!q);
+                    !q = tail(!q);
                     blocked = False;
                 ;
             ;
@@ -196,7 +194,7 @@ def dequeue(q):
 ;
 def enqueue(q, item):
     atomic:
-        ^q = append(^q, item);
+        !q = append(!q, item);
     ;
 ;
 """
@@ -1824,9 +1822,12 @@ class NaryOp(Op):
                     return
                 context.push(SetValue(set(range(e1, e2+1))))
             elif op == "in":
-                if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
+                if isinstance(e2, SetValue):
+                    context.push(e1 in e2.s)
+                elif not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                     return
-                context.push(e1 in e2.s)
+                else:
+                    context.push(e1 in e2.d.values())
             elif op == "*":
                 if isinstance(e1, DictValue) or isinstance(e2, DictValue):
                     if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):

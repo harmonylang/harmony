@@ -3,9 +3,7 @@ def process(self):
         # Enter critical section
         flags[self] = True;
         @gate: turn = 1 - self;
-        while flags[1 - self] and (turn == (1 - self)):
-            pass;
-        ;
+        await (not flags[1 - self]) or (turn == self);
 
         # Critical section
         @cs: assert (not (flags[1 - self] and (turn == (1 - self))))

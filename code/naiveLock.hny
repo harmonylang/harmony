@@ -1,9 +1,7 @@
 def process(self):
     while choose({ False, True }):
         # Enter critical section
-        while lockTaken:
-            pass;
-        ;
+        await not lockTaken;
         lockTaken = True;
 
         # Critical section

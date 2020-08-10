@@ -1,17 +1,13 @@
 def incrementer(self):
     entered[self] = True;
-    if entered[1 - self]:           # if the other process has already started
-        while not done[1 - self]:   # wait until it is done
-            pass;
-        ;
+    if entered[1 - self]:         # if the other process has already started
+        await done[1 - self];     # wait until it is done
     ;
     count = count + 1;
     done[self] = True;
 ;
 def main():
-    while not all(done):
-        pass;
-    ;
+    await all(done);
     assert count == 2, count;
 ;
 count = 0;

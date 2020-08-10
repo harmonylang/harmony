@@ -11,9 +11,7 @@ def Lock():
     result = False;
 ;
 def lock(lk):
-    while tas(lk):
-        pass;
-    ;
+    await not tas(lk);
 ;
 def unlock(lk):
     !lk = False;

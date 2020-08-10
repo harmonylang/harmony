@@ -1,3 +1,6 @@
 def issubset(s, t):
     result = (s & t) == s;
 ;
+def issuperset(s, t):
+    result = (s & t) == t;
+;

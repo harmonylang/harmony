@@ -15,14 +15,10 @@ def handler(self):
 def process(self):
     trap handler(self);
     increment();
-    while not done[self]:
-        pass;
-    ;
+    await done[self];
 ;
 def main(self):
-    while not (done[0] and done[1]):
-        pass;
-    ;
+    await all(done);
     assert count == 4, count;
 ;
 count = 0;

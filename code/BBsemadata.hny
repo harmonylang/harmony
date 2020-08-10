@@ -16,9 +16,7 @@ def consumer():
     ;
 ;
 def main():
-    while len(received) < (2 * NCONSS):
-        pass;
-    ;
+    await len(received) == (2 * NCONSS);
     assert received == ({ (i, 0) for i in {1..NPRODS} } |
                             { (i, 1) for i in {1..NPRODS} })
     ;

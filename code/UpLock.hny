@@ -7,9 +7,7 @@ def process(self):
     done[self] = True;
 ;
 def main(self):
-    while not all(done):
-        pass;
-    ;
+    await all(done);
     assert count == 2, count;
 ;
 count = 0;

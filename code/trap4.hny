@@ -9,9 +9,7 @@ def main():
     setintlevel(True);
       count += 1;
     setintlevel(False);
-    while not done:
-        pass;
-    ;
+    await done;
     assert count == 2;
 ;
 mutex = Lock();
