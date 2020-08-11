@@ -1,6 +1,6 @@
 import lst1;
 
-def lst_find(lst, v):
+def lst_find(lst, v):   # find 'neighboring' nodes of v in list
     let before = lst let after = (!before).next:
         lock(?(!before).lock);
         lock(?(!after).lock);

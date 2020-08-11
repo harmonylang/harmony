@@ -1,11 +1,11 @@
 import synch;
 import alloc;
 
-def lst_node(v, n):
+def lst_node(v, n):     # allocate and initialize a new list node
     result = malloc();
     !result = dict{ .lock: Lock(), .value: v, .next: n };
 ;
-def lst_contains(lst, v):
+def lst_contains(lst, v):   # check if v is in the list
     let n = lst:
         while (!n).value < v:
             n = (!n).next;

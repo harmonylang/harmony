@@ -3944,7 +3944,8 @@ However, it can lead to starvation.  Even in the absence of starvation,
 if some process is slow for some reason while being in the critical section,
 the other processes have to wait for it to finish executing the critical section.
 In this chapter, we will have a look at how one can develop concurrent
-code in which processes do not have to wait for other processes.
+code in which processes do not have to wait for other processes to complete their
+ongoing operations.
 
 As a first example, we will revisit the producer/consumer problem.
 The code in \autoref{fig:hw} is based on code developed by Herlihy and
@@ -3994,7 +3995,7 @@ synchronization algorithms.
 There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
 most accesses are read-only and the performance of updates is less
-critical~\cite{}.
+critical. %~\cite{}.
 \autoref{fig:lst1} and \autoref{fig:lst2} implements an ordered linked
 list of integers without duplicates.
 There are two update operations:
@@ -4060,7 +4061,7 @@ If not found, it coincides with retrieving the pointer to the
 \begin{code}
 \harmonysource{lst1}
 \end{code}
-\caption{\harmonylink{code/lst1.hny} List with non-blocking read operations, part 1.}
+\caption{\harmonylink{code/lst1.hny} List with non-blocking read operation, part 1.}
 \label{fig:lst1}
 \end{figure}
 
@@ -4068,7 +4069,7 @@ If not found, it coincides with retrieving the pointer to the
 \begin{code}
 \harmonysource{lst2}
 \end{code}
-\caption{\harmonylink{code/lst2.hny} List with non-blocking read operations, part 2.}
+\caption{\harmonylink{code/lst2.hny} List with non-blocking read operation, part 2.}
 \label{fig:lst2}
 \end{figure}
 
