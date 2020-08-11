@@ -2,40 +2,39 @@ import lst1;
 
 def lst_find(lst, v):
     let before = lst let after = (!before).next:
-        lock(?(!before).data.lock);
-        lock(?(!after).data.lock);
-        while (!after).data.value < v:
-            unlock(?(!before).data.lock);
+        lock(?(!before).lock);
+        lock(?(!after).lock);
+        while (!after).value < v:
+            unlock(?(!before).lock);
             before = after;
             after = (!before).next;
-            lock(?(!after).data.lock);
+            lock(?(!after).lock);
         ;
         result = (before, after);
     ;
 ;
 def lst_insert(lst, v):
     let before, after = lst_find(lst, v):
-        if (!after).data.value != v:
+        if (!after).value != v:
             (!before).next = lst_node(v, after);
         ;
-        unlock(?(!before).data.lock);
-        unlock(?(!after).data.lock);
+        unlock(?(!before).lock);
+        unlock(?(!after).lock);
     ;
 ;
 def lst_remove(lst, v):
     let before, after = lst_find(lst, v):
-        if (!after).data.value == v:
+        if (!after).value == v:
             (!before).next = (!after).next;
-            unlock(?(!after).data.lock);
-            recFree(after);
+            unlock(?(!after).lock);
+            free(after);
         else:
-            unlock(?(!after).data.lock);
+            unlock(?(!after).lock);
         ;
-        unlock(?(!before).data.lock);
+        unlock(?(!before).lock);
     ;
 ;
-
-mylist = lst_new();
+mylist = lst_node(-inf, lst_node(inf, None));
 lst_insert(mylist, 3);
 assert lst_contains(mylist, 3);
 lst_remove(mylist, 3);

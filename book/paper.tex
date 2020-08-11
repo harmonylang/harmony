@@ -4006,7 +4006,7 @@ a particular value is in the list.
 
 The implementation uses the \texttt{alloc} module for dynamic allocation
 \index{dynamic allocation}%
-of nodes in the list using \texttt{recAlloc} and \texttt{recFree}.
+of nodes in the list using \texttt{malloc} and \texttt{free}.
 The read-only operation \texttt{lst\_contains} is wait\_free: it scans
 through the list without having to obtain a lock.
 Nonetheless, the implementation of the list is
@@ -4392,24 +4392,21 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 
 The \texttt{alloc} module
 \index{alloc module}%
-support thread-safe dynamic allocation of ``records.''
-Each record has two fields: \texttt{.data} and \texttt{.next} that
-can be used arbitrarily, although \texttt{.next} is intended to be
-used as a pointer to another record.
-There are just two methods:
+support thread-safe (but not interrupt-safe) dynamic allocation of
+dictionaries.  There are just two methods:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{recAlloc()} & allocate a record \\
+\texttt{malloc()} & allocate a dictionary \\
 \hline
-\texttt{recFree($r$)} & free record $r$ \\
+\texttt{free($r$)} & free an allocated dictionary $r$ \\
 \hline
 \end{tabular}
 \vspace{1em}
 
 The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{recAlloc} returns \texttt{None} when running out of memory.
+\texttt{malloc}() returns \texttt{None} when running out of memory.
 
 \section{The \texttt{bag} module}
 

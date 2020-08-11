@@ -2,18 +2,14 @@ import synch;
 import alloc;
 
 def lst_node(v, n):
-    result = recAlloc();
-    (!result).data = dict{ .lock: Lock(), .value: v };
-    (!result).next = n;
-;
-def lst_new():
-    result = lst_node(-inf, lst_node(inf, None));
+    result = malloc();
+    !result = dict{ .lock: Lock(), .value: v, .next: n };
 ;
 def lst_contains(lst, v):
     let n = lst:
-        while (!n).data.value < v:
+        while (!n).value < v:
             n = (!n).next;
         ;
-        result = (!n).data.value == v;
+        result = (!n).value == v;
     ;
 ;
