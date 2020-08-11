@@ -4688,12 +4688,14 @@ is executing;
 \item The tag in a name tag the argument to the method by default.  Optionally
 \texttt{spawn} allows the tag to be specified explicitly;
 \item The frame pointer points to the current \emph{stack frame},
-which consists of the caller's frame and variables, the argument to
-the method, and the return address.
+which consists of the caller's frame pointer and variables, the argument to
+the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
+\texttt{process}), and the return address (in case of \texttt{normal}).
 \item A process terminates when it reaches the \texttt{Return} instruction
-of the method or when it hits an exception.  Exceptions include divide by zero,
+of the top-level method (when the stack frame is of type \texttt{process})
+or when it hits an exception.  Exceptions include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
-variable, as well as when an assertion fails;
+variable, infinite loops of microsteps, as well as when an assertion fails;
 \item The execution of a process in \emph{atomic mode} does not get interleaved
 with that of other processes.
 \item The register of a process always contains a dictionary, mapping
@@ -4755,6 +4757,21 @@ states and the edges are macro steps.
 When a state is \texttt{choosing}, the edges from that state are
 by a single context, one for each choice.  If not, the edges from
 the state are one per context.
+
+Consecutive macro steps by the same process are called \emph{mega steps}.
+Each state maintains the shortest path to it from the initial state in terms
+of mega steps.
+The diameter of the graph is the length of the longest path found.
+
+If some states have a problem, the state with the shortest path is reported.
+Problematic states include states that experienced exceptions.
+If there are no exceptions, Harmony computes the strongly connected components (SCCs)
+of the graph (the number of such components are printed as part of the output).
+The sink SCCs should each consist of a terminal state without any processes.
+If not, again the state with the shortest path is reported.
+
+If there are no problematic states, Harmony reports ``no issues found'' and outputs
+in the HTML file the state with the longest path.
 
 \chapter{Harmony Language Details}
 \label{ap:details}
@@ -4823,7 +4840,7 @@ one element must be followed by a comma.
 So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
 
 Because tuples and lists are dictionaries, the \texttt{del} statement is
-different Python.  For example, if $x$ = [.a, .b, .c], then
+different than in Python.  For example, if $x$ = [.a, .b, .c], then
 \texttt{del} $x$[1] results in $x$ = \texttt{dict}\{ 0:.a, 2:.c \}, \emph{not}
 $x$ = [.a, .c].
 Harmony also does not support special slicing syntax like Python.
