@@ -2178,6 +2178,10 @@ in which processes wait for a lock, while the \texttt{synch} module does not.
 \item
 Run \autoref{fig:incfixed} using (i) \texttt{synch} and (ii) \texttt{synchS}.
 Report how many states were explored by Harmony for each module.
+\item \label{ex:xy} \autoref{fig:xy} shows a Harmony program with two variables $x$
+(initially 0) and $y$ (initially 100) that can be accessed through methods
+\texttt{setX} and \texttt{getXY}.  An application invariant is that \texttt{getXY}
+should return a pair that sums to 100.  Add the necessary synchronization code.
 \item \label{ex:trylock} Implement \texttt{trylock}(\textit{lk}) as an additional
 interface for both the \texttt{synch} and \texttt{synchS} modules.
 This interface is like \texttt{lock}(\textit{lk}) but never blocks.  It
@@ -2185,6 +2189,14 @@ returns \texttt{True} if the lock was available (and now acquired) or \texttt{Fa
 if the lock was already taken.
 Hint: you do not have to change the existing code.
 \end{problems}
+
+\begin{figure}
+\begin{code}
+\harmonysource{xy}
+\end{code}
+\caption{$x + y = 100$.}
+\label{fig:xy}
+\end{figure}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
@@ -2327,6 +2339,7 @@ all processes are blocked.
 \begin{problems}
 \item Draw additional states and steps in \autoref{fig:rdwr}
 for three processes.
+\item Optimize your solution to \autoref{ex:xy} to use reader/writer locks.
 \item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
 up to \texttt{M} processes to acquire it at the same time.  A bound lock
 with \texttt{M == 1} is an ordinary lock.
