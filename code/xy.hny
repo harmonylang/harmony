@@ -10,7 +10,6 @@ def checker():
         assert (xy[0] + xy[1]) == 100, xy;
     ;
 ;
-x = 0;
-y = 100;
+x, y = 0, 100;
 spawn checker();
 spawn setX(50);
