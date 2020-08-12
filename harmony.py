@@ -401,7 +401,7 @@ def free(r):
     alloc_flist = r;
     unlock(?alloc_lock);
 ;
-alloc_pool = [ dict{ .nxt: None } for i in {0..ALLOC_POOL_SIZE-1} ];
+alloc_pool = [ None, ] * ALLOC_POOL_SIZE;
 alloc_flist = None;           # free list
 alloc_lock = Lock();
 for i in {0..ALLOC_POOL_SIZE-1}:
