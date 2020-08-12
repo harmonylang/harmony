@@ -391,13 +391,13 @@ def malloc():
     lock(?alloc_lock);
     result = alloc_flist;
     if result != None:
-        alloc_flist = (!result).nxt;
+        alloc_flist = !result;
     ;
     unlock(?alloc_lock);
 ;
 def free(r):
     lock(?alloc_lock);
-    (!r).nxt = alloc_flist;
+    !r = alloc_flist;
     alloc_flist = r;
     unlock(?alloc_lock);
 ;

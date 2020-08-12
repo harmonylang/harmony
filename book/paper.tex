@@ -4393,15 +4393,16 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 
 The \texttt{alloc} module
 \index{alloc module}%
-support thread-safe (but not interrupt-safe) dynamic allocation of
-dictionaries.  There are just two methods:
+maintains a pool of ``memory locations'' and
+supports thread-safe (but not interrupt-safe) dynamic allocation of
+memory locations.  There are just two methods:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{malloc()} & allocate a dictionary \\
+\texttt{malloc()} & allocate and return a pointer to a memory location \\
 \hline
-\texttt{free($r$)} & free an allocated dictionary $r$ \\
+\texttt{free($p$)} & free an allocated memory location $p$ \\
 \hline
 \end{tabular}
 \vspace{1em}
