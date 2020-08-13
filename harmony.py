@@ -385,12 +385,15 @@ def issuperset(s, t):
     result = (s & t) == t;
 ;
 """,
-    "alloc": """const ALLOC_POOL_SIZE  = 100;      # maximum number of "records" to allocate
-
-def malloc():
+    "alloc": """def malloc():
     lock(?alloc_lock);
-    result = alloc_flist;
-    if result != None:
+    if alloc_flist == None:
+        let i = len(alloc_pool):
+            alloc_pool[i] = None;
+            result = ?alloc_pool[i];
+        ;
+    else:
+        result = alloc_flist;
         alloc_flist = !result;
     ;
     unlock(?alloc_lock);
@@ -401,12 +404,9 @@ def free(r):
     alloc_flist = r;
     unlock(?alloc_lock);
 ;
-alloc_pool = [ None, ] * ALLOC_POOL_SIZE;
+alloc_pool = [];
 alloc_flist = None;           # free list
 alloc_lock = Lock();
-for i in {0..ALLOC_POOL_SIZE-1}:
-    free(?alloc_pool[i]);
-;
 """,
 
 #############################

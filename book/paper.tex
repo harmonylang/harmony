@@ -2194,7 +2194,7 @@ Hint: you do not have to change the existing code.
 \begin{code}
 \harmonysource{xy}
 \end{code}
-\caption{Code with desired invariant $x + y = 100$.}
+\caption{Imcomplete code with desired invariant $x + y = 100$.}
 \label{fig:xy}
 \end{figure}
 
@@ -4406,7 +4406,6 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 
 The \texttt{alloc} module
 \index{alloc module}%
-maintains a pool of ``memory locations'' and
 supports thread-safe (but not interrupt-safe) dynamic allocation of
 memory locations.  There are just two methods:
 
@@ -4421,7 +4420,9 @@ memory locations.  There are just two methods:
 \vspace{1em}
 
 The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{malloc}() returns \texttt{None} when running out of memory.
+\texttt{malloc}() is specified to \texttt{None} when running out of
+memory, although this is an impossible outcome in the current
+implementation of the module.
 
 \section{The \texttt{bag} module}
 
