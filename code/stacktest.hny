@@ -1,0 +1,12 @@
+import stack;
+
+stack = Stack();
+stack_push(?stack, 1);
+stack_push(?stack, 2);
+v = stack_pop(?stack);
+assert v == 2;
+stack_push(?stack, 3);
+v = stack_pop(?stack);
+assert v == 3;
+v = stack_pop(?stack);
+assert v == 1;

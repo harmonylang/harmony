@@ -236,10 +236,7 @@ def enqueue(q, item):
 """,
     "list": """# return s[b:e]
 def subseq(s, b, e):
-    result = [];
-    for x in {b..e-1}:
-        result[x - b] = s[x];
-    ;
+    result = [ s[x] for x in {b..e-1} ];
 ;
 
 def append(s, e):
@@ -267,26 +264,17 @@ def set(a):
 
 # convert set into a (sorted) list
 def list(a):
-    result = [];
-    for v in a:
-        result += [v,];
-    ;
+    result = [ v for v in a ];
 ;
 
 # convert values of a dictionary into a list
 def values(d):
-    result = [];
-    for k in keys d:
-        result += [ d[k], ];
-    ;
+    result = [ d[k] for k in keys d ];
 ;
 
 # like Python .items()
 def items(d):
-    result = [];
-    for k in keys d:
-        result += [ (k, d[k]), ];
-    ;
+    result = [ (k, d[k]) for k in keys d ];
 ;
 
 # like Python enumerate()
@@ -326,10 +314,7 @@ def sorted(d):
 # like Python reversed()
 def reversed(d):
     n = len(d);
-    result = [];
-    for i in { 1..n }:
-        result += [ d[n - i], ];
-    ;
+    result = [ d[n-i] for i in { 1..n } ];
 ;
 
 # turn a list into a bag (multiset)
@@ -385,7 +370,9 @@ def issuperset(s, t):
     result = (s & t) == t;
 ;
 """,
-    "alloc": """def malloc():
+    "alloc": """import synch;
+
+def malloc():
     lock(?alloc_lock);
     if alloc_flist == None:
         let i = len(alloc_pool):

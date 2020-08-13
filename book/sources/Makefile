@@ -61,6 +61,11 @@ CODE = \
     semaphore.tex \
     spinlock.tex \
     spinlockInv.tex \
+    stacktest.tex \
+    stack1.tex \
+    stack2.tex \
+    stack3.tex \
+    stack4.tex \
     trap.tex \
     trap2.tex \
     trap3.tex \

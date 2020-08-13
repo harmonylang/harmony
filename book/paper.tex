@@ -4934,6 +4934,70 @@ Dictionary comprehensions are a little different.
 The dictionary comprehension \texttt{dict}\{ f($i$) \texttt{for} $i$ \texttt{in} $I$ \}
 creates a dictionary of $i$:f($i$) entries.
 
+\section{Dynamic Allocation}
+
+\begin{figure}
+\begin{code}
+\harmonysource{stacktest}
+\end{code}
+\caption{\harmonylink{code/stacktest.hny} Testing a stack implementation.}
+\label{fig:stacktest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{stack1}
+\end{code}
+\caption{\harmonylink{code/stack1.hny} Stack implemented using a dynamically updated list.}
+\label{fig:stack1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{stack2}
+\end{code}
+\caption{\harmonylink{code/stack2.hny} Stack implemented using static lists.}
+\label{fig:stack2}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{stack3}
+\end{code}
+\caption{\harmonylink{code/stack3.hny} Stack implemented using a recursive tuple data structure.}
+\label{fig:stack3}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{stack4}
+\end{code}
+\caption{\harmonylink{code/stack4.hny} Stack implemented using a linked list.}
+\label{fig:stack4}
+\end{figure}
+
+Harmony supports various options for dynamic allocation.
+By way of example, consider a stack.
+\autoref{fig:stacktest} presents a test program for a stack.
+We present four different stack implementations to illustrate
+options for dynamic allocation:
+\begin{enumerate}
+\item[] \autoref{fig:stack1} uses a single list to represent the
+stack.  It is updated to perform \texttt{push} and \texttt{pop} operations;
+\item[] \autoref{fig:stack2} also uses a list but, instead of updating
+the list, it replaces the list with a new one for each operation;
+\item[] \autoref{fig:stack3} represents a stack as a recursively nested tuple
+$(v, f)$, where $v$ is the element on top of the stack and $r$ is a stack
+that is the remainder;
+\item[] \autoref{fig:stack4} implements a stack as a linked list with nodes
+allocated using the \texttt{alloc} module.
+\end{enumerate}
+
+While the last option is the most versatile (it allows cyclic
+data structures), Harmony does not support garbage collection
+for memory allocated this way and so allocated memory that is no
+longer in use must be explicitly released using \texttt{free}.
+
 \section{Comments}
 
 Harmony supports the same commenting conventions as Python.

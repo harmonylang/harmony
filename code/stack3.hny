@@ -1,0 +1,12 @@
+def Stack():
+    result = ();
+;
+def stack_push(st, v):
+    (!st) = (v, !st);
+;
+def stack_pop(st):
+    let (top, rest) = !st:
+        result = top;
+        !st = rest;
+    ;
+;
