@@ -44,10 +44,11 @@ def items(d):
 # like Python enumerate()
 def enumerate(d):
     result = [];
-    index = 0;
-    for k in keys d:
-        result += [ (index, d[k]), ];
-        index += 1;
+    let index = 0:
+        for k in keys d:
+            result += [ (index, d[k]), ];
+            index += 1;
+        ;
     ;
 ;
 
@@ -71,8 +72,9 @@ def sorted(d):
 
 # like Python reversed()
 def reversed(d):
-    n = len(d);
-    result = [ d[n-i] for i in { 1..n } ];
+    let n = len(d):
+        result = [ d[n-i] for i in { 1..n } ];
+    ;
 ;
 
 # turn a list into a bag (multiset)

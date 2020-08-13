@@ -280,10 +280,11 @@ def items(d):
 # like Python enumerate()
 def enumerate(d):
     result = [];
-    index = 0;
-    for k in keys d:
-        result += [ (index, d[k]), ];
-        index += 1;
+    let index = 0:
+        for k in keys d:
+            result += [ (index, d[k]), ];
+            index += 1;
+        ;
     ;
 ;
 
@@ -292,15 +293,9 @@ def listQsort(a):
     if a == []:
         result = [];
     else:
-        let i = 1 let pivot = a[0] let lower, higher = [], []:
-            while i < len(a):
-                if a[i] < pivot:
-                    lower += [a[i],];
-                else:
-                    higher += [a[i],];
-                ;
-                i = i + 1;
-            ;
+        let (pivot, rest) = head(a), tail(a)
+        let lower = [ v for v in rest such that v < pivot ]
+        let higher = [ v for v in rest such that v >= pivot ]:
             result = listQsort(lower) + [pivot,] + listQsort(higher);
         ;
     ;
@@ -313,8 +308,9 @@ def sorted(d):
 
 # like Python reversed()
 def reversed(d):
-    n = len(d);
-    result = [ d[n-i] for i in { 1..n } ];
+    let n = len(d):
+        result = [ d[n-i] for i in { 1..n } ];
+    ;
 ;
 
 # turn a list into a bag (multiset)
