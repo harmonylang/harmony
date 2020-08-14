@@ -4998,6 +4998,39 @@ data structures), Harmony does not support garbage collection
 for memory allocated this way and so allocated memory that is no
 longer in use must be explicitly released using \texttt{free}.
 
+\section{Operator Precedence}
+
+In Harmony, there is no syntactic difference between applying an argument to a function
+or an index to a dictionary.  Both use the syntax \textit{a b c ...}.
+We call this \emph{application}, and application is left-associative.
+So \textit{a b c} is interpreted as (\textit{a b}) $c$: $b$ is applied to $a$,
+and then $c$ is applied to the result.
+For readability, it sometimes helps to write $a(b)$ for function application and
+$a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
+
+There are three classes of precedence.
+Application has the highest precedence.  So \texttt{!}\textit{a b} is interpreted as
+\texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
+(\textit{a b}) \texttt{+} (\textit{c d}).
+Unary operators are have the next highest precedence,
+and the remaining operators have the lowest precedence.
+So $-2 + 3$ evaluates to 1, not $-5$.
+
+Associative operators ($+$, $*$, $|$, $\string&$, $\string^$, \textbf{and}, \textbf{or})
+are interpreted as general $n$-ary operators, and you are allowed to write
+$a + b + c$.  However, $a - b - c$ is illegal, as is any combination of operators such
+as $a + b < c$.  In such cases you have to add parentheses or brackets to indicate what
+the intended evaluation order is, such as $(a + b) < c$.
+
+In almost all expressions, subexpressions are evaluated left to right.  So $a[b] + c$
+first evaluates $a$, then $b$ (and then applies $b$ to $a$), and then $c$.  The one
+exception is the expression $a$ \textbf{if} $c$ \textbf{else} $b$, where $b$ is evaluated
+first.  In that expression, only $a$ or $b$ is evaluated depending on the value of $c$.
+In the expression $a$ \textbf{and} $b$ \textbf{and} $...$, evaluation is left
+to right but stops once one of the subexpressions evaluates to \textbf{False}.
+Similarly for \textbf{or}, where evaluation stops once one of the subexpressions
+evaluates to \texttt{True}.
+
 \section{Comments}
 
 Harmony supports the same commenting conventions as Python.
