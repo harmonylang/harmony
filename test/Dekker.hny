@@ -1,0 +1,26 @@
+def lock(self):
+    flag[self] = True;
+    while flag[1 - self]:
+        if turn != self:
+            flag[self] = False;
+            await turn == self;
+            flag[self] = True;
+        ;
+    ;
+;
+def unlock(self):
+    turn = 1 - self;
+    flag[self] = False;
+;
+flag = [ False, False ];
+turn = choose({0, 1});
+
+def process(self):
+    while choose({ False, True }):
+        lock(self);
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        unlock(self);
+    ;
+;
+spawn process(0);
+spawn process(1);

@@ -2311,7 +2311,7 @@ class NaryRule(Rule):
         args = [ast]
         op = t[0]
         invert = None
-        if isunaryop(op[0]):      # mostly for use in "a not in s", but more general
+        if isunaryop(op[0]) and op[0] != '-':  # mostly for use in "a not in s", but more general
             invert = op
             t = t[1:]
             op = t[0]
