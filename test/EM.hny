@@ -1,0 +1,54 @@
+# Eisenstein-McGuire mutual exclusion algorithm
+
+const N = 3;
+
+def lock(self):
+    let blocked = True:
+        while blocked:
+            flags[self] = .waiting;
+            let index = turn:
+                while index != self:
+                    if flags[index] != .idle:
+                        index = turn;
+                    else:
+                        index = (index + 1) % N;
+                    ;
+                ;
+            ;
+            flags[self] = .active;
+            let index = 0:
+                while ((index < N) and
+                        ((index == self) or (flags[index] != .active))):
+                    index = index + 1;
+                ;
+                if ((index >= N) and ((turn == self) or
+                                            (flags[turn] == .idle))):
+                    blocked = False;
+                ;
+            ;
+        ;
+    ;
+    turn = self;
+;
+def unlock(self):
+    let index = (turn + 1) % N:
+        while flags[index] == .idle:
+            index = (index + 1) % N;
+        ;
+        turn = index;
+    ;
+    flags[self] = .idle;
+;
+flags = [.idle,] * N;
+turn = choose({0..N-1});
+
+def process(self):
+    while choose({ False, True }):
+        lock(self);
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        unlock(self);
+    ;
+;
+for i in {0..N-1}:
+    spawn process(i);
+;
