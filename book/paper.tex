@@ -1789,6 +1789,13 @@ the same expression in Harmony.
 \label{fig:petersonmethods}
 \end{figure}
 
+Harmony does not have a \textbf{return} statement.  (You can assign a return value
+to a method by setting the \textit{result} variable.)  Neither does it support
+\textbf{break} or \textbf{continue} statements in loops.  One reason for their absence is
+that, particularly in concurrent programming, such control flow directions are highly
+error-prone.  It's easy to forget to, say, release a lock when returning a value in the
+middle of a method, and a major source of bugs in practice.
+
 Harmony is not an object-oriented language like Python is.  In Python
 you can pass a reference to an object to a method, and that method
 can then update the object.  In Harmony, it is also sometimes convenient
