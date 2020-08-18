@@ -1,0 +1,30 @@
+import alloc;
+
+def Qnew():
+    let node = malloc():
+        !node = dict{ .value: (), .next: None };
+        result = dict{ .head: node, .tail: node, .hdlock: Lock(), .tllock: Lock() };
+    ;
+;
+def Qenqueue(q, v):
+    let node = malloc():
+        !node = dict{ .value: v, .next: None };
+        lock(?(!q).tllock);
+        (!(!q).tail).next = node;
+        (!q).tail = node;
+        unlock(?(!q).tllock);
+    ;
+;
+def Qdequeue(q):
+    lock(?(!q).hdlock);
+    let node = (!q).head let nh = (!node).next:
+        if nh == None:
+            result = ();
+        else:
+            result = ((!nh).value,);
+            (!q).head = nh;
+            free(node);
+        ;
+    ;
+    unlock(?(!q).hdlock);
+;

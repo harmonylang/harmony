@@ -1390,7 +1390,8 @@ class AssertOp(Op):
                         " must be a boolean: " + strValue(cond)
             return
         if not cond:
-            context.failure = "Harmony Assertion failed "
+            (lexeme, file, line, column) = self.token
+            context.failure = "Harmony Assertion (file=%s, line=%d) failed"%(file, line)
             if self.exprthere:
                 context.failure += ": " + strValue(expr)
             return

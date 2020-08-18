@@ -1,0 +1,21 @@
+import queue;
+
+def sender(q, v):
+    Qenqueue(q, v);
+;
+def receiver(q):
+    let done = False:
+        while not done:
+            let v = Qdequeue(q):
+                done = v == ();
+                assert done or (v[0] in { 1, 2 });
+            ;
+        ;
+    ;
+;
+
+queue = Qnew();
+spawn sender(?queue, 1);
+spawn sender(?queue, 2);
+spawn receiver(?queue);
+spawn receiver(?queue);

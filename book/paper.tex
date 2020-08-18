@@ -490,6 +490,8 @@ language needed for the rest of the book.
 for implemented critical sections.
 \item \autoref{ch:synch} presents Harmony modules
 that supports locks and other synchronization primitives.
+\item \autoref{ch:cds} provides an introduction to building concurrent
+data structures.
 \item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
 abstraction and implementation of \emph{reader/writer locks},
 which allow multiple processes in a critical section if they are
@@ -2204,6 +2206,67 @@ Hint: you do not have to change the existing code.
 \end{code}
 \caption{Imcomplete code with desired invariant $x + y = 100$.}
 \label{fig:xy}
+\end{figure}
+
+\chapter{Concurrent Data Structures}
+\label{ch:cds}
+
+The most common use for locks is in building concurrent data structures.
+By way of example, we will demonstrate how to build a concurrent queue.
+The queue will have the following API:
+\begin{itemize}
+\item $q = \mathtt{Qnew}()$: allocate a new queue;
+\item $Qenqueue(q, v)$: add $v$ to the tail of the queue;
+\item $r = Qdequeue(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
+if $v$ was at the head of the queue.
+\end{itemize}
+See \autoref{fig:queuetest} for a simple test program that uses the queue.
+
+We will first implement the queue as a linked list.
+The implementation in \autoref{fig:queue}
+uses the \texttt{alloc} module for dynamic allocation
+\index{dynamic allocation}%
+of nodes in the list using \texttt{malloc}() and \texttt{free}().
+\texttt{malloc}() returns a new memory location, which should be released
+with \texttt{free}() when it is no longer in use.
+The queue maintains a pointer to the first and last elements in the list,
+which are \textbf{None} if the queue is empty.
+
+\texttt{Qnew()} returns a new queue object consisting of a \textbf{None} head
+and tail pointer and a lock.
+\texttt{Qenqueue(q, v)} and \texttt{Qdequeue(q)} both take a pointer $q$ to the
+queue object because both may modify the queue.
+Before they access the value of the head or tail of the queue they first obtain
+the lock.
+When they are done, they release the lock.
+
+The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
+separate locks for the head and tail, allowing an enqueue and dequeue operation
+to proceed concurrently.  To avoid contention between the head and the tail, the
+queue uses a dummy item on the linked list.
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuetest}
+\end{code}
+\caption{Test program for a concurrent queue.}
+\label{fig:queuetest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queue}
+\end{code}
+\caption{A basic concurrent queue data structure.}
+\label{fig:queue}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queueMS}
+\end{code}
+\caption{A queue with separate locks for enqueuing and dequeuing items.}
+\label{fig:queueMS}
 \end{figure}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
@@ -4026,9 +4089,6 @@ There is also a read-only operation: \texttt{lst\_contains} checks if
 a particular value is in the list.
 \glsadd{linearizable}%
 
-The implementation uses the \texttt{alloc} module for dynamic allocation
-\index{dynamic allocation}%
-of nodes in the list using \texttt{malloc} and \texttt{free}.
 The read-only operation \texttt{lst\_contains} is wait\_free: it scans
 through the list without having to obtain a lock.
 Nonetheless, the implementation of the list is

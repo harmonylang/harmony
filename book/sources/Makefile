@@ -56,6 +56,9 @@ CODE = \
     naiveLock.tex \
     naiveTurn.tex \
     oo.tex \
+    queue.tex \
+    queueMS.tex \
+    queuetest.tex \
     qsort.tex \
     qsorttest.tex \
     semaphore.tex \
