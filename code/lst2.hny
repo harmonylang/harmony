@@ -1,37 +1,37 @@
 import lst1;
 
 def lst_find(lst, v):   # find 'neighboring' nodes of v in list
-    let before = lst let after = (!before).next:
-        lock(?(!before).lock);
-        lock(?(!after).lock);
-        while (!after).value < v:
-            unlock(?(!before).lock);
+    let before = lst let after = before->next:
+        lock(?before->lock);
+        lock(?after->lock);
+        while after->value < v:
+            unlock(?before->lock);
             before = after;
-            after = (!before).next;
-            lock(?(!after).lock);
+            after = before->next;
+            lock(?after->lock);
         ;
         result = (before, after);
     ;
 ;
 def lst_insert(lst, v):
     let before, after = lst_find(lst, v):
-        if (!after).value != v:
-            (!before).next = lst_node(v, after);
+        if after->value != v:
+            before->next = lst_node(v, after);
         ;
-        unlock(?(!before).lock);
-        unlock(?(!after).lock);
+        unlock(?before->lock);
+        unlock(?after->lock);
     ;
 ;
 def lst_remove(lst, v):
     let before, after = lst_find(lst, v):
-        if (!after).value == v:
-            (!before).next = (!after).next;
-            unlock(?(!after).lock);
+        if after->value == v:
+            before->next = after->next;
+            unlock(?after->lock);
             free(after);
         else:
-            unlock(?(!after).lock);
+            unlock(?after->lock);
         ;
-        unlock(?(!before).lock);
+        unlock(?before->lock);
     ;
 ;
 mylist = lst_node(-inf, lst_node(inf, None));

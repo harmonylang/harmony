@@ -9,22 +9,23 @@ def Qnew():
 def Qenqueue(q, v):
     let node = malloc():
         !node = dict{ .value: v, .next: None };
-        lock(?(!q).tllock);
-        (!(!q).tail).next = node;
-        (!q).tail = node;
-        unlock(?(!q).tllock);
+        lock(?q->tllock);
+        q->tail->next = node;
+        q->tail = node;
+        unlock(?q->tllock);
     ;
 ;
 def Qdequeue(q):
-    lock(?(!q).hdlock);
-    let node = (!q).head let nh = (!node).next:
-        if nh == None:
+    lock(?q->hdlock);
+    let node = q->head
+    let newhead = node->next:
+        if newhead == None:
             result = ();
         else:
-            result = ((!nh).value,);
-            (!q).head = nh;
+            result = (newhead->value,);
+            q->head = newhead;
             free(node);
         ;
     ;
-    unlock(?(!q).hdlock);
+    unlock(?q->hdlock);
 ;

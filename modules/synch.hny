@@ -22,14 +22,14 @@ def Condition(lk):
 def wait(c):
     let lk, blocked, cnt = None, True, 0:
         atomic:
-            lk = (!c).lock;
-            cnt = bagCount((!c).waiters, nametag());
-            bagAdd(?(!c).waiters, nametag());
+            lk = c->lock;
+            cnt = bagCount(c->waiters, nametag());
+            bagAdd(?c->waiters, nametag());
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not (!lk)) and (bagCount((!c).waiters, nametag()) <= cnt):
+                if (not !lk) and (bagCount(c->waiters, nametag()) <= cnt):
                     !lk = True;
                     blocked = False;
                 ;
@@ -39,15 +39,15 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = (!c).waiters:
+        let waiters = c->waiters:
             if waiters != bagEmpty():
-                bagRemove(?(!c).waiters, bagChoose(waiters));
+                bagRemove(?c->waiters, bagChoose(waiters));
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (!c).waiters = bagEmpty();
+    c->waiters = bagEmpty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -56,7 +56,7 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (!sema) > 0:
+                if !sema > 0:
                     !sema -= 1;
                     blocked = False;
                 ;

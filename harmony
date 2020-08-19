@@ -115,14 +115,14 @@ def Condition(lk):
 def wait(c):
     let lk, blocked, cnt = None, True, 0:
         atomic:
-            lk = (!c).lock;
-            cnt = bagCount((!c).waiters, nametag());
-            bagAdd(?(!c).waiters, nametag());
+            lk = c->lock;
+            cnt = bagCount(c->waiters, nametag());
+            bagAdd(?c->waiters, nametag());
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not (!lk)) and (bagCount((!c).waiters, nametag()) <= cnt):
+                if (not !lk) and (bagCount(c->waiters, nametag()) <= cnt):
                     !lk = True;
                     blocked = False;
                 ;
@@ -132,15 +132,15 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = (!c).waiters:
+        let waiters = c->waiters:
             if waiters != bagEmpty():
-                bagRemove(?(!c).waiters, bagChoose(waiters));
+                bagRemove(?c->waiters, bagChoose(waiters));
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (!c).waiters = bagEmpty();
+    c->waiters = bagEmpty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -149,7 +149,7 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (!sema) > 0:
+                if !sema > 0:
                     !sema -= 1;
                     blocked = False;
                 ;
@@ -191,21 +191,21 @@ def Lock():
 ;
 def lock(lk):
     atomic:
-        if (!lk).locked:
-            stop (!lk).suspended;
-            assert (!lk).locked;
+        if lk->locked:
+            stop lk->suspended;
+            assert lk->locked;
         else:
-            (!lk).locked = True;
+            lk->locked = True;
         ;
     ;
 ;
 def unlock(lk):
     atomic:
-        if (!lk).suspended == []:
-            (!lk).locked = False;
+        if lk->suspended == []:
+            lk->locked = False;
         else:
-            go (head((!lk).suspended)) ();
-            (!lk).suspended = tail((!lk).suspended);
+            go (head(lk->suspended)) ();
+            lk->suspended = tail(lk->suspended);
         ;
     ;
 ;
@@ -214,25 +214,25 @@ def Condition(lk):
 ;
 def wait(c):
     atomic:
-        unlock((!c).lock);
-        stop (!c).waiters;
+        unlock(c->lock);
+        stop c->waiters;
     ;
 ;
 def notify(c):
     atomic:
-        let lk, waiters = (!c).lock, (!c).waiters:
+        let lk, waiters = c->lock, c->waiters:
             if waiters != []:
-                (!lk).suspended += [waiters[0],];
-                (!c).waiters = tail(waiters);
+                lk->suspended += [waiters[0],];
+                c->waiters = tail(waiters);
             ;
         ;
     ;
 ;
 def notifyAll(c):
     atomic:
-        let lk, waiters = (!c).lock, (!c).waiters:
-            (!lk).suspended += waiters;
-            (!c).waiters = [];
+        let lk, waiters = c->lock, c->waiters:
+            lk->suspended += waiters;
+            c->waiters = [];
         ;
     ;
 ;
@@ -266,22 +266,22 @@ def Queue():
 ;
 def dequeue(q):
     atomic:
-        let list = (!q).list:
+        let list = q->list:
             if list == []:
-                stop (!q).waiters;
+                stop q->waiters;
             ;
             result = head(list);
-            (!q).list = tail(list);
+            q->list = tail(list);
         ;
     ;
 ;
 def enqueue(q, item):
     atomic:
-        (!q).list = append((!q).list, item);
-        let waiters = (!q).waiters:
+        q->list = append(q->list, item);
+        let waiters = q->waiters:
             if waiters != []:
                 go (waiters[0]) item;
-                (!q).waiters = tail(waiters);
+                q->waiters = tail(waiters);
             ;
         ;
     ;
@@ -578,7 +578,7 @@ def isbinaryop(s):
         "**", "<<", ">>"
     ];
 
-tokens = [ "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", ".." ]
+tokens = [ "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "..", "->" ]
 
 def lexer(s, file):
     result = []
@@ -2463,6 +2463,21 @@ class TupleRule(Rule):
                 "expected %s"%self.closers)
         return (DictAST(d), t)
 
+class ArrowExpressionRule(Rule):
+    def parse(self, t):
+        (ast, t) = BasicExpressionRule().parse(t)
+        if ast == False:
+            return (False, t)
+        (lexeme, file, line, column) = token = t[0]
+        while lexeme == "->":
+            (lexeme, file, line, column) = t[1]
+            self.expect("-> expression", isname(lexeme), t[1],
+                    "expected a name after ->")
+            ast = ApplyAST(PointerAST(ast, token), ConstantAST(t[1]), token)
+            t = t[2:]
+            (lexeme, file, line, column) = token = t[0]
+        return (ast, t)
+
 class BasicExpressionRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -2546,10 +2561,10 @@ class ExpressionRule(Rule):
                 return (PointerAST(ast, func), t)
             else:
                 return (NaryAST(func, [ast]), t)
-        (ast, t) = BasicExpressionRule().parse(t)
+        (ast, t) = ArrowExpressionRule().parse(t)
         args = []
         while t != []:
-            (arg, t) = BasicExpressionRule().parse(t)
+            (arg, t) = ArrowExpressionRule().parse(t)
             if arg == False:
                 break
             args.append(arg)
@@ -2841,7 +2856,7 @@ class AddressAST(AST):
         if isinstance(lv, NameAST):
             tv = scope.lookup(lv.name)
             if tv != None:
-                print(lv, ": Parse error: can only take address of shared variable")
+                print(lv, ": Parse error: can only take address of shared variable:", tv)
                 exit(1)
             code.append(PushAddressOp(lv.name))
         else:
@@ -3210,8 +3225,22 @@ class LValueRule(Rule):
             self.expect("lvalue expression", isname(lexeme), t[0], "expecting a name")
             indexes = [NameAST(t[0])]
             t = t[1:]
+
+        (lexeme, file, line, column) = token2 = t[0]
+        while lexeme == "->":
+            (lexeme, file, line, column) = t[1]
+            self.expect("-> expression", isname(lexeme), t[1],
+                    "expected a name after ->")
+            ast = indexes[0]
+            while len(indexes) > 1:
+                ast = ApplyAST(ast, indexes[1], token2)
+                indexes = indexes[1:]
+            indexes = [PointerAST(ast, token2), ConstantAST(t[1])]
+            t = t[2:]
+            (lexeme, file, line, column) = token2 = t[0]
+
         while t != []:
-            (index, t) = BasicExpressionRule().parse(t)
+            (index, t) = ArrowExpressionRule().parse(t)
             if index == False:
                 break
             indexes.append(index)
@@ -3251,8 +3280,22 @@ class LhsRule(Rule):
                 t = t[1:]
             else:
                 return (node, t)
+
+            (lexeme, file, line, column) = token2 = t[0]
+            while lexeme == "->":
+                (lexeme, file, line, column) = t[1]
+                self.expect("-> expression", isname(lexeme), t[1],
+                        "expected a name after ->")
+                ast = indexes[0]
+                while len(indexes) > 1:
+                    ast = ApplyAST(ast, indexes[1], token2)
+                    indexes = indexes[1:]
+                indexes = [PointerAST(ast, token2), ConstantAST(t[1])]
+                t = t[2:]
+                (lexeme, file, line, column) = token2 = t[0]
+
             while t != []:
-                (index, t) = BasicExpressionRule().parse(t)
+                (index, t) = ArrowExpressionRule().parse(t)
                 if index == False:
                     break
                 indexes.append(index)
@@ -3426,8 +3469,8 @@ class StatementRule(Rule):
             (expr, t) = ExpressionRule().parse(t[1:])
             return (CallAST(expr), self.skip(token, t))
         if lexeme == "spawn":
-            (method, t) = BasicExpressionRule().parse(t[1:])
-            (arg, t) = BasicExpressionRule().parse(t)
+            (method, t) = ArrowExpressionRule().parse(t[1:])
+            (arg, t) = ArrowExpressionRule().parse(t)
             (lexeme, file, line, column) = t[0]
             if lexeme == ",":
                 (tag, t) = NaryRule({";"}).parse(t[1:])
@@ -3436,12 +3479,12 @@ class StatementRule(Rule):
                 tag = None
             return (SpawnAST(tag, method, arg), self.skip(token, t))
         if lexeme == "trap":
-            (method, t) = BasicExpressionRule().parse(t[1:])
-            (arg, t) = BasicExpressionRule().parse(t)
+            (method, t) = ArrowExpressionRule().parse(t[1:])
+            (arg, t) = ArrowExpressionRule().parse(t)
             return (TrapAST(method, arg), self.skip(token, t))
         if lexeme == "go":
-            (ctx, t) = BasicExpressionRule().parse(t[1:])
-            (result, t) = BasicExpressionRule().parse(t)
+            (ctx, t) = ArrowExpressionRule().parse(t[1:])
+            (result, t) = ArrowExpressionRule().parse(t)
             return (GoAST(ctx, result), self.skip(token, t))
         if lexeme == "pass":
             return (PassAST(), self.skip(token, t[1:]))

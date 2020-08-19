@@ -11,8 +11,8 @@ def stack_push(st, v):
 ;
 def stack_pop(st):
     let node = !st:
-        result = (!node).value;
-        !st = (!node).rest;
+        result = node->value;
+        !st = node->rest;
         free(node);
     ;
 ;

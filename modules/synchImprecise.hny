@@ -19,13 +19,13 @@ def Condition(lk):
 def wait(c):
     let lk, blocked = None, True:
         atomic:
-            lk = (!c).lock;
-            (!c).waiters += { nametag() };
+            lk = c->lock;
+            c->waiters += { nametag() };
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not (!lk)) and (not ((nametag()) in (!c).waiters)):
+                if (not (!lk)) and (not ((nametag()) in c->waiters)):
                     !lk = True;
                     blocked = False;
                 ;
@@ -35,15 +35,15 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = (!c).waiters:
+        let waiters = c->waiters:
             if waiters != {}:
-                (!c).waiters = waiters - { choose(waiters) };
+                c->waiters = waiters - { choose(waiters) };
             ;
         ;
     ;
 ;
 def notifyAll(c):
-    (!c).waiters = {};
+    c->waiters = {};
 ;
 def Semaphore(cnt):
     result = cnt;

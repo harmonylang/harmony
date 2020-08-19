@@ -1796,7 +1796,7 @@ to a method by setting the \textit{result} variable.)  Neither does it support
 \textbf{break} or \textbf{continue} statements in loops.  One reason for their absence is
 that, particularly in concurrent programming, such control flow directions are highly
 error-prone.  It's easy to forget to, say, release a lock when returning a value in the
-middle of a method, and a major source of bugs in practice.
+middle of a method, a major source of bugs in practice.
 
 Harmony is not an object-oriented language like Python is.  In Python
 you can pass a reference to an object to a method, and that method
@@ -1813,6 +1813,14 @@ expression \texttt{!}$p$ is the value of the shared variable.
 In particular, \texttt{!?}$x$ == $x$.
 This is similar to how C pointers work (\texttt{*\string&}$x$ == $x$).
 
+Often, pointers point to dictionaries, and so if $p$ is such a pointer,
+then $!(p).\mathtt{field}$ would evaluate to the specified field in the dictionary.
+Note that the parentheses in this expression
+are needed, as \texttt{!}\textit{p}\texttt{.field} would wrongly evaluate
+\texttt{!}(\textit{p}\texttt{.field}).
+$!(p).\mathtt{field}$ is such a common expression that, like C, Harmony supports the
+shorthand $p-$$>$\texttt{field}, which greatly improves readability.
+
 \autoref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
@@ -1823,11 +1831,8 @@ case, is a dictionary that contains Peterson's Algorithm's state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
 a pointer to a mutex and the process identifier (0 or 1).
-(\texttt{!}\textit{pm})\texttt{.turn} is the value of the \texttt{.turn} key
+$\mathit{pm}\rightarrow\mathtt{turn}$ is the value of the \texttt{.turn} key
 in the dictionary that \textit{pm} points to. 
-Note that the parentheses in this expression
-are needed, as \texttt{!}\textit{pm}\texttt{.turn} would wrongly evaluate
-\texttt{!}(\textit{pm}\texttt{.turn}).
 
 You can put the first three methods in its own Harmony source file
 and include it using the Harmony \texttt{import} statement.
@@ -2048,7 +2053,7 @@ In fact, \texttt{assert} statements are executed atomically.
 \begin{code}
 \harmonysource{lockintf}
 \end{code}
-\caption{The \texttt{Lock} interface and implementation in the \texttt{synch} module.}
+\caption{\harmonylink{modules/synch.hny} The \texttt{Lock} interface and implementation in the \texttt{synch} module.}
 \label{fig:spinlocks}
 \end{figure}
 
@@ -2099,7 +2104,7 @@ although Harmony can often detect infinite loops specifically.
 \begin{code}
 \harmonysource{locksusp}
 \end{code}
-\caption{The \texttt{Lock} interface in the \texttt{synchS} module uses suspension.}
+\caption{\harmonylink{modules/syncS.hny} The \texttt{Lock} interface in the \texttt{synchS} module uses suspension.}
 \label{fig:suspension}
 \end{figure}
 
@@ -2204,7 +2209,7 @@ Hint: you do not have to change the existing code.
 \begin{code}
 \harmonysource{xy}
 \end{code}
-\caption{Imcomplete code with desired invariant $x + y = 100$.}
+\caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$.}
 \label{fig:xy}
 \end{figure}
 
@@ -2249,7 +2254,7 @@ queue uses a dummy item on the linked list.
 \begin{code}
 \harmonysource{queuetest}
 \end{code}
-\caption{Test program for a concurrent queue.}
+\caption{\harmonylink{code/queuetest.hny} Test program for a concurrent queue.}
 \label{fig:queuetest}
 \end{figure}
 
@@ -2257,7 +2262,7 @@ queue uses a dummy item on the linked list.
 \begin{code}
 \harmonysource{queue}
 \end{code}
-\caption{A basic concurrent queue data structure.}
+\caption{\harmonylink{code/queue.hny}A basic concurrent queue data structure.}
 \label{fig:queue}
 \end{figure}
 
@@ -2265,7 +2270,7 @@ queue uses a dummy item on the linked list.
 \begin{code}
 \harmonysource{queueMS}
 \end{code}
-\caption{A queue with separate locks for enqueuing and dequeuing items.}
+\caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items.}
 \label{fig:queueMS}
 \end{figure}
 
@@ -4475,7 +4480,7 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 The \texttt{alloc} module
 \index{alloc module}%
 supports thread-safe (but not interrupt-safe) dynamic allocation of
-memory locations.  There are just two methods:
+shared memory locations.  There are just two methods:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -4488,7 +4493,7 @@ memory locations.  There are just two methods:
 \vspace{1em}
 
 The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{malloc}() is specified to \texttt{None} when running out of
+\texttt{malloc}() is specified to return \texttt{None} when running out of
 memory, although this is an impossible outcome in the current
 implementation of the module.
 

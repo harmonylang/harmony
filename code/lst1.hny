@@ -7,9 +7,9 @@ def lst_node(v, n):     # allocate and initialize a new list node
 ;
 def lst_contains(lst, v):   # check if v is in the list
     let n = lst:
-        while (!n).value < v:
-            n = (!n).next;
+        while n->value < v:
+            n = n->next;
         ;
-        result = (!n).value == v;
+        result = n->value == v;
     ;
 ;

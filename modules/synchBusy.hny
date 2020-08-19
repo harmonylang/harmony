@@ -31,7 +31,7 @@ def P(sema):
     let blocked = True:
         while blocked:
             atomic:
-                if (!sema) > 0:
+                if !sema > 0:
                     !sema -= 1;
                     blocked = False;
                 ;

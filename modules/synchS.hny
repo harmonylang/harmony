@@ -5,21 +5,21 @@ def Lock():
 ;
 def lock(lk):
     atomic:
-        if (!lk).locked:
-            stop (!lk).suspended;
-            assert (!lk).locked;
+        if lk->locked:
+            stop lk->suspended;
+            assert lk->locked;
         else:
-            (!lk).locked = True;
+            lk->locked = True;
         ;
     ;
 ;
 def unlock(lk):
     atomic:
-        if (!lk).suspended == []:
-            (!lk).locked = False;
+        if lk->suspended == []:
+            lk->locked = False;
         else:
-            go (head((!lk).suspended)) ();
-            (!lk).suspended = tail((!lk).suspended);
+            go (head(lk->suspended)) ();
+            lk->suspended = tail(lk->suspended);
         ;
     ;
 ;
@@ -28,25 +28,25 @@ def Condition(lk):
 ;
 def wait(c):
     atomic:
-        unlock((!c).lock);
-        stop (!c).waiters;
+        unlock(c->lock);
+        stop c->waiters;
     ;
 ;
 def notify(c):
     atomic:
-        let lk, waiters = (!c).lock, (!c).waiters:
+        let lk, waiters = c->lock, c->waiters:
             if waiters != []:
-                (!lk).suspended += [waiters[0],];
-                (!c).waiters = tail(waiters);
+                lk->suspended += [waiters[0],];
+                c->waiters = tail(waiters);
             ;
         ;
     ;
 ;
 def notifyAll(c):
     atomic:
-        let lk, waiters = (!c).lock, (!c).waiters:
-            (!lk).suspended += waiters;
-            (!c).waiters = [];
+        let lk, waiters = c->lock, c->waiters:
+            lk->suspended += waiters;
+            c->waiters = [];
         ;
     ;
 ;
@@ -80,22 +80,22 @@ def Queue():
 ;
 def dequeue(q):
     atomic:
-        let list = (!q).list:
+        let list = q->list:
             if list == []:
-                stop (!q).waiters;
+                stop q->waiters;
             ;
             result = head(list);
-            (!q).list = tail(list);
+            q->list = tail(list);
         ;
     ;
 ;
 def enqueue(q, item):
     atomic:
-        (!q).list = append((!q).list, item);
-        let waiters = (!q).waiters:
+        q->list = append(q->list, item);
+        let waiters = q->waiters:
             if waiters != []:
                 go (waiters[0]) item;
-                (!q).waiters = tail(waiters);
+                q->waiters = tail(waiters);
             ;
         ;
     ;
