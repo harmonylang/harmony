@@ -4,10 +4,7 @@ def Stack():
     result = None;
 ;
 def stack_push(st, v):
-    let node = malloc():
-        !node = dict{ .value: v, .rest: !st };
-        !st = node;
-    ;
+    !st = malloc(dict{ .value: v, .rest: !st });
 ;
 def stack_pop(st):
     let node = !st:

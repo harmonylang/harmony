@@ -1,14 +1,12 @@
 import alloc;
 
 def Qnew():
-    let node = malloc():
-        !node = dict{ .value: (), .next: None };
-        result = dict{ .head: node, .tail: node, .hdlock: Lock(), .tllock: Lock() };
+    let dummy = malloc(dict{ .value: (), .next: None }):
+        result = dict{ .head: dummy, .tail: dummy, .hdlock: Lock(), .tllock: Lock() };
     ;
 ;
 def Qenqueue(q, v):
-    let node = malloc():
-        !node = dict{ .value: v, .next: None };
+    let node = malloc(dict{ .value: v, .next: None }):
         lock(?q->tllock);
         q->tail->next = node;
         q->tail = node;
@@ -17,14 +15,14 @@ def Qenqueue(q, v):
 ;
 def Qdequeue(q):
     lock(?q->hdlock);
-    let node = q->head
-    let newhead = node->next:
-        if newhead == None:
+    let dummy = q->head
+    let node = dummy->next:
+        if node == None:
             result = ();
         else:
-            result = (newhead->value,);
-            q->head = newhead;
-            free(node);
+            free(dummy);
+            result = (node->value,);
+            q->head = node;
         ;
     ;
     unlock(?q->hdlock);

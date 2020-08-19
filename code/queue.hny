@@ -4,10 +4,9 @@ def Qnew():
     result = dict{ .head: None, .tail: None, .lock: Lock() };
 ;
 def Qenqueue(q, v):
-    let node = malloc():
-        !node = dict{ .value: v, .next: None };
+    let node = malloc(dict{ .value: v, .next: None }):
         lock(?q->lock);
-        if q->tail == None:
+        if q->head == None:
             q->head = q->tail = node;
         else:
             q->tail->next = node;
@@ -24,9 +23,6 @@ def Qdequeue(q):
         else:
             result = (node->value,);
             q->head = node->next;
-            if q->head == None:
-                q->tail = None;
-            ;
             free(node);
         ;
     ;

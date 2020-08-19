@@ -2232,23 +2232,27 @@ The implementation in \autoref{fig:queue}
 uses the \texttt{alloc} module for dynamic allocation
 \index{dynamic allocation}%
 of nodes in the list using \texttt{malloc}() and \texttt{free}().
-\texttt{malloc}() returns a new memory location, which should be released
-with \texttt{free}() when it is no longer in use.
-The queue maintains a pointer to the first and last elements in the list,
-which are \textbf{None} if the queue is empty.
+\texttt{malloc}($v$) returns a new memory location initialized to $v$,
+which should be released with \texttt{free}() when it is no longer in use.
+The queue maintains a \texttt{head} pointer to the first element in the list
+and a \texttt{tail} pointer to the last element in the list.
+The \texttt{head} pointer is \textbf{None} if and only if the queue is empty.
 
 \texttt{Qnew()} returns a new queue object consisting of a \textbf{None} head
 and tail pointer and a lock.
-\texttt{Qenqueue(q, v)} and \texttt{Qdequeue(q)} both take a pointer $q$ to the
+$\mathtt{Qenqueue}(q, v)$ and $\mathtt{Qdequeue}(q)$ both take a pointer $q$ to the
 queue object because both may modify the queue.
 Before they access the value of the head or tail of the queue they first obtain
 the lock.
 When they are done, they release the lock.
 
 The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
-separate locks for the head and tail, allowing an enqueue and dequeue operation
-to proceed concurrently.  To avoid contention between the head and the tail, the
-queue uses a dummy item on the linked list.
+separate locks for the head and tail, allowing an enqueue and a dequeue operation
+to proceed concurrently.  To avoid contention between the head and the tail that
+requires both locks, the queue uses a dummy node at the head of the linked list.
+Except of the initial state of the queue, the dummy node is the last node that
+was dequeued.  Note that neither the \texttt{head} nor \texttt{tail} pointer are
+ever \textbf{None}.
 
 \begin{figure}
 \begin{code}
@@ -2273,6 +2277,22 @@ queue uses a dummy item on the linked list.
 \caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items.}
 \label{fig:queueMS}
 \end{figure}
+
+\section*{Exercises}
+\begin{problems}
+\item \label{ex:qcontains} Add a method $\mathtt{Qcontains}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+that checks to see if $v$ is in queue $q$.
+\item Add a method $\mathtt{Qremove}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+that removes $v$, if any, from queue $q$.
+\item The test program in \autoref{fig:queuetest} is not very thorough.  Design
+and implement a better one.
+\item Create a thread-safe sorted binary tree.  Implement methods
+$\mathtt{BTnew}()$ to create a new binary tree, $\mathtt{BTinsert}(t, v)$ that inserts $v$ into
+tree $t$, and $\mathtt{BTcontains}(t, v)$ that checks if $v$ is in tree $t$.  Use a single
+lock per binary tree.
+\item Bonus question: create a binary tree that uses, instead of a single lock per tree,
+a lock for each node in the tree.
+\end{problems}
 
 \chapter{Reader/Writer Locks using Busy Waiting}
 \label{ch:rdwrbusy}
@@ -2415,7 +2435,7 @@ all processes are blocked.
 \begin{problems}
 \item Draw additional states and steps in \autoref{fig:rdwr}
 for three processes.
-\item Optimize your solution to \autoref{ex:xy} to use reader/writer locks.
+\item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
 \item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
 up to \texttt{M} processes to acquire it at the same time.  A bound lock
 with \texttt{M == 1} is an ordinary lock.
@@ -2530,7 +2550,7 @@ can acquire the bound lock at the same time.
 \begin{code}
 \harmonysource{semaphore}
 \end{code}
-\caption{The \texttt{Semaphore} interface in the \texttt{synch} module.}
+\caption{\harmonylink{modules/synch.hny} The \texttt{Semaphore} interface in the \texttt{synch} module.}
 \label{fig:semaphore}
 \end{figure}
 
@@ -3303,7 +3323,8 @@ In C and C++, support for locks and condition variables is through libraries.
 \begin{code}
 \harmonysource{mesa}
 \end{code}
-\caption{Implementation of condition variables in the \texttt{synch} module.}
+\caption{\harmonylink{modules/synch.hny}
+Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:cv}
 \end{figure}
 
@@ -4485,7 +4506,7 @@ shared memory locations.  There are just two methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{malloc()} & allocate and return a pointer to a memory location \\
+\texttt{malloc($v$)} & return a pointer to a memory location initialized to $v$ \\
 \hline
 \texttt{free($p$)} & free an allocated memory location $p$ \\
 \hline
