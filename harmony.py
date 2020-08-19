@@ -368,7 +368,7 @@ def issuperset(s, t):
 """,
     "alloc": """import synch;
 
-def malloc():
+def malloc(v):
     lock(?alloc_lock);
     if alloc_flist == None:
         let i = len(alloc_pool):
@@ -380,6 +380,7 @@ def malloc():
         alloc_flist = !result;
     ;
     unlock(?alloc_lock);
+    !result = v;
 ;
 def free(r):
     lock(?alloc_lock);
