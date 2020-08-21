@@ -2442,6 +2442,8 @@ with \texttt{M == 1} is an ordinary lock.
 You should define a constant \texttt{M} and two methods:
 \texttt{acquire\_bound\_lock()}
 and \texttt{release\_bound\_lock()}.
+(Bound locks are useful for situations where too many processes working
+at the same time might exhaust some resource such as a cache.)
 \item Write a test program for your bound lock
 that checks that no more than \texttt{M} processes can acquire the
 bound lock.
@@ -2834,6 +2836,8 @@ exactly the set of tuples that the producers produce.
 \texttt{produce()} fails if the buffer is full rather than block.
 \texttt{produce()} should return \texttt{False} if it fails
 and return \texttt{True} if it succeeds.
+\item Optimize the code in \autoref{fig:boundedbuffer} for the case
+where there is only one consumer and one producer.
 \item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
 should block if the stack is full.  Method \texttt{pop()} should block
 until the stack is non-empty and then return an item.
@@ -3887,6 +3891,9 @@ and \texttt{unlock}() to the end of \texttt{increment} and see what happens.
 While Harmony will only report one faulty run, this incorrect code can lead to
 the assertion failing as well as processes getting blocked indefinitely.
 
+(Another option is to use synchronization techniques that do not use locks.
+See \autoref{ch:nonblocking} for more information.)
+
 There is another important rule to keep in mind.  Just like locks should never be held
 for long, interrupts should never be disabled for long.  With locks the issue is to
 maximize concurrent performance.  For interrupts the issue is fast response to
@@ -4053,6 +4060,8 @@ certain code at the same time simplifies how to think about synchronization.
 However, it can lead to starvation.  Even in the absence of starvation,
 if some process is slow for some reason while being in the critical section,
 the other processes have to wait for it to finish executing the critical section.
+Also, using synchronization primitives in interrupt handlers is tricky
+to get right (\autoref{ch:interrupts}) and might run too long.
 In this chapter, we will have a look at how one can develop concurrent
 code in which processes do not have to wait for other processes to complete their
 ongoing operations.
