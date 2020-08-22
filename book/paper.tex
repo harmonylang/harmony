@@ -944,7 +944,7 @@ code/Up.hny:2     count = count + 1;
 code/Up.hny:3     done[self] = True;
    6 PushAddress done
    7 LoadVar self
-   8 Address 2
+   8 Address
    9 Push True
    10 Store
    11 Return
@@ -4656,7 +4656,7 @@ The \texttt{synch} module provides the following methods:
 {\small
 \begin{tabular}{|l|l|}
 \hline
-Address $n$ & compute address from $n$ components \\
+Address & compute address from two components \\
 \hline
 Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
@@ -4727,9 +4727,10 @@ Trap & pop interrupt argument and method \\
 \newpage
 Clarifications:
 \begin{itemize}
-\item The \texttt{Address} instruction expects $n$ values $v_1, ..., v_n$ on the stack.
-The top value must be an address value.  The remaining values are keys into dictionaries.
-The instruction then computes the address of \texttt{!}$v_1~v_2~...~v_n$.
+\item The \texttt{Address} instruction expects two values on the stack.
+The top value must be an address value, representing a dictionary 
+The other value must be a key into the dictionary.
+The instruction then computes the address of the given key.
 \item Even though Harmony code does not allow taking addresses of process variables, both
 shared and process variables can have addresses.
 \item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},

@@ -462,7 +462,7 @@ def isnumber(s):
     return all(isnumeral(c) for c in s)
 
 def isreserved(s):
-    return s in [
+    return s in {
         "all",
         "and",
         "any",
@@ -509,24 +509,31 @@ def isreserved(s):
         "trap",
         "True",
         "while"
-    ]
+    }
 
 def isname(s):
     return (not isreserved(s)) and (isletter(s[0]) or s[0] == "_") and \
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in [ "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
-    "min", "max", "nametag", "not", "keys", "hash", "len", "processes" ]
+    return s in { "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
+    "min", "max", "nametag", "not", "keys", "hash", "len", "processes" }
+
+def isxbinop(s):
+    return s in {
+        "and", "or", "&", "|", "^", "-", "+", "*", "/", "//", "%", "mod",
+        "**", "<<", ">>"
+    }
+
+assignops = {
+    "and=", "or=", "&=", "|=", "^=", "-=", "+=", "*=", "/=", "//=",
+    "%=", "mod=", "**=", "<<=", ">>="
+}
 
 def isbinaryop(s):
-    return s in [
-        "==", "!=", "in", "and", "or", "&", "|", "^",
-        "-", "+", "*", "/", "//", "%", "mod", "<", "<=", ">", ">=",
-        "**", "<<", ">>"
-    ];
+    return isxbinop(s) or s in { "==", "!=", "in", "<", "<=", ">", ">=" }
 
-tokens = [ "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "..", "->" ]
+tokens = { "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "..", "->" } | assignops
 
 def lexer(s, file):
     result = []
@@ -1221,22 +1228,17 @@ class ContinueOp(Op):
         context.pc += 1
 
 class AddressOp(Op):
-    def __init__(self, n):
-        self.n = n          # #indexes in LValue
-
     def __repr__(self):
-        return "Address " + str(self.n)
+        return "Address"
 
     def explain(self):
-        return "combine the top " + str(self.n) + " values on the stack into an address and push the result"
+        return "combine the top two values on the stack into an address and push the result"
 
     def eval(self, state, context):
-        indexes = []
-        for i in range(self.n):
-            indexes = [context.pop()] + indexes;
-        av = indexes[0]
+        index = context.pop()
+        av = context.pop()
         assert isinstance(av, AddressValue), av
-        context.push(AddressValue(av.indexes + indexes[1:]))
+        context.push(AddressValue(av.indexes + [index]))
         context.pc += 1
 
 class StoreVarOp(Op):
@@ -1931,6 +1933,15 @@ class AST:
         else:
             self.gencode(scope, code)
 
+    # Return if this lvalue refers to a local or a shared variable
+    def isShared(self, scope):
+        return True
+
+    # This is supposed to push the address of an lvalue
+    def ph1(self, scope, code):
+        print("Cannot use in left-hand side expression:", self)
+        exit(1)
+
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
         if iter == []:
             (lexeme, file, line, column) = self.token
@@ -2015,7 +2026,7 @@ class ConstantAST(AST):
         self.const = const
 
     def __repr__(self):
-        return str(self.const)
+        return "ConstantAST" + str(self.const)
 
     def compile(self, scope, code):
         code.append(PushOp(self.const))
@@ -2043,6 +2054,36 @@ class NameAST(AST):
                 code.append(PushOp(v))
             else:
                 assert False, tv
+
+    def isShared(self, scope):
+        tv = scope.lookup(self.name)
+        if tv == None:
+            return True
+        else:
+            (t, v) = tv
+            assert t == "variable", tv
+            return False
+
+    def ph1(self, scope, code):
+        tv = scope.lookup(self.name)
+        if tv == None:
+            code.append(PushAddressOp(self.name))
+        else:
+            (t, v) = tv
+            assert t == "variable", (self, tv)
+            code.append(PushAddressOp(v))
+
+    def ph2(self, scope, code, skip):
+        if skip > 0:
+            code.append(MoveOp(skip + 2))
+            code.append(MoveOp(2))
+        tv = scope.lookup(self.name)
+        if tv == None:
+            code.append(StoreOp(None, self.name))
+        else:
+            (t, v) = tv
+            assert t == "variable", tv
+            code.append(StoreVarOp(None))
 
     def isConstant(self, scope):
         (lexeme, file, line, column) = self.name
@@ -2091,19 +2132,52 @@ class RangeAST(AST):
         (lexeme, file, line, column) = self.token
         code.append(NaryOp(("..", file, line, column), 2))
 
+class TupleAST(AST):
+    def __init__(self, list, token):
+        self.list = list
+        self.token = token
+
+    def __repr__(self):
+        return "TupleAST" + str(self.list)
+
+    def isConstant(self, scope):
+        return all(v.isConstant(scope) for v in self.list)
+
+    def gencode(self, scope, code):
+        (lexeme, file, line, column) = self.token
+        for (i, v) in enumerate(self.list):
+            code.append(PushOp((i, file, line, column)))
+            v.compile(scope, code)
+        code.append(PushOp((len(self.list), file, line, None)))
+        code.append(DictOp())
+
+    def isShared(self, scope):
+        assert False
+
+    def ph1(self, scope, code):
+        for lv in self.list:
+            lv.ph1(scope, code)
+
+    def ph2(self, scope, code, skip):
+        n = len(self.list)
+        code.append(SplitOp(n))
+        for lv in reversed(self.list):
+            n -= 1
+            lv.ph2(scope, code, skip + n)
+
 class DictAST(AST):
     def __init__(self, record):
         self.record = record
 
     def __repr__(self):
-        return str(self.record)
+        return "DictAST" + str(self.record)
 
     def isConstant(self, scope):
         return all(k.isConstant(scope) and v.isConstant(scope)
-                        for (k, v) in self.record.items())
+                        for (k, v) in self.record)
 
     def gencode(self, scope, code):
-        for (k, v) in self.record.items():
+        for (k, v) in self.record:
             k.compile(scope, code)
             v.compile(scope, code)
         code.append(PushOp((len(self.record), None, None, None)))
@@ -2204,12 +2278,28 @@ class ApplyAST(AST):
         self.token = token
 
     def __repr__(self):
-        return "Apply(" + str(self.method) + ", " + str(self.arg) + ")"
+        return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(ApplyOp(self.token))
+
+    def isShared(self, scope):
+        return self.method.isShared(scope)
+
+    def ph1(self, scope, code):
+        self.method.ph1(scope, code)
+        self.arg.compile(scope, code)
+        code.append(AddressOp())
+
+    def ph2(self, scope, code, skip):
+        if skip > 0:
+            code.append(MoveOp(skip + 2))
+            code.append(MoveOp(2))
+        shared = self.method.isShared(scope)
+        st = StoreOp(None, self.token) if shared else StoreVarOp(None)
+        code.append(st)
 
 class Rule:
     def expect(self, rule, b, got, want):
@@ -2360,15 +2450,15 @@ class DictRule(Rule):
                 "expected dict{")
         (lexeme, file, line, column) = t[1]
         if lexeme == "}":
-            return (DictAST({}), t[2:])
-        d = {}
+            return (DictAST([]), t[2:])
+        d = []
         while lexeme != "}":
             (key, t) = NaryRule({":", "for"}).parse(t[1:])
             if key == False:
                 return (key, t)
             (lexeme, file, line, column) = t[0]
             if lexeme == "for":
-                self.expect("dict comprehension", d == {}, t[0],
+                self.expect("dict comprehension", d == [], t[0],
                     "expected single expression")
                 return DictComprehensionRule(key).parse(t)
             self.expect("dict expression", lexeme == ":", t[0],
@@ -2377,7 +2467,7 @@ class DictRule(Rule):
             (lexeme, file, line, column) = t[0]
             self.expect("dict expression", lexeme in { ",", "}" }, t[0],
                                     "expected a comma or '}'")
-            d[key] = value
+            d.append((key, value))
         return (DictAST(d), t[1:])
 
 class TupleRule(Rule):
@@ -2392,24 +2482,22 @@ class TupleRule(Rule):
         (ast, t) = NaryRule(self.closers.union({",", "for"})).parse(t)
         if not ast:
             return (False, t)
-        (lexeme, file, line, column) = t[0]
+        (lexeme, file, line, column) = token = t[0]
         if lexeme in self.closers:
             return (ast, t)
         if lexeme == "for":
             return ListComprehensionRule(ast, self.closers).parse(t)
-        d = { ConstantAST((0, file, line, column)): ast }
-        i = 1
+        d = [ ast ]
         while lexeme == ",":
             (lexeme, file, line, column) = t[1]
             if lexeme in self.closers:
-                return (DictAST(d), t[1:])
+                return (TupleAST(d, token), t[1:])
             (next, t) = NaryRule(self.closers.union({ "," })).parse(t[1:])
-            d[ConstantAST((i, file, line, column))] = next
-            i += 1
-            (lexeme, file, line, column) = t[0]
+            d.append(next)
+            (lexeme, file, line, column) = token = t[0]
         self.expect("tuple expression", lexeme in self.closers, t[0],
                 "expected %s"%self.closers)
-        return (DictAST(d), t)
+        return (TupleAST(d, token), t)
 
 class ArrowExpressionRule(Rule):
     def parse(self, t):
@@ -2428,7 +2516,7 @@ class ArrowExpressionRule(Rule):
 
 class BasicExpressionRule(Rule):
     def parse(self, t):
-        (lexeme, file, line, column) = t[0]
+        (lexeme, file, line, column) = token = t[0]
         if isnumber(lexeme):
             return (ConstantAST((int(lexeme), file, line, column)), t[1:])
         if lexeme == "False":
@@ -2440,9 +2528,8 @@ class BasicExpressionRule(Rule):
         if lexeme == "inf":
             return (ConstantAST((math.inf, file, line, column)), t[1:])
         if lexeme[0] == '"':
-            return (DictAST({ ConstantAST((i-1, file, line, column)):
-                        ConstantAST((lexeme[i:i+1], file, line, column))
-                                for i in range(1, len(lexeme)) }), t[1:])
+            return (TupleAST([ ConstantAST((c, file, line, column))
+                                for c in lexeme[1:] ], token), t[1:])
         if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
             if lexeme.startswith("0x"):
@@ -2462,18 +2549,9 @@ class BasicExpressionRule(Rule):
             (ast, t) = TupleRule({closer}).parse(t[1:])
             return (ast, t[1:])
         if lexeme == "?":
-            (ast, t) = LValueRule().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             return (AddressAST(ast), t)
         return (False, t)
-
-class LValueAST(AST):
-    def __init__(self, indexes, token):
-        self.indexes = indexes
-        self.token = token  # for error messages
-
-    def __repr__(self):
-        # return "LValueAST(" + str(self.indexes) + " " + str(self.token) + ")"
-        return "LValueAST(" + str(self.indexes) + ")"
 
 class PointerAST(AST):
     def __init__(self, expr, token):
@@ -2481,11 +2559,20 @@ class PointerAST(AST):
         self.token = token
 
     def __repr__(self):
-        return "Pointer(" + str(self.expr) + ")"
+        return "PointerAST(" + str(self.expr) + ")"
 
     def compile(self, scope, code):
         self.expr.compile(scope, code)
         code.append(LoadOp(None, self.token))
+
+    def ph1(self, scope, code):
+        self.expr.compile(scope, code)
+
+    def ph2(self, scope, code, skip):
+        if skip > 0:
+            code.append(MoveOp(skip + 2))
+            code.append(MoveOp(2))
+        code.append(StoreOp(None, self.token))
 
 class ExpressionRule(Rule):
     def parse(self, t):
@@ -2501,7 +2588,7 @@ class ExpressionRule(Rule):
             (ast, t) = ExpressionRule().parse(t[1:])
             return (SetIntLevelAST(ast), t)
         if lexeme == "stop":
-            (ast, t) = LValueRule().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             return (StopAST(ast), t)
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
@@ -2535,153 +2622,39 @@ class AssignmentAST(AST):
         return "Assign(" + str(self.lhslist) + ", " + str(self.rv) + \
                             ", " + self.op + ")"
 
-    def phase1(self, lv, scope, code):
-        base = lv.indexes[0]
-        n = len(lv.indexes)
-        if isinstance(base, NameAST):
-            tv = scope.lookup(base.name)
-            if tv == None:
-                if n > 1:
-                    code.append(PushAddressOp(base.name))
-                    for i in range(1, n):
-                        lv.indexes[i].compile(scope, code)
-                    code.append(AddressOp(n))
-            else:
-                (t, v) = tv
-                if t == "variable":
-                    if n > 1:
-                        code.append(PushAddressOp(v))
-                        for i in range(1, n):
-                            lv.indexes[i].compile(scope, code)
-                        code.append(AddressOp(n))
-                else:
-                    assert False, tv
-        else:
-            assert isinstance(base, PointerAST), base
-            base.expr.compile(scope, code)
-            if n > 1:
-                for i in range(1, n):
-                    lv.indexes[i].compile(scope, code)
-                code.append(AddressOp(n))
-
-    def phase2(self, lv, scope, code, skip):
-        base = lv.indexes[0]
-        n = len(lv.indexes)
-        if isinstance(base, NameAST):
-            tv = scope.lookup(base.name)
-            if tv == None:
-                if n > 1:
-                    if skip > 0:
-                        code.append(MoveOp(skip + 2))
-                        code.append(MoveOp(2))
-                    code.append(StoreOp(None, base.name))
-                else:
-                    code.append(StoreOp(base.name, base.name))
-            else:
-                (t, v) = tv
-                if t == "variable":
-                    if n > 1:
-                        if skip > 0:
-                            code.append(MoveOp(skip + 2))
-                            code.append(MoveOp(2))
-                        code.append(StoreVarOp(None))
-                    else:
-                        code.append(StoreVarOp(v))
-                else:
-                    assert False, tv
-        else:
-            assert isinstance(base, PointerAST), base
-            if skip > 0:
-                code.append(MoveOp(skip + 2))
-                code.append(MoveOp(2))
-            code.append(StoreOp(None, base.token))
-
     # handle an "x op= y" assignment
     def opassign(self, lv, scope, code):
-        base = lv.indexes[0]
-        n = len(lv.indexes)
-        if isinstance(base, NameAST):
-            tv = scope.lookup(base.name)
-            if tv == None:
-                if n > 1:
-                    code.append(PushAddressOp(base.name))
-                    for i in range(1, n):
-                        lv.indexes[i].compile(scope, code)
-                    code.append(AddressOp(n))
-                    code.append(DupOp())
-                    code.append(LoadOp(None, base.name))
-                else:
-                    code.append(LoadOp(base.name, base.name))
-                self.rv.compile(scope, code)
-                code.append(NaryOp(self.op, 2))
-                if n > 1:
-                    code.append(StoreOp(None, base.name))
-                else:
-                    code.append(StoreOp(base.name, base.name))
-            else:
-                (t, v) = tv
-                if t == "variable":
-                    if n > 1:
-                        code.append(PushAddressOp(v))
-                        for i in range(1, n):
-                            lv.indexes[i].compile(scope, code)
-                        code.append(AddressOp(n))
-                        code.append(DupOp())
-                        code.append(LoadVarOp(None))
-                    else:
-                        code.append(LoadVarOp(v))
-                    self.rv.compile(scope, code)
-                    code.append(NaryOp(self.op, 2))
-                    if n > 1:
-                        code.append(StoreVarOp(None))
-                    else:
-                        code.append(StoreVarOp(v))
-                else:
-                    assert False, tv
+        shared = lv.isShared(scope)
+        if isinstance(lv, NameAST):
+            # handled separately for assembly code readability
+            ld = LoadOp(lv.name, lv.name) if shared else LoadVarOp(lv.name)
         else:
-            assert isinstance(base, PointerAST), base
-            base.expr.compile(scope, code)
-            if n > 1:
-                for i in range(1, n):
-                    lv.indexes[i].compile(scope, code)
-                code.append(AddressOp(n))
-            code.append(DupOp())
-            code.append(LoadOp(None, base.token))
-            self.rv.compile(scope, code)
-            code.append(NaryOp(self.op, 2))
-            code.append(StoreOp(None, base.token))
-
-    def recurse1(self, lvs, scope, code):
-        if isinstance(lvs, list):
-            for lv in lvs:
-                self.recurse1(lv, scope, code)
+            lv.ph1(scope, code)
+            code.append(DupOp())                  # duplicate the address
+            ld = LoadOp(None, self.op) if shared else LoadVarOp(None)
+        code.append(ld)                       # load the value
+        self.rv.compile(scope, code)          # compile the rhs
+        (lexeme, file, line, column) = self.op
+        code.append(NaryOp((lexeme[:-1], file, line, column), 2))
+        if isinstance(lv, NameAST):
+            st = StoreOp(lv.name, lv.name) if shared else StoreVarOp(lv.name)
         else:
-            assert isinstance(lvs, LValueAST)
-            self.phase1(lvs, scope, code)
-
-    def recurse2(self, lvs, scope, code, skip):
-        if isinstance(lvs, list):
-            n = len(lvs)
-            code.append(SplitOp(n))
-            for lv in reversed(lvs):
-                n -= 1
-                self.recurse2(lv, scope, code, skip + n)
-        else:
-            assert isinstance(lvs, LValueAST)
-            self.phase2(lvs, scope, code, skip)
+            st = StoreOp(None, self.op) if shared else StoreVarOp(None)
+        code.append(st)
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.op
         if lexeme != '=':
             assert len(self.lhslist) == 1, self.lhslist
             lv = self.lhslist[0]
-            assert isinstance(lv, LValueAST)
             self.opassign(lv, scope, code)
             return
 
-        # Compute the addresses of "complex" lhs expressions
+        # Compute the addresses of lhs expressions
         for lvs in self.lhslist:
-            self.recurse1(lvs, scope, code)
+            # handled separately for better assembly code readability
+            if not isinstance(lvs, NameAST):
+                lvs.ph1(scope, code)
 
         # Compute the right-hand side
         self.rv.compile(scope, code)
@@ -2694,7 +2667,12 @@ class AssignmentAST(AST):
         skip = len(self.lhslist)
         for lvs in reversed(self.lhslist):
             skip -= 1
-            self.recurse2(lvs, scope, code, skip)
+            if isinstance(lvs, NameAST):
+                shared = lvs.isShared(scope)
+                st = StoreOp(lvs.name, lvs.name) if shared else StoreVarOp(lvs.name)
+                code.append(st)
+            else:
+                lvs.ph2(scope, code, skip)
 
 class DelAST(AST):
     def __init__(self, lv):
@@ -2704,40 +2682,10 @@ class DelAST(AST):
         return "Del(" + str(self.lv) + ")"
 
     def compile(self, scope, code):
-        assert isinstance(self.lv, LValueAST)
-        n = len(self.lv.indexes)
-        lv = self.lv.indexes[0]
-        if isinstance(lv, NameAST):
-            tv = scope.lookup(lv.name)
-            if tv == None:
-                if n > 1:
-                    code.append(PushAddressOp(lv.name))
-                    for i in range(1, n):
-                        self.lv.indexes[i].compile(scope, code)
-                    code.append(AddressOp(n))
-                    code.append(DelOp(None))
-                else:
-                    code.append(DelOp(lv.name))
-            else:
-                (t, v) = tv
-                if t == "variable":
-                    if n > 1:
-                        code.append(PushAddressOp(v))
-                        for i in range(1, n):
-                            self.lv.indexes[i].compile(scope, code)
-                        code.append(AddressOp(n))
-                        code.append(DelVarOp(None))
-                    else:
-                        code.append(DelVarOp(v))
-                else:
-                    assert False, tv
-        else:
-            lv.expr.compile(scope, code)
-            if n > 1:
-                for i in range(1, n):
-                    self.lv.indexes[i].compile(scope, code)
-                code.append(AddressOp(n))
-            code.append(DelOp(None))
+        self.lv.ph1(scope, code)
+        shared = self.lv.isShared(scope)
+        op = DelOp(None) if shared else DelVarOp(None)
+        code.append(op)
 
 class SetIntLevelAST(AST):
     def __init__(self, arg):
@@ -2758,32 +2706,9 @@ class StopAST(AST):
         return "Stop " + str(self.lv)
 
     def compile(self, scope, code):
-        assert isinstance(self.lv, LValueAST)
-        n = len(self.lv.indexes)
-        lv = self.lv.indexes[0]
-        if isinstance(lv, NameAST):
-            tv = scope.lookup(lv.name)
-            if tv == None:
-                if n > 1:
-                    for i in range(1, n):
-                        self.lv.indexes[n - i].compile(scope, code)
-                    code.append(PushAddressOp(lv.name))
-                    code.append(StopOp(None))
-                else:
-                    code.append(StopOp(lv.name))
-                code.append(ContinueOp())
-            else:
-                print("Error: Can't store state in process variable")
-                exit(1)
-        else:
-            assert isinstance(lv, PointerAST), lv
-            lv.expr.compile(scope, code)
-            if n > 1:
-                for i in range(1, n):
-                    self.lv.indexes[i].compile(scope, code)
-                code.append(AddressOp(n))
-            code.append(StopOp(None))
-            code.append(ContinueOp())
+        self.lv.ph1(scope, code)
+        code.append(StopOp(None))
+        code.append(ContinueOp())
 
 class AddressAST(AST):
     def __init__(self, lv):
@@ -2793,27 +2718,10 @@ class AddressAST(AST):
         return "Address(" + str(self.lv) + ")"
 
     def isConstant(self, scope):
-        lv = self.lv.indexes[0]
-        if not isinstance(lv, NameAST):
-            return False
-        return all(x.isConstant(scope) for x in self.lv.indexes[1:])
+        return self.lv.isConstant(scope)
 
     def gencode(self, scope, code):
-        n = len(self.lv.indexes)
-        lv = self.lv.indexes[0]
-        if isinstance(lv, NameAST):
-            tv = scope.lookup(lv.name)
-            if tv != None:
-                print(lv, ": Parse error: can only take address of shared variable:", tv)
-                exit(1)
-            code.append(PushAddressOp(lv.name))
-        else:
-            assert isinstance(lv, PointerAST), lv
-            lv.expr.compile(scope, code)
-        if n > 1:
-            for i in range(1, n):
-                self.lv.indexes[i].compile(scope, code)
-            code.append(AddressOp(n))
+        self.lv.ph1(scope, code)
 
 class PassAST(AST):
     def __repr__(self):
@@ -3152,107 +3060,6 @@ class ConstAST(AST):
             v = ctx.pop()
             self.set(scope, self.const, v)
 
-class LValueRule(Rule):
-    def parse(self, t):
-        token = t[0]
-        (lexeme, file, line, column) = token
-        if lexeme == "!":
-            (ast, t) = ExpressionRule().parse(t[1:])
-            indexes = [PointerAST(ast, token)]
-        elif lexeme in { "(", "[" }:
-            closer = ")" if lexeme == "(" else "]"
-            (ast, t) = LValueRule().parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("lvalue expression", lexeme == closer, t[0], "expected '%s'"%closer)
-            indexes = ast.indexes
-            t = t[1:]
-        elif lexeme in { "setintlevel", "stop" }:
-            (ast, t) = ExpressionRule().parse(t)
-            indexes = [ast]
-        else:
-            self.expect("lvalue expression", isname(lexeme), t[0], "expecting a name")
-            indexes = [NameAST(t[0])]
-            t = t[1:]
-
-        (lexeme, file, line, column) = token2 = t[0]
-        while lexeme == "->":
-            (lexeme, file, line, column) = t[1]
-            self.expect("-> expression", isname(lexeme), t[1],
-                    "expected a name after ->")
-            ast = indexes[0]
-            while len(indexes) > 1:
-                ast = ApplyAST(ast, indexes[1], token2)
-                indexes = indexes[1:]
-            indexes = [PointerAST(ast, token2), ConstantAST(t[1])]
-            t = t[2:]
-            (lexeme, file, line, column) = token2 = t[0]
-
-        while t != []:
-            (index, t) = ArrowExpressionRule().parse(t)
-            if index == False:
-                break
-            indexes.append(index)
-        return (LValueAST(indexes, token), t)
-
-# This returns a tree of lists of LValues
-class LhsRule(Rule):
-    def parse(self, t):
-        node = []
-        token = t[0]
-        while True:
-            (lexeme, file, line, column) = t[0]
-            if lexeme in { "(", "[" }:
-                closer = ")" if lexeme == "(" else "]"
-                (child, t) = LhsRule().parse(t[1:])
-                (lexeme, file, line, column) = t[0]
-                self.expect("assignment statement", lexeme == closer, t[0],
-                                "expected '%s'"%closer)
-                t = t[1:]
-                if isinstance(child, list):
-                    node.append(child)
-                    (lexeme, file, line, column) = t[0]
-                    if lexeme != ',':
-                        return (node[0], t) if len(node) == 1 else (node, t)
-                    t = t[1:]
-                    continue
-                assert isinstance(child, LValueAST)
-                indexes = child.indexes
-            elif lexeme == "!":
-                (ast, t) = ExpressionRule().parse(t[1:])
-                indexes = [PointerAST(ast, token)]
-            elif lexeme in { "setintlevel", "stop" }:
-                (ast, t) = ExpressionRule().parse(t)
-                indexes = [ast]
-            elif isname(lexeme):
-                indexes = [NameAST(t[0])]
-                t = t[1:]
-            else:
-                return (node, t)
-
-            (lexeme, file, line, column) = token2 = t[0]
-            while lexeme == "->":
-                (lexeme, file, line, column) = t[1]
-                self.expect("-> expression", isname(lexeme), t[1],
-                        "expected a name after ->")
-                ast = indexes[0]
-                while len(indexes) > 1:
-                    ast = ApplyAST(ast, indexes[1], token2)
-                    indexes = indexes[1:]
-                indexes = [PointerAST(ast, token2), ConstantAST(t[1])]
-                t = t[2:]
-                (lexeme, file, line, column) = token2 = t[0]
-
-            while t != []:
-                (index, t) = ArrowExpressionRule().parse(t)
-                if index == False:
-                    break
-                indexes.append(index)
-            node.append(LValueAST(indexes, token))
-            (lexeme, file, line, column) = t[0]
-            if lexeme != ',':
-                return (node[0], t) if len(node) == 1 else (node, t)
-            t = t[1:]
-
 class AssignmentRule(Rule):
     def __init__(self, lhslist, op):
         self.lhslist = lhslist
@@ -3403,7 +3210,7 @@ class StatementRule(Rule):
             (stat, t) = BlockRule({";"}).parse(t[1:])
             return (AtomicAST(stat), self.skip(token, t))
         if lexeme == "del":
-            (ast, t) = LValueRule().parse(t[1:])
+            (ast, t) = ExpressionRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
         if lexeme == "def" or lexeme == "fun":
             map = lexeme == "fun"
@@ -3446,49 +3253,28 @@ class StatementRule(Rule):
             else:
                 expr = None
             return (AssertAST(token, cond, expr), self.skip(token, t))
-
-        # If we get here the next statement is either an assignment or an expression,
-        # and in the latter case probably a call to a method.  We first "guess" that
-        # the next thing that follows is an LValue.  If need be we convert it later
-        # to an expression.  Basically, there are three possibilities:
-        #   a, b = c, d = 1, 2;
-        #   x += 3;
-        #   f(3);
-        # We can see which by scanning the token list for '=' signs until we reach a ';'.
-        eqs = []
-        for i, (lexeme, file, line, column) in enumerate(t):
-            if lexeme == "=":
-                eqs.append(i)
-            if lexeme == ";":
-                break;
-        if eqs == []:
-            (expr, t) = ExpressionRule().parse(t)
-            return (CallAST(expr), self.skip(token, t))
-
-        # Parse all of the left-hand-sides
-        lhslist = []
+        
+        # If we get here, the next statement is either an expression
+        # or an assignment.  The grammar is either
+        #   (tuple_expression '=')* tuple_expression ';'
+        # or
+        #   tuple_expression 'op=' tuple_expression
+        exprs = []
+        assignop = None
         while True:
-            eqs = eqs[1:]
-            (lvs, t) = LhsRule().parse(t)
-            lhslist.append(lvs)
-            if len(eqs) == 0:
-                break
+            (ast, t) = TupleRule({ "=", ";" } | assignops).parse(t)
+            exprs.append(ast)
             (lexeme, file, line, column) = t[0]
-            assert lexeme == "=", t[0]
+            if lexeme == ";":
+                break
+            if assignop != None and assignop[0] != "=":
+                self.expect("special assignment expression", lexeme == ";", t[0], "expected ';'")
+            assignop = t[0]
             t = t[1:]
-
-        (lexeme, file, line, column) = op = t[0]
-        self.expect("assignment statement",
-            lexeme in { "=", "+", "-", "*", "/", "//", "%", "mod", "**", "<<", ">>",
-                            "and", "or", "&", "|", "^" }, op, "expected '='")
-        if lexeme != "=":
-            (eq, file, line, column) = t[1];
-            self.expect("assignment statement", eq == "=", t[1],
-                                                "expected '='")
-            t = t[1:]
-        assert eqs == [], eqs
-        (ast, t) = AssignmentRule(lhslist, op).parse(t[1:])
-        return (ast, self.skip(token, t))
+        if len(exprs) == 1:
+            return (CallAST(exprs[0]), self.skip(token, t))
+        else:
+            return (AssignmentAST(exprs[:-1], exprs[-1], assignop), self.skip(token, t))
 
 class ContextValue(Value):
     def __init__(self, nametag, pc):
@@ -4231,7 +4017,7 @@ def run(code, labels, map, step, blockflag):
                     bad.add(n)
                     n.issues.add("Terminating State")
             else:
-                assert len(n.edges) != 0
+                # assert len(n.edges) != 0, n.edges         TODO
                 for (nn, nc, steps) in n.edges.values():
                     if nn.cid != n.cid:
                         components[n.cid].edges.add(nn.cid)
