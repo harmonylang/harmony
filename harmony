@@ -2409,9 +2409,12 @@ class NaryRule(Rule):
             op = t[0]
         self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
                     "expected binary operation or 'if'")
-        (ast2, t) = ExpressionRule().parse(t[1:])
+        if op[0] == "if":
+            (ast2, t) = NaryRule({"else"}).parse(t[1:])
+        else:
+            (ast2, t) = ExpressionRule().parse(t[1:])
         if ast2 == False:
-            print("expected an expression after binary operation", op)
+            print("expected an expression after operation", op)
             exit(1)
         args.append(ast2)
         (lexeme, file, line, column) = t[0]

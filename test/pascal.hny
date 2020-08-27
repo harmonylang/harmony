@@ -1,7 +1,7 @@
 const N = 4;
 
 def factorial(n):
-    result = 1 if (n == 0) else (n * factorial(n - 1));
+    result = 1 if n == 0 else (n * factorial(n - 1));
 ;
 def C(n, k):
     result = factorial(n) / (factorial(k) * factorial(n - k));
