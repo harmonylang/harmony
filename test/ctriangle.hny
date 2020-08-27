@@ -1,0 +1,10 @@
+const N = 10;
+
+def mystery(n):
+    result = 2;
+    for i in {1..n}:
+        result += 6 * i;
+    ;
+;
+x = choose({0..N});
+assert mystery(x) == ((3 * (x ** 2)) + (3 * x) + 2);

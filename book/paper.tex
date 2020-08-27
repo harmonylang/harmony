@@ -2221,8 +2221,8 @@ By way of example, we will demonstrate how to build a concurrent queue.
 The queue will have the following API:
 \begin{itemize}
 \item $q = \mathtt{Qnew}()$: allocate a new queue;
-\item $Qenqueue(q, v)$: add $v$ to the tail of the queue;
-\item $r = Qdequeue(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
+\item $\mathtt{Qenqueue}(q, v)$: add $v$ to the tail of the queue;
+\item $r = \mathtt{Qdequeue}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
 if $v$ was at the head of the queue.
 \end{itemize}
 See \autoref{fig:queuetest} for a simple test program that uses the queue.
@@ -2250,7 +2250,7 @@ The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
 separate locks for the head and tail, allowing an enqueue and a dequeue operation
 to proceed concurrently.  To avoid contention between the head and the tail that
 requires both locks, the queue uses a dummy node at the head of the linked list.
-Except of the initial state of the queue, the dummy node is the last node that
+Except for the initial state of the queue, the dummy node is the last node that
 was dequeued.  Note that neither the \texttt{head} nor \texttt{tail} pointer are
 ever \textbf{None}.
 
@@ -3007,7 +3007,7 @@ and so it vacates \textit{mutex}.
 \item Assume that you have only binary semaphores.
 Implement counting semaphores using the split binary semaphores technique.
 \item With reader/writer locks,
-it can be useful for a process to \emph{downgrade} its write lock
+concurrency can be improved if a process \emph{downgrades} its write lock
 to a read lock when its done writing but not done reading.  Add
 a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
 How easy or hard would it be to do the same for the code in
