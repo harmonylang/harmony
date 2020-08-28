@@ -2507,6 +2507,8 @@ class ArrowExpressionRule(Rule):
         (ast, t) = BasicExpressionRule().parse(t)
         if ast == False:
             return (False, t)
+        if t == []:
+            return (ast, t)
         (lexeme, file, line, column) = token = t[0]
         while lexeme == "->":
             (lexeme, file, line, column) = t[1]

@@ -3382,7 +3382,7 @@ are no readers left, \emph{without} checking if there are writers waiting to ent
 With Mesa monitors this is ok, because calling \texttt{notify} is a no-op if no process
 is waiting.
 
-\texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{wcond}) as well as
+\texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{rcond}) as well as
 \texttt{notify}(?\textit{wcond)}.
 Again, because we do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter, or, alternatively,
@@ -3400,7 +3400,7 @@ get to enter next or one of the writers gets to enter next.
 Much of the complexity of programming with Mesa condition variables is in figuring out
 when to invoke \texttt{notify} and when to invoke \texttt{notifyAll}.  As a rule of
 thumb: be conservative---it is better to wake up too many processes than too few.
-Waking up too many processes may lead to some inefficiency, but waking up to few
+Waking up too many processes may lead to some inefficiency, but waking up too few
 may cause the application to get stuck.  Harmony can be particularly helpful here, as
 it examines every corner case.  You can safely try to replace each \texttt{notifyAll}
 with \texttt{notify} and see if every possible execution of the the application still

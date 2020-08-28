@@ -19,4 +19,5 @@ def pascal(x, n, k):
     ;
 ;
 x = choose({0..N-1});
-assert pascal(x, 0, 0) == x;
+assert pascal((x * (x + 1)) / 2, 0, 0) == ((2 ** x) - 1);
+# assert pascal(x, 0, 0) == x;
