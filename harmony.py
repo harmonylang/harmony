@@ -3253,6 +3253,7 @@ class StatementRule(Rule):
         assignop = None
         while True:
             (ast, t) = TupleRule({ "=", ";" } | assignops).parse(t)
+            self.expect("statement", ast != False, t[0], "expected expression")
             exprs.append(ast)
             (lexeme, file, line, column) = t[0]
             if lexeme == ";":
