@@ -942,7 +942,7 @@ code/Up.hny:2     count = count + 1;
    4 2-ary +
    5 Store count
 code/Up.hny:3     done[self] = True;
-   6 PushAddress done
+   6 Push ?done
    7 LoadVar self
    8 Address
    9 Push True
@@ -4700,8 +4700,6 @@ $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements
 Pop & pop a value of the stack and discard it \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
-\hline
-PushAddress $v$ & push the address of variable $v$ \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
 \hline

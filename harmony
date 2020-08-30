@@ -1096,22 +1096,6 @@ class PushOp(Op):
         context.push(lexeme)
         context.pc += 1
 
-class PushAddressOp(Op):
-    def __init__(self, name):
-        self.name = name 
-
-    def __repr__(self):
-        (lexeme, file, line, column) = self.name
-        return "PushAddress " + str(lexeme)
-
-    def explain(self):
-        return "push the address of shared variable " + self.name[0]
-
-    def eval(self, state, context):
-        (lexeme, file, line, column) = self.name
-        context.push(AddressValue([lexeme]))
-        context.pc += 1
-
 class LoadOp(Op):
     def __init__(self, name, token):
         self.name = name
@@ -2120,11 +2104,12 @@ class NameAST(AST):
     def ph1(self, scope, code):
         tv = scope.lookup(self.name)
         if tv == None:
-            code.append(PushAddressOp(self.name))
+            (lexeme, file, line, column) = self.name
         else:
             (t, v) = tv
             assert t == "variable", (self, tv)
-            code.append(PushAddressOp(v))
+            (lexeme, file, line, column) = v
+        code.append(PushOp((AddressValue([lexeme]), file, line, column)))
 
     def ph2(self, scope, code, skip):
         if skip > 0:
