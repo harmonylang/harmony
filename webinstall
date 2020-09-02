@@ -2,6 +2,7 @@ dir=/people/rv22/harmony
 cp harmony harmony.py $dir
 cp book/paper.pdf $dir/book.pdf
 cp code/* $dir/code
+cp modules/* $dir/modules
 cp python/* $dir/python
 cp output/* $dir/output
 cp distributions/*.zip $dir/distributions
