@@ -844,7 +844,7 @@ that is familiar to Python programmers:
 $d$[$k$]
 \end{code}
 However, if $d$ = \texttt{dict\{ .count: 3 \}}, then you can write
-can write $d$.\texttt{count} (which has value 3) instead of having to write
+$d$.\texttt{count} (which has value 3) instead of having to write
 $d$\texttt{[.count]} (although both will work).
 Thus using atoms, a dictionary can be made to look much like a Python object.
 The meaning of $d$ $a$ $b$ $...$ is ((($d$ $a$) $b$) $...$).
@@ -1131,13 +1131,13 @@ It sets shared variable \textit{count} to 0 and
 shared variable \textit{done} to \texttt{[False, False]}.
 If we look at the next three steps, we see that:
 \begin{itemize}
-\item Process \texttt{implementer/0}
+\item Process \texttt{incrementer/0}
 executed instructions 1 through 4, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
-\item Process \texttt{implementer/1}
+\item Process \texttt{incrementer/1}
 executed instructions 1 through 11, storing 1 into
 into \textit{count} and storing \texttt{True} into \textit{done}[1];
-\item Process \texttt{implementer/0}
+\item Process \texttt{incrementer/0}
 continues execution, executing instructions 5 through 11
 storing value 1 into \textit{count}
 and storing \texttt{True} into \textit{done}[0].
