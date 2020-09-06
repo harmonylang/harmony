@@ -746,13 +746,20 @@ find concurrency bugs using Harmony.
 \begin{enumerate}
 \item Run \autoref{fig:incpy} using Python.  Does the assertion fail?
 \item Using a script, run \autoref{fig:incpy} 1000 times.
-For example, if you are using the bash shell (in Linux, say), you can do the following:
+For example, if you are using the bash shell (in Linux or Mac OS X, say), you can do the following:
 \begin{code}
 \begin{verbatim}
 for i in {1..1000}
 do
     python Up.py
 done
+\end{verbatim}
+\end{code}
+If you're using Windows, the following batch script does the trick:
+\begin{code}
+\begin{verbatim}
+FOR /L %%i IN (1, 1, 1000) DO python Up.py
+PAUSE
 \end{verbatim}
 \end{code}
 How many times does the assertion fail (if any)?
