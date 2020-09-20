@@ -161,7 +161,7 @@ def lexer(s, file, silent):
                 if not silent:
                     if s[0] in ["&", "%", "{", "}", "#", "^", "_"]:
                         print("\\" + s[0], end="")
-                    elif s[0] in [ "<", ">" ]:
+                    elif s[0] in [ "<", ">", "-" ]:
                         print("$" + s[0] + "$", end="")
                     else:
                         putchar(s[0])
