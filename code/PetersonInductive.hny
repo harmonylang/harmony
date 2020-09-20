@@ -6,8 +6,8 @@ def process(self):
         await (not flags[1 - self]) or (turn == self);
 
         # Critical section
-        @cs: assert (not (flags[1 - self] and (turn == (1 - self))))
-                    or (atLabel.gate == dict{nametags[1 - self] : 1})
+        @cs: assert (not flags[1 - self]) or (turn == self) or
+                    (atLabel.gate == dict{nametags[1 - self] : 1})
              ;
 
         # Leave critical section
