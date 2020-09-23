@@ -2490,11 +2490,11 @@ The invariants that imply the reader/writer specification
 (which are again easy to verify) are as follows:
 
 \begin{itemize}
-\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathit{nreaders} \ge n$,
-\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$,
+\item $n$ readers at \texttt{@rcs} $\Rightarrow \mathit{nreaders} \ge n$
+\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$
 \end{itemize}
 
-A writer simply acquires \textit{rwlock} to enter the critical section
+A writer just acquires \textit{rwlock} to enter the critical section
 and releases it to exit.  The \emph{first} reader to enter the critical
 section acquires \textit{rwlock} and the \emph{last} reader to exit
 the critical section releases \textit{rwlock}.

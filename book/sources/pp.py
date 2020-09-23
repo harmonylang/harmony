@@ -113,7 +113,7 @@ def isbinaryop(s):
         "-", "+", "*", "/", "%", "<", "<=", ">", ">="
     ];
 
-tokens = [ "==", "!=", "<=", ">=", "..", "->" ]
+tokens = [ "==", "!=", "<=", ">=", "..", "->", "[]" ]
 
 def putchar(c):
     print(c, end="")
@@ -204,6 +204,8 @@ def lexer(s, file, silent):
                     print("$%s$"%found, end="")
                 elif found == "->":
                     print("$\\rightarrow$", end="")
+                elif found == "[]":
+                    print("[~]", end="")
                 else:
                     print(found, end="")
             s = s[len(found):]
