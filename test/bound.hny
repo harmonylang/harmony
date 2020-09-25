@@ -1,0 +1,66 @@
+import synch;
+import list;
+
+const BOUND = 2;
+const NPROC = 3;
+
+def bl_new(bound):
+    result = dict{ .lock: Lock(), .count: 0, .bound: bound };
+;
+
+def bl_acquire(bl):
+    let blocked = True:
+        while blocked:
+            lock(?bl->lock);
+            if bl->count < (bl->bound + 1):
+                bl->count += 1;
+                blocked = False;
+            ;
+            unlock(?bl->lock);
+        ;
+    ;
+;
+
+def bl_release(bl):
+    lock(?bl->lock);
+    bl->count -= 1;
+    unlock(?bl->lock);
+;
+
+boundlock = bl_new(BOUND);
+
+if True:
+    def tester(bl):
+        bl_acquire(bl);
+        lock(?testlock);
+        testcount += 1;
+        unlock(?testlock);
+        assert testcount <= BOUND, testcount;
+        lock(?testlock);
+        testcount -= 1;
+        unlock(?testlock);
+        bl_release(bl);
+    ;
+
+    testlock = Lock();
+    testcount = 0;
+    for i in {1..NPROC}:
+        spawn tester(?boundlock);
+    ;
+;
+
+if True:
+    def waiter(self, bl):
+        bl_acquire(bl);
+        entered[self] = 1;
+        while sum(entered) < BOUND:
+            pass;
+        ;
+        bl_release(bl);
+    ;
+
+    entered = [0,] * NPROC;
+    for i in {1..NPROC}:
+        spawn waiter(i, ?boundlock);
+    ;
+;
