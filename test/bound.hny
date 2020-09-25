@@ -12,7 +12,7 @@ def bl_acquire(bl):
     let blocked = True:
         while blocked:
             lock(?bl->lock);
-            if bl->count < (bl->bound + 1):
+            if bl->count < (bl->bound - 0):
                 bl->count += 1;
                 blocked = False;
             ;
@@ -28,39 +28,31 @@ def bl_release(bl):
 ;
 
 boundlock = bl_new(BOUND);
+acquired = [0,] * NPROC;
 
-if True:
-    def tester(bl):
+if False:
+    def tester(self, bl):
         bl_acquire(bl);
-        lock(?testlock);
-        testcount += 1;
-        unlock(?testlock);
-        assert testcount <= BOUND, testcount;
-        lock(?testlock);
-        testcount -= 1;
-        unlock(?testlock);
+        acquired[self] = 1;
+        assert sum(acquired) <= BOUND;
+        acquired[self] = 0;
         bl_release(bl);
     ;
 
-    testlock = Lock();
-    testcount = 0;
-    for i in {1..NPROC}:
-        spawn tester(?boundlock);
+    for i in {0..NPROC-1}:
+        spawn tester(i, ?boundlock);
     ;
 ;
 
 if True:
     def waiter(self, bl):
         bl_acquire(bl);
-        entered[self] = 1;
-        while sum(entered) < BOUND:
-            pass;
-        ;
+        acquired[self] = 1;
+        await sum(acquired) >= BOUND;
         bl_release(bl);
     ;
 
-    entered = [0,] * NPROC;
-    for i in {1..NPROC}:
+    for i in {0..NPROC-1}:
         spawn waiter(i, ?boundlock);
     ;
 ;
