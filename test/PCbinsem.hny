@@ -40,22 +40,6 @@ def consume():
     cnt = cnt - 1;
     vHat();
 ;
-def producer(self):
-    while choose({ False, True }):
-        # var item = choose({ 10, 20 });
-        let item = 1:
-            produce(item);
-        ;
-    ;
-;
-def consumer(self):
-    while choose({ False, True }):
-        @before_consume: pass;
-        let item = consume():
-            pass;
-        ;
-    ;
-;
 buf = dict{ 0 for x in {1..N} };
 cnt = 0;
 myin = 1;
@@ -65,8 +49,3 @@ cwaiting = 0;
 mutex = Semaphore(1);
 psema = Semaphore(0);
 csema = Semaphore(0);
-
-spawn producer(0);
-spawn producer(1);
-spawn consumer(0);
-spawn consumer(1);
