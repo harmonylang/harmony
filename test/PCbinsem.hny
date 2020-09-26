@@ -7,58 +7,56 @@ const N = 2;         # size of bounded buffer
 def vHat():
     if (cnt < N) and (pwaiting > 0):
         pwaiting = pwaiting - 1;
-        call V&(psema);
+        V(?psema);
     elif (cnt > 0) and (cwaiting > 0):
         cwaiting = cwaiting - 1;
-        call V&(csema);
+        V(?csema);
     else:
-        call V&(mutex);
+        V(?mutex);
     ;
 ;
 def produce(item):
-    call P&(mutex);
+    P(?mutex);
     if cnt == N:
         pwaiting = pwaiting + 1;
-        call vHat();
-        call P&(psema);
+        vHat();
+        P(?psema);
     ;
     # buf[myin] = choose({ 10, 20 });
     buf[myin] = item;
     myin = (myin % N) + 1;
     cnt = cnt + 1;
-    call vHat();
+    vHat();
 ;
 def consume():
-    call P&(mutex);
+    P(?mutex);
     if cnt == 0:
         cwaiting = cwaiting + 1;
-        call vHat();
-        call P&(csema);
+        vHat();
+        P(?csema);
     ;
     result = buf[myout];
     myout = (myout % N) + 1;
     cnt = cnt - 1;
-    call vHat();
+    vHat();
 ;
-def producer():
+def producer(self):
     while choose({ False, True }):
         # var item = choose({ 10, 20 });
         let item = 1:
-            @before_produce: pass;
-            call produce(item);
-            @after_produce: pass;
+            produce(item);
         ;
     ;
 ;
-def consumer():
+def consumer(self):
     while choose({ False, True }):
         @before_consume: pass;
         let item = consume():
-            @after_consume: pass;
+            pass;
         ;
     ;
 ;
-buf = dict{ 0 for x in 1..N };
+buf = dict{ 0 for x in {1..N} };
 cnt = 0;
 myin = 1;
 myout = 1;
@@ -68,7 +66,7 @@ mutex = Semaphore(1);
 psema = Semaphore(0);
 csema = Semaphore(0);
 
-spawn producer(), 0;
-spawn producer(), 0;
-spawn consumer(), 1;
-spawn consumer(), 1;
+spawn producer(0);
+spawn producer(1);
+spawn consumer(0);
+spawn consumer(1);
