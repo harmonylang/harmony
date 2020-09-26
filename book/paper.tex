@@ -1427,7 +1427,7 @@ until time $t_2$.
 
 However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
 it turns out the solution
-does has a problem: if both try to enter the critical section at the same
+does have a problem: if both try to enter the critical section at the same
 time, they may end up waiting for one another indefinitely.  Thus the
 solution violates \emph{progress}.
 
@@ -1621,7 +1621,7 @@ much harder than doing one with an invariant that is.
 \end{figure}
 
 So we are looking for an inductive invariant that \emph{implies} exclusivity.
-In other words, the set of states where the inducive invariant holds
+In other words, the set of states where the inductive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
 Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor
@@ -2445,7 +2445,8 @@ all processes are blocked.
 for three processes.
 \item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
 \item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
-up to \texttt{M} processes to acquire it at the same time.  A bound lock
+up to \texttt{M} processes to acquire it at the same time.\footnote{A bound lock is a restricted version of a counting semaphore, as we will learn later in this book.}
+A bound lock
 with \texttt{M == 1} is an ordinary lock.
 You should define a constant \texttt{M} and two methods:
 \texttt{acquire\_bound\_lock()}
