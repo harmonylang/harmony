@@ -29,3 +29,5 @@ if n < N:
 Qremove(?q, 1);
 assert not Qfind(?q, 1);
 assert not Qfind(?q, 0);
+
+chkleak();
