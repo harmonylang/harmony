@@ -4,11 +4,11 @@ import list;
 const BOUND = 2;
 const NPROC = 3;
 
-def bl_new(bound):
+def BLnew(bound):
     result = dict{ .lock: Lock(), .count: 0, .bound: bound };
 ;
 
-def bl_acquire(bl):
+def BLacquire(bl):
     let blocked = True:
         while blocked:
             lock(?bl->lock);
@@ -21,22 +21,22 @@ def bl_acquire(bl):
     ;
 ;
 
-def bl_release(bl):
+def BLrelease(bl):
     lock(?bl->lock);
     bl->count -= 1;
     unlock(?bl->lock);
 ;
 
-boundlock = bl_new(BOUND);
+boundlock = BLnew(BOUND);
 acquired = [0,] * NPROC;
 
 if False:
     def tester(self, bl):
-        bl_acquire(bl);
+        BLacquire(bl);
         acquired[self] = 1;
         assert sum(acquired) <= BOUND;
         acquired[self] = 0;
-        bl_release(bl);
+        BLrelease(bl);
     ;
 
     for i in {0..NPROC-1}:
@@ -46,10 +46,10 @@ if False:
 
 if True:
     def waiter(self, bl):
-        bl_acquire(bl);
+        BLacquire(bl);
         acquired[self] = 1;
         await sum(acquired) >= BOUND;
-        bl_release(bl);
+        BLrelease(bl);
     ;
 
     for i in {0..NPROC-1}:

@@ -1,21 +1,31 @@
 import extqueue;
 
-def sender(q, v):
-    Qenqueue(q, v);
-;
-def receiver(q):
-    let done = False:
-        while not done:
-            let v = Qdequeue(q):
-                done = v == ();
-                assert done or (v[0] in { 1, 2 });
-            ;
+const MAX = 5;
+
+q = Qnew();
+assert not Qfind(?q, 0);
+
+n = 0;
+N = choose{1..MAX};
+for i in {1..N}:
+    let v = choose({0, 1}):
+        if v == 0:
+            n += 1;
+        ;
+        Qenqueue(?q, v);
+        if n > 0:
+            assert Qfind(?q, 0), n;
+        ;
+        if n < i:
+            assert Qfind(?q, 1), (N, n);
         ;
     ;
 ;
-
-queue = Qnew();
-spawn sender(?queue, 1);
-spawn sender(?queue, 2);
-spawn receiver(?queue);
-spawn receiver(?queue);
+Qremove(?q, 0);
+assert not Qfind(?q, 0);
+if n < N:
+    assert Qfind(?q, 1), (N, n);
+;
+Qremove(?q, 1);
+assert not Qfind(?q, 1);
+assert not Qfind(?q, 0);
