@@ -1659,11 +1659,12 @@ Without loss of generality, suppose $i=0$ (a benefit from the fact that the algo
 symmetric for both processes).  We still have to show that if we are in a state
 in which $\mathcal{I}_p(0)$ holds, then any step will result in a state in which
 $\mathcal{I}_p(0)$ still holds.
-If $\mathcal{I}_p(0)$ holds, process~0 is at label \texttt{@cs}.  If process~0
+
+First consider the case that process~0 is at label \texttt{@cs}.  If process~0
 were to take a step, then in the next state process~0 would be no longer
 at that label and $\mathcal{I}_p(0)$ would hold trivially over the next state.
 Therefore we only need to consider a step by process~1.
-
+%
 From $\mathcal{I}_p(0)$ we know that one of the following three cases must hold before
 process~1 takes a step:
 \begin{enumerate}
@@ -1684,7 +1685,23 @@ We know that process~1 never sets \textit{turn} to 1, so
 if the second case holds before the step, it will also hold after the step.
 Finally, if process~1 is at label \texttt{@gate} before the step, then after
 the step \textit{turn} will equal 0, and therefore the second case will hold
-after the step.  qed.
+after the step.
+
+Now consider the case where process~0 is not in the critical section,
+and therefore $\mathcal{I}_p(0)$ holds trivially because false implies
+anything.
+There are three cases to consider:
+\begin{enumerate}
+\item Process~1 takes a step.  But then process~0 is still not in the critical
+section and $\mathcal{I}_p(0)$ continues to hold;
+\item Process~0 takes a step but still is not in the critical section.
+Then again $\mathcal{I}_p(0)$ continues to hold.
+\item Process~0 takes a step and ends up in the critical section.
+Because process~0 entered the critical section, we know that
+\textit{flags}[1] = \texttt{False} or \textit{turn} == 0 because
+of the \texttt{await} condition.
+And hence $\mathcal{I}_p(0)$ continues to hold in that case as well.
+\end{enumerate}
 
 We have now demonstrated mutual exclusion in Peterson's Algorithm in two
 different ways: one by letting Harmony explore all possible executions, the
