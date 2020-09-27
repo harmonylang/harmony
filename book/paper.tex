@@ -2509,7 +2509,8 @@ The invariants that imply the reader/writer specification
 
 \begin{itemize}
 \item $n$ readers at \texttt{@rcs} $\Rightarrow \mathit{nreaders} \ge n$
-\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$
+\item $\exists$ writer at \texttt{@wcs} $\Rightarrow \mathit{nreaders} = 0$ and writer holds \textit{rwlock}
+\item at most one writer can hold \textit{rwlock}
 \end{itemize}
 
 A writer just acquires \textit{rwlock} to enter the critical section
@@ -5196,8 +5197,16 @@ I first demonstrated Harmony to the students in my CS6480 class on systems
 and formal verification and
 received valuable feedback from them.
 
-I would also like to thank my proofreaders Anneke van Renesse and
-Zhuoyu Xu.
+The following people contributed by making comments on or finding bugs in
+early drafts of the book:
+Anneke van Renesse,
+Brendon Nguyen,
+Sunwook Kim,
+Trishita Tiwari,
+Yidan Wang,
+Zhuoyu Xu,
+and
+Zoltan Csaki.
 
 Finally, I would like to thank my family who had to suffer as I obsessed
 over writing the code and the book during the turbulent months of
