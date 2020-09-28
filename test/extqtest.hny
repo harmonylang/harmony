@@ -3,7 +3,7 @@ import extqueue;
 const MAX = 5;
 
 q = Qnew();
-assert not Qfind(?q, 0);
+assert not Qcontains(?q, 0);
 
 n = 0;
 N = choose{1..MAX};
@@ -14,20 +14,20 @@ for i in {1..N}:
         ;
         Qenqueue(?q, v);
         if n > 0:
-            assert Qfind(?q, 0), n;
+            assert Qcontains(?q, 0), n;
         ;
         if n < i:
-            assert Qfind(?q, 1), (N, n);
+            assert Qcontains(?q, 1), (N, n);
         ;
     ;
 ;
 Qremove(?q, 0);
-assert not Qfind(?q, 0);
+assert not Qcontains(?q, 0);
 if n < N:
-    assert Qfind(?q, 1), (N, n);
+    assert Qcontains(?q, 1), (N, n);
 ;
 Qremove(?q, 1);
-assert not Qfind(?q, 1);
-assert not Qfind(?q, 0);
+assert not Qcontains(?q, 1);
+assert not Qcontains(?q, 0);
 
 chkleak();

@@ -1624,6 +1624,9 @@ So we are looking for an inductive invariant that \emph{implies} exclusivity.
 In other words, the set of states where the inductive invariant holds
 must be a subset of the set of states where there is at most one process in
 the critical section.
+For simplicity, we will suppose as a given that 
+$\mathtt{process}(i)@cs \Rightarrow \mathit{flags][i]$, the truth of which is
+easy to see from the code.
 Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor
 \mathit{turn} = i$, that is, the condition on the \textbf{await}
 statement for process~$i$.

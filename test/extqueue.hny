@@ -28,7 +28,7 @@ def Qdequeue(q):
     ;
     unlock(?q->lock);
 ;
-def Qfind(q, v):
+def Qcontains(q, v):
     lock(?q->lock);
     result = False;
     let node = q->head:
