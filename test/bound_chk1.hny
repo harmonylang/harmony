@@ -1,0 +1,20 @@
+import bound;
+import list;
+
+const BOUND = 2;
+const NPROC = 3;
+
+boundlock = BLnew(BOUND);
+acquired = [0,] * NPROC;
+
+def tester(self, bl):
+    BLacquire(bl);
+    acquired[self] = 1;
+    assert sum(acquired) <= BOUND;
+    acquired[self] = 0;
+    BLrelease(bl);
+;
+
+for i in {0..NPROC-1}:
+    spawn tester(i, ?boundlock);
+;

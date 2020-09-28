@@ -1,0 +1,19 @@
+import bound;
+import list;
+
+const BOUND = 2;
+const NPROC = 3;
+
+boundlock = BLnew(BOUND);
+acquired = [0,] * NPROC;
+
+def waiter(self, bl):
+    BLacquire(bl);
+    acquired[self] = 1;
+    await sum(acquired) >= BOUND;
+    BLrelease(bl);
+;
+
+for i in {0..NPROC-1}:
+    spawn waiter(i, ?boundlock);
+;
