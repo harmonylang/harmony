@@ -3,7 +3,7 @@ import hoare;
 def acquire():
     mon_enter();
         if busy:
-            wait(?condition);
+            wait(?nonbusy);
         ;
         busy = True;
     mon_exit();
@@ -11,11 +11,11 @@ def acquire():
 def release():
     mon_enter();
         busy = False;
-        signal(?condition);
+        signal(?nonbusy);
     mon_exit();
 ;
 mutex = Semaphore(1);
-condition = Condition(?mutex);
+nonbusy = Condition(?mutex);
 busy = False;
 
 def process():
