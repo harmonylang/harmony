@@ -43,9 +43,11 @@ def Qcontains(q, v):
 ;
 def Qremove(q, v):
     lock(?q->lock);
+    q->tail = None;
     let p = ?q->head:
         while !p != None:
             let node = !p:
+                q->tail = node;
                 if node->value == v:
                     !p = node->next;
                     free(node);
