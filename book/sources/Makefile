@@ -45,7 +45,9 @@ CODE = \
     csonebit.tex \
     dinersfix.tex \
     gpu.tex \
+    hoare.tex \
     hoaremon.tex \
+    hoaretest.tex \
     hw.tex \
     lockintf.tex \
     locksusp.tex \

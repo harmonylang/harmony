@@ -47,11 +47,11 @@ def Qremove(q, v):
     let p = ?q->head:
         while !p != None:
             let node = !p:
-                q->tail = node;
                 if node->value == v:
                     !p = node->next;
                     free(node);
                 else:
+                    q->tail = node;
                     p = ?node->next;
                 ;
             ;

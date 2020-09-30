@@ -1,0 +1,28 @@
+import hoare;
+
+def acquire():
+    mon_enter();
+        if busy:
+            wait(?condition);
+        ;
+        busy = True;
+    mon_exit();
+;
+def release():
+    mon_enter();
+        if busy:
+            busy = False;
+            signal(?condition);
+        ;
+    mon_exit();
+;
+mutex = Semaphore(1);
+condition = Condition(?mutex);
+busy = False;
+
+def process():
+    acquire();
+    release();
+;
+spawn process();
+spawn process();

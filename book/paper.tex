@@ -3207,6 +3207,22 @@ semaphore.
 \glsadd{monitor}%
 \glsadd{condition variable}%
 
+\begin{figure}
+\begin{code}
+\harmonysource{hoare}
+\end{code}
+\caption{\harmonylink{code/hoare.hny} Implementation of Hoare monitors.}
+\label{fig:hoare}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{hoaretest}
+\end{code}
+\caption{\harmonylink{code/hoaretest.hny} Example of Hoare monitors.}
+\label{fig:hoaretest}
+\end{figure}
+
 Tony Hoare, who came up with the concept of split binary semaphores, devised
 an abstraction of the concept in a programming language paradigm called
 \emph{monitors}~\cite{Hoare74}.
@@ -3217,25 +3233,30 @@ a set of variables and methods that operate on those variables.
 There is a split binary semaphore associated with each such class.
 The \textit{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
-The other semaphores are called \emph{condition variables}.
+The other semaphores are encapsulated in \emph{condition variables}.
 \index{condition variable}%
+Each condition variable also keeps track of the number of processes waiting
+on the condition variable.
 There are two operations on condition variables: \texttt{wait}
 \index{wait}%
 and
 \texttt{signal}.
 \index{signal}%
-If $c$ is a pointer to a condition variable, then the semantics of the
-operations, in Harmony, are as follows:
 
-\begin{code}
-\harmonysource{hoaremon}
-\end{code}
+\autoref{fig:hoare} presents the semantics by giving an implementation of
+\texttt{wait} and \texttt{signal} as well as the code that is used to enter
+and exit monitor methods.
+\autoref{fig:hoaretest} presents a simple example lifted directly from
+the original paper~\cite{Hoare74}.
+In the design proposed by Hoare, the monitor methods automatically acquire
+and release the monitor mutex.
 
-\texttt{wait} releases the mutex and blocks while trying
-to procure the condition variable (which is a semaphore that is 0 when
-\texttt{wait} is invoked).
-\texttt{signal} vacates the condition variable, passing the baton to
-a process trying to procure it, and then procures the mutex.
+\texttt{wait} increments the condition's counter, releases the monitor mutex,
+blocks while trying to procure the condition's semaphore, and finally decrements
+the counter---in much the same way as we have seen for SBS.
+\texttt{signal} checks to see if the condition's count is non-zero, and if so
+vacates the condition's semaphore---passing the baton to
+a process trying to procure it---and then blocks by procuring the mutex again.
 The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
 \texttt{V} operations alternate as prescribed by the SBS technique.
 Our implementations of reader/writer locks can be easily changed to

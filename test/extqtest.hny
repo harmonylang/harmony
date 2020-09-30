@@ -1,9 +1,23 @@
+def chkleak():
+    pass;
+;
+
 import extqueue;
 
 const MAX = 5;
 
 q = Qnew();
 assert not Qcontains(?q, 0);
+
+# Tail pointer test
+Qenqueue(?q, 0);
+Qenqueue(?q, 1);
+Qremove(?q, 1);
+Qenqueue(?q, 1);
+assert Qcontains(?q, 0);
+assert Qcontains(?q, 1);
+Qremove(?q, 0);
+Qremove(?q, 1);
 
 n = 0;
 N = choose{1..MAX};
@@ -26,8 +40,9 @@ assert not Qcontains(?q, 0);
 if n < N:
     assert Qcontains(?q, 1), (N, n);
 ;
+Qenqueue(?q, 1);
+assert Qcontains(?q, 1);
 Qremove(?q, 1);
 assert not Qcontains(?q, 1);
 assert not Qcontains(?q, 0);
-
 chkleak();
