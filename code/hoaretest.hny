@@ -10,10 +10,8 @@ def acquire():
 ;
 def release():
     mon_enter();
-        if busy:
-            busy = False;
-            signal(?condition);
-        ;
+        busy = False;
+        signal(?condition);
     mon_exit();
 ;
 mutex = Semaphore(1);

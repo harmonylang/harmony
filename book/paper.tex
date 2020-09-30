@@ -3237,23 +3237,22 @@ The other semaphores are encapsulated in \emph{condition variables}.
 \index{condition variable}%
 Each condition variable also keeps track of the number of processes waiting
 on the condition variable.
+
 There are two operations on condition variables: \texttt{wait}
 \index{wait}%
 and
 \texttt{signal}.
 \index{signal}%
-
 \autoref{fig:hoare} presents the semantics by giving an implementation of
 \texttt{wait} and \texttt{signal} as well as the code that is used to enter
 and exit monitor methods.
 \autoref{fig:hoaretest} presents a simple example lifted directly from
 the original paper~\cite{Hoare74}.
-In the design proposed by Hoare, the monitor methods automatically acquire
-and release the monitor mutex.
 
 \texttt{wait} increments the condition's counter, releases the monitor mutex,
-blocks while trying to procure the condition's semaphore, and finally decrements
-the counter---in much the same way as we have seen for SBS.
+blocks while trying to procure the condition's semaphore, and after resuming
+decrements the counter---in much the same way as we have seen for split binary
+semaphores (SBS).
 \texttt{signal} checks to see if the condition's count is non-zero, and if so
 vacates the condition's semaphore---passing the baton to
 a process trying to procure it---and then blocks by procuring the mutex again.
