@@ -1,16 +1,13 @@
 import synch;
 
 def acquire_rlock():
-    let blocked = True:
-        while blocked:
-            lock(?rwlock);
-            if nwriters == 0:
-                nreaders += 1;
-                blocked = False;
-            ;
-            unlock(?rwlock);
-        ;
+    lock(?rwlock);
+    while nwriters > 0:
+        unlock(?rwlock);
+        lock(?rwlock);
     ;
+    nreaders += 1;
+    unlock(?rwlock);
 ;
 def release_rlock():
     lock(?rwlock);
@@ -18,16 +15,13 @@ def release_rlock():
     unlock(?rwlock);
 ;
 def acquire_wlock():
-    let blocked = True:
-        while blocked:
-            lock(?rwlock);
-            if (nreaders + nwriters) == 0:
-                nwriters = 1;
-                blocked = False;
-            ;
-            unlock(?rwlock);
-        ;
+    lock(?rwlock);
+    while (nreaders + nwriters) > 0:
+        unlock(?rwlock);
+        lock(?rwlock);
     ;
+    nwriters = 1;
+    unlock(?rwlock);
 ;
 def release_wlock():
     lock(?rwlock);
@@ -35,5 +29,4 @@ def release_wlock():
     unlock(?rwlock);
 ;
 rwlock = Lock();
-nreaders = 0;
-nwriters = 0;
+nreaders, nwriters = 0, 0;

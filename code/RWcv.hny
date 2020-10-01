@@ -32,7 +32,5 @@ def release_wlock():
     unlock(?rwlock);
 ;
 rwlock = Lock();
-rcond = Condition(?rwlock);
-wcond = Condition(?rwlock);
-nreaders = 0;
-nwriters = 0;
+rcond, wcond = Condition(?rwlock), Condition(?rwlock);
+nreaders, nwriters = 0, 0;
