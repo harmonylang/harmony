@@ -1,0 +1,45 @@
+import synch;
+import bag;
+
+const NMIDDLE   = 3;
+const NHIGH     = 3;
+const NLANES    = 2;
+
+def p_enter(level):
+    lock(?mutex);
+        while (count[1 - level] > 0) or (count[level] == NLANES):
+            wait(?condition[level]);
+        ;
+        count[level] += 1;
+    unlock(?mutex);
+;
+def p_exit(level):
+    lock(?mutex);
+        notifyAll(?condition[level]);
+        count[level] -= 1;
+        if count[level] == 0:
+            notifyAll(?condition[1 - level]);
+        ;
+    unlock(?mutex);
+;
+mutex = Lock();
+condition = [ Condition(?mutex), Condition(?mutex) ];
+count = [ 0, 0 ];
+
+def check(bag, level):
+    let us   = bagCount(bag, dict{.name: .student, .tag: level})
+    let them = bagCount(bag, dict{.name: .student, .tag: 1 - level}):
+        result = ((0 <= us) and (us <= NLANES)) and (them == 0);
+    ;
+;
+def student(level):
+    p_enter(level);
+        @inpool: assert check(atLabel.inpool, level);
+    p_exit(level);
+;
+for i in {1..NMIDDLE}:
+    spawn student(0);
+;
+for i in {1..NHIGH}:
+    spawn student(1);
+;
