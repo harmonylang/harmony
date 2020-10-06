@@ -28,7 +28,7 @@ def customer(self):
         result = False;
     else:
         seated |= { self };
-        notifyAll(?barbercond);
+        notify(?barbercond);
         while self not in done:
             wait(?customercond);
         ;

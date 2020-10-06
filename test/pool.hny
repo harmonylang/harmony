@@ -1,9 +1,8 @@
 import synch;
-import bag;
 
-const NMIDDLE   = 3;
-const NHIGH     = 3;
-const NLANES    = 2;
+const NMIDDLE   = 2;
+const NHIGH     = 2;
+const NLANES    = 1;
 
 def p_enter(level):
     lock(?mutex);
@@ -26,20 +25,21 @@ mutex = Lock();
 condition = [ Condition(?mutex), Condition(?mutex) ];
 count = [ 0, 0 ];
 
-def check(bag, level):
-    let us   = bagCount(bag, dict{.name: .student, .tag: level})
-    let them = bagCount(bag, dict{.name: .student, .tag: 1 - level}):
-        result = ((0 <= us) and (us <= NLANES)) and (them == 0);
-    ;
-;
-def student(level):
+inpool_ms = [0,] * NMIDDLE;
+inpool_hs = [0,] * NHIGH;
+inpool = [ inpool_ms, inpool_hs ];
+
+def student(level, id):
     p_enter(level);
-        @inpool: assert check(atLabel.inpool, level);
+    inpool[level][id] = 1;
+    assert sum(inpool[level]) <= NLANES;
+    assert sum(inpool[1 - level]) == 0;
+    inpool[level][id] = 0;
     p_exit(level);
 ;
 for i in {1..NMIDDLE}:
-    spawn student(0);
+    spawn student(0, i);
 ;
 for i in {1..NHIGH}:
-    spawn student(1);
+    spawn student(1, i);
 ;
