@@ -1,6 +1,6 @@
 import synch;
 
-const NSEATS = 3;
+const NSEATS = 2;
 
 seated = {};
 done = {};
@@ -8,35 +8,50 @@ mutex = Lock();
 barbercond = Condition(?mutex);
 customercond = Condition(?mutex);
 
-def barber():
+def barber_sleep():
     lock(?mutex);
     while seated == {}:
         wait(?barbercond);
     ;
-    let customer = choose(seated):
-        seated -= { customer };
-        @cut: pass;
-        done |= { customer };
-        notifyAll(?customercond);
-    ;
+    result = choose(seated);
+    seated -= { result };
     unlock(?mutex);
 ;
-
-def customer(self):
+def barber_cut(customer):
+    lock(?mutex);
+    done |= { customer };
+    notifyAll(?customercond);
+    unlock(?mutex);
+;
+def customer_enter(self):
     lock(?mutex);
     if len(seated) == NSEATS:
         result = False;
     else:
         seated |= { self };
         notify(?barbercond);
-        while self not in done:
-            wait(?customercond);
-        ;
         result = True;
     ;
     unlock(?mutex);
 ;
+def customer_wait(self):
+    lock(?mutex);
+    while self not in done:
+        wait(?customercond);
+    ;
+    unlock(?mutex);
+;
 
+def barber():
+    let customer = barber_sleep():
+        barber_cut(customer);
+    ;
+;
+def customer(self):
+    if customer_enter(self):
+        customer_wait(self);
+    ;
+;
 for i in {1..3}:
     spawn barber();
     spawn customer(i);

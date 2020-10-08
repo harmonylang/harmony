@@ -1,0 +1,44 @@
+import synch;
+
+const NPAIRS = 2;
+
+def seatYourself(pref):
+    lock(?mutex);
+    while tables[pref] >= 2:
+        wait(?seating[pref]);
+    ;
+    tables[pref] += 1;
+    notify(?leaving[pref]);
+    unlock(?mutex);
+;
+
+def leaveTeahouse(pref):
+    lock(?mutex);
+    while tables[pref] < 2:
+        wait(?leaving[pref]);
+    ;
+    @drink: pass;
+    tables[pref] = (tables[pref] + 1) % 4;
+    if tables[pref] == 0:
+        notifyAll(?seating[pref]);
+    ;
+    unlock(?mutex);
+;
+
+def drinkTea(pref):
+    seatYourself(pref);
+    pass;
+    leaveTeahouse(pref);
+;
+
+tables = dict{ .black: 0, .green: 0 };
+mutex = Lock();
+seating = dict{ .black: Condition(?mutex), .green: Condition(?mutex) };
+leaving = dict{ .black: Condition(?mutex), .green: Condition(?mutex) };
+
+for i in {1 .. NPAIRS}:
+    let pref = choose({ .green, .black }):
+        spawn drinkTea(pref);
+        spawn drinkTea(pref);
+    ;
+;
