@@ -21,4 +21,4 @@ for i in {1..NREADERS}:
 for i in {1..NWRITERS}:
     spawn writer();
 ;
-acquire_rlock();
+acquire_wlock();

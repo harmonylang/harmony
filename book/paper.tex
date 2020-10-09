@@ -2448,7 +2448,7 @@ busy-wait for application-specific conditions.
 Harmony does not complain about \autoref{fig:rwbusy}, but, using
 the right test, Harmony can be used to check for busy-waiting.
 \autoref{fig:rwblock} presents such a test.
-Note that the initialization code obtains a read lock, preventing
+Note that the initialization code obtains a write lock, preventing
 all readers and writers from entering the critical section.
 In that case, those processes should ideally be blocked and Harmony
 can test for that by running it with the \texttt{-b} flag.
@@ -5221,6 +5221,7 @@ The following people contributed by making comments on or finding bugs in
 early drafts of the book:
 Anneke van Renesse,
 Brendon Nguyen,
+Saleh Hassen,
 Sunwook Kim,
 Trishita Tiwari,
 Yidan Wang,

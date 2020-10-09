@@ -1104,6 +1104,9 @@ class StoreOp(Op):
                                     str(self.token) + " -> " + str(av)
                 return
             lv = av.indexes
+            if len(lv) == 0:
+                context.failure = "Error: bad address " + str(self.token)
+                return
             name = lv[0]
         else:
             (lexeme, file, line, column) = self.name
