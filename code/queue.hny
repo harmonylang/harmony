@@ -23,6 +23,9 @@ def Qdequeue(q):
         else:
             result = (node->value,);
             q->head = node->next;
+            if q->head == None:
+                q->tail = None;
+            ;
             free(node);
         ;
     ;
