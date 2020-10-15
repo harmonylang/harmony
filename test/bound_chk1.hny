@@ -1,10 +1,11 @@
-import bound;
+import boundcv;
 import list;
 
 const BOUND = 2;
 const NPROC = 3;
 
 boundlock = BLnew(BOUND);
+BLinit(?boundlock);
 acquired = [0,] * NPROC;
 
 def tester(self, bl):

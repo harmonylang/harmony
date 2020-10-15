@@ -3,23 +3,21 @@ import synch;
 const N = 5;
 
 def diner(which):
-    let left = which, right = (which % N) + 1:
-        while choose({ False, True }):
-            if left < right:
-                call lock &(forks[left]);
-                call lock &(forks[right]);
-            else:
-                call lock &(forks[right]);
-                call lock &(forks[left]);
-            ;
-            # dine
-            call unlock &(forks[left]);
-            call unlock &(forks[right]);
-            # think
+    let left, right = which, (which % N) + 1:
+        if left < right:
+            lock(?forks[left]);
+            lock(?forks[right]);
+        else:
+            lock(?forks[right]);
+            lock(?forks[left]);
         ;
+        # dine
+        unlock(?forks[left]);
+        unlock(?forks[right]);
+        # think
     ;
 ;
-forks = dict{ Lock() for i in 1..N };
-for i in 1..N:
+forks = dict{ Lock() for i in {1..N} };
+for i in {1..N}:
     spawn diner(i);
 ;
