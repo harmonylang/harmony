@@ -6,18 +6,19 @@ def Lock():
 def lock(lk):
     atomic:
         if lk->locked:
-            stop lk->suspended;
+            stop lk->suspended;     # wait in the hall
             assert lk->locked;
         else:
-            lk->locked = True;
+            lk->locked = True;      # enter the bathroom
         ;
     ;
 ;
 def unlock(lk):
     atomic:
         if lk->suspended == []:
-            lk->locked = False;
+            lk->locked = False;     # leave the bathroom
         else:
+            # while leaving bathroom, let somebody from the hall into the bathroom
             go (head(lk->suspended)) ();
             lk->suspended = tail(lk->suspended);
         ;
@@ -28,15 +29,16 @@ def Condition(lk):
 ;
 def wait(c):
     atomic:
-        unlock(c->lock);
-        stop c->waiters;
+        unlock(c->lock);    # leave bathroom
+        stop c->waiters;    # enter bedroom
     ;
 ;
 def notify(c):
     atomic:
         let lk, waiters = c->lock, c->waiters:
             if waiters != []:
-                lk->suspended += [waiters[0],];
+                # move somebody from the bedroom to the hall
+                lk->suspended += [head(waiters),];
                 c->waiters = tail(waiters);
             ;
         ;
@@ -44,6 +46,7 @@ def notify(c):
 ;
 def notifyAll(c):
     atomic:
+        # move everybody in the bedroom to the hall
         let lk, waiters = c->lock, c->waiters:
             lk->suspended += waiters;
             c->waiters = [];

@@ -1,0 +1,67 @@
+import synch;
+
+const NROUNDS = 3;
+const NPROC = 3;
+
+def barrier_enter(self):
+    lock(?mutex);
+    while bstate >= NPROC:
+        wait(?start);
+    ;
+    bstate += 1;
+    if bstate == NPROC:
+        notifyAll(?finish);
+    ;
+    unlock(?mutex);
+;
+def barrier_exit(self):
+    lock(?mutex);
+    while bstate < NPROC:
+        wait(?finish);
+    ;
+    bstate = (bstate + 1) % (2 * NPROC);
+    if bstate == 0:
+        notifyAll(?start);
+    ;
+    unlock(?mutex);
+;
+mutex = Lock();
+start = Condition(?mutex);
+finish = Condition(?mutex);
+bstate = 0;
+
+# check that all non-None values in round are the same
+def check():
+    result = True;
+    let x = None:
+        for i in {0..NPROC-1}:
+            if result and (round[i] != None):
+                if x != None:
+                    result = round[i] == x;
+                ;
+                x = round[i];
+            ;
+        ;
+    ;
+;
+
+def process(self):
+    for r in {0..NROUNDS-1}:
+        barrier_enter(self);
+        round[self] = r;
+        assert check();
+        round[self] = None;
+        barrier_exit(self);
+    ;
+    done[self] = True;
+;
+def main():
+    await all(done);
+;
+
+round = [None,] * NPROC;
+done = [False,] * NPROC;
+for i in {0..NPROC-1}:
+    spawn process(i);
+;
+spawn main();

@@ -2,6 +2,6 @@ if left < right:
     lock(?forks[left]);
     lock(?forks[right]);
 else:
-    unlock(?forks[right]);
-    unlock(?forks[left]);
+    lock(?forks[right]);
+    lock(?forks[left]);
 ;
