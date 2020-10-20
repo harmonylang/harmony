@@ -38,6 +38,9 @@ CODE = \
     baddblwait.tex \
     bank.tex \
     barrier.tex \
+    barrier1.tex \
+    barrier2.tex \
+    barrier3.tex \
     busywait.tex \
     cs.tex \
     csTAS.tex \

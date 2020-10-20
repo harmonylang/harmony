@@ -1,0 +1,62 @@
+import synch;
+
+def mon_enter():
+    P(?mutex);
+;
+def mon_exit():
+    V(?mutex);
+;
+def H_Condition(mon):
+    result = dict{ .lock: mon, .sema: Semaphore(0), .count: 0 };
+;
+def H_wait(cond):
+    cond->count += 1;
+    V(cond->lock); P(?cond->sema);
+    cond->count -= 1;
+;
+def H_signal(cond):
+    if cond->count > 0:
+        V(?cond->sema); P(cond->lock);
+    ;
+;
+
+mutex = Semaphore(1);
+OKtoread = H_Condition(?mutex);
+OKtowrite = H_Condition(?mutex);
+r_entered, w_entered = 0, 0;
+
+def acquire_rlock():
+    mon_enter();
+    if w_entered > 0:
+        H_wait(?OKtoread);
+    ;
+    r_entered += 1;
+    H_signal(?OKtoread);
+    mon_exit();
+;
+def release_rlock():
+    mon_enter();
+    r_entered -= 1;
+    if r_entered == 0:
+        H_signal(?OKtowrite);
+    ;
+    mon_exit();
+;
+def acquire_wlock():
+    mon_enter();
+    if (r_entered + w_entered) > 0:
+        H_wait(?OKtowrite);
+    ;
+    w_entered += 1;
+    mon_exit();
+;
+def release_wlock():
+    mon_enter();
+    w_entered -= 1;
+    if OKtoread.count > 0:
+        H_signal(?OKtoread);
+    else:
+        H_signal(?OKtowrite);
+    ;
+    mon_exit();
+;
