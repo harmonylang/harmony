@@ -14,6 +14,9 @@ def H_wait(cond):
     V(cond->lock); P(?cond->sema);
     cond->count -= 1;
 ;
+def H_has_waiters(cond):
+    result = cond->count > 0;
+;
 def H_signal(cond):
     if cond->count > 0:
         V(?cond->sema); P(cond->lock);
@@ -53,7 +56,7 @@ def acquire_wlock():
 def release_wlock():
     mon_enter();
     w_entered -= 1;
-    if OKtoread.count > 0:
+    if H_has_waiters(?OKtoread):
         H_signal(?OKtoread);
     else:
         H_signal(?OKtowrite);
