@@ -3815,8 +3815,11 @@ In the case of the Dining Philosophers, we want to avoid the situation where eac
 diner picks up a fork.  So if we can prevent more than four diners from starting to
 eat at the same time, then we can avoid the conditions for deadlock from ever
 happening.
-\autoref{fig:dinersavoid} demonstrates this concept.  It uses a semaphore to
-restrict the number of diners at any time to four.
+\autoref{fig:dinersavoid} demonstrates this concept.  It uses a
+\emph{counting semaphore} to restrict the number of diners at any time to
+four.  A counting semaphore is like a binary semaphore, but can be
+acquired a given number of times.  It is supported by the \texttt{synch}
+module.
 
 This concept can be generalized using something called the
 Banker's Algorithm~\cite{EWD108}, but it is outside the scope of this book.
