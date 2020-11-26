@@ -1,23 +1,25 @@
-import synch;
+from synch import *;
 
 const N = 5;
+
+forks = dict{ Lock() for i in {1..N} };
+sema = Semaphore(N - 1);
 
 def diner(which):
     let left, right = (which, (which % N) + 1):
         while choose({ False, True }):
             P(?sema);
-            lock(?forks[left]);
-            lock(?forks[right]);
+            acquire(?forks[left]);
+            acquire(?forks[right]);
             # dine
-            unlock(?forks[left]);
-            unlock(?forks[right]);
+            release(?forks[left]);
+            release(?forks[right]);
             V(?sema);
             # think
         ;
     ;
 ;
-forks = dict{ Lock() for i in {1..N} };
-sema = Semaphore(N - 1);
+
 for i in {1..N}:
     spawn diner(i);
 ;

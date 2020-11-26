@@ -60,14 +60,14 @@ def qsort(a):
         let (pivot, rest) = head(a), tail(a)
         let lower = [ v for v in rest such that v < pivot ]
         let higher = [ v for v in rest such that v >= pivot ]:
-            result = listQsort(lower) + [pivot,] + listQsort(higher);
+            result = qsort(lower) + [pivot,] + qsort(higher);
         ;
     ;
 ;
 
 # like Python sorted()
 def sorted(d):
-    result = listQsort(list(d));
+    result = qsort(list(d));
 ;
 
 # like Python reversed()

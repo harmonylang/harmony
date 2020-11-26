@@ -1481,6 +1481,9 @@ class SpawnOp(Op):
         return "pop a pc, argument, and tag and spawn a new process"
 
     def eval(self, state, context):
+        if context.readonly > 0:
+            context.failure = "Error: no spawn allowed in assert"
+            return
         method = context.pop()
         assert isinstance(method, PcValue)
         arg = context.pop()

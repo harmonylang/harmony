@@ -1,7 +1,7 @@
 if left < right:
-    lock(?forks[left]);
-    lock(?forks[right]);
+    acquire(?forks[left]);
+    acquire(?forks[right]);
 else:
-    lock(?forks[right]);
-    lock(?forks[left]);
+    acquire(?forks[right]);
+    acquire(?forks[left]);
 ;
