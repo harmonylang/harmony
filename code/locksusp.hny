@@ -1,25 +1,28 @@
 import list;
 
-def Lock():
-    result = dict{ .locked: False, .suspended: [] };
+def BinSema(acquired):
+    result = dict{ .acquired: acquired, .suspended: [] };
 ;
-def lock(lk):
+def Lock():
+    result = BinSema(False);
+;
+def acquire(lk):
     atomic:
-        if lk->locked:
+        if lk->acquired:
             stop lk->suspended;
-            assert lk->locked;
+            assert lk->acquired;
         else:
-            lk->locked = True;
+            lk->acquired = True;
         ;
     ;
 ;
-def unlock(lk):
+def release(lk):
     atomic:
         if lk->suspended == []:
-            lk->locked = False;
+            lk->acquired = False;
         else:
-            go (head(lk->suspended)) ();
-            lk->suspended = tail(lk->suspended);
+            go (list.head(lk->suspended)) ();
+            lk->suspended = list.tail(lk->suspended);
         ;
     ;
 ;

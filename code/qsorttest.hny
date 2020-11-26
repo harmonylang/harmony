@@ -2,6 +2,10 @@ import list;
 import qsort;
 
 const NITEMS = 4;
+const values = {1..NITEMS};
+
+a = [ choose(values) for i in {1..choose({1..NITEMS})} ];
+todo = { (0, len(a) - 1) };
 
 def sorted():                    # return whether array 'a' is sorted
     result = all(a[i - 1] <= a[i] for i in {1..len(a)-1});
@@ -12,7 +16,4 @@ def main(copy):
     assert list2bag(a) == list2bag(copy); # is it a permutation?
 ;
 
-const values = {1..NITEMS};
-a = [ choose(values) for i in {1..choose({1..NITEMS})} ];
-todo = { (0, len(a) - 1) };
 spawn main(a);

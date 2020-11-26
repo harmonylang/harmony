@@ -54,6 +54,7 @@ def isreserved(s):
         "all",
         "and",
         "any",
+        "as",
         "assert",
         "atLabel",
         "atomic",
@@ -68,6 +69,7 @@ def isreserved(s):
         "elif",
         "else",
         "end",
+        "from",
         "False",
         "fun",
         "for",
@@ -220,9 +222,9 @@ def lexer(s, file, silent):
             found = s[:i].replace("_", "\\_")
             if isreserved(found):
                 if not silent: print("\\texttt{\\textbf{%s}}"%found, end="")
-                if found in [ "def", "const", "import" ]:
+                if found in [ "def", "const", "import", "from" ]:
                     nextconst = True
-                    if found == "import":
+                    if found in { "import", "from" }:
                         nextimport = True
             elif isletter(found[0]):
                 if nextconst:

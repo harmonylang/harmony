@@ -1,3 +1,6 @@
+count = 0;
+done = [ False, False ];
+
 def incrementer(self):
     count = count + 1;
     done[self] = True;
@@ -6,8 +9,7 @@ def main():
     await all(done);
     assert count == 2, count;
 ;
-count = 0;
-done = [ False, False ];
+
 spawn incrementer(0);
 spawn incrementer(1);
 spawn main();

@@ -6,6 +6,7 @@ CODEDIR = ../../code
 	python3 pp.py $< > $@
 
 CODE = \
+    BBhoare.tex \
     BBsema.tex \
     BBsemadata.tex \
     BBsematest.tex \

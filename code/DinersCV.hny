@@ -2,39 +2,40 @@ import synch;
 
 const N = 5;
 
+mutex = synch.Lock();
+forks = dict{ False for i in {1..N} };
+conds = dict{ synch.Condition(?mutex) for i in {1..N} };
+
 def diner(which):
     let left, right = (which, (which % N) + 1):
         while choose({ False, True }):
-            lock(?mutex);
+            synch.acquire(?mutex);
             while forks[left] or forks[right]:
                 if forks[left]:
-                    wait(?conds[left]);
+                    synch.wait(?conds[left], ?mutex);
                 ;
                 if forks[right]:
-                    wait(?conds[right]);
+                    synch.wait(?conds[right], ?mutex);
                 ;
             ;
             assert not (forks[left] or forks[right]);
             forks[left] = True;
             forks[right] = True;
-            unlock(?mutex);
+            synch.release(?mutex);
 
             # dine
 
-            lock(?mutex);
+            synch.acquire(?mutex);
             forks[left] = False;
             forks[right] = False;
-            notify(?conds[left]);
-            notify(?conds[right]);
-            unlock(?mutex);
+            synch.notify(?conds[left]);
+            synch.notify(?conds[right]);
+            synch.release(?mutex);
 
             # think
         ;
     ;
 ;
-mutex = Lock();
-forks = dict{ False for i in {1..N} };
-conds = dict{ Condition(?mutex) for i in {1..N} };
 for i in {1..N}:
     spawn diner(i);
 ;

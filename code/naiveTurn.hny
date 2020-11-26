@@ -1,15 +1,17 @@
+turn = 0;
+
 def process(self):
     while choose({ False, True }):
         # Enter critical section
+        turn = 1 - self;
         await turn == self;
 
         # Critical section
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
 
         # Leave critical section
-        turn = 1 - self;
     ;
 ;
-turn = 0;
+
 spawn process(0);
 spawn process(1);

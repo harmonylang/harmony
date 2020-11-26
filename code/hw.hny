@@ -1,5 +1,8 @@
 const MAX_ITEMS = 3;
 
+back = 0;
+items = [ () for i in {0..MAX_ITEMS} ];
+
 def inc(pcnt):
     atomic:
         result = !pcnt;
@@ -27,8 +30,6 @@ def consume():
     ;
     result = result[0];     # convert (item,) into item
 ;
-back = 0;
-items = [ () for i in {0..MAX_ITEMS} ];
 
 for i in {1..MAX_ITEMS}:
     spawn produce(i);

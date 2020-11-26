@@ -1,5 +1,9 @@
 import synch;
 
+mutex = Lock();
+count = 0;
+done = False;
+
 def increment():
     let prior = setintlevel(True):
         count += 1;
@@ -16,7 +20,5 @@ def main():
     await done;
     assert count == 2;
 ;
-mutex = Lock();
-count = 0;
-done = False;
+
 spawn main();

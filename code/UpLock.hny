@@ -1,18 +1,20 @@
-import synch;
+from synch import Lock, acquire, release;
+
+count = 0;
+countlock = Lock();
+done = [ False, False ];
 
 def process(self):
-    lock(?countlock);
+    acquire(?countlock);
     count = count + 1;
-    unlock(?countlock);
+    release(?countlock);
     done[self] = True;
 ;
 def main(self):
     await all(done);
     assert count == 2, count;
 ;
-count = 0;
-countlock = Lock();
-done = [ False, False ];
+
 spawn process(0);
 spawn process(1);
 spawn main();

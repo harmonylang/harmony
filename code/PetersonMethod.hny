@@ -12,13 +12,15 @@ def P_mutex():
 
 #### The code above can go into its own Harmony module ####
 
-def process(self):
+mutex = P_mutex();
+
+def thread(self):
     while choose({ False, True }):
         P_enter(?mutex, self);
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
         P_exit(?mutex, self);
     ;
 ;
-mutex = P_mutex();
-spawn process(0);
-spawn process(1);
+
+spawn thread(0);
+spawn thread(1);

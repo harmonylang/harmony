@@ -1,5 +1,8 @@
 # Broken Peterson's algorithm by swapping first two assignments
 
+flags = [ False, False ];
+turn = choose({0, 1});
+
 def process(self):
     while choose({ False, True }):
         turn = 1 - self;
@@ -9,7 +12,6 @@ def process(self):
         flags[self] = False;
     ;
 ;
-flags = [ False, False ];
-turn = choose({0, 1});
+
 spawn process(0);
 spawn process(1);

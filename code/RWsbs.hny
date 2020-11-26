@@ -1,40 +1,42 @@
-import synch;
+from synch import BinSema, acquire, release;
 
-def V_one():
-    if (w_entered == 0) and (r_waiting > 0): V(?r_sema);
-    elif ((r_entered + w_entered) == 0) and (w_waiting > 0): V(?w_sema);
-    else: V(?mutex);
+def RWlock():
+    result = dict{
+            .nreaders: 0, .nwriters: 0, .mutex: BinSema(False),
+            .r_gate: dict{ .sema: BinSema(True), .count: 0 },
+            .w_gate: dict{ .sema: BinSema(True), .count: 0 } }
     ;
 ;
-def acquire_rlock():
-    P(?mutex);
-    if w_entered > 0:
-        r_waiting += 1;
-        V(?mutex); P(?r_sema);
-        r_waiting -= 1;
+def release_one(rw):
+    if (rw->nwriters == 0) and (rw->r_gate.count > 0):
+        release(?rw->r_gate.sema);
+    elif ((rw->nreaders + rw->nwriters) == 0) and (rw->w_gate.count > 0):
+        release(?rw->w_gate.sema);
+    else:
+        release(?rw->mutex);
     ;
-    r_entered += 1;
-    V_one();
 ;
-def release_rlock():
-    P(?mutex);
-    r_entered -= 1;
-    V_one();
-;
-def acquire_wlock():
-    P(?mutex);
-    if (r_entered + w_entered) > 0:
-        w_waiting += 1;
-        V(?mutex); P(?w_sema);
-        w_waiting -= 1;
+def read_acquire(rw):
+    acquire(?rw->mutex);
+    if rw->nwriters > 0:
+        rw->r_gate.count += 1; release_one(rw);
+        acquire(?rw->r_gate.sema); rw->r_gate.count -= 1;
     ;
-    w_entered += 1;
-    V_one();
+    rw->nreaders += 1;
+    release_one(rw);
 ;
-def release_wlock():
-    P(?mutex);
-    w_entered -= 1;
-    V_one();
+def read_release(rw):
+    acquire(?rw->mutex); rw->nreaders -= 1; release_one(rw);
 ;
-mutex, r_sema, w_sema = Semaphore(1), Semaphore(0), Semaphore(0);
-r_entered, r_waiting, w_entered, w_waiting = 0, 0, 0, 0;
+def write_acquire(rw):
+    acquire(?rw->mutex);
+    if (rw->nreaders + rw->nwriters) > 0:
+        rw->w_gate.count += 1; release_one(rw);
+        acquire(?rw->w_gate.sema); rw->w_gate.count -= 1;
+    ;
+    rw->nwriters += 1;
+    release_one(rw);
+;
+def write_release(rw):
+    acquire(?rw->mutex); rw->nwriters -= 1; release_one(rw);
+;

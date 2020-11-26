@@ -1,3 +1,5 @@
+x, y = 0, 100;
+
 def setX(a):
     x = a;
     y = 100 - a;
@@ -10,6 +12,6 @@ def checker():
         assert (xy[0] + xy[1]) == 100, xy;
     ;
 ;
-x, y = 0, 100;
+
 spawn checker();
 spawn setX(50);

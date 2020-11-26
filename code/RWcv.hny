@@ -1,36 +1,41 @@
-import synch;
+from synch import *;
 
-def acquire_rlock():
-    lock(?rwlock);
-    while nwriters > 0:
-        wait(?rcond);
+def RWlock():
+    result =
+        dict{
+            .nreaders: 0, .nwriters: 0, .mutex: Lock(),
+            .r_cond: Condition(), .w_cond: Condition()
+        }
     ;
-    nreaders += 1;
-    unlock(?rwlock);
 ;
-def release_rlock():
-    lock(?rwlock);
-    nreaders -= 1;
-    if nreaders == 0:
-        notify(?wcond);
+def read_acquire(rw):
+    acquire(?rw->mutex);
+    while rw->nwriters > 0:
+        wait(?rw->r_cond, ?rw->mutex);
     ;
-    unlock(?rwlock);
+    rw->nreaders += 1;
+    release(?rw->mutex);
 ;
-def acquire_wlock():
-    lock(?rwlock);
-    while (nreaders + nwriters) > 0:
-        wait(?wcond);
+def read_release(rw):
+    acquire(?rw->mutex);
+    rw->nreaders -= 1;
+    if rw->nreaders == 0:
+        notify(?rw->w_cond);
     ;
-    nwriters = 1;
-    unlock(?rwlock);
+    release(?rw->mutex);
 ;
-def release_wlock():
-    lock(?rwlock);
-    nwriters = 0;
-    notifyAll(?rcond);
-    notify(?wcond);
-    unlock(?rwlock);
+def write_acquire(rw):
+    acquire(?rw->mutex);
+    while (rw->nreaders + rw->nwriters) > 0:
+        wait(?rw->w_cond, ?rw->mutex);
+    ;
+    rw->nwriters = 1;
+    release(?rw->mutex);
 ;
-rwlock = Lock();
-rcond, wcond = Condition(?rwlock), Condition(?rwlock);
-nreaders, nwriters = 0, 0;
+def write_release(rw):
+    acquire(?rw->mutex);
+    rw->nwriters = 0;
+    notifyAll(?rw->r_cond);
+    notify(?rw->w_cond);
+    release(?rw->mutex);
+;

@@ -38,26 +38,26 @@ table td, table th {
 <col style='width:50%'>
 <col style='width:50%'>
 <tr><td colspan='2'>
-<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: process failure</th><th></th>
+<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: Process Failure</th><th></th>
 <th>Shared Variable</th>
 <col style='width:15%'>
 <tr><th>Process</th><th>Steps</th><th></th>
 <td align='center' style='font-style: italic'>lockTaken</td>
 </tr><tr><td><td></tr>
-<tr><td><a href='javascript:rowshow(2,1)'>__init__/()</a></td>
-<td><a href='#P0'>0</a> <a href='#P27'>27-37</a></td><td></td>
+<tr><td>P0: <a href='javascript:rowshow(2,1)'>__init__/()</a></td>
+<td><a href='#P0'>0-2</a> <a href='#P30'>30-38</a></td><td></td>
 <td align='center'>False</td>
 </tr>
-<tr><td><a href='javascript:rowshow(3,7)'>process/0</a></td>
-<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-6</a> <a href='#P8'>8</a></td><td></td>
+<tr><td>P1: <a href='javascript:rowshow(3,7)'>process/0</a></td>
+<td><a href='#P3'>3-4</a> <a href='#P5'>5</a>(choose True) <a href='#P6'>6-9</a></td><td></td>
 <td align='center'>False</td>
 </tr>
-<tr><td><a href='javascript:rowshow(4,33)'>process/1</a></td>
-<td><a href='#P1'>1-2</a> <a href='#P3'>3</a>(choose True) <a href='#P4'>4-6</a> <a href='#P8'>8-9</a></td><td></td>
+<tr><td>P2: <a href='javascript:rowshow(4,33)'>process/1</a></td>
+<td><a href='#P3'>3-4</a> <a href='#P5'>5</a>(choose True) <a href='#P6'>6-10</a></td><td></td>
 <td align='center'>True</td>
 </tr>
-<tr><td><a href='javascript:rowshow(5,49)'>process/0</a></td>
-<td><a href='#P9'>9-20</a></td><td></td>
+<tr><td>P1: <a href='javascript:rowshow(5,49)'>process/0</a></td>
+<td><a href='#P10'>10-22</a></td><td></td>
 <td align='center'>True</td>
 </tr>
 </table>
@@ -70,212 +70,215 @@ table td, table th {
 <table border='1'>
 <tbody>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:1 def process(self): </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:1 lockTaken = False; </th>
 </tr><tr>
 <td><a name='P0'> 0 </a></td><td>
-<span title='set program counter to 27'>
-<a href='#P27'> Jump 27 </a>
+<span title='push constant False'>
+Push False
 </span></td></tr>
 <tr>
 <td><a name='P1'> 1 </a></td><td>
+<span title='pop a value and store it in shared variable lockTaken'>
+Store lockTaken
+</span></td></tr>
+<tr>
+<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:3 def process(self): </th>
+</tr><tr>
+<td><a name='P2'> 2 </a></td><td>
+<span title='set program counter to 30'>
+<a href='#P30'> Jump 30 </a>
+</span></td></tr>
+<tr>
+<td><a name='P3'> 3 </a></td><td>
 <span title='start of method process'>
 Frame process self
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:2     while choose({ False, True }): </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:4     while choose({ False, True }): </th>
 </tr><tr>
-<td><a name='P2'> 2 </a></td><td>
+<td><a name='P4'> 4 </a></td><td>
 <span title='push constant { False, True }'>
 Push { False, True }
 </span></td></tr>
 <tr>
-<td><a name='P3'> 3 </a></td><td>
+<td><a name='P5'> 5 </a></td><td>
 <span title='pop a set value and push one of its elements'>
 Choose
 </span></td></tr>
 <tr>
-<td><a name='P4'> 4 </a></td><td>
-<span title='pop a value and jump to 26 if the value is False'>
-<a href='#P26'> JumpCond False 26 </a>
+<td><a name='P6'> 6 </a></td><td>
+<span title='pop a value and jump to 29 if the value is False'>
+<a href='#P29'> JumpCond False 29 </a>
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:4         while lockTaken: </th>
+<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:6         await not lockTaken; </th>
 </tr><tr>
-<td><a name='P5'> 5 </a></td><td>
+<td><a name='P7'> 7 </a></td><td>
 <span title='push value of shared variable lockTaken'>
 Load lockTaken
 </span></td></tr>
 <tr>
-<td><a name='P6'> 6 </a></td><td>
-<span title='pop a value and jump to 8 if the value is False'>
-<a href='#P8'> JumpCond False 8 </a>
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:5             pass; </th>
-</tr><tr>
-<td><a name='P7'> 7 </a></td><td>
-<span title='set program counter to 5'>
-<a href='#P5'> Jump 5 </a>
+<td><a name='P8'> 8 </a></td><td>
+<span title='pop a value and jump to 7 if the value is True'>
+<a href='#P7'> JumpCond True 7 </a>
 </span></td></tr>
 <tr>
 <th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:7         lockTaken = True; </th>
 </tr><tr>
-<td><a name='P8'> 8 </a></td><td>
+<td><a name='P9'> 9 </a></td><td>
 <span title='push constant True'>
 Push True
 </span></td></tr>
 <tr>
-<td><a name='P9'> 9 </a></td><td>
+<td><a name='P10'> 10 </a></td><td>
 <span title='pop a value and store it in shared variable lockTaken'>
 Store lockTaken
 </span></td></tr>
 <tr>
 <th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:10         @cs: assert atLabel.cs == dict{ nametag(): 1 }; </th>
 </tr><tr>
-<td><a name='P10'> 10 </a></td><td>
-<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
-AtomicInc
-</span></td></tr>
-<tr>
 <td><a name='P11'> 11 </a></td><td>
 <span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
 AtomicInc
 </span></td></tr>
 <tr>
 <td><a name='P12'> 12 </a></td><td>
+<span title='increment readonly counter of context; process can&#x27;t mutate shared variables if &gt; 0'>
+ReadonlyInc
+</span></td></tr>
+<tr>
+<td><a name='P13'> 13 </a></td><td>
+<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
+AtomicInc
+</span></td></tr>
+<tr>
+<td><a name='P14'> 14 </a></td><td>
 <span title='push constant .cs'>
 Push .cs
 </span></td></tr>
 <tr>
-<td><a name='P13'> 13 </a></td><td>
+<td><a name='P15'> 15 </a></td><td>
 <span title='pop 1 value and push the result of applying atLabel'>
 1-ary atLabel
 </span></td></tr>
 <tr>
-<td><a name='P14'> 14 </a></td><td>
+<td><a name='P16'> 16 </a></td><td>
 <span title='push constant ()'>
 Push ()
 </span></td></tr>
 <tr>
-<td><a name='P15'> 15 </a></td><td>
+<td><a name='P17'> 17 </a></td><td>
 <span title='pop 1 value and push the result of applying nametag'>
 1-ary nametag
 </span></td></tr>
 <tr>
-<td><a name='P16'> 16 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P17'> 17 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
 <td><a name='P18'> 18 </a></td><td>
+<span title='push constant 1'>
+Push 1
+</span></td></tr>
+<tr>
+<td><a name='P19'> 19 </a></td><td>
+<span title='push constant 1'>
+Push 1
+</span></td></tr>
+<tr>
+<td><a name='P20'> 20 </a></td><td>
 <span title='pop a number n and n key/value pairs and push a dictionary'>
 Dict
 </span></td></tr>
 <tr>
-<td><a name='P19'> 19 </a></td><td>
+<td><a name='P21'> 21 </a></td><td>
 <span title='pop 2 values and push the result of applying =='>
 2-ary ==
 </span></td></tr>
 <tr>
-<td><a name='P20'> 20 </a></td><td>
+<td><a name='P22'> 22 </a></td><td>
 <span title='pop a condition and raise exception if condition is false'>
 Assert
 </span></td></tr>
 <tr>
-<td><a name='P21'> 21 </a></td><td>
+<td><a name='P23'> 23 </a></td><td>
 <span title='decrement atomic counter of context'>
 AtomicDec
 </span></td></tr>
 <tr>
-<td><a name='P22'> 22 </a></td><td>
+<td><a name='P24'> 24 </a></td><td>
+<span title='decrement readonly counter of context'>
+ReadonlyDec
+</span></td></tr>
+<tr>
+<td><a name='P25'> 25 </a></td><td>
 <span title='decrement atomic counter of context'>
 AtomicDec
 </span></td></tr>
 <tr>
 <th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:13         lockTaken = False; </th>
 </tr><tr>
-<td><a name='P23'> 23 </a></td><td>
+<td><a name='P26'> 26 </a></td><td>
 <span title='push constant False'>
 Push False
 </span></td></tr>
 <tr>
-<td><a name='P24'> 24 </a></td><td>
+<td><a name='P27'> 27 </a></td><td>
 <span title='pop a value and store it in shared variable lockTaken'>
 Store lockTaken
 </span></td></tr>
 <tr>
-<td><a name='P25'> 25 </a></td><td>
-<span title='set program counter to 2'>
-<a href='#P2'> Jump 2 </a>
+<td><a name='P28'> 28 </a></td><td>
+<span title='set program counter to 4'>
+<a href='#P4'> Jump 4 </a>
 </span></td></tr>
 <tr>
-<td><a name='P26'> 26 </a></td><td>
+<td><a name='P29'> 29 </a></td><td>
 <span title='restore caller method state and push result'>
 Return
 </span></td></tr>
 <tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:16 lockTaken = False; </th>
-</tr><tr>
-<td><a name='P27'> 27 </a></td><td>
-<span title='push constant False'>
-Push False
-</span></td></tr>
-<tr>
-<td><a name='P28'> 28 </a></td><td>
-<span title='pop a value and store it in shared variable lockTaken'>
-Store lockTaken
-</span></td></tr>
-<tr>
 <th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:17 spawn process(0); </th>
 </tr><tr>
-<td><a name='P29'> 29 </a></td><td>
+<td><a name='P30'> 30 </a></td><td>
 <span title='push constant 0'>
 Push 0
 </span></td></tr>
 <tr>
-<td><a name='P30'> 30 </a></td><td>
+<td><a name='P31'> 31 </a></td><td>
 <span title='push a copy of the top value on the stack'>
 Dup
 </span></td></tr>
 <tr>
-<td><a name='P31'> 31 </a></td><td>
-<span title='push constant PC(1)'>
-Push <a href='#P1'> PC(1) </a>
+<td><a name='P32'> 32 </a></td><td>
+<span title='push constant PC(3)'>
+Push <a href='#P3'> PC(3) </a>
 </span></td></tr>
 <tr>
-<td><a name='P32'> 32 </a></td><td>
+<td><a name='P33'> 33 </a></td><td>
 <span title='pop a pc, argument, and tag and spawn a new process'>
 Spawn
 </span></td></tr>
 <tr>
 <th colspan='3' align='left' style='background-color: yellow'>naiveLock.hny:18 spawn process(1); </th>
 </tr><tr>
-<td><a name='P33'> 33 </a></td><td>
+<td><a name='P34'> 34 </a></td><td>
 <span title='push constant 1'>
 Push 1
 </span></td></tr>
 <tr>
-<td><a name='P34'> 34 </a></td><td>
+<td><a name='P35'> 35 </a></td><td>
 <span title='push a copy of the top value on the stack'>
 Dup
 </span></td></tr>
 <tr>
-<td><a name='P35'> 35 </a></td><td>
-<span title='push constant PC(1)'>
-Push <a href='#P1'> PC(1) </a>
+<td><a name='P36'> 36 </a></td><td>
+<span title='push constant PC(3)'>
+Push <a href='#P3'> PC(3) </a>
 </span></td></tr>
 <tr>
-<td><a name='P36'> 36 </a></td><td>
+<td><a name='P37'> 37 </a></td><td>
 <span title='pop a pc, argument, and tag and spawn a new process'>
 Spawn
 </span></td></tr>
 <tr>
-<td><a name='P37'> 37 </a></td><td>
+<td><a name='P38'> 38 </a></td><td>
 <span title='restore caller method state and push result'>
 Return
 </span></td></tr>
@@ -299,12 +302,12 @@ Return
 <table id='loc1' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P20'>20</a> 
+<a href='#P22'>22</a> 
 <a href='javascript:setrow(1,0)'>
 process(0)</a>:
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
 </td></tr>
-<tr style='color: red'><td>Harmony Assertion failed </td></tr>
+<tr style='color: red'><td>Harmony Assertion (file=code/naiveLock.hny, line=10) failed</td></tr>
 </table>
 </td>
 <td>
@@ -327,7 +330,7 @@ process(0)</a>:
 <table id='loc2' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P10'>10</a> 
+<a href='#P11'>11</a> 
 <a href='javascript:setrow(2,0)'>
 process(1)</a>:
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
@@ -359,12 +362,12 @@ process(1)</a>:
 <tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc3' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P10'>10</a> 
+<a href='#P11'>11</a> 
 <a href='javascript:setrow(3,0)'>
 process(0)</a>:
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
@@ -386,12 +389,12 @@ process(0)</a>:
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc4' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P10'>10</a> 
+<a href='#P11'>11</a> 
 <a href='javascript:setrow(4,0)'>
 process(1)</a>:
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
@@ -423,12 +426,12 @@ process(1)</a>:
 <tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc5' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(5,0)'>
 process(0)</a>:
         lockTaken = True;
@@ -450,12 +453,12 @@ process(0)</a>:
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc6' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P10'>10</a> 
+<a href='#P11'>11</a> 
 <a href='javascript:setrow(6,0)'>
 process(1)</a>:
         @cs: assert atLabel.cs == dict{ nametag(): 1 };
@@ -492,7 +495,7 @@ process(1)</a>:
 <table id='loc7' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(7,0)'>
 process(0)</a>:
         lockTaken = True;
@@ -519,7 +522,7 @@ process(0)</a>:
 <table id='loc8' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(8,0)'>
 process(1)</a>:
         lockTaken = True;
@@ -556,7 +559,7 @@ process(1)</a>:
 <table id='loc9' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(9,0)'>
 process(0)</a>:
         lockTaken = True;
@@ -578,15 +581,15 @@ process(0)</a>:
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc10' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P5'>5</a> 
+<a href='#P7'>7</a> 
 <a href='javascript:setrow(10,0)'>
 process(1)</a>:
-        while lockTaken:
+        await not lockTaken;
 </td></tr>
 </table>
 </td>
@@ -620,7 +623,7 @@ process(1)</a>:
 <table id='loc11' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(11,0)'>
 process(0)</a>:
         lockTaken = True;
@@ -647,7 +650,7 @@ process(0)</a>:
 <table id='loc12' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P3'>3</a> 
+<a href='#P5'>5</a> 
 <a href='javascript:setrow(12,0)'>
 process(1)</a>:
     while choose({ False, True }):
@@ -684,7 +687,7 @@ process(1)</a>:
 <table id='loc13' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P9'>9</a> 
+<a href='#P10'>10</a> 
 <a href='javascript:setrow(13,0)'>
 process(0)</a>:
         lockTaken = True;
@@ -706,12 +709,12 @@ process(0)</a>:
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc14' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P1'>1</a> 
+<a href='#P3'>3</a> 
 <a href='javascript:setrow(14,0)'>
 </a>:
 def process(self):
@@ -735,15 +738,15 @@ def process(self):
 <tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc15' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P5'>5</a> 
+<a href='#P7'>7</a> 
 <a href='javascript:setrow(15,0)'>
 process(0)</a>:
-        while lockTaken:
+        await not lockTaken;
 </td></tr>
 </table>
 </td>
@@ -762,12 +765,12 @@ process(0)</a>:
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc16' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P1'>1</a> 
+<a href='#P3'>3</a> 
 <a href='javascript:setrow(16,0)'>
 </a>:
 def process(self):
@@ -796,7 +799,7 @@ def process(self):
 <table id='loc17' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P3'>3</a> 
+<a href='#P5'>5</a> 
 <a href='javascript:setrow(17,0)'>
 process(0)</a>:
     while choose({ False, True }):
@@ -823,7 +826,7 @@ process(0)</a>:
 <table id='loc18' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P1'>1</a> 
+<a href='#P3'>3</a> 
 <a href='javascript:setrow(18,0)'>
 </a>:
 def process(self):
@@ -847,12 +850,12 @@ def process(self):
 <tr><td></td><td></td><td></td><td></td></tr>
 <tr>
 <td>process/0</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc19' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P1'>1</a> 
+<a href='#P3'>3</a> 
 <a href='javascript:setrow(19,0)'>
 </a>:
 def process(self):
@@ -866,12 +869,12 @@ def process(self):
 </tr>
 <tr>
 <td>process/1</td>
-<td>blocked</td>
+<td>running</td>
 <td>
 <table id='loc20' border='1' width='100%'>
 <tr style='background-color: #A5FF33'>
 <td>
-<a href='#P1'>1</a> 
+<a href='#P3'>3</a> 
 <a href='javascript:setrow(20,0)'>
 </a>:
 def process(self):
@@ -903,7 +906,7 @@ def process(self):
 <a href='#P0'>0</a> 
 <a href='javascript:setrow(21,0)'>
 </a>:
-def process(self):
+lockTaken = False;
 </td></tr>
 </table>
 </td>

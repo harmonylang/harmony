@@ -1,12 +1,12 @@
 import queue;
 
 def sender(q, v):
-    Qenqueue(q, v);
+    queue.enqueue(q, v);
 ;
 def receiver(q):
     let done = False:
         while not done:
-            let v = Qdequeue(q):
+            let v = queue.dequeue(q):
                 done = v == ();
                 assert done or (v[0] in { 1, 2 });
             ;
@@ -14,8 +14,8 @@ def receiver(q):
     ;
 ;
 
-queue = Qnew();
-spawn sender(?queue, 1);
-spawn sender(?queue, 2);
-spawn receiver(?queue);
-spawn receiver(?queue);
+testq = queue.Queue();
+spawn sender(?testq, 1);
+spawn sender(?testq, 2);
+spawn receiver(?testq);
+spawn receiver(?testq);

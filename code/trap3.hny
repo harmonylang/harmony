@@ -1,5 +1,9 @@
 import synch;
 
+countlock = Lock();
+count = 0;
+done = False;
+
 def handler():
     lock(?countlock);
       count += 1;
@@ -14,7 +18,5 @@ def main():
     await done;
     assert count == 2;
 ;
-countlock = Lock();
-count = 0;
-done = False;
+
 spawn main();

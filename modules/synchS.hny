@@ -1,55 +1,54 @@
 import list;
 
-def Lock():
-    result = dict{ .locked: False, .suspended: [] };
+def BinSema(acquired):
+    result = dict{ .acquired: acquired, .suspended: [] };
 ;
-def lock(lk):
+def Lock():
+    result = BinSema(False);
+;
+def acquire(lk):
     atomic:
-        if lk->locked:
-            stop lk->suspended;     # wait in the hall
-            assert lk->locked;
+        if lk->acquired:
+            stop lk->suspended;
+            assert lk->acquired;
         else:
-            lk->locked = True;      # enter the bathroom
+            lk->acquired = True;
         ;
     ;
 ;
-def unlock(lk):
+def release(lk):
     atomic:
         if lk->suspended == []:
-            lk->locked = False;     # leave the bathroom
+            lk->acquired = False;
         else:
-            # while leaving bathroom, let somebody from the hall into the bathroom
-            go (head(lk->suspended)) ();
-            lk->suspended = tail(lk->suspended);
+            go (list.head(lk->suspended)) ();
+            lk->suspended = list.tail(lk->suspended);
         ;
     ;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: [] };
+    result = [];
 ;
-def wait(c):
+def wait(c, lk):
     atomic:
-        unlock(c->lock);    # leave bathroom
-        stop c->waiters;    # enter bedroom
+        release(lk);
+        stop !c;
     ;
+    acquire(lk);
 ;
 def notify(c):
     atomic:
-        let lk, waiters = c->lock, c->waiters:
-            if waiters != []:
-                # move somebody from the bedroom to the hall
-                lk->suspended += [head(waiters),];
-                c->waiters = tail(waiters);
-            ;
+        if !c != []:
+            go (list.head(!c)) ();
+            !c = list.tail(!c);
         ;
     ;
 ;
 def notifyAll(c):
     atomic:
-        # move everybody in the bedroom to the hall
-        let lk, waiters = c->lock, c->waiters:
-            lk->suspended += waiters;
-            c->waiters = [];
+        while !c != []:
+            go (list.head(!c)) ();
+            !c = list.tail(!c);
         ;
     ;
 ;
@@ -71,7 +70,7 @@ def V(sema):
             if waiters != []:
                 assert cnt == 0;
                 go (waiters[0]) ();
-                (!sema).waiters = tail(waiters);
+                (!sema).waiters = list.tail(waiters);
             else:
                 (!sema).count = cnt + 1;
             ;
@@ -79,7 +78,7 @@ def V(sema):
     ;
 ;
 def Queue():
-    result = dict{ list: [], waiters: [] };
+    result = dict{ .list: [], .waiters: [] };
 ;
 def dequeue(q):
     atomic:
@@ -87,18 +86,18 @@ def dequeue(q):
             if list == []:
                 stop q->waiters;
             ;
-            result = head(list);
-            q->list = tail(list);
+            result = list.head(list);
+            q->list = list.tail(list);
         ;
     ;
 ;
 def enqueue(q, item):
     atomic:
-        q->list = append(q->list, item);
+        q->list = list.append(q->list, item);
         let waiters = q->waiters:
             if waiters != []:
                 go (waiters[0]) item;
-                q->waiters = tail(waiters);
+                q->waiters = list.tail(waiters);
             ;
         ;
     ;

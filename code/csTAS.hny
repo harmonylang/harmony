@@ -1,3 +1,5 @@
+lock = False;
+
 def tas(s):
     atomic:
         result = !s;
@@ -11,7 +13,7 @@ def process():
         lock = False;
     ;
 ;
-lock = False;
+
 for i in {1..10}:
     spawn process();
 ;

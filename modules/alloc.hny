@@ -1,25 +1,26 @@
 import synch;
 
+pool = [];
+flist = None;           # free list
+lock = synch.Lock();
+
 def malloc(v):
-    lock(?alloc_lock);
-    if alloc_flist == None:
-        let i = len(alloc_pool):
-            alloc_pool[i] = None;
-            result = ?alloc_pool[i];
+    synch.acquire(?lock);
+    if flist == None:
+        let i = len(pool):
+            pool[i] = None;
+            result = ?pool[i];
         ;
     else:
-        result = alloc_flist;
-        alloc_flist = !result;
+        result = flist;
+        flist = !result;
     ;
-    unlock(?alloc_lock);
+    synch.release(?lock);
     !result = v;
 ;
 def free(r):
-    lock(?alloc_lock);
-    !r = alloc_flist;
-    alloc_flist = r;
-    unlock(?alloc_lock);
+    synch.acquire(?lock);
+    !r = flist;
+    flist = r;
+    synch.release(?lock);
 ;
-alloc_pool = [];
-alloc_flist = None;           # free list
-alloc_lock = Lock();

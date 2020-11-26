@@ -5,6 +5,10 @@ const N_CUSTOMERS = 2;
 const N_ATMS = 2;
 const MAX_BALANCE = 1;
 
+accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
+                    for acct in {0..N_ACCTS-1} ]
+;
+
 def atm_check_balance(acct):    # return the balance on acct
     lock(?accounts[acct].lock);
     result = accounts[acct].balance;
@@ -27,9 +31,7 @@ def customer(atm, acct, amount):
 def checker():
     assert min(accounts[acct].balance for acct in {0..N_ACCTS-1}) >= 0;
 ;
-accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
-                    for acct in {0..N_ACCTS-1} ]
-;
+
 spawn checker();
 for i in {1..N_ATMS}:
     spawn customer(i, choose({0..N_ACCTS-1}), choose({0..MAX_BALANCE}));

@@ -51,51 +51,51 @@ XX\=XXX\=XXX\kill
 {
   name=actor model,
   description={is a concurrency model where there are no shared variables, only
-      processes with private variables that communicate through message passing}
+      threads with private variables that communicate through message passing}
 }
 \newglossaryentry{atomicity}
 {
   name=atomicity,
   description={describes that a certain machine instruction or sequence of machine
-    instructions by a process is executed indivisibly and cannot be interleaved with 
-    machine instructions of another process}
+    instructions is executed indivisibly by a thread and cannot be interleaved with 
+    machine instructions of another thread}
 }
 \newglossaryentry{barrier synchronization}
 {
   name=barrier synchronization,
-  description={is when a set of processes execute in rounds, waiting for one another
+  description={is when a set of threads execute in rounds, waiting for one another
     to complete each round}
 }
-\newglossaryentry{blocked process}
+\newglossaryentry{blocked thread}
 {
-  name=blocked process,
-  description={is a process that cannot change the state or terminate or
-      can only do so after another process changes the state first.
-      For example, a process that is waiting for a lock to become available}
+  name=blocked thread,
+  description={is a thread that cannot change the state or terminate or
+      can only do so after another thread changes the state first.
+      For example, a thread that is waiting for a lock to become available}
 }
 \newglossaryentry{busy waiting}
 {
   name=busy waiting,
-  description={(aka spin-waiting) is when a process waits in a loop for some
+  description={(aka spin-waiting) is when a thread waits in a loop for some
       application-defined condition instead of blocking}
 }
 \newglossaryentry{concurrent execution}
 {
   name=concurrent execution,
-  description={(aka parallel execution) is when there are multiple processes executing and
+  description={(aka parallel execution) is when there are multiple threads executing and
       their machine instructions are interleaved in an unpredictable manner}
 }
 \newglossaryentry{condition variable}
 {
   name=condition variable,
-  description={a variable that keeps track of which processes are waiting for a
+  description={a variable that keeps track of which threads are waiting for a
     specific application-level condition.  The variable can be waited on as well
     as signaled or notified}
 }
 \newglossaryentry{context}
 {
   name=context,
-  description={(aka continuation) describes the state of a running process,
+  description={(aka continuation) describes the state of a running thread,
     including its program counter, the values of its variables (stored in its
     register), and the contents of its stack}
 }
@@ -103,20 +103,20 @@ XX\=XXX\=XXX\kill
 {
   name=conditional critical section,
   description={is a critical section with, besides mutual exclusion, additional conditions on
-      when a process is allowed to enter the critical section}
+      when a thread is allowed to enter the critical section}
 }
 \newglossaryentry{critical section}
 {
   name=critical section,
-  description={(aka critical region) is a set of instructions that only one process
+  description={(aka critical region) is a set of instructions that only one thread
     is allowed to execute at a time.  The instructions are, however, not executed
-    atomically, as other processes can continue to execute and access shared
+    atomically, as other threads can continue to execute and access shared
     variables}
 }
 \newglossaryentry{deadlock}
 {
   name=deadlock,
-  description={is when there are two or more processes waiting indefinitely for one
+  description={is when there are two or more threads waiting indefinitely for one
     another to release a resource}
 }
 \newglossaryentry{determinism}
@@ -128,7 +128,7 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{fairness}
 {
   name=fairness,
-  description={is when each process eventually can access each resource it needs to access
+  description={is when each thread eventually can access each resource it needs to access
     with high probability}
 }
 \newglossaryentry{interlock instruction}
@@ -141,7 +141,7 @@ XX\=XXX\=XXX\kill
 {
   name=invariant,
   description={is a binary predicate over states that must hold for every
-  reachable state of a process}
+  reachable state of a thread}
 }
 \newglossaryentry{linearizable}
 {
@@ -153,13 +153,13 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{lock}
 {
   name=lock,
-  description={an object that can be owned by at most one process at a time.  Useful
+  description={an object that can be owned by at most one thread at a time.  Useful
     for implementing mutual exclusion}
 }
 \newglossaryentry{machine instruction}
 {
   name=machine instruction,
-  description={is an atomic operation on the Harmony virtual machine, executed by a process}
+  description={is an atomic operation on the Harmony virtual machine, executed by a thread}
 }
 \newglossaryentry{model checking}
 {
@@ -176,32 +176,32 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{mutual exclusion}
 {
   name=mutual exclusion,
-  description={is the property that two processes never enter the same critical section}
+  description={is the property that two threads never enter the same critical section}
 }
 \newglossaryentry{non-blocking synchronization}
 {
   name=non-blocking synchronization,
   description={(aka wait-free synchronization) is when access to a shared resource can be
-      guaranteed in a bounded number of steps even if other processes are not making progress}
+      guaranteed in a bounded number of steps even if other threads are not making progress}
 }
-\newglossaryentry{process}
+\newglossaryentry{thread}
 {
-  name=process,
+  name=thread,
   description={is code in execution.  We do not make the distinction
-      between processes and threads.  A process has a current context and
+      between threads and threads.  A thread has a current context and
       updates its context every time it executes a machine instruction}
 }
-\newglossaryentry{process variable}
+\newglossaryentry{thread variable}
 {
-  name=process variable,
-  description={is a variable that is private to a single process and stored in
+  name=thread variable,
+  description={is a variable that is private to a single thread and stored in
         its register}
 }
 \newglossaryentry{producer/consumer problem}
 {
   name=producer/consumer problem,
-  description={is a synchronization problem whereby one or more producing processes
-    submit items and one or more consuming processes want to receive them.  No item
+  description={is a synchronization problem whereby one or more producing threads
+    submit items and one or more consuming threads want to receive them.  No item
     can get lost or forged or be delivered to more than one consumer, and producers
     and consumers should block if resources are exhausted}
 }
@@ -211,56 +211,56 @@ XX\=XXX\=XXX\kill
   description={describes a set of execution traces or histories that are allowed by
     a program.  Safety properties are properties in which ``no bad things happen,''
     such as violating mutual exclusion in a critical section.  Liveness properties are
-    properties where ``something good eventually happens,'' like processes being
+    properties where ``something good eventually happens,'' like threads being
     able to enter the critical section if they want to}
 }
 \newglossaryentry{race condition}
 {
   name=race condition,
-  description={describes when multiple processes access shared state concurrently,
+  description={describes when multiple threads access shared state concurrently,
     leading to undesirable outcomes}
 }
 \newglossaryentry{reader/writer lock}
 {
   name=reader/writer lock,
-  description={is a lock on a resource that can be held by multiple processes if they all 
+  description={is a lock on a resource that can be held by multiple threads if they all 
     only read the resource}
 }
 \newglossaryentry{semaphore}
 {
   name=semaphore,
   description={is a counter that can be atomically incremented and decremented,
-    but blocks the process until the counter is larger than zero first}
+    but blocks the thread until the counter is larger than zero first}
 }
 \newglossaryentry{sequential execution}
 {
   name=sequential execution,
-  description={is when there is just one process executing, as opposed to concurrent
+  description={is when there is just one thread executing, as opposed to concurrent
     execution}
 }
 \newglossaryentry{shared variable}
 {
   name=shared variable,
   description={is a variable that is stored in the memory of the Harmony virtual machine and
-      shared between multiple processes, as opposed to a process variable}
+      shared between multiple threads, as opposed to a thread variable}
 }
 \newglossaryentry{spinlock}
 {
   name=spinlock,
-  description={is an implementation of a lock whereby a process loops until the
-    lock is available, at which point the process atomically obtains the lock}
+  description={is an implementation of a lock whereby a thread loops until the
+    lock is available, at which point the thread atomically obtains the lock}
 }
 \newglossaryentry{stack machine}
 {
   name=stack machine,
-  description={is a model of computing where the state of a process is kept on
+  description={is a model of computing where the state of a thread is kept on
     a stack.  Harmony uses a combination of a stack machine and a register-based machine}
 }
 \newglossaryentry{starvation}
 {
   name=starvation,
-  description={is when a process cannot make progress because it is continuously
-    losing a competition with other processes to get access to a resource}
+  description={is when a thread cannot make progress because it is continuously
+    losing a competition with other threads to get access to a resource}
 }
 \newglossaryentry{state}
 {
@@ -271,10 +271,10 @@ XX\=XXX\=XXX\kill
 \newglossaryentry{step}
 {
   name=step,
-  description={is the execution of a machine instruction by a process, updating
+  description={is the execution of a machine instruction by a thread, updating
         its state.  Harmony distinguishes micro steps (machine instructions) and macro
         step (a sequence of instructions with at most one effect visible by
-        other processes)}
+        other threads)}
 }
 \newglossaryentry{thread safety}
 {
@@ -320,20 +320,18 @@ Creative Commons AttributionNonCommercial-ShareAlike 4.0 International
 
 Programming with concurrency is hard.  On the one hand concurrency
 can make programs faster than sequential ones, but having multiple
-processes (aka \emph{threads}\footnote{We
 \index{thread}%
-do not make a distinction between processes and threads.})
-read and update shared variables
+threads read and update shared variables
 \index{shared variable}%
 concurrently and synchronize with one another makes programs more
 complicated than programs where only one thing happens at a time.
-
+%
 \glsadd{concurrent execution}%
 \glsadd{shared variable}%
 \glsadd{sequential execution}%
 \glsadd{determinism}%
 \glsadd{atomicity}%
-
+%
 Why are concurrent
 programs more complicated than sequential ones?
 There are, at least, two reasons:
@@ -347,10 +345,11 @@ Bugs are typically easily reproducible and easy to track down, for example
 by instrumenting the program.
 On the other hand,
 the output of running concurrent programs depends on how the
-execution of the various processes are \emph{interleaved}.
+execution of the various threads are \emph{interleaved}.
 Some bugs may occur only occasionally and
 may never occur when the program is instrumented to find them
-(so-called \emph{Heisenbugs}).
+(so-called \emph{Heisenbugs}---overhead caused by instrumentation
+leads to timing changes that makes such bugs less likely to occur).
 \index{Heisenbug}%
 \item In a sequential program, each statement and each function can be
 thought of as happening \emph{atomically} (indivisibly)
@@ -358,7 +357,7 @@ thought of as happening \emph{atomically} (indivisibly)
 because there is no other activity interfering with their execution.
 Even though a statement or function may
 be compiled into multiple machine instructions, they are executed back-to-back
-until completion.  Not so with a concurrent program, where other processes
+until completion.  Not so with a concurrent program, where other threads
 may update memory locations while a statement or function is being executed.
 \end{itemize}
 The lack of determinism and atomicity in concurrent programs make them
@@ -382,7 +381,7 @@ The approach is based on \emph{model checking}:
 instead of relying
 on luck, Harmony will run \emph{all possible executions} of a particular
 test program.  So even if a bug is unlikely to occur, if the test
-\emph{can} expose the bug it \emph{will}.  Importantly, if the bug is
+\emph{can} expose the bug it \emph{will}.  Moreover, if the bug is
 found, the model checker precisely shows how to trigger the bug in
 the smallest number of steps.
 
@@ -400,7 +399,7 @@ reachable states.
 So if model checking does not prove a program correct, why is it
 useful?
 To answer that question, let us consider a sorting algorithm.
-Now suppose we create a test program, a model, that tries sorting
+Suppose we create a test program, a model, that tries sorting
 \emph{all} lists of up to five numbers chosen from the set
 \{ 1, 2, 3, 4, 5 \}.  Model checking proves that for those particular
 scenarios the sorting algorithm works: the output is a sorted
@@ -412,12 +411,13 @@ numbers are the same, lists that are already sorted or reversely
 sorted, etc.  If there is a bug in the sorting algorithm, most
 likely it would be triggered and the model checker would produce a
 scenario that would make it easy to find the source of the bug.
+
 However, if the model checker does not find any bugs, we do not
 know for sure that the algorithm works for lists with more than
 five numbers or for lists that have values other than the numbers
 1 through 5.  Still, we would expect that the likelihood that there
 are bugs remaining in the sorting algorithm is small.
-Note, however, that it would be easy to write a program
+That said, it would be easy to write a program
 that sorts all lists of up to five numbers correctly but fails to
 do so for a list of 6 numbers.  (Hint: simply use an \textbf{if}
 statement.)
@@ -426,7 +426,7 @@ statement.)
 
 While model checking does not in general prove an algorithm correct,
 it can help with proving an algorithm correct.
-The reason is that the correctness of many programs is built around
+The reason is that many correctness properties can be proved using
 \emph{invariants}:
 \index{invariant}%
 predicates that must hold for every state in the
@@ -473,7 +473,7 @@ The book proceeds as follows:
 language, as it provides the language for presenting synchronization
 problems and solutions.
 \item \autoref{ch:concurrent} illustrates the problem of
-concurrent programming through a simple example in which two processes
+concurrent programming through a simple example in which two threads
 are concurrently incrementing a counter.
 \item \autoref{ch:harmonymachine} presents the
 Harmony virtual machine to understand the problem
@@ -494,10 +494,10 @@ that supports locks and other synchronization primitives.
 data structures.
 \item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
 abstraction and implementation of \emph{reader/writer locks},
-which allow multiple processes in a critical section if they are
+which allow multiple threads in a critical section if they are
 all only executing read-only accesses.
 \autoref{ch:rdwrbusy} also discusses \emph{busy-waiting}, which is
-an easy but undesirable approach to synchronize processes.
+an easy but undesirable approach to synchronize threads.
 \item \autoref{ch:semaphore} introduces \emph{semaphores},
 a generalization of locks
 that is good not only for mutual exclusion but also for waiting for
@@ -507,24 +507,24 @@ certain application-level conditions.
 and various solutions.
 \item \autoref{ch:starvation} talks about \emph{starvation}:
 the problem that in some
-synchronization approaches processes may not be able to get access to a
+synchronization approaches threads may not be able to get access to a
 resource they need.
 \item \autoref{ch:monitors} presents
 \emph{monitors} and \emph{condition variables},
-another approach to process synchronication.
+another approach to thread synchronication.
 \item \autoref{ch:deadlock} describes \emph{deadlock}
-where a set of processes are indefinitely waiting for one another to
+where a set of threads are indefinitely waiting for one another to
 release a resource.
 \item \autoref{ch:actor} presents the \emph{actor model}
 and \emph{message passing} as an approach to synchronization.
-\item \autoref{ch:interrupts} discusses how to handle interrupts to a process,
-a problem closely related to synchronization among multiple processes.
+\item \autoref{ch:interrupts} discusses how to handle interrupts,
+a problem closely related to synchronization among multiple threads.
 \item \autoref{ch:abp} presents a problem and a solution to the distributed
-systems problem of having two processes communicate reliably over an unreliable
+systems problem of having two threads communicate reliably over an unreliable
 network.
 \item \autoref{ch:nonblocking} introduces \emph{non-blocking} or
 \emph{wait-free} synchronization algorithms,
-which prevent processes waiting for one another more than a bounded number of
+which prevent threads waiting for one another more than a bounded number of
 steps.
 \item \autoref{ch:barrier} describes \emph{barrier synchronization},
 useful in high-performance computing applications such as parallel simulations.
@@ -542,7 +542,7 @@ There are also some important differences:
 In Python semicolons are optional and rarely used.
 There is no syntactic significance to indentation in Harmony.
 Correct indentation in Harmony is encouraged but not enforced.
-Harmony only supports basic operator precedence or associativity.
+\item Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item Harmony does not (currently) support floating point, iterators, or I/O;
 Harmony does support \textbf{for} loops and various ``comprehensions.''
@@ -550,7 +550,7 @@ Harmony does support \textbf{for} loops and various ``comprehensions.''
 inheritance; Harmony has objects but does not support classes.  Harmony supports
 pointers to objects and methods.
 \end{itemize}
-There are also many unimportant ones that you will discover as
+There are also less important ones that you will discover as
 you get more familiar with programming in Harmony.
 
 \begin{figure}
@@ -585,7 +585,6 @@ $ harmony triangle.hny
 #states = 13 diameter = 1
 #components: 13
 no issues found
-Open file:///.../harmony.html for more information
 $
 \end{verbatim}
 \end{code}
@@ -611,7 +610,6 @@ $ harmony -c N=100 triangle.hny
 #states = 103 diameter = 1
 #components: 103
 no issues found
-Open file:///.../harmony.html for more information
 $
 \end{verbatim}
 \end{code}
@@ -627,11 +625,11 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 \chapter{The Problem of Concurrent Programming}
 \label{ch:concurrent}
 
-\glsadd{process}%
+\glsadd{thread}%
 
 Concurrent programming, aka multithreaded programming, involves multiple
-processes
-\index{process}%
+threads
+\index{thread}%
 running in parallel while sharing variables.
 \autoref{fig:inc} presents a simple example.
 The program
@@ -641,15 +639,17 @@ Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
 Method \texttt{main} waits until all \textit{done} flags are set to \texttt{True}.
 (\textbf{await} $c$ is semantically the same as \textbf{while not} $c$: \textbf{pass}.)
-After that, it verifies that the value of \textit{count} equals 2.
+After that, method \texttt{incrementer}
+verifies that the value of \textit{count} equals 2.
 Like Python, Harmony supports \texttt{assert} statements with two arguments:
 the first is a Boolean condition, and the second is a value that is
 reported if the condition fails, in this case
 the actual value of \textit{count}.
-The program spawns three processes.
+
+The program spawns three threads.
 The first runs \texttt{incrementer(0)}, the second runs
 \texttt{incrementer(1)}, and the last runs \texttt{main()}.
-Note that although the processes are \emph{spawned} one at a time,
+Note that although the threads are \emph{spawned} one at a time,
 they will execute concurrently.  It is, for example, quite possible
 that \texttt{incrementer(1)} finishes before \texttt{incrementer(0)}
 even gets going.
@@ -691,16 +691,18 @@ the machine must do at least three machine instructions.  Conceptually:
 \item store the value to the memory location.
 \end{enumerate}
 
-When running multiple processes, each essentially runs an instantiation of
+When running multiple threads, each essentially runs an instantiation of
 the machine, and they do so in parallel.  As they execute, their machine
 instructions are interleaved
 \index{interleaving}%
 in unspecified and often random ways.
-A program is correct if it works for any interleaving.
-Harmony will try all possible interleavings of the processes
+A program is correct if it works for any interleaving of threads.
+Harmony will try all possible interleavings of the threads
 executing machine instructions.
 
-The following is a possible interleaving of incrementers~0 and~1:
+If the threads run one at a time, then \textit{count} will be incremented
+twice and ends up being 2.  However, the following is also
+a possible interleaving of incrementers~0 and~1:
 \begin{enumerate}
 \item incrementer 0 loads the value of \textit{count}, which is 0;
 \item incrementer 1 loads the value of \textit{count}, which is still 0;
@@ -732,7 +734,7 @@ We could change the specification by changing the assertion as follows:
 \end{code}
 
 This would fix the issue, but more likely it is the program that must
-be fixed.
+be fixed, not the specification.
 
 \section*{Exercises}
 
@@ -863,7 +865,7 @@ Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
 is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same Harmony value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
-So if $x$ = \texttt{[ False, True ]},
+So if $x$ = \texttt{[False, True]},
 then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.  The expression \texttt{[False]} just means
@@ -895,9 +897,9 @@ A HVM has the following components:
 generated from a Harmony program.  The types of instructions will be described later.
 \item Shared memory: A HVM has just one memory location containing
 a Harmony value.
-\item Processes:  Any process
-can spawn an unbounded number of other processes and processes may terminate.
-Each process has an immutable (but not necessarily unique) \emph{name tag},
+\item Threads:  Any thread
+can spawn an unbounded number of other threads and threads may terminate.
+Each thread has an immutable (but not necessarily unique) \emph{name tag},
 \index{name tag}%
 a program counter,
 \index{program counter}%
@@ -907,31 +909,31 @@ and a single mutable general purpose \emph{register}
 that contains a Harmony value.
 \end{itemize}
 
-A name tag consists of the name of the main method of the process,
+A name tag consists of the name of the main method of the thread,
 along with an optional tag specified in the \texttt{spawn}
 \index{spawn statement}%
 \index{tag}%
 statement.
-The default tag is the first argument to the method.
+The default tag is the argument to the method.
 A name tag is represented as a dictionary with keys \texttt{.name}
 and \texttt{.tag}, but we shall often abbreviate it using the notation
 \texttt{name/tag}.
-For example, in \autoref{fig:inc}, the created processes have name tags
+For example, in \autoref{fig:inc}, the created threads have name tags
 \texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
 
 \glsadd{context}%
 
-The state of a process is called a \emph{context} (aka \emph{continuation}):
+The state of a thread is called a \emph{context} (aka \emph{continuation}):
 \index{context}%
 \index{continuation}%
-it contains the value of
+it contains the values of
 its name tag, program counter, stack, and register.
 The state of a HVM
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}%
 \index{multiset}%
-of contexts.  It is a multiset of contexts because two different processes can
-be in the same state.
+of contexts.  It is a multiset of contexts because two different threads can
+have the same context.
 The initial state of the Harmony memory is the empty dictionary, \texttt{dict\{\}}.
 The context bag has an initial context in it with name tag
 \texttt{\_\_init\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
@@ -941,48 +943,50 @@ Each machine instruction updates the state in some way.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-code/Up.hny:1 def incrementer(self):
-   0 Jump 25
-   1 Frame incrementer self
-code/Up.hny:2     count = count + 1;
-   2 Load count
-   3 Push 1
-   4 2-ary +
-   5 Store count
-code/Up.hny:3     done[self] = True;
-   6 Push ?done
-   7 LoadVar self
-   8 Address
-   9 Push True
-   10 Store
-   11 Return
-code/Up.hny:5 def main():
-   12 Jump 25
-   13 Frame main ()
-code/Up.hny:6     await all(done);
-   14 Load done
-   15 1-ary all
-   16 JumpCond False 14
-code/Up.hny:7     assert count == 2, count;
-   17 AtomicInc
-   18 Load count
-   19 Push 2
-   20 2-ary ==
-   21 Load count
-   22 Assert2
-   23 AtomicDec
-   24 Return
-code/Up.hny:9 count = 0;
-   25 Push 0
-   26 Store count
-code/Up.hny:10 done = [ False, False ];
-   27 Push [False, False]
-   28 Store done
-code/Up.hny:11 spawn incrementer(0);
-   29 Push 0
-   30 Dup
-   31 Push PC(1)
-   32 Spawn
+code/Up.hny:1 count = 0;
+   0 Push 0
+   1 Store count
+code/Up.hny:2 done = [ False, False ];
+   2 Push [False, False]
+   3 Store done
+code/Up.hny:4 def incrementer(self):
+   4 Jump 31
+   5 Frame incrementer self
+code/Up.hny:5     count = count + 1;
+   6 Load count
+   7 Push 1
+   8 2-ary +
+   9 Store count
+code/Up.hny:6     done[self] = True;
+   10 Push ?done
+   11 LoadVar self
+   12 Address
+   13 Push True
+   14 Store
+   15 Return
+code/Up.hny:8 def main():
+   16 Jump 31
+   17 Frame main ()
+code/Up.hny:9     await all(done);
+   18 Load done
+   19 1-ary all
+   20 JumpCond False 18
+code/Up.hny:10     assert count == 2, count;
+   21 ReadonlyInc
+   22 AtomicInc
+   23 Load count
+   24 Push 2
+   25 2-ary ==
+   26 Load count
+   27 Assert2
+   28 AtomicDec
+   29 ReadonlyDec
+   30 Return
+code/Up.hny:13 spawn incrementer(0);
+   31 Push 0
+   32 Dup
+   33 Push PC(5)
+   34 Spawn
 \end{verbatim}
 \end{code}
 \caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}.}
@@ -990,9 +994,9 @@ code/Up.hny:11 spawn incrementer(0);
 \end{figure}
 
 It may seem strange that there is only one memory location and that each
-process has only one register.  However, this is not a limitation because
+thread has only one register.  However, this is not a limitation because
 Harmony values are unbounded trees.
-Both the memory and the register of a process always contain
+Both the memory and the register of a thread always contain
 a dictionary that maps atoms to Harmony values.  We call this a \emph{directory}.
 \index{directory}%
 A directory represents the state of a collection of variables named by the atoms.
@@ -1012,15 +1016,14 @@ entries: \texttt{.count} and \texttt{.done}.  And the value of entry
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states = 71 diameter = 5
-==== Safety violation ====
-__init__/()   [0,25-41] 41 { count: 0, done: [False, False] }
-incrementer/0 [1-4]      5 { count: 0, done: [False, False] }
-incrementer/1 [1-11]    11 { count: 1, done: [False, True ] }
-incrementer/0 [5-11]    11 { count: 1, done: [True,  True ] }
-main/()       [13-22]   22 { count: 1, done: [True,  True ] }
->>> Harmony Assertion failed : 1
-Open file://.../harmony.html for more information
+#states = 71 diameter = 5                                                                              ==== Safety violation ====
+P0: __init__/()   [0-4,31-43] 43 { .count: 0, .done: [False, False] }
+P1: incrementer/0 [5-8]        9 { .count: 0, .done: [False, False] }
+P2: incrementer/1 [5-15]      15 { .count: 1, .done: [False, True ] }
+P1: incrementer/0 [9-15]      15 { .count: 1, .done: [True,  True ] }
+P3: main/()       [17-27]     27 { .count: 1, .done: [True,  True ] }
+>>> Harmony Assertion (file=code/Up.hny, line=10) failed: 1
+Open file:///Users/rvr/github/harmony.new/harmony.html for more information
 \end{verbatim}
 \end{code}
 \caption{The text output of running Harmony on \autoref{fig:inc}.}
@@ -1038,18 +1041,19 @@ like so:
 harmony -a Up.hny
 \end{verbatim}
 \end{code}
-Each process in the HVM is predominantly a \emph{stack machine},
+Each thread in the HVM is predominantly a \emph{stack machine},
 \index{stack machine}%
 but it also has a register.
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
-At first there is one process, with name tag \texttt{\_\_init\_\_/()},
+At first there is one thread, with name tag \texttt{\_\_init\_\_/()},
 that initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
-In this case, the first instruction is a \texttt{JUMP} instruction that sets the
-program counter to 25 (skipping over the code for the methods).
-At program counter 1 is the code for the \texttt{incrementer} method.
+In this case, it executes instructions 0 through 4 first.
+The last instruction is a \texttt{JUMP} instruction that sets the
+program counter to 31 (skipping over the code for the methods).
+At program counter 5 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
@@ -1057,14 +1061,14 @@ Appendix~\ref{ap:harmonybytecode} provides a list of all HVM machine instruction
 in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method and the
 names of its arguments.
-The code generated from $\mathit{count} := \mathit{count} + 1$ in line 2 of
+The code generated from $\mathit{count} := \mathit{count} + 1$ in line~6 of
 \texttt{Up.hny} is as follows (see \autoref{fig:inccode}):
 
-\begin{enumerate} \setcounter{enumi}{1}
+\begin{enumerate} \setcounter{enumi}{5}
 \item The \texttt{Load} instruction pushes the value of the
 \textit{count} variable onto the stack.
 \item the \texttt{Push} instruction pushes the constant 1
-onto the stack of the process.
+onto the stack of the thread.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
 It pops two values from the stack (the value of \textit{count} and 1),
 adds them, and pushes the result back onto the stack.
@@ -1073,22 +1077,22 @@ a Harmony value (the sum of the \textit{count} variable and 1) and
 stores it in the \textit{count} variable.
 \end{enumerate}
 
-Once initialization completes, any processes that were spawned can run.
-You can think of Harmony as trying every possible interleaving of processes executing
+Once initialization completes, any threads that were spawned can run.
+You can think of Harmony as trying every possible interleaving of threads executing
 instructions.
 \autoref{fig:incoutput} shows the output produced by running Harmony on the
 \texttt{Up.hny} program.
 
 \begin{figure}
-\includegraphics[width=\textwidth]{figures/Up1.png}
+\includegraphics[width=\textwidth]{figures/Up1.pdf}
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
 There are three sections.
 The top shows the steps to the problematic state.
 The bottom left shows the source code and bytecode
 of the program.
-The bottom right shows the state of each process after the selected step.
-Each row in the stack trace of a process shows the current program counter,
+The bottom right shows the state of each thread after the selected step.
+Each row in the stack trace of a thread shows the current program counter,
 the method that is being evaluated, and the line of code that is
 being evaluated.}
 \label{fig:inchtml1}
@@ -1103,27 +1107,26 @@ or non-existent variable, dividing a set by an integer, and so on.
 It also includes certain infinite loops.
 Harmony will print at trace of the shortest bad execution that it found.
 \item \texttt{Non-terminating States}: Harmony found one or more states
-from which there does not exist an execution such that all processes
+from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
-the shortest trace, but also the list of processes
+the shortest trace, but also the list of threads
 at that state, along with their name tags and program counters.
 \item \texttt{Stopped States}: Similar to non-terminating states,
-these are states in which some processes are left that cannot
+these are states in which some threads are left that cannot
 terminate.  \autoref{ch:synch} will explain what it means for
-a process to be stopped.
+a thread to be stopped.
 \end{itemize}
 
-In this case, Harmony reports a safety violation, in particular it
+In our case, Harmony reports a safety violation, in particular it
 reports that the assertion and that
 \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
 The program got to the faulty execution in 5 ``steps.''
-The output has
-four columns:
+The output has four columns:
 \begin{enumerate}
-\item The name tag of the process;
-\item The sequence of program counters of the HVM instructions that the process executed;
-\item The current program counter of the process;
+\item The name tag of the thread;
+\item The sequence of program counters of the HVM instructions that the thread executed;
+\item The current program counter of the thread;
 \item The contents of the shared memory.
 \end{enumerate}
 
@@ -1132,18 +1135,18 @@ It sets shared variable \textit{count} to 0 and
 shared variable \textit{done} to \texttt{[False, False]}.
 If we look at the next three steps, we see that:
 \begin{itemize}
-\item Process \texttt{incrementer/0}
-executed instructions 1 through 4, loading the value of
+\item Thread \texttt{incrementer/0}
+executed instructions 5 through 8, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
-\item Process \texttt{incrementer/1}
-executed instructions 1 through 11, storing 1 into
+\item Thread \texttt{incrementer/1}
+executed instructions 5 through 15, storing 1 into
 into \textit{count} and storing \texttt{True} into \textit{done}[1];
-\item Process \texttt{incrementer/0}
-continues execution, executing instructions 5 through 11
+\item Thread \texttt{incrementer/0}
+continues execution, executing instructions 9 through 15
 storing value 1 into \textit{count}
 and storing \texttt{True} into \textit{done}[0].
 \end{itemize}
-Finally, process \texttt{main()} runs and finds the problem.
+Finally, thread \texttt{main()} runs and finds the problem.
 This makes precise the concurrency issue that we encountered.
 
 Harmony also generates an HTML file that allows exploring more details
@@ -1160,8 +1163,8 @@ brief explanation.
     \autoref{fig:inc}.  Run it through Harmony and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
     in broad steps, how running the program can get into a bad state.
-\item What if we moved line~2 of \autoref{fig:incenter} to after the \textbf{if}
-    statement (between lines~5 and~6)?  Do you think that would work?  Run it through
+\item What if we moved line~6 of \autoref{fig:incenter} to after the \textbf{if}
+    statement (between lines~9 and~10)?  Do you think that would work?  Run it through
     Harmony and describe either why it works or why it does not work.
 \end{problems}
 
@@ -1180,7 +1183,7 @@ brief explanation.
 \begin{code}
 \harmonysource{csbarebones}
 \end{code}
-\caption{\harmonylink{code/csbarebones.hny} A bare bones critical section with two processes.}
+\caption{\harmonylink{code/csbarebones.hny} A bare bones critical section with two threads.}
 \label{fig:csbarebones}
 \end{figure}
 
@@ -1196,10 +1199,10 @@ Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
 In this chapter we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
-the \textit{count} variable is being updated, no other process is
+the \textit{count} variable is being updated, no other thread is
 trying to do the same thing.  This is called a \emph{critical section}
 (aka critical region)~\cite{EWD123}:
-a set of instructions where only one process is allowed to execute at a
+a set of instructions where only one thread is allowed to execute at a
 time.
 \index{critical section}%
 \index{critical region}%
@@ -1215,44 +1218,44 @@ A more involved one would be accessing a binary tree.
 Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
 (although not necessarily impossible) if during this time no other
-process also tries to access the binary tree.
+thread also tries to access the binary tree.
 Typically, you want some invariant property of the data structure to hold
 at the beginning and at the end of the critical section, but in the middle
 the invariant may be temporarily broken---this is no issue as critical
 sections guarantee that no other
-process will be able to see it.
+thread will be able to see it.
 An implementation of a data structure that can be safely accessed by multiple
-processes (or threads) and free of race conditions is called \emph{thread-safe}.
+threads (or threads) and free of race conditions is called \emph{thread-safe}.
 \index{thread safety}%
 \index{thread}%
 
 \glsadd{mutual exclusion}%
 
-A critical section is often modeled as processes in an infinite loop
+A critical section is often modeled as threads in an infinite loop
 entering and exiting the critical section.
 \autoref{fig:csbarebones} shows the Harmony code.
 Here \texttt{@cs} is a \emph{label},
 \index{label}%
 identifying a location in the HVM bytecode.  The first thing we need to
-ensure is that there can never be two processes in the critical section.
+ensure is that there can never be two threads in the critical section.
 This property is called \emph{mutual exclusion}.
 \index{mutual exclusion}%
 We would like to place an assertion at the \texttt{@cs} label that
-specifies that only the current process can be there.
+specifies that only the current thread can be there.
 
 Harmony in fact supports this.
 It has an operator \textbf{atLabel}~$L$,
 \index{atLabel operator}%
 where $L$
 is the atom containing the name of the label (in this case, \texttt{.cs}).
-The operator returns a bag (multiset) of name tags of processes executing at that
+The operator returns a bag (multiset) of name tags of threads executing at that
 label.  The bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 Method \textbf{atLabel} only exists for specification purposes---do not
 use it in normal code.
 The assertion also makes use of the \textbf{nametag}() operator
 \index{nametag operator}%
-that returns the name tag of the current process.
+that returns the name tag of the current thread.
 If you run the code through Harmony, the assertion should fail because
 there is no code yet for safely entering and exiting the critical section.
 
@@ -1262,16 +1265,16 @@ critical section:
 \begin{code}
 \texttt{await False;}
 \end{code}
-This code will surely prevent two or more processes from being
+This code will surely prevent two or more threads from being
 at label \texttt{@cs} at the same time.
-But it does so by preventing \emph{any} process from reaching
+But it does so by preventing \emph{any} thread from reaching
 the critical section.
 We clearly need another property besides mutual exclusion.
 
 Mutual exclusion is an example of a \emph{safety property},
 \index{safety property}%
 a property that ensures that \emph{nothing bad will happen}, in this case
-two processes being in the critical section.
+two threads being in the critical section.
 What we need now is a \emph{liveness property}:
 \index{liveness property}%
 we want to ensure that
@@ -1279,31 +1282,32 @@ we want to ensure that
 There are various possible liveness properties we could use,
 but here we will propose the following informally: if
 (1) there exists a non-empty
-set $S$ of processes that are trying to enter the critical section and
-(2) processes in the critical section always leave eventually, then
-eventually one process in $S$ will enter the critical section.
+set $S$ of threads that are trying to enter the critical section and
+(2) threads in the critical section always leave eventually, then
+eventually one thread in $S$ will enter the critical section.
 We call this \emph{progress}.
 \index{progress}%
 
 In order to detect violations of progress, and other liveness problems in
 algorithms in general, Harmony requires that every execution must be
-able to reach a state in which all processes have terminated.
+able to reach a state in which all threads have terminated.
 Clearly, even if mutual exclusion holds in \autoref{fig:csbarebones},
-the spawned processes never terminate.  We
-will instead model processes in critical sections using the framework in
-\autoref{fig:cs}: a process can \emph{choose} to enter a
+the spawned threads never terminate.  We
+will instead model threads in critical sections using the framework in
+\autoref{fig:cs}: a thread can \emph{choose} to enter a
 critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
 (Recall that Harmony will try every possible execution, and so it will evaluate
 both choices.)
 
+\begin{comment}
 \begin{figure}
 \begin{center}
 \includegraphics[width=3.5in]{figures/mutex-crop.pdf}
 \end{center}
-\caption{High-level state diagram specification of mutual exclusion with up to two processes.
-The first number in a state gives the number of processes; the second number is the
-number of processes in the critical section.}
+\caption{High-level state diagram specification of mutual exclusion with up to two threads.
+The first number in a state gives the number of threads; the second number is the
+number of threads in the critical section.}
 \label{fig:mutex}
 \end{figure}
 
@@ -1313,8 +1317,11 @@ of mutual exclusion and progress.
 The circles represent states, while the arrows represent possible state
 transitions (high-level steps).  The label in each circle summarizes the state;
 the label on an arrow describes the transition.  In this case,
-the label contains two numbers: the total number of processes and the number
-of processes in the critical section.  A process that is in the critical
+the label contains two numbers: the total number of threads and the number
+of threads in the critical section.
+\end{comment}
+
+A thread that is in the critical
 section cannot terminate until after leaving the critical section.
 We will now consider various approaches toward implementing this
 specification.
@@ -1361,64 +1368,65 @@ You may already have heard of the concept of a \emph{lock}
 \index{lock}%
 and have realized that
 it could be used to implement a critical section.
-The idea is that the lock is like a baton that at most one process can own
+The idea is that the lock is like a baton that at most one thread can own
 (or hold) at a time.
-A process that wants to enter the critical section at a time must obtain the
+A thread that wants to enter the critical section at a time must obtain the
 lock first and release it upon exiting the critical section.
 % Note that the word ``lock'' does not describe the concept well---it really
-% is more like a baton or token that only one process can hold.
+% is more like a baton or token that only one thread can hold.
 
 Using a lock is a good thought, but how does one implement one?
 \autoref{fig:uplock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
 Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
-To enter the critical section, a process waits until \textit{lockTaken} is \texttt{False}
+To enter the critical section, a thread waits until \textit{lockTaken} is \texttt{False}
 and then sets it to \texttt{True} to indicate that the lock has been taken.
-The process then executes the critical section.  Finally the process
+The thread then executes the critical section.  Finally the thread
 releases the lock by setting \textit{lockTaken} back to \texttt{False}.
 
 Unfortunately, if we run the program through Harmony,
 we find that the assertion still fails.
 \autoref{fig:naiveLockhtml} shows the Harmony output.
-Process~0 finds that the lock is available, but just before it stores
-\texttt{True} in \textit{lockTaken} in instruction~9, process~1 gets
+Thread~0 finds that the lock is available, but just before it stores
+\texttt{True} in \textit{lockTaken} in instruction~9, thread~1 gets
 to run.
 (Recall that you can hover your mouse over a machine instruction in order
 to see what it does.)
 Because \textit{lockTaken} is still \texttt{False}, it too
 believes it can acquire the lock, and stores \texttt{True} in
 \texttt{lockTaken} and moves on to the critical section.
-Finally, process~0 moves on, also stores \texttt{True} and also moves
-into the critical section.  Process~0 is the one that detects the
+Finally, thread~0 moves on, also stores \texttt{True} and also moves
+into the critical section.  Thread~0 is the one that detects the
 problem.
 The \textit{lockTaken} variable
-suffers from the same problem as the \textit{count} variable
-in \autoref{fig:inc}: operations
-on it consist of several instructions.  It is thus possible
-for both processes to believe the lock is available and to obtain the lock
+suffers from the same sort of race condition as the \textit{count} variable
+in \autoref{fig:inc}: testing and setting the lock
+consists of several instructions.  It is thus possible
+for both threads to believe the lock is available and to obtain the lock
 at the same time.
 
-\autoref{fig:upflags} presents a solution based on each process having
+Preventing multiple threads from updating the same variable,
+\autoref{fig:upflags} presents a solution based on each thread having
 a flag indicating that it is trying to enter the critical section.
-A process can write its own flag and read the flag of its peer.
-After setting its flag, the process waits until the other process
+A thread can write its own flag and read the flag of its peer.
+After setting its flag, the thread waits until the other thread
 ($1 - \mathit{self}$) is not trying to enter the critical section.
 If we run this program, the assertion does not fail.  In fact, this
-solution does prevent both processes being in the critical section at
+solution does prevent both threads being in the critical section at
 the same time.
 
-To see why, first note the following invariant: if process $i$ is in the
+To see why, first note the following invariant: if thread $i$ is in the
 critical section, then \textit{flags}[$i$] == \texttt{True}.
 Without loss of generality,
-suppose that process~0 sets \textit{flags}[0] at time $t_0$.
-Process 0 can only reach the critical section if at some time $t_1$,
+suppose that thread~0 sets \textit{flags}[0] at time $t_0$.
+Thread 0 can only reach the critical section if at some time $t_1$,
 $t_1 > t_0$, it finds that \textit{flags}[1] == \texttt{False}.
 Because of the invariant, \textit{flags}[1] == \texttt{False} implies that
-process~1 is not in the critical section at time $t_1$.
-Let $t_2$ be the time at which process~0 sets \textit{flags}[0]
-to \texttt{False}.  Process~0 is in the critical section sometime
+thread~1 is not in the critical section at time $t_1$.
+Let $t_2$ be the time at which thread~0 sets \textit{flags}[0]
+to \texttt{False}.  Thread~0 is in the critical section sometime
 between $t_1$ and $t_2$.
-It is easy to see that process~1 cannot enter the critical section
+It is easy to see that thread~1 cannot enter the critical section
 between $t_1$ and $t_2$, because \textit{flags}[1] == \texttt{False} at
 time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
 it would first have to set \textit{flags}[1] to \texttt{True} and
@@ -1432,23 +1440,23 @@ time, they may end up waiting for one another indefinitely.  Thus the
 solution violates \emph{progress}.
 
 The final na\"{\i}ve solution that we propose
-is based on a variable called \textit{turn}
-that alternates between 0 and 1.  When \textit{turn} = $i$, process~$i$ can
-enter the critical section, while process $1-i$ has to wait.  When done,
-process~$i$ sets \textit{turn} to $1-i$ to give the other process an
-opportunity to enter.
-An invariant of this solution is that while process~$i$ is in the critical
+is based on a variable called \textit{turn}.
+Each thread politely lets the other thread have a turn first.
+When \textit{turn} = $i$, thread~$i$ can
+enter the critical section, while thread $1-i$ has to wait.
+An invariant of this solution is that while thread~$i$ is in the critical
 section, \textit{turn} == $i$.
 Since \textit{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
-The solution also has the nice property that
-processes 0 and 1 alternate entering the critical section.
+The solution also has the nice property that the thread that has been waiting the
+longest to enter the critical section can go next.
 
 Run the program through Harmony.  It turns out that this solution also violates
 \emph{progress}, albeit for a different reason:
-if process~$i$ terminates instead of entering the critical section when it
-is process~$i$'s turn, process $1-i$ ends up waiting indefinitely for its
-turn.
+if thread~$i$ terminates instead of entering the critical section,
+thread $1-i$, politely, ends up waiting indefinitely for its turn.
+Too bad, it would have been a great solution if both threads try to enter the
+critical section continually.
 
 \section*{Exercises}
 \begin{problems}
@@ -1469,7 +1477,8 @@ and after inserting the code.
 \item See if you can come up with some different approaches that satisfy both
 mutual exclusion and progress.  Try them with Harmony and see if they work or not.
 If they don't, try to understand why.
-Do not despair if you can't figure it out---as
+Do not despair if you can't figure out how to develop a solution that satisfies both
+mutual exclusion and progress---as
 we will find out, it is possible but not easy.
 \end{problems}
 
@@ -1490,13 +1499,13 @@ problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
 \autoref{fig:upflags} and \autoref{fig:upturn}, and is presented
 in \autoref{fig:peterson}.
-A process first indicates its interest in entering the critical section
+A thread first indicates its interest in entering the critical section
 by setting its flag.
-It then politely gives way to the other process should it also want to
+It then politely gives way to the other thread should it also want to
 enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
-The process continues to be polite, waiting
-until either the other process is nowhere near the critical section
+The thread continues to be polite, waiting
+until either the other thread is nowhere near the critical section
 ($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
 Running the algorithm with Harmony shows that it satisfies both mutual
@@ -1511,7 +1520,7 @@ exclusion and progress.
 \end{figure}
 
 \glsadd{state}%
-\glsadd{process variable}%
+\glsadd{thread variable}%
 
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
@@ -1521,12 +1530,12 @@ In \autoref{ch:harmonymachine} we talked about the concept of \emph{state}:
 \index{state}%
 at any point in time the HVM is in a specific state.
 A state is comprised of the values of the shared variables as well as
-the values of the process variables
-\index{process variable}%
-of each process, including its
+the values of the thread variables
+\index{thread variable}%
+of each thread, including its
 program counter and the contents of its stack.
-Each time a process executes a HVM machine instruction, the
-state changes (if only because the program counter of the process
+Each time a thread executes a HVM machine instruction, the
+state changes (if only because the program counter of the thread
 changes).  We call that a \emph{step}.
 \index{step}%
 Steps in Harmony are atomic.
@@ -1535,15 +1544,15 @@ Steps in Harmony are atomic.
 \glsadd{trace}%
 
 The HVM starts in an initial state in which there is only
-one process and its program counter is~0.  A \emph{trace}
+one thread and its program counter is~0.  A \emph{trace}
 \index{trace}%
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}%
 in Harmony.
 One is when
-there is more than one process that can make a step.  The other is
-when a process executes a \texttt{choose} operation and there is
+there is more than one thread that can make a step.  The other is
+when a thread executes a \texttt{choose} operation and there is
 more than one choice.
 Because there is non-determinism, there are multiple possible traces.
 We call a state \emph{reachable}
@@ -1551,7 +1560,7 @@ We call a state \emph{reachable}
 if it is either the initial state
 or it can be reached from the initial state through a trace.
 A state is final
-when there are no processes left to make state changes.
+when there are no threads left to make state changes.
 
 It is often useful to classify states.
 \emph{Initial}, \emph{final}, and \emph{reachable}, and \emph{unreachable}
@@ -1560,18 +1569,19 @@ are all examples of classes of states.
 and a trace.
 One way to classify states is to define a predicate over states.
 All states in which $x$ = 1, or all states where
-there are two or more processes executing, are examples of such predicates.
+there are two or more threads executing, are examples of such predicates.
 For our purposes, it is useful to define a predicate that says that at
-most one process is in the critical section.  We shall call such states
+most one thread is in the critical section.  We shall call such states
 \emph{exclusive}.
 
 An \emph{invariant} of a program
 \index{invariant}%
 is a predicate that holds over all states that are reachable by that program.
-We want to show that exclusivity is an invariant.
+We want to show that exclusivity is an invariant because mutual exclusion means
+that all reachable states are exclusive.
 In other words, we want to show that the set of reachable states of executing
 the program
-is a subset of the set of states where there is at most one process in the critical
+is a subset of the set of states where there is at most one thread in the critical
 section.
 
 One way to prove that a predicate is an invariant is through induction
@@ -1581,7 +1591,7 @@ and for every step from that reachable state, the predicate also holds
 over the resulting state.
 For this to work you would need a predicate that describes exactly which
 states are reachable.
-But we do not have such a predicate: we know how to describe the set
+But we do not have such a predicate: we know how to define the set
 of reachable states, but given an arbitrary state it is not easy to
 see whether it is reachable or not.
 
@@ -1591,26 +1601,74 @@ To solve this problem, we will use what is called an
 An inductive invariant $\mathcal{I}$ is a predicate over states that satisfies the following:
 \begin{itemize}
 \item $\mathcal{I}$ holds in the initial state.
-\item For any state in which $\mathcal{I}$ holds and for any process in the
-state, if the process takes a step, then $\mathcal{I}$ also holds in the resulting state.
+\item For any state in which $\mathcal{I}$ holds (including unreachable ones) and for any
+thread in the state, if the thread takes a step, then $\mathcal{I}$ also holds in the
+resulting state.
 \end{itemize}
-Unlike an ordinary invariant, an inductive invariant must also hold over unreachable states.
 
-One candidate for such an invariant is exclusivity itself.
+One candidate for such a predicate is exclusivity itself.
 After all, it certainly holds over the initial state.
 And as Harmony has already determined, exclusivity is an invariant:
 it holds over every reachable state.
-Unfortunately, it is not an \emph{inductive} invariant.
-To see why, we need to consider an \emph{unreachable} state.
-It is easy to construct one: let process~0 be at label \texttt{@cs}
-and process~1 be at the start of the \textbf{await} statement.
-Also imagine that in this particular state $\mathit{turn} = 1$.  Now let
-process~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
-process~1 will stop waiting and also enter the critical
+Unfortunately, exclusivity is not an \emph{inductive} invariant.
+To see why, consider the following state $s$: let thread~0 be at label \texttt{@cs}
+and thread~1 be at the start of the \textbf{await} statement.
+Also, in state $s$, $\mathit{turn} = 1$.  Now let
+thread~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
+thread~1 will stop waiting and also enter the critical
 section, entering a state that is not exclusive.
-So exclusivity is an invariant, but not an inductive invariant.
-Doing a inductive proof with an invariant that is not inductive is usually
-much harder than doing one with an invariant that is.
+So exclusivity is an invariant (holds over every reachable state, as demonstrated
+by Harmony),
+but not an inductive invariant (it will turn out that $s$ is not reachable).
+
+So we are looking for an inductive invariant that \emph{implies} exclusivity.
+In other words, the set of states where the inductive invariant holds
+must be a subset of the set of states where there is at most one thread in
+the critical section.
+
+Let us begin with considering the following important property:
+$\mathcal{F}(i) = \mathtt{thread}(i)@[8 \cdots 15] \Rightarrow \mathit{flags}[i]$,
+that is, if thread~$i$ is executing in lines 8 through 15, then $\mathit{flags}[i]$
+is set.
+Although it does not, by itself, imply exclusivity, we can show that
+$\mathcal{F}(i)$ is an inductive invariant (for both threads 1 and 2).
+To wit, it holds in the initial state, because in the initial state thread $i$ does
+not even exist yet.
+Now we have to show that if $\mathcal{F}(i)$ holds in some state, then
+$\mathcal{F}(i)$ also holds in a next state.
+Since only thread~$i$ ever changes $\mathit{flags}[i]$, we only need to
+consider steps by thread~$i$.
+Since $\mathcal{F}(i)$ holds, there are two cases to consider:
+\begin{enumerate}
+\item states in which $\mathit{flags}[i] = \texttt{true}$
+\item states in which $\lnot \mathtt{thread}(i)@[8 \cdots 15]$
+\end{enumerate}
+In each case we need to show that if thread $i$ takes a step, 
+$\mathcal{F}(i)$ still holds.
+In the first case, there is only one step that thread $i$ can take that would
+set $\mathit{flags}[i]$ to false: the step in line 15.  But executing the line
+would also take the thread out of lines $8 \cdots 15$, so $\mathcal{F}(i)$ continues to hold.
+In the second case (thread $i$ is not executing in lines $8 \cdots 15$), the only step
+that would cause thread $i$ to execute in lines $8 \cdots 15$ would be the step in line 7.
+But in that case $\mathit{flags}[i]$ would end up being true, so
+$\mathcal{F}(i)$ continues to hold as well.
+So $\mathcal{F}(i)$ is an inductive invariant (for both threads~0 and~1).
+
+While $\mathcal{F}(i)$ does not imply mutual exclusion, it does imply the following useful
+invariant: $\mathtt{thread}(i)@cs \Rightarrow \mathit{flags}[i]$: when thread $i$ is
+at the critical section, $\mathit{flags}[i]$ is set.  This seems obvious from the code,
+but now you know how to prove it.
+
+We need a stronger inductive invariant than $\mathcal{F}(i)$ to prove mutual exclusion.
+What else do we know when thread $i$ is in the critical section?
+Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor \mathit{turn} = i$, that is,
+the condition on the \textbf{await} statement for thread~$i$.
+In a sequential program, $\mathcal{C}(i)$ would clearly hold if thread $i$ is in
+the critical section: $\mathtt{thread}(i)@cs \Rightarrow \mathcal{C}(i)$.
+However, because thread $1-i$ is executing concurrently, this property does not
+hold.  In particular, suppose thread 0 is at the critical section, $\mathit{flags}[0]$ = true,
+$\mathit{turn} = 1$, and thread 1 just finished the step in line 7,
+setting $\mathit{flags}[1]$ to true.  Notice that $C(0)$ is violated.
 
 \begin{figure}
 \begin{code}
@@ -1620,102 +1678,88 @@ much harder than doing one with an invariant that is.
 \label{fig:petersonproof}
 \end{figure}
 
-So we are looking for an inductive invariant that \emph{implies} exclusivity.
-In other words, the set of states where the inductive invariant holds
-must be a subset of the set of states where there is at most one process in
-the critical section.
-Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor
-\mathit{turn} = i$, that is, the condition on the \textbf{await}
-statement for process~$i$.
-Let predicate $\mathcal{I}_p(i)$ be the following:
-if process $i$ is at label \texttt{@cs} (i.e., process $i$ is in the critical section),
-then $\mathcal{C}(i)$ holds or process $1-i$ is executing after setting
-$\mathit{flags}[i]$ but still before setting \textit{turn} to $1-i$.
-More formally, $\mathcal{I}_p(i) = \mathtt{process}(i)@cs \Rightarrow \mathcal{C}(i) \lor \mathtt{process}(1-i)@gate$.
-For Peterson's Algorithm, an inductive invariant that works well is
-$\mathcal{I}_p(0) \land \mathcal{I}_p(1)$.
-
-\autoref{fig:petersonproof} formalizes $\mathcal{I}_p(i)$ in Harmony.
-The label \texttt{@gate} refers to the instruction that sets \textit{turn} to $1-i$.
+Instead, we will use the following property: $\mathcal{G}(i) =
+\mathtt{thread}(i)@cs \Rightarrow \mathcal{C}(i) \lor \mathtt{thread}(1-i)@[8]$.
+That is, if thread $i$ is at the critical section, then
+either $\mathcal{C}(i)$ holds or thread $1-i$ is about to execute line 8.
+\autoref{fig:petersonproof} formalizes $\mathcal{G}(i)$ in Harmony.
+The label \texttt{@gate} refers to the step that sets \textit{turn} to $1-i$.
 You can run \autoref{fig:petersonproof} to determine
-that $\mathcal{I}_p(i)$ is indeed an invariant for $i = 0, 1$.
+that $\mathcal{G}(i)$ is an invariant for $i = 0, 1$.
+Moreover, if $\mathcal{F}(i)$ and $\mathcal{G}(i)$ both hold for $i = 0, 1$,
+then mutual exclusion holds.  We can show this using proof by
+contradiction.  Suppose mutual exclusion is violated and thus both threads are in
+the critical section.  By $\mathcal{F}$ it must be the case that both
+\textit{flags} are true.  By $\mathcal{G}$ and the fact that neither thread
+is at label \texttt{@gate}, we know that both $C(0)$ and $C(1)$ must hold.
+This then implies that $\mathit{turn} = 0 \land \mathit{turn} = 1$, providing
+the desired contradiction.
 
-To see that the inductive invariant implies exclusivity, suppose not.  Then
-when both process~0 and process~1 are in the critical section, the
-following must hold:
-$(\mathcal{C}(0) \lor \mathtt{process}(1)@gate) \land
- (\mathcal{C}(1) \lor \mathtt{process}(0)@gate)$.
-We know that both flags are set.
-We also know that neither process~0 nor process~1 is at label \texttt{@gate}
-(because they are both at label \texttt{@cs}),
-so this simplifies to $\mathcal{C}(0) \land \mathcal{C}(1)$.
-So we conclude that $\mathit{turn} = 0 \land \mathit{turn} = 1$, a
-logical impossibility.  Thus $\mathcal{I}_p(i)$ implies exclusivity.
-
-To see that $\mathcal{I}_p(0) \land \mathcal{I}_p(1)$ is, in fact, an inductive invariant, first note that
-it holds in the initial state, because in the initial state no process
-is in the critical section.
+We claim that $\mathcal{G}(i)$ is an inductive invariant.
+First, since neither thread exists in the initial state, it is clear that
+$\mathcal{G}(i)$ holds in the initial state.
 Without loss of generality, suppose $i=0$ (a benefit from the fact that the algorithm is
-symmetric for both processes).  We still have to show that if we are in a state
-in which $\mathcal{I}_p(0)$ holds, then any step will result in a state in which
-$\mathcal{I}_p(0)$ still holds.
+symmetric for both threads).  We still have to show that if we are in a state
+in which $\mathcal{G}(0)$ holds, then any step will result in a
+state in which $\mathcal{G}(0)$ still holds.
 
-First consider the case that process~0 is at label \texttt{@cs}.  If process~0
-were to take a step, then in the next state process~0 would be no longer
-at that label and $\mathcal{I}_p(0)$ would hold trivially over the next state.
-Therefore we only need to consider a step by process~1.
+First consider the case that thread~0 is at label \texttt{@cs}.  If thread~0
+were to take a step, then in the next state thread~0 would be no longer
+at that label and $\mathcal{G}(0)$ would hold trivially over the next state.
+Therefore we only need to consider a step by thread~1.
 %
-From $\mathcal{I}_p(0)$ we know that one of the following three cases must hold before
-process~1 takes a step:
+From $\mathcal{G}$ we know that one of the following three cases must hold before
+thread~1 takes a step:
 \begin{enumerate}
 \item \textit{flags}[1] = \texttt{False};
 \item \textit{turn} = 0;
-\item process~1 is at label \texttt{@gate}.
+\item thread~1 is at label \texttt{@gate}.
 \end{enumerate}
 
 Let us consider each of these cases.
-We have to show that if process~1 takes a step, then one of those
+We have to show that if thread~1 takes a step, then one of those
 cases must hold after the step.
-In the first case, if process~1 takes a step, there are two possibilities:
+In the first case, if thread~1 takes a step, there are two possibilities:
 either $flags[1]$ will still be \texttt{False} (in which case the first case
 continues to hold), or $flags[1]$ will be \texttt{True}
-and process~1 will be at label \texttt{@gate} (in which case the third case
+and thread~1 will be at label \texttt{@gate} (in which case the third case
 will hold).
-We know that process~1 never sets \textit{turn} to 1, so
+We know that thread~1 never sets \textit{turn} to 1, so
 if the second case holds before the step, it will also hold after the step.
-Finally, if process~1 is at label \texttt{@gate} before the step, then after
+Finally, if thread~1 is at label \texttt{@gate} before the step, then after
 the step \textit{turn} will equal 0, and therefore the second case will hold
 after the step.
 
-Now consider the case where process~0 is not in the critical section,
-and therefore $\mathcal{I}_p(0)$ holds trivially because false implies
+Now consider the case where thread~0 is not in the critical section,
+and therefore $\mathcal{G}(0)$ holds trivially because false implies
 anything.
 There are three cases to consider:
 \begin{enumerate}
-\item Process~1 takes a step.  But then process~0 is still not in the critical
-section and $\mathcal{I}_p(0)$ continues to hold;
-\item Process~0 takes a step but still is not in the critical section.
-Then again $\mathcal{I}_p(0)$ continues to hold.
-\item Process~0 takes a step and ends up in the critical section.
-Because process~0 entered the critical section, we know that
+\item Thread~1 takes a step.  But then thread~0 is still not in the critical
+section and $\mathcal{G}(0)$ continues to hold;
+\item Thread~0 takes a step but still is not in the critical section.
+Then again $\mathcal{G}(0)$ continues to hold.
+\item Thread~0 takes a step and ends up in the critical section.
+Because thread~0 entered the critical section, we know that
 \textit{flags}[1] = \texttt{False} or \textit{turn} == 0 because
 of the \texttt{await} condition.
-And hence $\mathcal{I}_p(0)$ continues to hold in that case as well.
+And hence $\mathcal{G}(0)$ continues to hold in that case as well.
 \end{enumerate}
 
 We have now demonstrated mutual exclusion in Peterson's Algorithm in two
 different ways: one by letting Harmony explore all possible executions, the
-other using an inductive invariant and proof by induction.  The former
+other using inductive invariants and proof by induction.  The former
 is certainly easier, but it does not provide intuition for why the
-algorithm works.  The second provides much more insight.  We therefore
-encourage to include invariants, particularly inductive ones, in your
-Harmony code.
+algorithm works.  The second provides much more insight.
+
+Even though they are not strictly necessary, we encourage to include invariants
+in your Harmony code. They can provide important insights into why the code works.
 
 A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
-if process $i$ is in the critical section, then $\mathcal{C}(i)$ (i.e.,
-$\mathcal{I}_p(i)$ without the disjunct that process $1-i$ is at label \texttt{@gate}).
+if thread $i$ is in the critical section, then $\mathcal{C}(i)$ (i.e.,
+$\mathcal{G}$ without the disjunct that thread $1-i$ is at label \texttt{@gate}).
 To demonstrate that this predicate is not invariant, you can remove the
 disjunct from \autoref{fig:petersonproof} and run it to get a
 counterexample.
@@ -1732,12 +1776,12 @@ predicate is not invariant, and therefore not an inductive invariant either.
 \begin{problems}
 \item \autoref{fig:csonebit} presents another correct solution to the
 mutual exclusion problem.  It is similar to the one in
-\autoref{fig:upflags}, but has a process \emph{back out and try again}
-if it finds that the other process is either trying to enter the critical
+\autoref{fig:upflags}, but has a thread \emph{back out and try again}
+if it finds that the other thread is either trying to enter the critical
 section or already has.  Compare this algorithm with Peterson's.  What are
 the advantages and disadvantages?
 \item
-Can you find an inductive invariant for the algorithm in
+Can you find one or more inductive invariants for the algorithm in
 \autoref{fig:csonebit} to prove it correct?
 Here's a pseudo-code version of the algorithm to help you.  Each line
 is an atomic action:
@@ -1745,7 +1789,7 @@ is an atomic action:
 \begin{verbatim}
     initially: flagX = flagY = False
 
-    process X:                          process Y:
+    thread X:                          thread Y:
         X0: flagX = True                   Y0: flagY = True
         X1: if not flagY goto X4           Y1: if not flagX goto Y4
         X2: flagX = False                  Y2: flagY = False
@@ -1756,21 +1800,21 @@ is an atomic action:
 \end{code}
 \item A colleague of the author asked if the first two assignments in
 Peterson's algorithm (setting \textit{flags}[\textit{self}])
-to \texttt{True} and \textit{turn} to 1 - \textit{self}) can be reversed.
+to \texttt{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
 See if you can figure out for yourself if the two assignments can be
 reversed.  Then run the program in \autoref{fig:peterson} after reversing
 the two assignments and describe in English what happens.
 \item Bonus question:
-Can you generalize Peterson's algorithm to more than two processes?
+Can you generalize Peterson's algorithm to more than two threads?
 \item Bonus question:
 Implement
 \href{https://en.wikipedia.org/wiki/Dekker%27s_algorithm}{Dekker's Algorithm},
 \href{https://en.wikipedia.org/wiki/Eisenberg_%26_McGuire_algorithm}{Eisenstein and McGuire's Algorithm},
 \href{https://en.wikipedia.org/wiki/Szymanski%27s_algorithm}{Szymański's Algorithm}, or the
 \href{https://en.wikipedia.org/wiki/Lamport%27s_bakery_algorithm}{Lamport's Bakery Algorithm}.
-Note that the last one uses unbounded state, so you should modify the processes so they
+Note that the last one uses unbounded state, so you should modify the threads so they
 only try to enter the critical section a bounded number of times.
 \end{problems}
 
@@ -1778,7 +1822,7 @@ only try to enter the critical section a bounded number of times.
 \begin{code}
 \harmonysource{csonebit}
 \end{code}
-\caption{\harmonylink{code/csonebit.hny} Mutual exclusion using a flag per process.}
+\caption{\harmonylink{code/csonebit.hny} Mutual exclusion using a flag per thread.}
 \label{fig:csonebit}
 \end{figure}
 
@@ -1855,7 +1899,7 @@ that is used for mutual exclusion.
 case, is a dictionary that contains Peterson's Algorithm's state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
-a pointer to a mutex and the process identifier (0 or 1).
+a pointer to a mutex and the thread identifier (0 or 1).
 $\mathit{pm}\rightarrow\mathtt{turn}$ is the value of the \texttt{.turn} key
 in the dictionary that \textit{pm} points to. 
 
@@ -1883,10 +1927,10 @@ make the code re-usable by other applications.
 \autoref{fig:uplock} showed a faulty attempt at solving mutual
 exclusion using a lock.  The problem with the implementation of the
 lock is that checking the lock and setting it if it is available is
-not \emph{atomic}.  Thus multiple processes contending for the lock
+not \emph{atomic}.  Thus multiple threads contending for the lock
 can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
-if generalized to multiple processes.  Instead, multi-core processors provide
+if generalized to multiple threads.  Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
 \index{interlock instruction}%
 special machine instructions
@@ -1899,7 +1943,7 @@ it does have support for executing multiple instructions atomically.
 This feature is available in the Harmony language in two ways.
 First, any Harmony statement can be made atomic by placing a label in front
 of it.  Second, a group of Harmony statements can be made atomic
-through its \textbf{atomic}
+through the \textbf{atomic}
 \index{atomic statement}%
 statement.
 We can use \textbf{atomic} statement blocks to implement a wide variety of
@@ -1916,29 +1960,30 @@ Many CPUs have an atomic ``test-and-set'' (TAS)
 operation.
 Method \texttt{tas} in \autoref{fig:tas} shows its specification.
 Here $s$ points to a shared Boolean variable and $p$
-to a private Boolean variable, belonging to some process.
+to a private Boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to \texttt{True} (``set'').
 
 \autoref{fig:tas} goes on to implement mutual exclusion for
-a set of \texttt{N} processes.
+a set of \texttt{N} threads.
 The approach is called \emph{spinlock},
 \index{spinlock}%
-because each process is ``spinning'' (executing a tight loop) until
+because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
 Variable \textit{shared} is initialized to \texttt{False} while
-\textit{private}[$i$] for each process $i$ is initialized to \texttt{True}.
+\textit{private}[$i$] for each thread $i$ is initialized to \texttt{True}.
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.
-Another invariant, $\mathcal{I}_2(i)$, is that if process $i$ is in the critical section,
+Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
+lines $18 \cdots 25$ (which includes the critical section),
 then \textit{private}[$i$] == \texttt{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
-it is clear that only one process can be in the
+it is clear that only one thread can be in the
 critical section at the same time.
 
-$\mathcal{I}_1$ is an inductive invariant.
+$\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
@@ -1951,9 +1996,11 @@ maintaining the invariant.
 \item \texttt{!}$s$ is \texttt{True} upon entry to \texttt{tas}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
-Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section.
-Invariant $\mathcal{I}_2(i)$ is obvious as (i) process $i$ only proceeds to the critical
-section if \textit{private}[$i$] == \texttt{False}, and (ii) no other process modifies
+Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
+because we can assume, by the induction hypothesis, that $\textit{private}[i]$ is
+\texttt{True} just before exiting the critical section.
+Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread $i$ only proceeds to the critical
+section if \textit{private}[$i$] is \texttt{False}, and (ii) no other thread modifies
 \textit{private}[$i$].
 
 \begin{figure}
@@ -1968,23 +2015,23 @@ Harmony can check these invariants as well.  \autoref{fig:tas} already
 has the code to check $\mathcal{I}_2(i)$.  But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
-premisse is that there is a process at that label.  However, we would
+premisse is that there is a thread at that label.  However, we would
 like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 
-We can do this by adding another process that
+We can do this by adding another thread that
 checks the invariant.  \autoref{fig:tasinv} shows the code.
 Method \texttt{checkInvariant()} checks to see if the invariant holds
 in a state.  It introduces a new feature of Harmony: the ability to have
-variables local to a method.  In this case, the process variable \textit{sum}
+variables local to a method.  In this case, the thread variable \textit{sum}
 is used to compute the number of shared variables that have value
 \texttt{False}.
-The method is invoked by a process that runs alongside
-the other processes.
+The method is invoked by a thread that runs alongside
+the other threads.
 In Harmony, \textbf{assert} statements are executed atomically, so the
 evaluation of the assertion is not interleaved with the execution
-of other processes.
-Because Harmony tries every possible execution, the process is guaranteed
+of other threads.
+Because Harmony tries every possible execution, the thread is guaranteed
 to find violations of the invariant if it does not hold.
 
 \section*{Exercises}
@@ -2027,7 +2074,7 @@ statement.
 \label{fig:atm}
 \end{figure}
 
-\chapter{Locks and Blocking}
+\chapter{Binary Semaphores and Blocking}
 \label{ch:synch}
 \index{lock}%
 \index{synch module}%
@@ -2041,23 +2088,25 @@ statement.
 \end{figure}
 
 In \autoref{fig:tas} we have shown a solution based on a shared
-variable and a private variable for each process.   The private
+variable and a private variable for each thread.   The private
 variables themselves are actually implemented as shared variables,
-but they are accessed only by their respective processes.
-There is no need to keep \textit{private} as a shared
+but they are accessed only by their respective threads.
+A thread usually does not keep explicit track of whether it has a lock
+or not because it is usually implied by the control flow of the program.
+So there is no need to keep \textit{private} as a shared
 variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of \autoref{fig:uplock},
 but uses test-and-set to check and set the lock variable atomically.
-This approach is general for any number of processes.
+This approach is general for any number of threads.
 
 It is important to appreciate the difference between an
 \emph{atomic section} (the statements executed within an
 \textbf{atomic} statement) and a \emph{critical section}
 (protected by a lock of some sort).
 The former ensures that while the
-\texttt{atomic} statement is executing no other process can execute.
-The latter allows multiple processes to run concurrently,
+\texttt{atomic} statement is executing no other thread can execute.
+The latter allows multiple threads to run concurrently,
 just not within the critical section.
 The former is rarely available to a programmer (e.g., none of
 Python, C, or Java support it), while the latter
@@ -2068,17 +2117,17 @@ synchronization primitives like test-and-set.  Other common examples
 include compare-and swap and fetch-and-add.  \texttt{atomic} statements
 are not intended to \emph{replace} locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
-\emph{atomic} statements but use the synchronization primitives that are available
+\texttt{atomic} statements but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
 use \textbf{atomic} by all means.
 You can also use \textbf{atomic} statements in your test code.
-In fact, \texttt{assert} statements are executed atomically.
+In fact, as mentioned before, \texttt{assert} statements are executed atomically.
 
 \begin{figure}
 \begin{code}
 \harmonysource{lockintf}
 \end{code}
-\caption{\harmonylink{modules/synch.hny} The \texttt{Lock} interface and implementation in the \texttt{synch} module.}
+\caption{\harmonylink{modules/synch.hny} The binary semaphore interface and implementation in the \texttt{synch} module.}
 \label{fig:spinlocks}
 \end{figure}
 
@@ -2096,48 +2145,66 @@ structure, you want to protect the data structure with a lock and
 acquire the lock before access and release it immediately afterward.
 In other words, you want the access to the data structure to be a
 critical section.
+That way, when a thread makes modifications to the data structure that take
+multiple steps, other threads will not see the intermediate inconsistent
+states of the data structure.
 When there is a bug in a program because some code omitted obtaining
 a lock before accessing the data structure, that is known as a
 \emph{data race}.
 \index{data race}
 
-Because locks are so common, Harmony has a module called
-\texttt{synch} that includes support for locks.
+\index{binary semaphore}
+Locks are a special case of \emph{binary semaphores}.
+Like locks, binary semaphores are either in an \emph{acquired} state
+or a \emph{released} state.
+Processes trying to acquire an already acquired binary semaphore
+have to wait until the binary semaphore is released.
+It is illegal to release a binary semaphore that is in a released
+state.
+A lock is a binary semaphore that, by convention, is initialized to a
+released state, and is always released by the same thread that acquired it.
+A binary semaphore can be initialized to an acquired state and can be
+released by threads other than the thread that last acquired the
+binary semaphore.
+
+Harmony has a module called \texttt{synch} that includes support for
+binary semaphores and locks.
 \autoref{fig:spinlocks} shows how they are implemented, and
 \autoref{fig:incfixed} gives an example of how they may be used,
 in this case to fix the program of \autoref{fig:inc}.
-Notice that the module completely hides the implementation of the
-lock.
+Notice that the module hides the implementation of
+binary semaphores.
 The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
 
-\glsadd{blocked process}%
+\glsadd{blocked thread}%
 
-We call a process \emph{blocked}
-\index{blocked process}%
-if a process cannot change the state or terminate or can only do so if
-another process changes the state first.
-A process trying to
-acquire a test-and-set spinlock held by another process is a good example
-of a process being blocked.
-The only way forward is if the other process releases the lock.
-A process that is in an infinite loop is also considered blocked,
+We call a thread \emph{blocked}
+\index{blocked thread}%
+if a thread cannot change the state or terminate unless
+another thread changes the state first.
+A thread trying to
+acquire a test-and-set spinlock held by another thread is a good example
+of a thread being blocked.
+The only way forward is if the other thread releases the spinlock.
+A thread that is in an infinite loop is also considered blocked,
 although Harmony can often detect infinite loops specifically.
 
 \begin{figure}
 \begin{code}
 \harmonysource{locksusp}
 \end{code}
-\caption{\harmonylink{modules/syncS.hny} The \texttt{Lock} interface in the \texttt{synchS} module uses suspension.}
+\caption{\harmonylink{modules/syncS.hny} The binary semaphore interface in the \texttt{synchS} module uses suspension.}
 \label{fig:suspension}
 \end{figure}
 
-In most operating systems, processes are virtual and can be suspended
-until some condition changes.  For example, a process can be suspended
-until the lock is available to it.
-In Harmony, a process can suspend itself and save its context (state) in a
-list.  Recall that the context of a process consists of its name tag,
+In most operating systems, threads are virtual (as opposed to ``raw CPU cores'')
+and can be suspended until some condition changes.
+For example, a thread that is trying to acquire a lock can be suspended until the lock is
+available.
+In Harmony, a thread can suspend itself and save its context (state) in a
+list.  Recall that the context of a thread consists of its name tag,
 its program counter, and the contents of its register and stack.
 A context is a regular Harmony value.
 The syntax of the expression is as follows:
@@ -2147,7 +2214,7 @@ The syntax of the expression is as follows:
 \end{code}
 
 Here $L$ is a shared variable containing a list.
-Another process can revive the process using the \textbf{go}
+Another thread can revive the thread using the \textbf{go}
 \index{go statement}%
 statement:
 
@@ -2156,43 +2223,44 @@ statement:
 \end{code}
 
 Here $C$ is a context and $R$ is a Harmony value.
-It causes a process with context $C$ to be added to the state that has
+It causes a thread with context $C$ to be added to the state that has
 just executed the \textbf{stop}
 \index{stop expression}%
 expression.  The \textbf{stop} expression returns the value $R$.
 
-There is a second version of the \texttt{synch} module that uses suspension
-instead of spinlocks.
-\autoref{fig:suspension} shows the same \texttt{Lock} interface implemented
+There is a second version of the \texttt{synch} module, called \texttt{synchS},
+that uses suspension instead of spinlocks.
+\autoref{fig:suspension} shows the same interface implemented
 using suspension.
 The interface is implemented as follows:
 \begin{itemize}
-\item A \texttt{Lock} maintains both a boolean indicating whether the
-lock is taken and a list of contexts of processes that want to acquire the lock.
+\item A binary semaphore maintains both a boolean indicating whether the
+binary semaphore is currently acquired and a list of contexts of threads that want to
+acquire the binary semaphore.
 \item
-\texttt{lock}
-\index{lock}%
-sets the lock if available and suspends itself if not.
+\texttt{acquire}()
+\index{acquire}%
+acquires the binary semaphore if available and suspends the invoking thread if not.
 Note that \textbf{stop} is called within an \textbf{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
-process is running no other processes can run, but when it suspends itself
-it allows other processes to run.
+thread is running no other threads can run, but when the thread suspends itself
+other threads can run.
 \item
-\texttt{unlock}
-\index{unlock}%
-checks to see if any processes are waiting to get the lock.
+\texttt{release}()
+\index{release}%
+checks to see if any threads are waiting to acquire the binary semaphore.
 If so, it uses the \texttt{head} and \texttt{tail}
 methods from the \texttt{list} module (see Appendix~\ref{ap:module})
-to resume the first process that got
+to resume the first thread that got
 suspended and to remove its context from the list.
 \end{itemize}
-Selecting the first process is a design choice.  Another implementation could
+Selecting the first thread is a design choice.  Another implementation could
 have picked the last one, and yet another implementation could have used
 \texttt{choose} to pick an arbitrary one.  Selecting the first is a common
-choice in lock implementations as it prevents \emph{starvation}:
+choice in binary semaphore implementations as it prevents \emph{starvation}:
 \index{starvation}%
-every process
-gets a chance to obtain the lock (assuming every process eventually releases
+every thread
+gets a chance to acquire the binary semaphore (assuming every thread eventually releases
 it).  \autoref{ch:starvation} will talk more about starvation and how
 to prevent it.
 
@@ -2211,7 +2279,7 @@ runs the file \texttt{x.hny} using the suspension version of the \texttt{synch} 
 You will find that using the \texttt{synchS} module often leads to searching a
 significantly larger state space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
-in which processes wait for a lock, while the \texttt{synch} module does not.
+in which threads wait to acquire a binary semaphore, while the \texttt{synch} module does not.
 
 \section*{Exercises}
 \begin{problems}
@@ -2222,11 +2290,11 @@ Report how many states were explored by Harmony for each module.
 (initially 0) and $y$ (initially 100) that can be accessed through methods
 \texttt{setX} and \texttt{getXY}.  An application invariant is that \texttt{getXY}
 should return a pair that sums to 100.  Add the necessary synchronization code.
-\item \label{ex:trylock} Implement \texttt{trylock}(\textit{lk}) as an additional
+\item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
 interface for both the \texttt{synch} and \texttt{synchS} modules.
-This interface is like \texttt{lock}(\textit{lk}) but never blocks.  It
-returns \texttt{True} if the lock was available (and now acquired) or \texttt{False}
-if the lock was already taken.
+This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
+returns \texttt{True} if the binary semaphore was available (and now acquired) or \texttt{False}
+if the binary semaphore was already acquired.
 Hint: you do not have to change the existing code.
 \end{problems}
 
@@ -2243,11 +2311,11 @@ Hint: you do not have to change the existing code.
 
 The most common use for locks is in building concurrent data structures.
 By way of example, we will demonstrate how to build a concurrent queue.
-The queue will have the following API:
+The \texttt{queue} module will have the following API:
 \begin{itemize}
-\item $q = \mathtt{Qnew}()$: allocate a new queue;
-\item $\mathtt{Qenqueue}(q, v)$: add $v$ to the tail of the queue;
-\item $r = \mathtt{Qdequeue}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
+\item $q = \mathtt{Queue}()$: allocate a new queue;
+\item $\mathtt{enqueue}(q, v)$: add $v$ to the tail of the queue;
+\item $r = \mathtt{dequeue}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
 if $v$ was at the head of the queue.
 \end{itemize}
 See \autoref{fig:queuetest} for a simple test program that uses the queue.
@@ -2262,10 +2330,12 @@ which should be released with \texttt{free}() when it is no longer in use.
 The queue maintains a \texttt{head} pointer to the first element in the list
 and a \texttt{tail} pointer to the last element in the list.
 The \texttt{head} pointer is \textbf{None} if and only if the queue is empty.
+(\textbf{None} is a special address value that is not the address of any
+memory location.)
 
-\texttt{Qnew()} returns a new queue object consisting of a \textbf{None} head
+\texttt{queue.Queue()} returns a new queue object consisting of a \textbf{None} head
 and tail pointer and a lock.
-$\mathtt{Qenqueue}(q, v)$ and $\mathtt{Qdequeue}(q)$ both take a pointer $q$ to the
+$\mathtt{queue.enqueue}(q, v)$ and $\mathtt{queue.dequeue}(q)$ both take a pointer $q$ to the
 queue object because both may modify the queue.
 Before they access the value of the head or tail of the queue they first obtain
 the lock.
@@ -2273,10 +2343,10 @@ When they are done, they release the lock.
 
 The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
 separate locks for the head and tail, allowing an enqueue and a dequeue operation
-to proceed concurrently.  To avoid contention between the head and the tail that
-requires both locks, the queue uses a dummy node at the head of the linked list.
-Except for the initial state of the queue, the dummy node is the last node that
-was dequeued.  Note that neither the \texttt{head} nor \texttt{tail} pointer are
+to proceed concurrently.  To avoid contention between the head and the tail,
+the queue uses a dummy node at the head of the linked list.
+Except initially, the dummy node is the last node that was dequeued.
+Note that neither the \texttt{head} nor \texttt{tail} pointer are
 ever \textbf{None}.
 
 \begin{figure}
@@ -2305,26 +2375,99 @@ ever \textbf{None}.
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:qcontains} Add a method $\mathtt{Qcontains}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
 that checks to see if $v$ is in queue $q$.
-\item Add a method $\mathtt{Qremove}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
-that removes $v$, if any, from queue $q$.
+\item Add a method $\mathtt{remove}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+that removes all occurrences of $v$, if any, from queue $q$.
 \item The test program in \autoref{fig:queuetest} is not very thorough.  Design
 and implement a better one.
-\item Create a thread-safe sorted binary tree.  Implement methods
-$\mathtt{BTnew}()$ to create a new binary tree, $\mathtt{BTinsert}(t, v)$ that inserts $v$ into
-tree $t$, and $\mathtt{BTcontains}(t, v)$ that checks if $v$ is in tree $t$.  Use a single
+\item Create a thread-safe sorted binary tree.  Implement a module
+\texttt{bintree} with methods
+$\mathtt{BinTree}()$ to create a new binary tree, $\mathtt{insert}(t, v)$ that inserts $v$ into
+tree $t$, and $\mathtt{contains}(t, v)$ that checks if $v$ is in tree $t$.  Use a single
 lock per binary tree.
-\item Bonus question: create a binary tree that uses, instead of a single lock per tree,
+\item Bonus problem: create a binary tree that uses, instead of a single lock per tree,
 a lock for each node in the tree.
+\item \label{ex:qsort}
+Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
+algorithm, and \autoref{fig:qsorttest} an accompanying test program.
+The array to be sorted is stored in  shared variable $a$.
+Another shared variable, \textit{todo}, contains the ranges of the
+array that need to be sorted (initially the entire array).
+Re-using as much of this code as you can, implement a parallel version of
+this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
+or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker threads''
+that should replace the \texttt{qsort} code.  Each worker loops until \textit{todo}
+is empty and sorts the ranges that it finds until then.  The \texttt{main}
+thread needs to wait until all workers are done.  Use a semaphore for this:
+the \texttt{main} thread should use \texttt{P} to wait for each
+worker to terminate.  After that it should check that the array is sorted and
+that it is a permutation of the original array.
 \end{problems}
 
-\chapter{Reader/Writer Locks using Busy Waiting}
-\label{ch:rdwrbusy}
-\index{reader/writer lock}%
+\begin{figure}
+\begin{code}
+\harmonysource{qsort}
+\end{code}
+\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
+\label{fig:qsort}
+\end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{qsorttest}
+\end{code}
+\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
+\label{fig:qsorttest}
+\end{figure}
+
+\chapter{Conditional Waiting}
+\label{ch:condwait}
+
+Critical sections enable multiple threads
+to easily share data structures whose modification
+requires multiple steps.
+A critical section allows only one thread to execute its code at a time.
+When a thread arrives at a critical section,
+the thread blocks until there is no other thread in the critical section.
+
+\glsadd{busy waiting}%
+\index{busy waiting}%
+Sometimes it is useful for a thread to block waiting for additional
+conditions.
+For example, when dequeuing from an empty shared queue,
+it may be useful for the thread to block until the queue is non-empty
+instead of returning an error.
+The alternative would be \emph{busy waiting} (aka \emph{spin-waiting}),
+where the thread repeatedly tries to dequeue an item until it is successful.
+Doing so wastes CPU cycles and adds contention to queue access.
+%
+A thread that is busy waiting until the queue is non-empty cannot
+make progress until another thread enqueues an item.
+However, the thread is not considered \emph{blocked} because it is
+changing the shared state by repeatedly acquiring and releasing the
+lock.
+We would like to find a solution to \emph{conditional waiting}
+so that a thread blocks until the condition holds---or at least most
+of the time.
+
+Before we do so, we will give two classic examples of synchronization
+problems that involve conditional waiting: \emph{reader/writer locks}
+and \emph{bounded buffers}.
+
+\begin{figure}
+\begin{code}
+\harmonysource{RWtest}
+\end{code}
+\caption{\harmonylink{code/RWtest.hny} Test code for reader/writer locks.}
+\label{fig:rwtest}
+\end{figure}
+
+\section{Reader/Writer Locks}
+\index{reader/writer lock}%
 \glsadd{reader/writer lock}%
 
+\begin{comment}
 \begin{figure}
 \begin{code}
 \harmonysource{RW}
@@ -2334,48 +2477,74 @@ a lock for each node in the tree.
 \end{figure}
 
 \begin{figure}
-\begin{code}
-\harmonysource{RWtest}
-\end{code}
-\caption{\harmonylink{code/RWtest.hny} Test code for \autoref{fig:rwbusy}.}
-\label{fig:rwbusytest}
-\end{figure}
-
-\begin{figure}
 \begin{center}
 \includegraphics[width=2.3in]{figures/rdwr.png}
 \end{center}
 \caption{High-level state diagram specification of reader/writer locks with
-up to two processes.
-The first number in a state gives the number of processes; the second number is the
-number of processes reading in the critical section; the third is the number of
-processes writing in the critical section.}
+up to two threads.
+The first number in a state gives the number of threads; the second number is the
+number of threads reading in the critical section; the third is the number of
+threads writing in the critical section.}
 \label{fig:rdwr}
 \end{figure}
+\end{comment}
 
 Locks are useful when accessing a shared data structure.  By preventing
-more than one process from accessing the data structure at the same
+more than one thread from accessing the data structure at the same
 time, conflicting accesses are avoided.  However, not all concurrent
 accesses conflict, and opportunities for concurrency may be lost,
-hurting performance.  One important case is when multiple processes
+hurting performance.  One important case is when multiple threads
 are simply reading the data structure.
 In many applications, reads are the majority of all accesses.
 Allowing reads to proceed concurrently can significantly improve performance.
 
 What we want is a special kind of lock that allows either (i) one writer
-or (ii) one or more readers to be in the critical section.  This is called
+or (ii) one or more readers to acquire the lock.  This is called
 a \emph{reader/writer lock}~\cite{CHP71}.
+%
+A reader/writer lock is an object whose abstract (and opaque)
+state contains two integer counters:
+\begin{enumerate}
+\item \textit{nreaders}: the number of readers
+\item \textit{nwriters}: the number of writers
+\end{enumerate}
+satisfying the following invariant:
+\begin{itemize}
+\item [] $(\mathit{nreaders} \ge 0 \land \mathit{nwriters} = 0) \lor
+    (\mathit{nreaders} = 0 \land 0 \le \mathit{nwriters} \le 1)$
+\end{itemize}
+
+There are four operations on a reader/writer lock \textit{rw}:
+\begin{itemize}
+\item \texttt{read\_acquire}(\textit{rw}): waits until $\mathit{nwriters} = 0$
+and then increments \textit{nreaders};
+\item \texttt{read\_release}(\textit{rw}): decrements $\mathit{nreaders}$;
+\item \texttt{write\_acquire}(\textit{rw}): waits until
+$\mathit{nreaders} = \mathit{nwriters} = 0$
+and then sets \textit{nwriters} to 1;
+\item \texttt{write\_release}(\textit{rw}): sets $\mathit{nwriters}$ to 0.
+\end{itemize}
+
+\autoref{fig:rwtest} shows how reader/writer locks operations
+may be tested.
+Similar to ordinary locks, a thread is restricted in how it is allowed to
+invoke these operations.
+In particular, a thread can only release a reader/writer lock for reading
+if it acquired it for reading and the same for writing.
+Moreover, a thread is only allowed the acquire a reader/writer lock once.
+
+\begin{comment}
 We will explore various ways of implementing reader/writer locks in
 this chapter and future ones.
 
 \autoref{fig:rwbusy} presents a solution that uses a
 single (ordinary) lock and two counters: one that maintains the number
 of readers and one that maintains the number of writers.
-\autoref{fig:rwbusytest} shows how the code may be used.
+\autoref{fig:rwtest} shows how the code may be used.
 We will call the lock the \emph{mutex} to distinguish it clearly from
 the reader/writer lock that we are implementing.
 The mutex is used to protect shared access to the counters.
-The program shows a process that executes in a loop.
+The program shows a thread that executes in a loop.
 Each time, it decides whether to read or write.
 The critical section is spread between two labels:
 readers access \texttt{@rcs} and writers access \texttt{@wcs}.
@@ -2383,13 +2552,15 @@ The specification is that if a reader is at label \texttt{@rcs},
 no writer is allowed to be at label \texttt{@wcs}.  Vice versa, if
 a writer is at label \texttt{@wcs}, no reader is allowed to be at
 label \texttt{@rcs} \emph{and} there cannot be another writer at
-label \texttt{@wcs}.  \autoref{fig:rdwr} shows a high-level
-specification for two processes.
+label \texttt{@wcs}.
 
-A process that wants to read first waits until there are no writers:
+\autoref{fig:rdwr} shows a high-level
+specification for two threads.
+
+A thread that wants to read first waits until there are no writers:
 \textit{nwriters} == 0.  Then it increments the number of readers.
 Similarly, a
-process that wants to write waits until there are no readers \emph{or} writers.
+thread that wants to write waits until there are no readers \emph{or} writers.
 Then it increments the number of writers.
 The important invariants in this code are:
 \begin{itemize}
@@ -2400,8 +2571,8 @@ The important invariants in this code are:
 \end{itemize}
 It is easy to see that the invariants hold and imply the reader/writer
 specification.
-The solution also supports progress: if no process is in the critical
-section then any process can enter.  Better still: if any reader is in the
+The solution also supports progress: if no thread is in the critical
+section then any thread can enter.  Better still: if any reader is in the
 critical section, any other reader is also able to enter.
 
 \begin{figure}
@@ -2419,29 +2590,29 @@ The solution is an example of what is called \emph{busy-waiting}
 \index{busy waiting}%
 (aka \emph{spin-waiting}):
 \index{spin waiting}%
-processes spin in a loop until some desirable application-level condition is met,
+threads spin in a loop until some desirable application-level condition is met,
 wasting CPU cycles.
 \autoref{fig:inc} also has an example of busy-waiting: the \texttt{main}
-process waits for the other two processes to finish by checking their \texttt{done}
+thread waits for the other two threads to finish by checking their \texttt{done}
 flags.
 
 The astute reader might wonder if obtaining the mutex itself is an
 example of busy-waiting.  After all, the Harmony \texttt{synch} implementation
 of \texttt{lock()} spins in a loop until the mutex is available
 (see \autoref{fig:spinlocks}).
-However, there is a big difference.  As we pointed out, the processes that
+However, there is a big difference.  As we pointed out, the threads that
 are waiting for a spinlock are \emph{blocked}.
 In most operating systems and programming language runtimes,
-when a process acquires a mutex, the process is placed on a scheduling
+when a thread acquires a mutex, the thread is placed on a scheduling
 queue and stops using CPU cycles until the mutex becomes available.
 Harmony supports this with the \texttt{synchS} module.
 Busy waiting disables all this: even when using the \texttt{synchS}
 module, readers and writers only get suspended temporarily in case
 there is contention for the mutex.
-A process trying to obtain a read or write lock in
+A thread trying to obtain a read or write lock in
 \autoref{fig:rwbusy} tries to obtain the mutex repeatedly.
 
-Thus, it is considered ok to have processes be blocked while waiting
+Thus, it is considered ok to have threads be blocked while waiting
 for application-specific conditions, but not for them to
 busy-wait for application-specific conditions.
 
@@ -2450,29 +2621,16 @@ the right test, Harmony can be used to check for busy-waiting.
 \autoref{fig:rwblock} presents such a test.
 Note that the initialization code obtains a write lock, preventing
 all readers and writers from entering the critical section.
-In that case, those processes should ideally be blocked and Harmony
+In that case, those threads should ideally be blocked and Harmony
 can test for that by running it with the \texttt{-b} flag.
 This flag tells Harmony to check
 that all states are non-terminating and lead to a state in which
-all processes are blocked.
+all threads are blocked.
 
 \section*{Exercises}
 \begin{problems}
 \item Draw additional states and steps in \autoref{fig:rdwr}
-for three processes.
-\item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
-\item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
-up to \texttt{M} processes to acquire it at the same time.\footnote{A bound lock is a restricted version of a counting semaphore, as we will learn later in this book.}
-A bound lock
-with \texttt{M == 1} is an ordinary lock.
-You should define a constant \texttt{M} and two methods:
-\texttt{acquire\_bound\_lock()}
-and \texttt{release\_bound\_lock()}.
-(Bound locks are useful for situations where too many processes working
-at the same time might exhaust some resource such as a cache.)
-\item Write a test program for your bound lock
-that checks that no more than \texttt{M} processes can acquire the
-bound lock.
+for three threads.
 \end{problems}
 
 \chapter{Reader/Writer Locks with Blocking}
@@ -2517,8 +2675,8 @@ A writer just acquires \textit{rwlock} to enter the critical section
 and releases it to exit.  The \emph{first} reader to enter the critical
 section acquires \textit{rwlock} and the \emph{last} reader to exit
 the critical section releases \textit{rwlock}.
-The implementation satisfies progress: if no process is in the critical
-section then any process can enter.
+The implementation satisfies progress: if no thread is in the critical
+section then any thread can enter.
 
 It is instructive to see what happens when a writer is in the critical
 section and two readers try to enter.  The first reader successfully
@@ -2542,13 +2700,13 @@ section.  Moreover, it checks progress: all executions eventually terminate.
 What it does \emph{not} check is if the code allows more than one reader
 in the critical section.  Indeed, we could have implemented the reader/writer
 lock using an ordinary lock, never allowing
-more than one process in the critical section, and Harmony would not have
+more than one thread in the critical section, and Harmony would not have
 complained.
 
 \autoref{fig:rwmulti} contains a new test that ensures that indeed more
 than one reader can enter the critical section at a time.  It does so by
-having processes sometimes wait in the critical section until all other readers
-are there.  If other readers cannot enter, then that process enters in an
+having threads sometimes wait in the critical section until all other readers
+are there.  If other readers cannot enter, then that thread enters in an
 infinite loop that Harmony will readily detect.  Try it out!
 
 An important lesson here is that one should not celebrate too early if Harmony
@@ -2559,14 +2717,11 @@ in a test, it cannot find problems that the test is not looking for.
 \section*{Exercises}
 \begin{problems}
 \item Why do you suppose the code in \autoref{fig:rwmulti} uses a flag
-per process rather than a simple counter?
+per thread rather than a simple counter?
 Can you write a version of this test that uses a counter instead
-of a flag per process?
+of a flag per thread?
 % \item Write a ``library implementation'' of reader/writer locks so multiple
 % reader/writer locks can be instantiated.
-\item Write a test program for ``bound locks'' (Exercise~\ref{ex:boundlock})
-that checks that up to \texttt{M} processes
-can acquire the bound lock at the same time.
 \end{problems}
 
 \chapter{Semaphores}
@@ -2594,8 +2749,8 @@ can acquire the bound lock at the same time.
 So far we have looked at how to protect a single resource.
 Some types of resources may have multiple units.
 If there are only $n$ units, no more than $n$ units can be used at a time;
-if all are in use and a process comes along that needs one of the units,
-it has to wait until another process releases one of the units.
+if all are in use and a thread comes along that needs one of the units,
+it has to wait until another thread releases one of the units.
 Note that we cannot solve this problem simply using a lock per unit---allocating
 a unit requires access to the entire collection.
 
@@ -2616,14 +2771,14 @@ A semaphore is essentially
 a counter that can be incremented and decremented but is not allowed to go
 below zero.  The semaphore counter is typically initialized to the number of
 units of a resource initially available.
-When allocating a resource, a process decrements the
+When allocating a resource, a thread decrements the
 counter using the \texttt{P}
 \index{P}%
 \index{procure}%
 operation.  You can think of \texttt{P} standing
 for \emph{Procure}, as in procuring the resource associated with the semaphore.
-The \texttt{P} operation blocks the invoking process if the counter is zero.
-To release the resource, a process increments the resource using the
+The \texttt{P} operation blocks the invoking thread if the counter is zero.
+To release the resource, a thread increments the resource using the
 \texttt{V}
 \index{V}%
 \index{vacate}%
@@ -2642,52 +2797,21 @@ using a semaphore.
 You may find the free ``The Little Book of Semaphores'' by
 Allen Downey a great resource for working with semaphores~\cite{Downey09}.
 
-\section*{Exercices}
+\section*{Exercises}
 \begin{problems}
 \item How might you check with Harmony that at most three
 Italian philosophers can eat at the same time?
 \item Implement a test program that checks to see that
 the solution allows more than one Italian philosopher to eat at the same time?
-\item \label{ex:qsort}
-\autoref{fig:qsort} shows an iterative implementation of the Qsort
-algorithm, and \autoref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in  shared variable $a$.
-Another shared variable, \textit{todo}, contains the ranges of the
-array that need to be sorted (initially the entire array).
-Re-using as much of this code as you can, implement a parallel version of
-this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
-or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker processes''
-that should replace the \texttt{qsort} code.  Each worker loops until \textit{todo}
-is empty and sorts the ranges that it finds until then.  The \texttt{main}
-process needs to wait until all workers are done.  Use a semaphore for this:
-the \texttt{main} process should use \texttt{P} to wait for each
-worker to terminate.  After that it should check that the array is sorted and
-that it is a permutation of the original array.
 \end{problems}
+\end{comment}
 
-\begin{figure}
-\begin{code}
-\harmonysource{qsort}
-\end{code}
-\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
-\label{fig:qsort}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{qsorttest}
-\end{code}
-\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
-\label{fig:qsorttest}
-\end{figure}
-
-\chapter{Bounded Buffer}
-\label{ch:bb}
+\section{Bounded Buffer}
 \index{bounded buffer}%
 \index{producer/consumer problem}%
-
 \glsadd{producer/consumer problem}%
 
+\begin{comment}
 \begin{figure}
 \begin{center}
 \includegraphics[width=2.5in]{figures/pc-crop.pdf}
@@ -2740,39 +2864,39 @@ harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.hny
 \caption{Script for testing producer/consumer synchronization.}
 \label{fig:pcscript}
 \end{figure}
+\end{comment}
 
-A good example of a resource with multiple units is the
-so-called \emph{bounded buffer} (aka \emph{ring buffer}).
 \index{ring buffer}%
-Suppose you have a \emph{producer} (some process) wanting to
-communicate a stream of items with a \emph{consumer} (another process).
-A bounded buffer is essentially
-a queue implemented using a circular buffer
+A \emph{bounded buffer} (aka \emph{ring buffer}) is
+a queue with the usual enqueue/dequeue interface,
+but implemented using a circular buffer
 \index{circular buffer}%
 of a certain length and two pointers:
-one where the producer inserts items, and one where the consumer extracts
-items.  If the
-buffer is full, the producer must wait; if the buffer is empty, the
-consumer must wait.
+the \emph{tail} points where new items are enqueued and the \emph{head}
+points where items are dequeued.
+If the buffer is full, the enqueur must wait; if the buffer is empty, the
+dequeuer must wait.
 This problem is known as the ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
 
-The producer/consumer pattern is common.  Processes may be arranged
+The producer/consumer pattern is common.  Threads may be arranged
 in \emph{pipelines},
 \index{pipeline}%
-where each upstream process is a producer and each downstream
-process is a consumer.
-Or processes may be arranged in a manager/worker pattern, with a manager
+where each upstream thread is a producer and each downstream
+thread is a consumer.
+Or threads may be arranged in a manager/worker pattern, with a manager
 producing jobs and workers consuming and executing them in parallel.
 Or, in the client/server model,
 \index{client/server model}%
-some process may act as a \emph{server} that clients can send requests to
+some thread may act as a \emph{server} that clients can send requests to
 and receive responses from.  In that case, there is a bounded buffer
 for each client/server pair. Clients produce requests and
 consume responses, while the server consumes requests and produces responses.
+%
+Multiple producers and multiple consumers may all share
+the same bounded buffer.
 
-In general, we allow multiple producers and multiple consumers
-all sharing the same bounded buffer.
+\begin{comment}
 \autoref{fig:pc} gives a high-level description.  The
 two numbers in a state specify
 the number of items that the producers still can produce and
@@ -2805,14 +2929,14 @@ keeps track of the number of filled entries in the buffer and a semaphore
 \textit{n\_empty} that keeps track of the number of empty entries in the buffer.
 
 To add an item to the bounded buffer (\texttt{produce}(\textit{item})), the producing
-process first has to wait until there is room in the bounded buffer.
+thread first has to wait until there is room in the bounded buffer.
 To this end, it invokes \texttt{P}(\textit{n\_empty}), which waits until
 $\mathit{n\_empty} > 0$ and atomically decrements \textit{n\_empty} once this
 is the case.  In other words, the producer procures an empty slot.
 Next, it adds the item to the next position in the buffer.
 Since there may be more than one empty slot, multiple producers may attempt
 to do the same thing concurrently.  Hence the use of the \textit{l\_in}
-semaphore used as a lock.  Finally, once the item is added, the process
+semaphore used as a lock.  Finally, once the item is added, the thread
 increments the \textit{n\_full} semaphore to signal to consumers that
 an item is available.
 The consumer code is symmetric.
@@ -2825,7 +2949,7 @@ as they only take on the values 0 and 1.
 They protect critical sections.
 The second type of semaphores are called \emph{counting semaphores}.
 \index{counting semaphore}%
-They can be used to send signals between processes.
+They can be used to send signals between threads.
 However, binary and counting semaphores are implemented the same way.
 
 \autoref{fig:bbtest} invokes the code of \autoref{fig:boundedbuffer}.
@@ -2843,7 +2967,7 @@ The first part can be tested with the code given in \autoref{fig:pc}, by
 experimenting with different non-negative values for the three constants.
 In particular, any run with a positive \texttt{NSLOTS} and
 $\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
-should terminate, while other values should lead to processes blocking.
+should terminate, while other values should lead to threads blocking.
 To this this, one can write a script like the one in \autoref{fig:pcscript}.
 
 \autoref{fig:BBsemadata} tests whether the correct data is sent in
@@ -2854,37 +2978,13 @@ and that, if the two tuples come from the same producer, then they have to
 be in the order sent.
 Moreover, consumers add the tuples they received to the set
 \textit{received} (atomically---a lock could have been used here as well).
-The \texttt{main()} process waits for all consumers to have received
+The \texttt{main()} thread waits for all consumers to have received
 exactly the set of tuples that the producers produce.
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:nbproduce} Change the code in \autoref{fig:boundedbuffer} so that
-\texttt{produce()} fails if the buffer is full rather than block.
-\texttt{produce()} should return \texttt{False} if it fails
-and return \texttt{True} if it succeeds.
-\item Optimize the code in \autoref{fig:boundedbuffer} for the case
-where there is only one consumer and one producer.
-\item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
-should block if the stack is full.  Method \texttt{pop()} should block
-until the stack is non-empty and then return an item.
-Also implement test programs for your solution.
-\item \label{ex:gpu} Implement a thread-safe \emph{GPU allocator} by modifying
-\autoref{fig:gpu}.
-There are \texttt{N} GPUs identified by the numbers
-1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
-of an available GPU, blocking if there is currently no available GPU.
-Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
-to block.
 \end{problems}
-
-\begin{figure}
-\begin{code}
-\harmonysource{gpu}
-\end{code}
-\caption{\harmonylink{code/gpu.hny} A thread-unsafe GPU allocator.}
-\label{fig:gpu}
-\end{figure}
+\end{comment}
 
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
@@ -2900,165 +3000,203 @@ to block.
 
 \glsadd{conditional critical section}%
 
-Reader/writer locks and bounded buffers are both examples of what are
-sometimes called \emph{conditional critical sections}
-\index{conditional critical section}%
-(CCSs)~\cite{Hoare73}.
-All critical sections are, in a way, conditional.  Even the basic critical section
-has the condition that a process can only enter if no other process
-is in the critical section.  Reader/writer locks refined that condition, loosening
-the restriction for improved performance.
-In the case of bounded buffers, there were two CCSs.  First, a CCS
-to add an entry to the bounded buffer that can only be entered by one
-process and only if there is room in the bounded buffer (\texttt{produce}).
-Second, a CCS that can only be entered by one process and
-only if there is an item in the bounded buffer (\texttt{consume}).
-
-CCSs are easy to implement using busy waiting:
-\begin{code}
-\harmonysource{busywait}
-\end{code}
-
-We have seen solutions to the reader/writer problem and the producer/consumer
-problem that do not busy-wait, but they are quite different.  It would be nice
-to have a general technique for all CCS problems.
-The ``Split Binary Semaphore'' (SBS) is such a technique, originally proposed by
+Split Binary Semaphores (SBS) is a general technique to implement conditional
+waiting.  It was originally proposed by
 Tony Hoare and popularized by Edsger Dijkstra~\cite{EWD703}.
-SBS is an example of what one could call a ``baton-passing'' technique.
-A process needs the baton to access shared variables.
-When a process has the baton and does not need it any more,
-it first checks to see if there are any processes that are waiting for the
-baton and can make progress.
-If so, it passes the baton directly to one of those processes.
-If not, it releases the baton for some other process to pick up at a
-later time.
+SBS is an extension of a critical section that is protected by a single
+binary semaphore.
+If there are $n$ \emph{waiting conditions},
+then SBS uses $n+1$ binary semaphores to protect the critical section.
+An ordinary critical section has no waiting conditions.
+Reader/writer locks have two waiting conditions:
+\begin{enumerate}
+\item readers waiting for a writer to release the lock;
+\item writers waiting for another writer or all readers to release the lock.
+\end{enumerate}
+Similarly, a bounded buffer has two waiting conditions:
+\begin{enumerate}
+\item consumers waiting for the buffer to be non-empty;
+\item producers waiting for an empty slot in the buffer.
+\end{enumerate}
+So each will require 3 binary semaphores if the SBS technique is applied.
+
+Think of each of these semaphores as a gate that a thread must go
+through in order to enter the critical section.  A gate is either open
+or closed.  Initially, exactly one gate, the main gate, is open.
+Each of the other gates, the \emph{waiting gates}, is associated with a
+waiting condition.
+When a gate is open, one thread can enter the critical section,
+closing the gate behind it.
+
+When leaving the critical section, the thread must open exactly one
+of the gates, but it does not have to be the gate that it used to enter
+the critical section.
+In particular, when a thread leaves the critical section it should
+check for each waiting gate if its waiting condition hold and if there are
+processes trying to get through the gate.  If there is such a gate,
+it must select one and open that gate.  If there is no such gate,
+it must open the main gate.
+
+Finally, if a thread is executing in the critical section and needs to
+wait for a particular condition, it leaves the critical section and waits
+for the gate associated with that condition to open.
+
+Note that the following invariants holds:
+\begin{itemize}
+\item At any time, at most one gate is open;
+\item If some gate is open, then no thread is in the critical section;
+\item If some thread is in the critical section, all gates are closed;
+\item At any time, at most one thread is in the critical section.
+\end{itemize}
+
+The main gate is implemented by a binary semaphore, initialized in the
+released state (signifying that the gate is open).
+The waiting gates each consist of a pair: a counter that counts how many
+threads are waiting behind the gate, and a binary semaphore initialized
+in the acquired state (signifying that the gate is closed).
 
 We will illustrate the technique using the reader/writer problem.
-\autoref{fig:RWsplitsema} shows the
-\texttt{rlock\_acquire}, \texttt{rlock\_release},
-\texttt{wlock\_acquire}, and \texttt{wlock\_release} methods implemented using
-SBS.
+\autoref{fig:RWsplitsema} shows code.
+The first step is to enumerate all waiting conditions.
+In the case of the reader/writer
+problem, there are two: a thread that wants to read may have to wait for a
+writer to leave the critical section, while a thread that wants to write may
+have to wait until all readers have left the critical section or until a writer has left.
 
-Step 1 is to enumerate all waiting conditions.  In the case of the reader/writer
-problem, there are two: a process that wants to read may have to wait for a
-writer to leave the critical region, while a process that wants to write may
-have to wait until all readers have left the critical section or until a writer has left.  If there are $N$
-waiting conditions, the SBS technique will use $N+1$ binary semaphores: one for
-each waiting condition and an extra one that processes use when they first try
-to enter the critical section and do not yet know if they need to wait.
-We shall call this last semaphore the \textit{mutex}.
-
-An important invariant of the SBS technique is that the sum of the $N+1$ semaphores
-must always be 0 or 1, and it should be 0 when a process is accessing the shared
-variables and 1 when not.
-As it were, these semaphores taken together are emulating a single binary semaphore.
-Initially, \textit{mutex} is~1 and the other $N$ semaphores
-are all~0.  To maintain the invariant, each process alternates \texttt{P} and
-\texttt{V} operations, starting with \texttt{P}(?\textit{mutex}) when it tries to
-enter the CCS, and ending with a \texttt{V} operation on one of the semaphores
-(yet to be determined).
-
-Another important part of the SBS technique is to keep careful track of the
-state.  In the case of the reader/writer lock, the state consists of the
-following shared variables:
+The state of a reader/writer lock thus consists of the following:
 \begin{itemize}
-\item \textit{r\_entered}: the number of readers in the critical section;
-\item \textit{w\_entered}: the number of writers in the critical section;
-\item \textit{r\_waiting}: the number of readers waiting to enter;
-\item \textit{w\_waiting}: the number of writers waiting to enter.
+\item \textit{nreaders}: the number of readers in the critical section;
+\item \textit{nwriters}: the number of writers in the critical section;
+\item \textit{mutex}: the ``main gate'' binary semaphore;
+\item \textit{r\_gate}: the ``waiting gate'' used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
+\item \textit{w\_gate}: the ``waiting gate'' used by writers, similar to the readers' gate.
 \end{itemize}
+
 Each of the
-\texttt{rlock\_acquire}, \texttt{rlock\_release},
-\texttt{wlock\_acquire}, and \texttt{wlock\_release} methods must maintain
+\texttt{read\_acquire}, \texttt{read\_release},
+\texttt{write\_acquire}, and \texttt{write\_release} methods must maintain
 this state.
-For example, check out \texttt{rlock\_acquire}.
-It first checks to see if there
-are any writers.  If so, it increments \textit{r\_waiting}.
-If not, it increments \textit{r\_entered}.
+Each of these methods first has to acquire the \textit{mutex}
+(i.e., enter the main gate).
+\texttt{read\_acquire} and \texttt{write\_acquire} must check to see
+if it has to wait.
+If so, it increments the count associated with its respective gate,
+opens a gate (using \texttt{release\_one}, and then blocks until
+its waiting gate opens up.
 
-Either way, it vacates one of the semaphores next.
-\texttt{V\_one()} is the baton passing function that selects which of the
-binary semaphores to vacate.
-Method \texttt{V\_one()} first checks to see if there are any readers or
-writers waiting.  If there are readers waiting and there are no writers
-in the critical section, it vacates the semaphore associated with
-readers waiting, passing the baton to the next reader.
-If there are writers waiting and there are no readers
-nor writers in the critical section, it vacates the semaphore associated
-with writers waiting, passing the baton to the next writer.
-If both conditions hold, it could vacate either
-one---it would not matter.
-However, it can only vacate one of the semaphores.
-In this implementation, it prefers to pass the baton to another reader.
-If none of the conditions hold, \texttt{V\_one()} vacates \textit{mutex},
-leaving the batom for a future process to pick up.
+\texttt{release\_one()} is the function that a thread uses when leaving
+the critical section.  It must check to see if there is a waiting gate
+that has threads waiting behind it and whose condition is met.
+If so, it selects one and opens that gate.  In the given code,
+\texttt{release\_one()} first checks the readers' gate and then the
+writers' gate, but the other way around would have worked as well.
+If neither waiting gate qualifies, then \texttt{release\_one()} 
+has to open the main gate (i.e., release \textit{mutex}).
 
-Let us return now to \texttt{rlock\_acquire}. In the case that the process,
-say $p$,
-found there is a writer in the critical section, it vacates
-\textit{mutex} and procures \textit{r\_sema},
-blocking on the semaphore associated
-with waiting readers.  When later some other process passes the baton to
-$p$ by incrementing \textit{r\_sema}, $p$ updates the state by decrementing
-\textit{r\_waiting} and incrementing \textit{r\_entered}.  $p$
-then invokes \texttt{V\_one()} to pass the baton to another waiting
-reader, if any, or to leave it for another process to pick up.
+Let us examine \texttt{read\_acquire} more carefully.
+First the method acquires the \textit{mutex}.
+Then, in the case that the thread, say $p$,
+finds that there is a writer in the critical section
+($\mathit{nwriters > 0}$), it increments the counter associated with
+the readers' gate, leaves the critical section (\texttt{release\_one}),
+and then tries to acquire the semaphore associated with the gate.
+This will cause it to block until some thread opens that gate.
 
-As an example, consider the case where there is a writer in the critical
+Now consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
-the writer calls \texttt{wlock\_release}:
+the writer calls \texttt{write\_release}:
 \begin{enumerate}
-\item After procuring \textit{mutex},
-the sum of the three semaphores is 0.  The writer then decrements
-\textit{w\_entered} and calls \texttt{V\_one()}.
-\item \texttt{V\_one()} finds that there are no writers in the critical section
-and there are two readers waiting.  It therefore vacates \textit{r\_sema}.
-The sum of the semaphores is now~1, because \textit{r\_sema} is~1.  This
-guarantees that only a waiting reader, procuring \textit{r\_sema}, can enter
-the critical section.
-\item When it does, the reader decrements \textit{r\_waiting}
-from 2 to 1, and increments \textit{r\_entered} from~0 to~1.
-The reader finally calls \texttt{V\_one()}.
-\item Again, \texttt{V\_one()} finds that there are no writers and
-that there are readers waiting, so again it vacates \textit{r\_sema},
-passing the baton to the one remaining waiting reader.
-\item The remaining reader decrements \textit{r\_waiting} from 1 to 0 and
-increments \textit{r\_entered} from~1 to~2.
-\item Finally, the remaining reader  calls \texttt{V\_one()}.
-\texttt{V\_one()} does not find any processes waiting,
-and so it vacates \textit{mutex}.
+\item After acquiring \textit{mutex}, the writer decrements
+\textit{nwriters}, which must be 1 at this time, and thus becomes 0.
+\item It then calls \texttt{release\_one()}.
+\texttt{release\_one()} finds that there are no writers in the critical section
+and there are two readers waiting.  It therefore releases not
+\textit{mutex} but the readers' gate's binary semaphore.
+\item One of the waiting reader can now re-enter the critical section.
+When it does, the reader decrements the gate's counter (from 2 to 1),
+and increments \textit{nreaders} (from~0 to~1).
+The reader finally calls \texttt{release\_one()}.
+\item Again, \texttt{release\_one()} finds that there are no writers and
+that there are readers waiting, so again it releases the readers' semaphore.
+\item The second reader can now enter the critical section.
+It decrements the gate's count from 1 to 0 and increments \textit{nreaders}
+from~1 to~2.
+\item Finally, the second reader  calls \texttt{release\_one()}.
+This time \texttt{release\_one()} does not find any threads waiting,
+and so it releases \textit{mutex}.
+There are now two threads that are holding the reader/writer lock.
 \end{enumerate}
 
 \section*{Exercises}
 \begin{problems}
-\item Assume that you have only binary semaphores.
-Implement counting semaphores using the split binary semaphores technique.
+% \item Assume that you have only binary semaphores.
+% Implement counting semaphores using the split binary semaphores technique.
+\item Several of the instantiations of \texttt{release\_one()} in
+\autoref{fig:RWsplitsema} can be replaced by simply releasing \textit{mutex}.
+Which ones?
+\item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
+\item \label{ex:bbsbs} Implement a solution to the producer/consumer problem
+using split binary semaphores.
+\item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
+up to \texttt{M} threads to acquire it at the same time.\footnote{A bound lock is a restricted version of a \emph{counting} semaphore.}
+A bound lock
+with \texttt{M == 1} is an ordinary lock.
+You should define a constant \texttt{M} and two methods:
+\texttt{acquire\_bound\_lock()}
+and \texttt{release\_bound\_lock()}.
+(Bound locks are useful for situations where too many threads working
+at the same time might exhaust some resource such as a cache.)
+\item Write a test program for your bound lock
+that checks that no more than \texttt{M} threads can acquire the
+bound lock.
+\item Write a test program for bound locks
+that checks that up to \texttt{M} threads
+can acquire the bound lock at the same time.
+\item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
+should block if the stack is full.  Method \texttt{pop()} should block
+until the stack is non-empty and then return an item.
+Also implement test programs for your solution.
+\item \label{ex:gpu} Implement a thread-safe \emph{GPU allocator} by modifying
+\autoref{fig:gpu}.
+There are \texttt{N} GPUs identified by the numbers
+1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
+of an available GPU, blocking if there is currently no available GPU.
+Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
+to block.
 \item With reader/writer locks,
-concurrency can be improved if a process \emph{downgrades} its write lock
+concurrency can be improved if a thread \emph{downgrades} its write lock
 to a read lock when its done writing but not done reading.  Add
 a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
-How easy or hard would it be to do the same for the code in
-\autoref{fig:rw2lock}?
-Note, you cannot simply release the
-write lock and then obtain the read lock, because the process needs
-to remain in the critical section.
-\item \label{ex:onelane} Implement a solution to the producer/consumer problem
-(\autoref{fig:boundedbuffer}) using split binary semaphores.
+% How easy or hard would it be to do the same for the code in
+% \autoref{fig:rw2lock}?
+% Note, you cannot simply release the
+% write lock and then obtain the read lock, because the thread needs
+% to remain in the critical section.
 \item \label{ex:onelane} Cornell's campus features some one-lane bridges.
 On a one-lane bridge,
 cars can only go in one direction at a time. Consider northbound
 and southbound cars wanting to cross a one-lane bridge.
 The bridge allows arbitrary many cars, as long as they're going in the
 same direction.
-Implement a lock that observes this requirement using SBS.  Write methods
+Implement a lock that observes this requirement using SBS.
+Write methods \texttt{OLBlock()} to create a new ``one lane bridge'' lock,
 \texttt{nb\_enter()} that a car must invoke before going northbound on
 the bridge and \texttt{nb\_leave()} that the car must invoke after leaving
 the bridge.  Similarly write \texttt{sb\_enter()} and \texttt{sb\_leave()}
 for southbound cars.
 \item Extend the solution to \autoref{ex:onelane} by implementing the
-requirement that at most 3 cars are allowed on the bridge.
+requirement that at most $n$ cars are allowed on the bridge.  Add $n$
+as an argument to \texttt{OLBlock}.
 
 \end{problems}
+
+\begin{figure}
+\begin{code}
+\harmonysource{gpu}
+\end{code}
+\caption{\harmonylink{code/gpu.hny} A thread-unsafe GPU allocator.}
+\label{fig:gpu}
+\end{figure}
 
 \chapter{Starvation}
 \label{ch:starvation}
@@ -3086,35 +3224,35 @@ program allows are a subset of the traces in the property.
 So far we have pursued two properties: \emph{mutual exclusion}
 and \emph{progress}.  The former is an example of a
 \emph{safety property}---it prevents something ``bad'' from
-happening, like a reader and writer process both entering the
+happening, like a reader and writer thread both entering the
 critical section.  The \emph{progress} property is an example
 of a \emph{liveness property}---guaranteeing that something good
 eventually happens.
-Informally (and inexactly), progress states that if no processes
-are in the critical section, then some process that wants to enter
+Informally (and inexactly), progress states that if no threads
+are in the critical section, then some thread that wants to enter
 can.
 
 Progress is a weak form of liveness.  It says that \emph{some}
-process can enter, but it does not prevent a scenario such as
-the following.  There are three processes repeatedly trying to
+thread can enter, but it does not prevent a scenario such as
+the following.  There are three threads repeatedly trying to
 enter a critical section using a spinlock.  Two of
-the processes successfully keep entering, alternating, but the third
-process never gets a turn.  This is an example of
+the threads successfully keep entering, alternating, but the third
+thread never gets a turn.  This is an example of
 \texttt{starvation}.  With a spinlock, this scenario could
-even happen with two processes.  Initially both processes
-try to acquire the spinlock.  One of the processes is
-successful and enters.  After the process leaves, it immediately
+even happen with two threads.  Initially both threads
+try to acquire the spinlock.  One of the threads is
+successful and enters.  After the thread leaves, it immediately
 tries to re-enter.  This state is identical to the initial
-state, and there is nothing that prevents the same process
+state, and there is nothing that prevents the same thread
 from acquiring the lock yet again.
 
 It is worth noting that Peterson's Algorithm (\autoref{ch:peterson})
 does not suffer from starvation, thanks to the \texttt{turn} variable
-that alternates between 0 and 1 when two processes are contending for
+that alternates between 0 and 1 when two threads are contending for
 the critical section.
 
 While spinlocks suffer from starvation, it is a uniform random
-process and each process has an equal chance of entering the critical
+process and each thread has an equal chance of entering the critical
 section.  Thus the probability of starvation is exponentially vanishing.
 We shall call such a solution \emph{fair}
 \index{fairness}%
@@ -3124,7 +3262,7 @@ match the usual formal nor vernacular concepts of fairness).
 \glsadd{fairness}%
 
 Unfortunately, such is not the case for the
-reader/writer solutions that we presented thus far.
+reader/writer solution that we presented in~\autoref{ch:sbs}.
 Consider this scenario: there are two readers and one writer.  One reader
 is in the critical section while the writer is waiting.  Now the
 second reader tries to enter and is able to.  The first reader leaves.
@@ -3135,44 +3273,41 @@ indefinitely.  So even if neither reader was in the critical section
 all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
-SBSs allow much control over which thread runs next and is therefore a
-good starting point for developing fair synchronization algorithms.
-In this chapter, we will present two SBS-based fair reader/writer lock
-implementations.
-The first, in \autoref{fig:RWfair}, is based on \autoref{fig:RWsplitsema}.
-There are two differences:
+SBSs allow much control over which type of thread runs next and is therefore
+a good starting point for developing fair synchronization algorithms.
+\autoref{fig:RWfair} is based on \autoref{fig:RWsplitsema}, but there
+are two important differences:
 
 \begin{enumerate}
 \item When a reader tries to enter the critical section, it yields not only
 if there are writers in the critical section, but also if there are writers
 waiting to enter the critical section;
-\item There are two versions of \texttt{V\_one()}.  In particular, when the
-last reader leaves the critical section, it preferentially passes the baton
-to a waiting writer rather than to a waiting reader.  Similarly,
-when a writer leaves the critical section, it preferentially passes
-the baton to a waiting reader rather than to a waiting writer.
+\item Instead of a one-size-fits-all \texttt{release\_one} method, each
+method has a custom way of selecting which gate to open.  In particular,
+\texttt{read\_release} prefers the write gate, while \texttt{write\_release}
+prefers the read gate.
 \end{enumerate}
 
 The net effect of this is that if there is contention between readers and
-writers, than readers and writers end up alternating entering the critical
+writers, then readers and writers end up alternating entering the critical
 section.  While readers can still starve other readers and writers can still
-starve other writers, they cannot starve one another.  And since contention for
-a semaphore is resolved probabilistically, each reader and each writer will
-eventually have a chance to enter the critical section almost surely.
+starve other writers, readers can no longer starve writers nor vice versa.
+Other fairness is based on the fairness of semaphores themselves.
 
+\begin{comment}
 \autoref{fig:RWqueue} and \autoref{fig:RWqtest} present a different approach
-in which processes are allowed into the critical region in a purely First
+in which threads are allowed into the critical section in a purely First
 Come First Served manner.  When a reader arrives, it is allowed in only if
 there is no writer in the critical section or waiting to enter.  When a writer
 arrives, it is allowed in only if there is no reader or writer in the
 critical section (and therefore also not waiting to enter).  To maintain the
-arrival order, the solution uses a semaphore per process and a queue.
+arrival order, the solution uses a semaphore per thread and a queue.
 The \texttt{acquire\_} methods take a pointer to
-the semaphore of the process as argument.
+the semaphore of the thread as argument.
 Each entry in the queue is a pair consisting of a type of access
 (\texttt{.read} or \texttt{.write}) and a pointer to the semaphore of the
-processs that is waiting.  Method \texttt{V\_one} considers semaphores to vacate
-in the order in which they appear in the queue.
+thread that is waiting.  Method \texttt{release\_one} considers semaphores
+to release in the order in which they appear in the queue.
 
 \begin{figure}
 \begin{code}
@@ -3191,6 +3326,7 @@ in the order in which they appear in the queue.
 \caption{\harmonylink{code/RWqtest.hny} Test program for \autoref{fig:RWqueue}.}
 \label{fig:RWqtest}
 \end{figure}
+\end{comment}
 
 \section*{Exercises}
 \begin{problems}
@@ -3217,9 +3353,10 @@ semaphore.
 
 \begin{figure}
 \begin{code}
-\harmonysource{hoaretest}
+\harmonysource{BBhoare}
 \end{code}
-\caption{\harmonylink{code/hoaretest.hny} Example of Hoare monitors.}
+\caption{\harmonylink{code/BBhoare.hny} Bounded Buffer implemented using
+a Hoare monitor.}
 \label{fig:hoaretest}
 \end{figure}
 
@@ -3235,7 +3372,7 @@ The \textit{mutex} is hidden: it is automatically acquired when invoking a
 method and released upon exit.
 The other semaphores are encapsulated in \emph{condition variables}.
 \index{condition variable}%
-Each condition variable also keeps track of the number of processes waiting
+Each condition variable also keeps track of the number of threads waiting
 on the condition variable.
 
 There are two operations on condition variables: \texttt{wait}
@@ -3246,21 +3383,35 @@ and
 \autoref{fig:hoare} presents the semantics by giving an implementation of
 \texttt{wait} and \texttt{signal} as well as the code that is used to enter
 and exit monitor methods.
-\autoref{fig:hoaretest} presents a simple example lifted directly from
-the original paper~\cite{Hoare74}.
-
 \texttt{wait} increments the condition's counter, releases the monitor mutex,
-blocks while trying to procure the condition's semaphore, and after resuming
+blocks while trying to acquire the condition's semaphore, and after resuming
 decrements the counter---in much the same way as we have seen for split binary
 semaphores (SBS).
 \texttt{signal} checks to see if the condition's count is non-zero, and if so
-vacates the condition's semaphore---passing the baton to
-a process trying to procure it---and then blocks by procuring the mutex again.
-The use of \texttt{wait} and \texttt{signal} ensures that \texttt{P} and
-\texttt{V} operations alternate as prescribed by the SBS technique.
-Our implementations of reader/writer locks can be easily changed to
-use \texttt{wait} and \texttt{signal} instead of using \texttt{P}
-and \texttt{V}.
+releases the condition's semaphore,
+and then blocks by trying to acquire the mutex again.
+
+\autoref{fig:hoaretest} presents a bounded buffer implemented using
+Hoare monitors.  It is written in much the same way you would if using
+the SBS technique (see \autoref{ex:bbsbs}).
+There is no \texttt{release\_one} method.  Instead, one can conclude
+that \texttt{enqueue} causes the queue to be non-empty, and
+\texttt{signal} will check if there are any threads waiting for
+this event.  If so, \texttt{signal} will pass control to one such thread
+and, unlike \texttt{release\_one}, re-enter the critical
+section afterwards by acquiring the \textit{mutex}.
+
+Implementing a reader/writer lock with Hoare monitors is not quite so
+straightforward, unfortunately.  When a writer releases the lock, it
+has to choose whether to signal a reader or another writer.  For that
+it needs to know if there is a reader or writer waiting.  The simplest
+solution would be to peek at the counters inside the respective condition
+variable, but that breaks the abstraction.  The alternative is for the
+reader/writer implementation to keep track of that state explicitly,
+which complicates the code.  Also, it requires a deep understanding of
+the SBS method to remember to place a call \texttt{signal} in the
+\texttt{read\_acquire} method that releases additional readers that
+may be waiting to acquire the lock.
 
 In the late 70s, researchers at Xerox PARC,
 where among others the desktop and Ethernet
@@ -3271,89 +3422,103 @@ Mesa introduced various important concepts to programming languages,
 including software exceptions and incremental compilation.  Mesa also
 incorporated a version of monitors.
 However, there are some subtle but important differences with Hoare
-monitors that make Mesa monitors quite unlike split binary semaphores.
+monitors that make Mesa monitors quite unlike split binary semaphores
+and mostly easier to use in practice.
 
 As in Hoare monitors, there is a hidden mutex associated with each monitor,
 and the mutex is automatically acquired upon entry to a method and released
 upon exit.
-Mesa monitors also have condition variables that a process can wait on.
+Mesa monitors also have condition variables that a thread can wait on.
 Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
 operation \texttt{notify} rather than \texttt{signal}.
 \index{notify}%
-When a process $p$ invokes \texttt{notify}, it does not immediately pass 
-the baton to some process $q$ requiring the baton (assuming there even
-is such a process).  Instead, $p$ holds onto
-the baton until it leaves the monitor.  At that point, any process that
-was notified will have a chance to obtain the baton, but they compete
-with other processes also trying to obtain the baton.
+When a thread $p$ invokes \texttt{notify}, it does not immediately pass 
+control to a thread that is waiting on the corresponding condition (if there
+is such a thread).  Instead, $p$ remains in the critical section
+until it leaves the monitor explicitly.  At that point, any thread that
+was notified will have a chance to enter the critical section, but they compete
+with other threads trying to enter the critical section.
+Basically, there is just one gate to enter the critical section, instead
+of a main gate and a gate per waiting condition.
 
+\begin{comment}
 \begin{figure}
 \begin{center}
 \includegraphics[width=6in]{figures/monitor-crop.pdf}
 \end{center}
 \caption{High-level depictions of Hoare and Mesa monitors.  The hall is
-where processes wait to enter the bathroom (the critical section).  The
-bedrooms illustrate two condition variables.  The circles are processes.}
+where threads wait to enter the bathroom (the critical section).  The
+bedrooms illustrate two condition variables.  The circles are threads.}
 \label{fig:monitors}
 \end{figure}
 
 \autoref{fig:monitors} illustrates the difference with a drawing.
 Here a bathroom represents the critical section, allowing only one
-process at a time.  The bedrooms represent condition variables.
+thread at a time.  The bedrooms represent condition variables.
 There is some condition associated with each bedroom.
-In the hall are processes waiting to enter the critical section.
+In the hall are threads waiting to enter the critical section.
 
 On the left is a Hoare monitor.
-When some process $p$ is in the bathroom, it can invoke \textbf{signal}
+When some thread $p$ is in the bathroom, it can invoke \textbf{signal}
 on some non-empty bedroom associated with a condition that holds.
-This select a process $q$ in that bedroom.
+This select a thread $q$ in that bedroom.
 As a result of invoking \textbf{signal}, $p$ goes back into the hall
 and $q$ enters the bathroom.\footnote{Per Brinch Hansen' monitors have
 a \textbf{continue} operation instead of \textbf{signal}.  The difference
-is that processes that invoke \textbf{continue} leave the monitor rather
+is that threads that invoke \textbf{continue} leave the monitor rather
 than returning to the hall.}
 Importantly, when $q$ enters the bathroom, the condition that $q$ was
 waiting for is guaranteed to hold.
 
 On the right is a Mesa monitor.  The only way into the bathroom is through
-the hall.  When process $p$ invokes \textbf{notify} on a bedroom, it
-selects a process $q$ in that bedroom, if any.
-Process $q$ goes into the hall,
-joining any other processes that are also waiting to
+the hall.  When thread $p$ invokes \textbf{notify} on a bedroom, it
+selects a thread $q$ in that bedroom, if any.
+Thread $q$ goes into the hall,
+joining any other threads that are also waiting to
 enter the bathroom.
-If there are no processes in that bedroom, \textbf{notify} is a no-op.
+If there are no threads in that bedroom, \textbf{notify} is a no-op.
 Importantly, in either case $p$ remains in the bathroom.
 Finally, when $p$ leaves the bathroom, one of the
-processes in the hall can enter the bathroom.  But that may not be $q$.
-Assuming every process eventually leaves the bathroom and the system is
+threads in the hall can enter the bathroom.  But that may not be $q$.
+Assuming every thread eventually leaves the bathroom and the system is
 fair, eventually $q$ will enter the bathroom.  However, it is no longer
 guaranteed that the condition it was waiting for still holds.
 Therefore, the first thing $q$ must
 do is check, again, to see if the condition holds.  If not, it should go back
 into the bedroom corresponding to the condition.
+\end{comment}
 
-Besides notifying processes, Mesa monitors provide another important option:
-it can choose to let any number of processes in the bedrooms into the hall.
-It can do so by calling
-\texttt{notify} repeatedly, each time letting one process in the specified
-bedroom into the hall.  Mesa also provides an
-operation called \texttt{notifyAll}
+This is a very important difference.  In Hoare monitors, when a thread
+enters through a waiting gate, it can assume that the condition associated
+with the waiting gate still holds because no other thread can run in between.
+Not so with Mesa monitors: by the time a thread that was notified enters
+through the main gate, other threads may have entered first and falsified
+the condition.  So in Mesa, threads always have to check the condition
+again after resuming from the \texttt{wait} operation.  This is accomplished
+by wrapping each \texttt{wait} operation in a \textbf{while} statement that
+loops until the condition of interest becomes valid.
+A Mesa monitor therefore is more closely related to \emph{busy waiting}
+than to split binary semaphores.
+
+Mesa monitors provide another important and convenient option:
+operation \texttt{notifyAll}
+notifies \emph{all} threads that are waiting on a condition
+instead of just one.
+Having such an operation is not possible with Hoare monitors because using
+Hoare monitors control
+must be passed immediately to a thread that has been signaled, and that
+can only be done if there is just one such thread.
 \index{notifyAll}%
 (aka \texttt{broadcast)})
 \index{broadcast}%
-that, when applied to
-a bedroom, lets all processes in that bedroom into the hall.
-This is not possible with Hoare monitors: when needing to wake up a set
-of processes, only one can be signaled at a time.  Each of those processes
-then has to signal the next in a baton-passing style
-until all processes have been signaled.
+lets all threads in that bedroom into the hall.
 
-While Hoare monitors are conceptually simpler, the so-called
+The so-called
 ``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
-have become more popular, adopted by all major
-programming languages.
+have become more popular than Hoare monitor semantics, and have been
+adopted by all major programming languages.
 That said, few programming languages provide full support for monitors.
 In Java, each object has a hidden lock \emph{and} a hidden condition variable
 associated with it.
@@ -3387,107 +3552,113 @@ Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:RWcv}
 \end{figure}
 
-The Harmony \texttt{synch} module supports Mesa condition variables.
-However, like C, Java, and Python,
-it does not have built-in language support for them but instead associates condition variables
-with explicit locks.
+Like C, Java, and Python, Harmony does not have built-in language
+support for monitors, but provides library support through the
+Harmony \texttt{synch} module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
-\texttt{Condition}(\textit{lk}) creates a new condition variable associated with the given pointer
-to a lock \textit{lk}.
-The condition variable itself is represented by a dictionary containing the pointer to the lock
-and a bag of name tags of processes waiting on the condition variable.
+\texttt{Condition}() creates a new condition variable.
+It is represented by a dictionary containing
+a bag of name tags of threads waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
 
-\texttt{wait} adds the nametag of the process to the bag.
-This increments the number of processes in the bag with the same context.
+\texttt{wait} adds the nametag of the thread to the bag.
+This increments the number of threads in the bag with the same context.
 \texttt{wait} then waits until that count is restored to the
-value that it had upon entry to \texttt{wait}.  \texttt{notify} removes an arbitrary context from
-the bag, allowing one of the processes with that context to return from \texttt{wait}.
-\texttt{notifyAll} empties out the entire bag, allowing all processes in the bag to resume.
+value that it had upon entry to \texttt{wait}.
+\texttt{notify} removes an arbitrary context from
+the bag, allowing one of the threads with that context to
+resume and re-acquire the lock associated with the monitor.
+\texttt{notifyAll} empties out the entire bag, allowing all threads
+in the bag to resume.
 
-To illustrate how Mesa condition variables are used in practice, we demonstrate using,
-once again, an implementation of reader/writer locks.
-\autoref{fig:RWcv} shows the code.  \textit{rwlock} is the global lock or mutex for the
-reader/writer lock.  There are two condition variables: readers wait on \textit{rcond} and
-writers wait on \textit{wcond}.  The implementation also keeps track of the number of
+To illustrate how Mesa condition variables are used in practice, we demonstrate using an implementation of reader/writer locks.
+\autoref{fig:RWcv} shows the code.  \textit{mutex} is the shared lock
+that protects the critical region.
+(Again, there is only one ``gate.'')
+There are two condition variables: readers wait on \textit{r\_cond} and
+writers wait on \textit{w\_cond}.
+The implementation also keeps track of the number of
 readers and writers in the critical section.
 
-When inspecting the code, one important feature to notice is that \texttt{wait} is always
-invoked within a \textbf{while} loop that checks for the condition that the process is
-waiting for.  We explained why above: when a process resumes after
-being notified, it is not guaranteed that the condition it was waiting for holds, even
-if it did at the time of invoking \texttt{notify} or \texttt{notifyAll}.
-It is \emph{imperative} that there is always a \textbf{while} loop around any invocation
-of \texttt{wait} containing the negation of the condition that the process is waiting for.
-Many implementation of condition variables depend on this, and optimized implementations
-of condition variables often allow so-called ``spurious wakeups,'' where \texttt{wait}
-may sometimes return even if the conditon variable has not been notified.
+Note that \texttt{wait} is always invoked within a \textbf{while}
+loop that checks for the condition that the thread is waiting for.
+It is \emph{imperative} that there is always a \textbf{while} loop
+around any invocation of \texttt{wait} containing the negation of
+the condition that the thread is waiting for.  Many implementation
+of condition variables depend on this, and optimized implementations
+of condition variables often allow so-called ``spurious wakeups,''
+where \texttt{wait} may sometimes return even if the conditon
+variable has not been notified.
+In particular, one should always be able to replace \texttt{wait}
+by \texttt{unlock} followed by \texttt{lock}.
+This turns the solution into a busy-waiting one, inefficient but still
+correct.
 
-In \texttt{release\_rlock}, notice that \texttt{notify}(?\textit{wcond}) is invoked when there
-are no readers left, \emph{without} checking if there are writers waiting to enter.
-With Mesa monitors this is ok, because calling \texttt{notify} is a no-op if no process
-is waiting.
+In \texttt{release\_rlock}, notice that \texttt{notify}(?\textit{w\_cond})
+is invoked when there are no readers left, \emph{without} checking
+if there are writers waiting to enter.  This is
+ok, because calling \texttt{notify} is a no-op if no thread is
+waiting.
 
-\texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{rcond}) as well as
-\texttt{notify}(?\textit{wcond)}.
-Again, because we do not keep track of the number of waiting readers or writers, we
-have to conservatively assume that all waiting readers can enter, or, alternatively,
-up to one waiting writer can enter.  So \texttt{release\_wlock} wakes up all
-potential candidates.
-There are two things to note here.  First, unlike split binary semaphores or Hoare
-monitors, where multiple waiting readers would have to be signaled one at a time in a
-baton-passing fashion (see \autoref{fig:RWsplitsema}), with Mesa monitors
-all readers are awaked in one fell swoop using \texttt{notifyAll}.
-Second, both readers and writers are awakened---this is ok because both execute
-\texttt{wait} within a \textbf{while} loop, re-checking the condition that they
-are waiting for.  So if both type of processes are waiting, either all the readers
-get to enter next or one of the writers gets to enter next.
-
-Much of the complexity of programming with Mesa condition variables is in figuring out
-when to invoke \texttt{notify} and when to invoke \texttt{notifyAll}.  As a rule of
-thumb: be conservative---it is better to wake up too many processes than too few.
-Waking up too many processes may lead to some inefficiency, but waking up too few
-may cause the application to get stuck.  Harmony can be particularly helpful here, as
-it examines every corner case.  You can safely try to replace each \texttt{notifyAll}
-with \texttt{notify} and see if every possible execution of the the application still
-terminates.
+\texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{r\_cond})
+as well as \texttt{notify}(?\textit{w\_cond)}.  Again, because we
+do not keep track of the number of waiting readers or writers, we
+have to conservatively assume that all waiting readers can enter,
+or, alternatively, up to one waiting writer can enter.  So
+\texttt{release\_wlock} wakes up all potential candidates.  There
+are two things to note here.  First, unlike split binary semaphores
+or Hoare monitors, where multiple waiting readers would have to be
+signaled one at a time in a baton-passing fashion (see
+\autoref{fig:RWsplitsema}), with Mesa monitors all readers are
+awakened in one fell swoop using \texttt{notifyAll}.  Second, both
+readers and writers are awakened---this is ok because both execute
+\texttt{wait} within a \textbf{while} loop, re-checking the condition
+that they are waiting for.  So if both type of threads are waiting,
+either all the readers get to enter next or one of the writers gets
+to enter next.
 
 While Hoare moniters embody the split binary semaphore approach,
 Mesa monitors are much closer to the busy-waiting approach.
-When comparing the busy-waiting version of reader/writer locks in \autoref{fig:rwbusy}
-and the Mesa version in \autoref{fig:RWcv}, you will see important similarities.
-Busy-waiting is ``fixed'' by placing a \textbf{wait} statement in the waiting loop.
-The Mesa code then has to be careful to invoke \textbf{notify} or \textbf{notifyAll}
-in the right places.
+The Mesa code then has to be careful to invoke \textbf{notify} or
+\textbf{notifyAll} in the right places.
+Much of the complexity of programming with Mesa condition variables
+is in figuring out when to invoke \texttt{notify} and when to invoke
+\texttt{notifyAll}.  As a rule of thumb: be conservative---it is
+better to wake up too many threads than too few.  Waking up too
+many threads may lead to some inefficiency, but waking up too few
+may cause the application to get stuck.  Harmony can be particularly
+helpful here, as it examines every corner case.  You can safely try
+to replace each \texttt{notifyAll} with \texttt{notify} and see if
+every possible execution of the the application still terminates.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \section*{Exercises}
 \begin{problems}
-\item Implement a ``try lock'' using Mesa condition variables
+\item Implement a ``try lock'' module using Mesa condition variables
 (see also Exercise~\ref{ex:trylock}).  It should
 have the following API:
 \begin{enumerate}
-\item \textit{tl} = \texttt{TryLock}() \# \emph{allocate a try lock}
-\item \texttt{tlLock}(?\textit{tl}) \# \emph{acquire a try lock}
-\item \texttt{tlTrylock}(?\textit{tl}) \# \emph{attempt to acquire a try lock}
-\item \texttt{tlUnlock}(?\textit{tl}) \# \emph{release a try lock}
+\item \textit{tl} = \texttt{TryLock}() \# \emph{create a try lock}
+\item \texttt{acquire}(?\textit{tl}) \# \emph{acquire a try lock}
+\item \texttt{tryAcquire}(?\textit{tl}) \# \emph{attempt to acquire a try lock}
+\item \texttt{release}(?\textit{tl}) \# \emph{release a try lock}
 \end{enumerate}
 \noindent
-\texttt{tlTrylock} should not wait.
+\texttt{tryAcquire} should not wait.
 Instead it should return \texttt{True} if the lock was successfully
 acquired and \texttt{False} if the lock was not available.
-\item Implement semaphores using Mesa condition variables.
+% \item Implement semaphores using Mesa condition variables.
 \item Write a new version of the GPU allocator in \autoref{ex:gpu}
 using Mesa condition variables.
 In this version,
-a process is allowed to allocate a set of GPUs and release a set of GPUs that it
+a thread is allowed to allocate a set of GPUs and release a set of GPUs that it
 has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
 available, but it should grant them as soon as they are available.
 Method \texttt{gpuReleaseSet(s)} takes a set of GPU identifiers as argument.
-A process does not have to return all the GPUs it allocated at once.
+A thread does not have to return all the GPUs it allocated at once.
 \item The specification in the previous question makes the solution unfair.
 Explain why this is so.  Then change the specification and the solution so that
 it is fair.
@@ -3507,8 +3678,8 @@ it is fair.
 \label{fig:diners}
 \end{figure}
 
-When multiple processes are synchronizing access to shared resources, they
-may end up in a \emph{deadlock} situation where one or more of the processes
+When multiple threads are synchronizing access to shared resources, they
+may end up in a \emph{deadlock} situation where one or more of the threads
 end up being blocked indefinitely because each is waiting for another to give
 up a resource.
 The famous Dutch computer scientist Edsger W.~Dijkstra illustrated this using
@@ -3525,9 +3696,9 @@ this for ever, but for the purposes of this book, philosophers can leave
 the table when they're not eating.
 
 \autoref{fig:diners} implements the dining philosophers in Harmony, using a
-process for each philosopher and a lock for each fork.  If you
+thread for each philosopher and a lock for each fork.  If you
 run it, Harmony complains that the execution may not terminate, with all five
-processes being blocked trying to acquire the lock.
+threads being blocked trying to acquire the lock.
 
 \begin{quote}
 \begin{itemize}
@@ -3552,12 +3723,12 @@ processes being blocked trying to acquire the lock.
 \noindent
 There are four conditions that must hold for deadlock to occur~\cite{CES71}:
 \begin{enumerate}
-\item \emph{Mutual Exclusion}: each resource can only be used by one process at a time:
-\item \emph{Hold and Wait}: each process holds resources it already allocated while it
+\item \emph{Mutual Exclusion}: each resource can only be used by one thread at a time:
+\item \emph{Hold and Wait}: each thread holds resources it already allocated while it
 waits for other resources that it needs;
-\item \emph{No Preemption}: Resources cannot be forcibly taken away from processes that
+\item \emph{No Preemption}: Resources cannot be forcibly taken away from threads that
 allocated them;
-\item \emph{Circular Wait}: There exists a directed circular chain of processes, each waiting
+\item \emph{Circular Wait}: There exists a directed circular chain of threads, each waiting
 to allocate a resource held by the next.
 \end{enumerate}
 
@@ -3568,9 +3739,9 @@ Havender proposed the following techniques that avoid the remaining
 three conditions~\cite{Havender68}:
 
 \begin{itemize}
-\item \emph{No Hold and Wait}: a process must request all resources it is going to
+\item \emph{No Hold and Wait}: a thread must request all resources it is going to
 need at the same time;
-\item \emph{Preemption}: if a process is denied a request for a resource, it must
+\item \emph{Preemption}: if a thread is denied a request for a resource, it must
 release all resources that it has already acquired and start over;
 \item \emph{No Circular Wait}: define an ordering on all resources and allocate
 resources in a particular order.
@@ -3611,14 +3782,14 @@ A common mistake is to write the following code instead:
 \end{itemize}
 \end{quote}
 
-The \emph{Preemption} approach suggested by Havender is to allow processes to back out.
+The \emph{Preemption} approach suggested by Havender is to allow threads to back out.
 While this could be done, this invariably leads to a busy waiting solution
-where a process keeps obtaining locks and releasing them again until it
+where a thread keeps obtaining locks and releasing them again until it
 finally is able to get all of them.
 
 The \emph{No Circular Waiting} approach
 is to prevent a cycle from forming, with each
-process waiting for the next process on the cycle.
+thread waiting for the next thread on the cycle.
 We can do this by establishing an ordering among the
 resources (in this case the forks) and, when needing more than one
 resource, always acquiring them in order.  In the case of the philosopers,
@@ -3646,7 +3817,7 @@ restrict the number of diners at any time to four.
 This concept can be generalized using something called the
 Banker's Algorithm~\cite{EWD108}, but it is outside the scope of this book.
 The problem with these kinds of schemes is that one needs to know ahead of time
-the set of processes and what the maximum number of resources is that each process
+the set of threads and what the maximum number of resources is that each thread
 wants to allocate, making them generally quite impractical.
 
 \begin{figure}
@@ -3663,12 +3834,12 @@ scenario.}
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
-processes.  Can you fix the problem?
+threads.  Can you fix the problem?
 \item Add a method \texttt{total()} to the solution of the previous question
 that computes the total over all balances.
 It needs to obtain a lock on all accounts.  Make sure that
 it cannot cause deadlock.
-\item Implement an extra process that checks, once, if the total of
+\item Implement an extra thread that checks, once, if the total of
 the balances is the same as that at the beginning (using an assertion).
 Is once enough to determine that no money gets lost or created, or should it do
 so continually?
@@ -3715,14 +3886,14 @@ so continually?
 
 Some programming languages favor a different way of implementing
 synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
-processes that have only private memory and communicate through
+threads that have only private memory and communicate through
 \emph{message passing}.
 See \autoref{fig:actorpic} for an illustration.
 Given that there is no shared memory in the actor model (other than the message
 queues, which have built-in synchronization), there is no need
-for critical sections.  Instead, some sequential process owns a particular
-piece of data and other processes access it by sending request messages
-to the process and optionally waiting for response messages.  Each process
+for critical sections.  Instead, some sequential thread owns a particular
+piece of data and other threads access it by sending request messages
+to the thread and optionally waiting for response messages.  Each thread
 handles one message at a time, serializing all access to the data it owns.
 As message queues are FCFS (First-Come-First-Served), starvation is prevented.
 
@@ -3765,7 +3936,7 @@ then it has buffered \texttt{.produce} requests;
 if it is negative
 then it has buffered \texttt{.consume} requests.
 Note that both \textit{balance} and \textit{requests} are variables that are
-local to the \texttt{pc\_actor} process.
+local to the \texttt{pc\_actor} thread.
 
 Each request message is a dictionary with two fields.  One of the fields is
 \texttt{.type}, which either is \texttt{.produce} or \texttt{.consume}.
@@ -3775,10 +3946,10 @@ In case of \texttt{.consume}, the second field is \texttt{.queue} and holds
 a pointer to the queue where the response message must be enqueued.
 \texttt{.produce} messages do not get a response.
 
-The \texttt{pc\_actor} process has two arguments.  $q$ is a pointer
+The \texttt{pc\_actor} thread has two arguments.  $q$ is a pointer
 to the queue on which it receives messages.  \textit{nrequests} is the total
 number of requests that it will handle.  We need the latter because in Harmony
-all processes are required to terminate.  In a more realistic implementation,
+all threads are required to terminate.  In a more realistic implementation,
 the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
 
 The shared memory consists entirely of message queues.
@@ -3789,7 +3960,7 @@ of the \texttt{pc\_actor}.  The second is a pointer to the queue of the
 invoker: it is the queue to which the response must be posted.
 
 \autoref{fig:actortest} shows how this code may be used.  It spawns
-\texttt{NITEMS} producer and consumer processes.  Note that in that
+\texttt{NITEMS} producer and consumer threads.  Note that in that
 case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
 requests.
 
@@ -3852,10 +4023,10 @@ in the opposite order.  Which do you think is better?
 \label{fig:trap4}
 \end{figure}
 
-Processes can be \emph{interrupted}.  An interrupt is a notification of some event
+Threads can be \emph{interrupted}.  An interrupt is a notification of some event
 such as a keystroke, a timer expiring, the reception of a network packet, the completion
 of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
-An exception is caused by the process executing an invalid machine instruction such as
+An exception is caused by the thread executing an invalid machine instruction such as
 divide-by-zero.  An interrupt is caused by some peripheral device and can be handled in
 Harmony.
 In other words: an interrupt is a notification, while an exception is an error.
@@ -3869,13 +4040,13 @@ invokes \textit{handler argument} at some later, unspecified time.
 Only one of these asynchronous events can be outstanding at a time; a new call to
 \textbf{trap} overwrites any outstanding one.
 \autoref{fig:trap} gives an example of how \textbf{trap} might be used.
-Here, the \textit{main}() process loops until the interrupt has occurred and
+Here, the \textit{main}() thread loops until the interrupt has occurred and
 the \textit{done} flag has been set.
 
 But now consider \autoref{fig:trap2}.  The difference with \autoref{fig:trap} is
 that both the \textit{main}() and \textit{handler}() methods increment \textit{count}.
 This is not unlike the example we gave in \autoref{fig:inc}, except that only a single
-process is involved now.  And, indeed, it suffers from a similar race condition; run
+thread is involved now.  And, indeed, it suffers from a similar race condition; run
 it through Harmony to see for yourself.  If the interrupt occurs after \textit{main}()
 reads \textit{count} (and thus still has value 0) but before \textit{main()} writes the
 updated value~1, then the interrupt handler will also read value~0 and write value~1.
@@ -3885,16 +4056,16 @@ to not being \textit{thread-safe}).
 
 You would be excused if you wanted to solve the problem using locks, similar to
 \autoref{fig:incfixed}.  \autoref{fig:trap3} shows how one might go about this.
-But locks are intended to solve synchronization issues between multiple processes.
+But locks are intended to solve synchronization issues between multiple threads.
 If you run the code through Harmony, you will find that the code may not terminate.
-The issue is that a process can only acquire a lock once.  If the interrupt happens
+The issue is that a thread can only acquire a lock once.  If the interrupt happens
 after \textit{main}() acquires the lock but before \textit{main}() releases it, the
 \textit{handler}() method will block trying to acquire the lock, even though
-it is being acquired by the same process that already holds the lock.
+it is being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
-of a process to \texttt{True} using the \textbf{setintlevel} interface.
+of a thread to \texttt{True} using the \textbf{setintlevel} interface.
 \autoref{fig:trap4} illustrates how this is done.
 Note that it is not necessary to change the interrupt level during servicing an
 interrupt, because it is automatically set to \texttt{True} upon entry to the interrupt
@@ -3930,13 +4101,13 @@ interrupt levels.
 To increment \textit{count}, the interrupt level must be \textit{True} and
 \textit{countlock} must be held.
 \autoref{fig:trap6} gives an example of how this might be done.
-One important rule to remember is that a process should disable interrupts \emph{before}
+One important rule to remember is that a thread should disable interrupts \emph{before}
 attempting to acquire a lock.
 
 Try moving \texttt{lock}() to the beginning of the \texttt{increment} method
 and \texttt{unlock}() to the end of \texttt{increment} and see what happens.
 While Harmony will only report one faulty run, this incorrect code can lead to
-the assertion failing as well as processes getting blocked indefinitely.
+the assertion failing as well as threads getting blocked indefinitely.
 
 (Another option is to use synchronization techniques that do not use locks.
 See \autoref{ch:nonblocking} for more information.)
@@ -3990,13 +4161,13 @@ A
 \emph{distributed system}
 \index{distributed system}%
 is a concurrent system in which a collection
-of processes communicate by message passing, much the same as
+of threads communicate by message passing, much the same as
 in the actor model.
 The most important difference between distributed and concurrent
 systems is that the former takes \emph{failures}
 \index{failure}%
 into account,
-including failures of processes and failures of shared memory.
+including failures of threads and failures of shared memory.
 In this chapter, we will consider two actors, Alice and Bob.
 Alice wants to send a sequence of application messages to Bob,
 but the underlying network may lose messages.
@@ -4008,7 +4179,7 @@ Also, the network does not create messages out of nothing: if
 message $m$ is received, then message $m$ was sent.
 
 It is useful to create an abstract network that reliably sends messages
-between processes, much like the FIFO queue in the \texttt{synch} module.
+between threads, much like the FIFO queue in the \texttt{synch} module.
 For this, we need a network protocol that Alice and Bob can run.
 In particular, it has to be the case that if Alice sends application
 messages $m_1, ..., m_n$ in that order, then if Bob receives an
@@ -4102,15 +4273,15 @@ for each client, or solve the problem using a single pair of channels.
 \end{figure}
 
 So far we have concentrated on critical sections to synchronize multiple
-processes.  Certainly, preventing multiple processes from accessing
+threads.  Certainly, preventing multiple threads from accessing
 certain code at the same time simplifies how to think about synchronization.
 However, it can lead to starvation.  Even in the absence of starvation,
-if some process is slow for some reason while being in the critical section,
-the other processes have to wait for it to finish executing the critical section.
+if some thread is slow for some reason while being in the critical section,
+the other threads have to wait for it to finish executing the critical section.
 Also, using synchronization primitives in interrupt handlers is tricky
 to get right (\autoref{ch:interrupts}) and might run too long.
 In this chapter, we will have a look at how one can develop concurrent
-code in which processes do not have to wait for other processes to complete their
+code in which threads do not have to wait for other threads to complete their
 ongoing operations.
 
 As a first example, we will revisit the producer/consumer problem.
@@ -4137,11 +4308,11 @@ Method \texttt{consume()} repeatedly scans the array, up to the
 \textit{back} index, trying to find an item to return.
 To check an entry, it uses \texttt{exch()}
 to atomically remove an item from a slot if there is one.
-This way, if two or more processes attempt to extract an item from
+This way, if two or more threads attempt to extract an item from
 the same slot, at most one will succeed.
 
-There is no critical section.  If one process is executing instructions
-very slowly, this does not negatively impact the other processes, as it
+There is no critical section.  If one thread is executing instructions
+very slowly, this does not negatively impact the other threads, as it
 would with solutions based on critical sections.
 On the contrary, it helps them because it creates less contention.
 Unfortunately, the solution is not practical for the following reasons:
@@ -4267,8 +4438,8 @@ read-only operation.  Explain how a seqlock can lead to starvation.
 \includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
 \end{center}
 \caption{High-level state diagram specification of barrier synchronization
-with three processes and two rounds.  The three numbers specify how many
-rounds each process has completed.}
+with three threads and two rounds.  The three numbers specify how many
+rounds each thread has completed.}
 \label{fig:barrierdiagram}
 \end{figure}
 
@@ -4283,41 +4454,41 @@ rounds each process has completed.}
 Barrier synchronization is a problem that comes up in high-performance
 parallel computing, used, among others, for scalable simulation.
 A barrier is almost the opposite of a critical section:
-the intention is to get a group of processes to run some code at the
+the intention is to get a group of threads to run some code at the
 same time, instead of having them execute it one at a time.
-More precisely, with barrier synchronization the processes execute in rounds.
-Between each round there is a so-called \emph{barrier} where processes wait
-until all processes have completed the previous round, before they start the
+More precisely, with barrier synchronization the threads execute in rounds.
+Between each round there is a so-called \emph{barrier} where threads wait
+until all threads have completed the previous round, before they start the
 next one.
 For example, in an iterative matrix algorithm, the matrix may be
-cut up into fragments.  During a round, the processes run concurrently,
+cut up into fragments.  During a round, the threads run concurrently,
 one for each fragment.  The next round is not allowed to start
-until all processes have completed processing their fragment.
+until all threads have completed processing their fragment.
 
 \autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
-with three and processes.  Initially all processes are in round~0.  Then each process
-can start and finish the round.  However, none of the processes can
-progress to the next round until all processes have finished the
+with three and threads.  Initially all threads are in round~0.  Then each thread
+can start and finish the round.  However, none of the threads can
+progress to the next round until all threads have finished the
 current round.
 
 Counting semaphores work well for implementing barrier synchronization.
 \autoref{fig:barrier} shows an example.  There is a 0-initialized
-semaphore for each of the \texttt{N} processes.
-Before process $i$ enters a round, it first sends a signal to every
-other process and then waits until it receives a signal from
-every other process.  Process $i$ sends a signal to process $j$
+semaphore for each of the \texttt{N} threads.
+Before thread $i$ enters a round, it first sends a signal to every
+other thread and then waits until it receives a signal from
+every other thread.  Thread $i$ sends a signal to thread $j$
 by incrementing \texttt{sema[$j$]} (using \texttt{V}),
-while process $i$ waits for a signal be decrementing \texttt{sema[$i$]}
+while thread $i$ waits for a signal be decrementing \texttt{sema[$i$]}
 (using \texttt{P}).
 
 The \textit{round} array is kept to check the correctness of this
-approach.  Each process increments its entry every time it enters
-a round.  If the algorithm is correct, it can never be that two processes
+approach.  Each thread increments its entry every time it enters
+a round.  If the algorithm is correct, it can never be that two threads
 are more than one round apart.
 
 \section*{Exercises}
 \begin{problems}
-\item See if you can implement barrier synchronization for \texttt{N} processes
+\item See if you can implement barrier synchronization for \texttt{N} threads
 with just three semaphores.  Busy waiting is not allowed.  How about just two?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
 for solving synchronization problems with semaphores.
@@ -4452,7 +4623,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{nametag $e$} & $e$ must be \texttt{()} \\
 \hline
-\texttt{processes $e$} & $e$ must be \texttt{()} \\
+\texttt{threads $e$} & $e$ must be \texttt{()} \\
 \hline
 \texttt{setintlevel} \textit{e} & \textit{e} is a boolean \\
 \hline
@@ -4480,7 +4651,7 @@ An \emph{lvalue}
 \index{lvalue}%
 (short for left hand value of an assignment statement)
 is something that can be assigned.  This can be a
-shared variable, a process variable, or a dereferenced pointer
+shared variable, a thread variable, or a dereferenced pointer
 variable.  It can also be indexed.  Examples include
 \textit{var}, \textit{var}[$e$], and \texttt{!}\textit{p}.
 
@@ -4679,9 +4850,9 @@ The \texttt{synch} module provides the following methods:
 \hline
 \texttt{wait}($c$) & wait on condition variable \texttt{!}$c$ \\
 \hline
-\texttt{notify}($c$) & notify a process waiting on condition variable \texttt{!}$c$ \\
+\texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
 \hline
-\texttt{notifyAll}($c$) & notify all processes waiting on condition variable \texttt{!}$c$ \\
+\texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
 \hline
 \texttt{Semaphore}(\textit{cnt}) & return a semaphore object initialized to \textit{cnt} \\
 \hline
@@ -4721,7 +4892,7 @@ Cut & pop set or dict and push minimum and remainder \\
 \hline
 Del [$v$] & delete shared variable $v$ \\
 \hline
-DelVar [$v$] & delete process variable $v$ \\
+DelVar [$v$] & delete thread variable $v$ \\
 \hline
 Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
@@ -4738,7 +4909,7 @@ JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $
 \hline
 Load [$v$] & push the value of a shared variable onto the stack \\
 \hline
-LoadVar [$v$] & push the value of a process variable onto the stack \\
+LoadVar [$v$] & push the value of a thread variable onto the stack \\
 \hline
 Move $i$ & move stack element at offset $i$ to top of the stack \\
 \hline
@@ -4747,6 +4918,10 @@ $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements
 Pop & pop a value of the stack and discard it \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
+\hline
+ReadonlyInc & increment the read-only counter of this context \\
+\hline
+ReadonlyDec & decrement the read-only counter of this context \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
 \hline
@@ -4762,7 +4937,7 @@ Stop [$v$] & save context into shared variable $v$ and remove from context bag \
 \hline
 Store [$v$] & pop a value from the stack and store it in a shared variable \\
 \hline
-StoreVar [$v$] & pop a value from the stack and store it in a process variable \\
+StoreVar [$v$] & pop a value from the stack and store it in a thread variable \\
 \hline
 Trap & pop interrupt argument and method \\
 \hline
@@ -4776,8 +4951,8 @@ Clarifications:
 The top value must be an address value, representing a dictionary 
 The other value must be a key into the dictionary.
 The instruction then computes the address of the given key.
-\item Even though Harmony code does not allow taking addresses of process variables, both
-shared and process variables can have addresses.
+\item Even though Harmony code does not allow taking addresses of thread variables, both
+shared and thread variables can have addresses.
 \item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
 and \texttt{Stop} instructions have an optional
 variable name: if omitted the top of the stack must contain the address of
@@ -4792,10 +4967,10 @@ and pushes the value.
 If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
 pushing the current program counter and setting the program counter to
 $m$.  $m$ is supposed to leave the result on the stack.
-\item The \texttt{Frame} instruction pushes the value of the process
-register (\emph{i.e.}, the values of the process variables) onto the
+\item The \texttt{Frame} instruction pushes the value of the thread
+register (\emph{i.e.}, the values of the thread variables) onto the
 stack.  It initializes the \texttt{result} variable to the empty dictionary.
-The \texttt{Return} instruction restores the process register by popping
+The \texttt{Return} instruction restores the thread register by popping
 its value of the stack.
 \item All method calls have exactly one argument, although it sometimes
 appears otherwise:
@@ -4804,20 +4979,20 @@ appears otherwise:
 \item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
 \item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
 \end{itemize}
-The \texttt{Frame} instruction unpacks the argument to the method and places them into process variables by the given names.
+The \texttt{Frame} instruction unpacks the argument to the method and places them into thread variables by the given names.
 \item Every \texttt{Stop} instruction must immediately be followed by a 
 \texttt{Continue} instruction.
 \end{itemize}
 
-\chapter{Contexts and Processes}
+\chapter{Contexts and Threads}
 \label{app:context}
 
-A context captures the state of a process.  Each time the process
+A context captures the state of a thread.  Each time the thread
 executes an instruction, it goes from one context to another.
 All instructions update the program counter (\texttt{Jump} instructions
 are not allowed to jump to their own locations), and so no instruction
 leaves the context the same.
-There may be multiple processes
+There may be multiple threads
 with the same state at the same time.
 A context consists of the following:
 
@@ -4830,7 +5005,7 @@ program counter & an integer value pointing into the code \\
 \hline
 frame pointer & an integer value pointing into the stack \\
 \hline
-atomic & if non-zero, the process is in atomic mode \\
+atomic & if non-zero, the thread is in atomic mode \\
 \hline
 stack & a list of Harmony values \\
 \hline
@@ -4838,29 +5013,29 @@ register & a dictionary mapping atoms (names of variables) to values \\
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
-failure & if not None, string that describes how the process failed \\
+failure & if not None, string that describes how the thread failed \\
 \hline
 \end{tabular}
 \vspace{1em}
 
 Details:
 \begin{itemize}
-\item The name in a name tag is the name of the method that the process
+\item The name in a name tag is the name of the method that the thread
 is executing;
 \item The tag in a name tag the argument to the method by default.  Optionally
 \texttt{spawn} allows the tag to be specified explicitly;
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame pointer and variables, the argument to
 the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
-\texttt{process}), and the return address (in case of \texttt{normal}).
-\item A process terminates when it reaches the \texttt{Return} instruction
-of the top-level method (when the stack frame is of type \texttt{process})
+\texttt{thread}), and the return address (in case of \texttt{normal}).
+\item A thread terminates when it reaches the \texttt{Return} instruction
+of the top-level method (when the stack frame is of type \texttt{thread})
 or when it hits an exception.  Exceptions include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
 variable, infinite loops of microsteps, as well as when an assertion fails;
-\item The execution of a process in \emph{atomic mode} does not get interleaved
-with that of other processes.
-\item The register of a process always contains a dictionary, mapping
+\item The execution of a thread in \emph{atomic mode} does not get interleaved
+with that of other threads.
+\item The register of a thread always contains a dictionary, mapping
 atoms to arbitrary values.  The atoms correspond to the variable names
 in a Harmony program.
 \end{itemize}
@@ -4893,7 +5068,7 @@ There is initially a single context with nametag
 \texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
 in atomic mode until it finishes executing the last instruction in
 the code.  All states until then are \texttt{initializing} states.
-Other processes, created through \texttt{spawn} statements, do not
+Other threads, created through \texttt{spawn} statements, do not
 start executing until then.
 
 A \emph{micro step}
@@ -4920,7 +5095,7 @@ When a state is \texttt{choosing}, the edges from that state are
 by a single context, one for each choice.  If not, the edges from
 the state are one per context.
 
-Consecutive macro steps by the same process are called \emph{mega steps}.
+Consecutive macro steps by the same thread are called \emph{mega steps}.
 Each state maintains the shortest path to it from the initial state in terms
 of mega steps.
 The diameter of the graph is the length of the longest path found.
@@ -4929,7 +5104,7 @@ If some states have a problem, the state with the shortest path is reported.
 Problematic states include states that experienced exceptions.
 If there are no exceptions, Harmony computes the strongly connected components (SCCs)
 of the graph (the number of such components are printed as part of the output).
-The sink SCCs should each consist of a terminal state without any processes.
+The sink SCCs should each consist of a terminal state without any threads.
 If not, again the state with the shortest path is reported.
 
 If there are no problematic states, Harmony reports ``no issues found'' and outputs
@@ -4984,11 +5159,11 @@ Local variables all declared.  They can be declared in
 Also, each method has an implicitly declared
 \textit{result} variable.
 Local variables are tightly scoped and cannot be shared
-between processes.
+between threads.
 While in theory one method can be declared within another,
 they cannot share variables either.
 All other variables are global and must be initialized
-before any processes are spawned.
+before any threads are spawned.
 
 While arguments to a method and variables in \texttt{for} loops
 can be modified, we discourage it for improved code readability.

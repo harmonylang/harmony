@@ -1,3 +1,7 @@
+count = 0;
+entered = [ False, False ];
+done = [ False, False ];
+
 def incrementer(self):
     entered[self] = True;
     if entered[1 - self]:         # if the other process has already started
@@ -10,9 +14,7 @@ def main():
     await all(done);
     assert count == 2, count;
 ;
-count = 0;
-entered = [ False, False ];
-done = [ False, False ];
+
 spawn incrementer(0);
 spawn incrementer(1);
 spawn main();

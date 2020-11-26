@@ -1,27 +1,28 @@
-import alloc;
+from synch import Lock, acquire, release;
+from alloc import malloc, free;
 
-def Qnew():
+def Queue():
     result = dict{ .head: None, .tail: None, .lock: Lock() };
 ;
-def Qenqueue(q, v):
+def enqueue(q, v):
     let node = malloc(dict{ .value: v, .next: None }):
-        lock(?q->lock);
+        acquire(?q->lock);
         if q->head == None:
             q->head = q->tail = node;
         else:
             q->tail->next = node;
             q->tail = node;
         ;
-        unlock(?q->lock);
+        release(?q->lock);
     ;
 ;
-def Qdequeue(q):
-    lock(?q->lock);
+def dequeue(q):
+    acquire(?q->lock);
     let node = q->head:
         if node == None:
-            result = ();
+            result = None;
         else:
-            result = (node->value,);
+            result = node->value;
             q->head = node->next;
             if q->head == None:
                 q->tail = None;
@@ -29,5 +30,5 @@ def Qdequeue(q):
             free(node);
         ;
     ;
-    unlock(?q->lock);
+    release(?q->lock);
 ;

@@ -5,6 +5,7 @@ const NITEMS = 3;
 pc_queue = Queue();
 spawn pc_actor(?pc_queue, 2 * NITEMS);
 queues = [ Queue() for i in {0..NITEMS-1} ];
+
 for i in {0..NITEMS-1}:
     spawn produce(?pc_queue, i);
     spawn consume(?pc_queue, ?queues[i]);

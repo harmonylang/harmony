@@ -4,12 +4,16 @@ def tas(lk):
         !lk = True;
     ;
 ;
+def BinSema(acquired):
+    result = acquired;
+;
 def Lock():
-    result = False;
+    result = BinSema(False);
 ;
-def lock(lk):
-    await not tas(lk);
+def acquire(binsema):
+    await not tas(binsema);
 ;
-def unlock(lk):
-    !lk = False;
+def release(binsema):
+    assert binsema;
+    !binsema = False;
 ;

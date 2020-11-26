@@ -34,6 +34,7 @@ def lst_remove(lst, v):
         unlock(?before->lock);
     ;
 ;
+
 mylist = lst_node(-inf, lst_node(inf, None));
 lst_insert(mylist, 3);
 assert lst_contains(mylist, 3);

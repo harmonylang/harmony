@@ -1,29 +1,29 @@
-def bagEmpty():
+def empty():
     result = dict{};
 ;
-def bagFromSet(s):
+def fromSet(s):
     result = dict{ 1 for elt in s };
 ;
-def bagCount(bag, elt):
+def count(bag, elt):
     if elt in keys(bag):
         result = bag[elt];
     else:
         result = 0;
     ;
 ;
-def bagChoose(bag):
+def bchoose(bag):
     # TODO.  Assert that no elements are mapped to 0
     assert 0 not in { bag[k] for k in keys(bag) };
     result = choose(keys(bag));
 ;
-def bagAdd(pb, elt):
+def add(pb, elt):
     if elt in keys(!pb):
         (!pb)[elt] += 1;
     else:
         (!pb)[elt] = 1;
     ;
 ;
-def bagRemove(pb, elt):
+def remove(pb, elt):
     if (elt in keys(!pb)) and ((!pb)[elt] > 0):
         (!pb)[elt] -= 1;
     ;

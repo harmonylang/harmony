@@ -4,6 +4,10 @@ const MAX = 2;
 const NACCOUNTS = 2;
 const NPROCESSES = 2;
 
+accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX}) }
+                for i in {0..NACCOUNTS-1} ]
+;
+
 def transfer(a1, a2, amount):
     lock(?accounts[a1].lock);
     if amount <= accounts[a1].balance:
@@ -17,15 +21,14 @@ def transfer(a1, a2, amount):
     ;
     unlock(?accounts[a1].lock);
 ;
+
 def process():
     let a1 = choose({0..NACCOUNTS-1})
     let a2 = choose({0..NACCOUNTS-1} - { a1 }):
         transfer(a1, a2, choose({0..MAX}));
     ;
 ;
-accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX}) }
-                for i in {0..NACCOUNTS-1} ]
-;
+
 for i in {1..NPROCESSES}:
     spawn process();
 ;

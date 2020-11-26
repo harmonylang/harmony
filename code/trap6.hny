@@ -1,5 +1,9 @@
 import synch;
 
+count = 0;
+countlock = Lock();
+done = [ False, False ];
+
 def increment():
     let prior = setintlevel(True):
         lock(?countlock);
@@ -21,9 +25,7 @@ def main(self):
     await all(done);
     assert count == 4, count;
 ;
-count = 0;
-countlock = Lock();
-done = [ False, False ];
+
 spawn process(0);
 spawn process(1);
 spawn main();

@@ -1,4 +1,7 @@
-def process(self):
+flags = [ False, False ];
+turn = choose({0, 1});
+
+def thread(self):
     while choose({ False, True }):
         # Enter critical section
         flags[self] = True;
@@ -12,7 +15,6 @@ def process(self):
         flags[self] = False;
     ;
 ;
-flags = [ False, False ];
-turn = choose({0, 1});
-spawn process(0);
-spawn process(1);
+
+spawn thread(0);
+spawn thread(1);

@@ -7,29 +7,34 @@ def tas(lk):
         !lk = True;
     ;
 ;
+def BinSema(acquired):
+    result = acquired;
+;
 def Lock():
-    result = False;
+    result = BinSema(False);
 ;
-def lock(lk):
-    await not tas(lk);
+def acquire(binsema):
+    await not tas(binsema);
 ;
-def unlock(lk):
-    !lk = False;
+def release(binsema):
+    atomic:
+        assert !binsema;
+        !binsema = False;
+    ;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: bagEmpty() };
+    result = bag.empty();
 ;
-def wait(c):
-    let lk, blocked, cnt = None, True, 0:
+def wait(c, lk):
+    let blocked, cnt = True, 0:
         atomic:
-            lk = c->lock;
-            cnt = bagCount(c->waiters, nametag());
-            bagAdd(?c->waiters, nametag());
+            cnt = bag.count(!c, nametag());
+            bag.add(c, nametag());
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not !lk) and (bagCount(c->waiters, nametag()) <= cnt):
+                if (not !lk) and (bag.count(!c, nametag()) <= cnt):
                     !lk = True;
                     blocked = False;
                 ;
@@ -39,15 +44,13 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = c->waiters:
-            if waiters != bagEmpty():
-                bagRemove(?c->waiters, bagChoose(waiters));
-            ;
+        if !c != bag.empty():
+            bag.remove(c, bag.bchoose(!c));
         ;
     ;
 ;
 def notifyAll(c):
-    c->waiters = bagEmpty();
+    !c = bag.empty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -77,8 +80,8 @@ def dequeue(q):
         while blocked:
             atomic:
                 if !q != []:
-                    result = head(!q);
-                    !q = tail(!q);
+                    result = list.head(!q);
+                    !q = list.tail(!q);
                     blocked = False;
                 ;
             ;
@@ -87,6 +90,6 @@ def dequeue(q):
 ;
 def enqueue(q, item):
     atomic:
-        !q = append(!q, item);
+        !q = list.append(!q, item);
     ;
 ;
