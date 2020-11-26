@@ -490,12 +490,14 @@ language needed for the rest of the book.
 for implemented critical sections.
 \item \autoref{ch:synch} presents Harmony modules
 that supports locks and other synchronization primitives.
-\item \autoref{ch:cds} provides an introduction to building concurrent
+\item \autoref{ch:cds} gives an introduction to building concurrent
 data structures.
-\item \autoref{ch:rdwrbusy} and \autoref{ch:rdwr2} present the
-abstraction and implementation of \emph{reader/writer locks},
-which allow multiple threads in a critical section if they are
-all only executing read-only accesses.
+\item \autoref{ch:condwait} talks about threads having to wait for
+certain conditions.  As examples, it presents the reader/writer lock
+problem and the bounded buffer problem.
+\item \autoref{ch:sbs} presents \emph{Split Binary Semaphores}, a
+general technique for solving synchronization problems.
+\begin{comment}
 \autoref{ch:rdwrbusy} also discusses \emph{busy-waiting}, which is
 an easy but undesirable approach to synchronize threads.
 \item \autoref{ch:semaphore} introduces \emph{semaphores},
@@ -505,6 +507,7 @@ certain application-level conditions.
 \item \autoref{ch:bb} and \autoref{ch:sbs} introduce the
 \emph{bounded buffer problem} (aka \emph{producer/consumer problem})
 and various solutions.
+\end{comment}
 \item \autoref{ch:starvation} talks about \emph{starvation}:
 the problem that in some
 synchronization approaches threads may not be able to get access to a
@@ -2074,7 +2077,7 @@ statement.
 \label{fig:atm}
 \end{figure}
 
-\chapter{Binary Semaphores and Blocking}
+\chapter{Blocking}
 \label{ch:synch}
 \index{lock}%
 \index{synch module}%
@@ -2113,7 +2116,7 @@ Python, C, or Java support it), while the latter
 is very common.
 
 In Harmony, \texttt{atomic} statements allow you to \emph{implement} your own
-synchronization primitives like test-and-set.  Other common examples
+interlock primitives such as test-and-set.  Other common examples
 include compare-and swap and fetch-and-add.  \texttt{atomic} statements
 are not intended to \emph{replace} locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
@@ -2206,7 +2209,7 @@ available.
 In Harmony, a thread can suspend itself and save its context (state) in a
 list.  Recall that the context of a thread consists of its name tag,
 its program counter, and the contents of its register and stack.
-A context is a regular Harmony value.
+A context is a regular (if complex) Harmony value.
 The syntax of the expression is as follows:
 
 \begin{code}
@@ -2219,7 +2222,7 @@ Another thread can revive the thread using the \textbf{go}
 statement:
 
 \begin{code}
-\textbf{go} $C$ $R$
+\textbf{go} $C$ $R$;
 \end{code}
 
 Here $C$ is a context and $R$ is a Harmony value.
@@ -2276,7 +2279,8 @@ harmony -m synch=synchS x.hny
 \end{code}
 
 runs the file \texttt{x.hny} using the suspension version of the \texttt{synch} module.
-You will find that using the \texttt{synchS} module often leads to searching a
+You will find that using the \texttt{synchS} module often leads to
+the model checker searching a
 significantly larger state space than using the \texttt{synch} module.
 Part of the reason is that the \texttt{synchS} module keeps track of the order
 in which threads wait to acquire a binary semaphore, while the \texttt{synch} module does not.
@@ -2634,7 +2638,7 @@ for three threads.
 \end{problems}
 
 \chapter{Reader/Writer Locks with Blocking}
-\label{ch:rdwr2}
+\label{ch:rdwr}
 
 \begin{figure}
 \begin{code}
@@ -4716,7 +4720,9 @@ $e$ is an expression, $t$ is a tag (an expression) \\
 \hline
 \texttt{go $c$ $e$} & $c$ is a context, $e$ is an expression \\
 \hline
-\texttt{import m} & \texttt{m} identifies a module \\
+\texttt{import m, ...} & \texttt{m} identifies a module \\
+\hline
+\texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
 \end{tabular}
 
@@ -4755,17 +4761,19 @@ multisets:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{bagEmpty()} & returns an empty bag\\
+\texttt{empty()} & returns an empty bag\\
 \hline
-\texttt{bagFromSet($s$)} & create a bag from set $s$\\
+\texttt{fromSet($s$)} & create a bag from set $s$\\
 \hline
-\texttt{bagCount($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
+\texttt{fromList($t$)} & convert list $t$ into a bag \\
 \hline
-\texttt{bagChoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
+\texttt{count($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
 \hline
-\texttt{bagAdd}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
+\texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
 \hline
-\texttt{bagRemove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
+\texttt{add}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
+\hline
+\texttt{remove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
 \hline
 \end{tabular}
 
@@ -4804,9 +4812,7 @@ at index $b$ and ending just before $f$\\
 \hline
 \texttt{sum($t$)} & return the sum of all elements in $t$\\
 \hline
-\texttt{list2bag($t$)} & convert list $t$ into a bag \\
-\hline
-\texttt{listQsort($t$)} & sort list $t$ using quicksort\\
+\texttt{qsort($t$)} & sort list $t$ using quicksort\\
 \hline
 \end{tabular}
 
@@ -4840,21 +4846,23 @@ The \texttt{synch} module provides the following methods:
 \hline
 \texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
 \hline
-\texttt{Lock}() & return a lock object \\
+\texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
 \hline
-\texttt{lock}(\textit{lk}) & acquire \texttt{!}\textit{lk} \\
+\texttt{Lock}() & return a binary semaphore initialized to \texttt{False} \\
 \hline
-\texttt{unlock}(\textit{lk}) & release \texttt{!}\textit{lk} \\
+\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
 \hline
-\texttt{Condition}(\textit{lk}) & return a condition variable on \texttt{!}\textit{lk} \\
+\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
 \hline
-\texttt{wait}($c$) & wait on condition variable \texttt{!}$c$ \\
+\texttt{Condition}() & return a condition variable \\
 \hline
+\texttt{wait}($c$, \textit{lk}) & wait on condition variable \texttt{!}$c$
+and lock \textit{lk} \\ \hline
 \texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
 \hline
 \texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
 \hline
-\texttt{Semaphore}(\textit{cnt}) & return a semaphore object initialized to \textit{cnt} \\
+\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
 \hline
 \texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
 \hline
@@ -5007,6 +5015,8 @@ frame pointer & an integer value pointing into the stack \\
 \hline
 atomic & if non-zero, the thread is in atomic mode \\
 \hline
+readonly & if non-zero, the thread is in read-only mode \\
+\hline
 stack & a list of Harmony values \\
 \hline
 register & a dictionary mapping atoms (names of variables) to values \\
@@ -5035,6 +5045,8 @@ reading a non-existent key in a dictionary, accessing a non-existent
 variable, infinite loops of microsteps, as well as when an assertion fails;
 \item The execution of a thread in \emph{atomic mode} does not get interleaved
 with that of other threads.
+\item The execution of a thread in \emph{read-only mode} is not allowed
+to update shared variables of spawn threads.
 \item The register of a thread always contains a dictionary, mapping
 atoms to arbitrary values.  The atoms correspond to the variable names
 in a Harmony program.

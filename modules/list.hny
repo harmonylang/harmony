@@ -53,7 +53,7 @@ def enumerate(d):
 ;
 
 # quicksort of a list
-def listQsort(a):
+def qsort(a):
     if a == []:
         result = [];
     else:
@@ -74,17 +74,5 @@ def sorted(d):
 def reversed(d):
     let n = len(d):
         result = [ d[n-i] for i in { 1..n } ];
-    ;
-;
-
-# turn a list into a bag (multiset)
-def list2bag(a):
-    result = dict{};
-    for i in keys(a):
-        if a[i] in keys(result):
-            result[a[i]] += 1;
-        else:
-            result[a[i]] = 1;
-        ;
     ;
 ;

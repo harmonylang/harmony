@@ -4,6 +4,16 @@ def empty():
 def fromSet(s):
     result = dict{ 1 for elt in s };
 ;
+def fromList(a):
+    result = dict{};
+    for i in keys(a):
+        if a[i] in keys(result):
+            result[a[i]] += 1;
+        else:
+            result[a[i]] = 1;
+        ;
+    ;
+;
 def count(bag, elt):
     if elt in keys(bag):
         result = bag[elt];
