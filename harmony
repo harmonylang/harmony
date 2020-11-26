@@ -459,6 +459,7 @@ import collections
 import time
 import math
 import html
+import queue
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -3759,16 +3760,61 @@ def find_shortest(bad):
             best_len = node.len
     return best_node
 
-def strvars(vars):
-    result = ""
-    for k in sorted(vars.keys()):
-        if result != "":
-            result += ", "
-        result += "%s: %s"%(strValue(k), strValue(vars[k]))
-    return "{ " + result + " }"
+def varvisit(d, vars, name, r):
+    if isinstance(d, dict):
+        for k in sorted(d.keys()):
+            if isinstance(k, str):
+                nn = name + "." + k
+            else:
+                nn = name + "[" + strValue(k) + "]"
+            if k in vars.d:
+                varvisit(d[k], vars.d[k], nn, r)
+            else:
+                r.append("%s: ---"%nn)
+    else:
+        r.append("%s: %s"%(name, strValue(vars)))
+
+def strvars(d, vars):
+    r = [];
+    for k in sorted(d.keys()):
+        varvisit(d[k], vars.d[k], k, r)
+    return "{ " + ", ".join(r) + " }"
+
+def varmerge(d, vars):
+    assert isinstance(d, dict)
+    assert isinstance(vars, DictValue)
+    for (k, v) in vars.d.items():
+        if k in d and isinstance(d[k], dict) and isinstance(v, DictValue):
+            varmerge(d[k], v)
+        elif k not in d and isinstance(v, DictValue):
+            d[k] = {}
+            varmerge(d[k], v)
+        elif k not in d:
+            d[k] = {v}
+        elif isinstance(d[k], set):
+            d[k] |= {v}
+        else:
+            assert isinstance(d[k], dict)
+            d[k] = { v }
+
+def vartrim(d):
+    pairs = list(d.items())
+    for (k, v) in pairs:
+        if v == {}:
+            del d[k]
+        elif isinstance(d[k], dict):
+            vartrim(d[k])
+
+def pathvars(path):
+    d = {}
+    for (fctx, ctx, steps, states, vars) in path:
+        varmerge(d, vars)
+    vartrim(d)
+    return d
 
 def print_path(bad_node):
     path = genpath(bad_node)
+    d = pathvars(path)
     pids = []
     for (fctx, ctx, steps, states, vars) in path:
         try:
@@ -3777,7 +3823,7 @@ def print_path(bad_node):
         except ValueError:
             pids.append(ctx)
             pid = len(pids) - 1
-        print("P%d:"%pid, nametag2str(ctx.nametag), strsteps(steps), ctx.pc, strvars(vars.d))
+        print("P%d:"%pid, nametag2str(ctx.nametag), strsteps(steps), ctx.pc, strvars(d, vars))
     if len(path) > 0:
         (fctx, ctx, steps, states, vars) = path[-1]
         if ctx.failure != None:
@@ -4316,6 +4362,53 @@ def genpath(n):
     path2.append((firstctx, lastctx, laststeps, laststates, lastvars))
     return path2
 
+def vardim(d):
+    totalwidth = 0
+    maxheight = 0
+    if isinstance(d, dict):
+        for k in sorted(d.keys()):
+            (w, h) = vardim(d[k])
+            totalwidth += w
+            if h + 1 > maxheight:
+                maxheight = h + 1
+    else:
+        return (1, 0)
+    return (totalwidth, maxheight)
+
+def varhdr(d, name, nrows, f):
+    q = queue.Queue()
+    level = 0
+    q.put((d, level))
+    while not q.empty():
+        (nd, nl) = q.get()
+        if nl > level:
+            print("</tr><tr>", file=f)
+            level = nl
+        if isinstance(nd, dict):
+            for k in sorted(nd.keys()):
+                (w,h) = vardim(nd[k])
+                if h == 0:
+                    print("<td align='center' style='font-style: italic' colspan=%d rowspan=%d>%s</td>"%(w,nrows-nl,k), file=f)
+                else:
+                    print("<td align='center' style='font-style: italic' colspan=%d>%s</td>"%(w,k), file=f)
+                q.put((nd[k], nl+1))
+
+def vardump_rec(d, vars, f):
+    if isinstance(d, dict):
+        for k in sorted(d.keys()):
+            if vars != None and k in vars.d:
+                vardump_rec(d[k], vars.d[k], f)
+            else:
+                vardump_rec(d[k], None, f)
+    elif vars == None:
+        print("<td></td>", file=f)
+    else:
+        print("<td align='center'>%s</td>"%strValue(vars), file=f)
+
+def vardump(d, vars, f):
+    for k in sorted(d.keys()):
+        vardump_rec(d[k], vars.d[k], f)
+
 def htmlpath(n, color, f):
     # Generate a label for the path table
     issues = n.issues
@@ -4327,19 +4420,20 @@ def htmlpath(n, color, f):
             label += ", "
         label += issue
     label = "Issue: " + label
-    keys = sorted(n.state.vars.d.keys(), key=keyValue)
+    # keys = sorted(n.state.vars.d.keys(), key=keyValue)
     path = genpath(n)
+    d = pathvars(path)
+    (width, height) = vardim(d)
     print("<table id='issuestbl' border='1' width='100%%'><tr><th colspan='2' align='left' style='color: %s'>%s</th><th></th>"%(color, html.escape(label)), file=f)
-    if len(keys) == 1:
+    if width == 1:
         print("<th>Shared Variable</th>", file=f)
     else:
-        print("<th colspan='%d'>Shared Variables</th>"%len(keys), file=f)
+        print("<th colspan='%d'>Shared Variables</th>"%width, file=f)
     print("<col style='width:15%'>", file=f)
-    print("<tr><th>Process</th><th>Steps</th><th></th>", file=f)
-    for v in keys:
-        print("<td align='center' style='font-style: italic'>%s</td>"%v, file=f)
-    print("</tr><tr><td><td></tr>", file=f)
-    row = 1
+    print("<tr><th rowspan=%d>Process</th><th rowspan=%d>Steps</th><th rowspan=%d></th>"%(height, height, height), file=f)
+    varhdr(d, "", height, f)
+    print("</tr><tr><td></td></tr>", file=f)
+    row = height + 1
     pids = []
     for (fctx, ctx, steps, states, vars) in path:
         row += 1
@@ -4355,11 +4449,10 @@ def htmlpath(n, color, f):
             pid = len(pids) - 1
         print("<tr><td>P%d: <a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(pid, row, sid, nametag2str(ctx.nametag)), file=f)
         print("<td>%s</td><td></td>"%htmlstrsteps(steps), file=f)
-
-        for k in keys:
-            print("<td align='center'>%s</td>"%strValue(vars.d[k]), file=f)
+        vardump(d, vars, f)
         print("</tr>", file=f)
     print("</table>", file=f)
+    return height
 
 def htmlloc(code, scope, ctx, traceid, f):
     pc = ctx.pc
@@ -4532,7 +4625,7 @@ def htmlnode(n, code, scope, f, verbose):
 
     if verbose:
         print("<td>", file=f)
-        htmlpath(n, "black", f)
+        height = htmlpath(n, "black", f)
         print("</td>", file=f)
 
     # if n.state.failure != None:
@@ -4635,7 +4728,7 @@ table td, table th {
 
         if node != None:
             print("<tr><td colspan='2'>", file=f)
-            htmlpath(node, "red", f)
+            height = htmlpath(node, "red", f)
             print("</td></tr>", file=f)
             print("<tr><td></td></tr>", file=f)
 
@@ -4670,7 +4763,7 @@ table td, table th {
             row = 0
             sid = 1
         else:
-            row = node.len + 1
+            row = node.len + height + 1
             sid = node.uid
         print(
             """
