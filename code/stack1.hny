@@ -1,10 +1,10 @@
 def Stack():
     result = [];
 ;
-def stack_push(st, v):
+def push(st, v):
     (!st)[len(!st)] = v;
 ;
-def stack_pop(st):
+def pop(st):
     let n = len(!st) - 1:
         result = (!st)[n];
         del (!st)[n];

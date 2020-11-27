@@ -1,12 +1,12 @@
-import alloc;
+from alloc import malloc, free;
 
 def Stack():
     result = None;
 ;
-def stack_push(st, v):
+def push(st, v):
     !st = malloc(dict{ .value: v, .rest: !st });
 ;
-def stack_pop(st):
+def pop(st):
     let node = !st:
         result = node->value;
         !st = node->rest;

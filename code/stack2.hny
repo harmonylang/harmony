@@ -3,12 +3,12 @@ import list;
 def Stack():
     result = [];
 ;
-def stack_push(st, v):
+def push(st, v):
     !st += [v,];
 ;
-def stack_pop(st):
+def pop(st):
     let n = len(!st) - 1:
         result = (!st)[n];
-        !st = subseq(!st, 0, n);
+        !st = list.subseq(!st, 0, n);
     ;
 ;

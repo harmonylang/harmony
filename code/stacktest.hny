@@ -1,12 +1,12 @@
-import stack;
+from stack import Stack, push, pop;
 
-stack = Stack();
-stack_push(?stack, 1);
-stack_push(?stack, 2);
-v = stack_pop(?stack);
+teststack = Stack();
+push(?teststack, 1);
+push(?teststack, 2);
+v = pop(?teststack);
 assert v == 2;
-stack_push(?stack, 3);
-v = stack_pop(?stack);
+push(?teststack, 3);
+v = pop(?teststack);
 assert v == 3;
-v = stack_pop(?stack);
+v = pop(?teststack);
 assert v == 1;
