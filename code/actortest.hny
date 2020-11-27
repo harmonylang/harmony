@@ -1,11 +1,20 @@
+import synch;
 import actor;
 
 const NITEMS = 3;
 
-pc_queue = Queue();
-spawn pc_actor(?pc_queue, 2 * NITEMS);
-queues = [ Queue() for i in {0..NITEMS-1} ];
+pc_queue = synch.Queue();
+queues = [ synch.Queue() for i in {0..NITEMS-1} ];
 
+def produce(q, item):
+    synch.enqueue(?pc_queue, dict{ .type: .produce, .item: item });
+;
+def consume(q1, q2):
+    synch.enqueue(q1, dict{ .type: .consume, .queue: q2 });
+    result = synch.dequeue(q2);
+;
+
+actor.init(?pc_queue, 2 * NITEMS);
 for i in {0..NITEMS-1}:
     spawn produce(?pc_queue, i);
     spawn consume(?pc_queue, ?queues[i]);

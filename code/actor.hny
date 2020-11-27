@@ -3,14 +3,14 @@ import synch;
 def pc_actor(q, nrequests):
     let requests, balance = {}, 0:
         while nrequests > 0:
-            let req = dequeue(q):
+            let req = synch.dequeue(q):
                 if req.type == .produce:
                     if balance >= 0:
                         requests |= { req };
                     else:
                         let r = choose(requests):
                             assert r.type == .consume;
-                            enqueue(r.queue, req.item);
+                            synch.enqueue(r.queue, req.item);
                             requests -= { r };
                         ;
                     ;
@@ -22,7 +22,7 @@ def pc_actor(q, nrequests):
                     else:
                         let r = choose(requests):
                             assert r.type == .produce;
-                            enqueue(req.queue, r.item);
+                            synch.enqueue(req.queue, r.item);
                             requests -= { r };
                         ;
                     ;
@@ -33,10 +33,6 @@ def pc_actor(q, nrequests):
         ;
     ;
 ;
-def produce(q, item):
-    enqueue(?pc_queue, dict{ .type: .produce, .item: item });
-;
-def consume(q1, q2):
-    enqueue(q1, dict{ .type: .consume, .queue: q2 });
-    result = dequeue(q2);
+def init(q, n):
+    spawn pc_actor(q, n);
 ;
