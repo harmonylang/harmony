@@ -3611,6 +3611,8 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
 \section*{Exercises}
 \begin{problems}
+\item \label{ex:bbmesa} Implement a solution to the bounded buffer problem using Mesa condition
+variables.
 \item Implement a ``try lock'' module using Mesa condition variables
 (see also Exercise~\ref{ex:trylock}).  It should
 have the following API:
@@ -4130,12 +4132,11 @@ block for long.  Informally, interrupt handlers can be
 
 \section*{Exercises}
 \begin{problems}
-\item The \texttt{produce} method in \autoref{fig:boundedbuffer} cannot be used
+\item The \texttt{enqueue} method you implemented in \autoref{ex:bbmesa} cannot be used
 in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
-Similar to \autoref{ex:nbproduce}, implement
-a new method \texttt{iproduce}(\textit{item}) that does not
+Implement a new method \texttt{i\_enqueue}(\textit{item}) that does not
 block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
@@ -4453,7 +4454,7 @@ rounds each thread has completed.}
 \begin{code}
 \harmonysource{barrier}
 \end{code}
-\caption{\harmonylink{code/barrier.hny} Barrier synchronization with semaphores.}
+\caption{\harmonylink{code/barrier.hny} Barrier synchronization with queues.}
 \label{fig:barrier}
 \end{figure}
 
@@ -4477,15 +4478,14 @@ can start and finish the round.  However, none of the threads can
 progress to the next round until all threads have finished the
 current round.
 
-Counting semaphores work well for implementing barrier synchronization.
-\autoref{fig:barrier} shows an example.  There is a 0-initialized
-semaphore for each of the \texttt{N} threads.
-Before thread $i$ enters a round, it first sends a signal to every
-other thread and then waits until it receives a signal from
-every other thread.  Thread $i$ sends a signal to thread $j$
-by incrementing \texttt{sema[$j$]} (using \texttt{V}),
-while thread $i$ waits for a signal be decrementing \texttt{sema[$i$]}
-(using \texttt{P}).
+Blocking queues work well for implementing barrier synchronization.
+\autoref{fig:barrier} shows an example.  There is a queue
+for each of the \texttt{N} threads.
+Before thread $i$ enters a round, it first sends enqueues a message to every
+other thread and then waits until it receives a message from
+every other thread.
+In this simple case, each message contains \texttt{None}, but in practice useful
+information may be exchanged between the threads.
 
 The \textit{round} array is kept to check the correctness of this
 approach.  Each thread increments its entry every time it enters
@@ -4495,7 +4495,7 @@ are more than one round apart.
 \section*{Exercises}
 \begin{problems}
 \item See if you can implement barrier synchronization for \texttt{N} threads
-with just three semaphores.  Busy waiting is not allowed.  How about just two?
+with just three binary semaphores.  Busy waiting is not allowed.  How about just two?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
 for solving synchronization problems with semaphores.
 Look for the \emph{double turnstile}

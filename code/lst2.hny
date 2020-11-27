@@ -1,14 +1,12 @@
-import lst1;
-
 def lst_find(lst, v):   # find 'neighboring' nodes of v in list
     let before = lst let after = before->next:
-        lock(?before->lock);
-        lock(?after->lock);
+        acquire(?before->lock);
+        acquire(?after->lock);
         while after->value < v:
-            unlock(?before->lock);
+            release(?before->lock);
             before = after;
             after = before->next;
-            lock(?after->lock);
+            acquire(?after->lock);
         ;
         result = (before, after);
     ;
@@ -18,20 +16,20 @@ def lst_insert(lst, v):
         if after->value != v:
             before->next = lst_node(v, after);
         ;
-        unlock(?before->lock);
-        unlock(?after->lock);
+        release(?before->lock);
+        release(?after->lock);
     ;
 ;
 def lst_remove(lst, v):
     let before, after = lst_find(lst, v):
         if after->value == v:
             before->next = after->next;
-            unlock(?after->lock);
+            release(?after->lock);
             free(after);
         else:
-            unlock(?after->lock);
+            release(?after->lock);
         ;
-        unlock(?before->lock);
+        release(?before->lock);
     ;
 ;
 
