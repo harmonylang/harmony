@@ -1,31 +1,35 @@
+def Qsort(arr):
+    result = dict{ .arr: arr, .todo: { (0, len(arr) - 1) } };
+;
 def swap(p, q):               # swap !p and !q
     !p, !q = !q, !p; 
 ;
-def partition(lo, hi):
+def partition(qs, lo, hi):
     result = lo;
     for i in {lo..hi - 1}:
-        if a[i] <= a[hi]:
-            swap(?a[result], ?a[i]);
+        if qs->arr[i] <= qs->arr[hi]:
+            swap(?qs->arr[result], ?qs->arr[i]);
             result += 1;
         ;
     ;
-    swap(?a[result], ?a[hi]); 
+    swap(?qs->arr[result], ?qs->arr[hi]); 
 ;
-def sortrange(range):
-    let lo, hi = range let pivot = partition(lo, hi):
+def sortrange(qs, range):
+    let lo, hi = range let pivot = partition(qs, lo, hi):
         if (pivot - 1) > lo:
-            todo |= { (lo, pivot - 1) };
+            qs->todo |= { (lo, pivot - 1) };
         ;
         if (pivot + 1) < hi:
-            todo |= { (pivot + 1, hi) };
+            qs->todo |= { (pivot + 1, hi) };
         ;
     ;
 ;
-def qsort():
-    while todo != {}:
-        let range = choose(todo):
-            todo -= { range };
-            sortrange(range);
+def qsort(qs):
+    while qs->todo != {}:
+        let range = choose(qs->todo):
+            qs->todo -= { range };
+            sortrange(qs, range);
         ;
     ;
+    result = qs->arr;
 ;

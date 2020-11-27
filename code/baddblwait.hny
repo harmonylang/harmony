@@ -1,6 +1,6 @@
 while forks[left]:
-    wait(?conds[left], ?mutex);
+    synch.wait(?conds[left], ?mutex);
 ;
 while forks[right]:
-    wait(?conds[right], ?mutex);
+    synch.wait(?conds[right], ?mutex);
 ;

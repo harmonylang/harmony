@@ -1,19 +1,19 @@
-import list;
-import qsort;
+from qsort import Qsort, qsort;
+import bag;
 
 const NITEMS = 4;
 const values = {1..NITEMS};
 
 a = [ choose(values) for i in {1..choose({1..NITEMS})} ];
-todo = { (0, len(a) - 1) };
+testqs = Qsort(a);
 
-def sorted():                    # return whether array 'a' is sorted
-    result = all(a[i - 1] <= a[i] for i in {1..len(a)-1});
+def sorted(arr):
+    result = all(arr[i - 1] <= arr[i] for i in {1..len(arr)-1});
 ;
-def main(copy):
-    qsort();                              # sort array 'a'
-    assert sorted();                      # is the array sorted?
-    assert list2bag(a) == list2bag(copy); # is it a permutation?
+def main():
+    sa = qsort(?testqs);
+    assert sorted(sa);                          # is the array sorted?
+    assert bag.fromList(a) == bag.fromList(sa); # is it a permutation?
 ;
 
-spawn main(a);
+spawn main();

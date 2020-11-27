@@ -1,7 +1,7 @@
 if left < right:
-    acquire(?forks[left]);
-    acquire(?forks[right]);
+    synch.acquire(?forks[left]);
+    synch.acquire(?forks[right]);
 else:
-    acquire(?forks[right]);
-    acquire(?forks[left]);
+    synch.acquire(?forks[right]);
+    synch.acquire(?forks[left]);
 ;

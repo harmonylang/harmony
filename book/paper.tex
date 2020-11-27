@@ -2392,38 +2392,7 @@ tree $t$, and $\mathtt{contains}(t, v)$ that checks if $v$ is in tree $t$.  Use 
 lock per binary tree.
 \item Bonus problem: create a binary tree that uses, instead of a single lock per tree,
 a lock for each node in the tree.
-\item \label{ex:qsort}
-Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
-algorithm, and \autoref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in  shared variable $a$.
-Another shared variable, \textit{todo}, contains the ranges of the
-array that need to be sorted (initially the entire array).
-Re-using as much of this code as you can, implement a parallel version of
-this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
-or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker threads''
-that should replace the \texttt{qsort} code.  Each worker loops until \textit{todo}
-is empty and sorts the ranges that it finds until then.  The \texttt{main}
-thread needs to wait until all workers are done.  Use a semaphore for this:
-the \texttt{main} thread should use \texttt{P} to wait for each
-worker to terminate.  After that it should check that the array is sorted and
-that it is a permutation of the original array.
 \end{problems}
-
-\begin{figure}
-\begin{code}
-\harmonysource{qsort}
-\end{code}
-\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
-\label{fig:qsort}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{qsorttest}
-\end{code}
-\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
-\label{fig:qsorttest}
-\end{figure}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}
@@ -3667,7 +3636,36 @@ A thread does not have to return all the GPUs it allocated at once.
 \item The specification in the previous question makes the solution unfair.
 Explain why this is so.  Then change the specification and the solution so that
 it is fair.
+\item \label{ex:qsort}
+Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
+algorithm, and \autoref{fig:qsorttest} an accompanying test program.
+The array to be sorted is stored in shared variable \textit{textqs.arr}.
+Another shared variable, \textit{testqs.todo}, contains the ranges of the
+array that need to be sorted (initially the entire array).
+Re-using as much of this code as you can, implement a parallel version of
+this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
+or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker threads''
+that should replace the \texttt{qsort} code.
+Each worker loops until \textit{todo}
+is empty and sorts the ranges that it finds until then.  The \texttt{main}
+thread needs to wait until all workers are done.
 \end{problems}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qsort}
+\end{code}
+\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
+\label{fig:qsort}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qsorttest}
+\end{code}
+\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
+\label{fig:qsorttest}
+\end{figure}
 
 \chapter{Deadlock}
 \label{ch:deadlock}

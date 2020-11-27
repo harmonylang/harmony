@@ -14,17 +14,17 @@ def fromList(a):
         ;
     ;
 ;
-def count(bag, elt):
-    if elt in keys(bag):
-        result = bag[elt];
+def count(bg, elt):
+    if elt in keys(bg):
+        result = bg[elt];
     else:
         result = 0;
     ;
 ;
-def bchoose(bag):
+def bchoose(bg):
     # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bag[k] for k in keys(bag) };
-    result = choose(keys(bag));
+    assert 0 not in { bg[k] for k in keys(bg) };
+    result = choose(keys(bg));
 ;
 def add(pb, elt):
     if elt in keys(!pb):

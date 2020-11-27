@@ -2125,10 +2125,11 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t == "local":
             (lexeme, file, line, column) = v
+            code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         else:
             assert t in { "global", "module" }
             (lexeme, file, line, column) = self.name
-        code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
+            code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
 
     def ph2(self, scope, code, skip):
         if skip > 0:
@@ -3818,6 +3819,7 @@ class Scope:
         if tv != None:
             return tv
         self.names[lexeme] = ("global", lexeme)
+        # print("Warning: unknown name:", name, " (find)")
         return ("global", lexeme)
 
     def location(self, pc, file, line, labels):
