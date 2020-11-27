@@ -4,22 +4,22 @@ const MAX = 2;
 const NACCOUNTS = 2;
 const NPROCESSES = 2;
 
-accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX}) }
+accounts = [ dict{ .lock: synch.Lock(), .balance: choose({0..MAX}) }
                 for i in {0..NACCOUNTS-1} ]
 ;
 
 def transfer(a1, a2, amount):
-    lock(?accounts[a1].lock);
+    synch.acquire(?accounts[a1].lock);
     if amount <= accounts[a1].balance:
         accounts[a1].balance -= amount; 
-        lock(?accounts[a2].lock);
+        synch.acquire(?accounts[a2].lock);
         accounts[a2].balance += amount; 
-        unlock(?accounts[a2].lock);
+        synch.release(?accounts[a2].lock);
         result = True;
     else:
         result = False;
     ;
-    unlock(?accounts[a1].lock);
+    synch.release(?accounts[a1].lock);
 ;
 
 def process():
