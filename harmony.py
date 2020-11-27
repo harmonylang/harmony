@@ -47,29 +47,34 @@ def tas(lk):
         !lk = True;
     ;
 ;
+def BinSema(acquired):
+    result = acquired;
+;
 def Lock():
-    result = False;
+    result = BinSema(False);
 ;
-def lock(lk):
-    await not tas(lk);
+def acquire(binsema):
+    await not tas(binsema);
 ;
-def unlock(lk):
-    !lk = False;
+def release(binsema):
+    atomic:
+        assert !binsema;
+        !binsema = False;
+    ;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: bagEmpty() };
+    result = bag.empty();
 ;
-def wait(c):
-    let lk, blocked, cnt = None, True, 0:
+def wait(c, lk):
+    let blocked, cnt = True, 0:
         atomic:
-            lk = c->lock;
-            cnt = bagCount(c->waiters, nametag());
-            bagAdd(?c->waiters, nametag());
+            cnt = bag.count(!c, nametag());
+            bag.add(c, nametag());
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not !lk) and (bagCount(c->waiters, nametag()) <= cnt):
+                if (not !lk) and (bag.count(!c, nametag()) <= cnt):
                     !lk = True;
                     blocked = False;
                 ;
@@ -79,15 +84,13 @@ def wait(c):
 ;
 def notify(c):
     atomic:
-        let waiters = c->waiters:
-            if waiters != bagEmpty():
-                bagRemove(?c->waiters, bagChoose(waiters));
-            ;
+        if !c != bag.empty():
+            bag.remove(c, bag.bchoose(!c));
         ;
     ;
 ;
 def notifyAll(c):
-    c->waiters = bagEmpty();
+    !c = bag.empty();
 ;
 def Semaphore(cnt):
     result = cnt;
@@ -117,8 +120,8 @@ def dequeue(q):
         while blocked:
             atomic:
                 if !q != []:
-                    result = head(!q);
-                    !q = tail(!q);
+                    result = list.head(!q);
+                    !q = list.tail(!q);
                     blocked = False;
                 ;
             ;
@@ -127,59 +130,61 @@ def dequeue(q):
 ;
 def enqueue(q, item):
     atomic:
-        !q = append(!q, item);
+        !q = list.append(!q, item);
     ;
 ;
 """,
     "synchS": """import list;
 
-def Lock():
-    result = dict{ .locked: False, .suspended: [] };
+def BinSema(acquired):
+    result = dict{ .acquired: acquired, .suspended: [] };
 ;
-def lock(lk):
+def Lock():
+    result = BinSema(False);
+;
+def acquire(lk):
     atomic:
-        if lk->locked:
+        if lk->acquired:
             stop lk->suspended;
-            assert lk->locked;
+            assert lk->acquired;
         else:
-            lk->locked = True;
+            lk->acquired = True;
         ;
     ;
 ;
-def unlock(lk):
+def release(lk):
     atomic:
         if lk->suspended == []:
-            lk->locked = False;
+            lk->acquired = False;
         else:
-            go (head(lk->suspended)) ();
-            lk->suspended = tail(lk->suspended);
+            go (list.head(lk->suspended)) ();
+            lk->suspended = list.tail(lk->suspended);
         ;
     ;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: [] };
+    result = [];
 ;
-def wait(c):
+def wait(c, lk):
     atomic:
-        unlock(c->lock);
-        stop c->waiters;
+        release(lk);
+        stop !c;
     ;
+    acquire(lk);
 ;
 def notify(c):
     atomic:
-        let lk, waiters = c->lock, c->waiters:
-            if waiters != []:
-                lk->suspended += [waiters[0],];
-                c->waiters = tail(waiters);
-            ;
+        if !c != []:
+            go (list.head(!c)) ();
+            !c = list.tail(!c);
         ;
     ;
 ;
 def notifyAll(c):
     atomic:
-        let lk, waiters = c->lock, c->waiters:
-            lk->suspended += waiters;
-            c->waiters = [];
+        while !c != []:
+            go (list.head(!c)) ();
+            !c = list.tail(!c);
         ;
     ;
 ;
@@ -201,7 +206,7 @@ def V(sema):
             if waiters != []:
                 assert cnt == 0;
                 go (waiters[0]) ();
-                (!sema).waiters = tail(waiters);
+                (!sema).waiters = list.tail(waiters);
             else:
                 (!sema).count = cnt + 1;
             ;
@@ -209,7 +214,7 @@ def V(sema):
     ;
 ;
 def Queue():
-    result = dict{ list: [], waiters: [] };
+    result = dict{ .list: [], .waiters: [] };
 ;
 def dequeue(q):
     atomic:
@@ -217,18 +222,18 @@ def dequeue(q):
             if list == []:
                 stop q->waiters;
             ;
-            result = head(list);
-            q->list = tail(list);
+            result = list.head(list);
+            q->list = list.tail(list);
         ;
     ;
 ;
 def enqueue(q, item):
     atomic:
-        q->list = append(q->list, item);
+        q->list = list.append(q->list, item);
         let waiters = q->waiters:
             if waiters != []:
                 go (waiters[0]) item;
-                q->waiters = tail(waiters);
+                q->waiters = list.tail(waiters);
             ;
         ;
     ;
@@ -289,21 +294,21 @@ def enumerate(d):
 ;
 
 # quicksort of a list
-def listQsort(a):
+def qsort(a):
     if a == []:
         result = [];
     else:
         let (pivot, rest) = head(a), tail(a)
         let lower = [ v for v in rest such that v < pivot ]
         let higher = [ v for v in rest such that v >= pivot ]:
-            result = listQsort(lower) + [pivot,] + listQsort(higher);
+            result = qsort(lower) + [pivot,] + qsort(higher);
         ;
     ;
 ;
 
 # like Python sorted()
 def sorted(d):
-    result = listQsort(list(d));
+    result = qsort(list(d));
 ;
 
 # like Python reversed()
@@ -312,9 +317,14 @@ def reversed(d):
         result = [ d[n-i] for i in { 1..n } ];
     ;
 ;
-
-# turn a list into a bag (multiset)
-def list2bag(a):
+""",
+    "bag": """def empty():
+    result = dict{};
+;
+def fromSet(s):
+    result = dict{ 1 for elt in s };
+;
+def fromList(a):
     result = dict{};
     for i in keys(a):
         if a[i] in keys(result):
@@ -324,33 +334,26 @@ def list2bag(a):
         ;
     ;
 ;
-""",
-    "bag": """def bagEmpty():
-    result = dict{};
-;
-def bagFromSet(s):
-    result = dict{ 1 for elt in s };
-;
-def bagCount(bag, elt):
-    if elt in keys(bag):
-        result = bag[elt];
+def count(bg, elt):
+    if elt in keys(bg):
+        result = bg[elt];
     else:
         result = 0;
     ;
 ;
-def bagChoose(bag):
+def bchoose(bg):
     # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bag[k] for k in keys(bag) };
-    result = choose(keys(bag));
+    assert 0 not in { bg[k] for k in keys(bg) };
+    result = choose(keys(bg));
 ;
-def bagAdd(pb, elt):
+def add(pb, elt):
     if elt in keys(!pb):
         (!pb)[elt] += 1;
     else:
         (!pb)[elt] = 1;
     ;
 ;
-def bagRemove(pb, elt):
+def remove(pb, elt):
     if (elt in keys(!pb)) and ((!pb)[elt] > 0):
         (!pb)[elt] -= 1;
     ;
@@ -368,29 +371,30 @@ def issuperset(s, t):
 """,
     "alloc": """import synch;
 
+pool = [];
+flist = None;           # free list
+lock = synch.Lock();
+
 def malloc(v):
-    lock(?alloc_lock);
-    if alloc_flist == None:
-        let i = len(alloc_pool):
-            alloc_pool[i] = None;
-            result = ?alloc_pool[i];
+    synch.acquire(?lock);
+    if flist == None:
+        let i = len(pool):
+            pool[i] = None;
+            result = ?pool[i];
         ;
     else:
-        result = alloc_flist;
-        alloc_flist = !result;
+        result = flist;
+        flist = !result;
     ;
-    unlock(?alloc_lock);
+    synch.release(?lock);
     !result = v;
 ;
 def free(r):
-    lock(?alloc_lock);
-    !r = alloc_flist;
-    alloc_flist = r;
-    unlock(?alloc_lock);
+    synch.acquire(?lock);
+    !r = flist;
+    flist = r;
+    synch.release(?lock);
 ;
-alloc_pool = [];
-alloc_flist = None;           # free list
-alloc_lock = Lock();
 """,
 
 #############################
