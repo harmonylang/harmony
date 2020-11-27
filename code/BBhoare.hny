@@ -1,0 +1,35 @@
+import hoare;
+
+def BB(size):
+    result =
+        dict{
+            .mon: hoare.Monitor(),
+            .prod: hoare.Condition(), .cons: hoare.Condition(),
+            .buf: dict{ () for x in {1..size} },
+            .head: 1, .tail: 1,
+            .count: 0, .size: size
+        }
+    ;
+;
+def enqueue(bb, item):
+    hoare.enter(?bb->mon);
+    if bb->count == bb->size:
+        hoare.wait(?bb->prod, ?bb->mon);
+    ;
+    bb->buf[bb->tail] = item;
+    bb->tail = (bb->tail % bb->size) + 1;
+    bb->count += 1;
+    hoare.signal(?bb->cons, ?bb->mon);
+    hoare.exit(?bb->mon);
+;
+def dequeue(bb):
+    hoare.enter(?bb->mon);
+    if bb->count == 0:
+        hoare.wait(?bb->cons, ?bb->mon);
+    ;
+    result = bb->buf[bb->head];
+    bb->head = (bb->head % bb->size) + 1;
+    bb->count -= 1;
+    hoare.signal(?bb->prod, ?bb->mon);
+    hoare.exit(?bb->mon);
+;

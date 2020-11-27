@@ -1,0 +1,22 @@
+const ALLOC_POOL_SIZE  = 100;      # maximum number of "records" to allocate
+
+def malloc():
+    lock(?alloc_lock);
+    result = alloc_flist;
+    if result != None:
+        alloc_flist = !result;
+    ;
+    unlock(?alloc_lock);
+;
+def free(r):
+    lock(?alloc_lock);
+    !r = alloc_flist;
+    alloc_flist = r;
+    unlock(?alloc_lock);
+;
+alloc_pool = [ None, ] * ALLOC_POOL_SIZE;
+alloc_flist = None;           # free list
+alloc_lock = Lock();
+for i in {0..ALLOC_POOL_SIZE-1}:
+    free(?alloc_pool[i]);
+;

@@ -1,0 +1,21 @@
+def process(self):
+    while choose({ False, True }):
+        # Enter critical section
+        flags[self] = True;
+        @gate: turn = 1 - self;
+        await (not flags[1 - self]) or (turn == self);
+
+        # Critical section
+        @cs: assert (not (flags[1 - self] and (turn == (1 - self))))
+                    or (atLabel.gate == dict{nametags[1 - self] : 1})
+             ;
+
+        # Leave critical section
+        flags[self] = False;
+    ;
+;
+flags = [ False, False ];
+turn = choose({0, 1});
+nametags = [ dict{ .name: .process, .tag: tag } for tag in {0, 1} ];
+spawn process(0);
+spawn process(1);

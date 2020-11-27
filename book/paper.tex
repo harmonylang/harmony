@@ -2431,8 +2431,9 @@ that it is a permutation of the original array.
 Critical sections enable multiple threads
 to easily share data structures whose modification
 requires multiple steps.
-A critical section allows only one thread to execute its code at a time.
-When a thread arrives at a critical section,
+A critical section only allows one thread to execute the code
+of the critical section at a time.
+Therefore, when a thread arrives at a critical section,
 the thread blocks until there is no other thread in the critical section.
 
 \glsadd{busy waiting}%
@@ -3351,7 +3352,7 @@ semaphore.
 \begin{code}
 \harmonysource{hoare}
 \end{code}
-\caption{\harmonylink{code/hoare.hny} Implementation of Hoare monitors.}
+\caption{\harmonylink{modules/hoare.hny} Implementation of Hoare monitors.}
 \label{fig:hoare}
 \end{figure}
 
@@ -4777,6 +4778,30 @@ multisets:
 \texttt{add}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
 \hline
 \texttt{remove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
+\hline
+\end{tabular}
+
+\section{The \texttt{Hoare} module}
+\label{ap:hoare}
+
+\index{list module}%
+The \texttt{hoare} module implements support for Hoare-style monitors
+and condition variables.
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{Monitor()} & return a monitor mutex\\
+\hline
+\texttt{enter($m$)} & enter a monitor.  $m$ points to a monitor mutex\\
+\hline
+\texttt{exit($m$)} & exit a monitor.\\
+\hline
+\texttt{Condition()} & return a condition variable\\
+\hline
+\texttt{wait($c$, $m$)} & wait on condition variable pointed to be $c$ in monitor pointed to by $m$\\
+\hline
+\texttt{signal($,$. $m$)} & signal a condition variable\\
 \hline
 \end{tabular}
 
