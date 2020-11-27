@@ -1,6 +1,3 @@
-import synch;
-
-mutex = Lock();
 count = 0;
 done = False;
 
@@ -11,7 +8,7 @@ def handler():
 def main():
     trap handler();
     setintlevel(True);
-      count += 1;
+        count += 1;
     setintlevel(False);
     await done;
     assert count == 2;

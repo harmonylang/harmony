@@ -1,4 +1,4 @@
-import synch;
+from synch import Lock, acquire, release;
 
 count = 0;
 countlock = Lock();
@@ -6,9 +6,9 @@ done = [ False, False ];
 
 def increment():
     let prior = setintlevel(True):
-        lock(?countlock);
+        acquire(?countlock);
             count += 1;
-        unlock(?countlock);
+        release(?countlock);
         setintlevel(prior);
     ;
 ;

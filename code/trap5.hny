@@ -1,6 +1,3 @@
-import synch;
-
-mutex = Lock();
 count = 0;
 done = False;
 

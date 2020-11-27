@@ -1,20 +1,20 @@
-import synch;
+from synch import Lock, acquire, release;
 
 countlock = Lock();
 count = 0;
 done = False;
 
 def handler():
-    lock(?countlock);
-      count += 1;
-    unlock(?countlock);
+    acquire(?countlock);
+        count += 1;
+    release(?countlock);
     done = True;
 ;
 def main():
     trap handler();
-    lock(?countlock);
-      count += 1;
-    unlock(?countlock);
+    acquire(?countlock);
+        count += 1;
+    release(?countlock);
     await done;
     assert count == 2;
 ;
