@@ -5183,12 +5183,34 @@ dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
 \end{code}
 That would allow you to simulate object methods.
 
-There are at least two reasons why Harmony is not object-oriented.  First,
+There are at least two reasons why Harmony is not object-oriented.
+First,
 object-orientation often adds layers of indirection that would make it
 harder to model check and also to interpret the results.  Consider, for example,
 a lock.  In Python, a lock is an object.  A lock variable would contain a
 reference to a lock object.  In Harmony, a lock variable contains the value
-of the lock itself.  Second, many concurrency solutions in the literature are
+of the lock itself.
+Thus, the following statement means something quite different in Python and
+Harmony:
+
+\begin{code}
+\begin{verbatim}
+x = y = Lock();
+\end{verbatim}
+\end{code}
+
+In Python, this creates two variables $x$ and $y$ referring to the same lock.
+In Harmony, the two variables will be two different locks.  If you want two
+variable refering to the same lock in Harmony, you would write:
+
+\begin{code}
+\begin{verbatim}
+x = y = malloc(Lock());
+\end{verbatim}
+\end{code}
+
+The second reason for Harmony not being object-oriented is that
+many concurrency solutions in the literature are
 expressed in C or some other low-level language that does not support
 object-orientation, but instead use \texttt{malloc} and \texttt{free}.
 
