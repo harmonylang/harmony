@@ -520,17 +520,17 @@ where a set of threads are indefinitely waiting for one another to
 release a resource.
 \item \autoref{ch:actor} presents the \emph{actor model}
 and \emph{message passing} as an approach to synchronization.
+\item \autoref{ch:barrier} describes \emph{barrier synchronization},
+useful in high-performance computing applications such as parallel simulations.
 \item \autoref{ch:interrupts} discusses how to handle interrupts,
 a problem closely related to synchronization among multiple threads.
-\item \autoref{ch:abp} presents a problem and a solution to the distributed
-systems problem of having two threads communicate reliably over an unreliable
-network.
 \item \autoref{ch:nonblocking} introduces \emph{non-blocking} or
 \emph{wait-free} synchronization algorithms,
 which prevent threads waiting for one another more than a bounded number of
 steps.
-\item \autoref{ch:barrier} describes \emph{barrier synchronization},
-useful in high-performance computing applications such as parallel simulations.
+\item \autoref{ch:abp} presents a problem and a solution to the distributed
+systems problem of having two threads communicate reliably over an unreliable
+network.
 \end{itemize}
 
 \chapter{Introduction to Harmony}
@@ -3995,6 +3995,77 @@ is prime and then if it is one less than a power of two, the other
 in the opposite order.  Which do you think is better?
 \end{problems}
 
+\chapter{Barrier Synchronization}
+\label{ch:barrier}
+\index{barrier synchronization}%
+
+\glsadd{barrier synchronization}%
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
+\end{center}
+\caption{High-level state diagram specification of barrier synchronization
+with three threads and two rounds.  The three numbers specify how many
+rounds each thread has completed.}
+\label{fig:barrierdiagram}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{barrier}
+\end{code}
+\caption{\harmonylink{code/barrier.hny} Barrier synchronization with queues.}
+\label{fig:barrier}
+\end{figure}
+
+Barrier synchronization is a problem that comes up in high-performance
+parallel computing, used, among others, for scalable simulation.
+A barrier is almost the opposite of a critical section:
+the intention is to get a group of threads to run some code at the
+same time, instead of having them execute it one at a time.
+More precisely, with barrier synchronization the threads execute in rounds.
+Between each round there is a so-called \emph{barrier} where threads wait
+until all threads have completed the previous round, before they start the
+next one.
+For example, in an iterative matrix algorithm, the matrix may be
+cut up into fragments.  During a round, the threads run concurrently,
+one for each fragment.  The next round is not allowed to start
+until all threads have completed processing their fragment.
+
+\autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
+with three and threads.  Initially all threads are in round~0.  Then each thread
+can start and finish the round.  However, none of the threads can
+progress to the next round until all threads have finished the
+current round.
+
+Blocking queues work well for implementing barrier synchronization.
+\autoref{fig:barrier} shows an example.  There is a queue
+for each of the \texttt{N} threads.
+Before thread $i$ enters a round, it first sends a message to every
+other thread and then waits until it receives a message from
+every other thread.
+In this simple case, each message contains \texttt{None}, but in practice useful
+information may be exchanged between the threads.
+
+The \textit{round} array is kept to check the correctness of this
+approach.  Each thread increments its entry every time it enters
+a round.  If the algorithm is correct, it can never be that two threads
+are more than one round apart.
+
+\section*{Exercises}
+\begin{problems}
+\item See if you can implement barrier synchronization for \texttt{N} threads
+with just three binary semaphores.  Busy waiting is not allowed.  How about just two?
+(As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
+for solving synchronization problems with semaphores.
+Look for the \emph{double turnstile}
+\index{double turnstile}%
+solution.)
+\item Implement barrier synchronization with Mesa condition variables.
+(You may want to use a double turnstile approach here as well.)
+\end{problems}
+
 \chapter{Interrupts}
 \label{ch:interrupts}
 \index{interrupt}
@@ -4140,129 +4211,6 @@ Implement a new method \texttt{i\_put}(\textit{item}) that does not
 block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
-\end{problems}
-
-\chapter{Alternating Bit Protocol}
-\label{ch:abp}
-\index{alternating bit protocol}%
-\index{protocol}%
-\index{distributed system}%
-
-\begin{figure}
-\begin{code}
-\harmonysource{abp}
-\end{code}
-\caption{\harmonylink{code/abp.hny} Alternating Bit Protocol.}
-\label{fig:abp}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{abptest}
-\end{code}
-\caption{\harmonylink{code/abptest.hny} Test code for alternating bit protocol.}
-\label{fig:abptest}
-\end{figure}
-
-A
-\emph{distributed system}
-\index{distributed system}%
-is a concurrent system in which a collection
-of threads communicate by message passing, much the same as
-in the actor model.
-The most important difference between distributed and concurrent
-systems is that the former takes \emph{failures}
-\index{failure}%
-into account,
-including failures of threads and failures of shared memory.
-In this chapter, we will consider two actors, Alice and Bob.
-Alice wants to send a sequence of application messages to Bob,
-but the underlying network may lose messages.
-\index{network}%
-The network does not re-order messages: when sending messages
-$m_1$ and $m_2$ in that order, then if both messages are received,
-$m_1$ is received before $m_2$.
-Also, the network does not create messages out of nothing: if
-message $m$ is received, then message $m$ was sent.
-
-It is useful to create an abstract network that reliably sends messages
-between threads, much like the FIFO queue in the \texttt{synch} module.
-For this, we need a network protocol that Alice and Bob can run.
-In particular, it has to be the case that if Alice sends application
-messages $m_1, ..., m_n$ in that order, then if Bob receives an
-application message
-$m$, then $m = m_i$ for some $i$ and Bob will already have received
-application messages $m_1, ..., m_i$ (safety).
-Also, if the network is fair and Alice sends application message
-$m$, then eventually Bob should deliver $m$ (liveness).
-
-The \emph{Alternating Bit Protocol} is suitable for our purposes.
-We assume that there are two unreliable network channels: one from Alice
-to Bob and one from Bob to Alice.
-Alice and Bob each maintain a zero-initialized
-\emph{sequence number},
-\index{sequence number}%
-\textit{s\_seq} and \textit{r\_seq} resp.
-Alice sends a network message to Bob containing an
-application message as \emph{payload} and Alice's sequence number
-as \emph{header}.
-When Bob receives such a network message, Bob returns an
-\emph{acknowledgment}
-\index{acknowledgment}%
-to Alice, which is a network message
-containing the same sequence number as in the message that Bob received.
-
-In the protocol, Alice keeps sending the same network message until she
-receives an acknowledgment with the same sequence number.
-This is called \emph{retransmission}.
-\index{retransmission}%
-When she receives the desired sequence number, Alice increments her sequence number.
-She is now ready to send the next message she wants to send to Bob.
-Bob, on the other hand, waits until he receives a message matching
-Bob's sequence number.  If so, Bob \emph{delivers} the payload in the
-message and increments his sequence number.
-Because of the network properties,  a one-bit sequence number suffices.
-
-We can model each
-channel as a variable that either contains a network message or nothing
-(we use \texttt{()} in the model).  Let \textit{s\_chan} be the channel
-from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
-\texttt{net\_send}(\textit{pchan}, $m$, \textit{reliable}) models sending
-a message $m$ to
-\texttt{!}\textit{pchan}, where \textit{pchan} is either ?\textit{s\_chan}
-or ?\textit{r\_chan}.
-The method places either $m$ (to model a successful send)
-or \texttt{()} (to model loss) in \texttt{!}\textit{pchan}.
-The use of the \textit{reliable} flag will be explained later.
-\texttt{net\_recv}(\textit{pchan}) models checking \texttt{!pchan} for
-the next message.
-
-Method \texttt{app\_send}($m$) retransmits $m$ until
-an acknowledgment is received.
-Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
-message.
-\autoref{fig:abptest} shows how the methods may be used to send and receive
-a stream of \texttt{NMSGS} messages reliably.
-It has to be bounded, because model checking requires a finite model.
-
-Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
-\textit{reliable} == \texttt{True}.  It causes the last acknowledgment to be sent
-reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
-once the last acknowledgment has been received.
-Without something like this, either the sender may be left hanging waiting
-for the last acknowledgment, or the receiver waiting for the last message.
-
-\section*{Exercises}
-\begin{problems}
-\item \autoref{ex:cltsvr} explored the \emph{client/server model}.  It is popular
-in distributed systems as well.
-Develop a protocol for a single client and server using the same network
-model as for the ABP protocol.
-Hint: the response to a request can contain the same sequence number as the
-request.
-\item Generalize the solution in the previous exercise to multiple clients.
-Each client is uniquely identified.  You may either use separate channel pairs
-for each client, or solve the problem using a single pair of channels.
 \end{problems}
 
 \chapter{Non-Blocking Synchronization}
@@ -4434,77 +4382,128 @@ Method \texttt{transfer} is an update operation; method \texttt{total} is a
 read-only operation.  Explain how a seqlock can lead to starvation.
 \end{problems}
 
-\chapter{Barrier Synchronization}
-\label{ch:barrier}
-\index{barrier synchronization}%
-
-\glsadd{barrier synchronization}%
+\chapter{Alternating Bit Protocol}
+\label{ch:abp}
+\index{alternating bit protocol}%
+\index{protocol}%
+\index{distributed system}%
 
 \begin{figure}
-\begin{center}
-\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
-\end{center}
-\caption{High-level state diagram specification of barrier synchronization
-with three threads and two rounds.  The three numbers specify how many
-rounds each thread has completed.}
-\label{fig:barrierdiagram}
+\begin{code}
+\harmonysource{abp}
+\end{code}
+\caption{\harmonylink{code/abp.hny} Alternating Bit Protocol.}
+\label{fig:abp}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\harmonysource{barrier}
+\harmonysource{abptest}
 \end{code}
-\caption{\harmonylink{code/barrier.hny} Barrier synchronization with queues.}
-\label{fig:barrier}
+\caption{\harmonylink{code/abptest.hny} Test code for alternating bit protocol.}
+\label{fig:abptest}
 \end{figure}
 
-Barrier synchronization is a problem that comes up in high-performance
-parallel computing, used, among others, for scalable simulation.
-A barrier is almost the opposite of a critical section:
-the intention is to get a group of threads to run some code at the
-same time, instead of having them execute it one at a time.
-More precisely, with barrier synchronization the threads execute in rounds.
-Between each round there is a so-called \emph{barrier} where threads wait
-until all threads have completed the previous round, before they start the
-next one.
-For example, in an iterative matrix algorithm, the matrix may be
-cut up into fragments.  During a round, the threads run concurrently,
-one for each fragment.  The next round is not allowed to start
-until all threads have completed processing their fragment.
+A
+\emph{distributed system}
+\index{distributed system}%
+is a concurrent system in which a collection
+of threads communicate by message passing, much the same as
+in the actor model.
+The most important difference between distributed and concurrent
+systems is that the former takes \emph{failures}
+\index{failure}%
+into account,
+including failures of threads and failures of shared memory.
+In this chapter, we will consider two actors, Alice and Bob.
+Alice wants to send a sequence of application messages to Bob,
+but the underlying network may lose messages.
+\index{network}%
+The network does not re-order messages: when sending messages
+$m_1$ and $m_2$ in that order, then if both messages are received,
+$m_1$ is received before $m_2$.
+Also, the network does not create messages out of nothing: if
+message $m$ is received, then message $m$ was sent.
 
-\autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
-with three and threads.  Initially all threads are in round~0.  Then each thread
-can start and finish the round.  However, none of the threads can
-progress to the next round until all threads have finished the
-current round.
+It is useful to create an abstract network that reliably sends messages
+between threads, much like the FIFO queue in the \texttt{synch} module.
+For this, we need a network protocol that Alice and Bob can run.
+In particular, it has to be the case that if Alice sends application
+messages $m_1, ..., m_n$ in that order, then if Bob receives an
+application message
+$m$, then $m = m_i$ for some $i$ and Bob will already have received
+application messages $m_1, ..., m_i$ (safety).
+Also, if the network is fair and Alice sends application message
+$m$, then eventually Bob should deliver $m$ (liveness).
 
-Blocking queues work well for implementing barrier synchronization.
-\autoref{fig:barrier} shows an example.  There is a queue
-for each of the \texttt{N} threads.
-Before thread $i$ enters a round, it first sends a message to every
-other thread and then waits until it receives a message from
-every other thread.
-In this simple case, each message contains \texttt{None}, but in practice useful
-information may be exchanged between the threads.
+The \emph{Alternating Bit Protocol} is suitable for our purposes.
+We assume that there are two unreliable network channels: one from Alice
+to Bob and one from Bob to Alice.
+Alice and Bob each maintain a zero-initialized
+\emph{sequence number},
+\index{sequence number}%
+\textit{s\_seq} and \textit{r\_seq} resp.
+Alice sends a network message to Bob containing an
+application message as \emph{payload} and Alice's sequence number
+as \emph{header}.
+When Bob receives such a network message, Bob returns an
+\emph{acknowledgment}
+\index{acknowledgment}%
+to Alice, which is a network message
+containing the same sequence number as in the message that Bob received.
 
-The \textit{round} array is kept to check the correctness of this
-approach.  Each thread increments its entry every time it enters
-a round.  If the algorithm is correct, it can never be that two threads
-are more than one round apart.
+In the protocol, Alice keeps sending the same network message until she
+receives an acknowledgment with the same sequence number.
+This is called \emph{retransmission}.
+\index{retransmission}%
+When she receives the desired sequence number, Alice increments her sequence number.
+She is now ready to send the next message she wants to send to Bob.
+Bob, on the other hand, waits until he receives a message matching
+Bob's sequence number.  If so, Bob \emph{delivers} the payload in the
+message and increments his sequence number.
+Because of the network properties,  a one-bit sequence number suffices.
+
+We can model each
+channel as a variable that either contains a network message or nothing
+(we use \texttt{()} in the model).  Let \textit{s\_chan} be the channel
+from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
+\texttt{net\_send}(\textit{pchan}, $m$, \textit{reliable}) models sending
+a message $m$ to
+\texttt{!}\textit{pchan}, where \textit{pchan} is either ?\textit{s\_chan}
+or ?\textit{r\_chan}.
+The method places either $m$ (to model a successful send)
+or \texttt{()} (to model loss) in \texttt{!}\textit{pchan}.
+The use of the \textit{reliable} flag will be explained later.
+\texttt{net\_recv}(\textit{pchan}) models checking \texttt{!pchan} for
+the next message.
+
+Method \texttt{app\_send}($m$) retransmits $m$ until
+an acknowledgment is received.
+Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
+message.
+\autoref{fig:abptest} shows how the methods may be used to send and receive
+a stream of \texttt{NMSGS} messages reliably.
+It has to be bounded, because model checking requires a finite model.
+
+Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
+\textit{reliable} == \texttt{True}.  It causes the last acknowledgment to be sent
+reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
+once the last acknowledgment has been received.
+Without something like this, either the sender may be left hanging waiting
+for the last acknowledgment, or the receiver waiting for the last message.
 
 \section*{Exercises}
 \begin{problems}
-\item See if you can implement barrier synchronization for \texttt{N} threads
-with just three binary semaphores.  Busy waiting is not allowed.  How about just two?
-(As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
-for solving synchronization problems with semaphores.
-Look for the \emph{double turnstile}
-\index{double turnstile}%
-solution.)
-\item Implement barrier synchronization with Mesa condition variables.
-(You may want to use a double turnstile approach here as well.)
+\item \autoref{ex:cltsvr} explored the \emph{client/server model}.  It is popular
+in distributed systems as well.
+Develop a protocol for a single client and server using the same network
+model as for the ABP protocol.
+Hint: the response to a request can contain the same sequence number as the
+request.
+\item Generalize the solution in the previous exercise to multiple clients.
+Each client is uniquely identified.  You may either use separate channel pairs
+for each client, or solve the problem using a single pair of channels.
 \end{problems}
-
 
 \bibliographystyle{alpha}
 \bibliography{paper}
