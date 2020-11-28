@@ -535,13 +535,16 @@ def isxbinop(s):
         "**", "<<", ">>"
     }
 
+def iscmpop(s):
+    return s in { "==", "!=", "<", "<=", ">", ">=" }
+
 assignops = {
     "and=", "or=", "&=", "|=", "^=", "-=", "+=", "*=", "/=", "//=",
     "%=", "mod=", "**=", "<<=", ">>="
 }
 
 def isbinaryop(s):
-    return isxbinop(s) or s in { "==", "!=", "in", "<", "<=", ">", ">=" }
+    return isxbinop(s) or iscmpop(s) or s == "in"
 
 tokens = { "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "..", "->" } | assignops
 
@@ -2329,6 +2332,42 @@ class NaryAST(AST):
                 self.args[i].compile(scope, code)
             code.append(NaryOp(self.op, n))
 
+class CmpAST(AST):
+    def __init__(self, ops, args):
+        self.ops = ops
+        self.args = args
+        assert len(ops) == len(args) - 1
+        assert all(isinstance(x, AST) for x in args), args
+
+    def __repr__(self):
+        return "CmpOp(" + str(self.ops) + ", " + str(self.args) + ")"
+
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.args)
+
+    def gencode(self, scope, code):
+        n = len(self.args)
+        self.args[0].compile(scope, code)
+        pcs = []
+        (lexeme, file, line, column) = self.ops[0]
+        T = ("__cmp__"+str(len(code)), file, line, column)
+        for i in range(1, n-1):
+            self.args[i].compile(scope, code)
+            code.append(DupOp())
+            code.append(StoreVarOp(T))
+            code.append(NaryOp(self.ops[i-1], 2))
+            code.append(DupOp())
+            pcs.append(len(code))
+            code.append(None)
+            code.append(PopOp())
+            code.append(LoadVarOp(T))
+        self.args[n-1].compile(scope, code)
+        code.append(NaryOp(self.ops[n-2], 2))
+        for pc in pcs:
+            code[pc] = JumpCondOp(False, len(code))
+        if n > 2:
+            code.append(DelVarOp(T))
+
 class ApplyAST(AST):
     def __init__(self, method, arg, token):
         self.method = method
@@ -2422,6 +2461,20 @@ class NaryRule(Rule):
             op = t[0]
         self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
                     "expected binary operation or 'if'")
+        if iscmpop(op[0]):
+            assert invert == None
+            ops = []
+            while iscmpop(lexeme):
+                ops.append(t[0])
+                (ast3, t) = ExpressionRule().parse(t[1:])
+                if ast3 == False:
+                    print("expected an expression after n-ary comparison operation in", op)
+                    exit(1)
+                args.append(ast3)
+                (lexeme, file, line, column) = t[0]
+            self.expect("n-ary operation", lexeme in self.closers, t[0],
+                                "expected one of %s"%self.closers)
+            return (CmpAST(ops, args), t)
         if op[0] == "if":
             (ast2, t) = NaryRule({"else"}).parse(t[1:])
         else:
@@ -2440,7 +2493,7 @@ class NaryRule(Rule):
             args.append(ast3)
             (lexeme, file, line, column) = t[0]
         elif (op[0] == lexeme) and (lexeme in { "+", "|", "&", "^", "and", "or" }):
-            while op[0] == lexeme:
+            while lexeme == op[0]:
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
                     print("expected an expression after n-ary operation in", op)
