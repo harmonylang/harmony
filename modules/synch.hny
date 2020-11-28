@@ -75,7 +75,7 @@ def V(sema):
 def Queue():
     result = [];
 ;
-def dequeue(q):
+def get(q):
     let blocked = True:
         while blocked:
             atomic:
@@ -88,7 +88,7 @@ def dequeue(q):
         ;
     ;
 ;
-def enqueue(q, item):
+def put(q, item):
     atomic:
         !q = list.append(!q, item);
     ;

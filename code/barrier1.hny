@@ -5,10 +5,10 @@ const NPROC = 3;
 
 def barrier_enter(self):
     for i in {0..NPROC-1} such that i != self:
-        enqueue(?queues[i], i);
+        put(?queues[i], i);
     ;
     for i in {1..NPROC-1}:
-        dequeue(?queues[self]);
+        get(?queues[self]);
     ;
 ;
 def barrier_exit(self):

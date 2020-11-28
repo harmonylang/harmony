@@ -1,12 +1,12 @@
 import queue;
 
 def sender(q, v):
-    queue.enqueue(q, v);
+    queue.put(q, v);
 ;
 def receiver(q):
     let done = False:
         while not done:
-            let v = queue.dequeue(q):
+            let v = queue.get(q):
                 done = v == ();
                 assert done or (v[0] in { 1, 2 });
             ;

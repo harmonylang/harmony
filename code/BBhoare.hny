@@ -11,7 +11,7 @@ def BB(size):
         }
     ;
 ;
-def enqueue(bb, item):
+def put(bb, item):
     hoare.enter(?bb->mon);
     if bb->count == bb->size:
         hoare.wait(?bb->prod, ?bb->mon);
@@ -22,7 +22,7 @@ def enqueue(bb, item):
     hoare.signal(?bb->cons, ?bb->mon);
     hoare.exit(?bb->mon);
 ;
-def dequeue(bb):
+def get(bb):
     hoare.enter(?bb->mon);
     if bb->count == 0:
         hoare.wait(?bb->cons, ?bb->mon);

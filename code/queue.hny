@@ -4,7 +4,7 @@ from alloc import malloc, free;
 def Queue():
     result = dict{ .head: None, .tail: None, .lock: Lock() };
 ;
-def enqueue(q, v):
+def put(q, v):
     let node = malloc(dict{ .value: v, .next: None }):
         acquire(?q->lock);
         if q->head == None:
@@ -16,7 +16,7 @@ def enqueue(q, v):
         release(?q->lock);
     ;
 ;
-def dequeue(q):
+def get(q):
     acquire(?q->lock);
     let node = q->head:
         if node == None:

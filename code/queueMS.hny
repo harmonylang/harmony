@@ -6,7 +6,7 @@ def Queue():
         result = dict{ .head: dummy, .tail: dummy, .hdlock: Lock(), .tllock: Lock() };
     ;
 ;
-def enqueue(q, v):
+def put(q, v):
     let node = malloc(dict{ .value: v, .next: None }):
         acquire(?q->tllock);
         q->tail->next = node;
@@ -14,7 +14,7 @@ def enqueue(q, v):
         release(?q->tllock);
     ;
 ;
-def dequeue(q):
+def get(q):
     acquire(?q->hdlock);
     let dummy = q->head
     let node = dummy->next:

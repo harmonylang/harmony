@@ -18,6 +18,7 @@ def acquire(lk):
 ;
 def release(lk):
     atomic:
+        assert lk.acquired;
         if lk->suspended == []:
             lk->acquired = False;
         else:
@@ -80,7 +81,7 @@ def V(sema):
 def Queue():
     result = dict{ .list: [], .waiters: [] };
 ;
-def dequeue(q):
+def get(q):
     atomic:
         let list = q->list:
             if list == []:
@@ -91,7 +92,7 @@ def dequeue(q):
         ;
     ;
 ;
-def enqueue(q, item):
+def put(q, item):
     atomic:
         q->list = list.append(q->list, item);
         let waiters = q->waiters:

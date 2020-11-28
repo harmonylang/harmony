@@ -1,10 +1,10 @@
 import BBhoare;
 
 def producer(bb, v):
-    BBhoare.enqueue(bb, v);
+    BBhoare.put(bb, v);
 ;
 def consumer(bb):
-    let v = BBhoare.dequeue(bb):
+    let v = BBhoare.get(bb):
         assert v in { 1, 2 };
     ;
 ;

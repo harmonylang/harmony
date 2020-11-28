@@ -2318,8 +2318,8 @@ By way of example, we will demonstrate how to build a concurrent queue.
 The \texttt{queue} module will have the following API:
 \begin{itemize}
 \item $q = \mathtt{Queue}()$: allocate a new queue;
-\item $\mathtt{enqueue}(q, v)$: add $v$ to the tail of the queue;
-\item $r = \mathtt{dequeue}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
+\item $\mathtt{put}(q, v)$: add $v$ to the tail of the queue;
+\item $r = \mathtt{get}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
 if $v$ was at the head of the queue.
 \end{itemize}
 See \autoref{fig:queuetest} for a simple test program that uses the queue.
@@ -2339,14 +2339,14 @@ memory location.)
 
 \texttt{queue.Queue()} returns a new queue object consisting of a \textbf{None} head
 and tail pointer and a lock.
-$\mathtt{queue.enqueue}(q, v)$ and $\mathtt{queue.dequeue}(q)$ both take a pointer $q$ to the
+$\mathtt{queue.put}(q, v)$ and $\mathtt{queue.get}(q)$ both take a pointer $q$ to the
 queue object because both may modify the queue.
 Before they access the value of the head or tail of the queue they first obtain
 the lock.
 When they are done, they release the lock.
 
 The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
-separate locks for the head and tail, allowing an enqueue and a dequeue operation
+separate locks for the head and tail, allowing a \texttt{put} and a \texttt{get} operation
 to proceed concurrently.  To avoid contention between the head and the tail,
 the queue uses a dummy node at the head of the linked list.
 Except initially, the dummy node is the last node that was dequeued.
@@ -2842,7 +2842,7 @@ harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.hny
 
 \index{ring buffer}%
 A \emph{bounded buffer} (aka \emph{ring buffer}) is
-a queue with the usual enqueue/dequeue interface,
+a queue with the usual \texttt{put/get} interface,
 but implemented using a circular buffer
 \index{circular buffer}%
 of a certain length and two pointers:
@@ -3369,7 +3369,7 @@ and then blocks by trying to acquire the mutex again.
 Hoare monitors.  It is written in much the same way you would if using
 the SBS technique (see \autoref{ex:bbsbs}).
 There is no \texttt{release\_one} method.  Instead, one can conclude
-that \texttt{enqueue} causes the queue to be non-empty, and
+that \texttt{put} causes the queue to be non-empty, and
 \texttt{signal} will check if there are any threads waiting for
 this event.  If so, \texttt{signal} will pass control to one such thread
 and, unlike \texttt{release\_one}, re-enter the critical
@@ -3923,13 +3923,13 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item \texttt{enqueue}($q$, \textit{item}) adds \textit{item} to the queue pointed to by $q$;
-\item \texttt{dequeue}($q$) waits for and returns an item on the queue pointed to by $q$.
+\item \texttt{put}($q$, \textit{item}) adds \textit{item} to the queue pointed to by $q$;
+\item \texttt{get}($q$) waits for and returns an item on the queue pointed to by $q$.
 \end{itemize}
 
 Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
-\texttt{enqueue} is much like \texttt{V}, except that it is accompanied by data.
-\texttt{dequeue} is much like \texttt{P}, except that it also returns data.
+\texttt{put} is much like \texttt{V}, except that it is accompanied by data.
+\texttt{get} is much like \texttt{P}, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of counting semaphores.
 
 \autoref{fig:actor} shows a Harmony solution to the
@@ -4132,11 +4132,11 @@ block for long.  Informally, interrupt handlers can be
 
 \section*{Exercises}
 \begin{problems}
-\item The \texttt{enqueue} method you implemented in \autoref{ex:bbmesa} cannot be used
+\item The \texttt{put} method you implemented in \autoref{ex:bbmesa} cannot be used
 in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
-Implement a new method \texttt{i\_enqueue}(\textit{item}) that does not
+Implement a new method \texttt{i\_put}(\textit{item}) that does not
 block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
@@ -4481,7 +4481,7 @@ current round.
 Blocking queues work well for implementing barrier synchronization.
 \autoref{fig:barrier} shows an example.  There is a queue
 for each of the \texttt{N} threads.
-Before thread $i$ enters a round, it first sends enqueues a message to every
+Before thread $i$ enters a round, it first sends a message to every
 other thread and then waits until it receives a message from
 every other thread.
 In this simple case, each message contains \texttt{None}, but in practice useful
@@ -4896,9 +4896,9 @@ and lock \textit{lk} \\ \hline
 \hline
 \texttt{Queue}() & return a synchronized queue object \\
 \hline
-\texttt{dequeue}($q$) & return next element of $q$, blocking if empty \\
+\texttt{get}($q$) & return next element of $q$, blocking if empty \\
 \hline
-\texttt{enqueue}($q$, \textit{item}) & add \textit{item} to $a$ \\
+\texttt{put}($q$, \textit{item}) & add \textit{item} to $a$ \\
 \hline
 \end{tabular}
 
