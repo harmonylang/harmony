@@ -531,7 +531,7 @@ def isunaryop(s):
 
 def isxbinop(s):
     return s in {
-        "and", "or", "&", "|", "^", "-", "+", "*", "/", "//", "%", "mod",
+        "and", "or", "=>", "&", "|", "^", "-", "+", "*", "/", "//", "%", "mod",
         "**", "<<", ">>"
     }
 
@@ -539,14 +539,14 @@ def iscmpop(s):
     return s in { "==", "!=", "<", "<=", ">", ">=" }
 
 assignops = {
-    "and=", "or=", "&=", "|=", "^=", "-=", "+=", "*=", "/=", "//=",
+    "and=", "or=", "=>=", "&=", "|=", "^=", "-=", "+=", "*=", "/=", "//=",
     "%=", "mod=", "**=", "<<=", ">>="
 }
 
 def isbinaryop(s):
     return isxbinop(s) or iscmpop(s) or s == "in"
 
-tokens = { "dict{", "==", "!=", "<=", ">=", "//", "**", "<<", ">>", "..", "->" } | assignops
+tokens = { "dict{", "==", "!=", "<=", ">=", "=>", "//", "**", "<<", ">>", "..", "->" } | assignops
 
 def lexer(s, file):
     result = []
@@ -2310,6 +2310,15 @@ class NaryAST(AST):
             for pc in pcs:
                 code[pc] = JumpCondOp(op == "or", len(code))
             code.append(PushOp((op == "or", file, line, column)))
+        elif op == "=>":
+            assert n == 2, n
+            self.args[0].compile(scope, code)
+            pc = len(code)
+            code.append(None)
+            self.args[1].compile(scope, code)
+            code.append(JumpOp(len(code) + 2))
+            code[pc] = JumpCondOp(False, len(code))
+            code.append(PushOp((True, file, line, column)))
         elif op == "if":
             assert n == 3, n
             negate = isinstance(self.args[1], NaryAST) and self.args[1].op[0] == "not"
@@ -2462,7 +2471,7 @@ class NaryRule(Rule):
         self.expect("n-ary operation", isbinaryop(op[0]) or op[0] == "if", op,
                     "expected binary operation or 'if'")
         if iscmpop(op[0]):
-            assert invert == None
+            assert invert == None           # TODO
             ops = []
             while iscmpop(lexeme):
                 ops.append(t[0])

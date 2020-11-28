@@ -4586,6 +4586,8 @@ Harmony currently supports the following operators:
 \hline
 \texttt{$e$ or $e$ or ...} & two or more booleans \\
 \hline
+\texttt{$e$ => $e$} & two booleans (implication) \\
+\hline
 \texttt{not $e$} & a boolean \\
 \hline
 \texttt{-$e$, \string~$e$} & an integer \\
@@ -5277,6 +5279,7 @@ the expression $a$ \textbf{not in} $b$ is equivalent to \textbf{not} ($a$ \textb
 Harmony generalizes this construct for any pair of a unary (except '$-$') and a binary operator.
 In particular, $a$ \textbf{not and} $b$ is the same as \textbf{not} ($a$ \textbf{and} $b$).  
 For those familiar with logic gates, \textbf{not and} is the equivalent of \texttt{NAND}.
+Similarly, \textbf{not} \texttt{$=>$} is non-implication.
 
 \section{Tuples, Lists, and Pattern Matching}
 
