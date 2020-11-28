@@ -5184,6 +5184,15 @@ dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
 \end{code}
 That would allow you to simulate object methods.
 
+There are at least two reasons why Harmony is not object-oriented.  First,
+object-orientation often adds layers of indirection that would make it
+harder to model check and also to interpret the results.  Consider, for example,
+a lock.  In Python, a lock is an object.  A lock variable would contain a
+reference to a lock object.  In Harmony, a lock variable contains the value
+of the lock itself.  Second, many concurrency solutions in the literature are
+expressed in C or some other low-level language that does not support
+object-orientation, but instead use \texttt{malloc} and \texttt{free}.
+
 \section{Constants, Global and Local Variables}
 
 Each (non-reserved) identifier in a Harmony program refers to either
