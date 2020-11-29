@@ -4015,7 +4015,7 @@ rounds each thread has completed.}
 \begin{code}
 \harmonysource{barrier}
 \end{code}
-\caption{\harmonylink{code/barrier.hny} Barrier synchronization with queues.}
+\caption{\harmonylink{code/qbarrier.hny} Barrier synchronization with queues.}
 \label{fig:barrier}
 \end{figure}
 
@@ -4052,6 +4052,14 @@ The \textit{round} array is kept to check the correctness of this
 approach.  Each thread increments its entry every time it enters
 a round.  If the algorithm is correct, it can never be that two threads
 are more than one round apart.
+
+\begin{figure}
+\begin{code}
+\harmonysource{barrier}
+\end{code}
+\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization.}
+\label{fig:genbarrier}
+\end{figure}
 
 \section*{Exercises}
 \begin{problems}

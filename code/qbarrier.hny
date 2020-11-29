@@ -1,0 +1,24 @@
+from synch import Queue, put, get;
+
+const N = 3;        # number of processes
+const R = 4;        # number of rounds
+
+round = [ 0 for i in {0..N-1} ];
+q = [ Queue() for i in {0..N-1} ];
+
+def process(self):
+    for r in {1..R}:
+        for i in {0..N-1} such that i != self:
+            put(?q[i], None);
+        ;
+        for i in {0..N-1} such that i != self:
+            get(?q[self]);
+        ;
+        round[self] = (round[self] + 1);
+        assert (max(round) - min(round)) <= 1;
+    ;
+;
+
+for i in {0..N-1}:
+    spawn process(i);
+;

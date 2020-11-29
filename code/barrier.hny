@@ -1,24 +1,37 @@
-from synch import Queue, put, get;
+from synch import *;
 
-const N = 3;        # number of processes
-const R = 4;        # number of rounds
-
-round = [ 0 for i in {0..N-1} ];
-q = [ Queue() for i in {0..N-1} ];
-
-def process(self):
-    for r in {1..R}:
-        for i in {0..N-1} such that i != self:
-            put(?q[i], None);
-        ;
-        for i in {0..N-1} such that i != self:
-            get(?q[self]);
-        ;
-        round[self] = (round[self] + 1);
-        assert (max(round) - min(round)) <= 1;
+def Barrier(limit):
+    result =
+        dict{
+            .limit: limit,
+            .mutex: Lock(),
+            .full: Condition(), .others: Condition(),
+            .entered: 0, .left: 0
+        }
     ;
 ;
-
-for i in {0..N-1}:
-    spawn process(i);
+def enter(b):
+    acquire(?b->mutex);
+    while b->entered == b->limit:
+        wait(?b->full, ?b->mutex);
+    ;
+    b->entered += 1;
+    if b->entered == b->limit:
+        b->left = 0;
+        notifyAll(?b->others);
+    else:
+        while b->entered < b->limit:
+            wait(?b->others, ?b->mutex);
+        ;
+    ;
+    release(?b->mutex);
+;
+def exit(b):
+    acquire(?b->mutex);
+    b->left += 1;
+    if b->left == b->limit:
+        b->entered = 0;
+        notifyAll(?b->full);
+    ;
+    release(?b->mutex);
 ;
