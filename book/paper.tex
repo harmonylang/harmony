@@ -4061,6 +4061,38 @@ are more than one round apart.
 \label{fig:genbarrier}
 \end{figure}
 
+More generally, barrier synchronization can be abstracted as follows.
+We want to create a \texttt{Barrier}$(n)$ object, with operations
+\texttt{enter()} and \texttt{exit()}.  It is helpful to use
+a roller coaster car with $n$ seats as a metaphor:
+\begin{itemize}
+\item the car cannot contain more than $n$ people;
+\item the car won't take off until $n$ people are in the car;
+\item no new people can enter the car until all $n$ people have left it.
+\end{itemize}
+Notice there are two different waiting conditions:
+\begin{enumerate}
+\item waiting for the car to empty out;
+\item waiting for the car to fill up.
+\end{enumerate}
+Similarly, \texttt{enter}() blocks until $n$ threads have invoked it.
+If more threads try to \texttt{enter}(), they will block until the
+previous $n$ threads have invoked \texttt{exit}().
+
+\autoref{fig:genbarrier} shows the code.
+Method~\texttt{enter}() has two \texttt{wait} loops, one for each
+waiting condition.
+This is sometimes called \emph{double turnstile}.
+Each loop uses a different condition variable.
+The first loop waits while the barrier is fully occupied, while
+the second waits for the barrier to fill up.
+The $n^\mathit{th}$ thread to arrive at the barrier notifies the
+$n-1$ threads that are waiting in the second loop.
+
+Method \texttt{exit}() counts how many threads have left the
+barrier.  When the last one leaves, it notifies all the threads
+that are waiting in the first loop.
+
 \section*{Exercises}
 \begin{problems}
 \item See if you can implement barrier synchronization for \texttt{N} threads
@@ -4070,8 +4102,6 @@ for solving synchronization problems with semaphores.
 Look for the \emph{double turnstile}
 \index{double turnstile}%
 solution.)
-\item Implement barrier synchronization with Mesa condition variables.
-(You may want to use a double turnstile approach here as well.)
 \end{problems}
 
 \chapter{Interrupts}
