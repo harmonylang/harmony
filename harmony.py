@@ -489,6 +489,7 @@ def isreserved(s):
         "elif",
         "else",
         "end",
+        "except",
         "False",
         "fun",
         "for",
@@ -510,15 +511,16 @@ def isreserved(s):
         "not",
         "or",
         "pass",
-        "processes",
         "setintlevel",
         "spawn",
         "stop",
         "such",
         "that",
         "trap",
+        "try",
         "True",
         "while"
+        "with"
     }
 
 def isname(s):
@@ -527,7 +529,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in { "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
-    "min", "max", "nametag", "not", "keys", "hash", "len", "processes" }
+    "min", "max", "nametag", "not", "keys", "hash", "len" }
 
 def isxbinop(s):
     return s in {
@@ -710,6 +712,21 @@ def strValue(v):
             return ".0x%02X"%ord(v[0])
     assert False, v
 
+def jsonValue(v):
+    if isinstance(v, Value):
+        return v.jdump()
+    if isinstance(v, bool):
+        return '{ "type": "bool", "value": "%s" }'%str(v)
+    if isinstance(v, int) or isinstance(v, float):
+        return '{ "type": "int", "value": "%s" }'%str(v)
+    if isinstance(v, str):
+        if isname(v):
+            return '{ "type": "atom", "value": "%s" }'%str(v)
+        else:
+            assert len(v) == 1, v
+            return '{ "type": "char", "value": "02X" "'%ord(v[0])
+    assert False, v
+
 def strVars(v):
     assert isinstance(v, DictValue)
     result = ""
@@ -733,6 +750,9 @@ class Value:
     def __str__(self):
         return self.__repr__()
 
+    def jdump(self):
+        assert False
+
 class PcValue(Value):
     def __init__(self, pc):
         self.pc = pc
@@ -748,6 +768,9 @@ class PcValue(Value):
 
     def key(self):
         return (3, self.pc)
+
+    def jdump(self):
+        return '{ "type": "pc", "value": "%d" }'%self.pc
 
 class DictValue(Value):
     def __init__(self, d):
@@ -769,6 +792,15 @@ class DictValue(Value):
                 result += ", ";
             result += strValue(k) + ":" + strValue(self.d[k])
         return "dict{ " + result + " }"
+
+    def jdump(self):
+        result = ""
+        keys = sorted(self.d.keys(), key=keyValue)
+        for k in keys:
+            if result != "":
+                result += ", ";
+            result += '{ "key": %s, "value": %s }'%(jsonValue(k), jsonValue(self.d[k]))
+        return '{ "type": "dict", "value": [%s] }'%result
 
     def __hash__(self):
         hash = 0
@@ -810,6 +842,15 @@ class SetValue(Value):
             result += strValue(v)
         return "{ " + result + " }"
 
+    def jdump(self):
+        result = ""
+        vals = sorted(self.s, key=keyValue)
+        for v in vals:
+            if result != "":
+                result += ", ";
+            result += jsonValue(v)
+        return '{ "type": "set", "value": [%s] }'%result
+
     def __hash__(self):
         return frozenset(self.s).__hash__()
 
@@ -836,6 +877,14 @@ class AddressValue(Value):
                 result += "[" + strValue(index) + "]"
         return result
 
+    def jdump(self):
+        result = ""
+        for index in self.indexes:
+            if result != "":
+                result += ", "
+            result = result + jsonValue(index)
+        return '{ "type": "address", "value": [%s] }'%result
+
     def __hash__(self):
         hash = 0
         for x in self.indexes:
@@ -851,6 +900,9 @@ class AddressValue(Value):
         return (7, self.indexes)
 
 class Op:
+    def jdump(self):
+        return '{ "op": "XXX %s" }'%str(self)
+
     def explain(self):
         return "no explanation yet"
 
@@ -895,6 +947,9 @@ class SetIntLevelOp(Op):
     def __repr__(self):
         return "SetIntLevel"
 
+    def jdump(self):
+        return '{ "op": "SetIntLevel" }'
+
     def explain(self):
         return "pops new boolean interrupt level"
 
@@ -910,6 +965,9 @@ class SetIntLevelOp(Op):
 class CutOp(Op):
     def __repr__(self):
         return "Cut"
+
+    def jdump(self):
+        return '{ "op": "Cut" }'
 
     def explain(self):
         return "pops a set or dict value and pushes the smallest element and the remainder"
@@ -979,6 +1037,9 @@ class DupOp(Op):
     def __repr__(self):
         return "Dup"
 
+    def jdump(self):
+        return '{ "op": "Dup" }'
+
     def explain(self):
         return "push a copy of the top value on the stack"
 
@@ -1025,6 +1086,12 @@ class LoadVarOp(Op):
         else:
             return "LoadVar " + self.convert(self.v)
 
+    def jdump(self):
+        if self.v == None:
+            return '{ "op": "LoadVar" }'
+        else:
+            return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop the address of a method variable and push the value of that variable"
@@ -1048,6 +1115,10 @@ class PushOp(Op):
         (lexeme, file, line, column) = self.constant
         return "Push " + strValue(lexeme)
 
+    def jdump(self):
+        (lexeme, file, line, column) = self.constant
+        return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
+
     def explain(self):
         return "push constant " + strValue(self.constant[0])
 
@@ -1068,6 +1139,18 @@ class LoadOp(Op):
         else:
             (lexeme, file, line, column) = self.name
             return "Load " + ".".join(self.prefix + [lexeme])
+
+    def jdump(self):
+        if self.name == None:
+            return '{ "op": "Load" }'
+        else:
+            (lexeme, file, line, column) = self.name
+            result = ""
+            for n in self.prefix + [lexeme]:
+                if result != "":
+                    result += ", "
+                result += jsonValue(n)
+            return '{ "op": "Load", "value": [%s] }'%result
 
     def explain(self):
         if self.name == None:
@@ -1104,6 +1187,18 @@ class StoreOp(Op):
         else:
             (lexeme, file, line, column) = self.name
             return "Store " + ".".join(self.prefix + [lexeme])
+
+    def jdump(self):
+        if self.name == None:
+            return '{ "op": "Store" }'
+        else:
+            (lexeme, file, line, column) = self.name
+            result = ""
+            for n in self.prefix + [lexeme]:
+                if result != "":
+                    result += ", "
+                result += jsonValue(n)
+            return '{ "op": "Store", "value": [%s] }'%result
 
     def explain(self):
         if self.name == None:
@@ -1154,6 +1249,13 @@ class DelOp(Op):
             return "Del " + lexeme
         else:
             return "Del"
+
+    def jdump(self):
+        if self.name == None:
+            return '{ "op": "Del" }'
+        else:
+            (lexeme, file, line, column) = self.name
+            return '{ "op": "Del", "value": "%s" }'%lexeme
 
     def explain(self):
         if self.name == None:
@@ -1239,6 +1341,9 @@ class AddressOp(Op):
     def __repr__(self):
         return "Address"
 
+    def jdump(self):
+        return '{ "op": "Address" }'
+
     def explain(self):
         return "combine the top two values on the stack into an address and push the result"
 
@@ -1258,6 +1363,12 @@ class StoreVarOp(Op):
             return "StoreVar"
         else:
             return "StoreVar " + self.convert(self.v)
+
+    def jdump(self):
+        if self.v == None:
+            return '{ "op": "StoreVar" }'
+        else:
+            return '{ "op": "StoreVar", "value": "%s" }'%self.convert(self.v)
 
     def explain(self):
         if self.v == None:
@@ -1294,6 +1405,12 @@ class DelVarOp(Op):
             (lexeme, file, line, column) = self.v
             return "DelVar " + str(lexeme)
 
+    def jdump(self):
+        if self.v == None:
+            return '{ "op": "DelVar" }'
+        else:
+            return '{ "op": "DelVar", "value": "%s" }'%self.convert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop an address of a method variable and delete that variable"
@@ -1314,6 +1431,9 @@ class ChooseOp(Op):
     def __repr__(self):
         return "Choose"
 
+    def jdump(self):
+        return '{ "op": "Choose" }'
+
     def explain(self):
         return "pop a set value and push one of its elements"
 
@@ -1332,6 +1452,12 @@ class AssertOp(Op):
 
     def __repr__(self):
         return "Assert2" if self.exprthere else "Assert"
+
+    def jdump(self):
+        if self.exprthere:
+            return '{ "op": "Assert2" }'
+        else:
+            return '{ "op": "Assert" }'
 
     def explain(self):
         if self.exprthere:
@@ -1362,6 +1488,9 @@ class PopOp(Op):
     def __repr__(self):
         return "Pop"
 
+    def jdump(self):
+        return '{ "op": "Pop" }'
+
     def explain(self):
         return "discard the top value on the stack"
 
@@ -1377,6 +1506,10 @@ class FrameOp(Op):
     def __repr__(self):
         (lexeme, file, line, column) = self.name
         return "Frame " + str(lexeme) + " " + self.convert(self.args)
+
+    def jdump(self):
+        (lexeme, file, line, column) = self.name
+        return '{ "op": "Frame", "name": "%s", "args": "%s" }'%(lexeme, self.convert(self.args))
 
     def explain(self):
         return "start of method " + str(self.name[0])
@@ -1394,6 +1527,9 @@ class FrameOp(Op):
 class ReturnOp(Op):
     def __repr__(self):
         return "Return"
+
+    def jdump(self):
+        return '{ "op": "Return" }'
 
     def explain(self):
         return "restore caller method state and push result"
@@ -1430,6 +1566,9 @@ class ReturnOp(Op):
 class SpawnOp(Op):
     def __repr__(self):
         return "Spawn"
+
+    def jdump(self):
+        return '{ "op": "Spawn" }'
 
     def explain(self):
         return "pop a pc, argument, and tag and spawn a new process"
@@ -1471,6 +1610,9 @@ class AtomicIncOp(Op):
     def __repr__(self):
         return "AtomicInc"
 
+    def jdump(self):
+        return '{ "op": "AtomicInc" }'
+
     def explain(self):
         return "increment atomic counter of context; process runs uninterrupted if larger than 0"
 
@@ -1481,6 +1623,9 @@ class AtomicIncOp(Op):
 class AtomicDecOp(Op):
     def __repr__(self):
         return "AtomicDec"
+
+    def jdump(self):
+        return '{ "op": "AtomicDec" }'
 
     def explain(self):
         return "decrement atomic counter of context"
@@ -1494,6 +1639,9 @@ class ReadonlyIncOp(Op):
     def __repr__(self):
         return "ReadonlyInc"
 
+    def jdump(self):
+        return '{ "op": "ReadonlyInc" }'
+
     def explain(self):
         return "increment readonly counter of context; process can't mutate shared variables if > 0"
 
@@ -1504,6 +1652,9 @@ class ReadonlyIncOp(Op):
 class ReadonlyDecOp(Op):
     def __repr__(self):
         return "ReadonlyDec"
+
+    def jdump(self):
+        return '{ "op": "ReadonlyDec" }'
 
     def explain(self):
         return "decrement readonly counter of context"
@@ -1520,6 +1671,9 @@ class JumpOp(Op):
     def __repr__(self):
         return "Jump " + str(self.pc)
 
+    def jdump(self):
+        return '{ "op": "Jump", "pc": "%d" }'%self.pc
+
     def explain(self):
         return "set program counter to " + str(self.pc)
 
@@ -1534,6 +1688,9 @@ class JumpCondOp(Op):
 
     def __repr__(self):
         return "JumpCond " + str(self.cond) + " " + str(self.pc)
+
+    def jdump(self):
+        return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
 
     def explain(self):
         return "pop a value and jump to " + str(self.pc) + \
@@ -1551,6 +1708,9 @@ class SetOp(Op):
     def __repr__(self):
         return "Set"
 
+    def jdump(self):
+        return '{ "op": "Set" }'
+
     def explain(self):
         return "pop a number n and n values and push a set with the value"
 
@@ -1565,6 +1725,9 @@ class SetOp(Op):
 class DictOp(Op):
     def __repr__(self):
         return "Dict"
+
+    def jdump(self):
+        return '{ "op": "Dict" }'
 
     def explain(self):
         return "pop a number n and n key/value pairs and push a dictionary"
@@ -1587,6 +1750,10 @@ class NaryOp(Op):
     def __repr__(self):
         (lexeme, file, line, column) = self.op
         return "%d-ary "%self.n + str(lexeme)
+
+    def jdump(self):
+        (lexeme, file, line, column) = self.op
+        return '{ "op": "Nary", "arity": %d, "value": "%s" }'%(self.n, lexeme)
 
     def explain(self):
         return "pop " + str(self.n) + \
@@ -1747,17 +1914,6 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, e == novalue):
                     return
                 context.push(context.nametag)
-            elif op == "processes":
-                if not self.checktype(state, context, sa, e == novalue):
-                    return
-                if not context.atomic:
-                    context.failure = "not in atomic block: " + str(self.op)
-                    return
-                d = {}
-                for (ctx, cnt) in state.ctxbag.items():
-                    c = d.get(ctx.nametag)
-                    d[ctx.nametag] = cnt if c == None else (c + cnt)
-                context.push(DictValue(d))
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
@@ -1895,6 +2051,9 @@ class ApplyOp(Op):
 
     def __repr__(self):
         return "Apply"
+
+    def jdump(self):
+        return '{ "op": "Apply" }'
 
     def explain(self):
         return "pop a pc or dictionary f and an index i and push f(i)"
@@ -2292,7 +2451,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "nametag", "processes" }:
+        if op in { "atLabel", "choose", "nametag" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
@@ -4011,7 +4170,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
                     ": Error: choose can only be applied to non-empty sets"
                 break
 
-            # if there is no other process, we can just keep going
+            # if there is only one choice, we can just keep on going
             if len(v.s) > 1:
                 sc.choosing = cc
                 break
@@ -4021,8 +4180,10 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # if we're about to access shared state, let other processes
         # go first assuming there are other processes and we're not
         # in "atomic" mode
+        # TODO.  IS THIS CHECK RIGHT?
         if cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
             break
+        # TODO.  WHY NOT HAVE THE SAME CHECK HERE?
         if cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
             break
 
@@ -4202,7 +4363,6 @@ def run(code, labels, map, step, blockflag):
         if node.expanded:
             continue
         node.expanded = True
-        lastNode = node
         if node.len > maxdiameter:
             maxdiameter = node.len
 
@@ -4869,7 +5029,7 @@ def main():
     fulldump = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "Aabc:dhm:s", ["const=", "help", "module="])
+                        "Aabc:dhjm:s", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -4878,6 +5038,8 @@ def main():
             printCode = "verbose"
         elif o == "-A":
             printCode = "terse"
+        elif o == "-j":
+            printCode = "json"
         elif o == "-b":
             blockflag = True
         elif o in { "-c", "--const" }:
@@ -4897,6 +5059,14 @@ def main():
 
     if printCode != None:
         lastloc = None
+        if printCode == "json":
+            print("{");
+            print('  "labels": {');
+            for (k, v) in scope.labels.items():
+                print('    "%s": "%d",'%(k, v))
+            print('    "__end__": "%d"'%len(code))
+            print('  },');
+            print('  "code": [');
         for pc in range(len(code)):
             if printCode == "verbose":
                 if scope.locations.get(pc) != None:
@@ -4909,8 +5079,16 @@ def main():
                             print(file, ":", line)
                     lastloc = (file, line)
                 print("  ", pc, code[pc])
+            elif printCode == "json":
+                if pc < len(code) - 1:
+                    print("    %s,"%code[pc].jdump())
+                else:
+                    print("    %s"%code[pc].jdump())
             else:
                 print(code[pc])
+        if printCode == "json":
+            print("  ]");
+            print("}");
 
     m = scope.names.get("__mutex__")
     if m == None:
