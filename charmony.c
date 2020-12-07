@@ -64,7 +64,7 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
             cc->pc++;
         }
         else {
-            (*oi->op)(code[pc].env, &sc, &cc);
+            (*oi->op)(code[pc].env, sc, &cc);
             if (cc->terminated || cc->failure) {
                 break;
             }

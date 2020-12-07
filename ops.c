@@ -401,10 +401,10 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
     }
 }
 
-void op_Assert2(const void *env, struct state **pstate, struct context **pctx){}
-void op_Del(const void *env, struct state **pstate, struct context **pctx){}
+void op_Assert2(const void *env, struct state *state, struct context **pctx){}
+void op_Del(const void *env, struct state *state, struct context **pctx){}
 
-void op_Address(const void *env, struct state **pstate, struct context **pctx){
+void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
     uint64_t av = ctx_pop(pctx);
     assert((av & VALUE_MASK) == VALUE_ADDRESS);
@@ -421,7 +421,7 @@ void op_Address(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Apply(const void *env, struct state **pstate, struct context **pctx){
+void op_Apply(const void *env, struct state *state, struct context **pctx){
     uint64_t method = ctx_pop(pctx);
     uint64_t e = ctx_pop(pctx);
 
@@ -443,7 +443,7 @@ void op_Apply(const void *env, struct state **pstate, struct context **pctx){
     }
 }
 
-void op_Assert(const void *env, struct state **pstate, struct context **pctx){
+void op_Assert(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     assert((v & VALUE_MASK) == VALUE_BOOL);
     if (false) {
@@ -455,7 +455,7 @@ void op_Assert(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_AtomicDec(const void *env, struct state **pstate, struct context **pctx){
+void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     assert(ctx->atomic > 0);
@@ -463,14 +463,14 @@ void op_AtomicDec(const void *env, struct state **pstate, struct context **pctx)
     ctx->pc++;
 }
 
-void op_AtomicInc(const void *env, struct state **pstate, struct context **pctx){
+void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     ctx->atomic++;
     ctx->pc++;
 }
 
-void op_Choose(const void *env, struct state **pstate, struct context **pctx){
+void op_Choose(const void *env, struct state *state, struct context **pctx){
 #ifdef notdef
     uint64_t s = ctx_pop(pctx);
     assert((s & VALUE_MASK) == VALUE_SET);
@@ -489,7 +489,7 @@ void op_Choose(const void *env, struct state **pstate, struct context **pctx){
     assert(0);
 }
 
-void op_Cut(const void *env, struct state **pstate, struct context **pctx){
+void op_Cut(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     if ((v & VALUE_MASK) == VALUE_SET) {
         assert(v != VALUE_SET);
@@ -512,7 +512,7 @@ void op_Cut(const void *env, struct state **pstate, struct context **pctx){
     assert(0);
 }
 
-void op_DelVar(const void *env, struct state **pstate, struct context **pctx){
+void op_DelVar(const void *env, struct state *state, struct context **pctx){
     const struct env_DelVar *ed = env;
     if (false) {
         char *p = value_string(ed->name);
@@ -526,7 +526,7 @@ void op_DelVar(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Dict(const void *env, struct state **pstate, struct context **pctx){
+void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     if (false) {
@@ -544,7 +544,7 @@ void op_Dict(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Dup(const void *env, struct state **pstate, struct context **pctx){
+void op_Dup(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
 
     if (false) {
@@ -558,7 +558,7 @@ void op_Dup(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Frame(const void *env, struct state **pstate, struct context **pctx){
+void op_Frame(const void *env, struct state *state, struct context **pctx){
     const struct env_Frame *ef = env;
     if (false) {
         printf("FRAME %llx ", ef->name);
@@ -582,7 +582,7 @@ void op_Frame(const void *env, struct state **pstate, struct context **pctx){
     ctx->pc += 1;
 }
 
-void op_Jump(const void *env, struct state **pstate, struct context **pctx){
+void op_Jump(const void *env, struct state *state, struct context **pctx){
     const struct env_Jump *ej = env;
 
     if (false) {
@@ -591,7 +591,7 @@ void op_Jump(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc = ej->pc;
 }
 
-void op_JumpCond(const void *env, struct state **pstate, struct context **pctx){
+void op_JumpCond(const void *env, struct state *state, struct context **pctx){
     const struct env_JumpCond *ej = env;
 
     if (false) {
@@ -607,9 +607,8 @@ void op_JumpCond(const void *env, struct state **pstate, struct context **pctx){
     }
 }
 
-void op_Load(const void *env, struct state **pstate, struct context **pctx){
+void op_Load(const void *env, struct state *state, struct context **pctx){
     const struct env_Load *el = env;
-    struct state *state = *pstate;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
@@ -639,7 +638,7 @@ void op_Load(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_LoadVar(const void *env, struct state **pstate, struct context **pctx){
+void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     const struct env_LoadVar *el = env;
     assert(el != NULL);
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
@@ -647,23 +646,23 @@ void op_LoadVar(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Nary(const void *env, struct state **pstate, struct context **pctx){
+void op_Nary(const void *env, struct state *state, struct context **pctx){
     const struct env_Nary *en = env;
     uint64_t args[MAX_ARITY];
 
     for (int i = 0; i < en->arity; i++) {
         args[i] = ctx_pop(pctx);
     }
-    ctx_push(pctx, (*en->fi->f)(*pstate, pctx, args, en->arity));
+    ctx_push(pctx, (*en->fi->f)(state, pctx, args, en->arity));
     (*pctx)->pc++;
 }
 
-void op_Pop(const void *env, struct state **pstate, struct context **pctx){
+void op_Pop(const void *env, struct state *state, struct context **pctx){
     (void) ctx_pop(pctx);
     (*pctx)->pc++;
 }
 
-void op_Push(const void *env, struct state **pstate, struct context **pctx){
+void op_Push(const void *env, struct state *state, struct context **pctx){
     const struct env_Push *ep = env;
 
     if (false) {
@@ -676,7 +675,7 @@ void op_Push(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_ReadonlyDec(const void *env, struct state **pstate, struct context **pctx){
+void op_ReadonlyDec(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     assert(ctx->readonly > 0);
@@ -684,14 +683,14 @@ void op_ReadonlyDec(const void *env, struct state **pstate, struct context **pct
     ctx->pc++;
 }
 
-void op_ReadonlyInc(const void *env, struct state **pstate, struct context **pctx){
+void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     ctx->readonly++;
     ctx->pc++;
 }
 
-void op_Return(const void *env, struct state **pstate, struct context **pctx){
+void op_Return(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->sp == 0) {     // __init__
         (*pctx)->terminated = true;
         if (false) {
@@ -728,7 +727,7 @@ void op_Return(const void *env, struct state **pstate, struct context **pctx){
     }
 }
 
-void op_Set(const void *env, struct state **pstate, struct context **pctx){
+void op_Set(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     n >>= VALUE_BITS;
@@ -759,7 +758,7 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
     }
 }
 
-void op_Spawn(const void *env, struct state **pstate, struct context **pctx){
+void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern struct code *code;
     extern int code_len;
 
@@ -790,7 +789,6 @@ void op_Spawn(const void *env, struct state **pstate, struct context **pctx){
     ctx_push(&ctx, arg);
     uint64_t v = value_put_context(ctx);
 
-    struct state *state = *pstate;
     state->ctxbag = bag_add(state->ctxbag, v);
 
     if (false) {
@@ -802,9 +800,8 @@ void op_Spawn(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Store(const void *env, struct state **pstate, struct context **pctx){
+void op_Store(const void *env, struct state *state, struct context **pctx){
     const struct env_Store *es = env;
-    struct state *state = *pstate;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
     uint64_t v = ctx_pop(pctx);
@@ -835,7 +832,7 @@ void op_Store(const void *env, struct state **pstate, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_StoreVar(const void *env, struct state **pstate, struct context **pctx){
+void op_StoreVar(const void *env, struct state *state, struct context **pctx){
     const struct env_StoreVar *es = env;
     assert(es != NULL);
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);

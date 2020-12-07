@@ -59,7 +59,7 @@ struct state {
 struct op_info {
     const char *name;
     void *(*init)(struct map *);
-    void (*op)(const void *env, struct state **pstate, struct context **pctx);
+    void (*op)(const void *env, struct state *state, struct context **pctx);
 };
 
 struct node {
