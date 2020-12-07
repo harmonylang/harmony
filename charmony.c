@@ -7,6 +7,12 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct edge {
+    struct edge *next;
+    uint64_t ctx, choice;
+    struct node *node;
+};
+
 struct node {
     struct node *parent;
     struct state *state;
@@ -14,6 +20,8 @@ struct node {
     uint64_t after;         // context before state change
     uint64_t choice;        // choice made if any
     int len;                // length of path to initial state
+    struct edge *fwd;       // forward edges
+    struct edge *bwd;       // backward edges
 };
 
 struct failure {
@@ -150,9 +158,26 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->parent = node;
         next->state = sc;               // TODO: duplicate value
         next->before = ctx;
-        next->after = after;
         next->choice = choice;
+        next->after = after;
         next->len = length;
+
+        // Add a forward edge from node to next.
+        struct edge *fwd = new_alloc(struct edge);
+        fwd->ctx = ctx;
+        fwd->choice = choice;
+        fwd->node = next;
+        fwd->next = node->fwd;
+        node->fwd = fwd;
+
+        // Add a backward edge from next to node.
+        struct edge *bwd = new_alloc(struct edge);
+        bwd->ctx = ctx;
+        bwd->choice = choice;
+        bwd->node = node;
+        bwd->next = next->bwd;
+        next->bwd = bwd;
+
         if (sc->ctxbag != VALUE_DICT && !cc->failure &&
                                 queue_empty(failures)) {
             queue_enqueue(todo, next);
