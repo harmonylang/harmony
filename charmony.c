@@ -17,6 +17,7 @@ struct edge {
 struct node {
     struct node *parent;
     struct state *state;
+    int id;                 // starting from 0
     uint64_t before;        // context before state change
     uint64_t after;         // context before state change
     uint64_t choice;        // choice made if any
@@ -33,7 +34,20 @@ struct failure {
 
 struct code *code;
 int code_len;
-struct queue *failures;     // queue of "struct failure"
+
+static struct node **graph;        // vector of all nodes
+static int graph_size;             // to create node identifiers
+static int graph_alloc;            // size allocated
+static struct queue *failures;     // queue of "struct failure"
+
+static void graph_add(struct node *node){
+    node->id = graph_size;
+    if (graph_size > graph_alloc) {
+        graph_alloc = (graph_alloc + 1) * 2;
+        graph = realloc(graph, (graph_alloc * sizeof(struct node *)));
+    }
+    graph[graph_size++] = node;
+}
 
 static void code_get(struct json_value *jv){
     assert(jv->type == JV_MAP);
@@ -50,12 +64,12 @@ static void code_get(struct json_value *jv){
     c->env = (*oi->init)(jv->u.map);
     c->choose = strcmp(oi->name, "Choose") == 0;
     c->breakable = strcmp(oi->name, "Load") == 0 ||
-                        strcmp(oi->name, "Store") == 0 ||
-                        strcmp(oi->name, "AtomicInc") == 0;
+        strcmp(oi->name, "Store") == 0 ||
+        strcmp(oi->name, "AtomicInc") == 0;
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice,
-                    struct map **pvisited, struct queue *todo){
+        struct map **pvisited, struct queue *todo){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -116,7 +130,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         }
 
         if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                        code[cc->pc].breakable) {
+                code[cc->pc].breakable) {
             break;
         }
     }
@@ -160,6 +174,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->choice = choice;
         next->after = after;
         next->len = node->len + weight;
+        graph_add(next);
 
         // Add a forward edge from node to next.
         struct edge *fwd = new_alloc(struct edge);
@@ -180,7 +195,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->bwd = bwd;
 
         if (sc->ctxbag != VALUE_DICT && !cc->failure &&
-                                queue_empty(failures)) {
+                queue_empty(failures)) {
             if (weight == 0) {
                 queue_prepend(todo, next);
             }
@@ -264,7 +279,7 @@ void twostep(struct node *node, uint64_t ctx, uint64_t choice){
         }
 
         if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                        code[cc->pc].breakable) {
+                code[cc->pc].breakable) {
             break;
         }
     }
@@ -301,7 +316,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
     char *c = value_string(choice);
     char *vars = value_string(last->state->vars);
     printf(">> before: %s choice: %s var: %s\n",
-        before, c, vars);
+            before, c, vars);
     free(before);
     free(c);
     free(vars);
@@ -371,6 +386,7 @@ int main(){
     struct map *visited = map_init();
     struct node *node = new_alloc(struct node);
     node->state = state;
+    graph_add(node);
     void **p = map_insert(&visited, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
@@ -380,7 +396,7 @@ int main(){
     queue_enqueue(todo, node);
 
     void *next;
-    int state_counter = 0;
+    int state_counter = 1;
     while (queue_dequeue(todo, &next)) {
         state_counter++;
 
@@ -431,7 +447,7 @@ int main(){
         }
     }
 
-    printf("#states %d\n", state_counter);
+    printf("#states %d (%d)\n", state_counter, graph_size);
 
     if (queue_empty(failures)) {
         printf("no issues\n");
