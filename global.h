@@ -16,6 +16,7 @@ struct queue *queue_init(void);
 void queue_enqueue(struct queue *queue, void *item);
 void queue_prepend(struct queue *queue, void *item);
 bool queue_dequeue(struct queue *queue, void **item);
+bool queue_empty(struct queue *queue);
 void queue_release(struct queue *queue);
 void queue_cleanup(void);
 

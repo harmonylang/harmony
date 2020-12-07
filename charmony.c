@@ -10,14 +10,20 @@
 struct node {
     struct node *parent;
     struct state *state;
-    uint64_t before;       // context before state change
-    uint64_t after;        // context before state change
-    uint64_t choice;       // choice made if any
-    bool failure;          // context failed
+    uint64_t before;        // context before state change
+    uint64_t after;         // context before state change
+    uint64_t choice;        // choice made if any
+    int len;                // length of path to initial state
+};
+
+struct failure {
+    uint64_t ctx;           // context that failed (before it failed)
+    struct node *node;      // state (after it failed)
 };
 
 struct code *code;
 int code_len;
+struct queue *failures;     // queue of "struct failure"
 
 static void code_get(struct json_value *jv){
     assert(jv->type == JV_MAP);
@@ -38,8 +44,10 @@ static void code_get(struct json_value *jv){
                         strcmp(oi->name, "AtomicInc") == 0;
 }
 
-struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
+void onestep(struct node *node, uint64_t ctx, uint64_t choice,
                     struct map **pvisited, struct queue *todo){
+    bool samectx = ctx == node->after;
+
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -129,9 +137,9 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
     if (!cc->terminated) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
-    else if (false) {
-        printf("TERMINATED\n");
-    }
+
+    // Length of path to initial state
+    int length = samectx ? node->len :(node->len + 1);
 
     // See if this new state was already seen before.
     void **p = map_insert(pvisited, sc, sizeof(*sc));
@@ -143,19 +151,31 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->before = ctx;
         next->after = after;
         next->choice = choice;
-        next->failure = cc->failure;
-        if (sc->ctxbag != VALUE_DICT) {
+        next->len = length;
+        if (sc->ctxbag != VALUE_DICT && !cc->failure &&
+                                queue_empty(failures)) {
             queue_enqueue(todo, next);
         }
     }
     else {
-        assert(!cc->failure);
-        assert(!next->failure);
         free(sc);
+
+        if (next->len > length) {
+            next->before = ctx;
+            next->after = after;
+            next->choice = choice;
+            next->len = length;
+        }
+    }
+
+    if (cc->failure) {
+        struct failure *f = new_alloc(struct failure);
+        f->ctx = after;
+        f->node = node;
+        queue_enqueue(failures, f);
     }
 
     free(cc);
-    return next;
 }
 
 void label_upcall(void *env,
@@ -177,6 +197,8 @@ void label_upcall(void *env,
 
 int main(){
     printf("Hello World\n");
+
+    failures = queue_init();
 
     // initialize modules
     ops_init();
@@ -245,7 +267,6 @@ int main(){
 
     void *next;
     int state_counter = 0;
-    struct node *last = NULL;
     while (queue_dequeue(todo, &next)) {
         state_counter++;
 
@@ -271,12 +292,9 @@ int main(){
                 if (false) {
                     printf("NEXT CHOICE %d %d %llx\n", i, size, vals[i]);
                 }
-                last = onestep(node, state->choosing, vals[i], &visited, todo);
+                onestep(node, state->choosing, vals[i], &visited, todo);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
-                }
-                if (last->failure) {
-                    break;
                 }
             }
         }
@@ -291,23 +309,31 @@ int main(){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                last = onestep(node, ctxs[i], 0, &visited, todo);
-                if (last->failure) {
-                    break;
-                }
+                onestep(node, ctxs[i], 0, &visited, todo);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }
             }
         }
-        if (last->failure) {
-            break;
+    }
+
+    printf("#states %d\n", state_counter);
+
+    if (queue_empty(failures)) {
+        printf("no issues\n");
+        exit(0);
+    }
+
+    struct failure *bad = NULL;
+    while (queue_dequeue(failures, &next)) {
+        struct failure *f = next;
+
+        if (bad == NULL || f->node->len < bad->node->len) {
+            bad = f;
         }
     }
 
-    assert(last != NULL);
-    printf("#states %d %d\n", state_counter, last->failure);
-
+    struct node *last = bad->node;
     while (last != NULL) {
         char *before = value_string(last->before);
         char *after = value_string(last->after);

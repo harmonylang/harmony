@@ -78,6 +78,10 @@ bool queue_dequeue(struct queue *queue, void **item){
 	return true;
 }
 
+bool queue_empty(struct queue *queue){
+    return queue->first == 0;
+}
+
 struct queue *queue_init(void){
 	struct queue *q = new_alloc(struct queue);
 
