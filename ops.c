@@ -704,6 +704,9 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
             uint64_t e2 = ctx_pop(pctx);
 
             if (strcmp(en->op, "+") == 0) {
+                if ((e1 & VALUE_MASK) != VALUE_INT) {
+                    fprintf(stderr, "NARY + %llx\n", e1);
+                }
                 assert((e1 & VALUE_MASK) == VALUE_INT);
                 assert((e2 & VALUE_MASK) == VALUE_INT);
                 uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
@@ -727,17 +730,29 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                 (*pctx)->pc++;
                 return;
             }
+            if (strcmp(en->op, ">") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                uint64_t result = (e2 >> VALUE_BITS) > (e1 >> VALUE_BITS);
+                ctx_push(pctx, (result << VALUE_BITS) | VALUE_BOOL);
+                (*pctx)->pc++;
+                return;
+            }
             if (strcmp(en->op, "==") == 0) {
-                char *p1 = value_string(e1);
-                char *p2 = value_string(e2);
-                printf("======== %s %s ====\n", p1, p2);
-                free(p1);
-                free(p2);
+                if (false) {
+                    char *p1 = value_string(e1);
+                    char *p2 = value_string(e2);
+                    printf("======== %s %s ====\n", p1, p2);
+                    free(p1);
+                    free(p2);
+                }
                 ctx_push(pctx, ((e1 == e2) << VALUE_BITS) | VALUE_BOOL);
                 (*pctx)->pc++;
                 return;
             }
         }
+
+        fprintf(stderr, "NARY UNKNOWN OP '%s'\n", en->op);
 
         assert(0);
     default:
