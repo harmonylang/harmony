@@ -33,6 +33,7 @@ struct node {
 };
 
 struct failure {
+    enum { FAIL_SAFETY, FAIL_TERMINATION } type;
     struct node *node;      // starting state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
@@ -223,6 +224,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
 
     if (cc->failure) {
         struct failure *f = new_alloc(struct failure);
+        f->type = FAIL_SAFETY;
         f->ctx = ctx;
         f->choice = choice;
         f->node = node;
@@ -556,6 +558,7 @@ int main(){
             if (!components[node->component].good) {
                 nbad++;
                 struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_TERMINATION;
                 f->ctx = node->before;
                 f->choice = 0;          // TODO
                 f->node = node;
@@ -580,6 +583,16 @@ int main(){
         }
     }
 
+    switch (bad->type) {
+    case FAIL_SAFETY:
+        printf("Safety violation\n");
+        break;
+    case FAIL_TERMINATION:
+        printf("Non-terminating state\n");
+        break;
+    default:
+        assert(0);
+    }
     path_dump(bad->node, bad->ctx, bad->choice);
 
     return 0;
