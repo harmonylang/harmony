@@ -7,8 +7,15 @@
 #include "global.h"
 #include "json.h"
 
+#define MAX_ARITY   10
+
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
+
+struct f_info {
+    char *name;
+    uint64_t (*f)(struct state *state, struct context **pctx, uint64_t *args, int n);
+};
 
 struct var_tree {
     enum { VT_NAME, VT_TUPLE } type;
@@ -20,6 +27,8 @@ struct var_tree {
         } tuple;
     } u;
 };
+
+static struct map *ops_map, *f_map;
 
 struct env_DelVar {
     uint64_t name;
@@ -50,7 +59,7 @@ struct env_LoadVar {
 
 struct env_Nary {
     int arity;
-    char *op;           // TODO.  Should be pre-processed.  strcmp too slow.
+    struct f_info *fi;
 };
 
 struct env_Push {
@@ -640,208 +649,13 @@ void op_LoadVar(const void *env, struct state **pstate, struct context **pctx){
 
 void op_Nary(const void *env, struct state **pstate, struct context **pctx){
     const struct env_Nary *en = env;
+    uint64_t args[MAX_ARITY];
 
-    if (false) {
-        printf("NARY %d %s\n", en->arity, en->op);
+    for (int i = 0; i < en->arity; i++) {
+        args[i] = ctx_pop(pctx);
     }
-
-    switch (en->arity) {
-    case 1:
-        {
-            uint64_t e = ctx_pop(pctx);
-
-            if (strcmp(en->op, "not") == 0) {
-                assert((e & VALUE_MASK) == VALUE_BOOL);
-                e ^= 1 << VALUE_BITS;
-                ctx_push(pctx, e);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "len") == 0) {
-                if ((e & VALUE_MASK) == VALUE_SET) {
-                    int size;
-                    uint64_t *v = value_get(e, &size);
-                    size /= sizeof(uint64_t);
-                    ctx_push(pctx, (size << VALUE_BITS) | VALUE_INT);
-                    (*pctx)->pc++;
-                    return;
-                }
-                if ((e & VALUE_MASK) == VALUE_DICT) {
-                    int size;
-                    uint64_t *v = value_get(e, &size);
-                    size /= 2 * sizeof(uint64_t);
-                    ctx_push(pctx, (size << VALUE_BITS) | VALUE_INT);
-                    (*pctx)->pc++;
-                    return;
-                }
-                assert(0);
-            }
-            if (strcmp(en->op, "atLabel") == 0) {
-                assert((e & VALUE_MASK) == VALUE_ATOM);
-                uint64_t pc = dict_load((*pstate)->labels, e);
-                assert((pc & VALUE_MASK) == VALUE_INT);
-                pc >>= 3;
-
-                int size;
-                uint64_t *vals = value_get((*pstate)->ctxbag, &size);
-                size /= sizeof(uint64_t);
-                assert(size > 0);
-                assert(size % 2 == 0);
-                uint64_t bag = VALUE_DICT;
-                for (int i = 0; i < size; i += 2) {
-                    assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
-                    assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
-                    struct context *ctx = value_get(vals[i], NULL);
-                    if (ctx->pc == pc) {
-                        bag = bag_add(bag, ctx->nametag);
-                        printf(">>>>> ATLABEL %llu %llx\n", pc, ctx->nametag);
-                    }
-                }
-
-                ctx_push(pctx, bag);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "nametag") == 0) {
-                ctx_push(pctx, (*pctx)->nametag);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "IsEmpty") == 0) {
-                if ((e & VALUE_MASK) == VALUE_DICT) {
-                    ctx_push(pctx, ((e == VALUE_DICT) << VALUE_BITS) | VALUE_BOOL);
-                    (*pctx)->pc++;
-                    return;
-                }
-                if ((e & VALUE_MASK) == VALUE_SET) {
-                    ctx_push(pctx, ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL);
-                    (*pctx)->pc++;
-                    return;
-                }
-                assert(0);
-            }
-        }
-
-        fprintf(stderr, "NARY unary UNKNOWN '%s'\n", en->op);
-        assert(0);
-
-    case 2:
-        {
-            uint64_t e1 = ctx_pop(pctx);
-            uint64_t e2 = ctx_pop(pctx);
-
-            if (strcmp(en->op, "+") == 0) {
-                if ((e1 & VALUE_MASK) == VALUE_INT) {
-                    assert((e2 & VALUE_MASK) == VALUE_INT);
-                    uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
-                    ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
-                    (*pctx)->pc++;
-                    return;
-                }
-                assert((e1 & VALUE_MASK) == VALUE_DICT);
-                assert((e2 & VALUE_MASK) == VALUE_DICT);
-                int size1, size2;
-                uint64_t *v1, *v2;
-                if (e1 == VALUE_DICT) {
-                    v1 = NULL;
-                    size1 = 0;
-                }
-                else {
-                    v1 = value_get(e1, &size1); 
-                }
-                if (e2 == VALUE_DICT) {
-                    v2 = NULL;
-                    size2 = 0;
-                }
-                else {
-                    v2 = value_get(e2, &size2); 
-                }
-                uint64_t *vals = malloc(size1 + size2), *v;
-                memcpy(vals, v2, size2);
-                v = (uint64_t *) ((char *) vals + size2);
-                int n = size1 / (2 * sizeof(uint64_t));
-                int index = size2 / (2 * sizeof(uint64_t));
-                for (int i = 0; i < n; i++) {
-                    *v++ = (index << VALUE_BITS) | VALUE_INT;
-                    *v++ = v1[i*2+1];
-                }
-                ctx_push(pctx, value_put_dict(vals, size1 + size2));
-                free(vals);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "-") == 0) {
-                assert((e1 & VALUE_MASK) == VALUE_INT);
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                uint64_t result = (e2 >> VALUE_BITS) - (e1 >> VALUE_BITS);
-                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "%") == 0) {
-                assert((e1 & VALUE_MASK) == VALUE_INT);
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                uint64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
-                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "..") == 0) {
-                assert((e1 & VALUE_MASK) == VALUE_INT);
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                int64_t start = e2 >> VALUE_BITS;          // TODO.  Negative
-                int64_t finish = e1 >> VALUE_BITS;
-                int n = (finish - start) + 1;
-                uint64_t *v = malloc(n * sizeof(uint64_t));
-                for (int i = 0; i < n; i++) {
-                    v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
-                }
-                ctx_push(pctx, value_put_set(v, n * sizeof(uint64_t)));
-                free(v);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, ">") == 0) {
-                assert((e1 & VALUE_MASK) == VALUE_INT);
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                uint64_t result = (e2 >> VALUE_BITS) > (e1 >> VALUE_BITS);
-                ctx_push(pctx, (result << VALUE_BITS) | VALUE_BOOL);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, ">=") == 0) {
-                assert((e1 & VALUE_MASK) == VALUE_INT);     // TODO negative ints
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                uint64_t result = (e2 >> VALUE_BITS) >= (e1 >> VALUE_BITS);
-                ctx_push(pctx, (result << VALUE_BITS) | VALUE_BOOL);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "==") == 0) {
-                if (false) {
-                    char *p1 = value_string(e1);
-                    char *p2 = value_string(e2);
-                    printf("======== %s %s ====\n", p1, p2);
-                    free(p1);
-                    free(p2);
-                }
-                ctx_push(pctx, ((e1 == e2) << VALUE_BITS) | VALUE_BOOL);
-                (*pctx)->pc++;
-                return;
-            }
-            if (strcmp(en->op, "!=") == 0) {
-                ctx_push(pctx, ((e1 != e2) << VALUE_BITS) | VALUE_BOOL);
-                (*pctx)->pc++;
-                return;
-            }
-        }
-
-        fprintf(stderr, "NARY UNKNOWN OP '%s'\n", en->op);
-
-        assert(0);
-    default:
-        assert(0);
-    }
+    ctx_push(pctx, (*en->fi->f)(*pstate, pctx, args, en->arity));
+    (*pctx)->pc++;
 }
 
 void op_Pop(const void *env, struct state **pstate, struct context **pctx){
@@ -1112,12 +926,14 @@ void *init_Nary(struct map *map){
     env->arity = atoi(copy);
     free(copy);
 
-    // TODO.  PREPROCESS.  op shouldn't be represented as a string
     struct json_value *op = map_lookup(map, "value", 5);
     assert(op->type == JV_ATOM);
-    env->op = malloc(op->u.atom.len + 1);
-    memcpy(env->op, op->u.atom.base, op->u.atom.len);
-    env->op[op->u.atom.len] = 0;
+    struct f_info *fi = map_lookup(f_map, op->u.atom.base, op->u.atom.len);
+    if (fi == NULL) {
+        fprintf(stderr, "Nary: unknown function '%.*s'\n", op->u.atom.len, op->u.atom.base);
+        exit(1);
+    }
+    env->fi = fi;
 
     return env;
 }
@@ -1192,6 +1008,199 @@ void *init_JumpCond(struct map *map){
     return env;
 }
 
+uint64_t f_atLabel(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+    assert((e & VALUE_MASK) == VALUE_ATOM);
+    uint64_t pc = dict_load(state->labels, e);
+    assert((pc & VALUE_MASK) == VALUE_INT);
+    pc >>= 3;
+
+    int size;
+    uint64_t *vals = value_get(state->ctxbag, &size);
+    size /= sizeof(uint64_t);
+    assert(size > 0);
+    assert(size % 2 == 0);
+    uint64_t bag = VALUE_DICT;
+    for (int i = 0; i < size; i += 2) {
+        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(vals[i], NULL);
+        if (ctx->pc == pc) {
+            bag = bag_add(bag, ctx->nametag);
+            printf(">>>>> ATLABEL %llu %llx\n", pc, ctx->nametag);
+        }
+    }
+    return bag;
+}
+
+uint64_t f_eq(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    return ((args[0] == args[1]) << VALUE_BITS) | VALUE_BOOL;
+}
+
+uint64_t f_ge(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    int cmp = value_cmp(args[1], args[0]);
+    return ((cmp >= 0) << VALUE_BITS) | VALUE_BOOL;
+}
+
+uint64_t f_gt(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    int cmp = value_cmp(args[1], args[0]);
+    return ((cmp > 0) << VALUE_BITS) | VALUE_BOOL;
+}
+
+uint64_t f_ne(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    return ((args[0] != args[1]) << VALUE_BITS) | VALUE_BOOL;
+}
+
+uint64_t f_in(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    assert(0);
+}
+
+uint64_t f_isEmpty(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        return ((e == VALUE_DICT) << VALUE_BITS) | VALUE_BOOL;
+    }
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
+    }
+    assert(0);
+}
+
+uint64_t f_keys(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(0);
+}
+
+uint64_t f_len(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= sizeof(uint64_t);
+        return (size << VALUE_BITS) | VALUE_INT;
+    }
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= 2 * sizeof(uint64_t);
+        return (size << VALUE_BITS) | VALUE_INT;
+    }
+    assert(0);
+}
+
+uint64_t f_le(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    assert(0);
+}
+
+uint64_t f_lt(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    assert(0);
+}
+
+// TODO.  what if args are negative?
+uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1 || n == 2);
+    if (n == 1) {
+        uint64_t e = args[0];
+        assert((e & VALUE_MASK) == VALUE_INT);
+        e >>= VALUE_BITS;
+        return ((-e) << VALUE_BITS) | VALUE_INT;
+    }
+    else {
+        uint64_t e1 = args[0], e2 = args[1];
+        assert((e1 & VALUE_MASK) == VALUE_INT);
+        assert((e2 & VALUE_MASK) == VALUE_INT);
+        e1 >>= VALUE_BITS;
+        e2 >>= VALUE_BITS;
+        return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
+    }
+}
+
+uint64_t f_mod(struct state *state, struct context **pctx, uint64_t *args, int n){
+    uint64_t e1 = args[0], e2 = args[1];
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    uint64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
+    return (result << VALUE_BITS) | VALUE_INT;
+}
+
+uint64_t f_nametag(struct state *state, struct context **pctx, uint64_t *args, int n){
+    return (*pctx)->nametag;
+}
+
+uint64_t f_not(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+    assert((e & VALUE_MASK) == VALUE_BOOL);
+    return e ^ (1 << VALUE_BITS);
+}
+
+uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);     // TODO
+    uint64_t e1 = args[0], e2 = args[1];
+    if ((e1 & VALUE_MASK) == VALUE_INT) {
+        assert((e2 & VALUE_MASK) == VALUE_INT);
+        uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
+        return (result << VALUE_BITS) | VALUE_INT;
+    }
+    assert((e1 & VALUE_MASK) == VALUE_DICT);
+    assert((e2 & VALUE_MASK) == VALUE_DICT);
+    int size1, size2;
+    uint64_t *v1, *v2;
+    if (e1 == VALUE_DICT) {
+        v1 = NULL;
+        size1 = 0;
+    }
+    else {
+        v1 = value_get(e1, &size1); 
+    }
+    if (e2 == VALUE_DICT) {
+        v2 = NULL;
+        size2 = 0;
+    }
+    else {
+        v2 = value_get(e2, &size2); 
+    }
+    uint64_t *vals = malloc(size1 + size2), *v;
+    memcpy(vals, v2, size2);
+    v = (uint64_t *) ((char *) vals + size2);
+    int cnt = size1 / (2 * sizeof(uint64_t));
+    int index = size2 / (2 * sizeof(uint64_t));
+    for (int i = 0; i < cnt; i++) {
+        *v++ = (index << VALUE_BITS) | VALUE_INT;
+        *v++ = v1[i*2+1];
+    }
+    uint64_t result = value_put_dict(vals, size1 + size2);
+    free(vals);
+    return result;
+}
+
+uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 2);
+    uint64_t e1 = args[0], e2 = args[1];
+
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    int64_t start = e2 >> VALUE_BITS;          // TODO.  Negative
+    int64_t finish = e1 >> VALUE_BITS;
+    int cnt = (finish - start) + 1;
+    uint64_t *v = malloc(cnt * sizeof(uint64_t));
+    for (int i = 0; i < cnt; i++) {
+        v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
+    }
+    uint64_t result = value_put_set(v, cnt * sizeof(uint64_t));
+    free(v);
+    return result;
+}
+
 struct op_info op_table[] = {
 	{ "Address", init_Address, op_Address },
 	{ "Apply", init_Apply, op_Apply },
@@ -1220,10 +1229,29 @@ struct op_info op_table[] = {
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
-    { NULL, NULL }
+    { NULL, NULL, NULL }
 };
 
-static struct map *ops_map;
+struct f_info f_table[] = {
+	{ "+", f_plus },
+	{ "-", f_minus },
+	{ "%", f_mod },
+    { "<", f_lt },
+    { "<=", f_le },
+    { ">=", f_ge },
+    { ">", f_gt },
+    { "..", f_range },
+    { "==", f_eq },
+    { "!=", f_ne },
+    { "atLabel", f_atLabel },
+    { "in", f_in },
+    { "IsEmpty", f_isEmpty },
+    { "keys", f_keys },
+    { "len", f_len },
+    { "nametag", f_nametag },
+    { "not", f_not },
+    { NULL, NULL }
+};
 
 struct op_info *ops_get(char *opname, int size){
     return map_lookup(ops_map, opname, size);
@@ -1235,5 +1263,9 @@ void ops_init(){
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = map_insert(&ops_map, oi->name, strlen(oi->name));
         *p = oi;
+    }
+    for (struct f_info *fi = f_table; fi->name != NULL; fi++) {
+        void **p = map_insert(&f_map, fi->name, strlen(fi->name));
+        *p = fi;
     }
 }

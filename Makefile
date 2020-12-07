@@ -1,4 +1,4 @@
-all:	harmony
+all:    harmony charmony
 
 harmony:    harmony.preamble harmony.py
 	(cat harmony.preamble harmony.py; echo ++++++) > harmony
