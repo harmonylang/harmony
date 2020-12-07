@@ -1102,7 +1102,6 @@ uint64_t f_lt(struct state *state, struct context **pctx, uint64_t *args, int n)
     assert(0);
 }
 
-// TODO.  what if args are negative?
 uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
@@ -1186,7 +1185,7 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
 
     assert((e1 & VALUE_MASK) == VALUE_INT);
     assert((e2 & VALUE_MASK) == VALUE_INT);
-    int64_t start = e2 >> VALUE_BITS;          // TODO.  Negative
+    int64_t start = e2 >> VALUE_BITS;
     int64_t finish = e1 >> VALUE_BITS;
     int cnt = (finish - start) + 1;
     uint64_t *v = malloc(cnt * sizeof(uint64_t));

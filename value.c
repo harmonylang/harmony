@@ -187,10 +187,6 @@ static char *value_string_int(uint64_t v) {
     if ((v >> VALUE_BITS) == VALUE_INF) {
         asprintf(&r, "inf");
     }
-    else if (v < 0) {
-        v = (VALUE_MASK << (64 - VALUE_BITS)) | (v >> VALUE_BITS);
-        asprintf(&r, "%lld", (int64_t) v);
-    }
     else {
         asprintf(&r, "%llu", v >> VALUE_BITS);
     }
