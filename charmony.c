@@ -19,11 +19,12 @@ struct node {
     struct state *state;
     int id;                 // starting from 0
     uint64_t before;        // context before state change
-    uint64_t after;         // context before state change
+    uint64_t after;         // context after state change
     uint64_t choice;        // choice made if any
     int len;                // length of path to initial state
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
+    bool visited;           // for Kosaraju algorithm
 };
 
 struct failure {
@@ -42,7 +43,7 @@ static struct queue *failures;     // queue of "struct failure"
 
 static void graph_add(struct node *node){
     node->id = graph_size;
-    if (graph_size > graph_alloc) {
+    if (graph_size >= graph_alloc) {
         graph_alloc = (graph_alloc + 1) * 2;
         graph = realloc(graph, (graph_alloc * sizeof(struct node *)));
     }
@@ -176,24 +177,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->len = node->len + weight;
         graph_add(next);
 
-        // Add a forward edge from node to next.
-        struct edge *fwd = new_alloc(struct edge);
-        fwd->ctx = ctx;
-        fwd->choice = choice;
-        fwd->node = next;
-        fwd->weight = weight;
-        fwd->next = node->fwd;
-        node->fwd = fwd;
-
-        // Add a backward edge from next to node.
-        struct edge *bwd = new_alloc(struct edge);
-        bwd->ctx = ctx;
-        bwd->choice = choice;
-        bwd->node = node;
-        bwd->weight = weight;
-        bwd->next = next->bwd;
-        next->bwd = bwd;
-
         if (sc->ctxbag != VALUE_DICT && !cc->failure &&
                 queue_empty(failures)) {
             if (weight == 0) {
@@ -214,6 +197,24 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             next->len = node->len + weight;
         }
     }
+
+    // Add a forward edge from node to next.
+    struct edge *fwd = new_alloc(struct edge);
+    fwd->ctx = ctx;
+    fwd->choice = choice;
+    fwd->node = next;
+    fwd->weight = weight;
+    fwd->next = node->fwd;
+    node->fwd = fwd;
+
+    // Add a backward edge from next to node.
+    struct edge *bwd = new_alloc(struct edge);
+    bwd->ctx = ctx;
+    bwd->choice = choice;
+    bwd->node = node;
+    bwd->weight = weight;
+    bwd->next = next->bwd;
+    next->bwd = bwd;
 
     if (cc->failure) {
         struct failure *f = new_alloc(struct failure);
@@ -322,6 +323,75 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
     free(vars);
 
     twostep(last, ctx, choice);
+}
+
+static struct stack {
+    struct stack *next;
+    struct node *node;
+} *stack;
+
+static void kosaraju_visit(struct node *node) {
+    if (node->visited) {
+        return;
+    }
+    node->visited = true;
+
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+        kosaraju_visit(edge->node);
+    }
+
+    // Push node
+    struct stack *s = new_alloc(struct stack);
+    s->node = node;
+    s->next = stack;
+    stack = s;
+}
+
+static void kosaraju_assign(struct node *node){
+    if (node->visited) {
+        return;
+    }
+    node->visited = true;
+    printf(" %d", node->id);
+    for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next) {
+        kosaraju_assign(edge->node);
+    }
+}
+
+static void find_scc(void){
+    for (int i = 0; i < graph_size; i++) {
+        kosaraju_visit(graph[i]);
+    }
+
+    // make sure all nodes are marked and on the stack
+    // while at it clear all the visited flags
+    int count = 0;
+    for (struct stack *s = stack; s != NULL; s = s->next) {
+        assert(s->node->visited);
+        s->node->visited = false;
+        count++;
+    }
+    assert(count == graph_size);
+
+    count = 0;
+    while (stack != NULL) {
+        // Pop
+        struct stack *top = stack;
+        stack = top->next;
+        struct node *next = top->node;
+        free(top);
+
+        if (!next->visited) {
+            printf("SCC %d:", ++count); fflush(stdout);
+            kosaraju_assign(next);
+            printf(" //\n");
+        }
+    }
+    for (int i = 0; i < graph_size; i++) {
+        assert(graph[i]->visited);
+    }
+
+    printf("%d nodes, %d components\n", graph_size, count);
 }
 
 int main(){
@@ -448,6 +518,8 @@ int main(){
     }
 
     printf("#states %d (%d)\n", state_counter, graph_size);
+
+    find_scc();     // find the strongly connected components
 
     if (queue_empty(failures)) {
         printf("no issues\n");
