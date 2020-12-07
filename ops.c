@@ -450,6 +450,7 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
         printf("ASSERT %lld\n", v >> VALUE_BITS);
     }
     if (v == VALUE_BOOL) {
+        printf("HARMONY ASSERTION FAILED\n");
         (*pctx)->failure = true;
     }
     (*pctx)->pc++;
@@ -1025,7 +1026,6 @@ uint64_t f_atLabel(struct state *state, struct context **pctx, uint64_t *args, i
         struct context *ctx = value_get(vals[i], NULL);
         if (ctx->pc == pc) {
             bag = bag_add(bag, ctx->nametag);
-            printf(">>>>> ATLABEL %llu %llx\n", pc, ctx->nametag);
         }
     }
     return bag;
