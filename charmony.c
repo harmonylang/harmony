@@ -7,6 +7,15 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct node {
+    struct node *parent;
+    struct state *state;
+    uint64_t before;       // context before state change
+    uint64_t after;        // context before state change
+    uint64_t choice;       // choice made if any
+    bool failure;          // context failed
+};
+
 struct code *code;
 int code_len;
 

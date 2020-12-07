@@ -14,6 +14,7 @@ void map_cleanup(void);
 
 struct queue *queue_init(void);
 void queue_enqueue(struct queue *queue, void *item);
+void queue_prepend(struct queue *queue, void *item);
 bool queue_dequeue(struct queue *queue, void **item);
 void queue_release(struct queue *queue);
 void queue_cleanup(void);
@@ -60,15 +61,6 @@ struct op_info {
     const char *name;
     void *(*init)(struct map *);
     void (*op)(const void *env, struct state *state, struct context **pctx);
-};
-
-struct node {
-    struct node *parent;
-    struct state *state;
-    uint64_t before;       // context before state change
-    uint64_t after;        // context before state change
-    uint64_t choice;       // choice made if any
-    bool failure;          // context failed
 };
 
 #include "json.h"

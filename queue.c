@@ -35,6 +35,26 @@ void queue_enqueue(struct queue *queue, void *item){
 	queue->last = &qe->next;
 }
 
+void queue_prepend(struct queue *queue, void *item){
+	struct q_elt *qe;
+
+	if ((qe = queue_cache) == 0) {
+		assert(queue_csize == 0);
+		qe = new_alloc(struct q_elt);
+	}
+	else {
+		assert(queue_csize > 0);
+		queue_csize--;
+		queue_cache = qe->next;
+	}
+
+	qe->item = item;
+    if ((qe->next = queue->first) == 0) {
+        queue->last = &qe->next;
+    }
+    queue->first = qe;
+}
+
 bool queue_dequeue(struct queue *queue, void **item){
 	struct q_elt *qe;
 
