@@ -50,7 +50,7 @@ struct env_LoadVar {
 
 struct env_Nary {
     int arity;
-    char *op;
+    char *op;           // TODO.  Should be pre-processed.  strcmp too slow.
 };
 
 struct env_Push {
@@ -704,15 +704,31 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
             uint64_t e2 = ctx_pop(pctx);
 
             if (strcmp(en->op, "+") == 0) {
-                if ((e1 & VALUE_MASK) != VALUE_INT) {
-                    fprintf(stderr, "NARY + %llx\n", e1);
+                if ((e1 & VALUE_MASK) == VALUE_INT) {
+                    assert((e2 & VALUE_MASK) == VALUE_INT);
+                    uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
+                    ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
+                    (*pctx)->pc++;
+                    return;
                 }
-                assert((e1 & VALUE_MASK) == VALUE_INT);
-                assert((e2 & VALUE_MASK) == VALUE_INT);
-                uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
-                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
+                assert((e1 & VALUE_MASK) == VALUE_DICT);
+                assert((e2 & VALUE_MASK) == VALUE_DICT);
+                int size1, size2;
+                uint64_t *v1 = value_get(e1, &size1); 
+                uint64_t *v2 = value_get(e2, &size2); 
+                uint64_t *vals = malloc(size1 + size2), *v;
+                memcpy(vals, v2, size2);
+                v = (uint64_t *) ((char *) vals + size2);
+                int n = size1 / (2 * sizeof(uint64_t));
+                int index = size2 / (2 * sizeof(uint64_t));
+                for (int i = 0; i < n; i++) {
+                    *v++ = (index << VALUE_BITS) | VALUE_INT;
+                    *v++ = v1[i*2+1];
+                }
+                ctx_push(pctx, value_put_dict(vals, size1 + size2));
+                free(vals);
                 (*pctx)->pc++;
-                return;
+                assert(0);
             }
             if (strcmp(en->op, "-") == 0) {
                 assert((e1 & VALUE_MASK) == VALUE_INT);
@@ -747,6 +763,11 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                     free(p2);
                 }
                 ctx_push(pctx, ((e1 == e2) << VALUE_BITS) | VALUE_BOOL);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "!=") == 0) {
+                ctx_push(pctx, ((e1 != e2) << VALUE_BITS) | VALUE_BOOL);
                 (*pctx)->pc++;
                 return;
             }
@@ -1010,6 +1031,7 @@ void *init_Nary(struct map *map){
     env->arity = atoi(copy);
     free(copy);
 
+    // TODO.  PREPROCESS.  op shouldn't be represented as a string
     struct json_value *op = map_lookup(map, "value", 5);
     assert(op->type == JV_ATOM);
     env->op = malloc(op->u.atom.len + 1);
