@@ -17,8 +17,9 @@ struct node {
 };
 
 struct failure {
+    struct node *node;      // starting state
     uint64_t ctx;           // context that failed (before it failed)
-    struct node *node;      // state (after it failed)
+    uint64_t choice;        // choice if any
 };
 
 struct code *code;
@@ -170,12 +171,97 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
 
     if (cc->failure) {
         struct failure *f = new_alloc(struct failure);
-        f->ctx = after;
+        f->ctx = ctx;
+        f->choice = choice;
         f->node = node;
         queue_enqueue(failures, f);
     }
 
     free(cc);
+}
+
+// similar to onestep.  TODO.  Use flag to onestep?
+void twostep(struct node *node, uint64_t ctx, uint64_t choice){
+    // Make a copy of the state
+    struct state *sc = new_alloc(struct state);
+    memcpy(sc, node->state, sizeof(*sc));
+    sc->choosing = 0;
+
+    // Make a copy of the context
+    struct context *cc = value_copy(ctx, NULL);
+    assert(!cc->terminated);
+    assert(!cc->failure);
+
+    bool choosing = false;
+    for (int loopcnt = 0;; loopcnt++) {
+        int pc = cc->pc;
+
+        struct op_info *oi = code[pc].oi;
+        if (code[pc].choose) {
+            char *p = value_string(choice);
+            printf("--- %d: CHOOSE %s\n", pc, p);
+            free(p);
+            cc->stack[cc->sp - 1] = choice;
+            cc->pc++;
+        }
+        else {
+            printf("--- %d: %s\n", pc, oi->name);
+            (*oi->op)(code[pc].env, sc, &cc);
+            if (cc->terminated || cc->failure) {
+                break;
+            }
+            if (cc->pc == pc) {
+                fprintf(stderr, ">>> %s\n", oi->name);
+            }
+            assert(cc->pc != pc);
+        }
+
+        /* Peek at the next instruction.
+         */
+        oi = code[cc->pc].oi;
+        if (code[cc->pc].choose) {
+            assert(cc->sp > 0);
+            uint64_t s = cc->stack[cc->sp - 1];
+            assert((s & VALUE_MASK) == VALUE_SET);
+            int size;
+            uint64_t *vals = value_get(s, &size);
+            size /= sizeof(uint64_t);
+            assert(size > 0);
+            assert(size > 1);       // TODO
+            choosing = true;
+            break;
+        }
+
+        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+                        code[cc->pc].breakable) {
+            break;
+        }
+    }
+
+    // Remove old context from the bag
+    uint64_t count = dict_load(sc->ctxbag, ctx);
+    assert((count & VALUE_MASK) == VALUE_INT);
+    count -= 1 << VALUE_BITS;
+    if (count == VALUE_INT) {
+        sc->ctxbag = dict_remove(sc->ctxbag, ctx);
+    }
+    else {
+        sc->ctxbag = dict_store(sc->ctxbag, ctx, count);
+    }
+
+    // Store new context in value directory.  Must be immutable now.
+    uint64_t after = value_put_context(cc);
+
+    // If choosing, save in state
+    if (choosing) {
+        assert(!cc->terminated);
+        sc->choosing = after;
+    }
+
+    // Add new context to state unless it's terminated
+    if (!cc->terminated) {
+        sc->ctxbag = bag_add(sc->ctxbag, after);
+    }
 }
 
 void label_upcall(void *env,
@@ -193,6 +279,27 @@ void label_upcall(void *env,
     uint64_t k = value_put_atom(key, key_size);
     uint64_t v = (pc << VALUE_BITS) | VALUE_INT;
     *labels = dict_store(*labels, k, v);
+}
+
+void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
+    if (last == NULL) {
+        return;
+    }
+
+    path_dump(last->parent, last->before, last->choice);
+
+    char *before = value_string(last->before);
+    char *after = value_string(last->after);
+    char *c = value_string(last->choice);
+    char *vars = value_string(last->state->vars);
+    printf(">> before: %s after: %s choice: %s var: %s\n",
+        before, after, c, vars);
+    free(before);
+    free(after);
+    free(c);
+    free(vars);
+
+    twostep(last, ctx, choice);
 }
 
 int main(){
@@ -333,20 +440,7 @@ int main(){
         }
     }
 
-    struct node *last = bad->node;
-    while (last != NULL) {
-        char *before = value_string(last->before);
-        char *after = value_string(last->after);
-        char *choice = value_string(last->choice);
-        char *vars = value_string(last->state->vars);
-        printf(">> before: %s after: %s choice: %s var: %s\n",
-            before, after, choice, vars);
-        free(before);
-        free(after);
-        free(choice);
-        free(vars);
-        last = last->parent;
-    }
+    path_dump(bad->node, bad->ctx, bad->choice);
 
     return 0;
 }
