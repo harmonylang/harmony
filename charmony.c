@@ -7,6 +7,10 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct component {
+    bool good;          // terminating or out-going edge
+};
+
 struct edge {
     struct edge *next;
     uint64_t ctx, choice;
@@ -25,6 +29,7 @@ struct node {
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
     bool visited;           // for Kosaraju algorithm
+    int component;          // strongly connected component id
 };
 
 struct failure {
@@ -300,7 +305,9 @@ void label_upcall(void *env,
     copy[jv->u.atom.len] = 0;
     int64_t pc = atoi(copy);
     free(copy);
-    printf("LABEL %.*s: %lld\n", key_size, key, pc);
+    if (false) {
+        printf("LABEL %.*s: %lld\n", key_size, key, pc);
+    }
     uint64_t k = value_put_atom(key, key_size);
     uint64_t v = (pc << VALUE_BITS) | VALUE_INT;
     *labels = dict_store(*labels, k, v);
@@ -347,18 +354,18 @@ static void kosaraju_visit(struct node *node) {
     stack = s;
 }
 
-static void kosaraju_assign(struct node *node){
+static void kosaraju_assign(struct node *node, int component){
     if (node->visited) {
         return;
     }
     node->visited = true;
-    printf(" %d", node->id);
+    node->component = component;
     for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next) {
-        kosaraju_assign(edge->node);
+        kosaraju_assign(edge->node, component);
     }
 }
 
-static void find_scc(void){
+static int find_scc(void){
     for (int i = 0; i < graph_size; i++) {
         kosaraju_visit(graph[i]);
     }
@@ -382,20 +389,19 @@ static void find_scc(void){
         free(top);
 
         if (!next->visited) {
-            printf("SCC %d:", ++count); fflush(stdout);
-            kosaraju_assign(next);
-            printf(" //\n");
+            count++;
+            kosaraju_assign(next, count);
         }
     }
     for (int i = 0; i < graph_size; i++) {
         assert(graph[i]->visited);
     }
 
-    printf("%d nodes, %d components\n", graph_size, count);
+    return count;
 }
 
 int main(){
-    printf("Hello World\n");
+    printf("Charmony v1\n");
 
     failures = queue_init();
 
@@ -517,9 +523,48 @@ int main(){
         }
     }
 
-    printf("#states %d (%d)\n", state_counter, graph_size);
+    printf("#states %d\n", graph_size);
 
-    find_scc();     // find the strongly connected components
+    if (queue_empty(failures)) {
+        // find the strongly connected components
+        int ncomponents = find_scc();
+
+        // mark the ones that are good
+        struct component *components = calloc(ncomponents, sizeof(*components));
+        for (int i = 0; i < graph_size; i++) {
+            struct node *node = graph[i];
+            struct component *comp = &components[node->component];
+            if (comp->good) {
+                continue;
+            }
+            if (node->state->ctxbag == VALUE_DICT) {
+                comp->good = true;
+                continue;
+            }
+            for (struct edge *edge = node->fwd;
+                            edge != NULL && !comp->good; edge = edge->next) {
+                if (edge->node->component != node->component) {
+                    comp->good = true;
+                }
+            }
+        }
+
+        // now count the nodes that are in bad components
+        int nbad = 0;
+        for (int i = 0; i < graph_size; i++) {
+            struct node *node = graph[i];
+            if (!components[node->component].good) {
+                nbad++;
+                struct failure *f = new_alloc(struct failure);
+                f->ctx = node->before;
+                f->choice = 0;          // TODO
+                f->node = node;
+                queue_enqueue(failures, f);
+            }
+        }
+
+        printf("%d components, %d bad nodes\n", ncomponents, nbad);
+    }
 
     if (queue_empty(failures)) {
         printf("no issues\n");
