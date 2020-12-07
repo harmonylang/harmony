@@ -8,7 +8,7 @@ def process(self):
         turn = 1 - self;
         flags[self] = True;
         await (not flags[1 - self]) or (turn == self);
-        @cs: assert atLabel.cs == dict{ nametag(): 1 }, atLabel.cs;
+        @cs: assert atLabel.cs == dict{ nametag(): 1 };
         flags[self] = False;
     ;
 ;

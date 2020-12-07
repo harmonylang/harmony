@@ -542,6 +542,7 @@ def isreserved(s):
         "elif",
         "else",
         "end",
+        "except",
         "False",
         "fun",
         "for",
@@ -563,15 +564,16 @@ def isreserved(s):
         "not",
         "or",
         "pass",
-        "processes",
         "setintlevel",
         "spawn",
         "stop",
         "such",
         "that",
         "trap",
+        "try",
         "True",
         "while"
+        "with"
     }
 
 def isname(s):
@@ -580,7 +582,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in { "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
-    "min", "max", "nametag", "not", "keys", "hash", "len", "processes" }
+    "min", "max", "nametag", "not", "keys", "hash", "len" }
 
 def isxbinop(s):
     return s in {
@@ -1593,7 +1595,7 @@ class ReturnOp(Op):
         result = context.get("result")
         context.fp = context.pop()
         context.vars = context.pop()
-        context.pop()       # argument saved for debugging
+        context.pop()       # argument saved for stack trace
         assert isinstance(context.vars, DictValue)
         calltype = context.pop()
         if calltype == "normal":
@@ -1965,17 +1967,6 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, e == novalue):
                     return
                 context.push(context.nametag)
-            elif op == "processes":
-                if not self.checktype(state, context, sa, e == novalue):
-                    return
-                if not context.atomic:
-                    context.failure = "not in atomic block: " + str(self.op)
-                    return
-                d = {}
-                for (ctx, cnt) in state.ctxbag.items():
-                    c = d.get(ctx.nametag)
-                    d[ctx.nametag] = cnt if c == None else (c + cnt)
-                context.push(DictValue(d))
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
@@ -2513,7 +2504,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "nametag", "processes" }:
+        if op in { "atLabel", "choose", "nametag" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 

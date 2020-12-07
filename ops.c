@@ -1,0 +1,1121 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+#include <ctype.h>
+#include <assert.h>
+#include "global.h"
+#include "json.h"
+
+#define CALLTYPE_PROCESS       1
+#define CALLTYPE_NORMAL        2
+
+struct var_tree {
+    enum { VT_NAME, VT_TUPLE } type;
+    union {
+        uint64_t name;
+        struct {
+            int n;
+            struct var_tree **elements;
+        } tuple;
+    } u;
+};
+
+struct env_DelVar {
+    uint64_t name;
+};
+
+struct env_Frame {
+    uint64_t name;
+    struct var_tree *args;
+};
+
+struct env_Jump {
+    int pc;
+};
+
+struct env_JumpCond {
+    uint64_t cond;
+    int pc;
+};
+
+struct env_Load {
+    uint64_t *indices;
+    int n;
+};
+
+struct env_LoadVar {
+    uint64_t name;
+};
+
+struct env_Nary {
+    int arity;
+    char *op;
+};
+
+struct env_Push {
+    uint64_t value;
+};
+
+struct env_Store {
+    uint64_t *indices;
+    int n;
+};
+
+struct env_StoreVar {
+    struct var_tree *args;
+};
+
+uint64_t var_match(struct var_tree *vt, uint64_t arg, uint64_t vars){
+    switch (vt->type) {
+    case VT_NAME:
+        return dict_store(vars, vt->u.name, arg);
+    case VT_TUPLE:
+        assert((arg & VALUE_MASK) == VALUE_DICT);
+        if (arg == VALUE_DICT) {
+            assert(vt->u.tuple.n == 0);
+            return vars;
+        }
+        assert(vt->u.tuple.n > 0);
+        int size;
+        uint64_t *vals = value_get(arg, &size);
+        size /= 2 * sizeof(uint64_t);
+        assert(vt->u.tuple.n == size);
+        for (int i = 0; i < size; i++) {
+            assert(vals[2*i] == ((i << VALUE_BITS) | VALUE_INT));
+            vars = var_match(vt->u.tuple.elements[i], vals[2*i+1], vars);
+        }
+        return vars;
+    default:
+        assert(0);
+    }
+}
+
+void var_dump(struct var_tree *vt){
+    switch (vt->type) {
+    case VT_NAME:
+        printf("%llx", vt->u.name);
+        break;
+    case VT_TUPLE:
+        printf("(");
+        for (int i = 0; i < vt->u.tuple.n; i++) {
+            printf(" ");
+            var_dump(vt->u.tuple.elements[i]);
+        }
+        printf(" )");
+        break;
+    default:
+        assert(0);
+    }
+}
+
+static void skip_blanks(char *s, int len, int *index){
+    while (*index < len && s[*index] == ' ') {
+        (*index)++;
+    }
+}
+
+struct var_tree *var_parse(char *s, int len, int *index){
+    assert(*index < len);
+    struct var_tree *vt = new_alloc(struct var_tree);
+
+    skip_blanks(s, len, index);
+    if (s[*index] == '(') {
+        vt->type = VT_TUPLE;
+        (*index)++;
+        skip_blanks(s, len, index);
+        assert(*index < len);
+        if (s[*index] == ')') {
+            (*index)++;
+        }
+        else {
+            while (true) {
+                struct var_tree *elt = var_parse(s, len, index);
+                vt->u.tuple.elements = realloc(vt->u.tuple.elements,
+                        (vt->u.tuple.n + 1) * sizeof(elt));
+                vt->u.tuple.elements[vt->u.tuple.n++] = elt;
+                skip_blanks(s, len, index);
+                assert(*index < len);
+                if (s[*index] == ')') {
+                    (*index)++;
+                    break;
+                }
+                assert(s[*index] == ',');
+                (*index)++;
+            }
+        }
+    }
+    else {
+        vt->type = VT_NAME;
+        int i = *index;
+        assert(isalpha(s[i]) || s[i] == '_');
+        i++;
+        while (i < len && (isalpha(s[i]) || s[i] == '_' || isdigit(s[i]))) {
+            i++;
+        }
+        vt->u.name = value_put_atom(&s[*index], i - *index);
+        *index = i;
+    }
+    return vt;
+}
+
+void ctx_push(struct context **pctx, uint64_t v){
+    struct context *ctx = realloc(*pctx, sizeof(struct context) + 
+                ((*pctx)->sp + 1) * sizeof(uint64_t));
+
+    ctx->stack[ctx->sp++] = v;
+    *pctx = ctx;
+}
+
+uint64_t ctx_pop(struct context **pctx){
+    struct context *ctx = *pctx;
+
+    assert(ctx->sp > 0);
+    return ctx->stack[--ctx->sp];
+}
+
+uint64_t dict_load(uint64_t dict, uint64_t key){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        assert(size % 2 == 0);
+        size /= sizeof(uint64_t);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            return vals[i + 1];
+        }
+        /* 
+            if (value_cmp(vals[i], key) > 0) {
+                break;
+            }
+        */
+    }
+
+    assert(0);
+}
+
+uint64_t dict_remove(uint64_t dict, uint64_t key){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        assert(0);
+    }
+    vals = value_get(dict & ~VALUE_MASK, &size);
+    size /= sizeof(uint64_t);
+    assert(size % 2 == 0);
+
+    if (size == 2) {
+        assert(vals[0] == key);
+        return VALUE_DICT;
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            int n = (size - 2) * sizeof(uint64_t);
+            uint64_t *copy = malloc(n);
+            memcpy(copy, vals, i * sizeof(uint64_t));
+            memcpy(&copy[i], &vals[i+2],
+                (size - i - 2) * sizeof(uint64_t));
+            uint64_t v = value_put_dict(copy, n);
+            free(copy);
+            return v;
+        }
+        /* 
+            if (value_cmp(vals[i], key) > 0) {
+                assert(0);
+            }
+        */
+    }
+    assert(0);
+}
+
+bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            *result = vals[i + 1];
+            return true;
+        }
+        /* 
+            if (value_cmp(vals[i], key) > 0) {
+                break;
+            }
+        */
+    }
+    return false;
+}
+
+// Store key:value in the given dictionary and returns its value code
+uint64_t dict_store(uint64_t dict, uint64_t key, uint64_t value){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    if (false) {
+        char *p = value_string(value);
+        char *q = value_string(dict);
+        char *r = value_string(key);
+        printf("DICT_STORE %s %s %s\n", p, q, r);
+        free(p);
+        free(q);
+        free(r);
+    }
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            if (vals[i + 1] == value) {
+                return dict;
+            }
+            int n = size * sizeof(uint64_t);
+            uint64_t *copy = malloc(n);
+            memcpy(copy, vals, n);
+            copy[i + 1] = value;
+            uint64_t v = value_put_dict(copy, n);
+            free(copy);
+            return v;
+        }
+        if (value_cmp(vals[i], key) > 0) {
+            break;
+        }
+    }
+
+    int n = (size + 2) * sizeof(uint64_t);
+    uint64_t *nvals = malloc(n);
+    memcpy(nvals, vals, i * sizeof(uint64_t));
+    nvals[i] = key;
+    nvals[i+1] = value;
+    memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(uint64_t));
+    uint64_t v = value_put_dict(nvals, n);
+    free(nvals);
+    return v;
+}
+
+uint64_t ind_load(uint64_t dict, uint64_t *indices, int n){
+    uint64_t d = dict;
+    for (int i = 0; i < n; i++) {
+        d = dict_load(d, indices[i]);
+    }
+    return d;
+}
+
+uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+    assert(n > 0);
+
+    if (n == 1) {
+        return dict_store(dict, indices[0], value);
+    }
+    else {
+        uint64_t *vals;
+        int size;
+        if (dict == VALUE_DICT) {
+            vals = NULL;
+            size = 0;
+        }
+        else {
+            vals = value_get(dict & ~VALUE_MASK, &size);
+            assert(size % 2 == 0);
+            size /= sizeof(uint64_t);
+        }
+
+        int i;
+        for (i = 0; i < size; i += 2) {
+            if (vals[i] == indices[0]) {
+                uint64_t d = vals[i+1];
+                assert((d & VALUE_MASK) == VALUE_DICT);
+                uint64_t nd = ind_store(d, indices + 1, n - 1, value);
+                if (d == nd) {
+                    return dict;
+                }
+                int n = size * sizeof(uint64_t);
+                uint64_t *copy = malloc(n);
+                memcpy(copy, vals, n);
+                copy[i + 1] = nd;
+                uint64_t v = value_put_dict(copy, n);
+                free(copy);
+                return v;
+            }
+            /* 
+                if (value_cmp(vals[i], key) > 0) {
+                    assert(0);
+                }
+            */
+        }
+
+        assert(0);
+    }
+}
+
+void op_Assert2(const void *env, struct state **pstate, struct context **pctx){}
+void op_Del(const void *env, struct state **pstate, struct context **pctx){}
+void op_Set(const void *env, struct state **pstate, struct context **pctx){}
+
+void op_Address(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t index = ctx_pop(pctx);
+    uint64_t av = ctx_pop(pctx);
+    assert((av & VALUE_MASK) == VALUE_ADDRESS);
+    if (false) {
+        printf("ADDRESS %llx\n", index);
+    }
+
+    int size;
+    uint64_t *indices = value_copy(av, &size);
+    indices = realloc(indices, size + sizeof(index));
+    indices[size / sizeof(uint64_t)] = index;
+    ctx_push(pctx, value_put_address(indices, size + sizeof(index)));
+    free(indices);
+    (*pctx)->pc++;
+}
+
+void op_Apply(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t method = ctx_pop(pctx);
+    uint64_t e = ctx_pop(pctx);
+
+    uint64_t type = method & VALUE_MASK;
+    switch (type) {
+    case VALUE_DICT:
+        ctx_push(pctx, dict_load(method, e));
+        (*pctx)->pc++;
+        return;
+    case VALUE_PC:
+        ctx_push(pctx, (((*pctx)->pc + 1) << VALUE_BITS) | VALUE_PC);
+        ctx_push(pctx, (CALLTYPE_NORMAL << VALUE_BITS) | VALUE_INT);
+        ctx_push(pctx, e);
+        assert((method >> VALUE_BITS) != (*pctx)->pc);
+        (*pctx)->pc = method >> VALUE_BITS;
+        return;
+    default:
+        assert(0);
+    }
+}
+
+void op_Assert(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t v = ctx_pop(pctx);
+    assert((v & VALUE_MASK) == VALUE_BOOL);
+    if (false) {
+        printf("ASSERT %lld\n", v >> VALUE_BITS);
+    }
+    if (v == VALUE_BOOL) {
+        (*pctx)->failure = true;
+    }
+    (*pctx)->pc++;
+}
+
+void op_AtomicDec(const void *env, struct state **pstate, struct context **pctx){
+    struct context *ctx = *pctx;
+
+    assert(ctx->atomic > 0);
+    ctx->atomic--;
+    ctx->pc++;
+}
+
+void op_AtomicInc(const void *env, struct state **pstate, struct context **pctx){
+    struct context *ctx = *pctx;
+
+    ctx->atomic++;
+    ctx->pc++;
+}
+
+void op_Choose(const void *env, struct state **pstate, struct context **pctx){
+#ifdef notdef
+    uint64_t s = ctx_pop(pctx);
+    assert((s & VALUE_MASK) == VALUE_SET);
+    void *p = (void *) (s & ~VALUE_MASK);
+
+    int size;
+    uint64_t *vals = map_retrieve(p, &size);
+    size /= sizeof(uint64_t);
+    assert(size > 0);
+
+    printf("CHOOSE %llx %llx %d\n", vals[0], vals[1], size);
+
+    ctx_push(pctx, vals[0]);
+    (*pctx)->pc++;
+#endif
+    assert(0);
+}
+
+void op_Cut(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t v = ctx_pop(pctx);
+    if ((v & VALUE_MASK) == VALUE_SET) {
+        assert(v != VALUE_SET);
+        void *p = (void *) (v & ~VALUE_MASK);
+
+        int size;
+        uint64_t *vals = map_retrieve(p, &size);
+        assert(size > 0);
+
+        ctx_push(pctx, vals[0]);
+        ctx_push(pctx, value_put_set(&vals[1], size - sizeof(uint64_t)));
+        (*pctx)->pc++;
+        return;
+    }
+    if ((v & VALUE_MASK) == VALUE_DICT) {
+        assert(v != VALUE_DICT);
+        assert(0);
+        return;
+    }
+    assert(0);
+}
+
+void op_DelVar(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_DelVar *ed = env;
+    if (false) {
+        char *p = value_string(ed->name);
+        char *q = value_string((*pctx)->vars);
+        printf("DELVAR %s %s\n", p, q);
+        free(p);
+        free(q);
+    }
+
+    (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
+    (*pctx)->pc++;
+}
+
+void op_Dict(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t n = ctx_pop(pctx);
+    assert((n & VALUE_MASK) == VALUE_INT);
+    if (false) {
+        printf("DICT %lld\n", n >> VALUE_BITS);
+    }
+    n >>= VALUE_BITS;
+
+    uint64_t d = VALUE_DICT;
+    for (int i = 0; i < n; i++) {
+        uint64_t v = ctx_pop(pctx);
+        uint64_t k = ctx_pop(pctx);
+        d = dict_store(d, k, v);
+    }
+    ctx_push(pctx, d);
+    (*pctx)->pc++;
+}
+
+void op_Dup(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t v = ctx_pop(pctx);
+
+    if (false) {
+        char *p = value_string(v);
+        printf("DUP %s\n", p);
+        free(p);
+    }
+
+    ctx_push(pctx, v);
+    ctx_push(pctx, v);
+    (*pctx)->pc++;
+}
+
+void op_Frame(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Frame *ef = env;
+    if (false) {
+        printf("FRAME %llx ", ef->name);
+        var_dump(ef->args);
+        printf("\n");
+    }
+
+    uint64_t arg = ctx_pop(pctx);
+    ctx_push(pctx, arg);
+    ctx_push(pctx, (*pctx)->vars);
+    ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
+
+    struct context *ctx = *pctx;
+    ctx->fp = ctx->sp;
+
+    ctx->vars = dict_store(VALUE_DICT,
+        value_put_atom("result", 6), VALUE_DICT);       // TODO "result" atom
+
+    ctx->vars = var_match(ef->args, arg, ctx->vars);
+
+    ctx->pc += 1;
+}
+
+void op_Jump(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Jump *ej = env;
+
+    if (false) {
+        printf("JUMP %d\n", ej->pc);
+    }
+    (*pctx)->pc = ej->pc;
+}
+
+void op_JumpCond(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_JumpCond *ej = env;
+
+    if (false) {
+        printf("JUMPCOND %d\n", ej->pc);
+    }
+    uint64_t v = ctx_pop(pctx);
+    if (v == ej->cond) {
+        assert((*pctx)->pc != ej->pc);
+        (*pctx)->pc = ej->pc;
+    }
+    else {
+        (*pctx)->pc++;
+    }
+}
+
+void op_Load(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Load *el = env;
+    struct state *state = *pstate;
+
+    assert((state->vars & VALUE_MASK) == VALUE_DICT);
+
+    if (el == 0) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        if (false) {
+            printf("LOAD IND %d\n", size);
+            for (int i = 0; i < size; i++) {
+                char *index = value_string(indices[i]);
+                printf(">> %s\n", index);
+                free(index);
+            }
+        }
+
+        ctx_push(pctx, ind_load(state->vars, indices, size));
+    }
+    else {
+        assert(el->n == 1);
+        ctx_push(pctx, dict_load(state->vars, el->indices[0]));
+    }
+    (*pctx)->pc++;
+}
+
+void op_LoadVar(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_LoadVar *el = env;
+    assert(el != NULL);
+    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    ctx_push(pctx, dict_load((*pctx)->vars, el->name));
+    (*pctx)->pc++;
+}
+
+void op_Nary(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Nary *en = env;
+
+    if (false) {
+        printf("NARY %d %s\n", en->arity, en->op);
+    }
+
+    switch (en->arity) {
+    case 1:
+        {
+            uint64_t e = ctx_pop(pctx);
+
+            if (strcmp(en->op, "not") == 0) {
+                assert((e & VALUE_MASK) == VALUE_BOOL);
+                e ^= 1 << VALUE_BITS;
+                ctx_push(pctx, e);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "atLabel") == 0) {
+                assert((e & VALUE_MASK) == VALUE_ATOM);
+                uint64_t pc = dict_load((*pstate)->labels, e);
+                assert((pc & VALUE_MASK) == VALUE_INT);
+                pc >>= 3;
+
+                int size;
+                uint64_t *vals = value_get((*pstate)->ctxbag, &size);
+                size /= sizeof(uint64_t);
+                assert(size > 0);
+                assert(size % 2 == 0);
+                uint64_t bag = VALUE_DICT;
+                for (int i = 0; i < size; i += 2) {
+                    assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+                    assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
+                    struct context *ctx = value_get(vals[i], NULL);
+                    if (ctx->pc == pc) {
+                        bag = bag_add(bag, ctx->nametag);
+                        printf(">>>>> ATLABEL %llu %llx\n", pc, ctx->nametag);
+                    }
+                }
+
+                ctx_push(pctx, bag);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "nametag") == 0) {
+                ctx_push(pctx, (*pctx)->nametag);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "IsEmpty") == 0) {
+                if ((e & VALUE_MASK) == VALUE_DICT) {
+                    ctx_push(pctx, ((e == VALUE_DICT) << VALUE_BITS) | VALUE_BOOL);
+                    (*pctx)->pc++;
+                    return;
+                }
+                if ((e & VALUE_MASK) == VALUE_SET) {
+                    ctx_push(pctx, ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL);
+                    (*pctx)->pc++;
+                    return;
+                }
+                assert(0);
+            }
+        }
+
+        assert(0);
+
+    case 2:
+        {
+            uint64_t e1 = ctx_pop(pctx);
+            uint64_t e2 = ctx_pop(pctx);
+
+            if (strcmp(en->op, "+") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
+                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "-") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                uint64_t result = (e2 >> VALUE_BITS) - (e1 >> VALUE_BITS);
+                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "%") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                uint64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
+                ctx_push(pctx, (result << VALUE_BITS) | VALUE_INT);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, "==") == 0) {
+                char *p1 = value_string(e1);
+                char *p2 = value_string(e2);
+                printf("======== %s %s ====\n", p1, p2);
+                free(p1);
+                free(p2);
+                ctx_push(pctx, ((e1 == e2) << VALUE_BITS) | VALUE_BOOL);
+                (*pctx)->pc++;
+                return;
+            }
+        }
+
+        assert(0);
+    default:
+        assert(0);
+    }
+}
+
+void op_Pop(const void *env, struct state **pstate, struct context **pctx){
+    (void) ctx_pop(pctx);
+    (*pctx)->pc++;
+}
+
+void op_Push(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Push *ep = env;
+
+    if (false) {
+        char *p = value_string(ep->value);
+        printf("PUSH %s\n", p);
+        free(p);
+    }
+
+    ctx_push(pctx, ep->value);
+    (*pctx)->pc++;
+}
+
+void op_ReadonlyDec(const void *env, struct state **pstate, struct context **pctx){
+    struct context *ctx = *pctx;
+
+    assert(ctx->readonly > 0);
+    ctx->readonly--;
+    ctx->pc++;
+}
+
+void op_ReadonlyInc(const void *env, struct state **pstate, struct context **pctx){
+    struct context *ctx = *pctx;
+
+    ctx->readonly++;
+    ctx->pc++;
+}
+
+void op_Return(const void *env, struct state **pstate, struct context **pctx){
+    if ((*pctx)->sp == 0) {     // __init__
+        (*pctx)->terminated = true;
+        if (false) {
+            printf("RETURN INIT\n");
+        }
+    }
+    else {
+        uint64_t result = dict_load((*pctx)->vars, value_put_atom("result", 6));
+        uint64_t fp = ctx_pop(pctx);
+        assert((fp & VALUE_MASK) == VALUE_INT);
+        (*pctx)->fp = fp >> VALUE_BITS;
+        (*pctx)->vars = ctx_pop(pctx);
+        assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+        (void) ctx_pop(pctx);   // argument saved for stack trace
+        uint64_t calltype = ctx_pop(pctx);
+        assert((calltype & VALUE_MASK) == VALUE_INT);
+        switch (calltype >> VALUE_BITS) {
+        case CALLTYPE_PROCESS:
+            (*pctx)->terminated = true;
+            break;
+        case CALLTYPE_NORMAL:
+            {
+                uint64_t pc = ctx_pop(pctx);
+                assert((pc & VALUE_MASK) == VALUE_PC);
+                pc >>= VALUE_BITS;
+                assert(pc != (*pctx)->pc);
+                ctx_push(pctx, result);
+                (*pctx)->pc = pc;
+            }
+            break;
+        default:
+            assert(0);
+        }
+    }
+}
+
+uint64_t bag_add(uint64_t bag, uint64_t v){
+    uint64_t count;
+    if (dict_tryload(bag, v, &count)) {
+        assert((count & VALUE_MASK) == VALUE_INT);
+        assert(count != VALUE_INT);
+        count += 1 << VALUE_BITS;
+        return dict_store(bag, v, count);
+    }
+    else {
+        return dict_store(bag, v, (1 << VALUE_BITS) | VALUE_INT);
+    }
+}
+
+void op_Spawn(const void *env, struct state **pstate, struct context **pctx){
+    extern struct code *code;
+    extern int code_len;
+
+    uint64_t pc = ctx_pop(pctx);
+    assert((pc & VALUE_MASK) == VALUE_PC);
+    pc >>= VALUE_BITS;
+
+    assert(pc < code_len);
+    assert(strcmp(code[pc].oi->name, "Frame") == 0);
+    uint64_t arg = ctx_pop(pctx);
+    uint64_t tag = ctx_pop(pctx);
+    if (false) {
+        printf("SPAWN %llx %llx %llx\n", pc, arg, tag);
+    }
+
+    struct context *ctx = new_alloc(struct context);
+
+    // TODO.  Precompute the next two in init_Spawn
+    uint64_t nv = value_put_atom("name", 4);
+    uint64_t tv = value_put_atom("tag", 3);
+    const struct env_Frame *ef = code[pc].env;
+    ctx->nametag = dict_store(VALUE_DICT, nv, ef->name);
+    ctx->nametag = dict_store(ctx->nametag, tv, tag);
+
+    ctx->pc = pc;
+    ctx->vars = VALUE_DICT;
+    ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
+    ctx_push(&ctx, arg);
+    uint64_t v = value_put_context(ctx);
+
+    struct state *state = *pstate;
+    state->ctxbag = bag_add(state->ctxbag, v);
+
+    if (false) {
+        char *p = value_string(state->ctxbag);
+        printf("SPAWN --> %s\n", p);
+        free(p);
+    }
+
+    (*pctx)->pc++;
+}
+
+void op_Store(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_Store *es = env;
+    struct state *state = *pstate;
+
+    assert((state->vars & VALUE_MASK) == VALUE_DICT);
+    uint64_t v = ctx_pop(pctx);
+
+    if (es == 0) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        if (false) {
+            printf("STORE IND %d %llx\n", size, v);
+            for (int i = 0; i < size; i++) {
+                char *index = value_string(indices[i]);
+                printf(">> %s\n", index);
+                free(index);
+            }
+        }
+
+        state->vars = ind_store(state->vars, indices, size, v);
+    }
+    else {
+        assert(es->n == 1);
+        state->vars = dict_store(state->vars, es->indices[0], v);
+    }
+    (*pctx)->pc++;
+}
+
+void op_StoreVar(const void *env, struct state **pstate, struct context **pctx){
+    const struct env_StoreVar *es = env;
+    assert(es != NULL);
+    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    uint64_t v = ctx_pop(pctx);
+    (*pctx)->vars = var_match(es->args, v, (*pctx)->vars);
+    (*pctx)->pc++;
+}
+
+void *init_Address(struct map *map){ return NULL; }
+void *init_Apply(struct map *map){ return NULL; }
+void *init_Assert(struct map *map){ return NULL; }
+void *init_Assert2(struct map *map){ return NULL; }
+void *init_AtomicDec(struct map *map){ return NULL; }
+void *init_AtomicInc(struct map *map){ return NULL; }
+void *init_Choose(struct map *map){ return NULL; }
+void *init_Cut(struct map *map){ return NULL; }
+void *init_Del(struct map *map){ return NULL; }
+void *init_Dict(struct map *map){ return NULL; }
+void *init_Dup(struct map *map){ return NULL; }
+void *init_Pop(struct map *map){ return NULL; }
+void *init_ReadonlyDec(struct map *map){ return NULL; }
+void *init_ReadonlyInc(struct map *map){ return NULL; }
+void *init_Return(struct map *map){ return NULL; }
+void *init_Set(struct map *map){ return NULL; }
+void *init_Spawn(struct map *map){ return NULL; }
+
+void *init_DelVar(struct map *map){
+    struct env_DelVar *env = new_alloc(struct env_DelVar);
+    struct json_value *name = map_lookup(map, "value", 5);
+    assert(name->type == JV_ATOM);
+    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
+    return env;
+}
+
+void *init_Frame(struct map *map){
+    struct env_Frame *env = new_alloc(struct env_Frame);
+
+    struct json_value *name = map_lookup(map, "name", 4);
+    assert(name->type == JV_ATOM);
+    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
+
+    struct json_value *args = map_lookup(map, "args", 4);
+    assert(args->type == JV_ATOM);
+    int index = 0;
+    env->args = var_parse(args->u.atom.base, args->u.atom.len, &index);
+
+    return env;
+}
+
+void *init_Load(struct map *map){
+    struct json_value *jv = map_lookup(map, "value", 5);
+    if (jv == NULL) {
+        return NULL;
+    }
+    assert(jv->type == JV_LIST);
+    struct env_Load *env = new_alloc(struct env_Load);
+    env->n = jv->u.list.nvals;
+    env->indices = malloc(env->n * sizeof(uint64_t));
+    for (int i = 0; i < env->n; i++) {
+        struct json_value *index = jv->u.list.vals[i];
+        assert(index->type == JV_MAP);
+        env->indices[i] = value_from_json(index->u.map);
+    }
+    return env;
+}
+
+void *init_LoadVar(struct map *map){
+    struct json_value *value = map_lookup(map, "value", 5);
+    if (value == NULL) {
+        return NULL;
+    }
+    else {
+        struct env_LoadVar *env = new_alloc(struct env_LoadVar);
+        assert(value->type == JV_ATOM);
+        env->name = value_put_atom(value->u.atom.base, value->u.atom.len);
+        return env;
+    }
+}
+
+void *init_Nary(struct map *map){
+    struct env_Nary *env = new_alloc(struct env_Nary);
+
+    struct json_value *arity = map_lookup(map, "arity", 5);
+    assert(arity->type == JV_ATOM);
+    char *copy = malloc(arity->u.atom.len + 1);
+    memcpy(copy, arity->u.atom.base, arity->u.atom.len);
+    copy[arity->u.atom.len] = 0;
+    env->arity = atoi(copy);
+    free(copy);
+
+    struct json_value *op = map_lookup(map, "value", 5);
+    assert(op->type == JV_ATOM);
+    env->op = malloc(op->u.atom.len + 1);
+    memcpy(env->op, op->u.atom.base, op->u.atom.len);
+    env->op[op->u.atom.len] = 0;
+
+    return env;
+}
+
+void *init_Push(struct map *map){
+    struct json_value *jv = map_lookup(map, "value", 5);
+    assert(jv->type == JV_MAP);
+    struct env_Push *env = new_alloc(struct env_Push);
+    env->value = value_from_json(jv->u.map);
+    return env;
+}
+
+void *init_Store(struct map *map){
+    struct json_value *jv = map_lookup(map, "value", 5);
+    if (jv == NULL) {
+        return NULL;
+    }
+    assert(jv->type == JV_LIST);
+    struct env_Store *env = new_alloc(struct env_Store);
+    env->n = jv->u.list.nvals;
+    env->indices = malloc(env->n * sizeof(uint64_t));
+    for (int i = 0; i < env->n; i++) {
+        struct json_value *index = jv->u.list.vals[i];
+        assert(index->type == JV_MAP);
+        env->indices[i] = value_from_json(index->u.map);
+    }
+    return env;
+}
+
+void *init_StoreVar(struct map *map){
+    struct json_value *jv = map_lookup(map, "value", 5);
+    if (jv == NULL) {
+        return NULL;
+    }
+    else {
+        assert(jv->type == JV_ATOM);
+        struct env_StoreVar *env = new_alloc(struct env_StoreVar);
+        int index = 0;
+        env->args = var_parse(jv->u.atom.base, jv->u.atom.len, &index);
+        return env;
+    }
+}
+
+void *init_Jump(struct map *map){
+    struct env_Jump *env = new_alloc(struct env_Jump);
+
+    struct json_value *pc = map_lookup(map, "pc", 2);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
+    free(copy);
+    return env;
+}
+
+void *init_JumpCond(struct map *map){
+    struct env_JumpCond *env = new_alloc(struct env_JumpCond);
+
+    struct json_value *pc = map_lookup(map, "pc", 2);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
+    free(copy);
+
+    struct json_value *cond = map_lookup(map, "cond", 4);
+    assert(cond->type == JV_MAP);
+    env->cond = value_from_json(cond->u.map);
+
+    return env;
+}
+
+struct op_info op_table[] = {
+	{ "Address", init_Address, op_Address },
+	{ "Apply", init_Apply, op_Apply },
+	{ "Assert", init_Assert, op_Assert },
+	{ "Assert2", init_Assert2, op_Assert2 },
+	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
+	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
+	{ "Choose", init_Choose, op_Choose },
+	{ "Cut", init_Cut, op_Cut },
+	{ "Del", init_Del, op_Del },
+	{ "DelVar", init_DelVar, op_DelVar },
+	{ "Dict", init_Dict, op_Dict },
+	{ "Dup", init_Dup, op_Dup },
+	{ "Frame", init_Frame, op_Frame },
+	{ "Jump", init_Jump, op_Jump },
+	{ "JumpCond", init_JumpCond, op_JumpCond },
+	{ "Load", init_Load, op_Load },
+	{ "LoadVar", init_LoadVar, op_LoadVar },
+	{ "Nary", init_Nary, op_Nary },
+	{ "Pop", init_Pop, op_Pop },
+	{ "Push", init_Push, op_Push },
+	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
+	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
+	{ "Return", init_Return, op_Return },
+	{ "Set", init_Set, op_Set },
+	{ "Spawn", init_Spawn, op_Spawn },
+	{ "Store", init_Store, op_Store },
+	{ "StoreVar", init_StoreVar, op_StoreVar },
+    { NULL, NULL }
+};
+
+static struct map *ops_map;
+
+struct op_info *ops_get(char *opname, int size){
+    return map_lookup(ops_map, opname, size);
+}
+
+void ops_init(){
+    ops_map = map_init();
+
+    for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
+        void **p = map_insert(&ops_map, oi->name, strlen(oi->name));
+        *p = oi;
+    }
+}

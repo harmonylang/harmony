@@ -1542,7 +1542,7 @@ class ReturnOp(Op):
         result = context.get("result")
         context.fp = context.pop()
         context.vars = context.pop()
-        context.pop()       # argument saved for debugging
+        context.pop()       # argument saved for stack trace
         assert isinstance(context.vars, DictValue)
         calltype = context.pop()
         if calltype == "normal":
