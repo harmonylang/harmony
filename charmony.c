@@ -20,9 +20,13 @@ static void code_get(struct json_value *jv){
         exit(1);
     }
     code = realloc(code, (code_len + 1) * 2 * sizeof(struct code));
-    code[code_len].oi = oi;
-    code[code_len].env = (*oi->init)(jv->u.map);
-    code_len++;
+    struct code *c = &code[code_len++];
+    c->oi = oi;
+    c->env = (*oi->init)(jv->u.map);
+    c->choose = strcmp(oi->name, "Choose") == 0;
+    c->breakable = strcmp(oi->name, "Load") == 0 ||
+                        strcmp(oi->name, "Store") == 0 ||
+                        strcmp(oi->name, "AtomicInc") == 0;
 }
 
 struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
@@ -55,7 +59,7 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
 
         struct op_info *oi = code[pc].oi;
 
-        if (strcmp(oi->name, "Choose") == 0) {
+        if (code[pc].choose) {
             cc->stack[cc->sp - 1] = choice;
             cc->pc++;
         }
@@ -70,7 +74,7 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
         /* Peek at the next instruction.
          */
         oi = code[cc->pc].oi;
-        if (strcmp(oi->name, "Choose") == 0) {
+        if (code[cc->pc].choose) {
             assert(cc->sp > 0);
             uint64_t s = cc->stack[cc->sp - 1];
             assert((s & VALUE_MASK) == VALUE_SET);
@@ -84,9 +88,7 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
         }
 
         if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                        (strcmp(oi->name, "Load") == 0 ||
-                            strcmp(oi->name, "Store") == 0 ||
-                            strcmp(oi->name, "AtomicInc") == 0)) {
+                        code[cc->pc].breakable) {
             break;
         }
     }

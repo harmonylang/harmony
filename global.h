@@ -32,6 +32,7 @@ struct op_info *ops_get(char *opname, int size);
 struct code {
     struct op_info *oi;
     const void *env;
+    bool choose;
     bool breakable;
 };
 
