@@ -239,7 +239,15 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
             }
         */
     }
-    assert(0);
+
+    if (false) {
+        char *p = value_string(key);
+        char *q = value_string(dict);
+        fprintf(stderr, "DICT_REMOVE: '%s' from %s\n", p, q);
+        assert(0);
+    }
+
+    return dict;
 }
 
 bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
@@ -386,7 +394,6 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
 
 void op_Assert2(const void *env, struct state **pstate, struct context **pctx){}
 void op_Del(const void *env, struct state **pstate, struct context **pctx){}
-void op_Set(const void *env, struct state **pstate, struct context **pctx){}
 
 void op_Address(const void *env, struct state **pstate, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
@@ -650,6 +657,25 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                 (*pctx)->pc++;
                 return;
             }
+            if (strcmp(en->op, "len") == 0) {
+                if ((e & VALUE_MASK) == VALUE_SET) {
+                    int size;
+                    uint64_t *v = value_get(e, &size);
+                    size /= sizeof(uint64_t);
+                    ctx_push(pctx, (size << VALUE_BITS) | VALUE_INT);
+                    (*pctx)->pc++;
+                    return;
+                }
+                if ((e & VALUE_MASK) == VALUE_DICT) {
+                    int size;
+                    uint64_t *v = value_get(e, &size);
+                    size /= 2 * sizeof(uint64_t);
+                    ctx_push(pctx, (size << VALUE_BITS) | VALUE_INT);
+                    (*pctx)->pc++;
+                    return;
+                }
+                assert(0);
+            }
             if (strcmp(en->op, "atLabel") == 0) {
                 assert((e & VALUE_MASK) == VALUE_ATOM);
                 uint64_t pc = dict_load((*pstate)->labels, e);
@@ -696,6 +722,7 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
             }
         }
 
+        fprintf(stderr, "NARY unary UNKNOWN '%s'\n", en->op);
         assert(0);
 
     case 2:
@@ -714,8 +741,21 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                 assert((e1 & VALUE_MASK) == VALUE_DICT);
                 assert((e2 & VALUE_MASK) == VALUE_DICT);
                 int size1, size2;
-                uint64_t *v1 = value_get(e1, &size1); 
-                uint64_t *v2 = value_get(e2, &size2); 
+                uint64_t *v1, *v2;
+                if (e1 == VALUE_DICT) {
+                    v1 = NULL;
+                    size1 = 0;
+                }
+                else {
+                    v1 = value_get(e1, &size1); 
+                }
+                if (e2 == VALUE_DICT) {
+                    v2 = NULL;
+                    size2 = 0;
+                }
+                else {
+                    v2 = value_get(e2, &size2); 
+                }
                 uint64_t *vals = malloc(size1 + size2), *v;
                 memcpy(vals, v2, size2);
                 v = (uint64_t *) ((char *) vals + size2);
@@ -728,7 +768,7 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                 ctx_push(pctx, value_put_dict(vals, size1 + size2));
                 free(vals);
                 (*pctx)->pc++;
-                assert(0);
+                return;
             }
             if (strcmp(en->op, "-") == 0) {
                 assert((e1 & VALUE_MASK) == VALUE_INT);
@@ -746,10 +786,33 @@ void op_Nary(const void *env, struct state **pstate, struct context **pctx){
                 (*pctx)->pc++;
                 return;
             }
+            if (strcmp(en->op, "..") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                int64_t start = e2 >> VALUE_BITS;          // TODO.  Negative
+                int64_t finish = e1 >> VALUE_BITS;
+                int n = (finish - start) + 1;
+                uint64_t *v = malloc(n * sizeof(uint64_t));
+                for (int i = 0; i < n; i++) {
+                    v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
+                }
+                ctx_push(pctx, value_put_set(v, n * sizeof(uint64_t)));
+                free(v);
+                (*pctx)->pc++;
+                return;
+            }
             if (strcmp(en->op, ">") == 0) {
                 assert((e1 & VALUE_MASK) == VALUE_INT);
                 assert((e2 & VALUE_MASK) == VALUE_INT);
                 uint64_t result = (e2 >> VALUE_BITS) > (e1 >> VALUE_BITS);
+                ctx_push(pctx, (result << VALUE_BITS) | VALUE_BOOL);
+                (*pctx)->pc++;
+                return;
+            }
+            if (strcmp(en->op, ">=") == 0) {
+                assert((e1 & VALUE_MASK) == VALUE_INT);     // TODO negative ints
+                assert((e2 & VALUE_MASK) == VALUE_INT);
+                uint64_t result = (e2 >> VALUE_BITS) >= (e1 >> VALUE_BITS);
                 ctx_push(pctx, (result << VALUE_BITS) | VALUE_BOOL);
                 (*pctx)->pc++;
                 return;
@@ -849,6 +912,24 @@ void op_Return(const void *env, struct state **pstate, struct context **pctx){
             assert(0);
         }
     }
+}
+
+void op_Set(const void *env, struct state **pstate, struct context **pctx){
+    uint64_t n = ctx_pop(pctx);
+    assert((n & VALUE_MASK) == VALUE_INT);
+    n >>= VALUE_BITS;
+
+    uint64_t *v = malloc(n * sizeof(uint64_t));
+    for (int i = 0; i < n; i++) {
+        v[i] = ctx_pop(pctx);
+    }
+
+    // TODO.  NEED TO SORT THE SET
+    assert(0);
+
+    ctx_push(pctx, value_put_set(v, n * sizeof(uint64_t)));
+    free(v);
+    (*pctx)->pc++;
 }
 
 uint64_t bag_add(uint64_t bag, uint64_t v){

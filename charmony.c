@@ -68,6 +68,9 @@ struct node *onestep(struct node *node, uint64_t ctx, uint64_t choice,
             if (cc->terminated || cc->failure) {
                 break;
             }
+            if (cc->pc == pc) {
+                fprintf(stderr, ">>> %s\n", oi->name);
+            }
             assert(cc->pc != pc);
         }
 
