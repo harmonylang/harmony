@@ -1,6 +1,6 @@
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
-typedef enum { false, true } bool;
+#include <stdbool.h>
 
 struct map *map_init(void);
 void **map_insert(struct map **pmap, const void *key, unsigned int key_size);
