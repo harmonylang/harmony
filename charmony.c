@@ -197,6 +197,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         free(sc);
 
         if (next->len > node->len + weight) {
+            next->parent = node;
             next->before = ctx;
             next->after = after;
             next->choice = choice;
@@ -322,14 +323,16 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
 
     path_dump(last->parent, last->before, last->choice);
 
-    char *before = value_string(ctx);
-    char *c = value_string(choice);
-    char *vars = value_string(last->state->vars);
-    printf(">> before: %s choice: %s var: %s\n",
-            before, c, vars);
-    free(before);
-    free(c);
-    free(vars);
+    if (last->after != ctx) {
+        char *before = value_string(ctx);
+        char *c = value_string(choice);
+        char *vars = value_string(last->state->vars);
+        printf(">> before: %s choice: %s var: %s\n",
+                before, c, vars);
+        free(before);
+        free(c);
+        free(vars);
+    }
 
     twostep(last, ctx, choice);
 }
