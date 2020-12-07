@@ -11,6 +11,7 @@ struct edge {
     struct edge *next;
     uint64_t ctx, choice;
     struct node *node;
+    int weight;
 };
 
 struct node {
@@ -55,8 +56,6 @@ static void code_get(struct json_value *jv){
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice,
                     struct map **pvisited, struct queue *todo){
-    bool samectx = ctx == node->after;
-
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -147,8 +146,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 
-    // Length of path to initial state
-    int length = samectx ? node->len :(node->len + 1);
+    // Weight of this step
+    int weight = ctx == node->after ? 0 : 1;
 
     // See if this new state was already seen before.
     void **p = map_insert(pvisited, sc, sizeof(*sc));
@@ -160,13 +159,14 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->before = ctx;
         next->choice = choice;
         next->after = after;
-        next->len = length;
+        next->len = node->len + weight;
 
         // Add a forward edge from node to next.
         struct edge *fwd = new_alloc(struct edge);
         fwd->ctx = ctx;
         fwd->choice = choice;
         fwd->node = next;
+        fwd->weight = weight;
         fwd->next = node->fwd;
         node->fwd = fwd;
 
@@ -175,22 +175,28 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         bwd->ctx = ctx;
         bwd->choice = choice;
         bwd->node = node;
+        bwd->weight = weight;
         bwd->next = next->bwd;
         next->bwd = bwd;
 
         if (sc->ctxbag != VALUE_DICT && !cc->failure &&
                                 queue_empty(failures)) {
-            queue_enqueue(todo, next);
+            if (weight == 0) {
+                queue_prepend(todo, next);
+            }
+            else {
+                queue_enqueue(todo, next);
+            }
         }
     }
     else {
         free(sc);
 
-        if (next->len > length) {
+        if (next->len > node->len + weight) {
             next->before = ctx;
             next->after = after;
             next->choice = choice;
-            next->len = length;
+            next->len = node->len + weight;
         }
     }
 
@@ -263,30 +269,8 @@ void twostep(struct node *node, uint64_t ctx, uint64_t choice){
         }
     }
 
-    // Remove old context from the bag
-    uint64_t count = dict_load(sc->ctxbag, ctx);
-    assert((count & VALUE_MASK) == VALUE_INT);
-    count -= 1 << VALUE_BITS;
-    if (count == VALUE_INT) {
-        sc->ctxbag = dict_remove(sc->ctxbag, ctx);
-    }
-    else {
-        sc->ctxbag = dict_store(sc->ctxbag, ctx, count);
-    }
-
-    // Store new context in value directory.  Must be immutable now.
-    uint64_t after = value_put_context(cc);
-
-    // If choosing, save in state
-    if (choosing) {
-        assert(!cc->terminated);
-        sc->choosing = after;
-    }
-
-    // Add new context to state unless it's terminated
-    if (!cc->terminated) {
-        sc->ctxbag = bag_add(sc->ctxbag, after);
-    }
+    free(sc);
+    free(cc);
 }
 
 void label_upcall(void *env,
@@ -313,14 +297,12 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
 
     path_dump(last->parent, last->before, last->choice);
 
-    char *before = value_string(last->before);
-    char *after = value_string(last->after);
-    char *c = value_string(last->choice);
+    char *before = value_string(ctx);
+    char *c = value_string(choice);
     char *vars = value_string(last->state->vars);
-    printf(">> before: %s after: %s choice: %s var: %s\n",
-        before, after, c, vars);
+    printf(">> before: %s choice: %s var: %s\n",
+        before, c, vars);
     free(before);
-    free(after);
     free(c);
     free(vars);
 
