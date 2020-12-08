@@ -427,7 +427,7 @@ static int find_scc(void){
 }
 
 int main(){
-    printf("Charmony v1\n");
+    printf("Charm v1\n");
 
     failures = queue_init();
 

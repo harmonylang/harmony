@@ -1140,17 +1140,21 @@ uint64_t f_not(struct state *state, struct context **pctx, uint64_t *args, int n
 }
 
 uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int n){
-    assert(n == 2);     // TODO
-    uint64_t e1 = args[0], e2 = args[1];
+    uint64_t e1 = args[0];
+
     if ((e1 & VALUE_MASK) == VALUE_INT) {
-        assert((e2 & VALUE_MASK) == VALUE_INT);
-        uint64_t result = (e2 >> VALUE_BITS) + (e1 >> VALUE_BITS);
-        return (result << VALUE_BITS) | VALUE_INT;
+        for (int i = 1; i < n; i++) {
+            uint64_t e2 = args[i];
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 += e2 & ~VALUE_MASK;
+        }
+        return e1;
     }
+
     assert((e1 & VALUE_MASK) == VALUE_DICT);
-    assert((e2 & VALUE_MASK) == VALUE_DICT);
-    int size1, size2;
-    uint64_t *v1, *v2;
+
+    uint64_t *v1;
+    int size1;
     if (e1 == VALUE_DICT) {
         v1 = NULL;
         size1 = 0;
@@ -1158,25 +1162,32 @@ uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int 
     else {
         v1 = value_get(e1, &size1); 
     }
-    if (e2 == VALUE_DICT) {
-        v2 = NULL;
-        size2 = 0;
+
+    for (int i = 1; i < n; i++) {
+        uint64_t e2 = args[i];
+        assert((e2 & VALUE_MASK) == VALUE_DICT);
+        int size2;
+        uint64_t *v2;
+        if (e2 == VALUE_DICT) {
+            v2 = NULL;
+            size2 = 0;
+        }
+        else {
+            v2 = value_get(e2, &size2); 
+        }
+        uint64_t *vals = malloc(size1 + size2), *v;
+        memcpy(vals, v2, size2);
+        v = (uint64_t *) ((char *) vals + size2);
+        int cnt = size1 / (2 * sizeof(uint64_t));
+        int index = size2 / (2 * sizeof(uint64_t));
+        for (int i = 0; i < cnt; i++) {
+            *v++ = (index << VALUE_BITS) | VALUE_INT;
+            *v++ = v1[i*2+1];
+        }
+        e1 = value_put_dict(vals, size1 + size2);
+        free(vals);
     }
-    else {
-        v2 = value_get(e2, &size2); 
-    }
-    uint64_t *vals = malloc(size1 + size2), *v;
-    memcpy(vals, v2, size2);
-    v = (uint64_t *) ((char *) vals + size2);
-    int cnt = size1 / (2 * sizeof(uint64_t));
-    int index = size2 / (2 * sizeof(uint64_t));
-    for (int i = 0; i < cnt; i++) {
-        *v++ = (index << VALUE_BITS) | VALUE_INT;
-        *v++ = v1[i*2+1];
-    }
-    uint64_t result = value_put_dict(vals, size1 + size2);
-    free(vals);
-    return result;
+    return e1;
 }
 
 uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int n){
@@ -1195,6 +1206,10 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
     uint64_t result = value_put_set(v, cnt * sizeof(uint64_t));
     free(v);
     return result;
+}
+
+uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(0);
 }
 
 struct op_info op_table[] = {
@@ -1236,6 +1251,7 @@ struct f_info f_table[] = {
     { "<=", f_le },
     { ">=", f_ge },
     { ">", f_gt },
+    { "|", f_union },
     { "..", f_range },
     { "==", f_eq },
     { "!=", f_ne },
