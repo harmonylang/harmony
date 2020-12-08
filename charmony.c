@@ -23,7 +23,7 @@ struct node {
     struct state *state;
     int id;                 // starting from 0
     uint64_t before;        // context before state change
-    uint64_t after;         // context after state change
+    uint64_t after;         // context after state change (current context)
     uint64_t choice;        // choice made if any
     int len;                // length of path to initial state
     struct edge *fwd;       // forward edges
@@ -46,6 +46,8 @@ static struct node **graph;        // vector of all nodes
 static int graph_size;             // to create node identifiers
 static int graph_alloc;            // size allocated
 static struct queue *failures;     // queue of "struct failure"
+static uint64_t *processes;        // list of contexts of processes
+static int nprocesses;             // the number of processes in the list
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -236,7 +238,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
 }
 
 // similar to onestep.  TODO.  Use flag to onestep?
-void twostep(struct node *node, uint64_t ctx, uint64_t choice){
+uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -293,8 +295,12 @@ void twostep(struct node *node, uint64_t ctx, uint64_t choice){
         }
     }
 
+    ctx = value_put_context(cc);
+
     free(sc);
     free(cc);
+
+    return ctx;
 }
 
 void label_upcall(void *env,
@@ -323,18 +329,33 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
 
     path_dump(last->parent, last->before, last->choice);
 
-    if (last->after != ctx) {
+    /* See if we can find this context in the list of processes.  If not
+     * add it.
+     */
+    int pid;
+    for (pid = 0; pid < nprocesses; pid++) {
+        if (processes[pid] == ctx) {
+            break;
+        }
+    }
+    if (pid == nprocesses) {
+        processes = realloc(processes, (pid + 1) * sizeof(uint64_t));
+        processes[nprocesses++] = ctx;
+    }
+
+    if (last->parent == NULL || last->after != ctx) {
         char *before = value_string(ctx);
         char *c = value_string(choice);
         char *vars = value_string(last->state->vars);
-        printf(">> before: %s choice: %s var: %s\n",
-                before, c, vars);
+        printf(">>>> %s\n", value_string(last->after));
+        printf(">> P%d: before: %s choice: %s var: %s\n",
+                pid, before, c, vars);
         free(before);
         free(c);
         free(vars);
     }
 
-    twostep(last, ctx, choice);
+    processes[pid] = twostep(last, ctx, choice);
 }
 
 static struct stack {
@@ -460,13 +481,14 @@ int main(){
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->labels = label_map;
-    state->ctxbag = dict_store(VALUE_DICT, 
-            value_put_context(&init_ctx), (1 << VALUE_BITS) | VALUE_INT);
+    uint64_t ictx = value_put_context(&init_ctx);
+    state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
 
     // Put the initial state in the visited map
     struct map *visited = map_init();
     struct node *node = new_alloc(struct node);
     node->state = state;
+    node->after = ictx;
     graph_add(node);
     void **p = map_insert(&visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -562,7 +584,7 @@ int main(){
                 nbad++;
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_TERMINATION;
-                f->ctx = node->before;
+                f->ctx = node->after;
                 f->choice = 0;          // TODO
                 f->node = node;
                 queue_enqueue(failures, f);
