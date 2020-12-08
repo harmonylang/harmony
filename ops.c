@@ -12,6 +12,11 @@
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
 
+struct val_info {
+    int size;
+    uint64_t *vals;
+};
+
 struct f_info {
     char *name;
     uint64_t (*f)(struct state *state, struct context **pctx, uint64_t *args, int n);
@@ -1151,43 +1156,42 @@ uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int 
         return e1;
     }
 
-    assert((e1 & VALUE_MASK) == VALUE_DICT);
-
-    uint64_t *v1;
-    int size1;
-    if (e1 == VALUE_DICT) {
-        v1 = NULL;
-        size1 = 0;
-    }
-    else {
-        v1 = value_get(e1, &size1); 
-    }
-
-    for (int i = 1; i < n; i++) {
-        uint64_t e2 = args[i];
-        assert((e2 & VALUE_MASK) == VALUE_DICT);
-        int size2;
-        uint64_t *v2;
-        if (e2 == VALUE_DICT) {
-            v2 = NULL;
-            size2 = 0;
+    // get all the lists
+    struct val_info *vi = malloc(n * sizeof(*vi));
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        assert((args[i] & VALUE_MASK) == VALUE_DICT);
+        if (args[i] == VALUE_DICT) {
+            vi[i].vals = NULL;
+            vi[i].size = 0;
         }
         else {
-            v2 = value_get(e2, &size2); 
+            vi[i].vals = value_get(args[i], &vi[i].size); 
+            total += vi[i].size;
         }
-        uint64_t *vals = malloc(size1 + size2), *v;
-        memcpy(vals, v2, size2);
-        v = (uint64_t *) ((char *) vals + size2);
-        int cnt = size1 / (2 * sizeof(uint64_t));
-        int index = size2 / (2 * sizeof(uint64_t));
-        for (int i = 0; i < cnt; i++) {
-            *v++ = (index << VALUE_BITS) | VALUE_INT;
-            *v++ = v1[i*2+1];
-        }
-        e1 = value_put_dict(vals, size1 + size2);
-        free(vals);
     }
-    return e1;
+
+    // If all are empty lists, we're done.
+    if (total == 0) {
+        return VALUE_DICT;
+    }
+
+    uint64_t *vals = malloc(total), *v;
+    total = 0;
+    for (int i = n; --i >= 0;) {
+        memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+        total += vi[i].size;
+    }
+
+    n = total / (2 * sizeof(uint64_t));
+    for (int i = 0; i < n; i++) {
+        vals[2*i] = (i << VALUE_BITS) | VALUE_INT;
+    }
+    uint64_t result = value_put_dict(vals, total);
+
+    free(vi);
+    free(vals);
+    return result;
 }
 
 uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int n){
@@ -1209,6 +1213,17 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
 }
 
 uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int n){
+    uint64_t e1 = args[0];
+
+    if ((e1 & VALUE_MASK) == VALUE_INT) {
+        for (int i = 1; i < n; i++) {
+            uint64_t e2 = args[i];
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 |= e2;
+        }
+        return e1;
+    }
+
     assert(0);
 }
 
