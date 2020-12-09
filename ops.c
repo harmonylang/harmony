@@ -1082,6 +1082,7 @@ uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n
         uint64_t *v = value_get(e, &size);
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
+            assert((v[i] & VALUE_MASK) == VALUE_BOOL);
             if (v[i] == VALUE_BOOL) {
                 return VALUE_BOOL;
             }
@@ -1093,7 +1094,8 @@ uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n
         uint64_t *v = value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
-            if (v[i*2+1] == VALUE_BOOL) {
+            assert((v[2*i+1] & VALUE_MASK) == VALUE_BOOL);
+            if (v[2*i+1] == VALUE_BOOL) {
                 return VALUE_BOOL;
             }
         }
