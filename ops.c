@@ -1137,11 +1137,58 @@ uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int
     }
     else {
         uint64_t e1 = args[0], e2 = args[1];
-        assert((e1 & VALUE_MASK) == VALUE_INT);
-        assert((e2 & VALUE_MASK) == VALUE_INT);
-        e1 >>= VALUE_BITS;
-        e2 >>= VALUE_BITS;
-        return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
+        if ((e1 & VALUE_MASK) == VALUE_INT) {
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 >>= VALUE_BITS;
+            e2 >>= VALUE_BITS;
+            return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
+        }
+
+        assert((e1 & VALUE_MASK) == VALUE_SET);
+        assert((e2 & VALUE_MASK) == VALUE_SET);
+        int size1, size2;
+        uint64_t *vals1, *vals2;
+        if (e1 == VALUE_SET) {
+            size1 = 0;
+            vals1 = NULL;
+        }
+        else {
+            vals1 = value_get(e1, &size1);
+        }
+        if (e2 == VALUE_SET) {
+            size2 = 0;
+            vals2 = NULL;
+        }
+        else {
+            vals2 = value_get(e2, &size2);
+        }
+        uint64_t *vals = malloc(size2);
+        size1 /= sizeof(uint64_t);
+        size2 /= sizeof(uint64_t);
+
+        uint64_t *p1 = vals1, *p2 = vals2, *q = vals;
+        while (size1 > 0 && size2 > 0) {
+            if (*p1 == *p2) {
+                p1++; size1--;
+                p2++; size2--;
+            }
+            else {
+                int cmp = value_cmp(*p1, *p2);
+                if (cmp < 0) {
+                    p1++; size1--;
+                }
+                else {
+                    assert(cmp > 0);
+                    *q++ = *p2++; size2--;
+                }
+            }
+        }
+        while (size2 > 0) {
+            *q++ = *p2++; size2--;
+        }
+        uint64_t result = value_put_set(vals, (char *) q - (char *) vals);
+        free(vals);
+        return result;
     }
 }
 
