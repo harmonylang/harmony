@@ -438,7 +438,7 @@ static int find_scc(void){
     return count;
 }
 
-int main(){
+int main(int argc, char **argv){
     printf("Charm v1\n");
 
     failures = queue_init();
@@ -448,7 +448,7 @@ int main(){
     value_init();
 
     // open the file
-    FILE *fp = fopen("x.json", "r");
+    FILE *fp = fopen(argc == 1 ? "x.json" : argv[1], "r");
     assert(fp != NULL);
 
     // read the file

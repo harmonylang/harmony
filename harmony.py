@@ -5099,6 +5099,12 @@ def main():
 
     (code, scope) = doCompile(args, consts, mods)
 
+    if charmflag:
+        with open("harmony.json", "w") as fd:
+            dumpCode("json", code, scope, f=fd)
+        r = os.system("./charm harmony.json");
+        sys.exit(r);
+
     if printCode == None:
         (nodes, bad_node) = run(code, scope.labels, blockflag)
         if bad_node != None:
