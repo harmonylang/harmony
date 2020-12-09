@@ -1254,6 +1254,39 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(false);
 }
 
+uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_DICT) {
+		return VALUE_BOOL;  // False
+    }
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            assert((v[i] & VALUE_MASK) == VALUE_BOOL);
+            if (v[i] != VALUE_BOOL) {
+                return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+            }
+        }
+		return VALUE_BOOL;  // False
+    }
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= 2 * sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            assert((v[2*i+1] & VALUE_MASK) == VALUE_BOOL);
+            if (v[2*i+1] == VALUE_BOOL) {
+                return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+            }
+        }
+		return VALUE_BOOL;  // False
+    }
+    assert(false);
+}
+
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
@@ -1860,6 +1893,7 @@ struct f_info f_table[] = {
     { "!=", f_ne },
     { "abs", f_abs },
     { "all", f_all },
+    { "any", f_any },
     { "atLabel", f_atLabel },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
