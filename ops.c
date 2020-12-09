@@ -228,6 +228,8 @@ uint64_t dict_load(uint64_t dict, uint64_t key){
         */
     }
 
+	printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
+
     assert(0);
 }
 
@@ -467,9 +469,6 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
 void op_Assert(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     assert((v & VALUE_MASK) == VALUE_BOOL);
-    if (false) {
-        printf("ASSERT %"PRId64"\n", v >> VALUE_BITS);
-    }
     if (v == VALUE_BOOL) {
         printf("HARMONY ASSERTION FAILED\n");
         (*pctx)->failure = true;
@@ -551,9 +550,6 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
 void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
-    if (false) {
-        printf("DICT %"PRId64"\n", n >> VALUE_BITS);
-    }
     n >>= VALUE_BITS;
 
     // TODO.  Fail if there's a duplicate key
@@ -1394,7 +1390,7 @@ uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n
 }
 
 uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
-    uint64_t e1 = args[0], e2 = args[1];
+    int64_t e1 = args[0], e2 = args[1];
     assert((e1 & VALUE_MASK) == VALUE_INT);
     assert((e2 & VALUE_MASK) == VALUE_INT);
     uint64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
@@ -1466,13 +1462,18 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
 
 uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
-    uint64_t e1 = args[0], e2 = args[1];
+    int64_t e1 = args[0], e2 = args[1];
 
     assert((e1 & VALUE_MASK) == VALUE_INT);
     assert((e2 & VALUE_MASK) == VALUE_INT);
     int64_t start = e2 >> VALUE_BITS;
     int64_t finish = e1 >> VALUE_BITS;
+	if (finish < start) {
+		return VALUE_SET;
+	}
     int cnt = (finish - start) + 1;
+	assert(cnt > 0);		// TODO
+	assert(cnt < 10);		// TODO
     uint64_t *v = malloc(cnt * sizeof(uint64_t));
     for (int i = 0; i < cnt; i++) {
         v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;

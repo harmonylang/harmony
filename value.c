@@ -193,7 +193,7 @@ static char *value_string_int(uint64_t v) {
         asprintf(&r, "inf");
     }
     else {
-        asprintf(&r, "%"PRIu64"", v >> VALUE_BITS);
+        asprintf(&r, "%"PRIu64"", ((int64_t) v) >> VALUE_BITS);
     }
     return r;
 }
