@@ -75,6 +75,10 @@ struct env_Push {
     uint64_t value;
 };
 
+struct env_Split {
+    int count;
+};
+
 struct env_Store {
     uint64_t *indices;
     int n;
@@ -412,7 +416,6 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx){}
 void op_Del(const void *env, struct state *state, struct context **pctx){}
-void op_Split(const void *env, struct state *state, struct context **pctx){}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
@@ -849,6 +852,41 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
+void op_Split(const void *env, struct state *state, struct context **pctx){
+    const struct env_Split *es = env;
+
+    uint64_t v = ctx_pop(pctx);
+    uint64_t type = v & VALUE_MASK;
+    assert(type == VALUE_DICT || type == VALUE_SET);
+    if (v == VALUE_DICT || v == VALUE_SET) {
+        assert(es->count == 0);
+        (*pctx)->pc++;
+        return;
+    }
+
+    int size;
+    uint64_t *vals = value_get(v, &size);
+
+    // TODO.  Should items be pushed in this order???
+    if (type == VALUE_DICT) {
+        size /= 2 * sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            ctx_push(pctx, vals[2*i + 1]);
+        }
+        (*pctx)->pc++;
+        return;
+    }
+    if (type == VALUE_SET) {
+        size /= sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            ctx_push(pctx, vals[i]);
+        }
+        (*pctx)->pc++;
+        return;
+    }
+    assert(0);
+}
+
 void op_Store(const void *env, struct state *state, struct context **pctx){
     const struct env_Store *es = env;
 
@@ -909,7 +947,6 @@ void *init_ReadonlyInc(struct map *map){ return NULL; }
 void *init_Return(struct map *map){ return NULL; }
 void *init_Set(struct map *map){ return NULL; }
 void *init_Spawn(struct map *map){ return NULL; }
-void *init_Split(struct map *map){ return NULL; }
 
 void *init_DelVar(struct map *map){
     struct env_DelVar *env = new_alloc(struct env_DelVar);
@@ -1001,11 +1038,55 @@ void *init_Nary(struct map *map){
     return env;
 }
 
+void *init_Jump(struct map *map){
+    struct env_Jump *env = new_alloc(struct env_Jump);
+
+    struct json_value *pc = map_lookup(map, "pc", 2);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
+    free(copy);
+    return env;
+}
+
+void *init_JumpCond(struct map *map){
+    struct env_JumpCond *env = new_alloc(struct env_JumpCond);
+
+    struct json_value *pc = map_lookup(map, "pc", 2);
+    assert(pc->type == JV_ATOM);
+    char *copy = malloc(pc->u.atom.len + 1);
+    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
+    copy[pc->u.atom.len] = 0;
+    env->pc = atoi(copy);
+    free(copy);
+
+    struct json_value *cond = map_lookup(map, "cond", 4);
+    assert(cond->type == JV_MAP);
+    env->cond = value_from_json(cond->u.map);
+
+    return env;
+}
+
 void *init_Push(struct map *map){
     struct json_value *jv = map_lookup(map, "value", 5);
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
     env->value = value_from_json(jv->u.map);
+    return env;
+}
+
+void *init_Split(struct map *map){
+    struct env_Split *env = new_alloc(struct env_Split);
+
+    struct json_value *count = map_lookup(map, "count", 5);
+    assert(count->type == JV_ATOM);
+    char *copy = malloc(count->u.atom.len + 1);
+    memcpy(copy, count->u.atom.base, count->u.atom.len);
+    copy[count->u.atom.len] = 0;
+    env->count = atoi(copy);
+    free(copy);
     return env;
 }
 
@@ -1038,37 +1119,6 @@ void *init_StoreVar(struct map *map){
         env->args = var_parse(jv->u.atom.base, jv->u.atom.len, &index);
         return env;
     }
-}
-
-void *init_Jump(struct map *map){
-    struct env_Jump *env = new_alloc(struct env_Jump);
-
-    struct json_value *pc = map_lookup(map, "pc", 2);
-    assert(pc->type == JV_ATOM);
-    char *copy = malloc(pc->u.atom.len + 1);
-    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
-    copy[pc->u.atom.len] = 0;
-    env->pc = atoi(copy);
-    free(copy);
-    return env;
-}
-
-void *init_JumpCond(struct map *map){
-    struct env_JumpCond *env = new_alloc(struct env_JumpCond);
-
-    struct json_value *pc = map_lookup(map, "pc", 2);
-    assert(pc->type == JV_ATOM);
-    char *copy = malloc(pc->u.atom.len + 1);
-    memcpy(copy, pc->u.atom.base, pc->u.atom.len);
-    copy[pc->u.atom.len] = 0;
-    env->pc = atoi(copy);
-    free(copy);
-
-    struct json_value *cond = map_lookup(map, "cond", 4);
-    assert(cond->type == JV_MAP);
-    env->cond = value_from_json(cond->u.map);
-
-    return env;
 }
 
 uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n){
