@@ -1176,6 +1176,7 @@ uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int 
         return VALUE_DICT;
     }
 
+    // Concatenate the sets
     uint64_t *vals = malloc(total), *v;
     total = 0;
     for (int i = n; --i >= 0;) {
@@ -1183,6 +1184,7 @@ uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int 
         total += vi[i].size;
     }
 
+    // Update the indices
     n = total / (2 * sizeof(uint64_t));
     for (int i = 0; i < n; i++) {
         vals[2*i] = (i << VALUE_BITS) | VALUE_INT;
@@ -1212,6 +1214,10 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
     return result;
 }
 
+static int q_value_cmp(const void *v1, const void *v2){
+    return value_cmp(* (const uint64_t *) v1, * (const uint64_t *) v2);
+}
+
 uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int n){
     uint64_t e1 = args[0];
 
@@ -1224,7 +1230,52 @@ uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int
         return e1;
     }
 
-    assert(0);
+    // get all the sets
+    struct val_info *vi = malloc(n * sizeof(*vi));
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if (args[i] == VALUE_SET) {
+            vi[i].vals = NULL;
+            vi[i].size = 0;
+        }
+        else {
+            vi[i].vals = value_get(args[i], &vi[i].size); 
+            total += vi[i].size;
+        }
+    }
+
+    // If all are empty lists, we're done.
+    if (total == 0) {
+        return VALUE_SET;
+    }
+
+    // Concatenate the sets
+    uint64_t *vals = malloc(total), *v;
+    total = 0;
+    for (int i = 0; i < n; i++) {
+        memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+        total += vi[i].size;
+    }
+
+    // Sort the resulting set (with potential duplicates)
+    qsort(vals, total / sizeof(uint64_t), sizeof(uint64_t), q_value_cmp);
+
+    // Remove duplicates
+    n = total / sizeof(uint64_t);
+    uint64_t *p = vals, *q = vals + 1;
+    for (int i = 1; i < n; i++, q++) {
+        if (*q != *p) {
+            *++p = *q;
+        }
+    }
+    p++;
+
+    uint64_t result = value_put_set(vals, (p - vals) * sizeof(uint64_t));
+
+    free(vi);
+    free(vals);
+    return result;
 }
 
 struct op_info op_table[] = {

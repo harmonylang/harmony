@@ -403,7 +403,7 @@ uint64_t value_set(struct map *map){
     struct json_value *value = map_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
-        return (uint64_t) VALUE_SET << 56;
+        return (uint64_t) VALUE_SET;
     }
     uint64_t *vals = malloc(value->u.list.nvals * sizeof(uint64_t));
     for (int i = 0; i < value->u.list.nvals; i++) {
@@ -422,7 +422,7 @@ uint64_t value_address(struct map *map){
     struct json_value *value = map_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
-        return (uint64_t) VALUE_ADDRESS << 56;
+        return (uint64_t) VALUE_ADDRESS;
     }
     uint64_t *vals = malloc(value->u.list.nvals * sizeof(uint64_t));
     for (int i = 0; i < value->u.list.nvals; i++) {
