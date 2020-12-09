@@ -421,7 +421,6 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
     }
 }
 
-void op_Assert2(const void *env, struct state *state, struct context **pctx){}
 void op_Del(const void *env, struct state *state, struct context **pctx){}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
@@ -471,6 +470,19 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
     assert((v & VALUE_MASK) == VALUE_BOOL);
     if (v == VALUE_BOOL) {
         printf("HARMONY ASSERTION FAILED\n");
+        (*pctx)->failure = true;
+    }
+    (*pctx)->pc++;
+}
+
+void op_Assert2(const void *env, struct state *state, struct context **pctx){
+    uint64_t e = ctx_pop(pctx);
+    uint64_t v = ctx_pop(pctx);
+    assert((v & VALUE_MASK) == VALUE_BOOL);
+    if (v == VALUE_BOOL) {
+        char *p = value_string(e);
+        printf("HARMONY ASSERTION FAILED: %s\n", p);
+        free(p);
         (*pctx)->failure = true;
     }
     (*pctx)->pc++;
