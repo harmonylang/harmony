@@ -5,7 +5,6 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <assert.h>
-#include <uv.h>
 #include "global.h"
 #include "json.h"
 

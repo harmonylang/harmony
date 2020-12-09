@@ -1100,6 +1100,9 @@ uint64_t f_keys(struct state *state, struct context **pctx, uint64_t *args, int 
 uint64_t f_len(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_DICT) {
+		return 0;
+	}
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
         uint64_t *v = value_get(e, &size);

@@ -1,6 +1,7 @@
-#define new_alloc(t)	(t *) calloc(1, sizeof(t))
-
+#include <stdint.h>
 #include <stdbool.h>
+
+#define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
 struct map *map_init(void);
 void **map_insert(struct map **pmap, const void *key, unsigned int key_size);
