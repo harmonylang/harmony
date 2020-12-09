@@ -20,3 +20,5 @@ assert abs(v(-1)) == 1;
 assert ~v(0) == -1;
 assert ~v(1) == -2;
 assert ~v(-1) == 0;
+assert (v(3) ** v(2)) == 9;
+assert (v(-2) ** v(3)) == -8;

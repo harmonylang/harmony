@@ -1744,6 +1744,30 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
     return result;
 }
 
+uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 2);
+    int64_t e1 = args[0], e2 = args[1];
+
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    int64_t base = e2 >> VALUE_BITS;
+    int64_t exp = e1 >> VALUE_BITS;
+
+    int64_t result = 1;
+    for (;;) {
+        if (exp & 1) {
+            result *= base;
+        }
+        exp >>= 1;
+        if (exp == 0) {
+            break;
+        }
+        base *= base;
+    }
+
+    return (result << VALUE_BITS) | VALUE_INT;;
+}
+
 uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -1891,6 +1915,7 @@ struct f_info f_table[] = {
 	{ "/", f_div },
 	{ "//", f_div },
 	{ "%", f_mod },
+	{ "**", f_power },
     { "<", f_lt },
     { "<=", f_le },
     { ">=", f_ge },
