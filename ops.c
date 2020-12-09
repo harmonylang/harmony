@@ -408,6 +408,7 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx){}
 void op_Del(const void *env, struct state *state, struct context **pctx){}
+void op_Move(const void *env, struct state *state, struct context **pctx){}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
@@ -876,6 +877,7 @@ void *init_Cut(struct map *map){ return NULL; }
 void *init_Del(struct map *map){ return NULL; }
 void *init_Dict(struct map *map){ return NULL; }
 void *init_Dup(struct map *map){ return NULL; }
+void *init_Move(struct map *map){ return NULL; }
 void *init_Pop(struct map *map){ return NULL; }
 void *init_ReadonlyDec(struct map *map){ return NULL; }
 void *init_ReadonlyInc(struct map *map){ return NULL; }
@@ -1346,6 +1348,7 @@ struct op_info op_table[] = {
 	{ "JumpCond", init_JumpCond, op_JumpCond },
 	{ "Load", init_Load, op_Load },
 	{ "LoadVar", init_LoadVar, op_LoadVar },
+	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
 	{ "Push", init_Push, op_Push },
