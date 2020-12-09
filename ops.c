@@ -1765,7 +1765,7 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
         base *= base;
     }
 
-    return (result << VALUE_BITS) | VALUE_INT;;
+    return (result << VALUE_BITS) | VALUE_INT;
 }
 
 uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1789,6 +1789,28 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     uint64_t result = value_put_set(v, cnt * sizeof(uint64_t));
     free(v);
     return result;
+}
+
+uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 2);
+    int64_t e1 = args[0], e2 = args[1];
+
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    e1 >>= VALUE_BITS;
+    e2 >>= VALUE_BITS;
+    return ((e2 << e1) << VALUE_BITS) | VALUE_INT;
+}
+
+uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 2);
+    int64_t e1 = args[0], e2 = args[1];
+
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    e1 >>= VALUE_BITS;
+    e2 >>= VALUE_BITS;
+    return ((e2 >> e1) << VALUE_BITS) | VALUE_INT;
 }
 
 uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1916,6 +1938,8 @@ struct f_info f_table[] = {
 	{ "//", f_div },
 	{ "%", f_mod },
 	{ "**", f_power },
+	{ "<<", f_shiftleft },
+	{ ">>", f_shiftright },
     { "<", f_lt },
     { "<=", f_le },
     { ">=", f_ge },

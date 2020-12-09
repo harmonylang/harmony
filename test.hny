@@ -22,3 +22,5 @@ assert ~v(1) == -2;
 assert ~v(-1) == 0;
 assert (v(3) ** v(2)) == 9;
 assert (v(-2) ** v(3)) == -8;
+assert (v(2) << v(3)) == 16;
+assert (v(16) >> v(1)) == 8;
