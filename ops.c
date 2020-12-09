@@ -421,7 +421,53 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
     }
 }
 
-void op_Del(const void *env, struct state *state, struct context **pctx){}
+uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+    assert(n > 0);
+
+    if (n == 1) {
+        return dict_remove(dict, indices[0]);
+    }
+    else {
+        uint64_t *vals;
+        int size;
+        if (dict == VALUE_DICT) {
+            vals = NULL;
+            size = 0;
+        }
+        else {
+            vals = value_get(dict & ~VALUE_MASK, &size);
+            assert(size % 2 == 0);
+            size /= sizeof(uint64_t);
+        }
+
+        int i;
+        for (i = 0; i < size; i += 2) {
+            if (vals[i] == indices[0]) {
+                uint64_t d = vals[i+1];
+                assert((d & VALUE_MASK) == VALUE_DICT);
+                uint64_t nd = ind_remove(d, indices + 1, n - 1);
+                if (d == nd) {
+                    return dict;
+                }
+                int n = size * sizeof(uint64_t);
+                uint64_t *copy = malloc(n);
+                memcpy(copy, vals, n);
+                copy[i + 1] = nd;
+                uint64_t v = value_put_dict(copy, n);
+                free(copy);
+                return v;
+            }
+            /* 
+                if (value_cmp(vals[i], key) > 0) {
+                    assert(false);
+                }
+            */
+        }
+
+        assert(false);
+    }
+}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
@@ -543,6 +589,20 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         return;
     }
     assert(false);
+}
+
+void op_Del(const void *env, struct state *state, struct context **pctx){
+    assert((state->vars & VALUE_MASK) == VALUE_DICT);
+    uint64_t av = ctx_pop(pctx);
+    assert((av & VALUE_MASK) == VALUE_ADDRESS);
+    assert(av != VALUE_ADDRESS);
+
+    int size;
+    uint64_t *indices = value_get(av, &size);
+    size /= sizeof(uint64_t);
+    state->vars = ind_remove(state->vars, indices, size);
+
+    (*pctx)->pc++;
 }
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
