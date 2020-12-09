@@ -92,6 +92,12 @@ int value_cmp_pc(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_dict(uint64_t v1, uint64_t v2){
+    if (v1 == 0) {
+        return v2 == 0 ? 0 : -1;
+    }
+    if (v2 == 0) {
+        return 1;
+    }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
     uint64_t *vals1 = map_retrieve(p1, &size1);
@@ -109,11 +115,49 @@ int value_cmp_dict(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_set(uint64_t v1, uint64_t v2){
-    assert(0);
+    if (v1 == 0) {
+        return v2 == 0 ? 0 : -1;
+    }
+    if (v2 == 0) {
+        return 1;
+    }
+    void *p1 = (void *) v1, *p2 = (void *) v2;
+    int size1, size2;
+    uint64_t *vals1 = map_retrieve(p1, &size1);
+    uint64_t *vals2 = map_retrieve(p2, &size2);
+    size1 /= sizeof(uint64_t);
+    size2 /= sizeof(uint64_t);
+    int size = size1 < size2 ? size1 : size2;
+    for (int i = 0; i < size; i++) {
+        int cmp = value_cmp(vals1[i], vals2[i]);
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return size1 < size2 ? -1 : 1;
 }
 
 int value_cmp_address(uint64_t v1, uint64_t v2){
-    assert(0);
+    if (v1 == 0) {
+        return v2 == 0 ? 0 : -1;
+    }
+    if (v2 == 0) {
+        return 1;
+    }
+    void *p1 = (void *) v1, *p2 = (void *) v2;
+    int size1, size2;
+    uint64_t *vals1 = map_retrieve(p1, &size1);
+    uint64_t *vals2 = map_retrieve(p2, &size2);
+    size1 /= sizeof(uint64_t);
+    size2 /= sizeof(uint64_t);
+    int size = size1 < size2 ? size1 : size2;
+    for (int i = 0; i < size; i++) {
+        int cmp = value_cmp(vals1[i], vals2[i]);
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return size1 < size2 ? -1 : 1;
 }
 
 // TODO.  Maybe should compare name tag, pc, ...
