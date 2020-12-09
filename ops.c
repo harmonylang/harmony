@@ -1381,32 +1381,50 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     uint64_t *vals = malloc(min_size), *v = vals;
 
     bool done = false;
-    for (int i = 0; !done && i < min_size; i++) {
+    for (int i = 0; i < min_size; i++) {
         uint64_t old_max = max_val;
         for (int j = 0; j < n; j++) {
-            int k;
-            while ((k = vi[j].index) < vi[j].size) {
-                printf("XXX\n");
-                vi[j].index++;
+            int k, size = vi[j].size / sizeof(uint64_t);
+            while ((k = vi[j].index) < size) {
                 uint64_t v = vi[j].vals[k];
                 int cmp = value_cmp(v, max_val);
                 if (cmp > 0) {
                     max_val = v;
-                }
-                if (cmp >= 0) {
-                    break;
-                }
+				}
+				if (cmp >= 0) {
+					break;
+				}
+				vi[j].index++;
             }
             if (vi[j].index == vi[j].size) {
                 done = true;
+				break;
             }
         }
+		if (done) {
+			break;
+		}
         if (old_max == max_val) {
             *v++ = max_val;
+			for (int j = 0; j < n; j++) {
+				assert(vi[j].index < vi[j].size);
+				vi[j].index++;
+				int k, size = vi[j].size / sizeof(uint64_t);
+				if ((k = vi[j].index) == size) {
+					done = true;
+					break;
+				}
+				if (value_cmp(vi[j].vals[k], max_val) > 0) {
+					max_val = vi[j].vals[k];
+				}
+			}
         }
+		if (done) {
+			break;
+		}
     }
 
-    uint64_t result = value_put_set(v, (char *) v - (char *) vals);
+    uint64_t result = value_put_set(vals, (char *) v - (char *) vals);
     free(vi);
     free(vals);
     return result;
@@ -1722,12 +1740,12 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
         return VALUE_DICT;
     }
     uint64_t *r = malloc(result * size);
-    unsigned int cnt = size / sizeof(uint64_t);
+    unsigned int cnt = size / (2 * sizeof(uint64_t));
     int index = 0;
     for (int i = 0; i < result; i++) {
         for (int j = 0; j < cnt; j++) {
-            r[index] = (index << VALUE_BITS) | VALUE_INT;
-            r[++index] = vals[2*j+1];
+            r[2*index] = (index << VALUE_BITS) | VALUE_INT;
+            r[2*index+1] = vals[2*j+1];
             index++;
         }
     }
