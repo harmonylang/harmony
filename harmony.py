@@ -479,7 +479,6 @@ def isreserved(s):
         "atLabel",
         "atomic",
         "await",
-        "bagsize",
         "call",
         "choose",
         "const",
@@ -528,7 +527,7 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "bagsize",
+    return s in { "!", "-", "~", "abs", "all", "any", "atLabel",
         "choose", "min", "max", "nametag", "not", "keys", "hash", "len" }
 
 def isxbinop(s):
@@ -1951,10 +1950,6 @@ class NaryOp(Op):
                 context.push(SetValue(set(e.d.keys())))
             elif op == "hash":
                 context.push((e,).__hash__())
-            elif op == "bagsize":
-                if not self.checktype(state, context, sa, isinstance(e, DictValue)):
-                    return
-                context.push(sum(e.d.values()))
             else:
                 assert False, self
         elif self.n == 2:
