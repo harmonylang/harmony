@@ -246,8 +246,7 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
     assert(size % 2 == 0);
 
     if (size == 2) {
-        assert(vals[0] == key);
-        return VALUE_DICT;
+        return vals[0] == key ? VALUE_DICT : dict;
     }
 
     int i;
@@ -267,13 +266,6 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
                 assert(false);
             }
         */
-    }
-
-    if (false) {
-        char *p = value_string(key);
-        char *q = value_string(dict);
-        fprintf(stderr, "DICT_REMOVE: '%s' from %s\n", p, q);
-        assert(false);
     }
 
     return dict;
