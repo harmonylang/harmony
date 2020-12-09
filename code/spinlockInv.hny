@@ -2,10 +2,10 @@ import spinlock;
 
 def checkInvariant():
     let sum = 0:
-        if not shared:
+        if not spinlock.shared:
             sum = 1;
         ;
-        for i in {0..N-1} such that not private[i]:
+        for i in {0..spinlock.N-1} such that not spinlock.private[i]:
             sum += 1;
         ;
         result = sum <= 1;

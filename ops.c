@@ -1344,6 +1344,70 @@ uint64_t f_lt(struct state *state, struct context *ctx, uint64_t *args, int n){
     return ((cmp < 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
+uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+	assert(e != VALUE_SET);
+    assert(e != VALUE_DICT);
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= sizeof(uint64_t);
+        uint64_t max = v[0];
+        for (int i = 1; i < size; i++) {
+            if (value_cmp(v[i], max) > 0) {
+                max = v[i];
+            }
+        }
+		return max;
+    }
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= 2 * sizeof(uint64_t);
+        uint64_t max = v[0];
+        for (int i = 0; i < size; i++) {
+            if (value_cmp(v[2*i+1], max) > 0) {
+                max = v[i];
+            }
+        }
+		return max;
+    }
+    assert(false);
+}
+
+uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+	assert(e != VALUE_SET);
+    assert(e != VALUE_DICT);
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= sizeof(uint64_t);
+        uint64_t min = v[0];
+        for (int i = 1; i < size; i++) {
+            if (value_cmp(v[i], min) < 0) {
+                min = v[i];
+            }
+        }
+		return min;
+    }
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= 2 * sizeof(uint64_t);
+        uint64_t min = v[0];
+        for (int i = 0; i < size; i++) {
+            if (value_cmp(v[2*i+1], min) < 0) {
+                min = v[i];
+            }
+        }
+		return min;
+    }
+    assert(false);
+}
+
 uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
@@ -1617,6 +1681,8 @@ struct f_info f_table[] = {
     { "IsEmpty", f_isEmpty },
     { "keys", f_keys },
     { "len", f_len },
+    { "max", f_max },
+    { "min", f_min },
     { "nametag", f_nametag },
     { "not", f_not },
     { NULL, NULL }

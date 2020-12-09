@@ -1,4 +1,4 @@
-import synch;
+from synch import Lock, acquire, release;
 
 const N_ACCTS = 2;
 const N_CUSTOMERS = 2;
@@ -10,15 +10,15 @@ accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
 ;
 
 def atm_check_balance(acct):    # return the balance on acct
-    lock(?accounts[acct].lock);
+    acquire(?accounts[acct].lock);
     result = accounts[acct].balance;
-    unlock(?accounts[acct].lock);
+    release(?accounts[acct].lock);
 ;
 def atm_withdraw(acct, amount): # withdraw amount from acct
-    lock(?accounts[acct].lock);
+    acquire(?accounts[acct].lock);
     accounts[acct].balance -= amount;
     result = True;              # return success
-    unlock(?accounts[acct].lock);
+    release(?accounts[acct].lock);
 ;
 
 def customer(atm, acct, amount):
