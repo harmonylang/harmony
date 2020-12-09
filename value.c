@@ -53,6 +53,9 @@ uint64_t value_put_dict(void *p, int size){
 }
 
 uint64_t value_put_address(void *p, int size){
+    if (size == 0) {
+        return VALUE_ADDRESS;
+    }
     void *q = map_find(&address_map, p, size);
     return (uint64_t) q | VALUE_ADDRESS;
 }
@@ -267,7 +270,7 @@ static char *value_string_set(uint64_t v) {
 
 static char *value_string_address(uint64_t v) {
     char *r;
-    if (v == 0) {
+    if (v == VALUE_ADDRESS) {
         asprintf(&r, "None");
         return r;
     }

@@ -1026,7 +1026,7 @@ class MoveOp(Op):
         return "Move %d"%self.offset
 
     def jdump(self):
-        return '{ "op": "Dup", "offset": "%d" }'%self.offset
+        return '{ "op": "Move", "offset": "%d" }'%self.offset
 
     def explain(self):
         return "move stack element to top"

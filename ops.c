@@ -62,6 +62,10 @@ struct env_LoadVar {
     uint64_t name;
 };
 
+struct env_Move {
+    int offset;
+};
+
 struct env_Nary {
     int arity;
     struct f_info *fi;
@@ -408,12 +412,12 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx){}
 void op_Del(const void *env, struct state *state, struct context **pctx){}
-void op_Move(const void *env, struct state *state, struct context **pctx){}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
     uint64_t av = ctx_pop(pctx);
     assert((av & VALUE_MASK) == VALUE_ADDRESS);
+    assert(av != VALUE_ADDRESS);
     if (false) {
         printf("ADDRESS %llx\n", index);
     }
@@ -445,6 +449,8 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc = method >> VALUE_BITS;
         return;
     default:
+        printf("APPLY %d %s %s\n", (*pctx)->pc,
+            value_string(method), value_string((*pctx)->vars));
         assert(0);
     }
 }
@@ -569,7 +575,7 @@ void op_Dup(const void *env, struct state *state, struct context **pctx){
 void op_Frame(const void *env, struct state *state, struct context **pctx){
     const struct env_Frame *ef = env;
     if (false) {
-        printf("FRAME %llx ", ef->name);
+        printf("FRAME %d %d %llx ", (*pctx)->pc, (*pctx)->sp, ef->name);
         var_dump(ef->args);
         printf("\n");
     }
@@ -623,6 +629,7 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
     if (el == 0) {
         uint64_t av = ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
 
         int size;
         uint64_t *indices = value_get(av, &size);
@@ -653,6 +660,18 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
+void op_Move(const void *env, struct state *state, struct context **pctx){
+    const struct env_Move *em = env;
+    struct context *ctx = *pctx;
+    int offset = ctx->sp - em->offset;
+
+    uint64_t v = ctx->stack[offset];
+    memmove(&ctx->stack[offset], &ctx->stack[offset + 1],
+                (em->offset - 1) * sizeof(uint64_t));
+    ctx->stack[ctx->sp - 1] = v;
+    ctx->pc++;
+}
+
 void op_Nary(const void *env, struct state *state, struct context **pctx){
     const struct env_Nary *en = env;
     uint64_t args[MAX_ARITY];
@@ -665,7 +684,8 @@ void op_Nary(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Pop(const void *env, struct state *state, struct context **pctx){
-    (void) ctx_pop(pctx);
+    assert((*pctx)->sp > 0);
+    (*pctx)->sp--;
     (*pctx)->pc++;
 }
 
@@ -707,6 +727,10 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
     else {
         uint64_t result = dict_load((*pctx)->vars, value_put_atom("result", 6));
         uint64_t fp = ctx_pop(pctx);
+        if ((fp & VALUE_MASK) != VALUE_INT) {
+            printf("XXX %d %d %s", (*pctx)->pc, (*pctx)->sp, value_string(fp));
+            exit(0);
+        }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
         (*pctx)->vars = ctx_pop(pctx);
@@ -833,13 +857,16 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
     if (es == 0) {
         uint64_t av = ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
 
         int size;
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
         if (false) {
-            printf("STORE IND %d %llx\n", size, v);
+            printf("STORE IND %d %d %d %llx %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
+                    value_string((*pctx)->stack[(*pctx)->sp - 1]),
+                    value_string(av));
             for (int i = 0; i < size; i++) {
                 char *index = value_string(indices[i]);
                 printf(">> %s\n", index);
@@ -875,7 +902,6 @@ void *init_Cut(struct map *map){ return NULL; }
 void *init_Del(struct map *map){ return NULL; }
 void *init_Dict(struct map *map){ return NULL; }
 void *init_Dup(struct map *map){ return NULL; }
-void *init_Move(struct map *map){ return NULL; }
 void *init_Pop(struct map *map){ return NULL; }
 void *init_ReadonlyDec(struct map *map){ return NULL; }
 void *init_ReadonlyInc(struct map *map){ return NULL; }
@@ -934,6 +960,20 @@ void *init_LoadVar(struct map *map){
         env->name = value_put_atom(value->u.atom.base, value->u.atom.len);
         return env;
     }
+}
+
+void *init_Move(struct map *map){
+    struct env_Move *env = new_alloc(struct env_Move);
+
+    struct json_value *offset = map_lookup(map, "offset", 6);
+    assert(offset->type == JV_ATOM);
+    char *copy = malloc(offset->u.atom.len + 1);
+    memcpy(copy, offset->u.atom.base, offset->u.atom.len);
+    copy[offset->u.atom.len] = 0;
+    env->offset = atoi(copy);
+    free(copy);
+
+    return env;
 }
 
 void *init_Nary(struct map *map){
