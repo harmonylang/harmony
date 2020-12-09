@@ -275,14 +275,21 @@ static char *value_string_address(uint64_t v) {
     uint64_t *indices = map_retrieve(p, &size);
     size /= sizeof(uint64_t);
     assert(size > 0);
-    char *first = value_string(indices[0]);
-    assert(first[0] == '.');
-    asprintf(&r, "?%s", first + 1);
-    free(first);
+    char *s = value_string(indices[0]);
+    assert(s[0] == '.');
+    asprintf(&r, "?%s", s + 1);
+    free(s);
 
     for (int i = 1; i < size; i++) {
-        assert(0);
+        s = value_string(indices[i]);
+        if (*s == '.') {
+            append_printf(&r, "%s", s);
+        }
+        else {
+            append_printf(&r, "[%s]", s);
+        }
     }
+
     return r;
 }
 

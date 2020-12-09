@@ -532,7 +532,6 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
-// TODO.  What if there are duplicate keys?
 void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
@@ -541,6 +540,7 @@ void op_Dict(const void *env, struct state *state, struct context **pctx){
     }
     n >>= VALUE_BITS;
 
+    // TODO.  Fail if there's a duplicate key
     uint64_t d = VALUE_DICT;
     for (int i = 0; i < n; i++) {
         uint64_t v = ctx_pop(pctx);

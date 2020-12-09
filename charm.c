@@ -93,6 +93,9 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     assert(!cc->terminated);
     assert(!cc->failure);
 
+    // Copy the choice
+    uint64_t choice_copy = choice;
+
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
@@ -133,9 +136,13 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             assert(size > 0);
-            assert(size > 1);       // TODO
-            choosing = true;
-            break;
+            if (size == 1) {
+                choice = vals[0];
+            }
+            else {
+                choosing = true;
+                break;
+            }
         }
 
         if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
@@ -180,7 +187,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->parent = node;
         next->state = sc;               // TODO: duplicate value
         next->before = ctx;
-        next->choice = choice;
+        next->choice = choice_copy;
         next->after = after;
         next->len = node->len + weight;
         graph_add(next);
@@ -202,7 +209,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             next->parent = node;
             next->before = ctx;
             next->after = after;
-            next->choice = choice;
+            next->choice = choice_copy;
             next->len = node->len + weight;
         }
     }
@@ -210,7 +217,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     // Add a forward edge from node to next.
     struct edge *fwd = new_alloc(struct edge);
     fwd->ctx = ctx;
-    fwd->choice = choice;
+    fwd->choice = choice_copy;
     fwd->node = next;
     fwd->weight = weight;
     fwd->next = node->fwd;
@@ -219,7 +226,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     // Add a backward edge from next to node.
     struct edge *bwd = new_alloc(struct edge);
     bwd->ctx = ctx;
-    bwd->choice = choice;
+    bwd->choice = choice_copy;
     bwd->node = node;
     bwd->weight = weight;
     bwd->next = next->bwd;
@@ -229,7 +236,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_SAFETY;
         f->ctx = ctx;
-        f->choice = choice;
+        f->choice = choice_copy;
         f->node = node;
         queue_enqueue(failures, f);
     }
@@ -284,9 +291,13 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             assert(size > 0);
-            assert(size > 1);       // TODO
-            choosing = true;
-            break;
+            if (size == 1) {
+                choice = vals[0];
+            }
+            else {
+                choosing = true;
+                break;
+            }
         }
 
         if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
