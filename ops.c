@@ -23,7 +23,7 @@ struct f_info {
 };
 
 struct var_tree {
-    enum { VT_NAME, VT_TUPLE } type;
+    enum { VT_NAME, VT_TUPLE, VT_LIST } type;
     union {
         uint64_t name;
         struct {
@@ -166,6 +166,11 @@ struct var_tree *var_parse(char *s, int len, int *index){
                 (*index)++;
             }
         }
+    }
+    else if (s[*index] == '[') {
+        vt->type = VT_TUPLE;
+        (*index)++;
+        assert(0);      // TODO
     }
     else {
         vt->type = VT_NAME;
@@ -658,9 +663,22 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
 
 void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     const struct env_LoadVar *el = env;
-    assert(el != NULL);
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
-    ctx_push(pctx, dict_load((*pctx)->vars, el->name));
+
+    if (el == NULL) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        ctx_push(pctx, ind_load((*pctx)->vars, indices, size));
+    }
+    else {
+        ctx_push(pctx, dict_load((*pctx)->vars, el->name));
+    }
     (*pctx)->pc++;
 }
 
@@ -923,10 +941,23 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
 
 void op_StoreVar(const void *env, struct state *state, struct context **pctx){
     const struct env_StoreVar *es = env;
-    assert(es != NULL);
-    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
     uint64_t v = ctx_pop(pctx);
-    (*pctx)->vars = var_match(es->args, v, (*pctx)->vars);
+
+    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    if (es == NULL) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        (*pctx)->vars = ind_store((*pctx)->vars, indices, size, v);
+    }
+    else {
+        (*pctx)->vars = var_match(es->args, v, (*pctx)->vars);
+    }
     (*pctx)->pc++;
 }
 
