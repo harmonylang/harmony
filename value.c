@@ -71,7 +71,7 @@ int value_cmp_bool(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_int(uint64_t v1, uint64_t v2){
-    return v1 < v2 ? -1 : 1;
+    return (int64_t) v1 < (int64_t) v2 ? -1 : 1;
 }
 
 int value_cmp_atom(uint64_t v1, uint64_t v2){
@@ -193,7 +193,7 @@ static char *value_string_int(uint64_t v) {
         asprintf(&r, "inf");
     }
     else {
-        asprintf(&r, "%"PRIu64"", ((int64_t) v) >> VALUE_BITS);
+        asprintf(&r, "%"PRId64"", ((int64_t) v) >> VALUE_BITS);
     }
     return r;
 }
