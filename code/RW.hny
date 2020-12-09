@@ -1,32 +1,32 @@
-import synch;
+from synch import Lock, acquire, release;
 
 def acquire_rlock():
-    lock(?rwlock);
+    acquire(?rwlock);
     while nwriters > 0:
-        unlock(?rwlock);
-        lock(?rwlock);
+        release(?rwlock);
+        acquire(?rwlock);
     ;
     nreaders += 1;
-    unlock(?rwlock);
+    release(?rwlock);
 ;
 def release_rlock():
-    lock(?rwlock);
+    acquire(?rwlock);
     nreaders -= 1;
-    unlock(?rwlock);
+    release(?rwlock);
 ;
 def acquire_wlock():
-    lock(?rwlock);
+    acquire(?rwlock);
     while (nreaders + nwriters) > 0:
-        unlock(?rwlock);
-        lock(?rwlock);
+        release(?rwlock);
+        acquire(?rwlock);
     ;
     nwriters = 1;
-    unlock(?rwlock);
+    release(?rwlock);
 ;
 def release_wlock():
-    lock(?rwlock);
+    acquire(?rwlock);
     nwriters = 0;
-    unlock(?rwlock);
+    release(?rwlock);
 ;
 rwlock = Lock();
 nreaders, nwriters = 0, 0;
