@@ -19,7 +19,7 @@ struct val_info {
 
 struct f_info {
     char *name;
-    uint64_t (*f)(struct state *state, struct context **pctx, uint64_t *args, int n);
+    uint64_t (*f)(struct state *state, struct context *ctx, uint64_t *args, int n);
 };
 
 struct var_tree {
@@ -683,7 +683,7 @@ void op_Nary(const void *env, struct state *state, struct context **pctx){
     for (int i = 0; i < en->arity; i++) {
         args[i] = ctx_pop(pctx);
     }
-    ctx_push(pctx, (*en->fi->f)(state, pctx, args, en->arity));
+    ctx_push(pctx, (*en->fi->f)(state, *pctx, args, en->arity));
     (*pctx)->pc++;
 }
 
@@ -1121,7 +1121,7 @@ void *init_StoreVar(struct map *map){
     }
 }
 
-uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
@@ -1154,7 +1154,7 @@ uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n
     assert(0);
 }
 
-uint64_t f_atLabel(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
     assert((e & VALUE_MASK) == VALUE_ATOM);
@@ -1179,29 +1179,29 @@ uint64_t f_atLabel(struct state *state, struct context **pctx, uint64_t *args, i
     return bag;
 }
 
-uint64_t f_eq(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_eq(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     return ((args[0] == args[1]) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_ge(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_ge(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp >= 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_gt(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_gt(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp > 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_ne(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_ne(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     return ((args[0] != args[1]) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_in(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     uint64_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT) {
@@ -1232,7 +1232,7 @@ uint64_t f_in(struct state *state, struct context **pctx, uint64_t *args, int n)
     assert(0);
 }
 
-uint64_t f_isEmpty(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
     if ((e & VALUE_MASK) == VALUE_DICT) {
@@ -1244,11 +1244,27 @@ uint64_t f_isEmpty(struct state *state, struct context **pctx, uint64_t *args, i
     assert(0);
 }
 
-uint64_t f_keys(struct state *state, struct context **pctx, uint64_t *args, int n){
-    assert(0);
+uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t v = args[0];
+    assert((v & VALUE_MASK) == VALUE_DICT);
+    if (v == VALUE_DICT) {
+        return VALUE_SET;
+    }
+
+    int size;
+    uint64_t *vals = value_get(v, &size);
+    uint64_t *keys = malloc(size / 2);
+    size /= 2 * sizeof(uint64_t);
+    for (int i = 0; i < size; i++) {
+        keys[i] = vals[2*i];
+    }
+    uint64_t result = value_put_set(keys, size * sizeof(uint64_t));
+    free(keys);
+    return result;
 }
 
-uint64_t f_len(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
@@ -1269,19 +1285,19 @@ uint64_t f_len(struct state *state, struct context **pctx, uint64_t *args, int n
     assert(0);
 }
 
-uint64_t f_le(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_le(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp <= 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_lt(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_lt(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp < 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
         uint64_t e = args[0];
@@ -1346,7 +1362,7 @@ uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int
     }
 }
 
-uint64_t f_mod(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     uint64_t e1 = args[0], e2 = args[1];
     assert((e1 & VALUE_MASK) == VALUE_INT);
     assert((e2 & VALUE_MASK) == VALUE_INT);
@@ -1354,18 +1370,18 @@ uint64_t f_mod(struct state *state, struct context **pctx, uint64_t *args, int n
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_nametag(struct state *state, struct context **pctx, uint64_t *args, int n){
-    return (*pctx)->nametag;
+uint64_t f_nametag(struct state *state, struct context *ctx, uint64_t *args, int n){
+    return ctx->nametag;
 }
 
-uint64_t f_not(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
     assert((e & VALUE_MASK) == VALUE_BOOL);
     return e ^ (1 << VALUE_BITS);
 }
 
-uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n){
     uint64_t e1 = args[0];
 
     if ((e1 & VALUE_MASK) == VALUE_INT) {
@@ -1417,7 +1433,7 @@ uint64_t f_plus(struct state *state, struct context **pctx, uint64_t *args, int 
     return result;
 }
 
-uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     uint64_t e1 = args[0], e2 = args[1];
 
@@ -1435,7 +1451,7 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
     return result;
 }
 
-uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int n){
+uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n){
     uint64_t e1 = args[0];
 
     if ((e1 & VALUE_MASK) == VALUE_INT) {
