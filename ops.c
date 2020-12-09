@@ -1213,6 +1213,14 @@ void *init_StoreVar(struct map *map){
     }
 }
 
+uint64_t f_abs(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    int64_t e = args[0];
+    assert((e & VALUE_MASK) == VALUE_INT);
+    e >>= VALUE_BITS;
+    return e >= 0 ? args[0] : (((-e) << VALUE_BITS) | VALUE_INT);
+}
+
 uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
@@ -1839,6 +1847,7 @@ struct f_info f_table[] = {
 	{ "-", f_minus },
 	{ "*", f_times },
 	{ "/", f_div },
+	{ "//", f_div },
 	{ "%", f_mod },
     { "<", f_lt },
     { "<=", f_le },
@@ -1849,6 +1858,7 @@ struct f_info f_table[] = {
     { "..", f_range },
     { "==", f_eq },
     { "!=", f_ne },
+    { "abs", f_abs },
     { "all", f_all },
     { "atLabel", f_atLabel },
     { "in", f_in },
@@ -1857,6 +1867,7 @@ struct f_info f_table[] = {
     { "len", f_len },
     { "max", f_max },
     { "min", f_min },
+	{ "mod", f_mod },
     { "nametag", f_nametag },
     { "not", f_not },
     { NULL, NULL }

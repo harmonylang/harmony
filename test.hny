@@ -13,3 +13,7 @@ assert (v(1) - v(2)) == -1, 8;
 assert (v({1, 2, 4}) - v({0, 2, 3})) == {1, 4}, 9;
 assert v(2) in v({ 1, 2, 3 }), 10;
 assert v(0) not in v({ 1, 2, 3 }), 11;
+assert (v(3) // v(2)) == 1;
+assert abs(v(1)) == 1;
+assert abs(v(0)) == 0;
+assert abs(v(-1)) == 1;

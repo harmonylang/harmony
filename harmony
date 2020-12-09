@@ -581,8 +581,8 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in { "!", "-", "~", "all", "any", "atLabel", "bagsize", "choose",
-    "min", "max", "nametag", "not", "keys", "hash", "len" }
+    return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "bagsize",
+        "choose", "min", "max", "nametag", "not", "keys", "hash", "len" }
 
 def isxbinop(s):
     return s in {
@@ -1931,6 +1931,10 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, bool)):
                     return
                 context.push(not e)
+            elif op == "abs":
+                if not self.checktype(state, context, sa, isinstance(e, int)):
+                    return
+                context.push(abs(e))
             elif op == "atLabel":
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
