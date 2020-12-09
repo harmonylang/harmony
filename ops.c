@@ -13,7 +13,7 @@
 #define CALLTYPE_NORMAL        2
 
 struct val_info {
-    int size;
+    int size, index;
     uint64_t *vals;
 };
 
@@ -1332,6 +1332,86 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(false);
 }
 
+uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args, int n){
+    uint64_t e1 = args[0];
+
+    if ((e1 & VALUE_MASK) == VALUE_INT) {
+        for (int i = 1; i < n; i++) {
+            uint64_t e2 = args[i];
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 &= e2;
+        }
+        return e1;
+    }
+
+    // get all the sets
+    struct val_info *vi = malloc(n * sizeof(*vi));
+    int min_size = -1;      // minimum set size
+    uint64_t max_val;       // maximum value over the minima of all sets
+    bool some_empty = false;
+    for (int i = 0; i < n; i++) {
+        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if (args[i] == VALUE_SET) {
+            min_size = 0;
+        }
+        else {
+            vi[i].vals = value_get(args[i], &vi[i].size); 
+            vi[i].index = 0;
+            if (min_size < 0) {
+                min_size = vi[i].size;
+                max_val = vi[i].vals[0];
+            }
+            else {
+                if (vi[i].size < min_size) {
+                    min_size = vi[i].size;
+                }
+                if (value_cmp(vi[i].vals[0], max_val) > 0) {
+                    max_val = vi[i].vals[0];
+                }
+            }
+        }
+    }
+
+    // If any are empty lists, we're done.
+    if (min_size == 0) {
+        return VALUE_SET;
+    }
+
+    // Allocate sufficient memory.
+    uint64_t *vals = malloc(min_size), *v = vals;
+
+    bool done = false;
+    for (int i = 0; !done && i < min_size; i++) {
+        uint64_t old_max = max_val;
+        for (int j = 0; j < n; j++) {
+            int k;
+            while ((k = vi[j].index) < vi[j].size) {
+                printf("XXX\n");
+                vi[j].index++;
+                uint64_t v = vi[j].vals[k];
+                int cmp = value_cmp(v, max_val);
+                if (cmp > 0) {
+                    max_val = v;
+                }
+                if (cmp >= 0) {
+                    break;
+                }
+            }
+            if (vi[j].index == vi[j].size) {
+                done = true;
+            }
+        }
+        if (old_max == max_val) {
+            *v++ = max_val;
+        }
+    }
+
+    uint64_t result = value_put_set(v, (char *) v - (char *) vals);
+    free(vi);
+    free(vals);
+    return result;
+}
+
 uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
@@ -1747,6 +1827,7 @@ struct f_info f_table[] = {
     { ">=", f_ge },
     { ">", f_gt },
     { "|", f_union },
+    { "&", f_intersection },
     { "..", f_range },
     { "==", f_eq },
     { "!=", f_ne },
