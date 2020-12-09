@@ -532,6 +532,7 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
+// TODO.  What if there are duplicate keys?
 void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
@@ -733,21 +734,38 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+static int q_value_cmp(const void *v1, const void *v2){
+    return value_cmp(* (const uint64_t *) v1, * (const uint64_t *) v2);
+}
+
+// Sort the resulting set and remove duplicates
+static int sort(uint64_t *vals, int n){
+    qsort(vals, n, sizeof(uint64_t), q_value_cmp);
+
+    uint64_t *p = vals, *q = vals + 1;
+    for (int i = 1; i < n; i++, q++) {
+        if (*q != *p) {
+            *++p = *q;
+        }
+    }
+    p++;
+    return p - vals;
+}
+
 void op_Set(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     n >>= VALUE_BITS;
 
-    uint64_t *v = malloc(n * sizeof(uint64_t));
+    uint64_t *vals = malloc(n * sizeof(uint64_t));
     for (int i = 0; i < n; i++) {
-        v[i] = ctx_pop(pctx);
+        vals[i] = ctx_pop(pctx);
     }
 
-    // TODO.  NEED TO SORT THE SET
-    assert(0);
-
-    ctx_push(pctx, value_put_set(v, n * sizeof(uint64_t)));
-    free(v);
+    n = sort(vals, n);
+    uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
+    ctx_push(pctx, value_put_set(vals, n * sizeof(uint64_t)));
+    free(vals);
     (*pctx)->pc++;
 }
 
@@ -1099,12 +1117,14 @@ uint64_t f_len(struct state *state, struct context **pctx, uint64_t *args, int n
 
 uint64_t f_le(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 2);
-    assert(0);
+    int cmp = value_cmp(args[1], args[0]);
+    return ((cmp <= 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
 uint64_t f_lt(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 2);
-    assert(0);
+    int cmp = value_cmp(args[1], args[0]);
+    return ((cmp < 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
 uint64_t f_minus(struct state *state, struct context **pctx, uint64_t *args, int n){
@@ -1214,10 +1234,6 @@ uint64_t f_range(struct state *state, struct context **pctx, uint64_t *args, int
     return result;
 }
 
-static int q_value_cmp(const void *v1, const void *v2){
-    return value_cmp(* (const uint64_t *) v1, * (const uint64_t *) v2);
-}
-
 uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int n){
     uint64_t e1 = args[0];
 
@@ -1258,21 +1274,8 @@ uint64_t f_union(struct state *state, struct context **pctx, uint64_t *args, int
         total += vi[i].size;
     }
 
-    // Sort the resulting set (with potential duplicates)
-    qsort(vals, total / sizeof(uint64_t), sizeof(uint64_t), q_value_cmp);
-
-    // Remove duplicates
-    n = total / sizeof(uint64_t);
-    uint64_t *p = vals, *q = vals + 1;
-    for (int i = 1; i < n; i++, q++) {
-        if (*q != *p) {
-            *++p = *q;
-        }
-    }
-    p++;
-
-    uint64_t result = value_put_set(vals, (p - vals) * sizeof(uint64_t));
-
+    n = sort(vals, total / sizeof(uint64_t));
+    uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
     free(vi);
     free(vals);
     return result;
