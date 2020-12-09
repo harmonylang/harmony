@@ -100,7 +100,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
-        if (false) {
+        if (true) {
             char *p = value_string(sc->vars);
             char *q = value_string(sc->ctxbag);
             printf("%d -> %s %s %s\n", pc, code[pc].oi->name, p, q);

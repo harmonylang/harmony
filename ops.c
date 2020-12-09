@@ -640,8 +640,7 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         ctx_push(pctx, ind_load(state->vars, indices, size));
     }
     else {
-        assert(el->n == 1);
-        ctx_push(pctx, dict_load(state->vars, el->indices[0]));
+        ctx_push(pctx, ind_load(state->vars, el->indices, el->n));
     }
     (*pctx)->pc++;
 }
@@ -851,8 +850,7 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
         state->vars = ind_store(state->vars, indices, size, v);
     }
     else {
-        assert(es->n == 1);
-        state->vars = dict_store(state->vars, es->indices[0], v);
+        state->vars = ind_store(state->vars, es->indices, es->n, v);
     }
     (*pctx)->pc++;
 }
