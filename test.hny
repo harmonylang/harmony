@@ -17,3 +17,6 @@ assert (v(3) // v(2)) == 1;
 assert abs(v(1)) == 1;
 assert abs(v(0)) == 0;
 assert abs(v(-1)) == 1;
+assert ~v(0) == -1;
+assert ~v(1) == -2;
+assert ~v(-1) == 0;
