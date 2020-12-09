@@ -1118,6 +1118,32 @@ uint64_t f_ne(struct state *state, struct context **pctx, uint64_t *args, int n)
 
 uint64_t f_in(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 2);
+    uint64_t s = args[0], e = args[1];
+	if (s == VALUE_SET || s == VALUE_DICT) {
+		return VALUE_BOOL;      // False
+	}
+    if ((s & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(s, &size);
+        size /= sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            if (v[i] == e) {
+                return (1 << VALUE_BITS) | VALUE_BOOL;
+            }
+        }
+        return VALUE_BOOL;
+    }
+    if ((s & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(s, &size);
+        size /= 2 * sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            if (v[2*i+1] == e) {
+                return (1 << VALUE_BITS) | VALUE_BOOL;
+            }
+        }
+        return VALUE_BOOL;
+    }
     assert(0);
 }
 
