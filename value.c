@@ -270,7 +270,7 @@ static char *value_string_set(uint64_t v) {
 
 static char *value_string_address(uint64_t v) {
     char *r;
-    if (v == VALUE_ADDRESS) {
+    if (v == 0) {
         asprintf(&r, "None");
         return r;
     }
