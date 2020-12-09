@@ -109,7 +109,7 @@ uint64_t var_match(struct var_tree *vt, uint64_t arg, uint64_t vars){
         }
         return vars;
     default:
-        assert(0);
+        assert(false);
     }
 }
 
@@ -127,7 +127,7 @@ void var_dump(struct var_tree *vt){
         printf(" )");
         break;
     default:
-        assert(0);
+        assert(false);
     }
 }
 
@@ -170,7 +170,7 @@ struct var_tree *var_parse(char *s, int len, int *index){
     else if (s[*index] == '[') {
         vt->type = VT_TUPLE;
         (*index)++;
-        assert(0);      // TODO
+        assert(false);      // TODO
     }
     else {
         vt->type = VT_NAME;
@@ -230,7 +230,7 @@ uint64_t dict_load(uint64_t dict, uint64_t key){
 
 	printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
 
-    assert(0);
+    assert(false);
 }
 
 uint64_t dict_remove(uint64_t dict, uint64_t key){
@@ -239,7 +239,7 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
     uint64_t *vals;
     int size;
     if (dict == VALUE_DICT) {
-        assert(0);
+        assert(false);
     }
     vals = value_get(dict & ~VALUE_MASK, &size);
     size /= sizeof(uint64_t);
@@ -264,7 +264,7 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
         }
         /* 
             if (value_cmp(vals[i], key) > 0) {
-                assert(0);
+                assert(false);
             }
         */
     }
@@ -273,7 +273,7 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
         char *p = value_string(key);
         char *q = value_string(dict);
         fprintf(stderr, "DICT_REMOVE: '%s' from %s\n", p, q);
-        assert(0);
+        assert(false);
     }
 
     return dict;
@@ -412,12 +412,12 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
             }
             /* 
                 if (value_cmp(vals[i], key) > 0) {
-                    assert(0);
+                    assert(false);
                 }
             */
         }
 
-        assert(0);
+        assert(false);
     }
 }
 
@@ -462,7 +462,7 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
     default:
         printf("APPLY %d %s %s\n", (*pctx)->pc,
             value_string(method), value_string((*pctx)->vars));
-        assert(0);
+        assert(false);
     }
 }
 
@@ -507,7 +507,7 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
     ctx_push(pctx, vals[0]);
     (*pctx)->pc++;
 #endif
-    assert(0);
+    assert(false);
 }
 
 void op_Cut(const void *env, struct state *state, struct context **pctx){
@@ -527,10 +527,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
     }
     if ((v & VALUE_MASK) == VALUE_DICT) {
         assert(v != VALUE_DICT);
-        assert(0);
+        assert(false);
         return;
     }
-    assert(0);
+    assert(false);
 }
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
@@ -771,7 +771,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
             }
             break;
         default:
-            assert(0);
+            assert(false);
         }
     }
 }
@@ -898,7 +898,7 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc++;
         return;
     }
-    assert(0);
+    assert(false);
 }
 
 void op_Store(const void *env, struct state *state, struct context **pctx){
@@ -1178,7 +1178,7 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
         }
 		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
     }
-    assert(0);
+    assert(false);
 }
 
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1204,6 +1204,14 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
         }
     }
     return bag;
+}
+
+uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n){
+    int64_t e1 = args[0], e2 = args[1];
+    assert((e1 & VALUE_MASK) == VALUE_INT);
+    assert((e2 & VALUE_MASK) == VALUE_INT);
+    int64_t result = (e2 >> VALUE_BITS) / (e1 >> VALUE_BITS);
+    return (result << VALUE_BITS) | VALUE_INT;
 }
 
 uint64_t f_eq(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1256,7 +1264,7 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         }
         return VALUE_BOOL;
     }
-    assert(0);
+    assert(false);
 }
 
 uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1268,7 +1276,7 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
     if ((e & VALUE_MASK) == VALUE_SET) {
         return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
     }
-    assert(0);
+    assert(false);
 }
 
 uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1309,7 +1317,7 @@ uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
-    assert(0);
+    assert(false);
 }
 
 uint64_t f_le(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1394,7 +1402,7 @@ uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
     assert((e1 & VALUE_MASK) == VALUE_INT);
     assert((e2 & VALUE_MASK) == VALUE_INT);
-    uint64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
+    int64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
@@ -1473,7 +1481,7 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
 	}
     int cnt = (finish - start) + 1;
 	assert(cnt > 0);		// TODO
-	assert(cnt < 10);		// TODO
+	assert(cnt < 1000);		// TODO
     uint64_t *v = malloc(cnt * sizeof(uint64_t));
     for (int i = 0; i < cnt; i++) {
         v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
@@ -1481,6 +1489,20 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     uint64_t result = value_put_set(v, cnt * sizeof(uint64_t));
     free(v);
     return result;
+}
+
+uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
+    if ((args[0] & VALUE_MASK) == VALUE_INT) {
+        int64_t e1 = args[0];
+        e1 >>= VALUE_BITS;
+        for (int i = 1; i < n; i++) {
+            int64_t e2 = args[i];
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 *= e2 >> VALUE_BITS;
+        }
+        return (e1 << VALUE_BITS) | VALUE_INT;
+    }
+    assert(false);
 }
 
 uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1566,6 +1588,8 @@ struct op_info op_table[] = {
 struct f_info f_table[] = {
 	{ "+", f_plus },
 	{ "-", f_minus },
+	{ "*", f_times },
+	{ "/", f_div },
 	{ "%", f_mod },
     { "<", f_lt },
     { "<=", f_le },
