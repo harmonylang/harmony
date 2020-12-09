@@ -1327,20 +1327,21 @@ uint64_t f_lt(struct state *state, struct context *ctx, uint64_t *args, int n){
 uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
-        uint64_t e = args[0];
+        int64_t e = args[0];
         assert((e & VALUE_MASK) == VALUE_INT);
         e >>= VALUE_BITS;
         return ((-e) << VALUE_BITS) | VALUE_INT;
     }
     else {
-        uint64_t e1 = args[0], e2 = args[1];
-        if ((e1 & VALUE_MASK) == VALUE_INT) {
+        if ((args[0] & VALUE_MASK) == VALUE_INT) {
+            int64_t e1 = args[0], e2 = args[1];
             assert((e2 & VALUE_MASK) == VALUE_INT);
             e1 >>= VALUE_BITS;
             e2 >>= VALUE_BITS;
             return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
         }
 
+        uint64_t e1 = args[0], e2 = args[1];
         assert((e1 & VALUE_MASK) == VALUE_SET);
         assert((e2 & VALUE_MASK) == VALUE_SET);
         int size1, size2;
@@ -1409,11 +1410,10 @@ uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n){
 }
 
 uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n){
-    uint64_t e1 = args[0];
-
-    if ((e1 & VALUE_MASK) == VALUE_INT) {
+    if ((args[0] & VALUE_MASK) == VALUE_INT) {
+        int64_t e1 = args[0];
         for (int i = 1; i < n; i++) {
-            uint64_t e2 = args[i];
+            int64_t e2 = args[i];
             assert((e2 & VALUE_MASK) == VALUE_INT);
             e1 += e2 & ~VALUE_MASK;
         }
