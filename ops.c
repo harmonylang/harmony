@@ -1471,6 +1471,14 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     return result;
 }
 
+uint64_t f_invert(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 1);
+    int64_t e = args[0];
+    assert((e & VALUE_MASK) == VALUE_INT);
+    e >>= VALUE_BITS;
+    return ((~e) << VALUE_BITS) | VALUE_INT;
+}
+
 uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
@@ -1878,6 +1886,7 @@ struct op_info op_table[] = {
 struct f_info f_table[] = {
 	{ "+", f_plus },
 	{ "-", f_minus },
+	{ "~", f_invert },
 	{ "*", f_times },
 	{ "/", f_div },
 	{ "//", f_div },
