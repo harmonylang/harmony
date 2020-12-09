@@ -1071,6 +1071,37 @@ void *init_JumpCond(struct map *map){
     return env;
 }
 
+uint64_t f_all(struct state *state, struct context **pctx, uint64_t *args, int n){
+    assert(n == 1);
+    uint64_t e = args[0];
+	if (e == VALUE_SET || e == VALUE_DICT) {
+		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+    }
+    if ((e & VALUE_MASK) == VALUE_SET) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            if (v[i] == VALUE_BOOL) {
+                return VALUE_BOOL;
+            }
+        }
+		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+    }
+    if ((e & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        uint64_t *v = value_get(e, &size);
+        size /= 2 * sizeof(uint64_t);
+        for (int i = 0; i < size; i++) {
+            if (v[i*2+1] == VALUE_BOOL) {
+                return VALUE_BOOL;
+            }
+        }
+		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+    }
+    assert(0);
+}
+
 uint64_t f_atLabel(struct state *state, struct context **pctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
@@ -1444,6 +1475,7 @@ struct f_info f_table[] = {
     { "..", f_range },
     { "==", f_eq },
     { "!=", f_ne },
+    { "all", f_all },
     { "atLabel", f_atLabel },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
