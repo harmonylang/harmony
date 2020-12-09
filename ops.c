@@ -412,6 +412,7 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx){}
 void op_Del(const void *env, struct state *state, struct context **pctx){}
+void op_Split(const void *env, struct state *state, struct context **pctx){}
 
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
@@ -908,6 +909,7 @@ void *init_ReadonlyInc(struct map *map){ return NULL; }
 void *init_Return(struct map *map){ return NULL; }
 void *init_Set(struct map *map){ return NULL; }
 void *init_Spawn(struct map *map){ return NULL; }
+void *init_Split(struct map *map){ return NULL; }
 
 void *init_DelVar(struct map *map){
     struct env_DelVar *env = new_alloc(struct env_DelVar);
@@ -1424,6 +1426,7 @@ struct op_info op_table[] = {
 	{ "Return", init_Return, op_Return },
 	{ "Set", init_Set, op_Set },
 	{ "Spawn", init_Spawn, op_Spawn },
+	{ "Split", init_Split, op_Split },
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
     { NULL, NULL, NULL }

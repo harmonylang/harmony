@@ -1006,6 +1006,9 @@ class SplitOp(Op):
     def __repr__(self):
         return "Split %d"%self.n
 
+    def jdump(self):
+        return '{ "op": "Split", "count": "%d" }'%self.n
+
     def explain(self):
         return "splits a tuple value into its elements"
 
