@@ -193,7 +193,7 @@ static char *value_string_int(uint64_t v) {
         asprintf(&r, "inf");
     }
     else {
-        asprintf(&r, "%llu", v >> VALUE_BITS);
+        asprintf(&r, "%"PRIu64"", v >> VALUE_BITS);
     }
     return r;
 }
@@ -208,7 +208,7 @@ static char *value_string_atom(uint64_t v) {
 
 static char *value_string_pc(uint64_t v) {
     char *r;
-    asprintf(&r, "PC(%llu)", v >> VALUE_BITS);
+    asprintf(&r, "PC(%"PRIu64")", v >> VALUE_BITS);
     return r;
 }
 

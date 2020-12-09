@@ -116,7 +116,7 @@ uint64_t var_match(struct var_tree *vt, uint64_t arg, uint64_t vars){
 void var_dump(struct var_tree *vt){
     switch (vt->type) {
     case VT_NAME:
-        printf("%llx", vt->u.name);
+        printf("%"PRIx64"", vt->u.name);
         break;
     case VT_TUPLE:
         printf("(");
@@ -428,7 +428,7 @@ void op_Address(const void *env, struct state *state, struct context **pctx){
     assert((av & VALUE_MASK) == VALUE_ADDRESS);
     assert(av != VALUE_ADDRESS);
     if (false) {
-        printf("ADDRESS %llx\n", index);
+        printf("ADDRESS %"PRIx64"\n", index);
     }
 
     int size;
@@ -468,7 +468,7 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     assert((v & VALUE_MASK) == VALUE_BOOL);
     if (false) {
-        printf("ASSERT %lld\n", v >> VALUE_BITS);
+        printf("ASSERT %"PRId64"\n", v >> VALUE_BITS);
     }
     if (v == VALUE_BOOL) {
         printf("HARMONY ASSERTION FAILED\n");
@@ -503,7 +503,7 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
     size /= sizeof(uint64_t);
     assert(size > 0);
 
-    printf("CHOOSE %llx %llx %d\n", vals[0], vals[1], size);
+    printf("CHOOSE %"PRIx64" %"PRIx64" %d\n", vals[0], vals[1], size);
 
     ctx_push(pctx, vals[0]);
     (*pctx)->pc++;
@@ -552,7 +552,7 @@ void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     if (false) {
-        printf("DICT %lld\n", n >> VALUE_BITS);
+        printf("DICT %"PRId64"\n", n >> VALUE_BITS);
     }
     n >>= VALUE_BITS;
 
@@ -584,7 +584,7 @@ void op_Dup(const void *env, struct state *state, struct context **pctx){
 void op_Frame(const void *env, struct state *state, struct context **pctx){
     const struct env_Frame *ef = env;
     if (false) {
-        printf("FRAME %d %d %llx ", (*pctx)->pc, (*pctx)->sp, ef->name);
+        printf("FRAME %d %d %"PRIx64" ", (*pctx)->pc, (*pctx)->sp, ef->name);
         var_dump(ef->args);
         printf("\n");
     }
@@ -841,7 +841,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     uint64_t arg = ctx_pop(pctx);
     uint64_t tag = ctx_pop(pctx);
     if (false) {
-        printf("SPAWN %llx %llx %llx\n", pc, arg, tag);
+        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\n", pc, arg, tag);
     }
 
     struct context *ctx = new_alloc(struct context);
@@ -921,7 +921,7 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (false) {
-            printf("STORE IND %d %d %d %llx %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
+            printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
                     value_string((*pctx)->stack[(*pctx)->sp - 1]),
                     value_string(av));
             for (int i = 0; i < size; i++) {

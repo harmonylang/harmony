@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include <assert.h>
 #include "json.h"
 #include "global.h"
@@ -85,7 +86,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     sc->choosing = 0;
 
     if (false) {
-        printf("ONESTEP %llx %llx\n", ctx, sc->ctxbag);
+        printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
     }
 
     // Make a copy of the context
@@ -326,7 +327,7 @@ void label_upcall(void *env,
     int64_t pc = atoi(copy);
     free(copy);
     if (false) {
-        printf("LABEL %.*s: %lld\n", key_size, key, pc);
+        printf("LABEL %.*s: %"PRId64"\n", key_size, (char *) key, pc);
     }
     uint64_t k = value_put_atom(key, key_size);
     uint64_t v = (pc << VALUE_BITS) | VALUE_INT;
@@ -520,7 +521,7 @@ int main(){
         if (state->choosing != 0) {
             assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
             if (false) {
-                printf("CHOOSING %llx\n", state->choosing);
+                printf("CHOOSING %"PRIx64"\n", state->choosing);
             }
 
             struct context *cc = value_get(state->choosing, NULL);
@@ -534,7 +535,7 @@ int main(){
             assert(size > 0);
             for (int i = 0; i < size; i++) {
                 if (false) {
-                    printf("NEXT CHOICE %d %d %llx\n", i, size, vals[i]);
+                    printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
                 onestep(node, state->choosing, vals[i], &visited, todo);
                 if (false) {
@@ -549,7 +550,7 @@ int main(){
             assert(size > 0);
             for (int i = 0; i < size; i += 2) {
                 if (false) {
-                    printf("NEXT CONTEXT %d %llx\n", i, ctxs[i]);
+                    printf("NEXT CONTEXT %d %"PRIx64"\n", i, ctxs[i]);
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
