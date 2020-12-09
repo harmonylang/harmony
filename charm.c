@@ -30,7 +30,7 @@ struct node {
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
     bool visited;           // for Kosaraju algorithm
-    int component;          // strongly connected component id
+    unsigned int component; // strongly connected component id
 };
 
 struct failure {
@@ -427,8 +427,7 @@ static int find_scc(void){
         free(top);
 
         if (!next->visited) {
-            count++;
-            kosaraju_assign(next, count);
+            kosaraju_assign(next, count++);
         }
     }
     for (int i = 0; i < graph_size; i++) {
@@ -572,6 +571,7 @@ int main(int argc, char **argv){
         struct component *components = calloc(ncomponents, sizeof(*components));
         for (int i = 0; i < graph_size; i++) {
             struct node *node = graph[i];
+			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
             if (comp->good) {
                 continue;

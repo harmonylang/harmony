@@ -187,6 +187,7 @@ struct var_tree *var_parse(char *s, int len, int *index){
 }
 
 void ctx_push(struct context **pctx, uint64_t v){
+	assert(*pctx != NULL);
     struct context *ctx = realloc(*pctx, sizeof(struct context) + 
                 ((*pctx)->sp + 1) * sizeof(uint64_t));
 
