@@ -1620,17 +1620,39 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
 }
 
 uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
-    if ((args[0] & VALUE_MASK) == VALUE_INT) {
-        int64_t e1 = args[0];
-        e1 >>= VALUE_BITS;
-        for (int i = 1; i < n; i++) {
-            int64_t e2 = args[i];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
-            e1 *= e2 >> VALUE_BITS;
+    int64_t result = 1;
+    int list = -1;
+    for (int i = 0; i < n; i++) {
+        int64_t e = args[i];
+        if ((e & VALUE_MASK) == VALUE_DICT) {
+            list = i;
         }
-        return (e1 << VALUE_BITS) | VALUE_INT;
+        else {
+            assert((e & VALUE_MASK) == VALUE_INT);
+            result *= e >> VALUE_BITS;
+        }
     }
-    assert(false);
+    if (list < 0) {
+        return (result << VALUE_BITS) | VALUE_INT;
+    }
+    int size;
+    uint64_t *vals = value_get(args[list], &size);
+    if (size == 0) {
+        return VALUE_DICT;
+    }
+    uint64_t *r = malloc(result * size);
+    unsigned int cnt = size / sizeof(uint64_t);
+    int index = 0;
+    for (int i = 0; i < result; i++) {
+        for (int j = 0; j < cnt; j++) {
+            r[index] = (index << VALUE_BITS) | VALUE_INT;
+            r[++index] = vals[2*j+1];
+            index++;
+        }
+    }
+    uint64_t v = value_put_dict(r, result * size);
+    free(r);
+    return v;
 }
 
 uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n){
