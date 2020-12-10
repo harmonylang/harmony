@@ -92,7 +92,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
     assert(!cc->terminated);
-    assert(!cc->failure);
+    assert(cc->failure == 0);
 
     // Copy the choice
     uint64_t choice_copy = choice;
@@ -117,7 +117,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         }
         else {
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->terminated || cc->failure) {
+            if (cc->terminated || cc->failure != 0) {
                 break;
             }
             if (cc->pc == pc) {
@@ -193,7 +193,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->len = node->len + weight;
         graph_add(next);
 
-        if (sc->ctxbag != VALUE_DICT && !cc->failure &&
+        if (sc->ctxbag != VALUE_DICT && cc->failure == 0 &&
                 queue_empty(failures)) {
             if (weight == 0) {
                 queue_prepend(todo, next);
@@ -233,7 +233,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     bwd->next = next->bwd;
     next->bwd = bwd;
 
-    if (cc->failure) {
+    if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_SAFETY;
         f->ctx = ctx;
@@ -255,7 +255,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
     assert(!cc->terminated);
-    assert(!cc->failure);
+    assert(cc->failure == 0);
 
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
@@ -272,7 +272,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
         else {
             printf("--- %d: %s\n", pc, oi->name);
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->terminated || cc->failure) {
+            if (cc->terminated || cc->failure != 0) {
                 break;
             }
             if (cc->pc == pc) {
@@ -305,6 +305,12 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
                 code[cc->pc].breakable) {
             break;
         }
+    }
+
+    if (cc->failure != 0) {
+        char *r = value_string(cc->failure);
+        printf("Safety violation: %s\n", r + 1);
+        free(r);
     }
 
     ctx = value_put_context(cc);

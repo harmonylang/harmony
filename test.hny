@@ -29,4 +29,4 @@ assert v(inf) > v(1);
 assert -v(inf) < v(-1);
 assert v(-inf) < v(-1), v(-inf);
 
-# x = v(3) + v(False);
+x = v(3) + v(False);

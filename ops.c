@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,6 +88,20 @@ struct env_Store {
 struct env_StoreVar {
     struct var_tree *args;
 };
+
+void ctx_failure(struct context *ctx, char *fmt, ...){
+    char *r;
+    va_list args;
+
+    assert(ctx->failure == 0);
+
+    va_start(args, fmt);
+    vasprintf(&r, fmt, args);
+    va_end(args);
+
+    ctx->failure = value_put_atom(r, strlen(r));
+    free(r);
+}
 
 uint64_t var_match(struct var_tree *vt, uint64_t arg, uint64_t vars){
     switch (vt->type) {
@@ -507,11 +522,13 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
 void op_Assert(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     assert((v & VALUE_MASK) == VALUE_BOOL);
-    if (v == VALUE_BOOL) {
+    if (v == VALUE_BOOL) {          // False
         printf("HARMONY ASSERTION FAILED\n");
-        (*pctx)->failure = true;
+        ctx_failure(*pctx, "Harmony assertion failed");
     }
-    (*pctx)->pc++;
+    else {
+        (*pctx)->pc++;
+    }
 }
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx){
@@ -521,10 +538,12 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx){
     if (v == VALUE_BOOL) {
         char *p = value_string(e);
         printf("HARMONY ASSERTION FAILED: %s\n", p);
+        ctx_failure(*pctx, "Harmony assertion failed: %s", p);
         free(p);
-        (*pctx)->failure = true;
     }
-    (*pctx)->pc++;
+    else {
+        (*pctx)->pc++;
+    }
 }
 
 void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
@@ -762,8 +781,11 @@ void op_Nary(const void *env, struct state *state, struct context **pctx){
     for (int i = 0; i < en->arity; i++) {
         args[i] = ctx_pop(pctx);
     }
-    ctx_push(pctx, (*en->fi->f)(state, *pctx, args, en->arity));
-    (*pctx)->pc++;
+    uint64_t result = (*en->fi->f)(state, *pctx, args, en->arity);
+    if ((*pctx)->failure == 0) {
+        ctx_push(pctx, result);
+        (*pctx)->pc++;
+    }
 }
 
 void op_Pop(const void *env, struct state *state, struct context **pctx){
@@ -1698,7 +1720,10 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
         int64_t e1 = args[0];
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
+            if ((e2 & VALUE_MASK) != VALUE_INT) {
+                ctx_failure(ctx, "+: applied to mix of integers and other values");
+                return 0;
+            }
             e1 += e2 & ~VALUE_MASK;
         }
         return e1;
@@ -1708,7 +1733,11 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
-        assert((args[i] & VALUE_MASK) == VALUE_DICT);
+        if ((args[i] & VALUE_MASK) != VALUE_DICT) {
+            ctx_failure(ctx, "+: applied to mix of dictionaries and other values");
+            free(vi);
+            return 0;
+        }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
             vi[i].size = 0;

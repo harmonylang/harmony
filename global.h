@@ -44,8 +44,8 @@ struct context {     // context value
     int pc;               // program counter
     int fp;               // frame pointer
     uint64_t vars;        // local variables
+    uint64_t failure;     // atom value describing failure, or 0 if no failure
     bool terminated;      // the context terminated
-    bool failure;         // a failure occurred
     int atomic;           // atomic counter
     int readonly;         // readonly counter
     int sp;               // stack size
