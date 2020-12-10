@@ -149,6 +149,7 @@ void var_match(struct context *ctx, struct var_tree *vt, uint64_t arg){
     }
 }
 
+// for debugging only
 void var_dump(struct var_tree *vt){
     switch (vt->type) {
     case VT_NAME:
@@ -501,8 +502,14 @@ uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
 void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
     uint64_t av = ctx_pop(pctx);
-    assert((av & VALUE_MASK) == VALUE_ADDRESS);
-    assert(av != VALUE_ADDRESS);
+    if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+        ctx_failure(*pctx, "not an address");
+        return;
+    }
+    if (av == VALUE_ADDRESS) {
+        ctx_failure(*pctx, "None unexpected");
+        return;
+    }
     if (false) {
         printf("ADDRESS %"PRIx64"\n", index);
     }
@@ -534,15 +541,15 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc = method >> VALUE_BITS;
         return;
     default:
-        printf("APPLY %d %s %s\n", (*pctx)->pc,
-            value_string(method), value_string((*pctx)->vars));
-        assert(false);
+        ctx_failure(*pctx, "Can only apply to methods or dictionaries");
     }
 }
 
 void op_Assert(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
-    assert((v & VALUE_MASK) == VALUE_BOOL);
+    if ((v & VALUE_MASK) != VALUE_BOOL) {
+        ctx_failure(*pctx, "assert can only be applied to bool values");
+    }
     if (v == VALUE_BOOL) {          // False
         printf("HARMONY ASSERTION FAILED\n");
         ctx_failure(*pctx, "Harmony assertion failed");
@@ -555,7 +562,9 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
 void op_Assert2(const void *env, struct state *state, struct context **pctx){
     uint64_t e = ctx_pop(pctx);
     uint64_t v = ctx_pop(pctx);
-    assert((v & VALUE_MASK) == VALUE_BOOL);
+    if ((v & VALUE_MASK) != VALUE_BOOL) {
+        ctx_failure(*pctx, "assert2 can only be applied to bool values");
+    }
     if (v == VALUE_BOOL) {
         char *p = value_string(e);
         printf("HARMONY ASSERTION FAILED: %s\n", p);
@@ -580,25 +589,6 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
 
     ctx->atomic++;
     ctx->pc++;
-}
-
-void op_Choose(const void *env, struct state *state, struct context **pctx){
-#ifdef notdef
-    uint64_t s = ctx_pop(pctx);
-    assert((s & VALUE_MASK) == VALUE_SET);
-    void *p = (void *) (s & ~VALUE_MASK);
-
-    int size;
-    uint64_t *vals = map_retrieve(p, &size);
-    size /= sizeof(uint64_t);
-    assert(size > 0);
-
-    printf("CHOOSE %"PRIx64" %"PRIx64" %d\n", vals[0], vals[1], size);
-
-    ctx_push(pctx, vals[0]);
-    (*pctx)->pc++;
-#endif
-    assert(false);
 }
 
 void op_Cut(const void *env, struct state *state, struct context **pctx){
@@ -1263,7 +1253,9 @@ void *init_StoreVar(struct map *map){
 uint64_t f_abs(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     int64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_INT);
+    if ((e & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "abs() can only be applied to integers");
+    }
     e >>= VALUE_BITS;
     return e >= 0 ? args[0] : (((-e) << VALUE_BITS) | VALUE_INT);
 }
@@ -1279,7 +1271,9 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
         uint64_t *v = value_get(e, &size);
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
-            assert((v[i] & VALUE_MASK) == VALUE_BOOL);
+            if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
+                return ctx_failure(ctx, "set.all() can only be applied to booleans");
+            }
             if (v[i] == VALUE_BOOL) {
                 return VALUE_BOOL;
             }
@@ -1291,14 +1285,16 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
         uint64_t *v = value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
-            assert((v[2*i+1] & VALUE_MASK) == VALUE_BOOL);
+            if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
+                return ctx_failure(ctx, "dict.all() can only be applied to booleans");
+            }
             if (v[2*i+1] == VALUE_BOOL) {
                 return VALUE_BOOL;
             }
         }
 		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
     }
-    assert(false);
+    return ctx_failure(ctx, "all() can only be applied to sets or dictionaries");
 }
 
 uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1312,7 +1308,9 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
         uint64_t *v = value_get(e, &size);
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
-            assert((v[i] & VALUE_MASK) == VALUE_BOOL);
+            if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
+                return ctx_failure(ctx, "set.any() can only be applied to booleans");
+            }
             if (v[i] != VALUE_BOOL) {
                 return (1 << VALUE_BITS) | VALUE_BOOL;  // True
             }
@@ -1324,14 +1322,16 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
         uint64_t *v = value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
-            assert((v[2*i+1] & VALUE_MASK) == VALUE_BOOL);
+            if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
+                return ctx_failure(ctx, "dict.any() can only be applied to booleans");
+            }
             if (v[2*i+1] == VALUE_BOOL) {
                 return (1 << VALUE_BITS) | VALUE_BOOL;  // True
             }
         }
 		return VALUE_BOOL;  // False
     }
-    assert(false);
+    return ctx_failure(ctx, "any() can only be applied to sets or dictionaries");
 }
 
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1361,8 +1361,12 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
 
 uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to / not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to / not an integer");
+    }
     int64_t result = (e2 >> VALUE_BITS) / (e1 >> VALUE_BITS);
     return (result << VALUE_BITS) | VALUE_INT;
 }
@@ -1417,7 +1421,7 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         }
         return VALUE_BOOL;
     }
-    assert(false);
+    return ctx_failure(ctx, "'in' can only be applied to sets or dictionaries");
 }
 
 uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1426,7 +1430,9 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
+            if ((e2 & VALUE_MASK) != VALUE_INT) {
+                return ctx_failure(ctx, "'&' applied to mix of ints and other types");
+            }
             e1 &= e2;
         }
         return e1;
@@ -1438,7 +1444,9 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     uint64_t max_val;       // maximum value over the minima of all sets
     bool some_empty = false;
     for (int i = 0; i < n; i++) {
-        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if ((args[i] & VALUE_MASK) != VALUE_SET) {
+            return ctx_failure(ctx, "'&' applied to mix of sets and other types");
+        }
         if (args[i] == VALUE_SET) {
             min_size = 0;
         }
@@ -1521,7 +1529,9 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
 uint64_t f_invert(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     int64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_INT);
+    if ((e & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "~ can only be applied to ints");
+    }
     e >>= VALUE_BITS;
     return ((~e) << VALUE_BITS) | VALUE_INT;
 }
@@ -1541,7 +1551,9 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
 uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t v = args[0];
-    assert((v & VALUE_MASK) == VALUE_DICT);
+    if ((v & VALUE_MASK) != VALUE_DICT) {
+        return ctx_failure(ctx, "keys() can only be applied to dictionaries");
+    }
     if (v == VALUE_DICT) {
         return VALUE_SET;
     }
@@ -1576,7 +1588,7 @@ uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
-    assert(false);
+    return ctx_failure(ctx, "len() can only be applied to sets or dictionaries");
 }
 
 uint64_t f_le(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -1594,8 +1606,12 @@ uint64_t f_lt(struct state *state, struct context *ctx, uint64_t *args, int n){
 uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
-	assert(e != VALUE_SET);
-    assert(e != VALUE_DICT);
+	if (e == VALUE_SET) {
+        return ctx_failure(ctx, "can't apply max() to empty set");
+    }
+    if (e == VALUE_DICT) {
+        return ctx_failure(ctx, "can't apply max() to empty list");
+    }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
         uint64_t *v = value_get(e, &size);
@@ -1614,20 +1630,27 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         uint64_t max = v[0];
         for (int i = 0; i < size; i++) {
+            if (v[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
+                return ctx_failure(ctx, "max() cannot be applied to a dictionary");
+            }
             if (value_cmp(v[2*i+1], max) > 0) {
                 max = v[i];
             }
         }
 		return max;
     }
-    assert(false);
+    return ctx_failure(ctx, "max() can only be applied to sets or lists");
 }
 
 uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
-	assert(e != VALUE_SET);
-    assert(e != VALUE_DICT);
+	if (e == VALUE_SET) {
+        return ctx_failure(ctx, "can't apply min() to empty set");
+    }
+    if (e == VALUE_DICT) {
+        return ctx_failure(ctx, "can't apply min() to empty list");
+    }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
         uint64_t *v = value_get(e, &size);
@@ -1646,35 +1669,43 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         uint64_t min = v[0];
         for (int i = 0; i < size; i++) {
+            if (v[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
+                return ctx_failure(ctx, "min() cannot be applied to a dictionary");
+            }
             if (value_cmp(v[2*i+1], min) < 0) {
                 min = v[i];
             }
         }
 		return min;
     }
-    assert(false);
+    return ctx_failure(ctx, "min() can only be applied to sets or lists");
 }
 
 uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1 || n == 2);
     if (n == 1) {
         int64_t e = args[0];
-        assert((e & VALUE_MASK) == VALUE_INT);
+        if ((e & VALUE_MASK) != VALUE_INT) {
+            return ctx_failure(ctx, "unary minus can only be applied to ints");
+        }
         e >>= VALUE_BITS;
         return ((-e) << VALUE_BITS) | VALUE_INT;
     }
     else {
         if ((args[0] & VALUE_MASK) == VALUE_INT) {
             int64_t e1 = args[0], e2 = args[1];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
+            if ((e2 & VALUE_MASK) != VALUE_INT) {
+                return ctx_failure(ctx, "minus applied to int and non-int");
+            }
             e1 >>= VALUE_BITS;
             e2 >>= VALUE_BITS;
             return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
         }
 
         uint64_t e1 = args[0], e2 = args[1];
-        assert((e1 & VALUE_MASK) == VALUE_SET);
-        assert((e2 & VALUE_MASK) == VALUE_SET);
+        if ((e1 & VALUE_MASK) != VALUE_SET || (e2 & VALUE_MASK) != VALUE_SET) {
+            return ctx_failure(ctx, "minus can only be applied to ints or sets");
+        }
         int size1, size2;
         uint64_t *vals1, *vals2;
         if (e1 == VALUE_SET) {
@@ -1723,8 +1754,12 @@ uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n
 
 uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t e1 = args[0], e2 = args[1];
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to mod not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to mod not an integer");
+    }
     int64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
     return (result << VALUE_BITS) | VALUE_INT;
 }
@@ -1736,7 +1771,9 @@ uint64_t f_nametag(struct state *state, struct context *ctx, uint64_t *args, int
 uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_BOOL);
+    if ((e & VALUE_MASK) != VALUE_BOOL) {
+        return ctx_failure(ctx, "not can only be applied to booleans");
+    }
     return e ^ (1 << VALUE_BITS);
 }
 
@@ -1802,8 +1839,12 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to ** not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to ** not an integer");
+    }
     int64_t base = e2 >> VALUE_BITS;
     int64_t exp = e1 >> VALUE_BITS;
 
@@ -1826,16 +1867,20 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to .. not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to .. not an integer");
+    }
     int64_t start = e2 >> VALUE_BITS;
     int64_t finish = e1 >> VALUE_BITS;
 	if (finish < start) {
 		return VALUE_SET;
 	}
     int cnt = (finish - start) + 1;
-	assert(cnt > 0);		// TODO
-	assert(cnt < 1000);		// TODO
+	assert(cnt > 0);
+	assert(cnt < 1000);		// seems unlikely...
     uint64_t *v = malloc(cnt * sizeof(uint64_t));
     for (int i = 0; i < cnt; i++) {
         v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
@@ -1849,8 +1894,12 @@ uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, i
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to << not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to << not an integer");
+    }
     e1 >>= VALUE_BITS;
     e2 >>= VALUE_BITS;
     return ((e2 << e1) << VALUE_BITS) | VALUE_INT;
@@ -1860,8 +1909,12 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
-    assert((e1 & VALUE_MASK) == VALUE_INT);
-    assert((e2 & VALUE_MASK) == VALUE_INT);
+    if ((e1 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "right argument to >> not an integer");
+    }
+    if ((e2 & VALUE_MASK) != VALUE_INT) {
+        return ctx_failure(ctx, "left argument to >> not an integer");
+    }
     e1 >>= VALUE_BITS;
     e2 >>= VALUE_BITS;
     return ((e2 >> e1) << VALUE_BITS) | VALUE_INT;
@@ -1873,10 +1926,16 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if ((e & VALUE_MASK) == VALUE_DICT) {
+            if (list >= 0) {
+                return ctx_failure(ctx, "* can only have at most one list");
+            }
             list = i;
         }
         else {
-            assert((e & VALUE_MASK) == VALUE_INT);
+            if ((e & VALUE_MASK) != VALUE_INT) {
+                return ctx_failure(ctx,
+                    "* can only be applied to integers and at most one list");
+            }
             result *= e >> VALUE_BITS;
         }
     }
@@ -1909,7 +1968,9 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
+            if ((e2 & VALUE_MASK) != VALUE_INT) {
+                return ctx_failure(ctx, "'|' applied to mix of ints and other types");
+            }
             e1 |= e2;
         }
         return e1;
@@ -1919,7 +1980,9 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
-        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if ((args[i] & VALUE_MASK) != VALUE_SET) {
+            return ctx_failure(ctx, "'|' applied to mix of sets and other types");
+        }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
             vi[i].size = 0;
@@ -1956,7 +2019,9 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
-            assert((e2 & VALUE_MASK) == VALUE_INT);
+            if ((e2 & VALUE_MASK) != VALUE_INT) {
+                return ctx_failure(ctx, "'^' applied to mix of ints and other types");
+            }
             e1 ^= e2;
         }
         return e1 | VALUE_INT;
@@ -1966,7 +2031,9 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
-        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if ((args[i] & VALUE_MASK) != VALUE_SET) {
+            return ctx_failure(ctx, "'^' applied to mix of sets and other types");
+        }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
             vi[i].size = 0;
@@ -2019,7 +2086,6 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
-	{ "Choose", init_Choose, op_Choose },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
