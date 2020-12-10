@@ -591,6 +591,10 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
     ctx->pc++;
 }
 
+void op_Choose(const void *env, struct state *state, struct context **pctx){
+    assert(false);
+}
+
 void op_Cut(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
     if ((v & VALUE_MASK) == VALUE_SET) {
@@ -2086,6 +2090,7 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
+	{ "Choose", init_Choose, op_Choose },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
