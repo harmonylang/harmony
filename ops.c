@@ -1896,6 +1896,68 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     return result;
 }
 
+uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
+    uint64_t e1 = args[0];
+
+    if ((e1 & VALUE_MASK) == VALUE_INT) {
+        for (int i = 1; i < n; i++) {
+            uint64_t e2 = args[i];
+            assert((e2 & VALUE_MASK) == VALUE_INT);
+            e1 ^= e2;
+        }
+        return e1 | VALUE_INT;
+    }
+
+    // get all the sets
+    struct val_info *vi = malloc(n * sizeof(*vi));
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        assert((args[i] & VALUE_MASK) == VALUE_SET);
+        if (args[i] == VALUE_SET) {
+            vi[i].vals = NULL;
+            vi[i].size = 0;
+        }
+        else {
+            vi[i].vals = value_get(args[i], &vi[i].size); 
+            total += vi[i].size;
+        }
+    }
+
+    // If all are empty lists, we're done.
+    if (total == 0) {
+        return VALUE_SET;
+    }
+
+    // Concatenate the sets
+    uint64_t *vals = malloc(total), *v;
+    total = 0;
+    for (int i = 0; i < n; i++) {
+        memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+        total += vi[i].size;
+    }
+
+    // sort the values, but retain duplicates
+    int cnt = total / sizeof(uint64_t);
+    qsort(vals, cnt, sizeof(uint64_t), q_value_cmp);
+
+    // Now remove the values that have an even number
+    int i = 0, j = 0, k = 0;
+    while (i < cnt) {
+        while (i < cnt && vals[i] == vals[j]) {
+            i++;
+        }
+        if ((i - j) % 2 != 0) {
+            vals[k++] = vals[j];
+        }
+        j = i;
+    }
+
+    uint64_t result = value_put_set(vals, k * sizeof(uint64_t));
+    free(vi);
+    free(vals);
+    return result;
+}
+
 struct op_info op_table[] = {
 	{ "Address", init_Address, op_Address },
 	{ "Apply", init_Apply, op_Apply },
@@ -1946,6 +2008,7 @@ struct f_info f_table[] = {
     { ">", f_gt },
     { "|", f_union },
     { "&", f_intersection },
+    { "^", f_xor },
     { "..", f_range },
     { "==", f_eq },
     { "!=", f_ne },
