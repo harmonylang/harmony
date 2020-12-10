@@ -905,6 +905,9 @@ class Op:
     def explain(self):
         return "no explanation yet"
 
+    def sametype(x, y):
+        return type(x) == type(y)
+
     def convert(self, x):
         if isinstance(x, tuple):
             return x[0]
@@ -1793,7 +1796,7 @@ class NaryOp(Op):
         return True
 
     def checkdmult(self, state, context, args, d, e):
-        if not self.checktype(state, context, args, isinstance(e, int)):
+        if not self.checktype(state, context, args, type(e) == int):
             return False
         keys = set(range(len(d.d)))
         if d.d.keys() != keys:
@@ -1817,8 +1820,8 @@ class NaryOp(Op):
             for i in range(1, self.n):
                 e1 = context.pop()
                 if op == "+":
-                    if isinstance(e1, int):
-                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    if type(e1) == int:
+                        if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 += e1
                     else:
@@ -1828,8 +1831,8 @@ class NaryOp(Op):
                             return
                         e2 = self.concat(e1, e2)
                 elif op == "&":
-                    if isinstance(e1, int):
-                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    if type(e1) == int:
+                        if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 &= e1
                     else:
@@ -1839,8 +1842,8 @@ class NaryOp(Op):
                             return
                         e2 = SetValue(e2.s.intersection(e1.s))
                 elif op == "|":
-                    if isinstance(e1, int):
-                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    if type(e1) == int:
+                        if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 |= e1
                     else:
@@ -1850,8 +1853,8 @@ class NaryOp(Op):
                             return
                         e2 = SetValue(e2.s.union(e1.s))
                 elif op == "^": 
-                    if isinstance(e1, int):
-                        if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    if type(e1) == int:
+                        if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 ^= e1
                     else:
@@ -1866,11 +1869,11 @@ class NaryOp(Op):
         elif self.n == 1:
             e = context.pop()
             if op == "-":
-                if not self.checktype(state, context, sa, isinstance(e, int) or isinstance(e, float)):
+                if not self.checktype(state, context, sa, type(e) == int or isinstance(e, float)):
                     return
                 context.push(-e)
             elif op == "~":
-                if not self.checktype(state, context, sa, isinstance(e, int)):
+                if not self.checktype(state, context, sa, type(e) == int):
                     return
                 context.push(~e)
             elif op == "not":
@@ -1878,7 +1881,7 @@ class NaryOp(Op):
                     return
                 context.push(not e)
             elif op == "abs":
-                if not self.checktype(state, context, sa, isinstance(e, int)):
+                if not self.checktype(state, context, sa, type(e) == int):
                     return
                 context.push(abs(e))
             elif op == "atLabel":
@@ -1972,8 +1975,8 @@ class NaryOp(Op):
             elif op == ">=":
                 context.push(keyValue(e1) >= keyValue(e2))
             elif op == "-":
-                if isinstance(e1, int) or isinstance(e1, float):
-                    if not self.checktype(state, context, sa, isinstance(e2, int) or isinstance(e2, float)):
+                if type(e1) == int or isinstance(e1, float):
+                    if not self.checktype(state, context, sa, type(e2) == int or isinstance(e2, float)):
                         return
                     context.push(e1 - e2)
                 else:
@@ -1983,42 +1986,42 @@ class NaryOp(Op):
                         return
                     context.push(SetValue(e1.s.difference(e2.s)))
             elif op in { "/", "//" }:
-                if not self.checktype(state, context, sa, isinstance(e1, int) or isinstance(e1, float)):
+                if not self.checktype(state, context, sa, type(e1) == int or isinstance(e1, float)):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int) or isinstance(e2, float)):
+                if not self.checktype(state, context, sa, type(e2) == int or isinstance(e2, float)):
                     return
-                if isinstance(e1, int) and (e2 == math.inf or e2 == -math.inf):
+                if type(e1) == int and (e2 == math.inf or e2 == -math.inf):
                     context.push(0)
                 else:
                     context.push(e1 // e2)
             elif op in { "%", "mod" }:
-                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, type(e1) == int):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, type(e2) == int):
                     return
                 context.push(e1 % e2)
             elif op == "**":
-                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, type(e1) == int):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, type(e2) == int):
                     return
                 context.push(e1 ** e2)
             elif op == "<<":
-                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, type(e1) == int):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, type(e2) == int):
                     return
                 context.push(e1 << e2)
             elif op == ">>":
-                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, type(e1) == int):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, type(e2) == int):
                     return
                 context.push(e1 >> e2)
             elif op == "..":
-                if not self.checktype(state, context, sa, isinstance(e1, int)):
+                if not self.checktype(state, context, sa, type(e1) == int):
                     return
-                if not self.checktype(state, context, sa, isinstance(e2, int)):
+                if not self.checktype(state, context, sa, type(e2) == int):
                     return
                 context.push(SetValue(set(range(e1, e2+1))))
             elif op == "in":
@@ -2039,9 +2042,9 @@ class NaryOp(Op):
                     else:
                         context.push(self.dmult(e2, e1))
                 else:
-                    if not self.checktype(state, context, sa, isinstance(e1, int)):
+                    if not self.checktype(state, context, sa, type(e1) == int):
                         return
-                    if not self.checktype(state, context, sa, isinstance(e2, int)):
+                    if not self.checktype(state, context, sa, type(e2) == int):
                         return
                     context.push(e1 * e2)
             else:
