@@ -24,6 +24,7 @@ struct f_info {
 };
 
 struct var_tree {
+    // TODO.  Is VT_LIST really a thing?
     enum { VT_NAME, VT_TUPLE, VT_LIST } type;
     union {
         uint64_t name;
@@ -89,7 +90,7 @@ struct env_StoreVar {
     struct var_tree *args;
 };
 
-void ctx_failure(struct context *ctx, char *fmt, ...){
+uint64_t ctx_failure(struct context *ctx, char *fmt, ...){
     char *r;
     va_list args;
 
@@ -101,30 +102,50 @@ void ctx_failure(struct context *ctx, char *fmt, ...){
 
     ctx->failure = value_put_atom(r, strlen(r));
     free(r);
+
+    return 0;
 }
 
-uint64_t var_match(struct var_tree *vt, uint64_t arg, uint64_t vars){
+uint64_t var_match_rec(struct context *ctx, struct var_tree *vt,
+                            uint64_t arg, uint64_t vars){
     switch (vt->type) {
     case VT_NAME:
         return dict_store(vars, vt->u.name, arg);
     case VT_TUPLE:
-        assert((arg & VALUE_MASK) == VALUE_DICT);
+        if ((arg & VALUE_MASK) != VALUE_DICT) {
+            return ctx_failure(ctx, "match: expected a tuple");
+        }
         if (arg == VALUE_DICT) {
-            assert(vt->u.tuple.n == 0);
+            if (vt->u.tuple.n != 0) {
+                return ctx_failure(ctx, "match: expected a non-empty tuple");
+            }
             return vars;
         }
-        assert(vt->u.tuple.n > 0);
+        if (vt->u.tuple.n == 0) {
+            return ctx_failure(ctx, "match: expected an empty tuple");
+        }
         int size;
         uint64_t *vals = value_get(arg, &size);
         size /= 2 * sizeof(uint64_t);
-        assert(vt->u.tuple.n == size);
+        if (vt->u.tuple.n != size) {
+            return ctx_failure(ctx, "match: tuple size mismatch");
+        }
         for (int i = 0; i < size; i++) {
-            assert(vals[2*i] == ((i << VALUE_BITS) | VALUE_INT));
-            vars = var_match(vt->u.tuple.elements[i], vals[2*i+1], vars);
+            if (vals[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
+                return ctx_failure(ctx, "match: not a tuple");
+            }
+            vars = var_match_rec(ctx, vt->u.tuple.elements[i], vals[2*i+1], vars);
         }
         return vars;
     default:
         assert(false);
+    }
+}
+
+void var_match(struct context *ctx, struct var_tree *vt, uint64_t arg){
+    uint64_t vars = var_match_rec(ctx, vt, arg, ctx->vars);
+    if (ctx->failure == 0) {
+        ctx->vars = vars;
     }
 }
 
@@ -680,9 +701,10 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     ctx->vars = dict_store(VALUE_DICT,
         value_put_atom("result", 6), VALUE_DICT);       // TODO "result" atom
 
-    ctx->vars = var_match(ef->args, arg, ctx->vars);
-
-    ctx->pc += 1;
+    var_match(*pctx, ef->args, arg);
+    if ((*pctx)->failure == 0) {
+        ctx->pc += 1;
+    }
 }
 
 void op_Jump(const void *env, struct state *state, struct context **pctx){
@@ -1037,11 +1059,14 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         (*pctx)->vars = ind_store((*pctx)->vars, indices, size, v);
+        (*pctx)->pc++;
     }
     else {
-        (*pctx)->vars = var_match(es->args, v, (*pctx)->vars);
+        var_match(*pctx, es->args, v);
+        if ((*pctx)->failure == 0) {
+            (*pctx)->pc++;
+        }
     }
-    (*pctx)->pc++;
 }
 
 void *init_Address(struct map *map){ return NULL; }
@@ -1721,8 +1746,8 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                ctx_failure(ctx, "+: applied to mix of integers and other values");
-                return 0;
+                return ctx_failure(ctx,
+                    "+: applied to mix of integers and other values");
             }
             e1 += e2 & ~VALUE_MASK;
         }
