@@ -91,7 +91,8 @@ char *value_string(uint64_t v);
 #define VALUE_ADDRESS   6
 #define VALUE_CONTEXT   7
 
-#define VALUE_INF   ((~(uint64_t)0) >> (VALUE_BITS + 1))
+#define VALUE_MAX   ((~(uint64_t)0) >> (VALUE_BITS + 1))
+#define VALUE_MIN   (((uint64_t) 1) << (64 - VALUE_BITS - 1))
 
 uint64_t dict_store(uint64_t dict, uint64_t key, uint64_t value);
 uint64_t dict_load(uint64_t dict, uint64_t key);

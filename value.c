@@ -233,11 +233,15 @@ static char *value_string_bool(uint64_t v) {
 
 static char *value_string_int(uint64_t v) {
     char *r;
-    if ((v >> VALUE_BITS) == VALUE_INF) {
+    v >>= VALUE_BITS;
+    if (v == VALUE_MAX) {
         asprintf(&r, "inf");
     }
+    else if (v == VALUE_MIN) {
+        asprintf(&r, "-inf");
+    }
     else {
-        asprintf(&r, "%"PRId64"", ((int64_t) v) >> VALUE_BITS);
+        asprintf(&r, "%"PRId64"", v);
     }
     return r;
 }
@@ -400,7 +404,10 @@ uint64_t value_int(struct map *map){
     assert(value->type == JV_ATOM);
     uint64_t v;
     if (atom_cmp(value->u.atom, "inf")) {
-        v = VALUE_INF;
+        v = VALUE_MAX;
+    }
+    else if (atom_cmp(value->u.atom, "-inf")) {
+        v = VALUE_MIN;
     }
     else {
         char *copy = malloc(value->u.atom.len + 1);
