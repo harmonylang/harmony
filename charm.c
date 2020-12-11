@@ -1,3 +1,4 @@
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +50,10 @@ static int graph_alloc;            // size allocated
 static struct queue *failures;     // queue of "struct failure"
 static uint64_t *processes;        // list of contexts of processes
 static int nprocesses;             // the number of processes in the list
+static double lasttime;            // since last report printed
+static int timecnt;                // to reduce time overhead
+static int enqueued;               // #states enqueued
+static int dequeued;               // #states dequeued
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -101,12 +106,17 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
-        if (false) {
-            char *p = value_string(sc->vars);
-            char *q = value_string(sc->ctxbag);
-            printf("%d -> %s %s %s\n", pc, code[pc].oi->name, p, q);
-            free(p);
-            free(q);
+        if (timecnt-- == 0) {
+            struct timeval tv;
+            gettimeofday(&tv, NULL);
+            double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
+            if (now - lasttime > 1) {
+                char *p = value_string(cc->nametag);
+                printf("%s pc=%d states=%d queue=%d\n", p, cc->pc, enqueued, enqueued - dequeued);
+                free(p);
+                lasttime = now;
+            }
+            timecnt = 1000;
         }
 
         struct op_info *oi = code[pc].oi;
@@ -201,6 +211,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             else {
                 queue_enqueue(todo, next);
             }
+            enqueued++;
         }
     }
     else {
@@ -514,11 +525,13 @@ int main(int argc, char **argv){
     // Put the initial state on the queue
     struct queue *todo = queue_init();
     queue_enqueue(todo, node);
+    enqueued++;
 
     void *next;
     int state_counter = 1;
     while (queue_dequeue(todo, &next)) {
         state_counter++;
+        dequeued++;
 
         node = next;
         state = node->state;

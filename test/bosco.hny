@@ -1,0 +1,53 @@
+import synch;
+
+const N = 4;
+const F = 1;
+const NROUNDS = 2;
+
+network = {};
+decisions = {};
+done = [False,] * N;
+
+def broadcast(msg):
+    atomic:
+        network |= {msg};
+    ;
+;
+def process(self, proposal):
+    let est = proposal:
+        for round in {0..NROUNDS-1}:
+            # Broadcast estimate
+            broadcast(self, round, est);
+
+            # Wait until there are enough messages
+            let m = {}:
+                while len(m) < (N - F):
+                    m = { (p, e) for (p,r,e) in network such that r == round };
+                ;
+
+                let ests = { e for (p,e) in m }
+                let cnts = { (len({(p,x) for (p,x) in m such that x == e}), e) for e in ests }
+                let (n, best) = max(cnts):
+                    est = best;
+                    if n >= (N - F):
+                        atomic:
+                            decisions |= { best };
+                        ;
+                    ;
+                ;
+            ;
+        ;
+    ;
+    done[self] = True;
+;
+def main():
+    await all(done);
+    assert len(decisions) <= 1;
+;
+
+const VALUES = { 0, 1 };
+spawn process(0, choose(VALUES));
+spawn process(1, choose(VALUES));
+spawn process(2, choose(VALUES));
+spawn process(3, choose(VALUES));
+spawn main();
