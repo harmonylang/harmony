@@ -29,11 +29,11 @@ def process(self, proposal):
                 let cnts = { (len({(p,x) for (p,x) in m such that x == e}), e) for e in ests }
                 let (n, best) = max(cnts):
                     est = best;
-                    if n >= (N - F):
-                        atomic:
-                            decisions |= { best };
-                        ;
-                    ;
+                    # if n >= (N - F):
+                    #     atomic:
+                    #         decisions |= { best };
+                    #     ;
+                    # ;
                 ;
             ;
         ;
