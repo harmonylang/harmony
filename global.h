@@ -91,6 +91,9 @@ char *value_string(uint64_t v);
 #define VALUE_ADDRESS   6
 #define VALUE_CONTEXT   7
 
+#define VALUE_FALSE     VALUE_BOOL
+#define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)
+
 #define VALUE_MAX   ((~(uint64_t)0) >> (VALUE_BITS + 1))
 #define VALUE_MIN   (((uint64_t) 1) << (64 - VALUE_BITS - 1))
 

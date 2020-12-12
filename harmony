@@ -4172,6 +4172,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     choice_copy = choice
 
     steps = []
+    breakflag = False
 
     if interrupt:
         assert not cc.interruptLevel
@@ -4210,6 +4211,8 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
             choice_copy = None
         else:
             assert choice_copy == None
+            if type(sc.code[cc.pc]) in { LoadOp, StoreOp, AtomicIncOp }:
+                breakflag = True
             try:
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
@@ -4242,10 +4245,10 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # go first assuming there are other processes and we're not
         # in "atomic" mode
         # TODO.  IS THIS CHECK RIGHT?
-        if cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
+        if breakflag and cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
             break
         # TODO.  WHY NOT HAVE THE SAME CHECK HERE?
-        if cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
+        if breakflag and cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
             break
 
         # ContinueOp always causes a break

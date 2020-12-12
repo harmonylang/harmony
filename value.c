@@ -227,6 +227,10 @@ void append_printf(char **p, char *fmt, ...){
 
 static char *value_string_bool(uint64_t v) {
     char *r;
+    if (!(v == 0 || v == (1 << VALUE_BITS))) {
+        printf("%llx", v);
+    }
+    assert(v == 0 || v == (1 << VALUE_BITS));
     asprintf(&r, v == 0 ? "False" : "True");
     return r;
 }
@@ -256,6 +260,7 @@ static char *value_string_atom(uint64_t v) {
 
 static char *value_string_pc(uint64_t v) {
     char *r;
+    assert((v >> VALUE_BITS) < 10000);      // debug
     asprintf(&r, "PC(%"PRIu64")", v >> VALUE_BITS);
     return r;
 }

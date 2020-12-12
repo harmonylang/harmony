@@ -550,7 +550,7 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
     if ((v & VALUE_MASK) != VALUE_BOOL) {
         ctx_failure(*pctx, "assert can only be applied to bool values");
     }
-    if (v == VALUE_BOOL) {          // False
+    if (v == VALUE_FALSE) {
         printf("HARMONY ASSERTION FAILED\n");
         ctx_failure(*pctx, "Harmony assertion failed");
     }
@@ -565,7 +565,7 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx){
     if ((v & VALUE_MASK) != VALUE_BOOL) {
         ctx_failure(*pctx, "assert2 can only be applied to bool values");
     }
-    if (v == VALUE_BOOL) {
+    if (v == VALUE_FALSE) {
         char *p = value_string(e);
         printf("HARMONY ASSERTION FAILED: %s\n", p);
         ctx_failure(*pctx, "Harmony assertion failed: %s", p);
@@ -1268,7 +1268,7 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
-		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+		return VALUE_TRUE;
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
@@ -1278,11 +1278,11 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
                 return ctx_failure(ctx, "set.all() can only be applied to booleans");
             }
-            if (v[i] == VALUE_BOOL) {
-                return VALUE_BOOL;
+            if (v[i] == VALUE_FALSE) {
+                return VALUE_FALSE;
             }
         }
-		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+		return VALUE_TRUE;
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
@@ -1292,11 +1292,11 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n){
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
                 return ctx_failure(ctx, "dict.all() can only be applied to booleans");
             }
-            if (v[2*i+1] == VALUE_BOOL) {
-                return VALUE_BOOL;
+            if (v[2*i+1] == VALUE_FALSE) {
+                return VALUE_FALSE;
             }
         }
-		return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+		return VALUE_TRUE;
     }
     return ctx_failure(ctx, "all() can only be applied to sets or dictionaries");
 }
@@ -1305,7 +1305,7 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
-		return VALUE_BOOL;  // False
+		return VALUE_FALSE;
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
@@ -1315,11 +1315,11 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
                 return ctx_failure(ctx, "set.any() can only be applied to booleans");
             }
-            if (v[i] != VALUE_BOOL) {
-                return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+            if (v[i] != VALUE_FALSE) {
+                return VALUE_TRUE;
             }
         }
-		return VALUE_BOOL;  // False
+		return VALUE_FALSE;
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
@@ -1329,11 +1329,11 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
                 return ctx_failure(ctx, "dict.any() can only be applied to booleans");
             }
-            if (v[2*i+1] == VALUE_BOOL) {
-                return (1 << VALUE_BITS) | VALUE_BOOL;  // True
+            if (v[2*i+1] != VALUE_FALSE) {
+                return VALUE_TRUE;
             }
         }
-		return VALUE_BOOL;  // False
+		return VALUE_FALSE;
     }
     return ctx_failure(ctx, "any() can only be applied to sets or dictionaries");
 }
@@ -1398,10 +1398,12 @@ uint64_t f_ne(struct state *state, struct context *ctx, uint64_t *args, int n){
 }
 
 uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
+    printf("IN %llx %s %s\n", args[1], value_string(args[1]), value_string(args[0]));
     assert(n == 2);
     uint64_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT) {
-		return VALUE_BOOL;      // False
+        printf("EMPTY\n");
+		return VALUE_FALSE;
 	}
     if ((s & VALUE_MASK) == VALUE_SET) {
         int size;
@@ -1409,10 +1411,12 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if (v[i] == e) {
-                return (1 << VALUE_BITS) | VALUE_BOOL;
+                printf("FOUND SET\n");
+                return VALUE_TRUE;
             }
         }
-        return VALUE_BOOL;
+        printf("NOT FOUND SET\n");
+        return VALUE_FALSE;
     }
     if ((s & VALUE_MASK) == VALUE_DICT) {
         int size;
@@ -1420,10 +1424,12 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if (v[2*i+1] == e) {
-                return (1 << VALUE_BITS) | VALUE_BOOL;
+                printf("FOUND DICT\n");
+                return VALUE_TRUE;
             }
         }
-        return VALUE_BOOL;
+        printf("NOT FOUND DICT\n");
+        return VALUE_FALSE;
     }
     return ctx_failure(ctx, "'in' can only be applied to sets or dictionaries");
 }
@@ -1993,6 +1999,12 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
         else {
             vi[i].vals = value_get(args[i], &vi[i].size); 
+            printf("BEFORE\n");
+            for (int j = 0; j < n; j++) {
+                printf("<<< %llx\n", vi[i].vals[j]);
+                printf("<<< %s\n", value_string(vi[i].vals[j]));
+            }
+            printf("AFTER\n");
             total += vi[i].size;
         }
     }
@@ -2012,6 +2024,10 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
 
     n = sort(vals, total / sizeof(uint64_t));
     uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
+    for (int i = 0; i < n; i++) {
+        printf(">>> %llx\n", vals[i]);
+        printf(">>> %s\n", value_string(vals[i]));
+    }
     free(vi);
     free(vals);
     return result;

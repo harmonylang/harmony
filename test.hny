@@ -28,6 +28,8 @@ assert (v({1, 2, 3}) ^ v({2, 3, 4}) ^ v({3, 4, 5})) == {1,3,5};
 assert v(inf) > v(1);
 assert -v(inf) < v(-1);
 assert v(-inf) < v(-1), v(-inf);
+assert v(True) in { True, (1,), (2,) }, 12;
+assert v(False) not in { 1 }, 13;
 
 # x = v(3) + v(False);
-x = all v([3, 4]);
+# x = all v([3, 4]);

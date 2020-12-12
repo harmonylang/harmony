@@ -19,14 +19,25 @@ def process(self, proposal):
             # Broadcast estimate
             broadcast(self, round, est);
 
-            # Wait until there are enough messages
-            let m = {}:
-                while len(m) < (N - F):
-                    m = { (p, e) for (p,r,e) in network such that r == round };
+            # Handle received messages
+            let received = {}:
+                # Wait until there are enough messages
+                while len(received) < (N - F):
+                    let eligible = { (p,r,e) for (p,r,e) in (network - received)
+                                            such that r == round }:
+                        if len(eligible) > 0:
+                            received |= {choose(eligible)};
+                        ;
+                    ;
                 ;
 
-                let ests = { e for (p,e) in m }
-                let cnts = { (len({(p,x) for (p,x) in m such that x == e}), e) for e in ests }
+                assert len(received) == (N - F);
+                assert False not in received;
+                assert True not in received;
+                assert False, (100, received);
+                let ests = { e for (p,r,e) in received }
+                let cnts = { (len({(p,x) for (p,r,x) in received
+                                    such that x == e}), e) for e in ests }
                 let (n, best) = max(cnts):
                     est = best;
                     # if n >= (N - F):
@@ -38,16 +49,16 @@ def process(self, proposal):
             ;
         ;
     ;
-    done[self] = True;
+    # done[self] = True;
 ;
 def main():
     await all(done);
     assert len(decisions) <= 1;
 ;
 
-const VALUES = { 0, 1 };
-spawn process(0, choose(VALUES));
-spawn process(1, choose(VALUES));
-spawn process(2, choose(VALUES));
-spawn process(3, choose(VALUES));
-spawn main();
+let nzeroes = choose({0..N-1}):
+    for i in {0..N-1}:
+        spawn process(i, 0 if i < nzeroes else 1);
+    ;
+;
+# spawn main();
