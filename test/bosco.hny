@@ -21,7 +21,7 @@ def process(self, proposal):
 
             # Handle received messages
             let received = {}:
-                # Wait until there are enough messages
+                # Receive messages until there are enough
                 while len(received) < (N - F):
                     let eligible = { (p,r,e) for (p,r,e) in (network - received)
                                             such that r == round }:
@@ -31,9 +31,7 @@ def process(self, proposal):
                     ;
                 ;
 
-                assert len(received) == (N - F);
-                assert False not in received;
-                assert True not in received;
+                # Update estimate
                 let ests = { e for (p,r,e) in received }
                 let cnts = { (len({(p,x) for (p,r,x) in received
                                     such that x == e}), e) for e in ests }

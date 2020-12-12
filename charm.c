@@ -103,6 +103,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     uint64_t choice_copy = choice;
 
     bool choosing = false;
+    bool breakflag = false;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -126,6 +127,9 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             cc->pc++;
         }
         else {
+            if (code[pc].breakable) {
+                breakflag = true;
+            }
             (*oi->op)(code[pc].env, sc, &cc);
             if (cc->terminated || cc->failure != 0) {
                 break;
@@ -156,7 +160,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (breakflag && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
                 code[cc->pc].breakable) {
             break;
         }
