@@ -273,6 +273,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     assert(cc->failure == 0);
 
     bool choosing = false;
+    bool breakflag = false;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -286,6 +287,9 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
         }
         else {
             printf("--- %d: %s\n", pc, oi->name);
+            if (code[pc].breakable) {
+                breakflag = true;
+            }
             (*oi->op)(code[pc].env, sc, &cc);
             if (cc->terminated || cc->failure != 0) {
                 break;
@@ -316,7 +320,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (breakflag && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
                 code[cc->pc].breakable) {
             break;
         }
