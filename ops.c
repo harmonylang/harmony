@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -650,6 +652,11 @@ void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     n >>= VALUE_BITS;
+	if (n == 0) {
+		ctx_push(pctx, VALUE_DICT);
+		(*pctx)->pc++;
+		return;
+	}
 
     // TODO.  Fail if there's a duplicate key
     uint64_t d = VALUE_DICT;
@@ -901,6 +908,11 @@ void op_Set(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     n >>= VALUE_BITS;
+	if (n == 0) {
+		ctx_push(pctx, VALUE_SET);
+		(*pctx)->pc++;
+		return;
+	}
 
     uint64_t *vals = malloc(n * sizeof(uint64_t));
     for (int i = 0; i < n; i++) {
@@ -908,7 +920,6 @@ void op_Set(const void *env, struct state *state, struct context **pctx){
     }
 
     n = sort(vals, n);
-    uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
     ctx_push(pctx, value_put_set(vals, n * sizeof(uint64_t)));
     free(vals);
     (*pctx)->pc++;
@@ -1398,11 +1409,9 @@ uint64_t f_ne(struct state *state, struct context *ctx, uint64_t *args, int n){
 }
 
 uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
-    printf("IN %llx %s %s\n", args[1], value_string(args[1]), value_string(args[0]));
     assert(n == 2);
     uint64_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT) {
-        printf("EMPTY\n");
 		return VALUE_FALSE;
 	}
     if ((s & VALUE_MASK) == VALUE_SET) {
@@ -1411,11 +1420,9 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if (v[i] == e) {
-                printf("FOUND SET\n");
                 return VALUE_TRUE;
             }
         }
-        printf("NOT FOUND SET\n");
         return VALUE_FALSE;
     }
     if ((s & VALUE_MASK) == VALUE_DICT) {
@@ -1424,11 +1431,9 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n){
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if (v[2*i+1] == e) {
-                printf("FOUND DICT\n");
                 return VALUE_TRUE;
             }
         }
-        printf("NOT FOUND DICT\n");
         return VALUE_FALSE;
     }
     return ctx_failure(ctx, "'in' can only be applied to sets or dictionaries");
@@ -1999,12 +2004,6 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
         else {
             vi[i].vals = value_get(args[i], &vi[i].size); 
-            printf("BEFORE\n");
-            for (int j = 0; j < n; j++) {
-                printf("<<< %llx\n", vi[i].vals[j]);
-                printf("<<< %s\n", value_string(vi[i].vals[j]));
-            }
-            printf("AFTER\n");
             total += vi[i].size;
         }
     }
@@ -2024,10 +2023,6 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
 
     n = sort(vals, total / sizeof(uint64_t));
     uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
-    for (int i = 0; i < n; i++) {
-        printf(">>> %llx\n", vals[i]);
-        printf(">>> %s\n", value_string(vals[i]));
-    }
     free(vi);
     free(vals);
     return result;
