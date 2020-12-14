@@ -83,8 +83,56 @@ static void code_get(struct json_value *jv){
         strcmp(oi->name, "AtomicInc") == 0;
 }
 
+bool invariant_check(struct state *state, struct context **pctx, int end){
+    assert((*pctx)->sp == 0);
+    assert((*pctx)->failure == 0);
+    (*pctx)->pc++;
+    while ((*pctx)->pc != end) {
+        struct op_info *oi = code[(*pctx)->pc].oi;
+        int oldpc = (*pctx)->pc;
+        (*oi->op)(code[oldpc].env, state, pctx);
+        assert((*pctx)->pc != oldpc);
+        assert(!(*pctx)->terminated);
+        if ((*pctx)->failure != 0) {
+            (*pctx)->sp = 0;
+            return false;
+        }
+    }
+    assert((*pctx)->sp == 1);
+    (*pctx)->sp = 0;
+    uint64_t b = (*pctx)->stack[0];
+    assert((b & VALUE_MASK) == VALUE_BOOL);
+    return b >> VALUE_BITS;
+}
+
+void check_invariants(struct node *node, struct context **pctx){
+    struct state *state = node->state;
+    extern int invariant_cnt(const void *env);
+
+    assert((state->invariants & VALUE_MASK) == VALUE_SET);
+    assert((*pctx)->sp == 0);
+    int size;
+    uint64_t *vals = value_get(state->invariants, &size);
+    size /= sizeof(uint64_t);
+    for (int i = 0; i < size; i++) {
+        assert((vals[i] & VALUE_MASK) == VALUE_PC);
+        (*pctx)->pc = vals[i] >> VALUE_BITS;
+        assert(strcmp(code[(*pctx)->pc].oi->name, "Invariant") == 0);
+        int cnt = invariant_cnt(code[(*pctx)->pc].env);
+        bool b = invariant_check(node->state, pctx, (*pctx)->pc + cnt);
+        if ((*pctx)->failure != 0) {
+            printf("IC FAIL %llx\n", (*pctx)->failure);
+            printf("IC FAIL %s\n", value_string((*pctx)->failure));
+        }
+        if (!b) {
+            printf("INVARIANT FAILED\n");
+            assert(false);
+        }
+    }
+}
+
 void onestep(struct node *node, uint64_t ctx, uint64_t choice,
-        struct map **pvisited, struct queue *todo){
+        struct map **pvisited, struct queue *todo, struct context **pinv_ctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -121,7 +169,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         }
 
         struct op_info *oi = code[pc].oi;
-
         if (code[pc].choose) {
             cc->stack[cc->sp - 1] = choice;
             cc->pc++;
@@ -206,6 +253,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         next->after = after;
         next->len = node->len + weight;
         graph_add(next);
+
+        if (sc->invariants != VALUE_SET) {
+            check_invariants(next, pinv_ctx);
+        }
 
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0 &&
                 queue_empty(failures)) {
@@ -536,6 +587,16 @@ int main(int argc, char **argv){
     queue_enqueue(todo, node);
     enqueued++;
 
+    // Create a context for evaluating invariants
+    struct context *inv_ctx = new_alloc(struct context);
+    uint64_t inv_nv = value_put_atom("name", 4);
+    uint64_t inv_tv = value_put_atom("tag", 3);
+    uint64_t inv_name = value_put_atom("__invariant__", 13);
+    inv_ctx->nametag = dict_store(VALUE_DICT, inv_nv, inv_name);
+    inv_ctx->nametag = dict_store(inv_ctx->nametag, inv_tv, VALUE_DICT);
+    inv_ctx->vars = VALUE_DICT;
+    inv_ctx->atomic = inv_ctx->readonly = 1;
+
     void *next;
     int state_counter = 1;
     while (queue_dequeue(todo, &next)) {
@@ -564,7 +625,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], &visited, todo);
+                onestep(node, state->choosing, vals[i], &visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -581,7 +642,7 @@ int main(int argc, char **argv){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(node, ctxs[i], 0, &visited, todo);
+                onestep(node, ctxs[i], 0, &visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }

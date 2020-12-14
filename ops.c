@@ -38,6 +38,7 @@ struct var_tree {
 };
 
 static struct map *ops_map, *f_map;
+extern struct code *code;
 
 struct env_DelVar {
     uint64_t name;
@@ -731,6 +732,12 @@ void op_Invariant(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc += ei->cnt + 1;
 }
 
+int invariant_cnt(const void *env){
+    const struct env_Invariant *ei = env;
+
+    return ei->cnt;
+}
+
 void op_Jump(const void *env, struct state *state, struct context **pctx){
     const struct env_Jump *ej = env;
 
@@ -962,7 +969,6 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
 }
 
 void op_Spawn(const void *env, struct state *state, struct context **pctx){
-    extern struct code *code;
     extern int code_len;
 
     uint64_t pc = ctx_pop(pctx);

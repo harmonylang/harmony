@@ -16,7 +16,12 @@ static struct map *address_map;
 static struct map *context_map;
 
 void *value_get(uint64_t v, int *psize){
-    return map_retrieve((void *) (v & ~VALUE_MASK), psize);
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        *psize = 0;
+        return NULL;
+    }
+    return map_retrieve((void *) v, psize);
 }
 
 void *value_copy(uint64_t v, int *psize){

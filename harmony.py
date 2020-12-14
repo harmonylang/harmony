@@ -3135,8 +3135,8 @@ class InvariantAST(AST):
         pc = len(code)
         code.append(None)
         self.cond.compile(scope, code)
-        assert(len(code) > pc + 1);
-        code[pc] = InvariantOp(len(code) - pc - 1, self.token);
+        code[pc] = InvariantOp(len(code) - pc, self.token);
+        code.append(ReturnOp())
 
 class LetAST(AST):
     def __init__(self, vars, stat):
@@ -4361,7 +4361,7 @@ def doCompile(filenames, consts, mods):
                 print("Can't open", fname, file=sys.stderr)
                 exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
-    # optimize(code)
+    optimize(code)
     return (code, scope)
 
 def kosaraju1(nodes, stack):
