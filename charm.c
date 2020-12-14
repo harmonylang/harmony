@@ -35,7 +35,7 @@ struct node {
 };
 
 struct failure {
-    enum { FAIL_SAFETY, FAIL_TERMINATION } type;
+    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION } type;
     struct node *node;      // starting state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
@@ -47,7 +47,7 @@ int code_len;
 static struct node **graph;        // vector of all nodes
 static int graph_size;             // to create node identifiers
 static int graph_alloc;            // size allocated
-static struct queue *failures;     // queue of "struct failure"
+static struct queue *failures;     // queue of "struct failure"  (TODO: make part of struct node "issues")
 static uint64_t *processes;        // list of contexts of processes
 static int nprocesses;             // the number of processes in the list
 static double lasttime;            // since last report printed
@@ -126,7 +126,12 @@ void check_invariants(struct node *node, struct context **pctx){
         }
         if (!b) {
             printf("INVARIANT FAILED\n");
-            assert(false);
+            struct failure *f = new_alloc(struct failure);
+            f->type = FAIL_INVARIANT;
+            f->ctx = node->after;
+            f->choice = 0;
+            f->node = node;
+            queue_enqueue(failures, f);
         }
     }
 }
@@ -712,6 +717,9 @@ int main(int argc, char **argv){
     switch (bad->type) {
     case FAIL_SAFETY:
         printf("Safety violation\n");
+        break;
+    case FAIL_INVARIANT:
+        printf("Invariant violation\n");
         break;
     case FAIL_TERMINATION:
         printf("Non-terminating state\n");

@@ -4191,7 +4191,7 @@ def invcheck(state, inv):
     ctx = ContextValue(DictValue({"name": "__invariant__", "tag": novalue}), 0)
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
-    while ctx.pc != inv + op.cnt + 1:
+    while ctx.pc != inv + op.cnt:
         state.code[ctx.pc].eval(state, ctx)
     assert len(ctx.stack) == 1;
     assert isinstance(ctx.stack[0], bool)
@@ -4363,7 +4363,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     node.edges[choice if node.state.choosing else ctx] = (next, cc, steps)
     next.sources.add(node)
     if cc.failure != None:
-        next.issues.add("Process Failure")
+        next.issues.add("Thread Failure")
 
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
