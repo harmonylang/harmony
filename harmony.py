@@ -499,6 +499,7 @@ def isreserved(s):
         "import",
         "in",
         "inf",
+        "invariant",
         "keys",
         "lambda",
         "len",
@@ -1672,6 +1673,26 @@ class ReadonlyDecOp(Op):
         context.readonly -= 1
         context.pc += 1
 
+class InvariantOp(Op):
+    def __init__(self, cnt, token):
+        assert cnt > 0
+        self.cnt = cnt
+        self.token = token
+
+    def __repr__(self):
+        return "Invariant " + str(self.cnt)
+
+    def jdump(self):
+        return '{ "op": "Invariant", "cnt": "%d" }'%self.cnt
+
+    def explain(self):
+        return "test invariant in next " + str(self.cnt) + " instructions"
+
+    def eval(self, state, context):
+        assert self.cnt > 0
+        state.invariants |= {context.pc}
+        context.pc += (self.cnt + 1)
+
 class JumpOp(Op):
     def __init__(self, pc):
         self.pc = pc
@@ -2077,6 +2098,8 @@ class ApplyOp(Op):
                         str(self.token) + " = " + str(method)
                 return
             context.pc += 1
+        elif isinstance(method, ContextValue):
+            assert False
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
@@ -3100,6 +3123,21 @@ class AwaitAST(AST):
         cond.compile(scope, code)
         code.append(JumpCondOp(negate, pc1))
 
+class InvariantAST(AST):
+    def __init__(self, cond, token):
+        self.cond = cond
+        self.token = token
+
+    def __repr__(self):
+        return "Invariant(" + str(self.cond) + ")"
+
+    def compile(self, scope, code):
+        pc = len(code)
+        code.append(None)
+        self.cond.compile(scope, code)
+        assert(len(code) > pc + 1);
+        code[pc] = InvariantOp(len(code) - pc - 1, self.token);
+
 class LetAST(AST):
     def __init__(self, vars, stat):
         self.vars = vars
@@ -3500,6 +3538,9 @@ class StatementRule(Rule):
         if lexeme == "await":
             (cond, t) = NaryRule({";"}).parse(t[1:])
             return (AwaitAST(cond), self.skip(token, t))
+        if lexeme == "invariant":
+            (cond, t) = NaryRule({";"}).parse(t[1:])
+            return (InvariantAST(cond, token), self.skip(token, t))
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
             (stat, t) = StatListRule({";"}).parse(t[1:])
@@ -3622,6 +3663,7 @@ class ContextValue(Value):
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = novalue
+        self.tlvars = novalue       # thread local variables
         self.trap = None
         self.terminated = False
         self.stopped = False
@@ -3680,9 +3722,11 @@ class ContextValue(Value):
         return c
 
     def get(self, var):
+        assert var != "this"
         return self.vars.d[var]
 
     def iget(self, indexes):
+        assert indexes[0] != "this"
         v = self.vars
         while indexes != []:
             v = v.d[indexes[0]]
@@ -3709,7 +3753,10 @@ class ContextValue(Value):
         return DictValue(d)
 
     def set(self, indexes, val):
-        self.vars = self.update(self.vars, indexes, val)
+        if indexes[0] == "this":
+            self.tlvars = self.update(self.tlvars, indexes[1:], val)
+        else:
+            self.vars = self.update(self.vars, indexes, val)
 
     def delete(self, indexes):
         self.vars = self.doDelete(self.vars, indexes)
@@ -3732,11 +3779,12 @@ class State:
         self.ctxbag = {}
         self.stopbag = {}
         self.choosing = None
+        self.invariants = set()
         self.initializing = True
 
     def __repr__(self):
         return "State(" + str(self.vars) + ", " + str(self.ctxbag) + ", " + \
-            str(self.stopbag) + ")"
+            str(self.stopbag) + ", " + str(self.invariants) + ")"
 
     def __hash__(self):
         h = self.vars.__hash__()
@@ -3744,6 +3792,8 @@ class State:
             h ^= c.__hash__()
         for c in self.stopbag.items():
             h ^= c.__hash__()
+        for i in self.invariants:
+            h ^= i
         return h
 
     def __eq__(self, other):
@@ -3758,6 +3808,8 @@ class State:
             return False
         if self.choosing != other.choosing:
             return False
+        if self.invariants != other.invariants:
+            return False
         if self.initializing != self.initializing:
             return False
         return True
@@ -3768,6 +3820,7 @@ class State:
         s.ctxbag = self.ctxbag.copy()
         s.stopbag = self.stopbag.copy()
         s.choosing = self.choosing
+        s.invariants = self.invariants.copy()
         s.initializing = self.initializing
         return s
 
@@ -4015,8 +4068,8 @@ def print_path(bad_node):
 
 class Scope:
     def __init__(self, parent):
-        self.parent = parent            # parent scope
-        self.names = {}                 # name to (type, x) map
+        self.parent = parent               # parent scope
+        self.names = { "this": ("local", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
         self.locations = {} if parent == None else parent.locations
         self.labels = {} if parent == None else parent.labels
         self.prefix = [] if parent == None else parent.prefix
@@ -4078,6 +4131,18 @@ def optimize(code):
             code[i] = JumpOp(optjump(code, op.pc))
         elif isinstance(op, JumpCondOp):
             code[i] = JumpCondOp(op.cond, optjump(code, op.pc))
+
+def invcheck(state, inv):
+    assert isinstance(state.code[inv], InvariantOp)
+    op = state.code[inv]
+    ctx = ContextValue(DictValue({"name": "__invariant__", "tag": novalue}), 0)
+    ctx.atomic = ctx.readonly = 1
+    ctx.pc = inv + 1
+    while ctx.pc != inv + op.cnt + 1:
+        state.code[ctx.pc].eval(state, ctx)
+    assert len(ctx.stack) == 1;
+    assert isinstance(ctx.stack[0], bool)
+    return ctx.stack[0]
 
 class Pad:
     def __init__(self, descr):
@@ -4225,6 +4290,10 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         next = Node(sc, len(nodes), node, ctx, cc, steps, length)
         nodes.append(next)
         visited[sc] = next
+        for inv in sc.invariants:
+            if not invcheck(sc, inv):
+                (lexeme, file, line, column) = sc.code[inv].token
+                next.issues.add("Invariant file=%s line=%d failed"%(file, line))
         if samectx:
             todo.insert(0, next)
         else:
@@ -4292,7 +4361,7 @@ def doCompile(filenames, consts, mods):
                 print("Can't open", fname, file=sys.stderr)
                 exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
-    optimize(code)
+    # optimize(code)
     return (code, scope)
 
 def kosaraju1(nodes, stack):
@@ -4404,6 +4473,8 @@ def run(code, labels, blockflag):
         bad_node = find_shortest(bad)
         print_path(bad_node)
         todump.add(bad_node)
+        for issue in bad_node.issues:
+            print(issue)
         issues_found = True
 
     if not faultyState:

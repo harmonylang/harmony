@@ -6,7 +6,7 @@ def Barrier(limit):
             .limit: limit,
             .mutex: Lock(),
             .full: Condition(), .others: Condition(),
-            .entered: 0, .left: 0
+            .entered: 0, .left: limit
         }
     ;
 ;
