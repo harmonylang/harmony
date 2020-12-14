@@ -1546,7 +1546,7 @@ class ReturnOp(Op):
     def eval(self, state, context):
         if len(context.stack) == 0:
             assert context.nametag == DictValue({"name": "__init__", "tag": novalue})
-            context.terminated = True
+            context.phase = "end"
             return
         result = context.get("result")
         context.fp = context.pop()
@@ -1568,7 +1568,7 @@ class ReturnOp(Op):
             assert pc.pc != context.pc
             context.pc = pc.pc
         elif calltype == "process":
-            context.terminated = True
+            context.phase = "end"
         else:
             assert False, calltype
 
@@ -3665,7 +3665,7 @@ class ContextValue(Value):
         self.vars = novalue
         self.tlvars = novalue       # thread local variables
         self.trap = None
-        self.terminated = False
+        self.phase = "start"        # start, middle, or end
         self.stopped = False
         self.failure = None
 
@@ -3677,7 +3677,7 @@ class ContextValue(Value):
 
     def __hash__(self):
         h = (self.nametag, self.pc, self.atomic, self.readonly, self.interruptLevel, self.vars,
-            self.trap, self.terminated, self.stopped, self.failure).__hash__()
+            self.trap, self.phase, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
         return h
@@ -3695,7 +3695,7 @@ class ContextValue(Value):
             return False
         if self.interruptLevel != other.interruptLevel:
             return False
-        if self.terminated != other.terminated:
+        if self.phase != other.phase:
             return False
         if self.stopped != other.stopped:
             return False
@@ -3716,7 +3716,7 @@ class ContextValue(Value):
         c.fp = self.fp
         c.trap = self.trap
         c.vars = self.vars
-        c.terminated = self.terminated
+        c.phase = self.phase
         c.stopped = self.stopped
         c.failure = self.failure
         return c
@@ -4184,7 +4184,6 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     choice_copy = choice
 
     steps = []
-    breakflag = False
 
     if interrupt:
         assert not cc.interruptLevel
@@ -4199,7 +4198,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 
     localStates = set() # used to detect infinite loops
     loopcnt = 0         # only check for infinite loops after a while
-    while not cc.terminated:
+    while cc.phase != "end":
         # execute one microstep
         steps.append((cc.pc, choice_copy))
 
@@ -4224,7 +4223,8 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         else:
             assert choice_copy == None
             if type(sc.code[cc.pc]) in { LoadOp, StoreOp, AtomicIncOp }:
-                breakflag = True
+                assert cc.phase != "end"
+                cc.phase = "middle"
             try:
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
@@ -4257,10 +4257,10 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # go first assuming there are other processes and we're not
         # in "atomic" mode
         # TODO.  IS THIS CHECK RIGHT?
-        if breakflag and cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
+        if cc.phase != "start" and cc.atomic == 0 and type(sc.code[cc.pc]) in { LoadOp, StoreOp }: # TODO  and len(sc.ctxbag) > 1:
             break
         # TODO.  WHY NOT HAVE THE SAME CHECK HERE?
-        if breakflag and cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
+        if cc.phase != "start" and cc.atomic == 0 and type(sc.code[cc.pc]) in { AtomicIncOp }:
             break
 
         # ContinueOp always causes a break
@@ -4279,7 +4279,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
     sc.remove(ctx)
 
     # Put the resulting context into the bag unless it's done
-    if cc.terminated:
+    if cc.phase == "end":
         sc.initializing = False     # initializing ends when __init__ finishes
     elif not cc.stopped:
         sc.add(cc)
