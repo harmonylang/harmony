@@ -519,6 +519,7 @@ int main(int argc, char **argv){
     state->labels = label_map;
     uint64_t ictx = value_put_context(&init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
+    state->invariants = VALUE_SET;
 
     // Put the initial state in the visited map
     struct map *visited = map_init();

@@ -48,6 +48,10 @@ struct env_Frame {
     struct var_tree *args;
 };
 
+struct env_Invariant {
+    int cnt;
+};
+
 struct env_Jump {
     int pc;
 };
@@ -708,6 +712,25 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_Invariant(const void *env, struct state *state, struct context **pctx){
+    const struct env_Invariant *ei = env;
+
+    assert((state->invariants & VALUE_MASK) == VALUE_SET);
+    int size;
+    uint64_t *vals;
+    if (state->invariants == VALUE_SET) {
+        size = 0;
+        vals = NULL;
+    }
+    else {
+        vals = value_get(state->invariants, &size);
+    }
+    vals = realloc(vals, size + sizeof(uint64_t));
+    * (uint64_t *) ((char *) vals + size) = ((*pctx)->pc << VALUE_BITS) | VALUE_PC;
+    state->invariants = value_put_set(vals, size + sizeof(uint64_t));
+    (*pctx)->pc += ei->cnt + 1;
+}
+
 void op_Jump(const void *env, struct state *state, struct context **pctx){
     const struct env_Jump *ej = env;
 
@@ -1179,6 +1202,19 @@ void *init_Nary(struct map *map){
     }
     env->fi = fi;
 
+    return env;
+}
+
+void *init_Invariant(struct map *map){
+    struct env_Invariant *env = new_alloc(struct env_Invariant);
+
+    struct json_value *cnt = map_lookup(map, "cnt", 3);
+    assert(cnt->type == JV_ATOM);
+    char *copy = malloc(cnt->u.atom.len + 1);
+    memcpy(copy, cnt->u.atom.base, cnt->u.atom.len);
+    copy[cnt->u.atom.len] = 0;
+    env->cnt = atoi(copy);
+    free(copy);
     return env;
 }
 
@@ -2108,6 +2144,7 @@ struct op_info op_table[] = {
 	{ "Dict", init_Dict, op_Dict },
 	{ "Dup", init_Dup, op_Dup },
 	{ "Frame", init_Frame, op_Frame },
+	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
 	{ "JumpCond", init_JumpCond, op_JumpCond },
 	{ "Load", init_Load, op_Load },
