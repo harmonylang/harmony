@@ -45,7 +45,11 @@ struct context {     // context value
     int fp;               // frame pointer
     uint64_t vars;        // local variables
     uint64_t failure;     // atom value describing failure, or 0 if no failure
-    bool terminated;      // the context terminated
+    enum phase {
+        CTX_START,        // before first "switch" operation
+        CTX_MIDDLE,       // normal operation
+        CTX_END           // terminated
+    } phase;
     int atomic;           // atomic counter
     int readonly;         // readonly counter
     int sp;               // stack size

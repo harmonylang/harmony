@@ -92,7 +92,7 @@ bool invariant_check(struct state *state, struct context **pctx, int end){
         int oldpc = (*pctx)->pc;
         (*oi->op)(code[oldpc].env, state, pctx);
         assert((*pctx)->pc != oldpc);
-        assert(!(*pctx)->terminated);
+        assert((*pctx)->phase != CTX_END);
         if ((*pctx)->failure != 0) {
             (*pctx)->sp = 0;
             return false;
@@ -149,14 +149,13 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    assert(!cc->terminated);
+    assert(cc->phase != CTX_END);
     assert(cc->failure == 0);
 
     // Copy the choice
     uint64_t choice_copy = choice;
 
     bool choosing = false;
-    bool breakflag = false;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -180,10 +179,11 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         }
         else {
             if (code[pc].breakable) {
-                breakflag = true;
+                assert(cc->phase != CTX_END);
+                cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->terminated || cc->failure != 0) {
+            if (cc->phase == CTX_END || cc->failure != 0) {
                 break;
             }
             if (cc->pc == pc) {
@@ -212,7 +212,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             }
         }
 
-        if (breakflag && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (cc->phase != CTX_START && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
                 code[cc->pc].breakable) {
             break;
         }
@@ -234,12 +234,12 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
 
     // If choosing, save in state
     if (choosing) {
-        assert(!cc->terminated);
+        assert(cc->phase != CTX_END);
         sc->choosing = after;
     }
 
     // Add new context to state unless it's terminated
-    if (!cc->terminated) {
+    if (cc->phase != CTX_END) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 
@@ -325,11 +325,10 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    assert(!cc->terminated);
+    assert(cc->phase != CTX_END);
     assert(cc->failure == 0);
 
     bool choosing = false;
-    bool breakflag = false;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -344,10 +343,10 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
         else {
             printf("--- %d: %s\n", pc, oi->name);
             if (code[pc].breakable) {
-                breakflag = true;
+                cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->terminated || cc->failure != 0) {
+            if (cc->phase == CTX_END || cc->failure != 0) {
                 break;
             }
             if (cc->pc == pc) {
@@ -376,7 +375,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
             }
         }
 
-        if (breakflag && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (cc->phase != CTX_START && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
                 code[cc->pc].breakable) {
             break;
         }

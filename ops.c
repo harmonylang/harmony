@@ -877,7 +877,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx)
 
 void op_Return(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->sp == 0) {     // __init__
-        (*pctx)->terminated = true;
+        (*pctx)->phase = CTX_END;
         if (false) {
             printf("RETURN INIT\n");
         }
@@ -898,7 +898,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {
         case CALLTYPE_PROCESS:
-            (*pctx)->terminated = true;
+            (*pctx)->phase = CTX_END;
             break;
         case CALLTYPE_NORMAL:
             {
