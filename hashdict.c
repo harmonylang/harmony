@@ -84,35 +84,6 @@ void dic_resize(struct dictionary* dic, int newsize) {
 	free(old);
 }
 
-int dic_add(struct dictionary* dic, const void *key, int keyn) {
-	int n = hash_func((const char*)key, keyn) % dic->length;
-	if (dic->table[n] == 0) {
-		double f = (double)dic->count / (double)dic->length;
-		if (f > dic->growth_treshold) {
-			dic_resize(dic, dic->length * dic->growth_factor);
-			return dic_add(dic, key, keyn);
-		}
-		dic->table[n] = keynode_new((char*)key, keyn);
-		dic->value = &dic->table[n]->value;
-		dic->count++;
-		return 0;
-	}
-	struct keynode *k = dic->table[n];
-	while (k) {
-		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
-			dic->value = &k->value;
-			return 1;
-		}
-		k = k->next;
-	}
-	dic->count++;
-	struct keynode *k2 = keynode_new((char*)key, keyn);
-	k2->next = dic->table[n];
-	dic->table[n] = k2;
-	dic->value = &k2->value;
-	return 0;
-}
-
 void *dic_find(struct dictionary* dic, const void *key, int keyn) {
 	int n = hash_func((const char*)key, keyn) % dic->length;
 	if (dic->table[n] == 0) {
@@ -140,6 +111,11 @@ void *dic_find(struct dictionary* dic, const void *key, int keyn) {
 	dic->table[n] = k2;
 	dic->value = &k2->value;
 	return k2;
+}
+
+void **dic_insert(struct dictionary *dic, const void *key, int keyn){
+    struct keynode *k = dic_find(dic, key, keyn);
+    return &k->value;
 }
 
 void *dic_retrieve(const void *p, int *psize){

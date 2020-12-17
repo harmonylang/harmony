@@ -26,12 +26,11 @@ struct dictionary {
 	HASHDICT_VALUE_TYPE *value;
 };
 
-/* See README.md */
-
 struct dictionary* dic_new(int initial_size);
 void dic_delete(struct dictionary* dic);
 int dic_add(struct dictionary* dic, const void *key, int keyn);
 int dic_lookup(struct dictionary* dic, const void *key, int keyn);
+void **dic_insert(struct dictionary *dic, const void *key, int keyn);
 void *dic_find(struct dictionary* dic, const void *key, int keyn);
 void *dic_retrieve(const void *p, int *psize);
 void dic_forEach(struct dictionary* dic, enumFunc f, void *user);

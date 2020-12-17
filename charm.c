@@ -4,8 +4,9 @@
 #include <string.h>
 #include <inttypes.h>
 #include <assert.h>
-#include "json.h"
 #include "global.h"
+#include "hashdict.h"
+#include "json.h"
 
 #define CHUNKSIZE   (1 << 12)
 
@@ -137,7 +138,7 @@ void check_invariants(struct node *node, struct context **pctx){
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice,
-        struct map **pvisited, struct queue *todo, struct context **pinv_ctx){
+        struct dictionary *visited, struct queue *todo, struct context **pinv_ctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -247,7 +248,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     int weight = ctx == node->after ? 0 : 1;
 
     // See if this new state was already seen before.
-    void **p = map_insert(pvisited, sc, sizeof(*sc));
+    void **p = dic_insert(visited, sc, sizeof(*sc));
     struct node *next;
     if ((next = *p) == NULL) {
         *p = next = new_alloc(struct node);
@@ -577,12 +578,12 @@ int main(int argc, char **argv){
     state->invariants = VALUE_SET;
 
     // Put the initial state in the visited map
-    struct map *visited = map_init();
+    struct dictionary *visited = dic_new(0);
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
     graph_add(node);
-    void **p = map_insert(&visited, state, sizeof(*state));
+    void **p = dic_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
 
@@ -629,7 +630,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], &visited, todo, &inv_ctx);
+                onestep(node, state->choosing, vals[i], visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -646,7 +647,7 @@ int main(int argc, char **argv){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(node, ctxs[i], 0, &visited, todo, &inv_ctx);
+                onestep(node, ctxs[i], 0, visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }
