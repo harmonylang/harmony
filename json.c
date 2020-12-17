@@ -18,8 +18,8 @@ void json_value_free(struct json_value *jv){
 		free(jv->u.atom.base);
 		break;
 	case JV_MAP:
-		map_iter(jv, jv->u.map, json_map_cleanup);
-		map_release(jv->u.map);
+		dic_iter(jv->u.map, json_map_cleanup, jv);
+		dic_delete(jv->u.map);
 		break;
 	case JV_LIST:
 		{
@@ -73,7 +73,7 @@ static void json_parse_atom(json_buf_t *buf, json_buf_t *atom){
 
 void json_map_append(struct json_value *map, json_buf_t key, struct json_value *jv){
 	assert(map->type == JV_MAP);
-	void **p = map_insert(&map->u.map, key.base, key.len);
+	void **p = dic_insert(map->u.map, key.base, key.len);
 	if (*p != 0) {
 		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
@@ -89,7 +89,7 @@ static struct json_value *json_parse_struct(json_buf_t *buf){
 
 	struct json_value *jv = new_alloc(struct json_value);
 	jv->type = JV_MAP;
-	jv->u.map = map_init();
+	jv->u.map = dic_new(0);
 	for (;;) {
 		json_skip_blanks(buf);
 		assert(buf->len > 0);
@@ -304,7 +304,7 @@ static void json_dump_ind(struct json_value *jv, unsigned int ind){
 		break;
 	case JV_MAP:
 		printf("{\n");
-		map_iter((void *) (size_t) (ind + 2), jv->u.map, json_dump_map);
+		dic_iter(jv->u.map, json_dump_map, (void *) (size_t) (ind + 2));
 		json_indent(ind); printf("}\n");
 		break;
 	case JV_LIST:
@@ -327,8 +327,8 @@ void json_dump(struct json_value *jv){
 
 /* Allocate and get a string out of an atom identified by string key.
  */
-char *json_lookup_string(struct map *map, char *key){
-	struct json_value *jv = map_lookup(map, key, strlen(key));
+char *json_lookup_string(struct dictionary *map, char *key){
+	struct json_value *jv = dic_lookup(map, key, strlen(key));
 	if (jv == 0) {
 		return 0;
 	}
@@ -341,8 +341,8 @@ char *json_lookup_string(struct map *map, char *key){
 
 /* Find a map inside the map by string key.
  */
-struct json_value *json_lookup_map(struct map *map, char *key){
-	struct json_value *jv = map_lookup(map, key, strlen(key));
+struct json_value *json_lookup_map(struct dictionary *map, char *key){
+	struct json_value *jv = dic_lookup(map, key, strlen(key));
 	if (jv == 0) {
 		return 0;
 	}
@@ -353,8 +353,8 @@ struct json_value *json_lookup_map(struct map *map, char *key){
 /* Find a json_value (can be either a JV_MAP or JV_ATOM) 
  * inside the map by string key.
  */
-struct json_value *json_lookup_value(struct map *map, char *key){
-	struct json_value *jv = map_lookup(map, key, strlen(key));
+struct json_value *json_lookup_value(struct dictionary *map, char *key){
+	struct json_value *jv = dic_lookup(map, key, strlen(key));
 	if (jv == 0) {
 		return 0;
 	}

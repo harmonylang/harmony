@@ -7,7 +7,6 @@
 #include <string.h>
 #include <assert.h>
 #include "global.h"
-#include "hashdict.h"
 #include "json.h"
 
 static struct dictionary *atom_map;
@@ -394,8 +393,8 @@ bool atom_cmp(json_buf_t buf, char *s){
     return strncmp(buf.base, s, n) == 0;
 }
 
-uint64_t value_bool(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_bool(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (atom_cmp(value->u.atom, "False")) {
         return VALUE_BOOL;
@@ -407,8 +406,8 @@ uint64_t value_bool(struct map *map){
     return 0;
 }
 
-uint64_t value_int(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_int(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     uint64_t v;
     if (atom_cmp(value->u.atom, "inf")) {
@@ -427,8 +426,8 @@ uint64_t value_int(struct map *map){
     return (v << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t value_pc(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_pc(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     char *copy = malloc(value->u.atom.len + 1);
     memcpy(copy, value->u.atom.base, value->u.atom.len);
@@ -438,15 +437,15 @@ uint64_t value_pc(struct map *map){
     return (v << VALUE_BITS) | VALUE_PC;
 }
 
-uint64_t value_atom(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_atom(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     void *p = dic_find(atom_map, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }
 
-uint64_t value_dict(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_dict(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return VALUE_DICT;
@@ -455,9 +454,9 @@ uint64_t value_dict(struct map *map){
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        struct json_value *k = map_lookup(jv->u.map, "key", 3);
+        struct json_value *k = dic_lookup(jv->u.map, "key", 3);
         assert(k->type == JV_MAP);
-        struct json_value *v = map_lookup(jv->u.map, "value", 5);
+        struct json_value *v = dic_lookup(jv->u.map, "value", 5);
         assert(v->type == JV_MAP);
         vals[2*i] = value_from_json(k->u.map);
         vals[2*i+1] = value_from_json(v->u.map);
@@ -470,8 +469,8 @@ uint64_t value_dict(struct map *map){
     return (uint64_t) p | VALUE_DICT;
 }
 
-uint64_t value_set(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_set(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return (uint64_t) VALUE_SET;
@@ -489,8 +488,8 @@ uint64_t value_set(struct map *map){
     return (uint64_t) p | VALUE_SET;
 }
 
-uint64_t value_address(struct map *map){
-    struct json_value *value = map_lookup(map, "value", 5);
+uint64_t value_address(struct dictionary *map){
+    struct json_value *value = dic_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return (uint64_t) VALUE_ADDRESS;
@@ -507,8 +506,8 @@ uint64_t value_address(struct map *map){
     return (uint64_t) p | VALUE_ADDRESS;
 }
 
-uint64_t value_from_json(struct map *map){
-    struct json_value *type = map_lookup(map, "type", 4);
+uint64_t value_from_json(struct dictionary *map){
+    struct json_value *type = dic_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
     if (atom_cmp(type->u.atom, "bool")) {

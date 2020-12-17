@@ -5,7 +5,6 @@
 #include <inttypes.h>
 #include <assert.h>
 #include "global.h"
-#include "hashdict.h"
 #include "json.h"
 
 #define CHUNKSIZE   (1 << 12)
@@ -67,7 +66,7 @@ static void graph_add(struct node *node){
 
 static void code_get(struct json_value *jv){
     assert(jv->type == JV_MAP);
-    struct json_value *op = map_lookup(jv->u.map, "op", 2);
+    struct json_value *op = dic_lookup(jv->u.map, "op", 2);
     assert(op->type == JV_ATOM);
     struct op_info *oi = ops_get(op->u.atom.base, op->u.atom.len);
     if (oi == NULL) {
@@ -396,8 +395,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     return ctx;
 }
 
-void label_upcall(void *env,
-        const void *key, unsigned int key_size, void *value){
+void label_upcall(void *env, const void *key, unsigned int key_size, void *value){
     uint64_t *labels = env;
     struct json_value *jv = value;
 
@@ -547,13 +545,13 @@ int main(int argc, char **argv){
     assert(jv->type == JV_MAP);
 
     // extract the labels
-    struct json_value *labels = map_lookup(jv->u.map, "labels", 6);
+    struct json_value *labels = dic_lookup(jv->u.map, "labels", 6);
     assert(labels->type == JV_MAP);
     uint64_t label_map = VALUE_DICT;
-    map_iter(&label_map, labels->u.map, label_upcall);
+    dic_iter(labels->u.map, label_upcall, &label_map);
 
     // travel through the json code contents to create the code array
-    struct json_value *jc = map_lookup(jv->u.map, "code", 4);
+    struct json_value *jc = dic_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
     for (int i = 0; i < jc->u.list.nvals; i++) {
         // printf("Line %d\n", i);

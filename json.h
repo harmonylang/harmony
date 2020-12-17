@@ -10,7 +10,7 @@ struct json_value {
 	enum { JV_ATOM, JV_MAP, JV_LIST } type;
 	union {
 		json_buf_t atom;
-		struct map *map;		// maps atoms to json_values
+		struct dictionary *map;		// maps atoms to json_values
 		struct {
 			struct json_value **vals;
 			unsigned int nvals;
@@ -24,8 +24,8 @@ void json_value_free(struct json_value *jv);
 void json_dump(struct json_value *jv);
 void json_list_append(struct json_value *list, struct json_value *jv);
 void json_map_append(struct json_value *map, json_buf_t key, struct json_value *jv);
-char *json_lookup_string(struct map *map, char *key);
-struct json_value *json_lookup_map(struct map *map, char *key);
-struct json_value *json_lookup_value(struct map *map, char *key);
+char *json_lookup_string(struct dictionary *map, char *key);
+struct json_value *json_lookup_map(struct dictionary *map, char *key);
+struct json_value *json_lookup_value(struct dictionary *map, char *key);
 
 #endif /* JSON_H */

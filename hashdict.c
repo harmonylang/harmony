@@ -58,13 +58,11 @@ void dic_reinsert_when_resizing(struct dictionary* dic, struct keynode *k2) {
 	int n = hash_func(k2->key, k2->len) % dic->length;
 	if (dic->table[n] == 0) {
 		dic->table[n] = k2;
-		dic->value = &dic->table[n]->value;
 		return;
 	}
 	struct keynode *k = dic->table[n];
 	k2->next = k;
 	dic->table[n] = k2;
-	dic->value = &k2->value;
 }
 
 void dic_resize(struct dictionary* dic, int newsize) {
@@ -93,14 +91,12 @@ void *dic_find(struct dictionary* dic, const void *key, int keyn) {
 			return dic_find(dic, key, keyn);
 		}
 		dic->table[n] = keynode_new((char*)key, keyn);
-		dic->value = &dic->table[n]->value;
 		dic->count++;
 		return dic->table[n];
 	}
 	struct keynode *k = dic->table[n];
 	while (k) {
 		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
-			dic->value = &k->value;
 			return k;
 		}
 		k = k->next;
@@ -109,7 +105,6 @@ void *dic_find(struct dictionary* dic, const void *key, int keyn) {
 	struct keynode *k2 = keynode_new((char*)key, keyn);
 	k2->next = dic->table[n];
 	dic->table[n] = k2;
-	dic->value = &k2->value;
 	return k2;
 }
 
@@ -126,27 +121,26 @@ void *dic_retrieve(const void *p, int *psize){
     return k->key;
 }
 
-int dic_lookup(struct dictionary* dic, const void *key, int keyn) {
+void *dic_lookup(struct dictionary* dic, const void *key, int keyn) {
 	int n = hash_func((const char*)key, keyn) % dic->length;
 	__builtin_prefetch(dic->table[n]);
 	struct keynode *k = dic->table[n];
 	if (!k) return 0;
 	while (k) {
 		if (k->len == keyn && !memcmp(k->key, key, keyn)) {
-			dic->value = &k->value;
-			return 1;
+			return k->value;
 		}
 		k = k->next;
 	}
 	return 0;
 }
 
-void dic_forEach(struct dictionary* dic, enumFunc f, void *user) {
+void dic_iter(struct dictionary* dic, enumFunc f, void *env) {
 	for (int i = 0; i < dic->length; i++) {
 		if (dic->table[i] != 0) {
 			struct keynode *k = dic->table[i];
 			while (k) {
-				if (!f(k->key, k->len, &k->value, user)) return;
+				(*f)(env, k->key, k->len, k->value);
 				k = k->next;
 			}
 		}

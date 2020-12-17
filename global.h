@@ -1,17 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include "hashdict.h"
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
-
-struct map *map_init(void);
-void **map_insert(struct map **pmap, const void *key, unsigned int key_size);
-void *map_lookup(struct map *map, const void *key, unsigned int key_size);
-void map_iter(void *env, struct map *map, void (*upcall)(void *env,
-						const void *key, unsigned int key_size, void *value));
-void map_release(struct map *map);
-void *map_find(struct map **pmap, const void *key, unsigned int key_size);
-void *map_retrieve(void *p, int *size);
-void map_cleanup(void);
 
 struct queue *queue_init(void);
 void queue_enqueue(struct queue *queue, void *item);
@@ -64,14 +55,14 @@ struct state {
 
 struct op_info {
     const char *name;
-    void *(*init)(struct map *);
+    void *(*init)(struct dictionary *);
     void (*op)(const void *env, struct state *state, struct context **pctx);
 };
 
 #include "json.h"
 
 void value_init();
-uint64_t value_from_json(struct map *map);
+uint64_t value_from_json(struct dictionary *map);
 int value_cmp(uint64_t v1, uint64_t v2);
 void *value_get(uint64_t v, int *size);
 void *value_copy(uint64_t v, int *size);
