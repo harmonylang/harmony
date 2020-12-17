@@ -66,7 +66,7 @@ static void graph_add(struct node *node){
 
 static void code_get(struct json_value *jv){
     assert(jv->type == JV_MAP);
-    struct json_value *op = dic_lookup(jv->u.map, "op", 2);
+    struct json_value *op = dict_lookup(jv->u.map, "op", 2);
     assert(op->type == JV_ATOM);
     struct op_info *oi = ops_get(op->u.atom.base, op->u.atom.len);
     if (oi == NULL) {
@@ -137,7 +137,7 @@ void check_invariants(struct node *node, struct context **pctx){
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice,
-        struct dictionary *visited, struct queue *todo, struct context **pinv_ctx){
+        struct dict *visited, struct queue *todo, struct context **pinv_ctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -247,7 +247,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     int weight = ctx == node->after ? 0 : 1;
 
     // See if this new state was already seen before.
-    void **p = dic_insert(visited, sc, sizeof(*sc));
+    void **p = dict_insert(visited, sc, sizeof(*sc));
     struct node *next;
     if ((next = *p) == NULL) {
         *p = next = new_alloc(struct node);
@@ -545,13 +545,13 @@ int main(int argc, char **argv){
     assert(jv->type == JV_MAP);
 
     // extract the labels
-    struct json_value *labels = dic_lookup(jv->u.map, "labels", 6);
+    struct json_value *labels = dict_lookup(jv->u.map, "labels", 6);
     assert(labels->type == JV_MAP);
     uint64_t label_map = VALUE_DICT;
-    dic_iter(labels->u.map, label_upcall, &label_map);
+    dict_iter(labels->u.map, label_upcall, &label_map);
 
     // travel through the json code contents to create the code array
-    struct json_value *jc = dic_lookup(jv->u.map, "code", 4);
+    struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
     for (int i = 0; i < jc->u.list.nvals; i++) {
         // printf("Line %d\n", i);
@@ -576,12 +576,12 @@ int main(int argc, char **argv){
     state->invariants = VALUE_SET;
 
     // Put the initial state in the visited map
-    struct dictionary *visited = dic_new(0);
+    struct dict *visited = dict_new(0);
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
     graph_add(node);
-    void **p = dic_insert(visited, state, sizeof(*state));
+    void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
 

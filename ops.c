@@ -37,7 +37,7 @@ struct var_tree {
     } u;
 };
 
-static struct dictionary *ops_map, *f_map;
+static struct dict *ops_map, *f_map;
 extern struct code *code;
 
 struct env_DelVar {
@@ -609,7 +609,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         void *p = (void *) (v & ~VALUE_MASK);
 
         int size;
-        uint64_t *vals = dic_retrieve(p, &size);
+        uint64_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
         ctx_push(pctx, vals[0]);
@@ -1103,40 +1103,40 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
     }
 }
 
-void *init_Address(struct dictionary *map){ return NULL; }
-void *init_Apply(struct dictionary *map){ return NULL; }
-void *init_Assert(struct dictionary *map){ return NULL; }
-void *init_Assert2(struct dictionary *map){ return NULL; }
-void *init_AtomicDec(struct dictionary *map){ return NULL; }
-void *init_AtomicInc(struct dictionary *map){ return NULL; }
-void *init_Choose(struct dictionary *map){ return NULL; }
-void *init_Cut(struct dictionary *map){ return NULL; }
-void *init_Del(struct dictionary *map){ return NULL; }
-void *init_Dict(struct dictionary *map){ return NULL; }
-void *init_Dup(struct dictionary *map){ return NULL; }
-void *init_Pop(struct dictionary *map){ return NULL; }
-void *init_ReadonlyDec(struct dictionary *map){ return NULL; }
-void *init_ReadonlyInc(struct dictionary *map){ return NULL; }
-void *init_Return(struct dictionary *map){ return NULL; }
-void *init_Set(struct dictionary *map){ return NULL; }
-void *init_Spawn(struct dictionary *map){ return NULL; }
+void *init_Address(struct dict *map){ return NULL; }
+void *init_Apply(struct dict *map){ return NULL; }
+void *init_Assert(struct dict *map){ return NULL; }
+void *init_Assert2(struct dict *map){ return NULL; }
+void *init_AtomicDec(struct dict *map){ return NULL; }
+void *init_AtomicInc(struct dict *map){ return NULL; }
+void *init_Choose(struct dict *map){ return NULL; }
+void *init_Cut(struct dict *map){ return NULL; }
+void *init_Del(struct dict *map){ return NULL; }
+void *init_Dict(struct dict *map){ return NULL; }
+void *init_Dup(struct dict *map){ return NULL; }
+void *init_Pop(struct dict *map){ return NULL; }
+void *init_ReadonlyDec(struct dict *map){ return NULL; }
+void *init_ReadonlyInc(struct dict *map){ return NULL; }
+void *init_Return(struct dict *map){ return NULL; }
+void *init_Set(struct dict *map){ return NULL; }
+void *init_Spawn(struct dict *map){ return NULL; }
 
-void *init_DelVar(struct dictionary *map){
+void *init_DelVar(struct dict *map){
     struct env_DelVar *env = new_alloc(struct env_DelVar);
-    struct json_value *name = dic_lookup(map, "value", 5);
+    struct json_value *name = dict_lookup(map, "value", 5);
     assert(name->type == JV_ATOM);
     env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
     return env;
 }
 
-void *init_Frame(struct dictionary *map){
+void *init_Frame(struct dict *map){
     struct env_Frame *env = new_alloc(struct env_Frame);
 
-    struct json_value *name = dic_lookup(map, "name", 4);
+    struct json_value *name = dict_lookup(map, "name", 4);
     assert(name->type == JV_ATOM);
     env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
 
-    struct json_value *args = dic_lookup(map, "args", 4);
+    struct json_value *args = dict_lookup(map, "args", 4);
     assert(args->type == JV_ATOM);
     int index = 0;
     env->args = var_parse(args->u.atom.base, args->u.atom.len, &index);
@@ -1144,8 +1144,8 @@ void *init_Frame(struct dictionary *map){
     return env;
 }
 
-void *init_Load(struct dictionary *map){
-    struct json_value *jv = dic_lookup(map, "value", 5);
+void *init_Load(struct dict *map){
+    struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
     }
@@ -1161,8 +1161,8 @@ void *init_Load(struct dictionary *map){
     return env;
 }
 
-void *init_LoadVar(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+void *init_LoadVar(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     if (value == NULL) {
         return NULL;
     }
@@ -1174,10 +1174,10 @@ void *init_LoadVar(struct dictionary *map){
     }
 }
 
-void *init_Move(struct dictionary *map){
+void *init_Move(struct dict *map){
     struct env_Move *env = new_alloc(struct env_Move);
 
-    struct json_value *offset = dic_lookup(map, "offset", 6);
+    struct json_value *offset = dict_lookup(map, "offset", 6);
     assert(offset->type == JV_ATOM);
     char *copy = malloc(offset->u.atom.len + 1);
     memcpy(copy, offset->u.atom.base, offset->u.atom.len);
@@ -1188,10 +1188,10 @@ void *init_Move(struct dictionary *map){
     return env;
 }
 
-void *init_Nary(struct dictionary *map){
+void *init_Nary(struct dict *map){
     struct env_Nary *env = new_alloc(struct env_Nary);
 
-    struct json_value *arity = dic_lookup(map, "arity", 5);
+    struct json_value *arity = dict_lookup(map, "arity", 5);
     assert(arity->type == JV_ATOM);
     char *copy = malloc(arity->u.atom.len + 1);
     memcpy(copy, arity->u.atom.base, arity->u.atom.len);
@@ -1199,9 +1199,9 @@ void *init_Nary(struct dictionary *map){
     env->arity = atoi(copy);
     free(copy);
 
-    struct json_value *op = dic_lookup(map, "value", 5);
+    struct json_value *op = dict_lookup(map, "value", 5);
     assert(op->type == JV_ATOM);
-    struct f_info *fi = dic_lookup(f_map, op->u.atom.base, op->u.atom.len);
+    struct f_info *fi = dict_lookup(f_map, op->u.atom.base, op->u.atom.len);
     if (fi == NULL) {
         fprintf(stderr, "Nary: unknown function '%.*s'\n", op->u.atom.len, op->u.atom.base);
         exit(1);
@@ -1211,10 +1211,10 @@ void *init_Nary(struct dictionary *map){
     return env;
 }
 
-void *init_Invariant(struct dictionary *map){
+void *init_Invariant(struct dict *map){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
-    struct json_value *cnt = dic_lookup(map, "cnt", 3);
+    struct json_value *cnt = dict_lookup(map, "cnt", 3);
     assert(cnt->type == JV_ATOM);
     char *copy = malloc(cnt->u.atom.len + 1);
     memcpy(copy, cnt->u.atom.base, cnt->u.atom.len);
@@ -1224,10 +1224,10 @@ void *init_Invariant(struct dictionary *map){
     return env;
 }
 
-void *init_Jump(struct dictionary *map){
+void *init_Jump(struct dict *map){
     struct env_Jump *env = new_alloc(struct env_Jump);
 
-    struct json_value *pc = dic_lookup(map, "pc", 2);
+    struct json_value *pc = dict_lookup(map, "pc", 2);
     assert(pc->type == JV_ATOM);
     char *copy = malloc(pc->u.atom.len + 1);
     memcpy(copy, pc->u.atom.base, pc->u.atom.len);
@@ -1237,10 +1237,10 @@ void *init_Jump(struct dictionary *map){
     return env;
 }
 
-void *init_JumpCond(struct dictionary *map){
+void *init_JumpCond(struct dict *map){
     struct env_JumpCond *env = new_alloc(struct env_JumpCond);
 
-    struct json_value *pc = dic_lookup(map, "pc", 2);
+    struct json_value *pc = dict_lookup(map, "pc", 2);
     assert(pc->type == JV_ATOM);
     char *copy = malloc(pc->u.atom.len + 1);
     memcpy(copy, pc->u.atom.base, pc->u.atom.len);
@@ -1248,25 +1248,25 @@ void *init_JumpCond(struct dictionary *map){
     env->pc = atoi(copy);
     free(copy);
 
-    struct json_value *cond = dic_lookup(map, "cond", 4);
+    struct json_value *cond = dict_lookup(map, "cond", 4);
     assert(cond->type == JV_MAP);
     env->cond = value_from_json(cond->u.map);
 
     return env;
 }
 
-void *init_Push(struct dictionary *map){
-    struct json_value *jv = dic_lookup(map, "value", 5);
+void *init_Push(struct dict *map){
+    struct json_value *jv = dict_lookup(map, "value", 5);
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
     env->value = value_from_json(jv->u.map);
     return env;
 }
 
-void *init_Split(struct dictionary *map){
+void *init_Split(struct dict *map){
     struct env_Split *env = new_alloc(struct env_Split);
 
-    struct json_value *count = dic_lookup(map, "count", 5);
+    struct json_value *count = dict_lookup(map, "count", 5);
     assert(count->type == JV_ATOM);
     char *copy = malloc(count->u.atom.len + 1);
     memcpy(copy, count->u.atom.base, count->u.atom.len);
@@ -1276,8 +1276,8 @@ void *init_Split(struct dictionary *map){
     return env;
 }
 
-void *init_Store(struct dictionary *map){
-    struct json_value *jv = dic_lookup(map, "value", 5);
+void *init_Store(struct dict *map){
+    struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
     }
@@ -1293,8 +1293,8 @@ void *init_Store(struct dictionary *map){
     return env;
 }
 
-void *init_StoreVar(struct dictionary *map){
-    struct json_value *jv = dic_lookup(map, "value", 5);
+void *init_StoreVar(struct dict *map){
+    struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
         return NULL;
     }
@@ -2208,19 +2208,19 @@ struct f_info f_table[] = {
 };
 
 struct op_info *ops_get(char *opname, int size){
-    return dic_lookup(ops_map, opname, size);
+    return dict_lookup(ops_map, opname, size);
 }
 
 void ops_init(){
-    ops_map = dic_new(0);
-    f_map = dic_new(0);
+    ops_map = dict_new(0);
+    f_map = dict_new(0);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
-        void **p = dic_insert(ops_map, oi->name, strlen(oi->name));
+        void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
         *p = oi;
     }
     for (struct f_info *fi = f_table; fi->name != NULL; fi++) {
-        void **p = dic_insert(f_map, fi->name, strlen(fi->name));
+        void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
 }

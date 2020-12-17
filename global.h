@@ -55,14 +55,14 @@ struct state {
 
 struct op_info {
     const char *name;
-    void *(*init)(struct dictionary *);
+    void *(*init)(struct dict *);
     void (*op)(const void *env, struct state *state, struct context **pctx);
 };
 
 #include "json.h"
 
 void value_init();
-uint64_t value_from_json(struct dictionary *map);
+uint64_t value_from_json(struct dict *map);
 int value_cmp(uint64_t v1, uint64_t v2);
 void *value_get(uint64_t v, int *size);
 void *value_copy(uint64_t v, int *size);

@@ -9,11 +9,11 @@
 #include "global.h"
 #include "json.h"
 
-static struct dictionary *atom_map;
-static struct dictionary *dict_map;
-static struct dictionary *set_map;
-static struct dictionary *address_map;
-static struct dictionary *context_map;
+static struct dict *atom_map;
+static struct dict *dict_map;
+static struct dict *set_map;
+static struct dict *address_map;
+static struct dict *context_map;
 
 void *value_get(uint64_t v, int *psize){
     v &= ~VALUE_MASK;
@@ -21,12 +21,12 @@ void *value_get(uint64_t v, int *psize){
         *psize = 0;
         return NULL;
     }
-    return dic_retrieve((void *) v, psize);
+    return dict_retrieve((void *) v, psize);
 }
 
 void *value_copy(uint64_t v, int *psize){
     int size;
-    void *p = dic_retrieve((void *) (v & ~VALUE_MASK), &size);
+    void *p = dict_retrieve((void *) (v & ~VALUE_MASK), &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -37,7 +37,7 @@ void *value_copy(uint64_t v, int *psize){
 
 uint64_t value_put_atom(const void *p, int size){
     assert(size > 0);
-    void *q = dic_find(atom_map, p, size);
+    void *q = dict_find(atom_map, p, size);
     return (uint64_t) q | VALUE_ATOM;
 }
 
@@ -45,7 +45,7 @@ uint64_t value_put_set(void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dic_find(set_map, p, size);
+    void *q = dict_find(set_map, p, size);
     return (uint64_t) q | VALUE_SET;
 }
 
@@ -53,7 +53,7 @@ uint64_t value_put_dict(void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dic_find(dict_map, p, size);
+    void *q = dict_find(dict_map, p, size);
     return (uint64_t) q | VALUE_DICT;
 }
 
@@ -61,13 +61,13 @@ uint64_t value_put_address(void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = dic_find(address_map, p, size);
+    void *q = dict_find(address_map, p, size);
     return (uint64_t) q | VALUE_ADDRESS;
 }
 
 uint64_t value_put_context(struct context *ctx){
     int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
-    void *q = dic_find(context_map, ctx, size);
+    void *q = dict_find(context_map, ctx, size);
     return (uint64_t) q | VALUE_CONTEXT;
 }
 
@@ -82,8 +82,8 @@ int value_cmp_int(uint64_t v1, uint64_t v2){
 int value_cmp_atom(uint64_t v1, uint64_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    char *s1 = dic_retrieve(p1, &size1);
-    char *s2 = dic_retrieve(p2, &size2);
+    char *s1 = dict_retrieve(p1, &size1);
+    char *s2 = dict_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = strncmp(s1, s2, size);
     if (cmp != 0) {
@@ -105,8 +105,8 @@ int value_cmp_dict(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dic_retrieve(p1, &size1);
-    uint64_t *vals2 = dic_retrieve(p2, &size2);
+    uint64_t *vals1 = dict_retrieve(p1, &size1);
+    uint64_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -128,8 +128,8 @@ int value_cmp_set(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dic_retrieve(p1, &size1);
-    uint64_t *vals2 = dic_retrieve(p2, &size2);
+    uint64_t *vals1 = dict_retrieve(p1, &size1);
+    uint64_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -151,8 +151,8 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dic_retrieve(p1, &size1);
-    uint64_t *vals2 = dic_retrieve(p2, &size2);
+    uint64_t *vals1 = dict_retrieve(p1, &size1);
+    uint64_t *vals2 = dict_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -169,8 +169,8 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
 int value_cmp_context(uint64_t v1, uint64_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    char *s1 = dic_retrieve(p1, &size1);
-    char *s2 = dic_retrieve(p2, &size2);
+    char *s1 = dict_retrieve(p1, &size1);
+    char *s2 = dict_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = memcmp(s1, s2, size);
     if (cmp != 0) {
@@ -255,7 +255,7 @@ static char *value_string_int(uint64_t v) {
 static char *value_string_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
-    char *s = dic_retrieve(p, &size), *r;
+    char *s = dict_retrieve(p, &size), *r;
     asprintf(&r, ".%.*s", size, s);
     return r;
 }
@@ -277,7 +277,7 @@ static char *value_string_dict(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dic_retrieve(p, &size);
+    uint64_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(uint64_t);
 
     asprintf(&r, "dict{ ");
@@ -305,7 +305,7 @@ static char *value_string_set(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dic_retrieve(p, &size);
+    uint64_t *vals = dict_retrieve(p, &size);
     size /= sizeof(uint64_t);
 
     asprintf(&r, "{ ");
@@ -332,7 +332,7 @@ static char *value_string_address(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *indices = dic_retrieve(p, &size);
+    uint64_t *indices = dict_retrieve(p, &size);
     size /= sizeof(uint64_t);
     assert(size > 0);
     char *s = value_string(indices[0]);
@@ -393,8 +393,8 @@ bool atom_cmp(json_buf_t buf, char *s){
     return strncmp(buf.base, s, n) == 0;
 }
 
-uint64_t value_bool(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_bool(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (atom_cmp(value->u.atom, "False")) {
         return VALUE_BOOL;
@@ -406,8 +406,8 @@ uint64_t value_bool(struct dictionary *map){
     return 0;
 }
 
-uint64_t value_int(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_int(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     uint64_t v;
     if (atom_cmp(value->u.atom, "inf")) {
@@ -426,8 +426,8 @@ uint64_t value_int(struct dictionary *map){
     return (v << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t value_pc(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_pc(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     char *copy = malloc(value->u.atom.len + 1);
     memcpy(copy, value->u.atom.base, value->u.atom.len);
@@ -437,15 +437,15 @@ uint64_t value_pc(struct dictionary *map){
     return (v << VALUE_BITS) | VALUE_PC;
 }
 
-uint64_t value_atom(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_atom(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
-    void *p = dic_find(atom_map, value->u.atom.base, value->u.atom.len);
+    void *p = dict_find(atom_map, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }
 
-uint64_t value_dict(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_dict(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return VALUE_DICT;
@@ -454,23 +454,23 @@ uint64_t value_dict(struct dictionary *map){
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        struct json_value *k = dic_lookup(jv->u.map, "key", 3);
+        struct json_value *k = dict_lookup(jv->u.map, "key", 3);
         assert(k->type == JV_MAP);
-        struct json_value *v = dic_lookup(jv->u.map, "value", 5);
+        struct json_value *v = dict_lookup(jv->u.map, "value", 5);
         assert(v->type == JV_MAP);
         vals[2*i] = value_from_json(k->u.map);
         vals[2*i+1] = value_from_json(v->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dic_find(dict_map, vals,
+    void *p = dict_find(dict_map, vals,
                     value->u.list.nvals * sizeof(uint64_t) * 2);
     free(vals);
     return (uint64_t) p | VALUE_DICT;
 }
 
-uint64_t value_set(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_set(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return (uint64_t) VALUE_SET;
@@ -483,13 +483,13 @@ uint64_t value_set(struct dictionary *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dic_find(set_map, vals, value->u.list.nvals * sizeof(uint64_t));
+    void *p = dict_find(set_map, vals, value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_SET;
 }
 
-uint64_t value_address(struct dictionary *map){
-    struct json_value *value = dic_lookup(map, "value", 5);
+uint64_t value_address(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return (uint64_t) VALUE_ADDRESS;
@@ -500,14 +500,14 @@ uint64_t value_address(struct dictionary *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(jv->u.map);
     }
-    void *p = dic_find(address_map, vals,
+    void *p = dict_find(address_map, vals,
                             value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_ADDRESS;
 }
 
-uint64_t value_from_json(struct dictionary *map){
-    struct json_value *type = dic_lookup(map, "type", 4);
+uint64_t value_from_json(struct dict *map){
+    struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
     if (atom_cmp(type->u.atom, "bool")) {
@@ -537,9 +537,9 @@ uint64_t value_from_json(struct dictionary *map){
 }
 
 void value_init(){
-    atom_map = dic_new(0);
-    dict_map = dic_new(0);
-    set_map = dic_new(0);
-    address_map = dic_new(0);
-    context_map = dic_new(0);
+    atom_map = dict_new(0);
+    dict_map = dict_new(0);
+    set_map = dict_new(0);
+    address_map = dict_new(0);
+    context_map = dict_new(0);
 }
