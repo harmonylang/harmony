@@ -2213,6 +2213,7 @@ struct op_info *ops_get(char *opname, int size){
 
 void ops_init(){
     ops_map = dic_new(0);
+    f_map = dic_new(0);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dic_insert(ops_map, oi->name, strlen(oi->name));
