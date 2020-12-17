@@ -7,13 +7,14 @@
 #include <string.h>
 #include <assert.h>
 #include "global.h"
+#include "hashdict.h"
 #include "json.h"
 
-static struct map *atom_map;
-static struct map *dict_map;
-static struct map *set_map;
-static struct map *address_map;
-static struct map *context_map;
+static struct dictionary *atom_map;
+static struct dictionary *dict_map;
+static struct dictionary *set_map;
+static struct dictionary *address_map;
+static struct dictionary *context_map;
 
 void *value_get(uint64_t v, int *psize){
     v &= ~VALUE_MASK;
@@ -21,12 +22,12 @@ void *value_get(uint64_t v, int *psize){
         *psize = 0;
         return NULL;
     }
-    return map_retrieve((void *) v, psize);
+    return dic_retrieve((void *) v, psize);
 }
 
 void *value_copy(uint64_t v, int *psize){
     int size;
-    void *p = map_retrieve((void *) (v & ~VALUE_MASK), &size);
+    void *p = dic_retrieve((void *) (v & ~VALUE_MASK), &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -37,7 +38,7 @@ void *value_copy(uint64_t v, int *psize){
 
 uint64_t value_put_atom(const void *p, int size){
     assert(size > 0);
-    void *q = map_find(&atom_map, p, size);
+    void *q = dic_find(atom_map, p, size);
     return (uint64_t) q | VALUE_ATOM;
 }
 
@@ -45,7 +46,7 @@ uint64_t value_put_set(void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = map_find(&set_map, p, size);
+    void *q = dic_find(set_map, p, size);
     return (uint64_t) q | VALUE_SET;
 }
 
@@ -53,7 +54,7 @@ uint64_t value_put_dict(void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = map_find(&dict_map, p, size);
+    void *q = dic_find(dict_map, p, size);
     return (uint64_t) q | VALUE_DICT;
 }
 
@@ -61,13 +62,13 @@ uint64_t value_put_address(void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = map_find(&address_map, p, size);
+    void *q = dic_find(address_map, p, size);
     return (uint64_t) q | VALUE_ADDRESS;
 }
 
 uint64_t value_put_context(struct context *ctx){
     int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
-    void *q = map_find(&context_map, ctx, size);
+    void *q = dic_find(context_map, ctx, size);
     return (uint64_t) q | VALUE_CONTEXT;
 }
 
@@ -82,8 +83,8 @@ int value_cmp_int(uint64_t v1, uint64_t v2){
 int value_cmp_atom(uint64_t v1, uint64_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    char *s1 = map_retrieve(p1, &size1);
-    char *s2 = map_retrieve(p2, &size2);
+    char *s1 = dic_retrieve(p1, &size1);
+    char *s2 = dic_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = strncmp(s1, s2, size);
     if (cmp != 0) {
@@ -105,8 +106,8 @@ int value_cmp_dict(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = map_retrieve(p1, &size1);
-    uint64_t *vals2 = map_retrieve(p2, &size2);
+    uint64_t *vals1 = dic_retrieve(p1, &size1);
+    uint64_t *vals2 = dic_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -128,8 +129,8 @@ int value_cmp_set(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = map_retrieve(p1, &size1);
-    uint64_t *vals2 = map_retrieve(p2, &size2);
+    uint64_t *vals1 = dic_retrieve(p1, &size1);
+    uint64_t *vals2 = dic_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -151,8 +152,8 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = map_retrieve(p1, &size1);
-    uint64_t *vals2 = map_retrieve(p2, &size2);
+    uint64_t *vals1 = dic_retrieve(p1, &size1);
+    uint64_t *vals2 = dic_retrieve(p2, &size2);
     size1 /= sizeof(uint64_t);
     size2 /= sizeof(uint64_t);
     int size = size1 < size2 ? size1 : size2;
@@ -169,8 +170,8 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
 int value_cmp_context(uint64_t v1, uint64_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    char *s1 = map_retrieve(p1, &size1);
-    char *s2 = map_retrieve(p2, &size2);
+    char *s1 = dic_retrieve(p1, &size1);
+    char *s2 = dic_retrieve(p2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = memcmp(s1, s2, size);
     if (cmp != 0) {
@@ -255,7 +256,7 @@ static char *value_string_int(uint64_t v) {
 static char *value_string_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
-    char *s = map_retrieve(p, &size), *r;
+    char *s = dic_retrieve(p, &size), *r;
     asprintf(&r, ".%.*s", size, s);
     return r;
 }
@@ -277,7 +278,7 @@ static char *value_string_dict(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = map_retrieve(p, &size);
+    uint64_t *vals = dic_retrieve(p, &size);
     size /= 2 * sizeof(uint64_t);
 
     asprintf(&r, "dict{ ");
@@ -305,7 +306,7 @@ static char *value_string_set(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = map_retrieve(p, &size);
+    uint64_t *vals = dic_retrieve(p, &size);
     size /= sizeof(uint64_t);
 
     asprintf(&r, "{ ");
@@ -332,7 +333,7 @@ static char *value_string_address(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *indices = map_retrieve(p, &size);
+    uint64_t *indices = dic_retrieve(p, &size);
     size /= sizeof(uint64_t);
     assert(size > 0);
     char *s = value_string(indices[0]);
@@ -440,7 +441,7 @@ uint64_t value_pc(struct map *map){
 uint64_t value_atom(struct map *map){
     struct json_value *value = map_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
-    void *p = map_find(&atom_map, value->u.atom.base, value->u.atom.len);
+    void *p = dic_find(atom_map, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }
 
@@ -463,7 +464,7 @@ uint64_t value_dict(struct map *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = map_find(&dict_map, vals,
+    void *p = dic_find(dict_map, vals,
                     value->u.list.nvals * sizeof(uint64_t) * 2);
     free(vals);
     return (uint64_t) p | VALUE_DICT;
@@ -483,7 +484,7 @@ uint64_t value_set(struct map *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = map_find(&set_map, vals, value->u.list.nvals * sizeof(uint64_t));
+    void *p = dic_find(set_map, vals, value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_SET;
 }
@@ -500,7 +501,7 @@ uint64_t value_address(struct map *map){
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(jv->u.map);
     }
-    void *p = map_find(&address_map, vals,
+    void *p = dic_find(address_map, vals,
                             value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_ADDRESS;
@@ -537,9 +538,9 @@ uint64_t value_from_json(struct map *map){
 }
 
 void value_init(){
-    atom_map = map_init();
-    dict_map = map_init();
-    set_map = map_init();
-    address_map = map_init();
-    context_map = map_init();
+    atom_map = dic_new(0);
+    dict_map = dic_new(0);
+    set_map = dic_new(0);
+    address_map = dic_new(0);
+    context_map = dic_new(0);
 }

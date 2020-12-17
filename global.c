@@ -64,15 +64,3 @@ bool file_read(char *filename, /* OUT */ json_buf_t *buf){
 	return true;
 }
 #endif // notdef
-
-/* Implements the simple sdbm algorithm.
- */
-unsigned int sdbm_hash(const void *key, unsigned int key_size) {
-	unsigned int h = 0;
-	const unsigned char *p = key;
-
-	while (key_size-- > 0) {
-		h = *p++ + (h << 6) + (h << 16) - h;
-	}
-	return h;
-}

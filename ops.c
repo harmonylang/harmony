@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include "global.h"
+#include "hashdict.h"
 #include "json.h"
 
 #define MAX_ARITY   10
@@ -609,7 +610,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         void *p = (void *) (v & ~VALUE_MASK);
 
         int size;
-        uint64_t *vals = map_retrieve(p, &size);
+        uint64_t *vals = dic_retrieve(p, &size);
         assert(size > 0);
 
         ctx_push(pctx, vals[0]);

@@ -27,8 +27,6 @@ void mfree(void *p);
 
 unsigned long to_ulong(const char *p, int len);
 
-unsigned int sdbm_hash(const void *key, unsigned int key_size);
-
 void ops_init();
 struct op_info *ops_get(char *opname, int size);
 

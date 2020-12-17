@@ -20,7 +20,7 @@ def process(self, proposal):
             broadcast(self, round, est);
 
             # Handle received messages
-            let received = {}:
+            let received = {(self, round, est)}:
                 # Receive messages until there are enough
                 while len(received) < (N - F):
                     let eligible = { (p,r,e) for (p,r,e) in (network - received)
