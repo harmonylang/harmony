@@ -6,24 +6,27 @@ def BinSema(acquired):
 def Lock():
     result = BinSema(False);
 ;
-def acquire(lk):
+def acquired(binsema):
+    result = binsema->acquired;
+;
+def acquire(binsema):
     atomic:
-        if lk->acquired:
-            stop lk->suspended;
-            assert lk->acquired;
+        if binsema->acquired:
+            stop binsema->suspended;
+            assert binsema->acquired;
         else:
-            lk->acquired = True;
+            binsema->acquired = True;
         ;
     ;
 ;
-def release(lk):
+def release(binsema):
     atomic:
-        assert lk.acquired;
-        if lk->suspended == []:
-            lk->acquired = False;
+        assert binsema.acquired;
+        if binsema->suspended == []:
+            binsema->acquired = False;
         else:
-            go (list.head(lk->suspended)) ();
-            lk->suspended = list.tail(lk->suspended);
+            go (list.head(binsema->suspended)) ();
+            binsema->suspended = list.tail(binsema->suspended);
         ;
     ;
 ;

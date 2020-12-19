@@ -1,5 +1,5 @@
 """
-	This is the Harmony compiler.
+	This is the Harmony compiler and model checker.
 
     Copyright (C) 2020  Robbert van Renesse
 
@@ -1401,7 +1401,7 @@ class StoreVarOp(Op):
                 self.store(context, self.v, context.pop())
                 context.pc += 1
             except AttributeError:
-                context.failure = "Error: " + str(self.v) + " not a dictionary"
+                context.failure = "Error: " + str(self.v) + " -- not a dictionary"
 
 class DelVarOp(Op):
     def __init__(self, v):
@@ -1589,11 +1589,12 @@ class SpawnOp(Op):
         method = context.pop()
         assert isinstance(method, PcValue)
         arg = context.pop()
-        tag = context.pop()
+        this = context.pop()
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         (lexeme, file, line, column) = frame.name
-        ctx = ContextValue(DictValue({"name": lexeme, "tag": tag}), method.pc)
+        ctx = ContextValue(DictValue({"name": lexeme, "tag": arg}),
+                        method.pc, this)
         ctx.push("process")
         ctx.push(arg)
         state.add(ctx)
@@ -2139,7 +2140,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0)
+        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0, novalue)
         ctx.atomic = 1
         while ctx.pc != len(code) and ctx.failure == None:
             code[ctx.pc].eval(state, ctx)
@@ -3273,20 +3274,21 @@ class CallAST(AST):
             code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, tag, method, arg):
-        self.tag = tag
+    def __init__(self, method, arg, this):
         self.method = method
         self.arg = arg
+        self.this = this
 
     def __repr__(self):
-        return "Spawn(" + str(self.tag) + ", " + str(self.method) + ", " + str(self.arg) + ")"
+        return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", "  + str(self.this) + ")"
 
     def compile(self, scope, code):
-        if self.tag != None:
-            self.tag.compile(scope, code)
+        if self.this == None:
+            code.append(PushOp((0, None, None, None)))
+            code.append(DictOp())
+        else:
+            self.this.compile(scope, code)
         self.arg.compile(scope, code)
-        if self.tag == None:
-            code.append(DupOp())
         self.method.compile(scope, code)
         code.append(SpawnOp())
 
@@ -3581,11 +3583,11 @@ class StatementRule(Rule):
             (arg, t) = ArrowExpressionRule().parse(t)
             (lexeme, file, line, column) = t[0]
             if lexeme == ",":
-                (tag, t) = NaryRule({";"}).parse(t[1:])
+                (this, t) = NaryRule({";"}).parse(t[1:])
                 (lexeme, file, line, column) = t[0]
             else:
-                tag = None
-            return (SpawnAST(tag, method, arg), self.skip(token, t))
+                this = None
+            return (SpawnAST(method, arg, this), self.skip(token, t))
         if lexeme == "trap":
             (method, t) = ArrowExpressionRule().parse(t[1:])
             (arg, t) = ArrowExpressionRule().parse(t)
@@ -3654,29 +3656,29 @@ class StatementRule(Rule):
             return (AssignmentAST(exprs[:-1], exprs[-1], assignop), self.skip(token, t))
 
 class ContextValue(Value):
-    def __init__(self, nametag, pc):
+    def __init__(self, nametag, pc, this):
         self.nametag = nametag
         self.pc = pc
+        self.this = this
         self.atomic = 0
         self.readonly = 0
         self.interruptLevel = False
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
         self.vars = novalue
-        self.tlvars = novalue       # thread local variables
         self.trap = None
         self.phase = "start"        # start, middle, or end
         self.stopped = False
         self.failure = None
 
     def __repr__(self):
-        return "ContextValue(" + str(self.nametag) + ", " + str(self.pc) + ")"
+        return "ContextValue(" + str(self.nametag) + ", " + str(self.pc) + ", " + str(self.this) + ")"
 
     def __str__(self):
         return self.__repr__()
 
     def __hash__(self):
-        h = (self.nametag, self.pc, self.atomic, self.readonly, self.interruptLevel, self.vars,
+        h = (self.nametag, self.pc, self.this, self.atomic, self.readonly, self.interruptLevel, self.vars,
             self.trap, self.phase, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -3688,6 +3690,8 @@ class ContextValue(Value):
         if self.nametag != other.nametag:
             return False
         if self.pc != other.pc:
+            return False
+        if self.this != other.this:
             return False
         if self.atomic != other.atomic:
             return False
@@ -3708,7 +3712,7 @@ class ContextValue(Value):
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = ContextValue(self.nametag, self.pc)
+        c = ContextValue(self.nametag, self.pc, self.this)
         c.atomic = self.atomic
         c.readonly = self.readonly
         c.interruptLevel = self.interruptLevel
@@ -3722,8 +3726,7 @@ class ContextValue(Value):
         return c
 
     def get(self, var):
-        assert var != "this"
-        return self.vars.d[var]
+        return self.this if var == "this" else self.vars.d[var]
 
     def iget(self, indexes):
         assert indexes[0] != "this"
@@ -3754,7 +3757,10 @@ class ContextValue(Value):
 
     def set(self, indexes, val):
         if indexes[0] == "this":
-            self.tlvars = self.update(self.tlvars, indexes[1:], val)
+            if len(indexes) == 1:
+                self.this = val
+            else:
+                self.this = self.update(self.this, indexes[1:], val)
         else:
             self.vars = self.update(self.vars, indexes, val)
 
@@ -4135,7 +4141,7 @@ def optimize(code):
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
     op = state.code[inv]
-    ctx = ContextValue(DictValue({"name": "__invariant__", "tag": novalue}), 0)
+    ctx = ContextValue(DictValue({"name": "__invariant__", "tag": novalue}), 0, novalue)
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
     while ctx.pc != inv + op.cnt:
@@ -4324,7 +4330,7 @@ def parseConstant(c, v):
     code = []
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0)
+    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0, novalue)
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
@@ -4420,7 +4426,7 @@ def find_scc(nodes):
 
 def run(code, labels, blockflag):
     state = State(code, labels)
-    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0)
+    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, novalue)
     ctx.atomic = 1
     state.add(ctx)
     node = Node(state, 0, None, None, None, [], 0)

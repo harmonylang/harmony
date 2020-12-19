@@ -13,6 +13,9 @@ def BinSema(acquired):
 def Lock():
     result = BinSema(False);
 ;
+def acquired(binsema):
+    result = !binsema;
+;
 def acquire(binsema):
     await not tas(binsema);
 ;
