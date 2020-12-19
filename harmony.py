@@ -482,6 +482,7 @@ def isreserved(s):
         "call",
         "choose",
         "const",
+        "contexts",
         "def",
         "del",
         "dict",
@@ -511,6 +512,7 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "print",
         "setintlevel",
         "spawn",
         "stop",
@@ -528,8 +530,10 @@ def isname(s):
                     all(isnamechar(c) for c in s)
 
 def isunaryop(s):
-    return s in { "!", "-", "~", "abs", "all", "any", "atLabel",
-        "choose", "min", "max", "nametag", "not", "keys", "hash", "len" }
+    return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
+        "contexts", "min", "max", "nametag", "not", "keys", "hash", "len",
+        "print"
+    }
 
 def isxbinop(s):
     return s in {
@@ -1799,6 +1803,9 @@ class NaryOp(Op):
                 d[ctx.nametag] = cnt if c == None else (c + cnt)
         return DictValue(d)
 
+    def contexts(self, state):
+        return DictValue(state.ctxbag)
+
     def concat(self, d1, d2):
         result = []
         keys = sorted(d1.d.keys(), key=keyValue)
@@ -1913,6 +1920,16 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, str)):
                     return
                 context.push(self.atLabel(state, e))
+            elif op == "contexts":
+                if not context.atomic:
+                    context.failure = "not in atomic block: " + str(self.op)
+                    return
+                # if not self.checktype(state, context, sa, isinstance(e, str)):
+                #     return
+                context.push(self.contexts(state))
+            elif op == "print":
+                print("PRINT", e, "TNIRP")
+                context.push(e)
             elif op == "IsEmpty":
                 if isinstance(e, DictValue):
                     context.push(e.d == {})
@@ -2100,7 +2117,10 @@ class ApplyOp(Op):
                 return
             context.pc += 1
         elif isinstance(method, ContextValue):
-            assert False
+            assert e == "this"
+            print("APPLY", method.this, method.nametag, "X")
+            context.push(method.this)
+            context.pc += 1
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
@@ -2483,7 +2503,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "nametag" }:
+        if op in { "atLabel", "choose", "contexts", "nametag" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
@@ -3775,7 +3795,7 @@ class ContextValue(Value):
         return self.stack.pop()
 
     def key(self):
-        return (100, (key(self.nametag), self.pc, self.__hash__()))
+        return (100, (self.nametag.key(), self.pc, self.__hash__()))
 
 class State:
     def __init__(self, code, labels):
@@ -4145,7 +4165,9 @@ def invcheck(state, inv):
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
     while ctx.pc != inv + op.cnt:
+        old = ctx.pc
         state.code[ctx.pc].eval(state, ctx)
+        assert ctx.pc != old, old
     assert len(ctx.stack) == 1;
     assert isinstance(ctx.stack[0], bool)
     return ctx.stack[0]
@@ -4296,10 +4318,6 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         next = Node(sc, len(nodes), node, ctx, cc, steps, length)
         nodes.append(next)
         visited[sc] = next
-        for inv in sc.invariants:
-            if not invcheck(sc, inv):
-                (lexeme, file, line, column) = sc.code[inv].token
-                next.issues.add("Invariant file=%s line=%d failed"%(file, line))
         if samectx:
             todo.insert(0, next)
         else:
@@ -4442,6 +4460,10 @@ def run(code, labels, blockflag):
     maxdiameter = 0
     while todo:
         node = todo.popleft()
+        for inv in node.state.invariants:
+            if not invcheck(node.state, inv):
+                (lexeme, file, line, column) = code[inv].token
+                node.issues.add("Invariant file=%s line=%d failed"%(file, line))
         if len(node.issues) > 0:
             bad.add(node)
             faultyState = True
