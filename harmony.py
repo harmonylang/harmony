@@ -2130,6 +2130,8 @@ class ApplyOp(Op):
                 context.push(method.this)
             elif e == "name":
                 context.push(method.name)
+            elif e == "entry":
+                context.push(method.entry)
             elif e == "arg":
                 context.push(method.arg)
             elif e == "mode":
