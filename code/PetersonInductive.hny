@@ -1,6 +1,5 @@
 flags = [ False, False ];
 turn = choose({0, 1});
-nametags = [ dict{ .name: .thread, .tag: tag } for tag in {0, 1} ];
 
 def thread(self):
     while choose({ False, True }):
@@ -11,7 +10,7 @@ def thread(self):
 
         # Critical section
         @cs: assert (not flags[1 - self]) or (turn == self) or
-                    (atLabel.gate == dict{nametags[1 - self] : 1})
+                    (atLabel(gate) == bag{(thread, 1 - self)})
              ;
 
         # Leave critical section

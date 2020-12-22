@@ -422,6 +422,21 @@ silent = False          # not printing periodic status updates
 lasttime = 0            # last time status update was printed
 imported = {}           # imported modules
 
+def bag_add(bag, item):
+    cnt = bag.get(item)
+    if cnt == None:
+        bag[item] = 1
+    else:
+        bag[item] = cnt + 1
+
+def bag_remove(bag, item):
+    cnt = bag[item]
+    assert cnt > 0
+    if cnt == 1:
+        del bag[item]
+    else:
+        bag[item] = cnt - 1
+
 def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
@@ -507,7 +522,6 @@ def isreserved(s):
         "let",
         "max",
         "min",
-        "nametag",
         "None",
         "not",
         "or",
@@ -531,7 +545,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
-        "contexts", "min", "max", "nametag", "not", "keys", "hash", "len",
+        "contexts", "min", "max", "not", "keys", "hash", "len",
         "print"
     }
 
@@ -552,7 +566,8 @@ assignops = {
 def isbinaryop(s):
     return isxbinop(s) or iscmpop(s) or s == "in"
 
-tokens = { "dict{", "==", "!=", "<=", ">=", "=>", "//", "**", "<<", ">>", "..", "->" } | assignops
+tokens = { "bag{", "dict{", "==", "!=", "<=", ">=", "=>",
+                        "//", "**", "<<", ">>", "..", "->" } | assignops
 
 def lexer(s, file):
     result = []
@@ -1086,7 +1101,7 @@ class GoOp(Op):
             copy = ctx.copy()
             copy.push(result)
             copy.stopped = False
-            state.add(copy)
+            bag_add(state.ctxbag, copy)
             context.pc += 1
 
 class LoadVarOp(Op):
@@ -1549,7 +1564,6 @@ class ReturnOp(Op):
 
     def eval(self, state, context):
         if len(context.stack) == 0:
-            assert context.nametag == DictValue({"name": "__init__", "tag": novalue})
             context.phase = "end"
             return
         result = context.get("result")
@@ -1596,12 +1610,10 @@ class SpawnOp(Op):
         this = context.pop()
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
-        (lexeme, file, line, column) = frame.name
-        ctx = ContextValue(DictValue({"name": lexeme, "tag": arg}),
-                        method.pc, this)
+        ctx = ContextValue(frame.name, method.pc, arg, this)
         ctx.push("process")
         ctx.push(arg)
-        state.add(ctx)
+        bag_add(state.ctxbag, ctx)
         context.pc += 1
 
 class TrapOp(Op):
@@ -1772,6 +1784,7 @@ class DictOp(Op):
         for i in range(nitems):
             v = context.pop()
             k = context.pop()
+            assert k not in d       # TODO
             d[k] = v
         context.push(DictValue(d))
         context.pc += 1
@@ -1794,17 +1807,17 @@ class NaryOp(Op):
             (" value" if self.n == 1 else " values") + \
             " and push the result of applying " + self.op[0]
 
-    def atLabel(self, state, label):
-        pc = state.labels[label]
-        d = {}
+    def atLabel(self, state, pc):
+        bag = {}
         for (ctx, cnt) in state.ctxbag.items():
             if ctx.pc == pc:
-                c = d.get(ctx.nametag)
-                d[ctx.nametag] = cnt if c == None else (c + cnt)
-        return DictValue(d)
+                nametag = DictValue({ 0: PcValue(ctx.entry), 1: ctx.arg })
+                c = bag.get(nametag)
+                bag[nametag] = cnt if c == None else (c + cnt)
+        return DictValue(bag)
 
     def contexts(self, state):
-        return DictValue(state.ctxbag)
+        return DictValue({ **state.ctxbag, **state.termbag, **state.stopbag })
 
     def concat(self, d1, d2):
         result = []
@@ -1917,7 +1930,7 @@ class NaryOp(Op):
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
                     return
-                if not self.checktype(state, context, sa, isinstance(e, str)):
+                if not self.checktype(state, context, sa, isinstance(e, int)):
                     return
                 context.push(self.atLabel(state, e))
             elif op == "contexts":
@@ -1961,10 +1974,6 @@ class NaryOp(Op):
                         context.failure = "Error: max() invoked with empty set: " + str(self.op)
                     else:
                         context.push(max(e.s, key=keyValue))
-            elif op == "nametag":
-                if not self.checktype(state, context, sa, e == novalue):
-                    return
-                context.push(context.nametag)
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
@@ -2117,9 +2126,21 @@ class ApplyOp(Op):
                 return
             context.pc += 1
         elif isinstance(method, ContextValue):
-            assert e == "this"
-            print("APPLY", method.this, method.nametag, "X")
-            context.push(method.this)
+            if e == "this":
+                context.push(method.this)
+            elif e == "name":
+                context.push(method.name)
+            elif e == "arg":
+                context.push(method.arg)
+            elif e == "mode":
+                if method.failure != None:
+                    context.push("failed")
+                elif method.phase == "end":
+                    context.push("terminated")
+                elif method.stopped:
+                    context.push("stopped")
+                else:
+                    context.push("normal")
             context.pc += 1
         else:
             # TODO.  Need a token to have location
@@ -2160,7 +2181,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = ContextValue(DictValue({"name": "__eval__", "tag": novalue}), 0, novalue)
+        ctx = ContextValue("__eval__", 0, novalue, novalue)
         ctx.atomic = 1
         while ctx.pc != len(code) and ctx.failure == None:
             code[ctx.pc].eval(state, ctx)
@@ -2386,6 +2407,23 @@ class SetAST(AST):
         code.append(PushOp((len(self.collection), None, None, None)))
         code.append(SetOp())
 
+class BagAST(AST):
+    def __init__(self, collection):
+        self.collection = collection
+
+    def __repr__(self):
+        return "Bag(" + str(self.collection) + ")"
+
+    def isConstant(self, scope):
+        return all(x.isConstant(scope) for x in self.collection)
+
+    def gencode(self, scope, code):
+        for e in self.collection:
+            e.compile(scope, code)
+            code.append(PushOp((1, None, None, None)))
+        code.append(PushOp((len(self.collection), None, None, None)))
+        code.append(DictOp())
+
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):
         self.lhs = lhs
@@ -2503,7 +2541,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "contexts", "nametag" }:
+        if op in { "atLabel", "choose", "contexts" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 
@@ -2785,6 +2823,35 @@ class SetRule(Rule):
             self.expect("set expression", lexeme == ",", t[0],
                     "expected a comma")
 
+class BagRule(Rule):
+    def parse(self, t):
+        (lexeme, file, line, column) = t[0]
+        self.expect("bag expression", lexeme == "bag{", t[0], "expected '{'")
+        (lexeme, file, line, column) = t[1]
+        if lexeme == "}":
+            return (BagAST([]), t[2:])
+        s = []
+        while True:
+            (next, t) = NaryRule({"for", "..", ",", "}"}).parse(t[1:])
+            if next == False:
+                return (next, t)
+            s.append(next)
+            (lexeme, file, line, column) = t[0]
+            if lexeme == "for":
+                self.expect("bag comprehension", len(s) == 1, t[0],
+                    "can have only one expression")
+                return BagComprehensionRule(s[0]).parse(t)
+            if lexeme == "..":
+                self.expect("range", len(s) == 1, t[0],
+                    "can have only two expressions")
+                token = t[0]
+                (ast, t) = NaryRule({"}"}).parse(t[1:])
+                return (RangeAST(next, ast, token), t[1:])
+            if lexeme == "}":
+                return (BagAST(s), t[1:])
+            self.expect("bag expression", lexeme == ",", t[0],
+                    "expected a comma")
+
 class DictRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
@@ -2888,6 +2955,8 @@ class BasicExpressionRule(Rule):
             return SetRule().parse(t)
         if lexeme == "dict{":
             return DictRule().parse(t)
+        if lexeme == "bag{":
+            return BagRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (ast, t) = TupleRule({closer}).parse(t[1:])
@@ -3383,10 +3452,13 @@ class LabelStatAST(AST):
         return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     def compile(self, scope, code):
-        scope.location(len(code), self.file, self.line, self.labels)
+        # scope.location(len(code), self.file, self.line, self.labels)
         if self.labels == []:
             self.ast.compile(scope, code)
         else:
+            for (lexeme, file, line, column) in self.labels:
+                scope.names[lexeme] = \
+                    ("constant", (len(code), file, line, column))
             code.append(AtomicIncOp())
             self.ast.compile(scope, code)
             code.append(AtomicDecOp())
@@ -3425,7 +3497,7 @@ class ConstAST(AST):
             code2 = []
             self.expr.compile(scope, code2)
             state = State(code2, scope.labels)
-            ctx = ContextValue(DictValue({"name": "__const__", "tag": novalue}), 0)
+            ctx = ContextValue("__const__", 0, novalue, novalue)
             ctx.atomic = 1
             while ctx.pc != len(code2):
                 code2[ctx.pc].eval(state, ctx)
@@ -3676,9 +3748,11 @@ class StatementRule(Rule):
             return (AssignmentAST(exprs[:-1], exprs[-1], assignop), self.skip(token, t))
 
 class ContextValue(Value):
-    def __init__(self, nametag, pc, this):
-        self.nametag = nametag
-        self.pc = pc
+    def __init__(self, name, entry, arg, this):
+        self.name = name
+        self.entry = entry
+        self.arg = arg
+        self.pc = entry
         self.this = this
         self.atomic = 0
         self.readonly = 0
@@ -3692,13 +3766,16 @@ class ContextValue(Value):
         self.failure = None
 
     def __repr__(self):
-        return "ContextValue(" + str(self.nametag) + ", " + str(self.pc) + ", " + str(self.this) + ")"
+        return "ContextValue(" + str(self.name) + ", " + str(self.arg) + ", " + str(self.this) + ")"
 
     def __str__(self):
         return self.__repr__()
 
+    def nametag(self):
+        return self.name[0] + "(" + str(self.arg) + ")"
+
     def __hash__(self):
-        h = (self.nametag, self.pc, self.this, self.atomic, self.readonly, self.interruptLevel, self.vars,
+        h = (self.name, self.entry, self.arg, self.pc, self.this, self.atomic, self.readonly, self.interruptLevel, self.vars,
             self.trap, self.phase, self.stopped, self.failure).__hash__()
         for v in self.stack:
             h ^= v.__hash__()
@@ -3707,7 +3784,11 @@ class ContextValue(Value):
     def __eq__(self, other):
         if not isinstance(other, ContextValue):
             return False
-        if self.nametag != other.nametag:
+        if self.name != other.name:
+            return False
+        if self.entry != other.entry:
+            return False
+        if self.arg != other.arg:
             return False
         if self.pc != other.pc:
             return False
@@ -3732,7 +3813,8 @@ class ContextValue(Value):
         return self.stack == other.stack and self.vars == other.vars
 
     def copy(self):
-        c = ContextValue(self.nametag, self.pc, self.this)
+        c = ContextValue(self.name, self.entry, self.arg, self.this)
+        c.pc = self.pc
         c.atomic = self.atomic
         c.readonly = self.readonly
         c.interruptLevel = self.interruptLevel
@@ -3795,15 +3877,16 @@ class ContextValue(Value):
         return self.stack.pop()
 
     def key(self):
-        return (100, (self.nametag.key(), self.pc, self.__hash__()))
+        return (100, (self.pc, self.__hash__()))
 
 class State:
     def __init__(self, code, labels):
         self.code = code
         self.labels = labels
         self.vars = novalue
-        self.ctxbag = {}
-        self.stopbag = {}
+        self.ctxbag = {}        # running contexts
+        self.stopbag = {}       # stopped contexts
+        self.termbag = {}       # terminated contexts
         self.choosing = None
         self.invariants = set()
         self.initializing = True
@@ -3817,6 +3900,8 @@ class State:
         for c in self.ctxbag.items():
             h ^= c.__hash__()
         for c in self.stopbag.items():
+            h ^= c.__hash__()
+        for c in self.termbag.items():
             h ^= c.__hash__()
         for i in self.invariants:
             h ^= i
@@ -3832,6 +3917,8 @@ class State:
             return False
         if self.stopbag != other.stopbag:
             return False
+        if self.termbag != other.termbag:
+            return False
         if self.choosing != other.choosing:
             return False
         if self.invariants != other.invariants:
@@ -3845,6 +3932,7 @@ class State:
         s.vars = self.vars      # no need to copy as store operations do it
         s.ctxbag = self.ctxbag.copy()
         s.stopbag = self.stopbag.copy()
+        s.termbag = self.termbag.copy()
         s.choosing = self.choosing
         s.invariants = self.invariants.copy()
         s.initializing = self.initializing
@@ -3909,21 +3997,6 @@ class State:
             self.stopbag[ctx] = 1
         else:
             self.stopbag[ctx] = cnt + 1
-
-    def add(self, ctx):
-        cnt = self.ctxbag.get(ctx)
-        if cnt == None:
-            self.ctxbag[ctx] = 1
-        else:
-            self.ctxbag[ctx] = cnt + 1
-
-    def remove(self, ctx):
-        cnt = self.ctxbag[ctx]
-        assert cnt > 0
-        if cnt == 1:
-            del self.ctxbag[ctx]
-        else:
-            self.ctxbag[ctx] = cnt - 1
 
 class Node:
     def __init__(self, state, uid, parent, before, after, steps, len):
@@ -4011,9 +4084,6 @@ def strsteps(steps):
         i = j
     return "[" + result + "]"
 
-def nametag2str(nt):
-    return str(nt.d["name"]) + "/" + str(nt.d["tag"])
-
 def find_shortest(bad):
     best_node = None
     best_len = 0
@@ -4086,7 +4156,7 @@ def print_path(bad_node):
         except ValueError:
             pids.append(ctx)
             pid = len(pids) - 1
-        print("P%d:"%pid, nametag2str(ctx.nametag), strsteps(steps), ctx.pc, strvars(d, vars))
+        print("P%d:"%pid, ctx.nametag(), strsteps(steps), ctx.pc, strvars(d, vars))
     if len(path) > 0:
         (fctx, ctx, steps, states, vars) = path[-1]
         if ctx.failure != None:
@@ -4161,7 +4231,7 @@ def optimize(code):
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
     op = state.code[inv]
-    ctx = ContextValue(DictValue({"name": "__invariant__", "tag": novalue}), 0, novalue)
+    ctx = ContextValue("__invariant__", 0, novalue, novalue)
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
     while ctx.pc != inv + op.cnt:
@@ -4233,7 +4303,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # print status update
         global lasttime, silent
         if not silent and time.time() - lasttime > 0.3:
-            p_ctx.pad(nametag2str(cc.nametag))
+            p_ctx.pad(cc.nametag())
             p_pc.pad(str(cc.pc))
             p_ns.pad(str(len(visited)))
             p_dia.pad(str(node.len))
@@ -4304,13 +4374,14 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
             localStates.add((sc.copy(), cc.copy()))
 
     # Remove original context from bag
-    sc.remove(ctx)
+    bag_remove(sc.ctxbag, ctx)
 
     # Put the resulting context into the bag unless it's done
     if cc.phase == "end":
         sc.initializing = False     # initializing ends when __init__ finishes
+        bag_add(sc.termbag, cc)
     elif not cc.stopped:
-        sc.add(cc)
+        bag_add(sc.ctxbag, cc)
 
     length = node.len if samectx else (node.len + 1)
     next = visited.get(sc)
@@ -4348,7 +4419,7 @@ def parseConstant(c, v):
     code = []
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = ContextValue(DictValue({"name": "__arg__", "tag": novalue}), 0, novalue)
+    ctx = ContextValue("__arg__", 0, novalue, novalue)
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
@@ -4444,9 +4515,9 @@ def find_scc(nodes):
 
 def run(code, labels, blockflag):
     state = State(code, labels)
-    ctx = ContextValue(DictValue({"name": "__init__", "tag": novalue}), 0, novalue)
+    ctx = ContextValue("__init__", 0, novalue, novalue)
     ctx.atomic = 1
-    state.add(ctx)
+    bag_add(state.ctxbag, ctx)
     node = Node(state, 0, None, None, None, [], 0)
 
     nodes = [node]
@@ -4460,14 +4531,19 @@ def run(code, labels, blockflag):
     maxdiameter = 0
     while todo:
         node = todo.popleft()
-        for inv in node.state.invariants:
-            if not invcheck(node.state, inv):
-                (lexeme, file, line, column) = code[inv].token
-                node.issues.add("Invariant file=%s line=%d failed"%(file, line))
+
+        # check the invariants
+        if len(node.issues) == 0 and node.state.choosing == None:
+            for inv in node.state.invariants:
+                if not invcheck(node.state, inv):
+                    (lexeme, file, line, column) = code[inv].token
+                    node.issues.add("Invariant file=%s line=%d failed"%(file, line))
+
         if len(node.issues) > 0:
             bad.add(node)
             faultyState = True
             break
+
         if node.expanded:
             continue
         node.expanded = True
@@ -4572,12 +4648,12 @@ def run(code, labels, blockflag):
                 assert isinstance(ctx, ContextValue)
                 if bad_node.isblocked(ctx):
                     blocked += 1
-                    print("blocked process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
+                    print("blocked process:", ctx.nametag(), "pc =", ctx.pc)
                 else:
                     running += 1
-                    print("running process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
+                    print("running process:", ctx.nametag(), "pc =", ctx.pc)
             for ctx in bad_node.state.stopbag.keys():
-                print("stopped process:", nametag2str(ctx.nametag), "pc =", ctx.pc)
+                print("stopped process:", ctx.nametag(), "pc =", ctx.pc)
                 stopped += 1
             print("#blocked:", blocked, "#stopped:", stopped, "#running:", running)
 
@@ -4735,7 +4811,7 @@ def htmlpath(n, color, f):
         except ValueError:
             pids.append(ctx)
             pid = len(pids) - 1
-        print("<tr><td>P%d: <a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(pid, row, sid, nametag2str(ctx.nametag)), file=f)
+        print("<tr><td>P%d: <a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(pid, row, sid, ctx.nametag()), file=f)
         print("<td>%s</td><td></td>"%htmlstrsteps(steps), file=f)
         vardump(d, vars, f)
         print("</tr>", file=f)
@@ -4822,9 +4898,9 @@ def htmlrow(ctx, bag, node, code, scope, f, verbose):
 
     print("<tr>", file=f)
     if bag[ctx] > 1:
-        print("<td>%s [%d copies]</td>"%(nametag2str(ctx.nametag), bag[ctx]), file=f)
+        print("<td>%s [%d copies]</td>"%(ctx.nametag(), bag[ctx]), file=f)
     else:
-        print("<td>%s</td>"%nametag2str(ctx.nametag), file=f)
+        print("<td>%s</td>"%ctx.nametag(), file=f)
     if ctx.stopped:
         print("<td>stopped</td>", file=f)
     else:
@@ -4901,7 +4977,7 @@ def htmlstate(f):
         print("</tr></table></td></tr>", file=f)
 
     if s.choosing != None:
-        print("<tr><td>choosing</td><td>%s</td></tr>"%nametag2str(s.choosing.nametag), file=f)
+        print("<tr><td>choosing</td><td>%s</td></tr>"%s.choosing.nametag(), file=f)
 
     print("</table>", file=f)
 
@@ -4929,9 +5005,9 @@ def htmlnode(n, code, scope, f, verbose):
     else:
         print("</tr>", file=f)
         print("<tr><td></td><td></td><td></td><td></td></tr>", file=f)
-    for ctx in sorted(n.state.ctxbag.keys(), key=lambda x: nametag2str(x.nametag)):
+    for ctx in sorted(n.state.ctxbag.keys(), key=lambda x: x.nametag()):
         htmlrow(ctx, n.state.ctxbag, n, code, scope, f, verbose)
-    for ctx in sorted(n.state.stopbag.keys(), key=lambda x: nametag2str(x.nametag)):
+    for ctx in sorted(n.state.stopbag.keys(), key=lambda x: x.nametag()):
         htmlrow(ctx, n.state.stopbag, n, code, scope, f, verbose)
 
     print("</table>", file=f)
