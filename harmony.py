@@ -2183,7 +2183,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = ContextValue("__eval__", 0, novalue, novalue)
+        ctx = ContextValue(("__eval__", None, None, None), 0, novalue, novalue)
         ctx.atomic = 1
         while ctx.pc != len(code) and ctx.failure == None:
             code[ctx.pc].eval(state, ctx)
@@ -3454,7 +3454,7 @@ class LabelStatAST(AST):
         return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     def compile(self, scope, code):
-        # scope.location(len(code), self.file, self.line, self.labels)
+        scope.location(len(code), self.file, self.line, self.labels)
         if self.labels == []:
             self.ast.compile(scope, code)
         else:
@@ -3499,7 +3499,7 @@ class ConstAST(AST):
             code2 = []
             self.expr.compile(scope, code2)
             state = State(code2, scope.labels)
-            ctx = ContextValue("__const__", 0, novalue, novalue)
+            ctx = ContextValue(("__const__", None, None, None), 0, novalue, novalue)
             ctx.atomic = 1
             while ctx.pc != len(code2):
                 code2[ctx.pc].eval(state, ctx)
@@ -3774,6 +3774,8 @@ class ContextValue(Value):
         return self.__repr__()
 
     def nametag(self):
+        if self.arg == novalue:
+            return self.name[0] + "()"
         return self.name[0] + "(" + str(self.arg) + ")"
 
     def __hash__(self):
@@ -4233,7 +4235,7 @@ def optimize(code):
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
     op = state.code[inv]
-    ctx = ContextValue("__invariant__", 0, novalue, novalue)
+    ctx = ContextValue(("__invariant__", None, None, None), 0, novalue, novalue)
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
     while ctx.pc != inv + op.cnt:
@@ -4421,7 +4423,7 @@ def parseConstant(c, v):
     code = []
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = ContextValue("__arg__", 0, novalue, novalue)
+    ctx = ContextValue(("__arg__", None, None, None), 0, novalue, novalue)
     ctx.atomic = 1
     while ctx.pc != len(code):
         code[ctx.pc].eval(state, ctx)
@@ -4517,7 +4519,7 @@ def find_scc(nodes):
 
 def run(code, labels, blockflag):
     state = State(code, labels)
-    ctx = ContextValue("__init__", 0, novalue, novalue)
+    ctx = ContextValue(("__init__", None, None, None), 0, novalue, novalue)
     ctx.atomic = 1
     bag_add(state.ctxbag, ctx)
     node = Node(state, 0, None, None, None, [], 0)
