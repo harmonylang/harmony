@@ -9,7 +9,7 @@ def thread(self):
         await (not flags[1 - self]) or (turn == self);
 
         # critical section is here
-        @cs: assert atLabel(cs) == bag{ (thread, self) }, atLabel(cs);
+        @cs: assert atLabel(cs) == bag{ (thread, self) };
 
         # Leave critical section
         flags[self] = False;
