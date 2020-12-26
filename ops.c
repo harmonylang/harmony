@@ -985,11 +985,11 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 
     struct context *ctx = new_alloc(struct context);
 
-    const struct env_Frame *ef = env;
+    const struct env_Frame *ef = code[pc].env;
     ctx->name = ef->name;
     ctx->arg = arg;
     ctx->this = this;
-
+    ctx->entry = (pc << VALUE_BITS) | VALUE_PC;
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
@@ -1391,7 +1391,7 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
 
 uint64_t nametag(struct context *ctx){
     uint64_t nt = dict_store(VALUE_DICT,
-            (0 << VALUE_BITS) | VALUE_INT, ctx->name);
+            (0 << VALUE_BITS) | VALUE_INT, ctx->entry);
     return dict_store(nt,
             (1 << VALUE_BITS) | VALUE_INT, ctx->arg);
 }
