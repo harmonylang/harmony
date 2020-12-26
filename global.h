@@ -29,7 +29,10 @@ struct code {
 };
 
 struct context {     // context value
-    uint64_t nametag;     // name tag
+    uint64_t name;        // name tag
+    uint64_t entry;       // entry point of main method
+    uint64_t arg;         // argument provided to spawn
+    uint64_t this;        // thread-local state
     int pc;               // program counter
     int fp;               // frame pointer
     uint64_t vars;        // local variables

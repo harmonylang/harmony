@@ -970,6 +970,7 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
 
 void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
+    const struct env_Frame *ef = env;
 
     uint64_t pc = ctx_pop(pctx);
     assert((pc & VALUE_MASK) == VALUE_PC);
@@ -978,19 +979,16 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     assert(pc < code_len);
     assert(strcmp(code[pc].oi->name, "Frame") == 0);
     uint64_t arg = ctx_pop(pctx);
-    uint64_t tag = ctx_pop(pctx);
+    uint64_t this = ctx_pop(pctx);
     if (false) {
-        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\n", pc, arg, tag);
+        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\n", pc, arg, this);
     }
 
     struct context *ctx = new_alloc(struct context);
 
-    // TODO.  Precompute the next two in init_Spawn
-    uint64_t nv = value_put_atom("name", 4);
-    uint64_t tv = value_put_atom("tag", 3);
-    const struct env_Frame *ef = code[pc].env;
-    ctx->nametag = dict_store(VALUE_DICT, nv, ef->name);
-    ctx->nametag = dict_store(ctx->nametag, tv, tag);
+    ctx->name = ef->name;
+    ctx->arg = arg;
+    ctx->this = this;
 
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
@@ -1391,13 +1389,19 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n){
     return ctx_failure(ctx, "any() can only be applied to sets or dictionaries");
 }
 
+uint64_t nametag(struct context *ctx){
+    uint64_t nt = dict_store(VALUE_DICT,
+            (0 << VALUE_BITS) | VALUE_INT, ctx->name);
+    return dict_store(nt,
+            (1 << VALUE_BITS) | VALUE_INT, ctx->arg);
+}
+
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(ctx->atomic > 0);
     assert(n == 1);
     uint64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_ATOM);
-    uint64_t pc = dict_load(state->labels, e);
-    assert((pc & VALUE_MASK) == VALUE_INT);
-    pc >>= 3;
+    assert((e & VALUE_MASK) == VALUE_INT);
+    e >>= VALUE_BITS;
 
     int size;
     uint64_t *vals = value_get(state->ctxbag, &size);
@@ -1409,8 +1413,8 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
-        if (ctx->pc == pc) {
-            bag = bag_add(bag, ctx->nametag);
+        if (ctx->pc == e) {
+            bag = bag_add(bag, nametag(ctx));
         }
     }
     return bag;
@@ -1821,8 +1825,8 @@ uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_nametag(struct state *state, struct context *ctx, uint64_t *args, int n){
-    return ctx->nametag;
+uint64_t f_get_context(struct state *state, struct context *ctx, uint64_t *args, int n){
+    return value_put_context(ctx);
 }
 
 uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -2195,6 +2199,7 @@ struct f_info f_table[] = {
     { "all", f_all },
     { "any", f_any },
     { "atLabel", f_atLabel },
+    { "get_context", f_get_context },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
     { "keys", f_keys },
@@ -2202,7 +2207,6 @@ struct f_info f_table[] = {
     { "max", f_max },
     { "min", f_min },
 	{ "mod", f_mod },
-    { "nametag", f_nametag },
     { "not", f_not },
     { NULL, NULL }
 };

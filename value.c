@@ -355,10 +355,10 @@ static char *value_string_address(uint64_t v) {
 
 static char *value_string_context(uint64_t v) {
     struct context *ctx = value_get(v, NULL);
-    char *nametag = value_string(ctx->nametag);
+    char *name = value_string(ctx->name);
     char *r;
-    asprintf(&r, "CONTEXT(%s, %d)", nametag, ctx->pc);
-    free(nametag);
+    asprintf(&r, "CONTEXT(%s, %d)", name, ctx->pc);
+    free(name);
     return r;
 }
 

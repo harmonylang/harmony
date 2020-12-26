@@ -509,6 +509,7 @@ def isreserved(s):
         "fun",
         "for",
         "from",
+        "get_context",
         "go",
         "hash",
         "if",
@@ -545,7 +546,7 @@ def isname(s):
 
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
-        "contexts", "min", "max", "not", "keys", "hash", "len",
+        "contexts", "get_context", "min", "max", "not", "keys", "hash", "len",
         "print"
     }
 
@@ -1933,6 +1934,10 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, int)):
                     return
                 context.push(self.atLabel(state, e))
+            elif op == "get_context":
+                # if not self.checktype(state, context, sa, isinstance(e, int)):
+                #   return
+                context.push(context.copy())
             elif op == "contexts":
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
@@ -2543,7 +2548,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "contexts" }:
+        if op in { "atLabel", "choose", "contexts", "get_context" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 

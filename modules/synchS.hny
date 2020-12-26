@@ -21,7 +21,7 @@ def acquire(binsema):
 ;
 def release(binsema):
     atomic:
-        assert binsema.acquired;
+        assert binsema->acquired;
         if binsema->suspended == []:
             binsema->acquired = False;
         else:

@@ -164,7 +164,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
             gettimeofday(&tv, NULL);
             double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
             if (now - lasttime > 1) {
-                char *p = value_string(cc->nametag);
+                char *p = value_string(cc->name);
                 printf("%s pc=%d states=%d queue=%d\n", p, cc->pc, enqueued, enqueued - dequeued);
                 free(p);
                 lasttime = now;
@@ -563,9 +563,9 @@ int main(int argc, char **argv){
     memset(&init_ctx, 0, sizeof(init_ctx));
     uint64_t nv = value_put_atom("name", 4);
     uint64_t tv = value_put_atom("tag", 3);
-    uint64_t name = value_put_atom("__init__", 8);
-    init_ctx.nametag = dict_store(VALUE_DICT, nv, name);
-    init_ctx.nametag = dict_store(init_ctx.nametag, tv, VALUE_DICT);
+    init_ctx.name = value_put_atom("__init__", 8);
+    init_ctx.arg = VALUE_DICT;
+    init_ctx.this = VALUE_DICT;
     init_ctx.vars = VALUE_DICT;
     init_ctx.atomic = 1;
     struct state *state = new_alloc(struct state);
@@ -594,9 +594,9 @@ int main(int argc, char **argv){
     struct context *inv_ctx = new_alloc(struct context);
     uint64_t inv_nv = value_put_atom("name", 4);
     uint64_t inv_tv = value_put_atom("tag", 3);
-    uint64_t inv_name = value_put_atom("__invariant__", 13);
-    inv_ctx->nametag = dict_store(VALUE_DICT, inv_nv, inv_name);
-    inv_ctx->nametag = dict_store(inv_ctx->nametag, inv_tv, VALUE_DICT);
+    inv_ctx->name = value_put_atom("__invariant__", 13);
+    inv_ctx->arg = VALUE_DICT;
+    inv_ctx->this = VALUE_DICT;
     inv_ctx->vars = VALUE_DICT;
     inv_ctx->atomic = inv_ctx->readonly = 1;
 
