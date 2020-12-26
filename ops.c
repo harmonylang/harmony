@@ -970,7 +970,6 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
 
 void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
-    const struct env_Frame *ef = env;
 
     uint64_t pc = ctx_pop(pctx);
     assert((pc & VALUE_MASK) == VALUE_PC);
@@ -986,6 +985,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 
     struct context *ctx = new_alloc(struct context);
 
+    const struct env_Frame *ef = env;
     ctx->name = ef->name;
     ctx->arg = arg;
     ctx->this = this;
