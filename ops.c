@@ -606,8 +606,9 @@ void op_Bag(const void *env, struct state *state, struct context **pctx){
     uint64_t d = VALUE_DICT;
     for (int i = 0; i < n; i++) {
         uint64_t v = ctx_pop(pctx), cnt;
-        if (dict_tryload(d, v, &cnt){
-            cnt += 1;
+        if (dict_tryload(d, v, &cnt)) {
+            assert((cnt & VALUE_MASK) == VALUE_INT);
+            cnt = (cnt >> VALUE_BITS) + 1;
         }
         else {
             cnt = 1;
@@ -683,7 +684,7 @@ void op_Dict(const void *env, struct state *state, struct context **pctx){
         uint64_t v = ctx_pop(pctx);
         uint64_t k = ctx_pop(pctx);
         uint64_t old;
-        if (!dict_tryload(d, k, &old || value_cmp(v, old) > 0) {
+        if (!dict_tryload(d, k, &old) || value_cmp(v, old) > 0) {
             d = dict_store(d, k, v);
         }
     }
@@ -931,6 +932,18 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
             assert(false);
         }
     }
+}
+
+// sort two key/value pairs
+static int q_kv_cmp(const void *e1, const void *e2){
+    const uint64_t *kv1 = (const uint64_t *) e1;
+    const uint64_t *kv2 = (const uint64_t *) e2;
+
+    int k = value_cmp(kv1[0], kv2[0]);
+    if (k != 0) {
+        return k;
+    }
+    return value_cmp(kv1[1], kv2[1]);
 }
 
 static int q_value_cmp(const void *v1, const void *v2){
@@ -1516,90 +1529,153 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         }
         return e1;
     }
-
-    // get all the sets
-    struct val_info *vi = malloc(n * sizeof(*vi));
-    int min_size = -1;      // minimum set size
-    uint64_t max_val;       // maximum value over the minima of all sets
-    bool some_empty = false;
-    for (int i = 0; i < n; i++) {
-        if ((args[i] & VALUE_MASK) != VALUE_SET) {
-            return ctx_failure(ctx, "'&' applied to mix of sets and other types");
+    if ((e1 & VALUE_MASK) == VALUE_SET) {
+        // get all the sets
+        struct val_info *vi = malloc(n * sizeof(*vi));
+        int min_size = -1;      // minimum set size
+        uint64_t max_val;       // maximum value over the minima of all sets
+        bool some_empty = false;
+        for (int i = 0; i < n; i++) {
+            if ((args[i] & VALUE_MASK) != VALUE_SET) {
+                return ctx_failure(ctx, "'&' applied to mix of sets and other types");
+            }
+            if (args[i] == VALUE_SET) {
+                min_size = 0;
+            }
+            else {
+                vi[i].vals = value_get(args[i], &vi[i].size); 
+                vi[i].index = 0;
+                if (min_size < 0) {
+                    min_size = vi[i].size;
+                    max_val = vi[i].vals[0];
+                }
+                else {
+                    if (vi[i].size < min_size) {
+                        min_size = vi[i].size;
+                    }
+                    if (value_cmp(vi[i].vals[0], max_val) > 0) {
+                        max_val = vi[i].vals[0];
+                    }
+                }
+            }
         }
-        if (args[i] == VALUE_SET) {
-            min_size = 0;
+
+        // If any are empty lists, we're done.
+        if (min_size == 0) {
+            return VALUE_SET;
+        }
+
+        // Allocate sufficient memory.
+        uint64_t *vals = malloc(min_size), *v = vals;
+
+        bool done = false;
+        for (int i = 0; i < min_size; i++) {
+            uint64_t old_max = max_val;
+            for (int j = 0; j < n; j++) {
+                int k, size = vi[j].size / sizeof(uint64_t);
+                while ((k = vi[j].index) < size) {
+                    uint64_t v = vi[j].vals[k];
+                    int cmp = value_cmp(v, max_val);
+                    if (cmp > 0) {
+                        max_val = v;
+                    }
+                    if (cmp >= 0) {
+                        break;
+                    }
+                    vi[j].index++;
+                }
+                if (vi[j].index == vi[j].size) {
+                    done = true;
+                    break;
+                }
+            }
+            if (done) {
+                break;
+            }
+            if (old_max == max_val) {
+                *v++ = max_val;
+                for (int j = 0; j < n; j++) {
+                    assert(vi[j].index < vi[j].size);
+                    vi[j].index++;
+                    int k, size = vi[j].size / sizeof(uint64_t);
+                    if ((k = vi[j].index) == size) {
+                        done = true;
+                        break;
+                    }
+                    if (value_cmp(vi[j].vals[k], max_val) > 0) {
+                        max_val = vi[j].vals[k];
+                    }
+                }
+            }
+            if (done) {
+                break;
+            }
+        }
+
+        uint64_t result = value_put_set(vals, (char *) v - (char *) vals);
+        free(vi);
+        free(vals);
+        return result;
+    }
+
+    assert((e1 & VALUE_MASK) == VALUE_DICT);
+    // get all the dictionaries
+    struct val_info *vi = malloc(n * sizeof(*vi));
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        if ((args[i] & VALUE_MASK) != VALUE_DICT) {
+            return ctx_failure(ctx, "'|' applied to mix of dictionaries and other types");
+        }
+        if (args[i] == VALUE_DICT) {
+            vi[i].vals = NULL;
+            vi[i].size = 0;
         }
         else {
             vi[i].vals = value_get(args[i], &vi[i].size); 
-            vi[i].index = 0;
-            if (min_size < 0) {
-                min_size = vi[i].size;
-                max_val = vi[i].vals[0];
-            }
-            else {
-                if (vi[i].size < min_size) {
-                    min_size = vi[i].size;
-                }
-                if (value_cmp(vi[i].vals[0], max_val) > 0) {
-                    max_val = vi[i].vals[0];
-                }
-            }
+            total += vi[i].size;
         }
     }
 
-    // If any are empty lists, we're done.
-    if (min_size == 0) {
-        return VALUE_SET;
+    // If all are empty dictionaries, we're done.
+    if (total == 0) {
+        return VALUE_DICT;
     }
 
-    // Allocate sufficient memory.
-    uint64_t *vals = malloc(min_size), *v = vals;
-
-    bool done = false;
-    for (int i = 0; i < min_size; i++) {
-        uint64_t old_max = max_val;
-        for (int j = 0; j < n; j++) {
-            int k, size = vi[j].size / sizeof(uint64_t);
-            while ((k = vi[j].index) < size) {
-                uint64_t v = vi[j].vals[k];
-                int cmp = value_cmp(v, max_val);
-                if (cmp > 0) {
-                    max_val = v;
-				}
-				if (cmp >= 0) {
-					break;
-				}
-				vi[j].index++;
-            }
-            if (vi[j].index == vi[j].size) {
-                done = true;
-				break;
-            }
-        }
-		if (done) {
-			break;
-		}
-        if (old_max == max_val) {
-            *v++ = max_val;
-			for (int j = 0; j < n; j++) {
-				assert(vi[j].index < vi[j].size);
-				vi[j].index++;
-				int k, size = vi[j].size / sizeof(uint64_t);
-				if ((k = vi[j].index) == size) {
-					done = true;
-					break;
-				}
-				if (value_cmp(vi[j].vals[k], max_val) > 0) {
-					max_val = vi[j].vals[k];
-				}
-			}
-        }
-		if (done) {
-			break;
-		}
+    // Concatenate the dictionaries
+    uint64_t *vals = malloc(total), *v;
+    total = 0;
+    for (int i = 0; i < n; i++) {
+        memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+        total += vi[i].size;
     }
 
-    uint64_t result = value_put_set(vals, (char *) v - (char *) vals);
+    // sort lexicographically, leaving duplicate keys
+    int cnt = total / (2 * sizeof(uint64_t));
+    qsort(vals, cnt, 2 * sizeof(uint64_t), q_kv_cmp);
+
+    // now only leave the min value for duplicate keys
+    int in = 0, out = 0;
+    for (;;) {
+        // if there are fewer than n copies of the key, then it's out
+        if (in + n > cnt) {
+            break;
+        }
+        int i;
+        for (i = in + 1; i < in + n; i++) {
+            if (vals[2*i] != vals[2*in]) {
+                break;
+            }
+        }
+        if (i == in + n) {
+            // copy over the first value
+            vals[2*out] = vals[2*in];
+            vals[2*out+1] = vals[2*in+1];
+            out++;
+        }
+        in = i;
+    }
+
+    uint64_t result = value_put_dict(vals, 2 * out * sizeof(uint64_t));
     free(vi);
     free(vals);
     return result;
@@ -2055,14 +2131,53 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         return e1;
     }
 
-    // get all the sets
+    if ((e1 & VALUE_MASK) == VALUE_SET) {
+        // get all the sets
+        struct val_info *vi = malloc(n * sizeof(*vi));
+        int total = 0;
+        for (int i = 0; i < n; i++) {
+            if ((args[i] & VALUE_MASK) != VALUE_SET) {
+                return ctx_failure(ctx, "'|' applied to mix of sets and other types");
+            }
+            if (args[i] == VALUE_SET) {
+                vi[i].vals = NULL;
+                vi[i].size = 0;
+            }
+            else {
+                vi[i].vals = value_get(args[i], &vi[i].size); 
+                total += vi[i].size;
+            }
+        }
+
+        // If all are empty lists, we're done.
+        if (total == 0) {
+            return VALUE_SET;
+        }
+
+        // Concatenate the sets
+        uint64_t *vals = malloc(total), *v;
+        total = 0;
+        for (int i = 0; i < n; i++) {
+            memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+            total += vi[i].size;
+        }
+
+        n = sort(vals, total / sizeof(uint64_t));
+        uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
+        free(vi);
+        free(vals);
+        return result;
+    }
+
+    assert((e1 & VALUE_MASK) == VALUE_DICT);
+    // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
-        if ((args[i] & VALUE_MASK) != VALUE_SET) {
-            return ctx_failure(ctx, "'|' applied to mix of sets and other types");
+        if ((args[i] & VALUE_MASK) != VALUE_DICT) {
+            return ctx_failure(ctx, "'|' applied to mix of dictionaries and other types");
         }
-        if (args[i] == VALUE_SET) {
+        if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
             vi[i].size = 0;
         }
@@ -2072,12 +2187,12 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
     }
 
-    // If all are empty lists, we're done.
+    // If all are empty dictionaries, we're done.
     if (total == 0) {
-        return VALUE_SET;
+        return VALUE_DICT;
     }
 
-    // Concatenate the sets
+    // Concatenate the dictionaries
     uint64_t *vals = malloc(total), *v;
     total = 0;
     for (int i = 0; i < n; i++) {
@@ -2085,8 +2200,22 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         total += vi[i].size;
     }
 
-    n = sort(vals, total / sizeof(uint64_t));
-    uint64_t result = value_put_set(vals, n * sizeof(uint64_t));
+    // sort lexicographically, leaving duplicate keys
+    int cnt = total / (2 * sizeof(uint64_t));
+    qsort(vals, cnt, 2 * sizeof(uint64_t), q_kv_cmp);
+
+    // now only leave the max value for duplicate keys
+    n = 0;
+    for (int i = 1; i < cnt; i++) {
+        if (vals[2*i] != vals[2*n]) {
+            n++;
+        }
+        vals[2*n] = vals[2*i];
+        vals[2*n+1] = vals[2*i+1];
+    }
+    n++;
+
+    uint64_t result = value_put_dict(vals, 2 * n * sizeof(uint64_t));
     free(vi);
     free(vals);
     return result;

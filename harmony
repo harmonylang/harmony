@@ -1953,23 +1953,46 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 &= e1
-                    else:
-                        if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
-                            return
+                    elif type(e1) == SetValue:
                         if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                             return
-                        e2 = SetValue(e2.s.intersection(e1.s))
+                        e2 = SetValue(e1.s & e2.s)
+                    else:
+                        if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
+                            return
+                        if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
+                            return
+                        d = {}
+                        for (k1, v1) in e1.d.items():
+                            if k1 in e2.d:
+                                v2 = e2.d[k1]
+                                d[k1] = v1 if keyValue(v1) < keyValue(v2) else v2
+                        e2 = DictValue(d)
                 elif op == "|":
                     if type(e1) == int:
                         if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 |= e1
-                    else:
-                        if not self.checktype(state, context, sa, isinstance(e1, SetValue)):
-                            return
+                    elif type(e1) == SetValue:
                         if not self.checktype(state, context, sa, isinstance(e2, SetValue)):
                             return
-                        e2 = SetValue(e2.s.union(e1.s))
+                        e2 = SetValue(e1.s | e2.s)
+                    else:
+                        if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
+                            return
+                        if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
+                            return
+                        d = {}
+                        for (k1, v1) in e1.d.items():
+                            if k1 in e2.d:
+                                v2 = e2.d[k1]
+                                d[k1] = v1 if keyValue(v1) > keyValue(v2) else v2
+                            else:
+                                d[k1] = v1
+                        for (k2, v2) in e2.d.items():
+                            if k2 not in e1.d:
+                                d[k2] = v2
+                        e2 = DictValue(d)
                 elif op == "^": 
                     if type(e1) == int:
                         if not self.checktype(state, context, sa, type(e2) == int):
@@ -2502,7 +2525,6 @@ class BagAST(AST):
     def gencode(self, scope, code):
         for e in self.collection:
             e.compile(scope, code)
-            code.append(PushOp((1, None, None, None)))
         code.append(PushOp((len(self.collection), None, None, None)))
         code.append(BagOp())
 
