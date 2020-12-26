@@ -598,6 +598,26 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
     ctx->pc++;
 }
 
+void op_Bag(const void *env, struct state *state, struct context **pctx){
+    uint64_t n = ctx_pop(pctx);
+    assert((n & VALUE_MASK) == VALUE_INT);
+    n >>= VALUE_BITS;
+
+    uint64_t d = VALUE_DICT;
+    for (int i = 0; i < n; i++) {
+        uint64_t v = ctx_pop(pctx), cnt;
+        if (dict_tryload(d, v, &cnt){
+            cnt += 1;
+        }
+        else {
+            cnt = 1;
+        }
+        d = dict_store(d, v, (cnt << VALUE_BITS) | VALUE_INT);
+    }
+    ctx_push(pctx, d);
+    (*pctx)->pc++;
+}
+
 void op_Choose(const void *env, struct state *state, struct context **pctx){
     assert(false);
 }
@@ -657,18 +677,15 @@ void op_Dict(const void *env, struct state *state, struct context **pctx){
     uint64_t n = ctx_pop(pctx);
     assert((n & VALUE_MASK) == VALUE_INT);
     n >>= VALUE_BITS;
-	if (n == 0) {
-		ctx_push(pctx, VALUE_DICT);
-		(*pctx)->pc++;
-		return;
-	}
 
-    // TODO.  Fail if there's a duplicate key
     uint64_t d = VALUE_DICT;
     for (int i = 0; i < n; i++) {
         uint64_t v = ctx_pop(pctx);
         uint64_t k = ctx_pop(pctx);
-        d = dict_store(d, k, v);
+        uint64_t old;
+        if (!dict_tryload(d, k, &old || value_cmp(v, old) > 0) {
+            d = dict_store(d, k, v);
+        }
     }
     ctx_push(pctx, d);
     (*pctx)->pc++;
@@ -1107,6 +1124,7 @@ void *init_Assert(struct dict *map){ return NULL; }
 void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
 void *init_AtomicInc(struct dict *map){ return NULL; }
+void *init_Bag(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
 void *init_Cut(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
@@ -2147,6 +2165,7 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
+	{ "Bag", init_Bag, op_Bag },
 	{ "Choose", init_Choose, op_Choose },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },

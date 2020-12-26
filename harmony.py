@@ -1785,8 +1785,30 @@ class DictOp(Op):
         for i in range(nitems):
             v = context.pop()
             k = context.pop()
-            assert k not in d       # TODO
-            d[k] = v
+            if k not in d or keyValue(v) > keyValue(d[k]):
+                d[k] = v
+        context.push(DictValue(d))
+        context.pc += 1
+
+class BagOp(Op):
+    def __repr__(self):
+        return "Bag"
+
+    def jdump(self):
+        return '{ "op": "Bag" }'
+
+    def explain(self):
+        return "pop a number n and n values and push a bag"
+
+    def eval(self, state, context):
+        nitems = context.pop()
+        d = {}
+        for i in range(nitems):
+            v = context.pop()
+            if v not in d:
+                d[v] = 1
+            else:
+                d[v] += 1
         context.push(DictValue(d))
         context.pc += 1
 
@@ -2427,9 +2449,8 @@ class BagAST(AST):
     def gencode(self, scope, code):
         for e in self.collection:
             e.compile(scope, code)
-            code.append(PushOp((1, None, None, None)))
         code.append(PushOp((len(self.collection), None, None, None)))
-        code.append(DictOp())
+        code.append(BagOp())
 
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):
