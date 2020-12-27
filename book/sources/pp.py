@@ -59,6 +59,7 @@ def isreserved(s):
         "atLabel",
         "atomic",
         "await",
+        "bag",
         "bagsize",
         "call",
         "choose",

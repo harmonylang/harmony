@@ -1,9 +1,9 @@
-def process(self):
+def thread(self):
     while choose({ False, True }):
         #enter critical section
-        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        @cs: assert atLabel(cs) == bag{ (thread, self) };
         #exit critical section
     ;
 ;
-spawn process(0);
-spawn process(1);
+spawn thread(0);
+spawn thread(1);

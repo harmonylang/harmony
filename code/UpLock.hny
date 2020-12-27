@@ -4,7 +4,7 @@ count = 0;
 countlock = Lock();
 done = [ False, False ];
 
-def process(self):
+def thread(self):
     acquire(?countlock);
     count = count + 1;
     release(?countlock);
@@ -15,6 +15,6 @@ def main(self):
     assert count == 2, count;
 ;
 
-spawn process(0);
-spawn process(1);
+spawn thread(0);
+spawn thread(1);
 spawn main();

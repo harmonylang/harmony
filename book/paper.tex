@@ -2160,7 +2160,7 @@ a lock before accessing the data structure, that is known as a
 Locks are a special case of \emph{binary semaphores}.
 Like locks, binary semaphores are either in an \emph{acquired} state
 or a \emph{released} state.
-Processes trying to acquire an already acquired binary semaphore
+Threads trying to acquire an already acquired binary semaphore
 have to wait until the binary semaphore is released.
 It is illegal to release a binary semaphore that is in a released
 state.
@@ -3007,7 +3007,7 @@ of the gates, but it does not have to be the gate that it used to enter
 the critical section.
 In particular, when a thread leaves the critical section it should
 check for each waiting gate if its waiting condition hold and if there are
-processes trying to get through the gate.  If there is such a gate,
+threads trying to get through the gate.  If there is such a gate,
 it must select one and open that gate.  If there is no such gate,
 it must open the main gate.
 
@@ -4913,7 +4913,7 @@ is a context, then:
 \end{tabular}
 \end{center}
 
-The modes of a context are as follows:
+The possible modes of a context are as follows:
 
 \begin{center}
 \begin{tabular}{|l|l|}

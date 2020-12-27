@@ -16,7 +16,7 @@ def handler(self):
     increment();
     done[self] = True;
 ;
-def process(self):
+def thread(self):
     trap handler(self);
     increment();
     await done[self];
@@ -26,6 +26,6 @@ def main(self):
     assert count == 4, count;
 ;
 
-spawn process(0);
-spawn process(1);
+spawn thread(0);
+spawn thread(1);
 spawn main();

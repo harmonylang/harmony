@@ -2,7 +2,7 @@ import synch;
 
 const MAX = 2;
 const NACCOUNTS = 2;
-const NPROCESSES = 2;
+const NTHREADS = 2;
 
 accounts = [ dict{ .lock: synch.Lock(), .balance: choose({0..MAX}) }
                 for i in {0..NACCOUNTS-1} ]
@@ -22,13 +22,13 @@ def transfer(a1, a2, amount):
     synch.release(?accounts[a1].lock);
 ;
 
-def process():
+def thread():
     let a1 = choose({0..NACCOUNTS-1})
     let a2 = choose({0..NACCOUNTS-1} - { a1 }):
         transfer(a1, a2, choose({0..MAX}));
     ;
 ;
 
-for i in {1..NPROCESSES}:
-    spawn process();
+for i in {1..NTHREADS}:
+    spawn thread();
 ;
