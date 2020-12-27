@@ -4548,7 +4548,7 @@ for each client, or solve the problem using a single pair of channels.
 
 \appendix
 
-\chapter{List of Values}
+\chapter{Value Types}
 \label{ap:values}
 
 \autoref{ch:harmonymachine} provides an introduction to Harmony values.
@@ -4587,6 +4587,7 @@ Characters are one-character atoms, which can be expressed
 in hexadecimal unicode using the syntax \texttt{.0xXX}.
 A bag or multiset is a dictionary that maps a value to how many
 times it occurs in the bag.
+The syntax is \texttt{bag\{ $e$, $e$, ... \}}.
 
 All Harmony values are ordered with respect to one another.  First they
 are ordered by type according to the table above.
@@ -4607,6 +4608,326 @@ ordered;
 Addresses are lexicographically ordered accordingly;
 \item contexts (Appendix~\ref{app:context}) are ordered first by name tag, then by program counter, then by hash.
 \end{itemize}
+
+Generic operators on Harmony values include:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$e$ == $e$} & equivalence \\
+\hline
+\texttt{$e$ != $e$} & inequivalence \\
+\hline
+\texttt{$e$ < $e$, $e$ <= $e$, $e$ > $e$, $e$ >= $e$} & comparison\\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Booleans}
+
+The Boolean type has only two possible values: \texttt{False} and
+\texttt{True}.  Unlike in Python, in Harmony booleans are distinct
+from integers, and in particular $\mathtt{False} < 0$.  In statements
+and expressions where booleans are expected, it is not possible to
+substibute values of other types.
+
+Operations on booleans include:
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$e$ and $e$ and ...} & conjuction \\
+\hline
+\texttt{$e$ or $e$ or ...} & disjunction \\
+\hline
+\texttt{$e$ => $e$, $e$ not => $e$} & implication \\
+\hline
+\texttt{not $e$} & negation \\
+\hline
+\texttt{$v$ if $e$ else $v'$} & $v$ or $v'$ depending on $e$ \\
+\hline
+\texttt{any $s$, all $s$} & disjunction / conjunction for set $s$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Integers}
+
+The integer type supports any whole number, as well as $-\mathtt{inf}$
+and $\mathtt{inf}$.  In the Python-based model checker, integers are
+infinite precision.  In the C-based model checker, integers are implemented
+by two's complement 61-bit words, and $-\mathtt{inf}$ is represented by
+the minimal integer and $\mathtt{inf}$ is represented by the maximal integer.
+
+Operations on integers include:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{-$e$} & negation \\
+\hline
+\texttt{abs($e$)} & absolute value \\
+\hline
+\texttt{$e$ + $e$ + ...} & sum \\
+\hline
+\texttt{$e$ - $e$} & difference \\
+\hline
+\texttt{$e$ * $e$ * $e$ ...} & product \\
+\hline
+\texttt{$e$ / $e$, $e$ // $e$} & integer division \\
+\hline
+\texttt{$e$ \% $e$, $e$ mod $e$} & integer division remainder \\
+\hline
+\texttt{$e$ ** $e$} & power \\
+\hline
+\texttt{\string~$e$} & binary inversion \\
+\hline
+\texttt{$e$ \& $e$ \& ...} & binary and \\
+\hline
+\texttt{$e$ | $e$ | ...} & binary or \\
+\hline
+\texttt{$e$ \string^ $e$ \string^ ...} & binary exclusive or \\
+\hline
+\texttt{$e << e$} & binary shift left \\
+\hline
+\texttt{$e >> e$} & binary shift right \\
+\hline
+\texttt{$\{ e..e' \}$} & set of integers from $e$ to $e'$ inclusive \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Atoms}
+
+Atoms are essentially names and consist of one or more unicode characters.
+If they do not contain special characters and do not start with a digit,
+then an atom can be represented by a ``.'' followed by the characters.
+For example, \texttt{.hello} is
+a representation of the atom ``hello''.  A special character can be
+represented by \texttt{.0xXX}, where \texttt{XX} is the hexidecimal
+unicode for the character.
+Atoms should not be confused with strings.
+There are no special operations on atoms.
+(In the future, operators may be introduced that convert between strings
+and atoms.)
+
+\section{Set}
+
+In Harmony you can create a set of any collection of Harmony values.
+Its syntax is \texttt{\{ $v_0, v_1, ...$ \}}.
+Python users: note that in Harmony the empty set is denoted as $\{\}$.
+
+The \texttt{set} module (\autoref{ap:set})
+contains various convenient routines that operate on sets.
+Native operations on sets include:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{len $e$} & cardinality \\
+\hline
+\texttt{$e$ - $e$} & set difference \\
+\hline
+\texttt{$e$ \& $e$ \& ...} & intersection \\
+\hline
+\texttt{$e$ | $e$ | ...} & union \\
+\hline
+\texttt{$e$ \string^ $e$ \string^ ...} & inclusion/exclusion (elements in odd number of sets) \\
+\hline
+\texttt{choose $e$} & select an element (Harmony will try all) \\
+\hline
+\texttt{min $e$} & minimum element \\
+\hline
+\texttt{max $e$} & maximum element \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Dictionary}
+
+A dictionary maps a set of values (known as \emph{keys})
+to another set of values.
+The generic syntax of a dictionary is
+\texttt{dict\{ $k_0:v_0, k_1:v_1, ...$ \}}.
+If there are duplicate keys in the list, then only the one with
+the maximum value survives.
+Therefore the order of the keys in the dictionary does not matter.
+
+There are various special cases of dictionaries,
+including lists, tuples, strings,
+and bags (multisets) that are individually described below.
+
+Operations on dictionaries include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$d~k$} & indexing \\
+\hline
+\texttt{len $d$} & the number of keys in $d$ \\
+\hline
+\texttt{keys $d$} & the set of keys in $d$ \\
+\hline
+\texttt{$v$ [not] in keys $d$} & check if $v$ is a \emph{key} in $d$ \\
+\hline
+\texttt{$v$ [not] in $d$} & check if $v$ is a \emph{value} in $d$ \\
+\hline
+\texttt{$d$ \& $d$ \& ...} & dictionary intersection \\
+\hline
+\texttt{$d$ | $d$ | ...} & dictionary union \\
+\hline
+\end{tabular}
+\end{center}
+
+Because in Harmony brackets are used for parsing purposes only,
+you can write $d[k]$ (or $d(k)$) instead of $d~k$.
+However, if $k$ is an atom, like \texttt{.id}, then you might
+prefer the notation $k\mathtt{.id}$.
+
+Python users beware: the Harmony \texttt{$v$ in $d$} operator checks
+if there is some key $k$ such that $d[k] = v$.  In Python, the same
+syntax checks if $v$ is a key in $d$.  The difference exists because
+in Harmony a list is a special case of a dictionary.
+
+Dictionary intersection and dictionary union are defined so that
+they work well with bags.  With disjoint dictionaries, intersection
+and union work as expected.  If there is a key in the intersection, then
+dictionary intersection retains the minimum value while dictionary
+union retains the maximum value.  Unlike Python, Harmony
+dictionary intersection and union are commutative and associative.
+
+\section{List or Tuple}
+
+In Harmony, there is no distinction between a list or a tuple.
+Both are a special case of dictionary.  In particular, a list of
+$n$ values is represented by a dictionary that maps the integers
+$0, ..., n-1$ to those values.  Hence, if $t$ is a list or tuple,
+then the notation $t[0]$ returns the first element of the list.
+
+You can denote a list by a sequence of values, each value terminated
+by a comma.  As per usual, you can use brackets or parentheses
+at your discretion.  For Python users, the important thing to note
+is that a singleton lists in Harmony must contain a comma.  For
+example $[1,]$ is a list containing the value $1$, while $[1]$
+is simply the value $1$.
+
+The \texttt{list} module (\autoref{ap:list}) contains various
+convenient routines that operate on lists or tuples.
+Native operations on lists or tuples include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$t~k$} & indexing \\
+\hline
+\texttt{$t$ + $t$ + ...} & concatenation \\
+\hline
+\texttt{$t$ * $n$} & $n$ copies of $t$ concatenated \\
+\hline
+\texttt{$v$ [not] in $t$} & check if $v$ is a \emph{value} in $t$ \\
+\hline
+\texttt{len $t$} & the length of $t$ \\
+\hline
+\texttt{$t$ \& $t$ \& ...} & pairwise list minimum \\
+\hline
+\texttt{$t$ | $t$ | ...} & pairwise list maximum \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{String}
+
+In Harmony, a string is a list of single-character atoms.
+The Python string notations mostly work in Harmony as well.
+For example, \texttt{'abc'} is a three-character string
+consisting of the atoms \texttt{.a}, \texttt{.b}, and
+\texttt{.c}.
+\texttt{"abc'} is the same three-character string.
+Multi-line strings can be terminated by triple quotes or
+triple double-quotes.
+
+\section{Bag or Multiset}
+
+Harmony has native support for bags (aka multisets), which are sets
+that can contain multiple copies of the same element.
+It is represented by a dictionary that maps each element to its
+multiplicity.
+So \texttt{bag\{ 10, 10, 12 \} = dict\{ 10: 2, 12: 1 \}}.
+
+The \texttt{bag} module (\autoref{ap:bag}) contains various
+convenient routines that operate on lists or tuples.
+Native operations on bags include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$v$ [not] in keys $b$} & check if $v$ is in $b$ \\
+\hline
+\texttt{$t$ \& $t$ \& ...} & bag intersection\\
+\hline
+\texttt{$t$ | $t$ | ...} & bag union \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Program Counter}
+
+A program counter is an integer that can be used to index into Harmony
+bytecode.  When you define a method or a lambda function, you are
+creating a constant of the program counter type.
+Note, however, that labels are currently just integers.  This may
+change in the future.
+
+\section{Address}
+
+In Harmony, each shared variable has an address, which is essentially
+a list of Harmony values.
+For example, the address of variable \texttt{d.v[3]} consists of the
+list \texttt{.d}, \texttt{.v}, and 3.  The only way to construct an
+address in Harmony is using the \texttt{?} operator.
+\texttt{?d.v[3]} returns the address of variable \texttt{d.v[3]}.
+An address can be dereferenced to return the value of the variable.
+If $a$ is an address, then $!a$ returns the value.
+Like C, Harmony supports the shorthand \texttt{$a$->v} for 
+the expression \texttt{($!a$).v}.
+
+\section{Context}
+
+A context value captures the state of a thread.
+A context is itself composed over various Harmony values.
+Some of these values can be extracted.  In particular, if $c$
+is a context, then:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{\texttt{c}.name} & returns the name of the thread's main method \\
+\hline
+\texttt{\texttt{c}.entry} & returns the program counter of the thread's main method \\
+\hline
+\texttt{\texttt{c}.arg} & returns the argument value of the thread's main method \\
+\hline
+\texttt{\texttt{c}.this} & returns the thread-local state \\
+\hline
+\texttt{\texttt{c}.mode} & returns the \emph{mode} of the context \\
+\hline
+\end{tabular}
+\end{center}
+
+The modes of a context are as follows:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{normal} & context of a executing thread \\
+\hline
+\texttt{stopped} & context of a stopped thread \\
+\hline
+\texttt{terminated} & context of a terminated thread \\
+\hline
+\texttt{failed} & context of a failed thread \\
+\hline
+\end{tabular}
+\end{center}
 
 \chapter{List of Operators}
 
@@ -4785,6 +5106,7 @@ memory, although this is an impossible outcome in the current
 implementation of the module.
 
 \section{The \texttt{bag} module}
+\label{ap:bag}
 
 The \texttt{bag} module
 \index{bag module}%
@@ -4874,6 +5196,7 @@ at index $b$ and ending just before $f$\\
 \end{tabular}
 
 \section{The \texttt{set} module}
+\label{ap:set}
 
 The \texttt{set} module
 \index{set module}%
