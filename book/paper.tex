@@ -640,14 +640,14 @@ initializes two shared variables: an integer \textit{count} and
 an array \textit{done} with two booleans.
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
-Method \texttt{main} waits until all \textit{done} flags are set to \texttt{True}.
+Method \texttt{main} waits until both \textit{done} flags are set to \texttt{True}.
 (\textbf{await} $c$ is semantically the same as \textbf{while not} $c$: \textbf{pass}.)
 After that, method \texttt{incrementer}
 verifies that the value of \textit{count} equals 2.
 Like Python, Harmony supports \texttt{assert} statements with two arguments:
 the first is a Boolean condition, and the second is a value that is
 reported if the condition fails, in this case
-the actual value of \textit{count}.
+the value of \textit{count}.
 
 The program spawns three threads.
 The first runs \texttt{incrementer(0)}, the second runs
@@ -657,7 +657,7 @@ they will execute concurrently.  It is, for example, quite possible
 that \texttt{incrementer(1)} finishes before \texttt{incrementer(0)}
 even gets going.
 And because Harmony tries every possible execution, it will consider
-such executions as well.
+that particular execution as well.
 
 \begin{figure}[h]
 \begin{code}
@@ -698,7 +698,7 @@ When running multiple threads, each essentially runs an instantiation of
 the machine, and they do so in parallel.  As they execute, their machine
 instructions are interleaved
 \index{interleaving}%
-in unspecified and often random ways.
+in unspecified and often unpredictable ways.
 A program is correct if it works for any interleaving of threads.
 Harmony will try all possible interleavings of the threads
 executing machine instructions.
@@ -738,6 +738,13 @@ We could change the specification by changing the assertion as follows:
 
 This would fix the issue, but more likely it is the program that must
 be fixed, not the specification.
+
+The exercises below have you try the same thing in Python.  As you will
+see, the bug is not easily triggered when you run a Python version of
+the program.  But in Harmony Murphy's Law applies:
+if something can go wrong, it will.  Usually that is not a good thing,
+but in Harmony it is.  It allows you to find bugs in your concurrent
+programs much more easily than with a conventional programming language.
 
 \section*{Exercises}
 
@@ -780,6 +787,7 @@ How large does \texttt{N} need to be for assertions to fail?
 \item Can you think of a fix to \autoref{fig:inc}?  Try one or two different fixes
 and run them through Harmony.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
+(Also, you do not get to use a \emph{lock}, yet.)
 \end{problems}
 
 \begin{figure}
@@ -813,7 +821,6 @@ To understand the problem of concurrent computing, it
 is important to have a basic understanding of the HVM.
 
 \section*{Harmony Values}
-\label{ap:harmonyvalues}
 
 Harmony programs, and indeed the HVM,  manipulate Harmony values.
 Harmony values are recursively defined:
@@ -843,7 +850,9 @@ following expression retrieves the Harmony value that $k$ maps to in $d$:
 \begin{code}
 $d$ $k$
 \end{code}
-This is unfamiliar to Python programers, but in Harmony square brackets can be used
+The meaning of $d$ $a$ $b$ $...$ is ((($d$ $a$) $b$) $...$).
+This notation is unfamiliar to Python programmers,
+but in Harmony square brackets can be used
 in the same way as parentheses, so you can express the same thing in the form
 that is familiar to Python programmers:
 \begin{code}
@@ -852,8 +861,7 @@ $d$[$k$]
 However, if $d$ = \texttt{dict\{ .count: 3 \}}, then you can write
 $d$.\texttt{count} (which has value 3) instead of having to write
 $d$\texttt{[.count]} (although both will work).
-Thus using atoms, a dictionary can be made to look much like a Python object.
-The meaning of $d$ $a$ $b$ $...$ is ((($d$ $a$) $b$) $...$).
+Thus, using atoms, a dictionary can be made to look much like a Python object.
 
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
@@ -862,7 +870,8 @@ the indexes into the tuple.  For example, the tuple
 The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
 Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by including a comma.
-For example, \texttt{(1,)}.
+For example, \texttt{(1,)} is a tuple consisting just of the number 1.
+Importantly, $(1) = 1 \ne (1,)$.
 
 Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
@@ -883,7 +892,7 @@ dictionary, then \texttt{keys}~$d$ (or equivalently \texttt{keys}($d$))
 returns the set of keys and \texttt{len}~$d$ returns the size of
 this set.
 
-Appendix~\ref{ap:harmonyvalues} provides details on all the values that
+\autoref{ap:values} provides details on all the values that
 Harmony currently supports.
 
 \section*{Harmony Bytecode}
@@ -902,46 +911,30 @@ generated from a Harmony program.  The types of instructions will be described l
 a Harmony value.
 \item Threads:  Any thread
 can spawn an unbounded number of other threads and threads may terminate.
-Each thread has an immutable (but not necessarily unique) \emph{name tag},
-\index{name tag}%
-a program counter,
+Each thread has a program counter that indexes into the code,
 \index{program counter}%
 a stack of Harmony values,
-and a single mutable general purpose \emph{register}
+and two private \emph{registers} that each contain a Harmony value.
 \index{register}%
-that contains a Harmony value.
 \end{itemize}
 
-A name tag consists of the name of the main method of the thread,
-along with an optional tag specified in the \texttt{spawn}
-\index{spawn statement}%
-\index{tag}%
-statement.
-The default tag is the argument to the method.
-A name tag is represented as a dictionary with keys \texttt{.name}
-and \texttt{.tag}, but we shall often abbreviate it using the notation
-\texttt{name/tag}.
-For example, in \autoref{fig:inc}, the created threads have name tags
-\texttt{incrementer/0}, \texttt{incrementer/1}, and \texttt{main/()}.
-
 \glsadd{context}%
-
+\index{thread-local}%
+One of the registers contains the local variables of the method that
+the thread is currently executing.  It is saved and restored by
+method invocations.  The other register is called \emph{this} and is
+used for so-called \emph{thread-local state}, which contains variables that
+can be used by all methods.
 The state of a thread is called a \emph{context} (aka \emph{continuation}):
 \index{context}%
 \index{continuation}%
-it contains the values of
-its name tag, program counter, stack, and register.
+it contains the values of its program counter, stack, and registers.
 The state of a HVM
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}%
 \index{multiset}%
 of contexts.  It is a multiset of contexts because two different threads can
 have the same context.
-The initial state of the Harmony memory is the empty dictionary, \texttt{dict\{\}}.
-The context bag has an initial context in it with name tag
-\texttt{\_\_init\_\_/()}, pc 0, register \texttt{()}, and an empty stack.
-Each machine instruction updates the state in some way.
-% \autoref{fig:incstate} shows an example of a reachable state for the program in \autoref{fig:inc}.
 
 \begin{figure}
 \begin{code}
@@ -996,11 +989,10 @@ code/Up.hny:13 spawn incrementer(0);
 \label{fig:inccode}
 \end{figure}
 
-It may seem strange that there is only one memory location and that each
-thread has only one register.  However, this is not a limitation because
-Harmony values are unbounded trees.
-Both the memory and the register of a thread always contain
-a dictionary that maps atoms to Harmony values.  We call this a \emph{directory}.
+It may seem strange that there is only one memory location.
+However, this is not a limitation because Harmony values are unbounded trees.
+The memory contains a dictionary that maps atoms to Harmony values.
+We call this a \emph{directory}.
 \index{directory}%
 A directory represents the state of a collection of variables named by the atoms.
 %
@@ -1015,6 +1007,7 @@ of a Harmony value, and it is relative to the
 For example, in \autoref{fig:inc} the memory is a dictionary with two
 entries: \texttt{.count} and \texttt{.done}.  And the value of entry
 \texttt{.done} is a dictionary with keys 0 and 1.
+An address is itself a Harmony value.
 
 \begin{figure}
 \begin{code}
@@ -1046,11 +1039,14 @@ harmony -a Up.hny
 \end{code}
 Each thread in the HVM is predominantly a \emph{stack machine},
 \index{stack machine}%
-but it also has a register.
+but it also has two registers.
+Like shared memory, the registers usually contain dictionaries so they
+can represent the values of multiple named variables.
+
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
-At first there is one thread, with name tag \texttt{\_\_init\_\_/()},
-that initializes the state.
+At first there is one thread, named \texttt{\_\_init\_\_},
+which initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
 In this case, it executes instructions 0 through 4 first.
@@ -1060,11 +1056,11 @@ At program counter 5 is the code for the \texttt{incrementer} method.
 All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
 instruction.
 
-Appendix~\ref{ap:harmonybytecode} provides a list of all HVM machine instructions,
+\autoref{ap:harmonybytecode} provides a list of all HVM machine instructions,
 in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method and the
 names of its arguments.
-The code generated from $\mathit{count} := \mathit{count} + 1$ in line~6 of
+The code generated from $\mathit{count} := \mathit{count} + 1$ in line~5 of
 \texttt{Up.hny} is as follows (see \autoref{fig:inccode}):
 
 \begin{enumerate} \setcounter{enumi}{5}
@@ -1113,7 +1109,7 @@ Harmony will print at trace of the shortest bad execution that it found.
 from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
 the shortest trace, but also the list of threads
-at that state, along with their name tags and program counters.
+at that state, along with their program counters.
 \item \texttt{Stopped States}: Similar to non-terminating states,
 these are states in which some threads are left that cannot
 terminate.  \autoref{ch:synch} will explain what it means for
@@ -1127,7 +1123,7 @@ Next it reports an execution that failed this assertion.
 The program got to the faulty execution in 5 ``steps.''
 The output has four columns:
 \begin{enumerate}
-\item The name tag of the thread;
+\item The main method and argument of the thread;
 \item The sequence of program counters of the HVM instructions that the thread executed;
 \item The current program counter of the thread;
 \item The contents of the shared memory.
@@ -2253,7 +2249,7 @@ other threads can run.
 \index{release}%
 checks to see if any threads are waiting to acquire the binary semaphore.
 If so, it uses the \texttt{head} and \texttt{tail}
-methods from the \texttt{list} module (see Appendix~\ref{ap:module})
+methods from the \texttt{list} module (see \autoref{ap:module})
 to resume the first thread that got
 suspended and to remove its context from the list.
 \end{itemize}
@@ -3614,7 +3610,7 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 \item \label{ex:bbmesa} Implement a solution to the bounded buffer problem using Mesa condition
 variables.
 \item Implement a ``try lock'' module using Mesa condition variables
-(see also Exercise~\ref{ex:trylock}).  It should
+(see also \autoref{ex:trylock}).  It should
 have the following API:
 \begin{enumerate}
 \item \textit{tl} = \texttt{TryLock}() \# \emph{create a try lock}
@@ -4606,7 +4602,7 @@ representation;
 ordered;
 \item an address is a list of atoms.  \texttt{None} is the empty list of atoms.
 Addresses are lexicographically ordered accordingly;
-\item contexts (Appendix~\ref{app:context}) are ordered first by name tag, then by program counter, then by hash.
+\item contexts (\autoref{app:context}) are ordered first by name tag, then by program counter, then by hash.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -5527,7 +5523,7 @@ allowing programs to implement shared objects.
 Because Harmony does not have objects, it also does not have object methods.
 However, Harmony methods and lambdas are program counter constants.
 These constants can be added to dictionaries.
-For example, in Figure~\ref{fig:petersonmethods}
+For example, in \autoref{fig:petersonmethods}
 you can add the \texttt{P\_enter} and
 \texttt{P\_exit} methods to the \texttt{P\_mutex} dictionary
 like so:
