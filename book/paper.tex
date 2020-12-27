@@ -1015,9 +1015,9 @@ An address is itself a Harmony value.
 #states = 53 diameter = 5
 ==== Safety violation ====
 T0: __init__() [0-4,31-46] 46 { count: 0, done[0]: False, done[1]: False }
-T1: incrementer(0) [5-8]    9 { count: 0, done[0]: False, done[1]: False }
-T2: incrementer(1) [5-15]  15 { count: 1, done[0]: False, done[1]: True  }
-T1: incrementer(0) [9-15]  15 { count: 1, done[0]: True,  done[1]: True  }
+T1: incrementer(0) [ 5- 8]  9 { count: 0, done[0]: False, done[1]: False }
+T2: incrementer(1) [ 5-15] 15 { count: 1, done[0]: False, done[1]: True  }
+T1: incrementer(0) [ 9-15] 15 { count: 1, done[0]: True,  done[1]: True  }
 T3: main()         [17-27] 27 { count: 1, done[0]: True,  done[1]: True  }
 >>> Harmony Assertion (file=code/Up.hny, line=10) failed: 1
 Open file:///Users/rvr/github/harmony/harmony.html for more information
@@ -1084,7 +1084,7 @@ instructions.
 \texttt{Up.hny} program.
 
 \begin{figure}
-\includegraphics[width=\textwidth]{figures/Up1.pdf}
+\includegraphics[width=\textwidth]{figures/Up1.png}
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
 There are three sections.
@@ -1136,13 +1136,13 @@ It sets shared variable \textit{count} to 0 and
 shared variable \textit{done} to \texttt{[False, False]}.
 If we look at the next three steps, we see that:
 \begin{itemize}
-\item Thread \texttt{incrementer/0}
+\item Thread \texttt{incrementer(0)}
 executed instructions 5 through 8, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
-\item Thread \texttt{incrementer/1}
+\item Thread \texttt{incrementer(1)}
 executed instructions 5 through 15, storing 1 into
 into \textit{count} and storing \texttt{True} into \textit{done}[1];
-\item Thread \texttt{incrementer/0}
+\item Thread \texttt{incrementer(0)}
 continues execution, executing instructions 9 through 15
 storing value 1 into \textit{count}
 and storing \texttt{True} into \textit{done}[0].
@@ -5385,7 +5385,9 @@ A context consists of the following:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-name tag & a dictionary with atoms \texttt{.name} and \texttt{.tag} \\
+name & the name of the main method that the thread is executing \\
+\hline
+argument & the argument given to the main method \\
 \hline
 program counter & an integer value pointing into the code \\
 \hline
@@ -5397,7 +5399,9 @@ readonly & if non-zero, the thread is in read-only mode \\
 \hline
 stack & a list of Harmony values \\
 \hline
-register & a dictionary mapping atoms (names of variables) to values \\
+method variables & a dictionary mapping atoms (names of method variables) to values \\
+\hline
+thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
@@ -5408,10 +5412,6 @@ failure & if not None, string that describes how the thread failed \\
 
 Details:
 \begin{itemize}
-\item The name in a name tag is the name of the method that the thread
-is executing;
-\item The tag in a name tag the argument to the method by default.  Optionally
-\texttt{spawn} allows the tag to be specified explicitly;
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame pointer and variables, the argument to
 the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
@@ -5454,7 +5454,7 @@ initializing & boolean indicating that the state is not fully initialized. \\
 \end{tabular}
 \vspace{1em}
 
-There is initially a single context with nametag
+There is initially a single context with name
 \texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
 in atomic mode until it finishes executing the last instruction in
 the code.  All states until then are \texttt{initializing} states.

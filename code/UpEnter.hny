@@ -1,6 +1,5 @@
 count = 0;
-entered = [ False, False ];
-done = [ False, False ];
+entered = done = [ False, False ];
 
 def incrementer(self):
     entered[self] = True;
