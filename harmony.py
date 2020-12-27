@@ -4209,7 +4209,7 @@ def print_path(bad_node):
         except ValueError:
             pids.append(ctx)
             pid = len(pids) - 1
-        print("P%d:"%pid, ctx.nametag(), strsteps(steps), ctx.pc, strvars(d, vars))
+        print("T%d:"%pid, ctx.nametag(), strsteps(steps), ctx.pc, strvars(d, vars))
     if len(path) > 0:
         (fctx, ctx, steps, states, vars) = path[-1]
         if ctx.failure != None:
@@ -4864,7 +4864,7 @@ def htmlpath(n, color, f):
         except ValueError:
             pids.append(ctx)
             pid = len(pids) - 1
-        print("<tr><td>P%d: <a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(pid, row, sid, ctx.nametag()), file=f)
+        print("<tr><td>T%d: <a href='javascript:rowshow(%d,%d)'>%s</a></td>"%(pid, row, sid, ctx.nametag()), file=f)
         print("<td>%s</td><td></td>"%htmlstrsteps(steps), file=f)
         vardump(d, vars, f)
         print("</tr>", file=f)

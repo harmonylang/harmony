@@ -1012,14 +1012,15 @@ An address is itself a Harmony value.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states = 71 diameter = 5                                                                              ==== Safety violation ====
-P0: __init__/()   [0-4,31-43] 43 { .count: 0, .done: [False, False] }
-P1: incrementer/0 [5-8]        9 { .count: 0, .done: [False, False] }
-P2: incrementer/1 [5-15]      15 { .count: 1, .done: [False, True ] }
-P1: incrementer/0 [9-15]      15 { .count: 1, .done: [True,  True ] }
-P3: main/()       [17-27]     27 { .count: 1, .done: [True,  True ] }
+#states = 53 diameter = 5
+==== Safety violation ====
+T0: __init__() [0-4,31-46] 46 { count: 0, done[0]: False, done[1]: False }
+T1: incrementer(0) [5-8]    9 { count: 0, done[0]: False, done[1]: False }
+T2: incrementer(1) [5-15]  15 { count: 1, done[0]: False, done[1]: True  }
+T1: incrementer(0) [9-15]  15 { count: 1, done[0]: True,  done[1]: True  }
+T3: main()         [17-27] 27 { count: 1, done[0]: True,  done[1]: True  }
 >>> Harmony Assertion (file=code/Up.hny, line=10) failed: 1
-Open file:///Users/rvr/github/harmony.new/harmony.html for more information
+Open file:///Users/rvr/github/harmony/harmony.html for more information
 \end{verbatim}
 \end{code}
 \caption{The text output of running Harmony on \autoref{fig:inc}.}
@@ -1121,8 +1122,9 @@ reports that the assertion and that
 \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
 The program got to the faulty execution in 5 ``steps.''
-The output has four columns:
+The output has five columns:
 \begin{enumerate}
+\item A thread identifier;
 \item The main method and argument of the thread;
 \item The sequence of program counters of the HVM instructions that the thread executed;
 \item The current program counter of the thread;
