@@ -1999,8 +1999,9 @@ then \textit{private}[$i$] == \texttt{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
-
+For those who read through the previous chapter:
 $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
+
 To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
@@ -2020,36 +2021,19 @@ Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread $i$ only proceeds to the c
 section if \textit{private}[$i$] is \texttt{False}, and (ii) no other thread modifies
 \textit{private}[$i$].
 
-\begin{figure}
-\begin{code}
-\harmonysource{spinlockInv}
-\end{code}
-\caption{\harmonylink{code/spinlockInv.hny} Checking invariants.}
-\label{fig:tasinv}
-\end{figure}
-
-Harmony can check these invariants as well.  \autoref{fig:tas} already
-has the code to check $\mathcal{I}_2(i)$.  But how would one go about checking an
+Harmony can check these invariants as well.
+$\mathcal{I}_2(i)$ is checked by the \texttt{assert} statement.
+But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
 premisse is that there is a thread at that label.  However, we would
 like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
-
-We can do this by adding another thread that
-checks the invariant.  \autoref{fig:tasinv} shows the code.
-Method \texttt{checkInvariant()} checks to see if the invariant holds
-in a state.  It introduces a new feature of Harmony: the ability to have
-variables local to a method.  In this case, the thread variable \textit{sum}
-is used to compute the number of shared variables that have value
-\texttt{False}.
-The method is invoked by a thread that runs alongside
-the other threads.
-In Harmony, \textbf{assert} statements are executed atomically, so the
-evaluation of the assertion is not interleaved with the execution
-of other threads.
-Because Harmony tries every possible execution, the thread is guaranteed
-to find violations of the invariant if it does not hold.
+Harmony supports checking such invariants using the \texttt{invariant}
+keyword.
+The expression counts the number of \texttt{False} values and checks that
+the result is less than or equal to 1.
+Harmony checks the expression in every reachable state.
 
 \section*{Exercises}
 \begin{problems}
@@ -2058,38 +2042,7 @@ and swap the values.
 \item \label{ex:swap} Implement a spinlock using the atomic swap operation.
 \item For the solution to \autoref{ex:swap},
 write out the invariants that need to hold and check them using Harmony.
-\item People who use an ATM often first check their balance and then withdraw
-a certain amount of money not exceeding their balance.  A negative balance
-is not allowed.  \autoref{fig:atm} shows two operations on bank accounts:
-one to check the balance and one to withdraw money.
-Note that all operations on accounts are carefully protected by a lock
-(i.e., there are no data races).
-The \texttt{customer}
-method models going to a particular ATM and withdrawing money not exceeding
-the balance.  Method \texttt{checker} looks for negative balances.
-Running the code through Harmony reveals that there is a bug.
-It is a common type of concurrency bug known as \emph{Time Of Check Time Of
-Execution} (TOCTOE).
-\index{Time Of Check Time Of Execution}
-\index{TOCTOE}
-In this case, by the time the withdraw operation is performed,
-the balance can have changed.
-\begin{enumerate}
-\item Fix the code in \autoref{fig:atm}.  Note, you should leave the
-customer code the same. You are only allowed to change the
-\texttt{atm\_} methods, and you cannot use the \textbf{atomic}
-statement.
-\item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
-\end{enumerate}
 \end{problems}
-
-\begin{figure}
-\begin{code}
-\harmonysource{atm}
-\end{code}
-\caption{\harmonylink{code/atm.hny} Withdrawing money from an ATM.}
-\label{fig:atm}
-\end{figure}
 
 \chapter{Blocking}
 \label{ch:synch}
@@ -2314,6 +2267,29 @@ This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
 returns \texttt{True} if the binary semaphore was available (and now acquired) or \texttt{False}
 if the binary semaphore was already acquired.
 Hint: you do not have to change the existing code.
+\item People who use an ATM often first check their balance and then withdraw
+a certain amount of money not exceeding their balance.  A negative balance
+is not allowed.  \autoref{fig:atm} shows two operations on bank accounts:
+one to check the balance and one to withdraw money.
+Note that all operations on accounts are carefully protected by a lock
+(i.e., there are no data races).
+The \texttt{customer}
+method models going to a particular ATM and withdrawing money not exceeding
+the balance.  Method \texttt{checker} looks for negative balances.
+Running the code through Harmony reveals that there is a bug.
+It is a common type of concurrency bug known as \emph{Time Of Check Time Of
+Execution} (TOCTOE).
+\index{Time Of Check Time Of Execution}
+\index{TOCTOE}
+In this case, by the time the withdraw operation is performed,
+the balance can have changed.
+\begin{enumerate}
+\item Fix the code in \autoref{fig:atm}.  Note, you should leave the
+customer code the same. You are only allowed to change the
+\texttt{atm\_} methods, and you cannot use the \textbf{atomic}
+statement.
+\item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
+\end{enumerate}
 \end{problems}
 
 \begin{figure}
@@ -2322,6 +2298,14 @@ Hint: you do not have to change the existing code.
 \end{code}
 \caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$.}
 \label{fig:xy}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{atm}
+\end{code}
+\caption{\harmonylink{code/atm.hny} Withdrawing money from an ATM.}
+\label{fig:atm}
 \end{figure}
 
 \chapter{Concurrent Data Structures}
