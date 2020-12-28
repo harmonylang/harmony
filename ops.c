@@ -1431,7 +1431,7 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
     assert(ctx->atomic > 0);
     assert(n == 1);
     uint64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_INT);
+    assert((e & VALUE_MASK) == VALUE_PC);
     e >>= VALUE_BITS;
 
     int size;

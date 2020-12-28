@@ -6,11 +6,11 @@ def thread():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
             RW.read_acquire(?rw);
-            @rcs: pass; # assert atLabel(wcs) == bag{};
+            @rcs: assert atLabel(wcs) == bag{};
             RW.read_release(?rw);
         else:                       # .write
             RW.write_acquire(?rw);
-            @wcs: assert (atLabel(wcs) == bag{ (thread, 1) }) and
+            @wcs: assert (atLabel(wcs) == bag{ (thread, ()) }) and
                          (atLabel(rcs) == bag{})
                   ;
             RW.write_release(?rw);

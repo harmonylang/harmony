@@ -411,6 +411,7 @@ import time
 import math
 import html
 import queue
+import functools
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -437,6 +438,43 @@ def bag_remove(bag, item):
     else:
         bag[item] = cnt - 1
 
+def doImport(scope, code, module):
+    (lexeme, file, line, column) = module
+    # assert lexeme not in scope.names        # TODO
+    if lexeme not in imported:
+        code.append(PushOp((novalue, file, line, column)))
+        code.append(StoreOp(module, module, []))
+
+        # module name replacement with -m flag
+        modname = modules[lexeme] if lexeme in modules \
+                            else lexeme
+
+        # create a new scope
+        scope2 = Scope(None)
+        scope2.prefix = [lexeme]
+        scope2.locations = scope.locations
+        scope2.labels = scope.labels
+
+        found = False
+        for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+            filename = dir + "/" + modname + ".hny"
+            if os.path.exists(filename):
+                with open(filename) as f:
+                    load(f, filename, scope2, code)
+                found = True
+                break
+        if not found:
+            if modname in internal_modules:
+                load_string(internal_modules[lexeme],
+                    "<internal>/" + modname + ".hny", scope2, code)
+            else:
+                print("Can't find module", modname, "imported from", namestack)
+                exit(1)
+        
+        imported[lexeme] = scope2
+
+    scope.names[lexeme] = ("module", imported[lexeme])
+
 def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
@@ -447,6 +485,24 @@ def load_string(all, filename, scope, code):
         print("Parsing", filename, "hit EOF (usually missing ';' at end of last line)")
         # print(traceback.format_exc())
         exit(1)
+
+    for mod in ast.getImports():
+        doImport(scope, code, mod)
+
+    # method names and label names get a temporary value
+    # they are filled in with their actual values after compilation
+    # TODO.  Look for duplicates?
+    tmp = PcValue(-1)
+    for (lexeme, file, line, column) in ast.getLabels():
+        scope.names[lexeme] = ("constant", (tmp, file, line, column))
+
+    # Compile the first time, only to figure out the values of
+    # method and label constants
+    before = len(code)
+    ast.compile(scope, code)
+    del code[before:]
+
+    # Compile again with the real values of the methods and label constants
     ast.compile(scope, code)
 
 def load(f, filename, scope, code):
@@ -494,7 +550,7 @@ def isreserved(s):
         "atLabel",
         "atomic",
         "await",
-        "call",
+        # "call",
         "choose",
         "const",
         "contexts",
@@ -506,7 +562,7 @@ def isreserved(s):
         "end",
         "except",
         "False",
-        "fun",
+        # "fun",
         "for",
         "from",
         "get_context",
@@ -1976,9 +2032,9 @@ class NaryOp(Op):
                 if not context.atomic:
                     context.failure = "not in atomic block: " + str(self.op)
                     return
-                if not self.checktype(state, context, sa, isinstance(e, int)):
+                if not self.checktype(state, context, sa, isinstance(e, PcValue)):
                     return
-                context.push(self.atLabel(state, e))
+                context.push(self.atLabel(state, e.pc))
             elif op == "get_context":
                 # if not self.checktype(state, context, sa, isinstance(e, int)):
                 #   return
@@ -2341,7 +2397,7 @@ class AST:
 
     def doImport(self, scope, code, module):
         (lexeme, file, line, column) = module
-        assert lexeme not in scope.names        # TODO
+        # assert lexeme not in scope.names        # TODO
         if lexeme not in imported:
             code.append(PushOp((novalue, file, line, column)))
             code.append(StoreOp(module, module, []))
@@ -2376,6 +2432,12 @@ class AST:
 
         scope.names[lexeme] = ("module", imported[lexeme])
 
+    def getLabels(self):
+        return set()
+
+    def getImports(self):
+        return []
+
 class ConstantAST(AST):
     def __init__(self, const):
         self.const = const
@@ -2397,11 +2459,11 @@ class NameAST(AST):
         return "NameAST" + str(self.name)
 
     def compile(self, scope, code):
-        (lexeme, file, line, column) = self.name
         (t, v) = scope.lookup(self.name)
         if t == "local":
             code.append(LoadVarOp(self.name))
         elif t == "constant":
+            (lexeme, file, line, column) = self.name
             code.append(PushOp(v))
         else:
             assert t in { "global", "module" }
@@ -3084,7 +3146,7 @@ class AssignmentAST(AST):
 
     def __repr__(self):
         return "Assign(" + str(self.lhslist) + ", " + str(self.rv) + \
-                            ", " + self.op + ")"
+                            ", " + str(self.op) + ")"
 
     # handle an "x op= y" assignment
     def opassign(self, lv, scope, code):
@@ -3199,11 +3261,19 @@ class BlockAST(AST):
         self.b = b
 
     def __repr__(self):
-        return "BlockRule(" + str(self.b) + ")"
+        return "Block(" + str(self.b) + ")"
 
     def compile(self, scope, code):
         for s in self.b:
             s.compile(scope, code)
+
+    def getLabels(self):
+        labels = [ x.getLabels() for x in self.b ]
+        return functools.reduce(lambda x,y: x|y, labels)
+
+    def getImports(self):
+        imports = [ x.getImports() for x in self.b ]
+        return functools.reduce(lambda x,y: x+y, imports)
 
 class IfAST(AST):
     def __init__(self, alts, stat):
@@ -3231,6 +3301,18 @@ class IfAST(AST):
         for pc in jumps:
             code[pc] = JumpOp(len(code))
 
+    def getLabels(self):
+        labels = [ x.getLabels() for (c, x) in self.alts ]
+        if self.stat != None:
+            labels += [ self.stat.getLabels() ]
+        return functools.reduce(lambda x,y: x|y, labels)
+
+    def getImports(self):
+        imports = [ x.getImports() for (c, x) in self.alts ]
+        if self.stat != None:
+            imports += [ self.stat.getImports() ]
+        return functools.reduce(lambda x,y: x+y, imports)
+
 class WhileAST(AST):
     def __init__(self, cond, stat):
         self.cond = cond
@@ -3249,6 +3331,12 @@ class WhileAST(AST):
         self.stat.compile(scope, code)
         code.append(JumpOp(pc1))
         code[pc2] = JumpCondOp(negate, len(code))
+
+    def getLabels(self):
+        return self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
 
 class AwaitAST(AST):
     def __init__(self, cond):
@@ -3312,6 +3400,12 @@ class ForAST(AST):
     def compile(self, scope, code):
         self.comprehension(scope, code, "for")
 
+    def getLabels(self):
+        return self.value.getLabels()
+
+    def getImports(self):
+        return self.value.getImports()
+
 class AtomicAST(AST):
     def __init__(self, stat):
         self.stat = stat
@@ -3323,6 +3417,13 @@ class AtomicAST(AST):
         code.append(AtomicIncOp())
         self.stat.compile(scope, code)
         code.append(AtomicDecOp())
+
+    # TODO.  Is it ok to define labels within an atomic block?
+    def getLabels(self):
+        return self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
 
 class AssertAST(AST):
     def __init__(self, token, cond, expr):
@@ -3344,11 +3445,10 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp())
 
 class MethodAST(AST):
-    def __init__(self, name, args, stat, fun):
+    def __init__(self, name, args, stat):
         self.name = name
         self.args = args
         self.stat = stat
-        self.fun = fun          # TODO.  Make atomic
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
@@ -3367,6 +3467,12 @@ class MethodAST(AST):
         code.append(ReturnOp())
 
         code[pc] = JumpOp(len(code))
+
+    def getLabels(self):
+        return { self.name } | self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
 
 class LambdaAST(AST):
     def __init__(self, args, stat, token):
@@ -3469,6 +3575,9 @@ class ImportAST(AST):
         for module in self.modlist:
             self.doImport(scope, code, module)
 
+    def getImports(self):
+        return self.modlist
+
 class FromAST(AST):
     def __init__(self, module, items):
         self.module = module
@@ -3492,6 +3601,9 @@ class FromAST(AST):
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
 
+    def getImports(self):
+        return [self.module]
+
 class LabelStatAST(AST):
     def __init__(self, labels, ast, file, line):
         self.labels = labels
@@ -3507,12 +3619,21 @@ class LabelStatAST(AST):
         if self.labels == []:
             self.ast.compile(scope, code)
         else:
+            root = scope
+            while root.parent != None:
+                root = root.parent
             for (lexeme, file, line, column) in self.labels:
-                scope.names[lexeme] = \
-                    ("constant", (len(code), file, line, column))
+                root.names[lexeme] = \
+                    ("constant", (PcValue(len(code)), file, line, column))
             code.append(AtomicIncOp())
             self.ast.compile(scope, code)
             code.append(AtomicDecOp())
+
+    def getLabels(self):
+        return set(self.labels) | self.ast.getLabels();
+
+    def getImports(self):
+        return self.ast.getImports();
 
 class ConstAST(AST):
     def __init__(self, const, expr):
@@ -3710,15 +3831,15 @@ class StatementRule(Rule):
         if lexeme == "del":
             (ast, t) = ExpressionRule().parse(t[1:])
             return (DelAST(ast), self.skip(token, t))
-        if lexeme == "def" or lexeme == "fun":
-            map = lexeme == "fun"
+        if lexeme == "def": # or lexeme == "fun":
+            # map = lexeme == "fun"
             name = t[1]
             (lexeme, file, line, column) = name
             self.expect("method definition", isname(lexeme), name, "expected name")
             (bv, t) = BoundVarRule().parse(t[2:])
             (stat, t) = BlockRule({";"}).parse(t)
-            return (MethodAST(name, bv, stat, map), self.skip(token, t))
-        if lexeme == "call":
+            return (MethodAST(name, bv, stat), self.skip(token, t))
+        if False and lexeme == "call":
             (expr, t) = ExpressionRule().parse(t[1:])
             return (CallAST(expr), self.skip(token, t))
         if lexeme == "spawn":
@@ -4222,6 +4343,14 @@ class Scope:
         self.locations = {} if parent == None else parent.locations
         self.labels = {} if parent == None else parent.labels
         self.prefix = [] if parent == None else parent.prefix
+
+    def copy(self):
+        c = Scope(self.parent)
+        c.names = self.names.copy()
+        c.locations = self.locations.copy()
+        c.labels = self.labels.copy()
+        c.prefix = self.prefix.copy()
+        return c
 
     def checkUnused(self, name):
         (lexeme, file, line, column) = name
