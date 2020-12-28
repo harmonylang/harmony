@@ -1885,7 +1885,7 @@ you can pass a reference to an object to a method, and that method
 can then update the object.  In Harmony, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
 For this, as mentioned in \autoref{ch:harmonymachine},
-each shared variable has an \emph{address}.
+each shared variable has an \emph{address}, itself a Harmony value.
 \index{address}%
 If $x$ is a shared variable, then the expression ?$x$ is the address of $x$.
 If a variable contains an address, we call that variable a \emph{pointer}.
@@ -1896,11 +1896,11 @@ In particular, \texttt{!?}$x$ == $x$.
 This is similar to how C pointers work (\texttt{*\string&}$x$ == $x$).
 
 Often, pointers point to dictionaries, and so if $p$ is such a pointer,
-then $!(p).\mathtt{field}$ would evaluate to the specified field in the dictionary.
+then $(!p).\mathtt{field}$ would evaluate to the specified field in the dictionary.
 Note that the parentheses in this expression
 are needed, as \texttt{!}\textit{p}\texttt{.field} would wrongly evaluate
 \texttt{!}(\textit{p}\texttt{.field}).
-$!(p).\mathtt{field}$ is such a common expression that, like C, Harmony supports the
+$(!p).\mathtt{field}$ is such a common expression that, like C, Harmony supports the
 shorthand $p-$$>$\texttt{field}, which greatly improves readability.
 
 \autoref{fig:petersonmethods} again shows Peterson's algorithm,
@@ -1920,8 +1920,7 @@ You can put the first three methods in its own Harmony source file
 and include it using the Harmony \texttt{import} statement.
 \index{import statement}%
 \index{module}%
-This would
-make the code re-usable by other applications.
+This would make the code usable by multiple applications.
 
 \chapter{Spinlock}
 \label{ch:spinlock}
@@ -1943,7 +1942,11 @@ lock is that checking the lock and setting it if it is available is
 not \emph{atomic}.  Thus multiple threads contending for the lock
 can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
-if generalized to multiple threads.  Instead, multi-core processors provide
+if generalized to multiple threads.
+Worse, most modern processors make accessing shared memory locations
+non-atomic to allow for efficient caching and other optimizations.
+So Peterson's algorithm would not even work on such processors.
+Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
 \index{interlock instruction}%
 special machine instructions
@@ -1967,7 +1970,8 @@ constructing an atomic increment operation for a counter, like so:
 \harmonysource{atomicinc}
 \end{code}
 
-Many CPUs have an atomic ``test-and-set'' (TAS)
+To support implementing locks,
+many CPUs have an atomic ``test-and-set'' (TAS)
 \index{test-and-set}%
 \index{TAS}%
 operation.
