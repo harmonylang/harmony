@@ -818,7 +818,8 @@ which in turn is executed by the Harmony virtual machine (HVM).
 \index{Harmony Virtual Machine}%
 \index{HVM}%
 To understand the problem of concurrent computing, it
-is important to have a basic understanding of the HVM.
+is important to have a basic understanding of machine instructions,
+and in our case those of the HVM.
 
 \section*{Harmony Values}
 
@@ -898,7 +899,8 @@ Harmony currently supports.
 \section*{Harmony Bytecode}
 
 A Harmony program is translated into HVM bytecode.
-The HVM is not an ordinary virtual machine, but its architecture
+To make it amenable to efficient model checking,
+the HVM is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional computers and
 virtual machines such as the Java Virtual Machine.
 
@@ -920,8 +922,8 @@ and two private \emph{registers} that each contain a Harmony value.
 
 \glsadd{context}%
 \index{thread-local}%
-One of the registers contains the local variables of the method that
-the thread is currently executing.  It is saved and restored by
+One of the registers of a thread contains the local variables of the
+method that the thread is currently executing.  It is saved and restored by
 method invocations.  The other register is called \emph{this} and is
 used for so-called \emph{thread-local state}, which contains variables that
 can be used by all methods.
@@ -991,22 +993,24 @@ code/Up.hny:13 spawn incrementer(0);
 
 It may seem strange that there is only one memory location.
 However, this is not a limitation because Harmony values are unbounded trees.
-The memory contains a dictionary that maps atoms to Harmony values.
+The shared memory is a dictionary that maps atoms (names of shared
+variables) to other Harmony values.
 We call this a \emph{directory}.
 \index{directory}%
-A directory represents the state of a collection of variables named by the atoms.
+Thus, a directory represents the state of a collection of variables named
+by the atoms.
 %
 Because directories are Harmony values themselves,
 directories can be organized into a tree.
 Each node in a directory tree is then identified
-by a sequence of atoms, like a path name in the file system hierarchy.  We call
-such a sequence the \emph{address}
+by a sequence of Harmony values, like a path name in the file system
+hierarchy.  We call such a sequence an \emph{address}.
 \index{address}%
-of a Harmony value, and it is relative to the
-``root'' of the directory tree.
 For example, in \autoref{fig:inc} the memory is a dictionary with two
 entries: \texttt{.count} and \texttt{.done}.  And the value of entry
 \texttt{.done} is a dictionary with keys 0 and 1.
+So, for example, the address of \texttt{done[0]} is the sequence
+[ \texttt{.done}, 0 ].
 An address is itself a Harmony value.
 
 \begin{figure}
@@ -1043,6 +1047,9 @@ Each thread in the HVM is predominantly a \emph{stack machine},
 but it also has two registers.
 Like shared memory, the registers usually contain dictionaries so they
 can represent the values of multiple named variables.
+As mentioned before, one register contains a dictionary with the local
+variables of the method that the thread is currently executing,
+while the other contains thread-local state.
 
 All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
@@ -1067,7 +1074,7 @@ The code generated from $\mathit{count} := \mathit{count} + 1$ in line~5 of
 \begin{enumerate} \setcounter{enumi}{5}
 \item The \texttt{Load} instruction pushes the value of the
 \textit{count} variable onto the stack.
-\item the \texttt{Push} instruction pushes the constant 1
+\item The \texttt{Push} instruction pushes the constant 1
 onto the stack of the thread.
 \item \texttt{2-ary} is a \texttt{+} operation with 2 arguments.
 It pops two values from the stack (the value of \textit{count} and 1),
@@ -1248,15 +1255,14 @@ Harmony in fact supports this.
 It has an operator \textbf{atLabel}~$L$,
 \index{atLabel operator}%
 where $L$
-is the atom containing the name of the label (in this case, \texttt{.cs}).
-The operator returns a bag (multiset) of name tags of threads executing at that
-label.  The bag is represented by a dictionary that maps each element
+is the atom containing the name of the label (in this case, \texttt{cs}).
+The operator returns a bag (multiset) of (method, argument) pairs of threads
+executing at that label.
+In our case there are two threads: \texttt{(thread, 0)} and \texttt{(thread, 1)}.
+A bag is represented by a dictionary that maps each element
 in the bag to the number of times the element appears in the bag.
 Method \textbf{atLabel} only exists for specification purposes---do not
 use it in normal code.
-The assertion also makes use of the \textbf{nametag}() operator
-\index{nametag operator}%
-that returns the name tag of the current thread.
 If you run the code through Harmony, the assertion should fail because
 there is no code yet for safely entering and exiting the critical section.
 
@@ -1525,8 +1531,12 @@ exclusion and progress.
 
 Why does it work?  We will focus here on how one might go about proving
 mutual exclusion for an algorithm such as Peterson's.
-For that, we have to understand a little bit more about how the Harmony
-virtual machine (HVM) works.
+It turns out that doing so is not easy.
+If you are interested in learning more about concurrent programming
+but not necessarily in how to prove concurrent programs correct, you
+may choose to skip the rest of this chapter.
+If you are still here, you have to understand a little bit more about
+how the Harmony virtual machine (HVM) works.
 In \autoref{ch:harmonymachine} we talked about the concept of \emph{state}:
 \index{state}%
 at any point in time the HVM is in a specific state.
@@ -1550,7 +1560,8 @@ one thread and its program counter is~0.  A \emph{trace}
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}%
-in Harmony.
+in Harmony.\footnote{Actually, there is a third type called
+an \emph{interrupt}, discussed in \autoref{ch:interrupts}.}
 One is when
 there is more than one thread that can make a step.  The other is
 when a thread executes a \texttt{choose} operation and there is
@@ -1593,13 +1604,13 @@ over the resulting state.
 For this to work you would need a predicate that describes exactly which
 states are reachable.
 But we do not have such a predicate: we know how to define the set
-of reachable states, but given an arbitrary state it is not easy to
-see whether it is reachable or not.
+of reachable states inductively, but given an arbitrary state it is not
+easy to see whether it is reachable or not.
 
 To solve this problem, we will use what is called an
 \emph{inductive invariant}.
 \index{inductive invariant}%
-An inductive invariant $\mathcal{I}$ is a predicate over states that satisfies the following:
+An inductive invariant~$\mathcal{I}$ is a predicate over states that satisfies the following:
 \begin{itemize}
 \item $\mathcal{I}$ holds in the initial state.
 \item For any state in which $\mathcal{I}$ holds (including unreachable ones) and for any
@@ -1620,7 +1631,8 @@ thread~1 will stop waiting and also enter the critical
 section, entering a state that is not exclusive.
 So exclusivity is an invariant (holds over every reachable state, as demonstrated
 by Harmony),
-but not an inductive invariant (it will turn out that $s$ is not reachable).
+but not an inductive invariant.
+It will turn out that $s$ is not reachable.
 
 So we are looking for an inductive invariant that \emph{implies} exclusivity.
 In other words, the set of states where the inductive invariant holds
@@ -1632,7 +1644,7 @@ $\mathcal{F}(i) = \mathtt{thread}(i)@[8 \cdots 15] \Rightarrow \mathit{flags}[i]
 that is, if thread~$i$ is executing in lines 8 through 15, then $\mathit{flags}[i]$
 is set.
 Although it does not, by itself, imply exclusivity, we can show that
-$\mathcal{F}(i)$ is an inductive invariant (for both threads 1 and 2).
+$\mathcal{F}(i)$ is an inductive invariant (for both threads~0 and~1).
 To wit, it holds in the initial state, because in the initial state thread $i$ does
 not even exist yet.
 Now we have to show that if $\mathcal{F}(i)$ holds in some state, then
@@ -5264,11 +5276,11 @@ Address & compute address from two components \\
 \hline
 Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
-Assert & pop $b$ and check that it is \texttt{True} \\
+Assert, Assert2 & pop $b$ and check that it is \texttt{True}.  Assert2 also pops value to print \\
 \hline
-AtomicInc & increment the atomic counter of this context \\
+AtomicInc/Dec & increment/decrement the atomic counter of this context \\
 \hline
-AtomicDec & decrement the atomic counter of this context \\
+Bag & pop $n$ and $n$ values and push a bag \\
 \hline
 Continue & no-op (but causes a context switch) \\
 \hline
@@ -5305,9 +5317,7 @@ Pop & pop a value of the stack and discard it \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
 \hline
-ReadonlyInc & increment the read-only counter of this context \\
-\hline
-ReadonlyDec & decrement the read-only counter of this context \\
+ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
 \hline
