@@ -1,18 +1,5 @@
 import spinlock;
 
-def checkInvariant():
-    let sum = 0:
-        if not spinlock.shared:
-            sum = 1;
-        ;
-        for i in {0..spinlock.N-1} such that not spinlock.private[i]:
-            sum += 1;
-        ;
-        result = sum <= 1;
-    ;
+invariant len([ x for x in [spinlock.shared,] +
+                    spinlock.private such that not x ]) <= 1
 ;
-def invariantChecker():
-    assert checkInvariant();
-;
-
-spawn invariantChecker();
