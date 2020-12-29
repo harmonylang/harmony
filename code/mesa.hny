@@ -2,15 +2,15 @@ def Condition(lk):
     result = bag.empty();
 ;
 def wait(c, lk):
-    let blocked, cnt = True, 0:
+    let blocked, cnt, ctx = True, 0, get_context():
         atomic:
-            cnt = bag.count(!c, nametag());
-            bag.add(c, nametag());
+            cnt = bag.count(!c, ctx);
+            bag.add(c, ctx);
             !lk = False;
         ;
         while blocked:
             atomic:
-                if (not !lk) and (bag.count(!c, nametag()) <= cnt):
+                if (not !lk) and (bag.count(!c, ctx) <= cnt):
                     !lk = True;
                     blocked = False;
                 ;

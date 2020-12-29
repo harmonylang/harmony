@@ -2314,8 +2314,8 @@ The \texttt{queue} module will have the following API:
 \begin{itemize}
 \item $q = \mathtt{Queue}()$: allocate a new queue;
 \item $\mathtt{put}(q, v)$: add $v$ to the tail of the queue;
-\item $r = \mathtt{get}(q)$: returns $r = ()$ if $q$ is empty or $r = (v,)$ (a singleton tuple)
-if $v$ was at the head of the queue.
+\item $r = \mathtt{get}(q)$: returns $r = \mathtt{None}$
+if $q$ is empty or $r = v$ if $v$ was at the head of the queue.
 \end{itemize}
 See \autoref{fig:queuetest} for a simple test program that uses the queue.
 
@@ -2843,7 +2843,7 @@ but implemented using a circular buffer
 of a certain length and two pointers:
 the \emph{tail} points where new items are enqueued and the \emph{head}
 points where items are dequeued.
-If the buffer is full, the enqueur must wait; if the buffer is empty, the
+If the buffer is full, the enqueuer must wait; if the buffer is empty, the
 dequeuer must wait.
 This problem is known as the ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
@@ -2969,25 +2969,20 @@ exactly the set of tuples that the producers produce.
 
 \glsadd{conditional critical section}%
 
-Split Binary Semaphores (SBS) is a general technique to implement conditional
-waiting.  It was originally proposed by
+The Split Binary Semaphore (SBS) approach is a general technique for
+implementing conditional waiting.  It was originally proposed by
 Tony Hoare and popularized by Edsger Dijkstra~\cite{EWD703}.
 SBS is an extension of a critical section that is protected by a single
 binary semaphore.
 If there are $n$ \emph{waiting conditions},
 then SBS uses $n+1$ binary semaphores to protect the critical section.
 An ordinary critical section has no waiting conditions.
-Reader/writer locks have two waiting conditions:
-\begin{enumerate}
-\item readers waiting for a writer to release the lock;
-\item writers waiting for another writer or all readers to release the lock.
-\end{enumerate}
-Similarly, a bounded buffer has two waiting conditions:
+For example, a bounded buffer has two waiting conditions:
 \begin{enumerate}
 \item consumers waiting for the buffer to be non-empty;
 \item producers waiting for an empty slot in the buffer.
 \end{enumerate}
-So each will require 3 binary semaphores if the SBS technique is applied.
+So it will require 3 binary semaphores if the SBS technique is applied.
 
 Think of each of these semaphores as a gate that a thread must go
 through in order to enter the critical section.  A gate is either open
@@ -3001,7 +2996,7 @@ When leaving the critical section, the thread must open exactly one
 of the gates, but it does not have to be the gate that it used to enter
 the critical section.
 In particular, when a thread leaves the critical section it should
-check for each waiting gate if its waiting condition hold and if there are
+check for each waiting gate if its waiting condition holds and if there are
 threads trying to get through the gate.  If there is such a gate,
 it must select one and open that gate.  If there is no such gate,
 it must open the main gate.
@@ -3010,7 +3005,7 @@ Finally, if a thread is executing in the critical section and needs to
 wait for a particular condition, it leaves the critical section and waits
 for the gate associated with that condition to open.
 
-Note that the following invariants holds:
+Note that the following invariants hold:
 \begin{itemize}
 \item At any time, at most one gate is open;
 \item If some gate is open, then no thread is in the critical section;
@@ -3021,7 +3016,7 @@ Note that the following invariants holds:
 The main gate is implemented by a binary semaphore, initialized in the
 released state (signifying that the gate is open).
 The waiting gates each consist of a pair: a counter that counts how many
-threads are waiting behind the gate, and a binary semaphore initialized
+threads are waiting behind the gate and a binary semaphore initialized
 in the acquired state (signifying that the gate is closed).
 
 We will illustrate the technique using the reader/writer problem.
@@ -3031,7 +3026,7 @@ In the case of the reader/writer
 problem, there are two: a thread that wants to read may have to wait for a
 writer to leave the critical section, while a thread that wants to write may
 have to wait until all readers have left the critical section or until a writer has left.
-
+%
 The state of a reader/writer lock thus consists of the following:
 \begin{itemize}
 \item \textit{nreaders}: the number of readers in the critical section;
@@ -3045,12 +3040,13 @@ Each of the
 \texttt{read\_acquire}, \texttt{read\_release},
 \texttt{write\_acquire}, and \texttt{write\_release} methods must maintain
 this state.
-Each of these methods first has to acquire the \textit{mutex}
+First they have to acquire the \textit{mutex}
 (i.e., enter the main gate).
-\texttt{read\_acquire} and \texttt{write\_acquire} must check to see
+After acquiring the \textit{mutex},
+\texttt{read\_acquire} and \texttt{write\_acquire} each must check to see
 if it has to wait.
 If so, it increments the count associated with its respective gate,
-opens a gate (using \texttt{release\_one}, and then blocks until
+opens a gate (using method \texttt{release\_one}), and then blocks until
 its waiting gate opens up.
 
 \texttt{release\_one()} is the function that a thread uses when leaving
@@ -3064,7 +3060,7 @@ has to open the main gate (i.e., release \textit{mutex}).
 
 Let us examine \texttt{read\_acquire} more carefully.
 First the method acquires the \textit{mutex}.
-Then, in the case that the thread, say $p$,
+Then, in the case that the thread
 finds that there is a writer in the critical section
 ($\mathit{nwriters > 0}$), it increments the counter associated with
 the readers' gate, leaves the critical section (\texttt{release\_one}),
@@ -3121,10 +3117,10 @@ bound lock.
 \item Write a test program for bound locks
 that checks that up to \texttt{M} threads
 can acquire the bound lock at the same time.
-\item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
-should block if the stack is full.  Method \texttt{pop()} should block
-until the stack is non-empty and then return an item.
-Also implement test programs for your solution.
+% \item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
+% should block if the stack is full.  Method \texttt{pop()} should block
+% until the stack is non-empty and then return an item.
+% Also implement test programs for your solution.
 \item \label{ex:gpu} Implement a thread-safe \emph{GPU allocator} by modifying
 \autoref{fig:gpu}.
 There are \texttt{N} GPUs identified by the numbers
@@ -3136,6 +3132,8 @@ to block.
 concurrency can be improved if a thread \emph{downgrades} its write lock
 to a read lock when its done writing but not done reading.  Add
 a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
+(Similarly, you may want to try to implement an \emph{upgrade} of a
+read lock to a write lock.)
 % How easy or hard would it be to do the same for the code in
 % \autoref{fig:rw2lock}?
 % Note, you cannot simply release the
@@ -3193,8 +3191,9 @@ program allows are a subset of the traces in the property.
 So far we have pursued two properties: \emph{mutual exclusion}
 and \emph{progress}.  The former is an example of a
 \emph{safety property}---it prevents something ``bad'' from
-happening, like a reader and writer thread both entering the
-critical section.  The \emph{progress} property is an example
+happening, like a reader and writer thread both acquiring a
+reader/writer lock.
+The \emph{progress} property is an example
 of a \emph{liveness property}---guaranteeing that something good
 eventually happens.
 Informally (and inexactly), progress states that if no threads
@@ -3207,18 +3206,18 @@ the following.  There are three threads repeatedly trying to
 enter a critical section using a spinlock.  Two of
 the threads successfully keep entering, alternating, but the third
 thread never gets a turn.  This is an example of
-\texttt{starvation}.  With a spinlock, this scenario could
+\emph{starvation}.  With a spinlock, this scenario could
 even happen with two threads.  Initially both threads
 try to acquire the spinlock.  One of the threads is
 successful and enters.  After the thread leaves, it immediately
 tries to re-enter.  This state is identical to the initial
 state, and there is nothing that prevents the same thread
 from acquiring the lock yet again.
-
-It is worth noting that Peterson's Algorithm (\autoref{ch:peterson})
+%
+(It is worth noting that Peterson's Algorithm (\autoref{ch:peterson})
 does not suffer from starvation, thanks to the \texttt{turn} variable
 that alternates between 0 and 1 when two threads are contending for
-the critical section.
+the critical section.)
 
 While spinlocks suffer from starvation, it is a uniform random
 process and each thread has an equal chance of entering the critical
@@ -3378,7 +3377,7 @@ solution would be to peek at the counters inside the respective condition
 variable, but that breaks the abstraction.  The alternative is for the
 reader/writer implementation to keep track of that state explicitly,
 which complicates the code.  Also, it requires a deep understanding of
-the SBS method to remember to place a call \texttt{signal} in the
+the SBS method to remember to place a call to \texttt{signal} in the
 \texttt{read\_acquire} method that releases additional readers that
 may be waiting to acquire the lock.
 
@@ -3528,7 +3527,7 @@ Harmony \texttt{synch} module.
 condition variables in the \texttt{synch} module.
 \texttt{Condition}() creates a new condition variable.
 It is represented by a dictionary containing
-a bag of name tags of threads waiting on the condition variable.
+a bag of contexts of threads waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
 
 \texttt{wait} adds the context of the thread to the bag.
@@ -4601,7 +4600,7 @@ representation;
 ordered;
 \item an address is a list of atoms.  \texttt{None} is the empty list of atoms.
 Addresses are lexicographically ordered accordingly;
-\item contexts (\autoref{app:context}) are ordered first by name tag, then by program counter, then by hash.
+\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -5063,7 +5062,7 @@ Harmony currently supports the following statements:
 \texttt{atomic: S} & \texttt{S} a list of statements\\
 \hline
 \texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
-$e$ is an expression, $t$ is a tag (an expression) \\
+$e$ is an expression, $t$ is the initial thread-local state (an expression) \\
 \hline
 \texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
 \hline
@@ -5310,7 +5309,7 @@ Set & pop $n$ and $n$ elements and push a set of the elements \\
 \hline
 SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
 \hline
-Spawn & pop tag, argument, and method and spawn a new context \\
+Spawn & pop initial thread-local state, argument, and method and spawn a new context \\
 \hline
 Split & pop tuple and push its elements \\
 \hline

@@ -16,7 +16,7 @@ def read_release(rw):
     rw->nreaders -= 1;
     if (rw->w_gate.count > 0) and (rw->nreaders == 0):
         release(?rw->w_gate.sema);
-    elif rw->r_gate.count > 0:
+    elif (rw->w_gate.count == 0) and (rw->r_gate.count > 0):
         release(?rw->r_gate.sema);
     else:
         release(?rw->mutex);
