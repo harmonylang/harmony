@@ -19,16 +19,13 @@ def thread(self):
         ;
 
         # Critical section
-        @cs: assert (not private[self]) and
-                (atLabel(cs) == bag{ (thread, self) })
-             ;
+        @cs: assert (not private[self]) and (atLabel(cs) == bag{ (thread, self) });
 
         # Leave critical section
         private[self] = True;
         shared = False;
     ;
 ;
-
 for i in {0..N-1}:
     spawn thread(i);
 ;

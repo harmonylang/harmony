@@ -2174,8 +2174,8 @@ and can be suspended until some condition changes.
 For example, a thread that is trying to acquire a lock can be suspended until the lock is
 available.
 In Harmony, a thread can suspend itself and save its context (state) in a
-list.  Recall that the context of a thread consists of its name tag,
-its program counter, and the contents of its register and stack.
+list.  Recall that the context of a thread contains
+its program counter, stack, and registers.
 A context is a regular (if complex) Harmony value.
 The syntax of the expression is as follows:
 
@@ -2283,13 +2283,10 @@ Execution} (TOCTOE).
 \index{TOCTOE}
 In this case, by the time the withdraw operation is performed,
 the balance can have changed.
-\begin{enumerate}
-\item Fix the code in \autoref{fig:atm}.  Note, you should leave the
+Fix the code in \autoref{fig:atm}.  Note, you should leave the
 customer code the same. You are only allowed to change the
 \texttt{atm\_} methods, and you cannot use the \textbf{atomic}
 statement.
-\item Is it necessary to obtain a lock in \texttt{atm\_check\_balance()}?
-\end{enumerate}
 \end{problems}
 
 \begin{figure}
@@ -3534,7 +3531,7 @@ It is represented by a dictionary containing
 a bag of name tags of threads waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
 
-\texttt{wait} adds the nametag of the thread to the bag.
+\texttt{wait} adds the context of the thread to the bag.
 This increments the number of threads in the bag with the same context.
 \texttt{wait} then waits until that count is restored to the
 value that it had upon entry to \texttt{wait}.
@@ -4979,7 +4976,7 @@ Harmony currently supports the following operators:
 \hline
 \texttt{atLabel $e$} & atom (corresponding to a label) \\
 \hline
-\texttt{nametag $e$} & $e$ must be \texttt{()} \\
+\texttt{get\_context $e$} & $e$ must be \texttt{()} \\
 \hline
 \texttt{setintlevel} \textit{e} & \textit{e} is a boolean \\
 \hline

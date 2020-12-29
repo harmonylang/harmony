@@ -25,6 +25,9 @@ def release(binsema):
         !binsema = False;
     ;
 ;
+def held(binsema):
+    result = !binsema;
+;
 def Condition(lk):
     result = bag.empty();
 ;

@@ -17,3 +17,6 @@ def release(binsema):
     assert binsema;
     !binsema = False;
 ;
+def held(binsema):
+    result = !binsema;
+;
