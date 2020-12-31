@@ -1988,7 +1988,7 @@ class NaryOp(Op):
         (op, file, line, column) = self.op
         assert len(context.stack) >= self.n
         sa = context.stack[-self.n:]
-        if op in { "+", "&", "|", "^" }:
+        if op in { "+", "*", "&", "|", "^" }:
             assert self.n > 1
             e2 = context.pop()
             for i in range(1, self.n):
@@ -2004,6 +2004,19 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                             return
                         e2 = self.concat(e1, e2)
+                elif op == "*":
+                    if isinstance(e1, DictValue) or isinstance(e2, DictValue):
+                        if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
+                            return
+                        if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
+                            return
+                        e2 = self.dmult(e1, e2) if isinstance(e1, DictValue) else self.dmult(e2, e1)
+                    else:
+                        if not self.checktype(state, context, sa, type(e1) == int):
+                            return
+                        if not self.checktype(state, context, sa, type(e2) == int):
+                            return
+                        e2 *= e1
                 elif op == "&":
                     if type(e1) == int:
                         if not self.checktype(state, context, sa, type(e2) == int):
@@ -2238,22 +2251,6 @@ class NaryOp(Op):
                     return
                 else:
                     context.push(e1 in e2.d.values())
-            elif op == "*":
-                if isinstance(e1, DictValue) or isinstance(e2, DictValue):
-                    if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
-                        return
-                    if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
-                        return
-                    if isinstance(e1, DictValue):
-                        context.push(self.dmult(e1, e2))
-                    else:
-                        context.push(self.dmult(e2, e1))
-                else:
-                    if not self.checktype(state, context, sa, type(e1) == int):
-                        return
-                    if not self.checktype(state, context, sa, type(e2) == int):
-                        return
-                    context.push(e1 * e2)
             else:
                 assert False, self
         else:
@@ -2377,7 +2374,7 @@ class AST:
             elif ctype == "dict":
                 code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
             self.value.compile(scope, code)
-            if ctype in { "set", "list", "dict" }:
+            if ctype in { "set", "bag", "list", "dict" }:
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
@@ -2435,13 +2432,17 @@ class AST:
         uid = len(code)
         (lexeme, file, line, column) = self.token
         N = ("__size__"+str(uid), file, line, column)
-        if ctype in { "set", "list", "dict" }:
+        if ctype in { "set", "bag", "list", "dict" }:
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
         if ctype == "set":
             code.append(LoadVarOp(N))
             code.append(SetOp())
+            code.append(DelVarOp(N))
+        elif ctype == "bag":
+            code.append(LoadVarOp(N))
+            code.append(BagOp())
             code.append(DelVarOp(N))
         elif ctype in { "list", "dict" }:
             code.append(LoadVarOp(N))
@@ -2670,6 +2671,18 @@ class SetComprehensionAST(AST):
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "set")
+
+class BagComprehensionAST(AST):
+    def __init__(self, value, iter, token):
+        self.value = value
+        self.iter = iter
+        self.token = token
+
+    def __repr__(self):
+        return "BagComprehension(" + str(self.var) + ")"
+
+    def compile(self, scope, code):
+        self.comprehension(scope, code, "bag")
 
 class DictComprehensionAST(AST):
     def __init__(self, value, iter, token):
@@ -2940,6 +2953,15 @@ class SetComprehensionRule(Rule):
         token = t[0]
         (lst, t) = self.iterParse(t[1:], {"}"})
         return (SetComprehensionAST(self.value, lst, token), t[1:])
+
+class BagComprehensionRule(Rule):
+    def __init__(self, value):
+        self.value = value
+
+    def parse(self, t):
+        token = t[0]
+        (lst, t) = self.iterParse(t[1:], {"}"})
+        return (BagComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
     def __init__(self, value):

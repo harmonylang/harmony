@@ -49,10 +49,11 @@ struct context {     // context value
 };
 
 struct state {
-    uint64_t labels;      // map of labels      TODO: could be global
     uint64_t vars;        // shared variables
     uint64_t choosing;    // context that is choosing if non-zero
-    uint64_t ctxbag;      // bag of contexts
+    uint64_t ctxbag;      // bag of running contexts
+    uint64_t stopbag;     // bag of stopped contexts
+    uint64_t failbag;     // bag of failed contexts
     uint64_t invariants;  // set of invariants that must hold
 };
 

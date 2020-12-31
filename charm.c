@@ -316,8 +316,69 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     free(cc);
 }
 
+void diff_state(struct state *oldstate, struct state *newstate,
+                struct context *oldctx, struct context *newctx){
+    printf("-------------------\n");
+    if (newstate->vars != oldstate->vars) {
+        char *val = value_string(newstate->vars);
+        printf("NEW SHARED VARIABLES %s\n", val);
+        free(val);
+    }
+    if (newstate->ctxbag != oldstate->ctxbag) {
+        char *val = value_string(newstate->ctxbag);
+        printf("NEW RUNNING CONTEXTS %s\n", val);
+        free(val);
+    }
+    if (newctx->pc != oldctx->pc) {
+        printf("NEW PC %d\n", newctx->pc);
+    }
+    if (newctx->fp != oldctx->fp) {
+        printf("NEW FP %d\n", newctx->fp);
+    }
+    if (newctx->this != oldctx->this) {
+        char *val = value_string(newctx->this);
+        printf("NEW THREAD-LOCAL VARIABLES %s\n", val);
+        free(val);
+    }
+    if (newctx->vars != oldctx->vars) {
+        char *val = value_string(newctx->vars);
+        printf("NEW METHOD VARIABLES %s\n", val);
+        free(val);
+    }
+    if (newctx->atomic != oldctx->atomic) {
+        printf("NEW ATOMIC %d\n", newctx->atomic);
+    }
+    if (newctx->readonly != oldctx->readonly) {
+        printf("NEW READONLY %d\n", newctx->readonly);
+    }
+
+    int common;
+    for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
+        for (int i = 0; i < oldctx->sp; i++) {
+            printf(">>> %s\n", value_string(oldctx->stack[i]));
+        }
+        for (int i = 0; i < newctx->sp; i++) {
+            printf("<<< %s\n", value_string(newctx->stack[i]));
+        }
+        if (newctx->stack[common] != oldctx->stack[common]) {
+            break;
+        }
+    }
+    if (common < oldctx->sp) {
+        printf("STACK POP %d\n", oldctx->sp - common);
+    }
+    for (int i = common; i < newctx->sp; i++) {
+        char *val = value_string(newctx->stack[i]);
+        printf("STACK PUSH %s\n", val);
+        free(val);
+    }
+}
+
 // similar to onestep.  TODO.  Use flag to onestep?
 uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
+    static struct state oldstate;
+    static struct context oldctx;
+
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -330,6 +391,10 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
 
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
+        diff_state(&oldstate, sc, &oldctx, cc);
+        oldstate = *sc;
+        oldctx = *cc;
+
         int pc = cc->pc;
 
         struct op_info *oi = code[pc].oi;
@@ -341,7 +406,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
             cc->pc++;
         }
         else {
-            printf("--- %d: %s\n", pc, oi->name);
+            // printf("--- %d: %s\n", pc, oi->name);
             if (code[pc].breakable) {
                 cc->phase = CTX_MIDDLE;
             }
@@ -395,24 +460,6 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     return ctx;
 }
 
-void label_upcall(void *env, const void *key, unsigned int key_size, void *value){
-    uint64_t *labels = env;
-    struct json_value *jv = value;
-
-    assert(jv->type == JV_ATOM);
-    char *copy = malloc(jv->u.atom.len + 1);
-    strncpy(copy, jv->u.atom.base, jv->u.atom.len);
-    copy[jv->u.atom.len] = 0;
-    int64_t pc = atoi(copy);
-    free(copy);
-    if (false) {
-        printf("LABEL %.*s: %"PRId64"\n", key_size, (char *) key, pc);
-    }
-    uint64_t k = value_put_atom(key, key_size);
-    uint64_t v = (pc << VALUE_BITS) | VALUE_INT;
-    *labels = dict_store(*labels, k, v);
-}
-
 void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
     if (last == NULL) {
         return;
@@ -446,6 +493,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
         free(vars);
     }
 
+    // Recreate the steps
     processes[pid] = twostep(last, ctx, choice);
 }
 
@@ -544,12 +592,6 @@ int main(int argc, char **argv){
     struct json_value *jv = json_parse_value(&buf);
     assert(jv->type == JV_MAP);
 
-    // extract the labels
-    struct json_value *labels = dict_lookup(jv->u.map, "labels", 6);
-    assert(labels->type == JV_MAP);
-    uint64_t label_map = VALUE_DICT;
-    dict_iter(labels->u.map, label_upcall, &label_map);
-
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
@@ -570,7 +612,6 @@ int main(int argc, char **argv){
     init_ctx.atomic = 1;
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
-    state->labels = label_map;
     uint64_t ictx = value_put_context(&init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->invariants = VALUE_SET;
