@@ -2321,7 +2321,7 @@ class AST:
             elif ctype == "dict":
                 code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
             self.value.compile(scope, code)
-            if ctype in { "set", "list", "dict" }:
+            if ctype in { "set", "bag", "list", "dict" }:
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
@@ -2379,13 +2379,17 @@ class AST:
         uid = len(code)
         (lexeme, file, line, column) = self.token
         N = ("__size__"+str(uid), file, line, column)
-        if ctype in { "set", "list", "dict" }:
+        if ctype in { "set", "bag", "list", "dict" }:
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
         if ctype == "set":
             code.append(LoadVarOp(N))
             code.append(SetOp())
+            code.append(DelVarOp(N))
+        elif ctype == "bag":
+            code.append(LoadVarOp(N))
+            code.append(BagOp())
             code.append(DelVarOp(N))
         elif ctype in { "list", "dict" }:
             code.append(LoadVarOp(N))
@@ -2614,6 +2618,18 @@ class SetComprehensionAST(AST):
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "set")
+
+class BagComprehensionAST(AST):
+    def __init__(self, value, iter, token):
+        self.value = value
+        self.iter = iter
+        self.token = token
+
+    def __repr__(self):
+        return "BagComprehension(" + str(self.var) + ")"
+
+    def compile(self, scope, code):
+        self.comprehension(scope, code, "bag")
 
 class DictComprehensionAST(AST):
     def __init__(self, value, iter, token):
@@ -2884,6 +2900,15 @@ class SetComprehensionRule(Rule):
         token = t[0]
         (lst, t) = self.iterParse(t[1:], {"}"})
         return (SetComprehensionAST(self.value, lst, token), t[1:])
+
+class BagComprehensionRule(Rule):
+    def __init__(self, value):
+        self.value = value
+
+    def parse(self, t):
+        token = t[0]
+        (lst, t) = self.iterParse(t[1:], {"}"})
+        return (BagComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
     def __init__(self, value):
