@@ -3470,24 +3470,27 @@ loops until the condition of interest becomes valid.
 A Mesa monitor therefore is more closely related to \emph{busy waiting}
 than to split binary semaphores.
 
-Mesa monitors provide another important and convenient option:
-operation \texttt{notifyAll}
-notifies \emph{all} threads that are waiting on a condition
-instead of just one.
-Having such an operation is not possible with Hoare monitors because using
-Hoare monitors control
-must be passed immediately to a thread that has been signaled, and that
-can only be done if there is just one such thread.
+Mesa monitors also allow notifying multiple threads.
+For example, a thread can invoke \texttt{notify()} twice---if there are
+two or more threads waiting on the condition variable, two will be resumed.
+Operation \texttt{notifyAll}
 \index{notifyAll}%
 (aka \texttt{broadcast)})
 \index{broadcast}%
-lets all threads in that bedroom into the hall.
+notifies \emph{all} threads that are waiting
+on a condition.
+Signaling multiple threads is not possible with Hoare monitors because with
+Hoare monitors control
+must be passed immediately to a thread that has been signaled, and that
+can only be done if there is just one such thread.
 
 The so-called
 ``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
 have become more popular than Hoare monitor semantics, and have been
 adopted by all major programming languages.
-That said, few programming languages provide full support for monitors.
+That said, few programming languages provide full syntactical support
+for monitors, instead opting to support monitor semantics through library
+calls.
 In Java, each object has a hidden lock \emph{and} a hidden condition variable
 associated with it.
 Methods declared with the \texttt{synchronized} keyword automatically
@@ -3498,7 +3501,8 @@ and condition variables.
 In Python, locks and condition variables must be explicitly declared.
 The \texttt{with} statement makes it easy to acquire and release a lock
 for a section of code.
-In C and C++, support for locks and condition variables is through libraries.
+In C and C++, support for locks and condition variables is entirely
+through libraries.
 
 % \chapter{Mesa Condition Variables in Harmony}
 % \label{ch:mesa}
@@ -3520,9 +3524,9 @@ Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:RWcv}
 \end{figure}
 
-Like C, Java, and Python, Harmony does not have built-in language
-support for monitors, but provides library support through the
-Harmony \texttt{synch} module.
+Like C, Java, and Python, Harmony does not have syntactical
+support for monitors. Harmony provides support for monitors
+through the Harmony \texttt{synch} module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
 \texttt{Condition}() creates a new condition variable.
@@ -3543,7 +3547,6 @@ in the bag to resume.
 To illustrate how Mesa condition variables are used in practice, we demonstrate using an implementation of reader/writer locks.
 \autoref{fig:RWcv} shows the code.  \textit{mutex} is the shared lock
 that protects the critical region.
-(Again, there is only one ``gate.'')
 There are two condition variables: readers wait on \textit{r\_cond} and
 writers wait on \textit{w\_cond}.
 The implementation also keeps track of the number of
@@ -3558,7 +3561,7 @@ of condition variables depend on this, and optimized implementations
 of condition variables often allow so-called ``spurious wakeups,''
 where \texttt{wait} may sometimes return even if the conditon
 variable has not been notified.
-In particular, one should always be able to replace \texttt{wait}
+As a rule of thumb, one should always be able to replace \texttt{wait}
 by \texttt{unlock} followed by \texttt{lock}.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
@@ -3570,7 +3573,7 @@ ok, because calling \texttt{notify} is a no-op if no thread is
 waiting.
 
 \texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{r\_cond})
-as well as \texttt{notify}(?\textit{w\_cond)}.  Again, because we
+as well as \texttt{notify}(?\textit{w\_cond)}.  Because we
 do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter,
 or, alternatively, up to one waiting writer can enter.  So
@@ -3584,7 +3587,9 @@ readers and writers are awakened---this is ok because both execute
 \texttt{wait} within a \textbf{while} loop, re-checking the condition
 that they are waiting for.  So if both type of threads are waiting,
 either all the readers get to enter next or one of the writers gets
-to enter next.
+to enter next.  (If you want to prevent waking up both readers and
+a writer, then you can keep track of how many threads are waiting
+in the code.)
 
 While Hoare moniters embody the split binary semaphore approach,
 Mesa monitors are much closer to the busy-waiting approach.
@@ -3598,7 +3603,7 @@ many threads may lead to some inefficiency, but waking up too few
 may cause the application to get stuck.  Harmony can be particularly
 helpful here, as it examines every corner case.  You can safely try
 to replace each \texttt{notifyAll} with \texttt{notify} and see if
-every possible execution of the the application still terminates.
+every possible execution of the application still terminates.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
@@ -3629,6 +3634,7 @@ has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
 available, but it should grant them as soon as they are available.
 Method \texttt{gpuReleaseSet(s)} takes a set of GPU identifiers as argument.
 A thread does not have to return all the GPUs it allocated at once.
+(You may want to try implementing this with Split Binary Semaphores.  It is not as easy.)
 \item The specification in the previous question makes the solution unfair.
 Explain why this is so.  Then change the specification and the solution so that
 it is fair.
@@ -3692,12 +3698,12 @@ the left, then the fork on the right.  Each philosopher likes to take breaks
 from eating to think for a while.  To do so, the philosopher puts down both
 forks.  Each philosopher repeats this procedure.  Dijkstra had them repeating
 this for ever, but for the purposes of this book, philosophers can leave
-the table when they're not eating.
+the table when they want to leave.
 
 \autoref{fig:diners} implements the dining philosophers in Harmony, using a
 thread for each philosopher and a lock for each fork.  If you
-run it, Harmony complains that the execution may not terminate, with all five
-threads being blocked trying to acquire the lock.
+run it, Harmony complains that the execution may not be able to terminate,
+with all five threads being blocked trying to acquire the lock.
 
 \begin{quote}
 \begin{itemize}
@@ -3725,14 +3731,15 @@ There are four conditions that must hold for deadlock to occur~\cite{CES71}:
 \item \emph{Mutual Exclusion}: each resource can only be used by one thread at a time:
 \item \emph{Hold and Wait}: each thread holds resources it already allocated while it
 waits for other resources that it needs;
-\item \emph{No Preemption}: Resources cannot be forcibly taken away from threads that
+\item \emph{No Preemption}: resources cannot be forcibly taken away from threads that
 allocated them;
-\item \emph{Circular Wait}: There exists a directed circular chain of threads, each waiting
+\item \emph{Circular Wait}: there exists a directed circular chain of threads, each waiting
 to allocate a resource held by the next.
 \end{enumerate}
 
 Preventing deadlock thus means preventing that one of these conditions occurs.
-However, mutual exclusion is not easily prevented (although, for some resources it is
+However, mutual exclusion is not easily prevented in general
+(although, for some resources it is
 possible, as demonstrated in \autoref{ch:nonblocking}).
 Havender proposed the following techniques that avoid the remaining
 three conditions~\cite{Havender68}:
@@ -3841,10 +3848,9 @@ threads.  Can you fix the problem?
 that computes the total over all balances.
 It needs to obtain a lock on all accounts.  Make sure that
 it cannot cause deadlock.
-\item Implement an extra thread that checks, once, if the total of
-the balances is the same as that at the beginning (using an assertion).
-Is once enough to determine that no money gets lost or created, or should it do
-so continually?
+\item Add an invariant that checks that the total of the balances never
+changes.  Note that the invariant only holds if none of the locks are
+held.
 \end{problems}
 
 \begin{figure}
@@ -4007,7 +4013,7 @@ rounds each thread has completed.}
 
 \begin{figure}
 \begin{code}
-\harmonysource{barrier}
+\harmonysource{qbarrier}
 \end{code}
 \caption{\harmonylink{code/qbarrier.hny} Barrier synchronization with queues.}
 \label{fig:barrier}
