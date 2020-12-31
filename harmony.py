@@ -1935,7 +1935,7 @@ class NaryOp(Op):
         (op, file, line, column) = self.op
         assert len(context.stack) >= self.n
         sa = context.stack[-self.n:]
-        if op in { "+", "&", "|", "^" }:
+        if op in { "+", "*", "&", "|", "^" }:
             assert self.n > 1
             e2 = context.pop()
             for i in range(1, self.n):
@@ -1951,6 +1951,19 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                             return
                         e2 = self.concat(e1, e2)
+                elif op == "*":
+                    if isinstance(e1, DictValue) or isinstance(e2, DictValue):
+                        if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
+                            return
+                        if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
+                            return
+                        e2 = self.dmult(e1, e2) if isinstance(e1, DictValue) else self.dmult(e2, e1)
+                    else:
+                        if not self.checktype(state, context, sa, type(e1) == int):
+                            return
+                        if not self.checktype(state, context, sa, type(e2) == int):
+                            return
+                        e2 *= e1
                 elif op == "&":
                     if type(e1) == int:
                         if not self.checktype(state, context, sa, type(e2) == int):
@@ -2185,22 +2198,6 @@ class NaryOp(Op):
                     return
                 else:
                     context.push(e1 in e2.d.values())
-            elif op == "*":
-                if isinstance(e1, DictValue) or isinstance(e2, DictValue):
-                    if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
-                        return
-                    if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
-                        return
-                    if isinstance(e1, DictValue):
-                        context.push(self.dmult(e1, e2))
-                    else:
-                        context.push(self.dmult(e2, e1))
-                else:
-                    if not self.checktype(state, context, sa, type(e1) == int):
-                        return
-                    if not self.checktype(state, context, sa, type(e2) == int):
-                        return
-                    context.push(e1 * e2)
             else:
                 assert False, self
         else:
