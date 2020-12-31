@@ -316,40 +316,59 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     free(cc);
 }
 
+void print_vars(uint64_t v){
+    assert((v & VALUE_MASK) == VALUE_DICT);
+    int size;
+    uint64_t *vars = value_get(v, &size);
+    size /= sizeof(uint64_t);
+    printf("{");
+    for (int i = 0; i < size; i += 2) {
+        if (i > 0) {
+            printf(",");
+        }
+        char *k = value_string(vars[i]);
+        char *v = value_string(vars[i+1]);
+        printf(" \"%s\": \"%s\"", k+1, v);
+        free(k);
+        free(v);
+    }
+    printf(" }");
+}
+
 void diff_state(struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx){
-    printf("-------------------\n");
+    printf("  {\n");
     if (newstate->vars != oldstate->vars) {
-        char *val = value_string(newstate->vars);
-        printf("NEW SHARED VARIABLES %s\n", val);
-        free(val);
+        printf("      \"shared\": ");
+        print_vars(newctx->vars);
+        printf(",\n");
     }
-    if (newstate->ctxbag != oldstate->ctxbag) {
+    if (false && newstate->ctxbag != oldstate->ctxbag) {
         char *val = value_string(newstate->ctxbag);
         printf("NEW RUNNING CONTEXTS %s\n", val);
         free(val);
     }
     if (newctx->pc != oldctx->pc) {
-        printf("NEW PC %d\n", newctx->pc);
+        printf("      \"pc\": \"%d\",\n", newctx->pc);
     }
     if (newctx->fp != oldctx->fp) {
-        printf("NEW FP %d\n", newctx->fp);
+        printf("      \"fp\": \"%d\",\n", newctx->fp);
     }
     if (newctx->this != oldctx->this) {
         char *val = value_string(newctx->this);
-        printf("NEW THREAD-LOCAL VARIABLES %s\n", val);
+        printf("      \"this\": \"%s\",\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
-        char *val = value_string(newctx->vars);
-        printf("NEW METHOD VARIABLES %s\n", val);
-        free(val);
+        printf("      \"local\": ");
+        print_vars(newctx->vars);
+        printf(",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
-        printf("NEW ATOMIC %d\n", newctx->atomic);
+        printf("      \"atomic\": \"%d\",\n", newctx->atomic);
     }
     if (newctx->readonly != oldctx->readonly) {
-        printf("NEW READONLY %d\n", newctx->readonly);
+        printf("      \"readonly\": \"%d\",\n", newctx->readonly);
     }
 
     int common;
@@ -359,23 +378,35 @@ void diff_state(struct state *oldstate, struct state *newstate,
         }
     }
     if (common < oldctx->sp) {
-        printf("STACK POP %d\n", oldctx->sp - common);
+        printf("      \"pop\": \"%d\",\n", oldctx->sp - common);
     }
+    printf("      \"push\": [");
     for (int i = common; i < newctx->sp; i++) {
+        if (i > common) {
+            printf(",");
+        }
         char *val = value_string(newctx->stack[i]);
-        printf("STACK PUSH %s\n", val);
+        printf(" \"%s\"", val);
         free(val);
     }
+    printf(" ]\n");
+    printf("  },\n");
+}
+
+void diff_dump(struct state *oldstate, struct state *newstate,
+                struct context **oldctx, struct context *newctx){
+    // Keep track of old state and context for taking diffs
+    diff_state(oldstate, newstate, *oldctx, newctx);
+    *oldstate = *newstate;
+    free(*oldctx);
+    int oldsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
+    *oldctx = malloc(oldsize);
+    memcpy(*oldctx, newctx, oldsize);
 }
 
 // similar to onestep.  TODO.  Use flag to onestep?
-uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
-    static struct state oldstate;
-    static struct context *oldctx;
-	if (oldctx == NULL) {
-		oldctx = calloc(1, sizeof(*oldctx));
-	}
-
+uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
+                    struct state *oldstate, struct context **oldctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -386,15 +417,11 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     assert(cc->phase != CTX_END);
     assert(cc->failure == 0);
 
+    diff_dump(oldstate, sc, oldctx, cc);
+
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
-        diff_state(&oldstate, sc, oldctx, cc);
-        oldstate = *sc;
-		free(oldctx);
-		int oldsize = sizeof(*cc) + (cc->sp * sizeof(uint64_t));
-		oldctx = malloc(oldsize);
-		memcpy(oldctx, cc, oldsize);
-
+        diff_dump(oldstate, sc, oldctx, cc);
         int pc = cc->pc;
 
         struct op_info *oi = code[pc].oi;
@@ -419,6 +446,8 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
             }
             assert(cc->pc != pc);
         }
+
+        diff_dump(oldstate, sc, oldctx, cc);
 
         /* Peek at the next instruction.
          */
@@ -460,12 +489,13 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     return ctx;
 }
 
-void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
+void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
+                struct state *oldstate, struct context **oldctx){
     if (last == NULL) {
         return;
     }
 
-    path_dump(last->parent, last->before, last->choice);
+    path_dump(last->parent, last->before, last->choice, oldstate, oldctx);
 
     /* See if we can find this context in the list of processes.  If not
      * add it.
@@ -484,17 +514,17 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice){
     if (last->parent == NULL || last->after != ctx) {
         char *before = value_string(ctx);
         char *c = value_string(choice);
-        char *vars = value_string(last->state->vars);
-        printf(">>>> %s\n", value_string(last->after));
-        printf(">> P%d: before: %s choice: %s var: %s\n",
-                pid, before, c, vars);
+        printf("    \"tid\": \"T%d\",\n", pid);
+        printf("    \"context\": \"%s\",\n", before);
+        printf("    \"choice\": \"%s\",\n", c);
         free(before);
         free(c);
-        free(vars);
+
+        memset(*oldctx, 0, sizeof(**oldctx));
     }
 
     // Recreate the steps
-    processes[pid] = twostep(last, ctx, choice);
+    processes[pid] = twostep(last, ctx, choice, oldstate, oldctx);
 }
 
 static struct stack {
@@ -766,7 +796,14 @@ int main(int argc, char **argv){
     default:
         assert(0);
     }
-    path_dump(bad->node, bad->ctx, bad->choice);
+
+    printf("[\n");
+    struct state oldstate;
+    struct context *oldctx = calloc(1, sizeof(*oldctx));
+    path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
+    free(oldctx);
+    printf("  \"end\"\n");
+    printf("]\n");
 
     return 0;
 }
