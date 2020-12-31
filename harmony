@@ -5076,9 +5076,13 @@ def htmlloc(code, scope, ctx, traceid, f):
         print("<td>", file=f)
         print("<a href='#P%d'>%d</a> "%(pc, pc), file=f)
         print("<a href='javascript:setrow(%d,%d)'>"%(traceid,row), file=f)
+        origpc = pc
         while pc >= 0 and pc not in scope.locations:
             pc -= 1
-        (file, line) = scope.locations[pc]
+        if pc in scope.locations:
+            (file, line) = scope.locations[pc]
+        else:
+            (file, line) = ("NOFILE", 0)
         while pc >= 0 and not isinstance(code[pc], FrameOp):
             pc -= 1
         if fp >= 3:

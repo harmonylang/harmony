@@ -1,12 +1,12 @@
 from synch import Queue, put, get;
 
-const N = 3;        # number of processes
+const N = 3;        # number of threads
 const R = 4;        # number of rounds
 
 round = [ 0 for i in {0..N-1} ];
 q = [ Queue() for i in {0..N-1} ];
 
-def process(self):
+def thread(self):
     for r in {1..R}:
         for i in {0..N-1} such that i != self:
             put(?q[i], None);
@@ -20,5 +20,5 @@ def process(self):
 ;
 
 for i in {0..N-1}:
-    spawn process(i);
+    spawn thread(i);
 ;

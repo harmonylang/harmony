@@ -3903,7 +3903,7 @@ for critical sections.  Instead, some sequential thread owns a particular
 piece of data and other threads access it by sending request messages
 to the thread and optionally waiting for response messages.  Each thread
 handles one message at a time, serializing all access to the data it owns.
-As message queues are FCFS (First-Come-First-Served), starvation is prevented.
+As message queues are FIFO (First-In-First-Out), starvation is prevented.
 
 The actor synchronization model is popular in a variety of programming
 languages, including Erlang and Scala.  Actor support is also available
@@ -3927,10 +3927,12 @@ Its interface is as follows:
 \item \texttt{get}($q$) waits for and returns an item on the queue pointed to by $q$.
 \end{itemize}
 
-Note that a \texttt{Queue} behaves much like a zero-initialized semaphore.
+For those familiar with counting semaphores: note that a \texttt{Queue}
+behaves much like a zero-initialized counting semaphore.
 \texttt{put} is much like \texttt{V}, except that it is accompanied by data.
 \texttt{get} is much like \texttt{P}, except that it also returns data.
-Thus, synchronized queues can be considered a generalization of counting semaphores.
+Thus, synchronized queues can be considered a generalization of
+counting semaphores.
 
 \autoref{fig:actor} shows a Harmony solution to the
 ``multiple producer / multiple consumer problem'' (with an unbounded buffer)
@@ -4002,16 +4004,6 @@ in the opposite order.  Which do you think is better?
 \glsadd{barrier synchronization}%
 
 \begin{figure}
-\begin{center}
-\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
-\end{center}
-\caption{High-level state diagram specification of barrier synchronization
-with three threads and two rounds.  The three numbers specify how many
-rounds each thread has completed.}
-\label{fig:barrierdiagram}
-\end{figure}
-
-\begin{figure}
 \begin{code}
 \harmonysource{qbarrier}
 \end{code}
@@ -4033,11 +4025,23 @@ cut up into fragments.  During a round, the threads run concurrently,
 one for each fragment.  The next round is not allowed to start
 until all threads have completed processing their fragment.
 
+\begin{comment}
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
+\end{center}
+\caption{High-level state diagram specification of barrier synchronization
+with three threads and two rounds.  The three numbers specify how many
+rounds each thread has completed.}
+\label{fig:barrierdiagram}
+\end{figure}
+
 \autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
 with three and threads.  Initially all threads are in round~0.  Then each thread
 can start and finish the round.  However, none of the threads can
 progress to the next round until all threads have finished the
 current round.
+\end{comment}
 
 Blocking queues work well for implementing barrier synchronization.
 \autoref{fig:barrier} shows an example.  There is a queue
@@ -4075,33 +4079,38 @@ Notice there are two different waiting conditions:
 \item waiting for the car to empty out;
 \item waiting for the car to fill up.
 \end{enumerate}
-Similarly, \texttt{enter}() blocks until $n$ threads have invoked it.
-If more threads try to \texttt{enter}(), they will block until the
-previous $n$ threads have invoked \texttt{exit}().
 
 \autoref{fig:genbarrier} shows the code.
 Method~\texttt{enter}() has two \texttt{wait} loops, one for each
 waiting condition.
 This is sometimes called \emph{double turnstile}.
 Each loop uses a different condition variable.
-The first loop waits while the barrier is fully occupied, while
-the second waits for the barrier to fill up.
-The $n^\mathit{th}$ thread to arrive at the barrier notifies the
-$n-1$ threads that are waiting in the second loop.
+The first loop waits until the car has emptied out, while
+the second waits for the car to fill up.
 
-Method \texttt{exit}() counts how many threads have left the
-barrier.  When the last one leaves, it notifies all the threads
-that are waiting in the first loop.
+Notice how variables \textit{entered} and \textit{left}
+are maintained.  They are incremented one-by-one, but they
+are not decremented one-by-one.  Instead, the last thread to
+enter sets \textit{left} to zero (and notifies the threads
+that were waiting to for the car to fill up), while the last
+thread to exit sets \textit{entered} to zero (and notifies
+the threads that were waiting for the car to empty out).
 
 \section*{Exercises}
 \begin{problems}
-\item See if you can implement barrier synchronization for \texttt{N} threads
-with just three binary semaphores.  Busy waiting is not allowed.  How about just two?
+\item Implement barrier synchronization for \texttt{N} threads
+with just three binary semaphores.  Busy waiting is not allowed.
+Can you implement barrier synchronization with two binary semaphores?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
 for solving synchronization problems with semaphores.
 Look for the \emph{double turnstile}
 \index{double turnstile}%
 solution.)
+\item Imagine a pool hall with \texttt{N} tables.  A table is \emph{full}
+from the time there are two players until both players have left.
+When someone arrives, they can join a table that is not full, preferably
+one that has a player ready to start playing.
+Implement a simulation of such a pool hall.
 \end{problems}
 
 \chapter{Interrupts}
@@ -4645,7 +4654,7 @@ Operations on booleans include:
 \hline
 \texttt{$v$ if $e$ else $v'$} & $v$ or $v'$ depending on $e$ \\
 \hline
-\texttt{any $s$, all $s$} & disjunction / conjunction for set $s$ \\
+\texttt{any $s$, all $s$} & disjunction / conjunction for set or list $s$ \\
 \hline
 \end{tabular}
 \end{center}
@@ -4742,6 +4751,19 @@ Native operations on sets include:
 \end{tabular}
 \end{center}
 
+Harmony also supports \emph{set comprehension}.  In its simplest form,
+\texttt{\{ f($v$) for $v$ in $s$ \}} returns a set that is constructed
+by applying \texttt{f} to all elements in $s$ (where $s$ is a set or
+a list).
+This is known as \emph{mapping}.  But set comprehension is much more
+powerful and can include joining multiple sets (using nested for
+loops) and filtering (using the \texttt{such that} keywords).
+
+For example:
+\texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ such that $(x * y) == 4$ \}}
+returns a set that is constructed by summing pairs of elements from $s$
+that, when multiplied, have the value 4.
+
 \section{Dictionary}
 
 A dictionary maps a set of values (known as \emph{keys})
@@ -4751,6 +4773,10 @@ The generic syntax of a dictionary is
 If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
+
+Dictionaries support comprehension.  The  basic form is:
+\texttt{dict\{ f($v$) for $v$ in $s$ \}}.  This creates a dictionary
+that maps each element $v$ in $s$ to $\mathtt{f}(v)$.
 
 There are various special cases of dictionaries,
 including lists, tuples, strings,
@@ -4806,7 +4832,7 @@ then the notation $t[0]$ returns the first element of the list.
 You can denote a list by a sequence of values, each value terminated
 by a comma.  As per usual, you can use brackets or parentheses
 at your discretion.  For Python users, the important thing to note
-is that a singleton lists in Harmony must contain a comma.  For
+is that a singleton list in Harmony must contain a comma.  For
 example $[1,]$ is a list containing the value $1$, while $[1]$
 is simply the value $1$.
 
@@ -4834,6 +4860,13 @@ Native operations on lists or tuples include the following:
 \end{tabular}
 \end{center}
 
+Lists and tuples support comprehension as well.
+In their most basic form: \texttt{f($v$) for $v$ in $s$}.
+For example, to check if any element in a list $t$ is even, you
+can write:
+
+\texttt{any($(x \% 2) == 0$ for $x$ in $t$)}.
+
 \section{String}
 
 In Harmony, a string is a list of single-character atoms.
@@ -4841,7 +4874,9 @@ The Python string notations mostly work in Harmony as well.
 For example, \texttt{'abc'} is a three-character string
 consisting of the atoms \texttt{.a}, \texttt{.b}, and
 \texttt{.c}.
-\texttt{"abc'} is the same three-character string.
+\texttt{"abc"} is the same three-character string.
+Various special characters (including quotes, newlines, etc.)
+can be \emph{escaped} using a backslash.
 Multi-line strings can be terminated by triple quotes or
 triple double-quotes.
 
@@ -4851,7 +4886,7 @@ Harmony has native support for bags (aka multisets), which are sets
 that can contain multiple copies of the same element.
 It is represented by a dictionary that maps each element to its
 multiplicity.
-So \texttt{bag\{ 10, 10, 12 \} = dict\{ 10: 2, 12: 1 \}}.
+So \texttt{bag\{ 10, 10, 12 \} = dict\{ 10:2, 12:1 \}}.
 
 The \texttt{bag} module (\autoref{ap:bag}) contains various
 convenient routines that operate on lists or tuples.
@@ -4869,13 +4904,27 @@ Native operations on bags include the following:
 \end{tabular}
 \end{center}
 
+Bags also support comprehension.
+
 \section{Program Counter}
 
 A program counter is an integer that can be used to index into Harmony
-bytecode.  When you define a method or a lambda function, you are
-creating a constant of the program counter type.
-Note, however, that labels are currently just integers.  This may
-change in the future.
+bytecode.  When you define a method, a lambda function, or a label,
+you are creating a constant of the program counter type.
+
+Operations on program counters include the following:
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$m$ $a$} & invoke method with program counter $m$ and argument $a$\\
+\hline
+\texttt{atLabel $l$} & return a bag of (method, argument) pairs of threads executing at label $l$ \\
+\hline
+\end{tabular}
+\end{center}
+
+You can create lambda functions similarly to Python.  For example:
+\texttt{lambda$(x,y)$:$x+y$}.
 
 \section{Address}
 
@@ -4929,106 +4978,11 @@ The possible modes of a context are as follows:
 \end{tabular}
 \end{center}
 
-\chapter{List of Operators}
-
-Harmony currently supports the following operators:
-\vspace{1em}
-
-{\small
-\begin{tabular}{|l|l|}
-\hline
-\texttt{$e$ == $e$}, \texttt{$e$ != $e$} & two Harmony values of the same type \\
-\hline
-\texttt{$e$ < $e$, $e$ <= $e$, $e$ > $e$, $e$ >= $e$} & any two Harmony values \\
-\hline
-\texttt{$e$ and $e$ and ...} & two or more booleans \\
-\hline
-\texttt{$e$ or $e$ or ...} & two or more booleans \\
-\hline
-\texttt{$e$ => $e$} & two booleans (implication) \\
-\hline
-\texttt{not $e$} & a boolean \\
-\hline
-\texttt{-$e$, \string~$e$, abs($e$)} & an integer \\
-\hline
-\texttt{$e$ + $e$ + ...} & two or more integers, tuples, or lists \\
-\hline
-\texttt{$e$ - $e$} & two integers or sets \\
-\hline
-\texttt{$e$ \& $e$ \& ..., $e$ | $e$ | ..., $e$ \string^ $e$ \string^ ...} & two or more integers or sets \\
-\hline
-\texttt{$e$ * $e$} & two integers or an integer and a list \\
-\hline
-\texttt{$e$ / $e$, $e$ // $e$} & two integers (integer division) \\
-\hline
-\texttt{$e$ \% $e$, $e$ mod $e$} & two integers (division remainder) \\
-\hline
-\texttt{$e$ ** $e$, $e << e$, $e >> e$} & two integers \\
-\hline
-\texttt{$\{ e..e \}$} & two integers \\
-\hline
-\texttt{$e$ [not] in $e$} & first is any Harmony value, second is a set or dict \\
-\hline
-\texttt{$e$ if $e$ else $e$} & middle $e$ must be a boolean \\
-\hline
-\texttt{!$e$} & an address \\
-\hline
-\texttt{choose $e$} & a set \\
-\hline
-\texttt{min $e$, max $e$, any $e$, all $e$, len $e$} & a set or a dict \\
-\hline
-\texttt{keys $e$} & a dictionary (includes tuple and list) \\
-\hline
-\texttt{atLabel $e$} & atom (corresponding to a label) \\
-\hline
-\texttt{get\_context $e$} & $e$ must be \texttt{()} \\
-\hline
-\texttt{setintlevel} \textit{e} & \textit{e} is a boolean \\
-\hline
-\texttt{stop} \textit{lv} & \textit{lv} is an lvalue \\
-\hline
-\texttt{?}\textit{lv} & \textit{lv} is an lvalue \\
-\hline
-\texttt{lambda $a$: $e$ end} & $a$ is a bounded variable, $e$ an expression\\
-\hline
-\end{tabular}
-}
-\vspace{1em}
-
-\texttt{+} concatenates when applied to lists or tuples.
-\texttt{-} computes set difference when applied to two sets.
-\texttt{\&} computes the intersection when applied to sets.
-\texttt{|} computes the union when applied to sets.
-\texttt{\^} computes $(s \cup t) \backslash (s \cap t)$ when applied to sets $s$ and $t$.
-\texttt{$\{ x .. y \}$} computes the set consisting of the integers $x$
-through $y$ inclusive.  It returns the empty set if $x > y$.
-If $d$ is a dictionary, $e$ \texttt{in} $d$ tests if $e$ is in the set of
-\emph{values} of $d$, not the set of \emph{keys} (this is different from Python).
-
-An \emph{lvalue}
-\index{lvalue}%
-(short for left hand value of an assignment statement)
-is something that can be assigned.  This can be a
-shared variable, a thread variable, or a dereferenced pointer
-variable.  It can also be indexed.  Examples include
-\textit{var}, \textit{var}[$e$], and \texttt{!}\textit{p}.
-
-Harmony also supports the following comprehensions:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-Set comprehension & \texttt{\{ f($v$) for $v$ in $s$ \}} \\
-\hline
-List comprehension & \texttt{[ f($v$) for $v$ in $s$ ]} \\
-\hline
-Dict comprehension & \texttt{dict\{ f($v$) for $v$ in $s$ \}} \\
-\hline
-\end{tabular}
-\vspace{1em}
-
-In each case, $s$ must be a set or a dictionary.
-\autoref{ap:details} provides more information on comprehensions.
+A thread can call \texttt{get\_context()} to retrieve its current
+context.  Also, the function \texttt{contexts()} returns a
+bag of all contexts (including terminated ones).
+Both these functions should only be called in \texttt{atomic} mode
+and used for checking invariants.
 
 \chapter{List of Statements}
 
