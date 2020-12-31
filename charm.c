@@ -354,12 +354,6 @@ void diff_state(struct state *oldstate, struct state *newstate,
 
     int common;
     for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
-        for (int i = 0; i < oldctx->sp; i++) {
-            printf(">>> %s\n", value_string(oldctx->stack[i]));
-        }
-        for (int i = 0; i < newctx->sp; i++) {
-            printf("<<< %s\n", value_string(newctx->stack[i]));
-        }
         if (newctx->stack[common] != oldctx->stack[common]) {
             break;
         }
@@ -377,7 +371,10 @@ void diff_state(struct state *oldstate, struct state *newstate,
 // similar to onestep.  TODO.  Use flag to onestep?
 uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
     static struct state oldstate;
-    static struct context oldctx;
+    static struct context *oldctx;
+	if (oldctx == NULL) {
+		oldctx = calloc(1, sizeof(*oldctx));
+	}
 
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -391,9 +388,12 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice){
 
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
-        diff_state(&oldstate, sc, &oldctx, cc);
+        diff_state(&oldstate, sc, oldctx, cc);
         oldstate = *sc;
-        oldctx = *cc;
+		free(oldctx);
+		int oldsize = sizeof(*cc) + (cc->sp * sizeof(uint64_t));
+		oldctx = malloc(oldsize);
+		memcpy(oldctx, cc, oldsize);
 
         int pc = cc->pc;
 
