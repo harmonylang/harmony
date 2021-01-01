@@ -36,7 +36,7 @@ struct node {
 
 struct failure {
     enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION } type;
-    struct node *node;      // starting state
+    struct node *node;      // failed state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
 };
@@ -309,7 +309,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         f->type = FAIL_SAFETY;
         f->ctx = ctx;
         f->choice = choice_copy;
-        f->node = node;
+        f->node = next;
         queue_enqueue(failures, f);
     }
 
@@ -351,7 +351,7 @@ void print_context(struct context *ctx){
     free(s);
     free(a);
 
-    assert((ctx->entry & VALUE_MASK) == VALUE_PC);
+    // assert((ctx->entry & VALUE_MASK) == VALUE_PC);
     printf("          \"entry\": \"%d\",\n", (int) (ctx->entry >> VALUE_BITS));
 
     printf("          \"pc\": \"%d\",\n", ctx->pc);
@@ -913,7 +913,7 @@ int main(int argc, char **argv){
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
     printf("      ],\n");
-    print_state(&oldstate);
+    print_state(bad->node->state);
     printf("    },\n");
     printf("    \"end\"\n");
     printf("  ]\n");
