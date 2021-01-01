@@ -335,6 +335,82 @@ void print_vars(uint64_t v){
     printf(" }");
 }
 
+void print_context(struct context *ctx){
+    char *s, *a;
+
+    printf("        {\n");
+
+    s = value_string(ctx->name);
+    a = value_string(ctx->arg);
+    if (*a == '(') {
+        printf("          \"name\": \"%s%s\",\n", s + 1, a);
+    }
+    else {
+        printf("          \"name\": \"%s(%s)\",\n", s + 1, a);
+    }
+    free(s);
+    free(a);
+
+    assert((ctx->entry & VALUE_MASK) == VALUE_PC);
+    printf("          \"entry\": \"%d\",\n", (int) (ctx->entry >> VALUE_BITS));
+
+    printf("          \"pc\": \"%d\",\n", ctx->pc);
+    printf("          \"fp\": \"%d\",\n", ctx->fp);
+
+    printf("          \"local\": ");
+    print_vars(ctx->vars);
+    printf(";\n");
+
+    s = value_string(ctx->this);
+    printf("          \"this\": \"%s\",\n", s);
+    free(s);
+
+    if (ctx->failure != 0) {
+        s = value_string(ctx->failure);
+        printf("          \"failure\": \"%s\",\n", s + 1);
+        free(s);
+    }
+
+    if (ctx->atomic != 0) {
+        printf("          \"atomic\": \"%d\",\n", ctx->atomic);
+    }
+    if (ctx->readonly != 0) {
+        printf("          \"readonly\": \"%d\",\n", ctx->readonly);
+    }
+
+    printf("          \"stack\": [\n");
+    for (int i = 0; i < ctx->sp; i++) {
+        s = value_string(ctx->stack[i]);
+        printf("            \"%s\",\n", s);
+        free(s);
+    }
+    printf("          ]\n");
+
+    printf("        },\n");
+}
+
+void print_state(struct state *state){
+    printf("      \"shared\": ");
+    print_vars(state->vars);
+    printf(";\n");
+
+    int size;
+    uint64_t *ctxs = value_get(state->ctxbag, &size);
+    size /= sizeof(uint64_t);
+    printf("      \"contexts\": [\n");
+    for (int i = 0; i < size; i += 2) {
+        assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(ctxs[i], NULL);
+        int cnt = ctxs[i+1] >> VALUE_BITS;
+        assert(cnt > 0);
+        for (int j = 0; j < cnt; j++) {
+            print_context(ctx);
+        }
+    }
+    printf("      ]\n");
+}
+
 void diff_state(struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx){
     printf("        {\n");
@@ -530,9 +606,11 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
 
     if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
-            printf("    ]\n");
-            printf("  },\n");
+            printf("      ],\n");
+            print_state(last->state);
+            printf("    },\n");
         }
+
         struct context *context = value_get(ctx, NULL);
         char *name = value_string(context->name);
         char *arg = value_string(context->arg);
@@ -834,7 +912,8 @@ int main(int argc, char **argv){
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
-    printf("      ]\n");
+    printf("      ],\n");
+    print_state(&oldstate);
     printf("    },\n");
     printf("    \"end\"\n");
     printf("  ]\n");
