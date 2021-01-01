@@ -337,9 +337,9 @@ void print_vars(uint64_t v){
 
 void diff_state(struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx){
-    printf("      {\n");
+    printf("        {\n");
     if (newstate->vars != oldstate->vars) {
-        printf("        \"shared\": ");
+        printf("          \"shared\": ");
         print_vars(newstate->vars);
         printf(",\n");
     }
@@ -349,26 +349,35 @@ void diff_state(struct state *oldstate, struct state *newstate,
         free(val);
     }
     if (newctx->pc != oldctx->pc) {
-        printf("        \"pc\": \"%d\",\n", newctx->pc);
+        printf("          \"pc\": \"%d\",\n", newctx->pc);
     }
     if (newctx->fp != oldctx->fp) {
-        printf("        \"fp\": \"%d\",\n", newctx->fp);
+        printf("          \"fp\": \"%d\",\n", newctx->fp);
     }
     if (newctx->this != oldctx->this) {
         char *val = value_string(newctx->this);
-        printf("        \"this\": \"%s\",\n", val);
+        printf("          \"this\": \"%s\",\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
-        printf("        \"local\": ");
+        printf("          \"local\": ");
         print_vars(newctx->vars);
         printf(",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
-        printf("        \"atomic\": \"%d\",\n", newctx->atomic);
+        printf("          \"atomic\": \"%d\",\n", newctx->atomic);
     }
     if (newctx->readonly != oldctx->readonly) {
-        printf("        \"readonly\": \"%d\",\n", newctx->readonly);
+        printf("          \"readonly\": \"%d\",\n", newctx->readonly);
+    }
+    if (newctx->failure != 0) {
+        char *val = value_string(newctx->failure);
+        printf("          \"failure\": \"%s\",\n", val + 1);
+        printf("          \"mode\": \"failed\",\n");
+        free(val);
+    }
+    else if (newctx->phase == CTX_END) {
+        printf("          \"mode\": \"terminated\",\n");
     }
 
     int common;
@@ -378,9 +387,9 @@ void diff_state(struct state *oldstate, struct state *newstate,
         }
     }
     if (common < oldctx->sp) {
-        printf("        \"pop\": \"%d\",\n", oldctx->sp - common);
+        printf("          \"pop\": \"%d\",\n", oldctx->sp - common);
     }
-    printf("        \"push\": [");
+    printf("          \"push\": [");
     for (int i = common; i < newctx->sp; i++) {
         if (i > common) {
             printf(",");
@@ -390,7 +399,7 @@ void diff_state(struct state *oldstate, struct state *newstate,
         free(val);
     }
     printf(" ]\n");
-    printf("      },\n");
+    printf("        },\n");
 }
 
 void diff_dump(struct state *oldstate, struct state *newstate,
@@ -444,16 +453,18 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
                 cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->phase == CTX_END || cc->failure != 0) {
-                break;
-            }
-            if (cc->pc == pc) {
-                fprintf(stderr, ">>> %s\n", oi->name);
-            }
-            assert(cc->pc != pc);
+            /* 
+                if (cc->pc == pc) {
+                    fprintf(stderr, ">>> %s\n", oi->name);
+                }
+                assert(cc->pc != pc);
+            */
         }
 
         diff_dump(oldstate, sc, oldctx, cc);
+        if (cc->phase == CTX_END || cc->failure != 0) {
+            break;
+        }
 
         /* Peek at the next instruction.
          */
@@ -481,7 +492,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
         }
     }
 
-    if (cc->failure != 0) {
+    if (false && cc->failure != 0) {
         char *r = value_string(cc->failure);
         printf("Safety violation: %s\n", r + 1);
         free(r);
@@ -526,16 +537,16 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
         char *name = value_string(context->name);
         char *arg = value_string(context->arg);
         // char *c = value_string(choice);
-        printf("  \"switch\": {\n");
-        printf("    \"tid\": \"T%d\",\n", pid);
+        printf("    \"switch\": {\n");
+        printf("      \"tid\": \"T%d\",\n", pid);
         if (*arg == '(') {
-            printf("    \"context\": \"%s%s\",\n", name + 1, arg);
+            printf("      \"context\": \"%s%s\",\n", name + 1, arg);
         }
         else {
-            printf("    \"context\": \"%s(%s)\",\n", name + 1, arg);
+            printf("      \"context\": \"%s(%s)\",\n", name + 1, arg);
         }
-        // printf("    \"choice\": \"%s\",\n", c);
-        printf("    \"steps\": [\n");
+        // printf("      \"choice\": \"%s\",\n", c);
+        printf("      \"microsteps\": [\n");
         free(name);
         free(arg);
         // free(c);
@@ -802,29 +813,32 @@ int main(int argc, char **argv){
         }
     }
 
+    printf("{\n");
+
     switch (bad->type) {
     case FAIL_SAFETY:
-        printf("Safety violation\n");
+        printf("  \"issue\": \"Safety violation\",\n");
         break;
     case FAIL_INVARIANT:
-        printf("Invariant violation\n");
+        printf("  \"issue\": \"Invariant violation\",\n");
         break;
     case FAIL_TERMINATION:
-        printf("Non-terminating state\n");
+        printf("  \"issue\": \"Non-terminating state\",\n");
         break;
     default:
         assert(0);
     }
 
-    printf("[\n");
+    printf("  \"megasteps\": [\n");
     struct state oldstate;
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
-    printf("    ]\n");
-    printf("  },\n");
-    printf("  \"end\"\n");
-    printf("]\n");
+    printf("      ]\n");
+    printf("    },\n");
+    printf("    \"end\"\n");
+    printf("  ]\n");
+    printf("}\n");
 
     return 0;
 }
