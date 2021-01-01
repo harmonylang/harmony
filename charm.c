@@ -337,10 +337,10 @@ void print_vars(uint64_t v){
 
 void diff_state(struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx){
-    printf("  {\n");
+    printf("      {\n");
     if (newstate->vars != oldstate->vars) {
-        printf("      \"shared\": ");
-        print_vars(newctx->vars);
+        printf("        \"shared\": ");
+        print_vars(newstate->vars);
         printf(",\n");
     }
     if (false && newstate->ctxbag != oldstate->ctxbag) {
@@ -349,26 +349,26 @@ void diff_state(struct state *oldstate, struct state *newstate,
         free(val);
     }
     if (newctx->pc != oldctx->pc) {
-        printf("      \"pc\": \"%d\",\n", newctx->pc);
+        printf("        \"pc\": \"%d\",\n", newctx->pc);
     }
     if (newctx->fp != oldctx->fp) {
-        printf("      \"fp\": \"%d\",\n", newctx->fp);
+        printf("        \"fp\": \"%d\",\n", newctx->fp);
     }
     if (newctx->this != oldctx->this) {
         char *val = value_string(newctx->this);
-        printf("      \"this\": \"%s\",\n", val);
+        printf("        \"this\": \"%s\",\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
-        printf("      \"local\": ");
+        printf("        \"local\": ");
         print_vars(newctx->vars);
         printf(",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
-        printf("      \"atomic\": \"%d\",\n", newctx->atomic);
+        printf("        \"atomic\": \"%d\",\n", newctx->atomic);
     }
     if (newctx->readonly != oldctx->readonly) {
-        printf("      \"readonly\": \"%d\",\n", newctx->readonly);
+        printf("        \"readonly\": \"%d\",\n", newctx->readonly);
     }
 
     int common;
@@ -378,9 +378,9 @@ void diff_state(struct state *oldstate, struct state *newstate,
         }
     }
     if (common < oldctx->sp) {
-        printf("      \"pop\": \"%d\",\n", oldctx->sp - common);
+        printf("        \"pop\": \"%d\",\n", oldctx->sp - common);
     }
-    printf("      \"push\": [");
+    printf("        \"push\": [");
     for (int i = common; i < newctx->sp; i++) {
         if (i > common) {
             printf(",");
@@ -390,18 +390,25 @@ void diff_state(struct state *oldstate, struct state *newstate,
         free(val);
     }
     printf(" ]\n");
-    printf("  },\n");
+    printf("      },\n");
 }
 
 void diff_dump(struct state *oldstate, struct state *newstate,
                 struct context **oldctx, struct context *newctx){
+    int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
+
+    if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
+            (*oldctx)->sp == newctx->sp &&
+            memcmp(*oldctx, newctx, newsize) == 0) {
+        return;
+    }
+
     // Keep track of old state and context for taking diffs
     diff_state(oldstate, newstate, *oldctx, newctx);
     *oldstate = *newstate;
     free(*oldctx);
-    int oldsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
-    *oldctx = malloc(oldsize);
-    memcpy(*oldctx, newctx, oldsize);
+    *oldctx = malloc(newsize);
+    memcpy(*oldctx, newctx, newsize);
 }
 
 // similar to onestep.  TODO.  Use flag to onestep?
@@ -421,13 +428,12 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
 
     bool choosing = false;
     for (int loopcnt = 0;; loopcnt++) {
-        diff_dump(oldstate, sc, oldctx, cc);
         int pc = cc->pc;
 
         struct op_info *oi = code[pc].oi;
         if (code[pc].choose) {
             char *p = value_string(choice);
-            printf("--- %d: CHOOSE %s\n", pc, p);
+            // printf("--- %d: CHOOSE %s\n", pc, p);
             free(p);
             cc->stack[cc->sp - 1] = choice;
             cc->pc++;
@@ -512,14 +518,27 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     }
 
     if (last->parent == NULL || last->after != ctx) {
-        char *before = value_string(ctx);
-        char *c = value_string(choice);
+        if (last->parent != NULL) {
+            printf("    ]\n");
+            printf("  },\n");
+        }
+        struct context *context = value_get(ctx, NULL);
+        char *name = value_string(context->name);
+        char *arg = value_string(context->arg);
+        // char *c = value_string(choice);
+        printf("  \"switch\": {\n");
         printf("    \"tid\": \"T%d\",\n", pid);
-        printf("    \"context\": \"%s\",\n", before);
-        printf("    \"choice\": \"%s\",\n", c);
-        free(before);
-        free(c);
-
+        if (*arg == '(') {
+            printf("    \"context\": \"%s%s\",\n", name + 1, arg);
+        }
+        else {
+            printf("    \"context\": \"%s(%s)\",\n", name + 1, arg);
+        }
+        // printf("    \"choice\": \"%s\",\n", c);
+        printf("    \"steps\": [\n");
+        free(name);
+        free(arg);
+        // free(c);
         memset(*oldctx, 0, sizeof(**oldctx));
     }
 
@@ -802,6 +821,8 @@ int main(int argc, char **argv){
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
+    printf("    ]\n");
+    printf("  },\n");
     printf("  \"end\"\n");
     printf("]\n");
 
