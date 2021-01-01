@@ -3,15 +3,15 @@
 flags = [ False, False ];
 turn = choose({0, 1});
 
-def process(self):
+def thread(self):
     while choose({ False, True }):
         turn = 1 - self;
         flags[self] = True;
         await (not flags[1 - self]) or (turn == self);
-        @cs: assert atLabel.cs == dict{ nametag(): 1 };
+        @cs: assert atLabel(cs) == bag{ (thread, self) };
         flags[self] = False;
     ;
 ;
 
-spawn process(0);
-spawn process(1);
+spawn thread(0);
+spawn thread(1);
