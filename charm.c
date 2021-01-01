@@ -307,7 +307,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_SAFETY;
-        f->ctx = ctx;
+        f->ctx = after;
         f->choice = choice_copy;
         f->node = next;
         queue_enqueue(failures, f);
@@ -373,10 +373,11 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
     }
 }
 
-void print_context(struct context *ctx){
+void print_context(struct context *ctx, int tid){
     char *s, *a;
 
     printf("        {\n");
+    printf("          \"tid\": \"%d\",\n", tid);
 
     s = value_string(ctx->name);
     a = value_string(ctx->arg);
@@ -416,6 +417,16 @@ void print_context(struct context *ctx){
         printf("          \"readonly\": \"%d\",\n", ctx->readonly);
     }
 
+    if (ctx->phase == CTX_END) {
+        printf("          \"mode\": \"terminated\",\n");
+    }
+    else if (ctx->failure != 0) {
+        printf("          \"mode\": \"failed\",\n");
+    }
+    else {
+        printf("          \"mode\": \"running\",\n");
+    }
+
     printf("          \"stack\": [\n");
     for (int i = 0; i < ctx->sp; i++) {
         s = value_string(ctx->stack[i]);
@@ -432,18 +443,27 @@ void print_state(struct state *state){
     print_vars(state->vars);
     printf(";\n");
 
-    int size;
-    uint64_t *ctxs = value_get(state->ctxbag, &size);
-    size /= sizeof(uint64_t);
     printf("      \"contexts\": [\n");
-    for (int i = 0; i < size; i += 2) {
-        assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-        assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-        struct context *ctx = value_get(ctxs[i], NULL);
-        int cnt = ctxs[i+1] >> VALUE_BITS;
-        assert(cnt > 0);
-        for (int j = 0; j < cnt; j++) {
-            print_context(ctx);
+
+    if (false) {
+        int size;
+        uint64_t *ctxs = value_get(state->ctxbag, &size);
+        size /= sizeof(uint64_t);
+        for (int i = 0; i < size; i += 2) {
+            assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
+            assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+            struct context *ctx = value_get(ctxs[i], NULL);
+            int cnt = ctxs[i+1] >> VALUE_BITS;
+            assert(cnt > 0);
+            for (int j = 0; j < cnt; j++) {
+                print_context(ctx, j);
+            }
+        }
+    }
+    else {
+        for (int i = 0; i < nprocesses; i++) {
+            struct context *ctx = value_get(processes[i], NULL);
+            print_context(ctx, i);
         }
     }
     printf("      ]\n");
@@ -545,6 +565,10 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
     assert(cc->phase != CTX_END);
+    if (cc->failure != 0) {         // TODO
+        free(cc);
+        return ctx;
+    }
     assert(cc->failure == 0);
 
     diff_dump(oldstate, sc, oldctx, cc);
@@ -625,8 +649,37 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     if (last == NULL) {
         return;
     }
-
     path_dump(last->parent, last->before, last->choice, oldstate, oldctx);
+
+
+    /* Match each context to a process.
+     */
+    bool *matched = calloc(nprocesses, sizeof(bool));
+    int nctxs;
+    uint64_t *ctxs = value_get(last->state->ctxbag, &nctxs);
+    nctxs /= sizeof(uint64_t);
+    for (int i = 0; i < nctxs; i += 2) {
+        assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+        int cnt = ctxs[i+1] >> VALUE_BITS;
+        for (int j = 0; j < cnt; j++) {
+            int k;
+            for (k = 0; k < nprocesses; k++) {
+                if (!matched[k] && processes[k] == ctxs[i]) {
+                    matched[k] = true;
+                    break;
+                }
+            }
+            if (k == nprocesses) {
+                processes = realloc(processes, (nprocesses + 1) * sizeof(uint64_t));
+                matched = realloc(matched, (nprocesses + 1) * sizeof(bool));
+                processes[nprocesses] = ctxs[i];
+                matched[nprocesses] = true;
+                nprocesses++;
+            }
+        }
+    }
+    free(matched);
 
     /* See if we can find this context in the list of processes.  If not
      * add it.
@@ -637,10 +690,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
             break;
         }
     }
-    if (pid == nprocesses) {
-        processes = realloc(processes, (pid + 1) * sizeof(uint64_t));
-        processes[nprocesses++] = ctx;
-    }
+    assert(pid < nprocesses);
 
     if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
