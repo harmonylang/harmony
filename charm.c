@@ -156,6 +156,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     uint64_t choice_copy = choice;
 
     bool choosing = false;
+    struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -183,14 +184,28 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
                 cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
-            if (cc->phase == CTX_END || cc->failure != 0) {
-                break;
-            }
-            if (cc->pc == pc) {
-                fprintf(stderr, ">>> %s\n", oi->name);
-            }
-            assert(cc->pc != pc);
         }
+
+        if ((cc->phase != CTX_END && cc->failure == 0) && loopcnt > 1000) {
+            if (infloop == NULL) {
+                infloop = dict_new(0);
+            }
+            // TODO.  Also add global state?
+            void **p = dict_insert(infloop, cc,
+                            sizeof(*cc) + (cc->sp * sizeof(uint64_t)));
+            if (*p != (void *) 0) {
+                cc->failure = value_put_atom("infinite loop", 13);
+            }
+            *p = (void *) 1;
+        }
+
+        if (cc->phase == CTX_END || cc->failure != 0) {
+            break;
+        }
+        if (cc->pc == pc) {
+            fprintf(stderr, ">>> %s\n", oi->name);
+        }
+        assert(cc->pc != pc);
 
         /* Peek at the next instruction.
          */
@@ -216,6 +231,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
                 code[cc->pc].breakable) {
             break;
         }
+    }
+    
+    if (infloop != NULL) {
+        dict_delete(infloop);
     }
 
     // Remove old context from the bag
@@ -432,12 +451,11 @@ void print_context(uint64_t ctx, int tid, struct node *node){
                 break;
             }
         };
-        assert(edge != NULL);
-        if (edge->node == node) {
-            printf("          \"mode\": \"blocked\",\n");
+        if (edge == NULL || edge->node != node) {
+            printf("          \"mode\": \"running\",\n");
         }
         else {
-            printf("          \"mode\": \"running\",\n");
+            printf("          \"mode\": \"blocked\",\n");
         }
     }
 
@@ -569,6 +587,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
     diff_dump(oldstate, sc, oldctx, cc);
 
     bool choosing = false;
+    struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -586,18 +605,29 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
                 cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
-            /* 
-                if (cc->pc == pc) {
-                    fprintf(stderr, ">>> %s\n", oi->name);
-                }
-                assert(cc->pc != pc);
-            */
+        }
+
+        if (cc->phase != CTX_END && cc->failure == 0) {
+            if (infloop == NULL) {
+                infloop = dict_new(0);
+            }
+            // TODO.  Also add global state?
+            void **p = dict_insert(infloop, cc,
+                            sizeof(*cc) + (cc->sp * sizeof(uint64_t)));
+            if (*p != (void *) 0) {
+                cc->failure = value_put_atom("infinite loop", 13);
+            }
+            *p = (void *) 1;
         }
 
         diff_dump(oldstate, sc, oldctx, cc);
         if (cc->phase == CTX_END || cc->failure != 0) {
             break;
         }
+        if (cc->pc == pc) {
+            fprintf(stderr, ">>> %s\n", oi->name);
+        }
+        assert(cc->pc != pc);
 
         /* Peek at the next instruction.
          */

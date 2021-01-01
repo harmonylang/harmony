@@ -4,6 +4,5 @@ def process():
     await False;
     @cs: pass;    # critical section
 ;
-flags = dict{ 0: False, 1: False };
-spawn process(), 0;
-spawn process(), 1;
+spawn process();
+spawn process();
