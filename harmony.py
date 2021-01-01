@@ -5052,6 +5052,7 @@ def htmlloc(code, scope, ctx, traceid, f):
             (file, line) = scope.locations[pc]
         else:
             (file, line) = ("NOFILE", 0)
+        # TODO.  Should skip over nested methods
         while pc >= 0 and not isinstance(code[pc], FrameOp):
             pc -= 1
         if fp >= 3:

@@ -40,63 +40,6 @@ struct var_tree {
 static struct dict *ops_map, *f_map;
 extern struct code *code;
 
-struct env_DelVar {
-    uint64_t name;
-};
-
-struct env_Frame {
-    uint64_t name;
-    struct var_tree *args;
-};
-
-struct env_Invariant {
-    int cnt;
-};
-
-struct env_Jump {
-    int pc;
-};
-
-struct env_JumpCond {
-    uint64_t cond;
-    int pc;
-};
-
-struct env_Load {
-    uint64_t *indices;
-    int n;
-};
-
-struct env_LoadVar {
-    uint64_t name;
-};
-
-struct env_Move {
-    int offset;
-};
-
-struct env_Nary {
-    int arity;
-    struct f_info *fi;
-};
-
-struct env_Push {
-    uint64_t value;
-};
-
-struct env_Split {
-    int count;
-};
-
-struct env_Store {
-    uint64_t *indices;
-    int n;
-};
-
-struct env_StoreVar {
-    struct var_tree *args;
-};
-
 uint64_t ctx_failure(struct context *ctx, char *fmt, ...){
     char *r;
     va_list args;

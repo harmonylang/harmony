@@ -335,6 +335,44 @@ void print_vars(uint64_t v){
     printf(" }");
 }
 
+void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
+    while (pc > 0) {
+        // TODO.  Skip over nested methods
+        if (strcmp(code[pc].oi->name, "Frame") == 0) {
+            if (fp > 0) {
+                int npc = ctx->stack[fp - 5] >> VALUE_BITS;
+                uint64_t nvars = ctx->stack[fp - 2];
+                int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
+                // printf("RECURS %d %d\n", fp, pc);
+                print_method(ctx, npc, nfp, nvars);
+            }
+            printf("            {\n");
+            const struct env_Frame *ef = code[pc].env;
+            char *s = value_string(ef->name), *a;
+            if (fp == 0) {
+                a = value_string(ctx->stack[1]);
+            }
+            else {
+                a = value_string(ctx->stack[fp - 3]);
+            }
+            if (*a == '(') {
+                printf("              \"method\": \"%s%s\",\n", s + 1, a);
+            }
+            else {
+                printf("              \"method\": \"%s(%s)\",\n", s + 1, a);
+            }
+            free(s);
+            free(a);
+            printf("              \"vars\": ");
+            print_vars(vars);
+            printf(";\n");
+            printf("            },\n");
+            break;
+        }
+        pc--;
+    }
+}
+
 void print_context(struct context *ctx){
     char *s, *a;
 
@@ -357,9 +395,9 @@ void print_context(struct context *ctx){
     printf("          \"pc\": \"%d\",\n", ctx->pc);
     printf("          \"fp\": \"%d\",\n", ctx->fp);
 
-    printf("          \"local\": ");
-    print_vars(ctx->vars);
-    printf(";\n");
+    printf("          \"trace\": [\n");
+    print_method(ctx, ctx->pc, ctx->fp, ctx->vars);
+    printf("          ],\n");
 
     s = value_string(ctx->this);
     printf("          \"this\": \"%s\",\n", s);
@@ -618,10 +656,10 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
         printf("    \"switch\": {\n");
         printf("      \"tid\": \"T%d\",\n", pid);
         if (*arg == '(') {
-            printf("      \"context\": \"%s%s\",\n", name + 1, arg);
+            printf("      \"name\": \"%s%s\",\n", name + 1, arg);
         }
         else {
-            printf("      \"context\": \"%s(%s)\",\n", name + 1, arg);
+            printf("      \"name\": \"%s(%s)\",\n", name + 1, arg);
         }
         // printf("      \"choice\": \"%s\",\n", c);
         printf("      \"microsteps\": [\n");
@@ -915,7 +953,6 @@ int main(int argc, char **argv){
     printf("      ],\n");
     print_state(bad->node->state);
     printf("    },\n");
-    printf("    \"end\"\n");
     printf("  ]\n");
     printf("}\n");
 
