@@ -373,14 +373,16 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
     }
 }
 
-void print_context(struct context *ctx, int tid){
+void print_context(uint64_t ctx, int tid, struct node *node){
     char *s, *a;
 
     printf("        {\n");
     printf("          \"tid\": \"%d\",\n", tid);
 
-    s = value_string(ctx->name);
-    a = value_string(ctx->arg);
+    struct context *c = value_get(ctx, NULL);
+
+    s = value_string(c->name);
+    a = value_string(c->arg);
     if (*a == '(') {
         printf("          \"name\": \"%s%s\",\n", s + 1, a);
     }
@@ -390,46 +392,58 @@ void print_context(struct context *ctx, int tid){
     free(s);
     free(a);
 
-    // assert((ctx->entry & VALUE_MASK) == VALUE_PC);
-    printf("          \"entry\": \"%d\",\n", (int) (ctx->entry >> VALUE_BITS));
+    // assert((c->entry & VALUE_MASK) == VALUE_PC);   TODO
+    printf("          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
 
-    printf("          \"pc\": \"%d\",\n", ctx->pc);
-    printf("          \"fp\": \"%d\",\n", ctx->fp);
+    printf("          \"pc\": \"%d\",\n", c->pc);
+    printf("          \"fp\": \"%d\",\n", c->fp);
 
     printf("          \"trace\": [\n");
-    print_method(ctx, ctx->pc, ctx->fp, ctx->vars);
+    print_method(c, c->pc, c->fp, c->vars);
     printf("          ],\n");
 
-    s = value_string(ctx->this);
+    s = value_string(c->this);
     printf("          \"this\": \"%s\",\n", s);
     free(s);
 
-    if (ctx->failure != 0) {
-        s = value_string(ctx->failure);
+    if (c->failure != 0) {
+        s = value_string(c->failure);
         printf("          \"failure\": \"%s\",\n", s + 1);
         free(s);
     }
 
-    if (ctx->atomic != 0) {
-        printf("          \"atomic\": \"%d\",\n", ctx->atomic);
+    if (c->atomic != 0) {
+        printf("          \"atomic\": \"%d\",\n", c->atomic);
     }
-    if (ctx->readonly != 0) {
-        printf("          \"readonly\": \"%d\",\n", ctx->readonly);
+    if (c->readonly != 0) {
+        printf("          \"readonly\": \"%d\",\n", c->readonly);
     }
 
-    if (ctx->phase == CTX_END) {
+    if (c->phase == CTX_END) {
         printf("          \"mode\": \"terminated\",\n");
     }
-    else if (ctx->failure != 0) {
+    else if (c->failure != 0) {
         printf("          \"mode\": \"failed\",\n");
     }
     else {
-        printf("          \"mode\": \"running\",\n");
+        struct edge *edge;
+        for (edge = node->fwd; edge != NULL; edge = edge->next) {
+            if (edge->ctx == ctx) {
+                break;
+            }
+        };
+        assert(edge != NULL);
+        if (edge->node == node) {
+            printf("          \"mode\": \"blocked\",\n");
+        }
+        else {
+            printf("          \"mode\": \"running\",\n");
+        }
     }
 
     printf("          \"stack\": [\n");
-    for (int i = 0; i < ctx->sp; i++) {
-        s = value_string(ctx->stack[i]);
+    for (int i = 0; i < c->sp; i++) {
+        s = value_string(c->stack[i]);
         printf("            \"%s\",\n", s);
         free(s);
     }
@@ -438,33 +452,14 @@ void print_context(struct context *ctx, int tid){
     printf("        },\n");
 }
 
-void print_state(struct state *state){
+void print_state(struct node *node){
     printf("      \"shared\": ");
-    print_vars(state->vars);
+    print_vars(node->state->vars);
     printf(";\n");
 
     printf("      \"contexts\": [\n");
-
-    if (false) {
-        int size;
-        uint64_t *ctxs = value_get(state->ctxbag, &size);
-        size /= sizeof(uint64_t);
-        for (int i = 0; i < size; i += 2) {
-            assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-            assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-            struct context *ctx = value_get(ctxs[i], NULL);
-            int cnt = ctxs[i+1] >> VALUE_BITS;
-            assert(cnt > 0);
-            for (int j = 0; j < cnt; j++) {
-                print_context(ctx, j);
-            }
-        }
-    }
-    else {
-        for (int i = 0; i < nprocesses; i++) {
-            struct context *ctx = value_get(processes[i], NULL);
-            print_context(ctx, i);
-        }
+    for (int i = 0; i < nprocesses; i++) {
+        print_context(processes[i], i, node);
     }
     printf("      ]\n");
 }
@@ -695,7 +690,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
             printf("      ],\n");
-            print_state(last->state);
+            print_state(last);
             printf("    },\n");
         }
 
@@ -1001,7 +996,7 @@ int main(int argc, char **argv){
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
     printf("      ],\n");
-    print_state(bad->node->state);
+    print_state(bad->node);
     printf("    },\n");
     printf("  ]\n");
     printf("}\n");
