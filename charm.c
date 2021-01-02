@@ -616,14 +616,11 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    assert(cc->phase != CTX_END);
-    if (cc->failure != 0) {         // TODO
+    diff_dump(oldstate, sc, oldctx, cc);
+    if (cc->phase == CTX_END || cc->failure != 0) {
         free(cc);
         return ctx;
     }
-    assert(cc->failure == 0);
-
-    diff_dump(oldstate, sc, oldctx, cc);
 
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
@@ -764,11 +761,12 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
         }
 
         struct context *context = value_get(ctx, NULL);
+        assert(context->phase != CTX_END);
         char *name = value_string(context->name);
         char *arg = value_string(context->arg);
         // char *c = value_string(choice);
         printf("    \"switch\": {\n");
-        printf("      \"tid\": \"T%d\",\n", pid);
+        printf("      \"tid\": \"%d\",\n", pid);
         if (*arg == '(') {
             printf("      \"name\": \"%s%s\",\n", name + 1, arg);
         }

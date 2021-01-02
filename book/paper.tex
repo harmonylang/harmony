@@ -3355,7 +3355,7 @@ and exit monitor methods.
 blocks while trying to acquire the condition's semaphore, and after resuming
 decrements the counter---in much the same way as we have seen for split binary
 semaphores (SBS).
-\texttt{signal} checks to see if the condition's count is non-zero, and if so
+\texttt{signal} checks to see if the condition's count is non-zero, if so
 releases the condition's semaphore,
 and then blocks by trying to acquire the mutex again.
 
@@ -3363,7 +3363,7 @@ and then blocks by trying to acquire the mutex again.
 Hoare monitors.  It is written in much the same way you would if using
 the SBS technique (see \autoref{ex:bbsbs}).
 There is no \texttt{release\_one} method.  Instead, one can conclude
-that \texttt{put} causes the queue to be non-empty, and
+that \texttt{put} guarantees that the queue will be non-empty, and
 \texttt{signal} will check if there are any threads waiting for
 this event.  If so, \texttt{signal} will pass control to one such thread
 and, unlike \texttt{release\_one}, re-enter the critical
@@ -3405,7 +3405,9 @@ operation \texttt{notify} rather than \texttt{signal}.
 When a thread $p$ invokes \texttt{notify}, it does not immediately pass 
 control to a thread that is waiting on the corresponding condition (if there
 is such a thread).  Instead, $p$ remains in the critical section
-until it leaves the monitor explicitly.  At that point, any thread that
+until it leaves the monitor explicitly
+(by calling either \texttt{release()} or \texttt{wait()}).
+At that point, any thread that
 was notified will have a chance to enter the critical section, but they compete
 with other threads trying to enter the critical section.
 Basically, there is just one gate to enter the critical section, instead
@@ -3467,7 +3469,7 @@ the condition.  So in Mesa, threads always have to check the condition
 again after resuming from the \texttt{wait} operation.  This is accomplished
 by wrapping each \texttt{wait} operation in a \textbf{while} statement that
 loops until the condition of interest becomes valid.
-A Mesa monitor therefore is more closely related to \emph{busy waiting}
+A Mesa monitor therefore is more closely related to busy waiting
 than to split binary semaphores.
 
 Mesa monitors also allow notifying multiple threads.
@@ -3485,8 +3487,8 @@ must be passed immediately to a thread that has been signaled, and that
 can only be done if there is just one such thread.
 
 The so-called
-``Mesa monitor semantics'' or ``Mesa condition variable'' semantics
-have become more popular than Hoare monitor semantics, and have been
+``Mesa monitor semantics'' or ``Mesa condition variable semantics''
+have become more popular than Hoare monitor semantics and have been
 adopted by all major programming languages.
 That said, few programming languages provide full syntactical support
 for monitors, instead opting to support monitor semantics through library
@@ -3524,8 +3526,7 @@ Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:RWcv}
 \end{figure}
 
-Like C, Java, and Python, Harmony does not have syntactical
-support for monitors. Harmony provides support for monitors
+Harmony provides support for monitors
 through the Harmony \texttt{synch} module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
@@ -3536,7 +3537,7 @@ a bag of contexts of threads waiting on the condition variable.
 
 \texttt{wait} adds the context of the thread to the bag.
 This increments the number of threads in the bag with the same context.
-\texttt{wait} then waits until that count is restored to the
+\texttt{wait} then loops until that count is restored to the
 value that it had upon entry to \texttt{wait}.
 \texttt{notify} removes an arbitrary context from
 the bag, allowing one of the threads with that context to
@@ -3591,19 +3592,21 @@ to enter next.  (If you want to prevent waking up both readers and
 a writer, then you can keep track of how many threads are waiting
 in the code.)
 
-While Hoare moniters embody the split binary semaphore approach,
-Mesa monitors are much closer to the busy-waiting approach.
-The Mesa code then has to be careful to invoke \textbf{notify} or
-\textbf{notifyAll} in the right places.
+% While Hoare moniters embody the split binary semaphore approach,
+% Mesa monitors are much closer to the busy-waiting approach.
+When using Mesa condition variable you have to be careful to invoke
+\textbf{notify} or \textbf{notifyAll} in the right places.
 Much of the complexity of programming with Mesa condition variables
 is in figuring out when to invoke \texttt{notify} and when to invoke
 \texttt{notifyAll}.  As a rule of thumb: be conservative---it is
-better to wake up too many threads than too few.  Waking up too
+better to wake up too many threads than too few.
+So in case of doubt, use \texttt{notifyAll}.
+Waking up too
 many threads may lead to some inefficiency, but waking up too few
 may cause the application to get stuck.  Harmony can be particularly
-helpful here, as it examines every corner case.  You can safely try
-to replace each \texttt{notifyAll} with \texttt{notify} and see if
-every possible execution of the application still terminates.
+helpful here, as it examines each and every corner case.
+You can try to replace each \texttt{notifyAll} with \texttt{notify} and see
+if every possible execution of the application still terminates.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
@@ -3692,13 +3695,13 @@ a scenario he called ``Dining Philosophers.''
 \index{dining philosopher}%
 
 Imagine five philosopers sitting around a table, each with a plate of food in
-front of them and a fork between each two plates.  Each philosopher requires
+front of them and a fork between every two plates.  Each philosopher requires
 two forks to eat.  To start eating, a philosopher first picks up the fork on
 the left, then the fork on the right.  Each philosopher likes to take breaks
 from eating to think for a while.  To do so, the philosopher puts down both
 forks.  Each philosopher repeats this procedure.  Dijkstra had them repeating
 this for ever, but for the purposes of this book, philosophers can leave
-the table when they want to leave.
+the table when they are not using any forks.
 
 \autoref{fig:diners} implements the dining philosophers in Harmony, using a
 thread for each philosopher and a lock for each fork.  If you
