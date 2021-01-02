@@ -949,6 +949,15 @@ void op_Set(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
+void op_SetIntLevel(const void *env, struct state *state, struct context **pctx){
+	bool oldlevel = (*pctx)->interruptlevel;
+	uint64_t newlevel =  ctx_pop(pctx);
+    assert((newlevel & VALUE_MASK) == VALUE_BOOL);
+    (*pctx)->interruptlevel = newlevel >> VALUE_BITS;
+	ctx_push(pctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
+    (*pctx)->pc++;
+}
+
 uint64_t bag_add(uint64_t bag, uint64_t v){
     uint64_t count;
     if (dict_tryload(bag, v, &count)) {
@@ -1125,6 +1134,7 @@ void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
 void *init_Set(struct dict *map){ return NULL; }
+void *init_SetIntLevel(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
 
@@ -2293,6 +2303,7 @@ struct op_info op_table[] = {
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
 	{ "Return", init_Return, op_Return },
 	{ "Set", init_Set, op_Set },
+	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
 	{ "Store", init_Store, op_Store },
