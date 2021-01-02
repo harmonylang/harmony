@@ -365,39 +365,52 @@ void print_vars(uint64_t v){
 }
 
 void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
+	int level = 0;
     while (pc > 0) {
-        // TODO.  Skip over nested methods
-        if (strcmp(code[pc].oi->name, "Frame") == 0) {
-            if (fp > 0) {
-                int npc = ctx->stack[fp - 5] >> VALUE_BITS;
-                uint64_t nvars = ctx->stack[fp - 2];
-                int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
-                // printf("RECURS %d %d\n", fp, pc);
-                print_method(ctx, npc, nfp, nvars);
-            }
-            printf("            {\n");
-            const struct env_Frame *ef = code[pc].env;
-            char *s = value_string(ef->name), *a = NULL;
-            if (fp != 0) {
-                a = value_string(ctx->stack[fp - 3]);
-            }
-            if (a == NULL) {
-                printf("              \"method\": \"%s(???)\",\n", s + 1);
+        if (strcmp(code[pc].oi->name, "Return") == 0) {
+			level++;
+		}
+        else if (strcmp(code[pc].oi->name, "Frame") == 0) {
+			if (level == 0) {
+				if (fp > 0) {
+					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
+					uint64_t nvars = ctx->stack[fp - 2];
+					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
+					// printf("RECURS %d %d\n", fp, pc);
+					print_method(ctx, npc, nfp, nvars);
+				}
+				printf("            {\n");
+				const struct env_Frame *ef = code[pc].env;
+				char *s = value_string(ef->name), *a = NULL;
+				if (fp == 0) {
+					if (ctx->sp > 1) {
+						a = value_string(ctx->stack[1]);
+					}
+				}
+				else {
+					a = value_string(ctx->stack[fp - 3]);
+				}
+				if (a == NULL) {
+					printf("              \"method\": \"%s()\",\n", s + 1);
+				}
+				else if (*a == '(') {
+					printf("              \"method\": \"%s%s\",\n", s + 1, a);
+				}
+				else {
+					printf("              \"method\": \"%s(%s)\",\n", s + 1, a);
+				}
+				free(s);
+				free(a);
+				printf("              \"vars\": ");
+				print_vars(vars);
+				printf(",\n");
+				printf("            },\n");
+				break;
 			}
-            else if (*a == '(') {
-                printf("              \"method\": \"%s%s\",\n", s + 1, a);
-            }
-            else {
-                printf("              \"method\": \"%s(%s)\",\n", s + 1, a);
-            }
-            free(s);
-            free(a);
-            printf("              \"vars\": ");
-            print_vars(vars);
-            printf(",\n");
-            printf("            },\n");
-            break;
-        }
+		}
+		else {
+			level--;
+		}
         pc--;
     }
 }
