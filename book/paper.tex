@@ -4149,22 +4149,23 @@ Implement a simulation of such a pool hall.
 \label{fig:trap4}
 \end{figure}
 
-Threads can be \emph{interrupted}.  An interrupt is a notification of some event
-such as a keystroke, a timer expiring, the reception of a network packet, the completion
-of a disk operation, and so on.  We distinguish \emph{interrupts} and \emph{exceptions}.
-An exception is caused by the thread executing an invalid machine instruction such as
-divide-by-zero.  An interrupt is caused by some peripheral device and can be handled in
-Harmony.
-In other words: an interrupt is a notification, while an exception is an error.
-\index{exception}
+Threads can be \emph{interrupted}.  An interrupt is a notification
+of some event such as a keystroke, a timer expiring, the reception
+of a network packet, the completion of a disk operation, and so on.
+We distinguish \emph{interrupts} and \emph{exceptions}.  An exception
+is caused by the thread executing an invalid machine instruction
+such as divide-by-zero.  An interrupt is caused by some peripheral
+device and can be handled in Harmony.  In other words: an interrupt
+is a notification, while an exception is an error.  \index{exception}
 
 Harmony allows modeling interrupts using the \texttt{trap} statement:
 \begin{code}
 \textbf{trap} \textit{handler} \textit{argument}
 \end{code}
 invokes \textit{handler argument} at some later, unspecified time.
-Only one of these asynchronous events can be outstanding at a time; a new call to
-\textbf{trap} overwrites any outstanding one.
+Thus you can think of \textbf{trap} as setting a timer.
+Only one of these asynchronous events can be outstanding at a time;
+a new call to \textbf{trap} overwrites any outstanding one.
 \autoref{fig:trap} gives an example of how \textbf{trap} might be used.
 Here, the \textit{main}() thread loops until the interrupt has occurred and
 the \textit{done} flag has been set.
