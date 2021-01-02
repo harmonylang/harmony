@@ -192,10 +192,11 @@ uint64_t ctx_pop(struct context **pctx){
 
 void interrupt_invoke(struct context **pctx){
     assert(!(*pctx)->interruptlevel);
+	assert(((*pctx)->trap_pc & VALUE_MASK) == VALUE_PC);
     ctx_push(pctx, ((*pctx)->pc << VALUE_BITS) | VALUE_PC);
     ctx_push(pctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
     ctx_push(pctx, (*pctx)->trap_arg);
-    (*pctx)->pc = (*pctx)->trap_pc;
+    (*pctx)->pc = (*pctx)->trap_pc >> VALUE_BITS;
     (*pctx)->trap_pc = 0;
     (*pctx)->interruptlevel = true;
 }
@@ -882,6 +883,15 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
                 (*pctx)->pc = pc;
             }
             break;
+		case CALLTYPE_INTERRUPT:
+			assert((*pctx)->interruptlevel);
+			(*pctx)->interruptlevel = false;
+			uint64_t pc = ctx_pop(pctx);
+			assert((pc & VALUE_MASK) == VALUE_PC);
+			pc >>= VALUE_BITS;
+			assert(pc != (*pctx)->pc);
+			(*pctx)->pc = pc;
+			break;
         default:
             assert(false);
         }

@@ -152,13 +152,18 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
     }
 
-    // Copy the choice
-    uint64_t choice_copy = choice;
-
+    // See if we should also try an interrupt.
     if (interrupt) {
         extern void interrupt_invoke(struct context **pctx);
+		assert(cc->trap_pc != 0);
         interrupt_invoke(&cc);
     }
+    else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
+        onestep(node, ctx, 0, true, visited, todo, pinv_ctx);
+    }
+
+    // Copy the choice
+    uint64_t choice_copy = choice;
 
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
@@ -270,11 +275,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-    // If this is a choosing state, don't consider interrupt
-    if (sc->choosing) {
-        interrupt = true;
-    }
-
     // See if this new state was already seen before.
     void **p = dict_insert(visited, sc, sizeof(*sc));
     struct node *next;
@@ -340,11 +340,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         f->choice = choice_copy;
         f->node = next;
         queue_enqueue(failures, f);
-    }
-
-    // See if we should also try an interrupt.
-    if (!interrupt && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(node, ctx, 0, true, visited, todo, pinv_ctx);
     }
 
     free(cc);
@@ -856,7 +851,7 @@ int main(int argc, char **argv){
     value_init();
 
     // open the file
-    FILE *fp = fopen(argc == 1 ? "x.json" : argv[1], "r");
+    FILE *fp = fopen(argc == 1 ? "harmony.json" : argv[1], "r");
     assert(fp != NULL);
 
     // read the file
