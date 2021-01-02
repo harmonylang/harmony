@@ -1083,7 +1083,7 @@ class SetIntLevelOp(Op):
         return '{ "op": "SetIntLevel" }'
 
     def explain(self):
-        return "pops new boolean interrupt level"
+        return "pops new boolean interrupt level and pushes old one"
 
     def eval(self, state, context):
         before = context.interruptLevel
