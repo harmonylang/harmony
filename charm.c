@@ -377,14 +377,14 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
             }
             printf("            {\n");
             const struct env_Frame *ef = code[pc].env;
-            char *s = value_string(ef->name), *a;
-            if (fp == 0) {
-                a = value_string(ctx->stack[1]);
-            }
-            else {
+            char *s = value_string(ef->name), *a = NULL;
+            if (fp != 0) {
                 a = value_string(ctx->stack[fp - 3]);
             }
-            if (*a == '(') {
+            if (a == NULL) {
+                printf("              \"method\": \"%s(???)\",\n", s + 1);
+			}
+            else if (*a == '(') {
                 printf("              \"method\": \"%s%s\",\n", s + 1, a);
             }
             else {
@@ -1049,6 +1049,7 @@ int main(int argc, char **argv){
 
     printf("  \"megasteps\": [\n");
     struct state oldstate;
+	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
     free(oldctx);
