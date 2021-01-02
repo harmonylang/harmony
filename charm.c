@@ -136,24 +136,29 @@ void check_invariants(struct node *node, struct context **pctx){
     }
 }
 
-void onestep(struct node *node, uint64_t ctx, uint64_t choice,
+void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         struct dict *visited, struct queue *todo, struct context **pinv_ctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
     sc->choosing = 0;
 
-    if (false) {
-        printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
-    }
-
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
     assert(cc->phase != CTX_END);
     assert(cc->failure == 0);
 
+    if (false) {
+        printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
+    }
+
     // Copy the choice
     uint64_t choice_copy = choice;
+
+    if (interrupt) {
+        extern void interrupt_invoke(struct context **pctx);
+        interrupt_invoke(&cc);
+    }
 
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
@@ -265,6 +270,11 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
+    // If this is a choosing state, don't consider interrupt
+    if (sc->choosing) {
+        interrupt = true;
+    }
+
     // See if this new state was already seen before.
     void **p = dict_insert(visited, sc, sizeof(*sc));
     struct node *next;
@@ -332,6 +342,11 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice,
         queue_enqueue(failures, f);
     }
 
+    // See if we should also try an interrupt.
+    if (!interrupt && cc->trap_pc != 0 && !cc->interruptlevel) {
+        onestep(node, ctx, 0, true, visited, todo, pinv_ctx);
+    }
+
     free(cc);
 }
 
@@ -384,7 +399,7 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
             free(a);
             printf("              \"vars\": ");
             print_vars(vars);
-            printf(";\n");
+            printf(",\n");
             printf("            },\n");
             break;
         }
@@ -431,6 +446,22 @@ void print_context(uint64_t ctx, int tid, struct node *node){
         free(s);
     }
 
+    if (c->trap_pc != 0) {
+        s = value_string(c->trap_pc);
+        a = value_string(c->trap_arg);
+        if (*a == '(') {
+            printf("          \"trap\": \"%s%s\",\n", s, a);
+        }
+        else {
+            printf("          \"trap\": \"%s(%s)\",\n", s, a);
+        }
+        free(s);
+    }
+
+    if (c->interruptlevel) {
+        printf("          \"interruptlevel\": \"True\",\n");
+    }
+
     if (c->atomic != 0) {
         printf("          \"atomic\": \"%d\",\n", c->atomic);
     }
@@ -473,7 +504,7 @@ void print_context(uint64_t ctx, int tid, struct node *node){
 void print_state(struct node *node){
     printf("      \"shared\": ");
     print_vars(node->state->vars);
-    printf(";\n");
+    printf(",\n");
 
     printf("      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
@@ -891,6 +922,7 @@ int main(int argc, char **argv){
     inv_ctx->this = VALUE_DICT;
     inv_ctx->vars = VALUE_DICT;
     inv_ctx->atomic = inv_ctx->readonly = 1;
+    inv_ctx->interruptlevel = false;
 
     void *next;
     int state_counter = 1;
@@ -920,7 +952,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], visited, todo, &inv_ctx);
+                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -937,7 +969,7 @@ int main(int argc, char **argv){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(node, ctxs[i], 0, visited, todo, &inv_ctx);
+                onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }

@@ -1680,6 +1680,9 @@ class TrapOp(Op):
     def explain(self):
         return "pop a pc and argument and set trap"
 
+    def jdump(self):
+        return '{ "op": "Trap" }'
+
     def eval(self, state, context):
         method = context.pop()
         assert isinstance(method, PcValue)

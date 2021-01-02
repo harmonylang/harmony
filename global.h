@@ -33,10 +33,12 @@ struct context {     // context value
     uint64_t entry;       // entry point of main method
     uint64_t arg;         // argument provided to spawn
     uint64_t this;        // thread-local state
+    uint64_t vars;        // local variables
+    uint64_t trap_pc;     // trap program counter
+    uint64_t trap_arg;    // trap argument
+    uint64_t failure;     // atom value describing failure, or 0 if no failure
     int pc;               // program counter
     int fp;               // frame pointer
-    uint64_t vars;        // local variables
-    uint64_t failure;     // atom value describing failure, or 0 if no failure
     enum phase {
         CTX_START,        // before first "switch" operation
         CTX_MIDDLE,       // normal operation
@@ -44,6 +46,7 @@ struct context {     // context value
     } phase;
     int atomic;           // atomic counter
     int readonly;         // readonly counter
+    bool interruptlevel;  // interrupt level
     int sp;               // stack size
     uint64_t stack[0];
 };

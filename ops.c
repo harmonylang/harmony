@@ -14,6 +14,7 @@
 
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
+#define CALLTYPE_INTERRUPT     3
 
 struct val_info {
     int size, index;
@@ -187,6 +188,16 @@ uint64_t ctx_pop(struct context **pctx){
 
     assert(ctx->sp > 0);
     return ctx->stack[--ctx->sp];
+}
+
+void interrupt_invoke(struct context **pctx){
+    assert(!(*pctx)->interruptlevel);
+    ctx_push(pctx, ((*pctx)->pc << VALUE_BITS) | VALUE_PC);
+    ctx_push(pctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
+    ctx_push(pctx, (*pctx)->trap_arg);
+    (*pctx)->pc = (*pctx)->trap_pc;
+    (*pctx)->trap_pc = 0;
+    (*pctx)->interruptlevel = true;
 }
 
 uint64_t dict_load(uint64_t dict, uint64_t key){
@@ -965,6 +976,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     ctx->entry = (pc << VALUE_BITS) | VALUE_PC;
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
+    ctx->interruptlevel = VALUE_FALSE;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&ctx, arg);
     uint64_t v = value_put_context(ctx);
@@ -1074,6 +1086,18 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_Trap(const void *env, struct state *state, struct context **pctx){
+    extern int code_len;
+
+    (*pctx)->trap_pc = ctx_pop(pctx);
+    assert(((*pctx)->trap_pc & VALUE_MASK) == VALUE_PC);
+    int pc = (*pctx)->trap_pc >> VALUE_BITS;
+    assert(pc < code_len);
+    assert(strcmp(code[pc].oi->name, "Frame") == 0);
+    (*pctx)->trap_arg = ctx_pop(pctx);
+    (*pctx)->pc++;
+}
+
 void *init_Address(struct dict *map){ return NULL; }
 void *init_Apply(struct dict *map){ return NULL; }
 void *init_Assert(struct dict *map){ return NULL; }
@@ -1092,6 +1116,7 @@ void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
 void *init_Set(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
+void *init_Trap(struct dict *map){ return NULL; }
 
 void *init_DelVar(struct dict *map){
     struct env_DelVar *env = new_alloc(struct env_DelVar);
@@ -2262,6 +2287,7 @@ struct op_info op_table[] = {
 	{ "Split", init_Split, op_Split },
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
+	{ "Trap", init_Trap, op_Trap },
     { NULL, NULL, NULL }
 };
 
