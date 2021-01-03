@@ -14,22 +14,29 @@ struct component {
 };
 
 struct edge {
-    struct edge *next;
-    uint64_t ctx, choice;
-    struct node *node;
+    struct edge *next;      // linked list maintenance
+    uint64_t ctx, choice;   // ctx that made the microstep, choice if any
+    bool interrupt;         // set if state change is an interrupt
+    struct node *node;      // resulting node (state)
     int weight;
 };
 
 struct node {
-    struct node *parent;
-    struct state *state;
-    int id;                 // starting from 0
+    // Information about state
+    struct state *state;    // state corresponding to this node
+    int id;                 // nodes are numbered starting from 0
+    struct edge *fwd;       // forward edges
+    struct edge *bwd;       // backward edges
+
+    // How to get here from parent node
+    struct node *parent;    // shortest path to initial state
+    int len;                // length of path to initial state
     uint64_t before;        // context before state change
     uint64_t after;         // context after state change (current context)
     uint64_t choice;        // choice made if any
-    int len;                // length of path to initial state
-    struct edge *fwd;       // forward edges
-    struct edge *bwd;       // backward edges
+    bool interrupt;         // set if gotten here by interrupt
+
+    // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
 };
@@ -284,6 +291,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->state = sc;               // TODO: duplicate value
         next->before = ctx;
         next->choice = choice_copy;
+        next->interrupt = interrupt;
         next->after = after;
         next->len = node->len + weight;
         graph_add(next);
@@ -319,6 +327,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     struct edge *fwd = new_alloc(struct edge);
     fwd->ctx = ctx;
     fwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
     fwd->node = next;
     fwd->weight = weight;
     fwd->next = node->fwd;
@@ -328,6 +337,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     struct edge *bwd = new_alloc(struct edge);
     bwd->ctx = ctx;
     bwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
     bwd->node = node;
     bwd->weight = weight;
     bwd->next = next->bwd;
@@ -522,12 +532,16 @@ void print_state(struct node *node){
 }
 
 void diff_state(struct state *oldstate, struct state *newstate,
-                struct context *oldctx, struct context *newctx){
+                struct context *oldctx, struct context *newctx,
+                bool interrupt){
     printf("        {\n");
     if (newstate->vars != oldstate->vars) {
         printf("          \"shared\": ");
         print_vars(newstate->vars);
         printf(",\n");
+    }
+    if (interrupt) {
+        printf("          \"interrupt\": \"True\",\n");
     }
     if (false && newstate->ctxbag != oldstate->ctxbag) {
         char *val = value_string(newstate->ctxbag);
@@ -589,7 +603,8 @@ void diff_state(struct state *oldstate, struct state *newstate,
 }
 
 void diff_dump(struct state *oldstate, struct state *newstate,
-                struct context **oldctx, struct context *newctx){
+                struct context **oldctx, struct context *newctx,
+                bool interrupt){
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
 
     if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
@@ -599,7 +614,7 @@ void diff_dump(struct state *oldstate, struct state *newstate,
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(oldstate, newstate, *oldctx, newctx);
+    diff_state(oldstate, newstate, *oldctx, newctx, interrupt);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -608,7 +623,7 @@ void diff_dump(struct state *oldstate, struct state *newstate,
 
 // similar to onestep.  TODO.  Use flag to onestep?
 uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
-                    struct state *oldstate, struct context **oldctx){
+        bool interrupt, struct state *oldstate, struct context **oldctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -616,7 +631,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    diff_dump(oldstate, sc, oldctx, cc);
+    diff_dump(oldstate, sc, oldctx, cc, node->interrupt);
     if (cc->phase == CTX_END || cc->failure != 0) {
         free(cc);
         return ctx;
@@ -656,7 +671,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
             *p = (void *) 1;
         }
 
-        diff_dump(oldstate, sc, oldctx, cc);
+        diff_dump(oldstate, sc, oldctx, cc, false);
         if (cc->phase == CTX_END || cc->failure != 0) {
             break;
         }
@@ -753,13 +768,15 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     }
     assert(pid < nprocesses);
 
-    if (last->parent == NULL || last->after != ctx) {
+    bool interrupt = false;
+    if (last->parent == NULL || last->after != ctx || last->interrupt) {
         if (last->parent != NULL) {
             printf("      ],\n");
             print_state(last);
             printf("    },\n");
         }
 
+        interrupt = last->interrupt;
         struct context *context = value_get(ctx, NULL);
         assert(context->phase != CTX_END);
         char *name = value_string(context->name);
@@ -782,7 +799,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     }
 
     // Recreate the steps
-    processes[pid] = twostep(last, ctx, choice, oldstate, oldctx);
+    processes[pid] = twostep(last, ctx, choice, interrupt, oldstate, oldctx);
 }
 
 static struct stack {
