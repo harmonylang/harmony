@@ -166,7 +166,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         interrupt_invoke(&cc);
     }
     else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(node, ctx, 0, true, visited, todo, pinv_ctx);
+        onestep(node, ctx, choice, true, visited, todo, pinv_ctx);
     }
 
     // Copy the choice
@@ -637,6 +637,12 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
         return ctx;
     }
 
+    if (interrupt) {
+        extern void interrupt_invoke(struct context **pctx);
+		assert(cc->trap_pc != 0);
+        interrupt_invoke(&cc);
+    }
+
     bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
@@ -721,11 +727,11 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
 }
 
 void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
-                struct state *oldstate, struct context **oldctx){
+            struct state *oldstate, struct context **oldctx, bool interrupt){
     if (last == NULL) {
         return;
     }
-    path_dump(last->parent, last->before, last->choice, oldstate, oldctx);
+    path_dump(last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
 
 
     /* Match each context to a process.
@@ -768,15 +774,13 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     }
     assert(pid < nprocesses);
 
-    bool interrupt = false;
-    if (last->parent == NULL || last->after != ctx || last->interrupt) {
+    if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
             printf("      ],\n");
             print_state(last);
             printf("    },\n");
         }
 
-        interrupt = last->interrupt;
         struct context *context = value_get(ctx, NULL);
         assert(context->phase != CTX_END);
         char *name = value_string(context->name);
@@ -1079,7 +1083,7 @@ int main(int argc, char **argv){
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
-    path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx);
+    path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
     printf("      ],\n");
     print_state(bad->node);
