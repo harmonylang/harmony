@@ -61,6 +61,7 @@ static double lasttime;            // since last report printed
 static int timecnt;                // to reduce time overhead
 static int enqueued;               // #states enqueued
 static int dequeued;               // #states dequeued
+static bool dumpfirst;             // for json dumping
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -386,8 +387,8 @@ void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
-					// printf("RECURS %d %d\n", fp, pc);
 					print_method(file, ctx, npc, nfp, nvars);
+                    fprintf(file, ",\n");
 				}
 				fprintf(file, "            {\n");
 				const struct env_Frame *ef = code[pc].env;
@@ -413,8 +414,8 @@ void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 				free(a);
 				fprintf(file, "              \"vars\": ");
 				print_vars(file, vars);
-				fprintf(file, ",\n");
-				fprintf(file, "            },\n");
+				fprintf(file, "\n");
+				fprintf(file, "            }");
 				break;
 			}
 		}
@@ -452,6 +453,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 
     fprintf(file, "          \"trace\": [\n");
     print_method(file, c, c->pc, c->fp, c->vars);
+    fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
     s = value_string(c->this);
@@ -511,12 +513,17 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
-        fprintf(file, "            \"%s\",\n", s);
+        if (i < c->sp - 1) {
+            fprintf(file, "            \"%s\",\n", s);
+        }
+        else {
+            fprintf(file, "            \"%s\"\n", s);
+        }
         free(s);
     }
     fprintf(file, "          ]\n");
 
-    fprintf(file, "        },\n");
+    fprintf(file, "        }");
 }
 
 void print_state(FILE *file, struct node *node){
@@ -527,6 +534,10 @@ void print_state(FILE *file, struct node *node){
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
         print_context(file, processes[i], i, node);
+        if (i < nprocesses - 1) {
+            fprintf(file, ",");
+        }
+        fprintf(file, "\n");
     }
     fprintf(file, "      ]\n");
 }
@@ -534,6 +545,12 @@ void print_state(FILE *file, struct node *node){
 void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx,
                 bool interrupt){
+    if (dumpfirst) {
+        dumpfirst = false;
+    }
+    else {
+        fprintf(file, ",\n");
+    }
     fprintf(file, "        {\n");
     if (newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
@@ -600,7 +617,7 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         free(val);
     }
     fprintf(file, " ]\n");
-    fprintf(file, "        },\n");
+    fprintf(file, "        }");
 }
 
 void diff_dump(FILE *file, struct state *oldstate, struct state *newstate,
@@ -787,7 +804,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
         char *name = value_string(context->name);
         char *arg = value_string(context->arg);
         // char *c = value_string(choice);
-        fprintf(file, "    \"switch\": {\n");
+        fprintf(file, "    {\n");
         fprintf(file, "      \"tid\": \"%d\",\n", pid);
         if (*arg == '(') {
             fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
@@ -796,6 +813,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
             fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
         }
         // fprintf(file, "      \"choice\": \"%s\",\n", c);
+        dumpfirst = true;
         fprintf(file, "      \"microsteps\": [\n");
         free(name);
         free(arg);
@@ -1087,11 +1105,12 @@ int main(int argc, char **argv){
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     oldctx->pc = -1;
+    dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
     fprintf(out, "      ],\n");
     print_state(out, bad->node);
-    fprintf(out, "    },\n");
+    fprintf(out, "    }\n");
     fprintf(out, "  ]\n");
     fprintf(out, "}\n");
 
