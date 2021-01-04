@@ -544,14 +544,14 @@ void print_state(FILE *file, struct node *node){
 
 void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx,
-                bool interrupt){
+                bool interrupt, bool choose, uint64_t choice){
     if (dumpfirst) {
         dumpfirst = false;
     }
     else {
-        fprintf(file, ",\n");
+        fprintf(file, ",");
     }
-    fprintf(file, "        {\n");
+    fprintf(file, "\n        {\n");
     if (newstate->vars != oldstate->vars) {
         fprintf(file, "          \"shared\": ");
         print_vars(file, newstate->vars);
@@ -559,6 +559,11 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
     }
     if (interrupt) {
         fprintf(file, "          \"interrupt\": \"True\",\n");
+    }
+    if (choose) {
+        char *val = value_string(choice);
+        fprintf(file, "          \"choose\": \"%s\",\n", val);
+        free(val);
     }
     if (false && newstate->ctxbag != oldstate->ctxbag) {
         char *val = value_string(newstate->ctxbag);
@@ -622,7 +627,7 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
 
 void diff_dump(FILE *file, struct state *oldstate, struct state *newstate,
                 struct context **oldctx, struct context *newctx,
-                bool interrupt){
+                bool interrupt, bool choose, uint64_t choice){
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
 
     if (memcmp(oldstate, newstate, sizeof(struct state)) == 0 &&
@@ -632,7 +637,7 @@ void diff_dump(FILE *file, struct state *oldstate, struct state *newstate,
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(file, oldstate, newstate, *oldctx, newctx, interrupt);
+    diff_state(file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -659,7 +664,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         extern void interrupt_invoke(struct context **pctx);
 		assert(cc->trap_pc != 0);
         interrupt_invoke(&cc);
-        diff_dump(file, oldstate, sc, oldctx, cc, true);
+        diff_dump(file, oldstate, sc, oldctx, cc, true, false, 0);
     }
 
     bool choosing = false;
@@ -696,7 +701,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             *p = (void *) 1;
         }
 
-        diff_dump(file, oldstate, sc, oldctx, cc, false);
+        diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
         if (cc->phase == CTX_END || cc->failure != 0) {
             break;
         }
@@ -795,7 +800,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
 
     if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
-            fprintf(file, "      ],\n");
+            fprintf(file, "\n      ],\n");
             print_state(file, last);
             fprintf(file, "    },\n");
         }
@@ -1109,7 +1114,7 @@ int main(int argc, char **argv){
     dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
-    fprintf(out, "      ],\n");
+    fprintf(out, "\n      ],\n");
     print_state(out, bad->node);
     fprintf(out, "    }\n");
     fprintf(out, "  ]\n");
