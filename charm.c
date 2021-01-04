@@ -355,26 +355,26 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     free(cc);
 }
 
-void print_vars(uint64_t v){
+void print_vars(FILE *file, uint64_t v){
     assert((v & VALUE_MASK) == VALUE_DICT);
     int size;
     uint64_t *vars = value_get(v, &size);
     size /= sizeof(uint64_t);
-    printf("{");
+    fprintf(file, "{");
     for (int i = 0; i < size; i += 2) {
         if (i > 0) {
-            printf(",");
+            fprintf(file, ",");
         }
         char *k = value_string(vars[i]);
         char *v = value_string(vars[i+1]);
-        printf(" \"%s\": \"%s\"", k+1, v);
+        fprintf(file, " \"%s\": \"%s\"", k+1, v);
         free(k);
         free(v);
     }
-    printf(" }");
+    fprintf(file, " }");
 }
 
-void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
+void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
 	int level = 0;
     while (pc > 0) {
         if (strcmp(code[pc].oi->name, "Return") == 0) {
@@ -387,9 +387,9 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
 					// printf("RECURS %d %d\n", fp, pc);
-					print_method(ctx, npc, nfp, nvars);
+					print_method(file, ctx, npc, nfp, nvars);
 				}
-				printf("            {\n");
+				fprintf(file, "            {\n");
 				const struct env_Frame *ef = code[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
 				if (fp == 0) {
@@ -401,20 +401,20 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
 					a = value_string(ctx->stack[fp - 3]);
 				}
 				if (a == NULL) {
-					printf("              \"method\": \"%s()\",\n", s + 1);
+					fprintf(file, "              \"method\": \"%s()\",\n", s + 1);
 				}
 				else if (*a == '(') {
-					printf("              \"method\": \"%s%s\",\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%s%s\",\n", s + 1, a);
 				}
 				else {
-					printf("              \"method\": \"%s(%s)\",\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%s(%s)\",\n", s + 1, a);
 				}
 				free(s);
 				free(a);
-				printf("              \"vars\": ");
-				print_vars(vars);
-				printf(",\n");
-				printf("            },\n");
+				fprintf(file, "              \"vars\": ");
+				print_vars(file, vars);
+				fprintf(file, ",\n");
+				fprintf(file, "            },\n");
 				break;
 			}
 		}
@@ -425,42 +425,42 @@ void print_method(struct context *ctx, int pc, int fp, uint64_t vars){
     }
 }
 
-void print_context(uint64_t ctx, int tid, struct node *node){
+void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     char *s, *a;
 
-    printf("        {\n");
-    printf("          \"tid\": \"%d\",\n", tid);
+    fprintf(file, "        {\n");
+    fprintf(file, "          \"tid\": \"%d\",\n", tid);
 
     struct context *c = value_get(ctx, NULL);
 
     s = value_string(c->name);
     a = value_string(c->arg);
     if (*a == '(') {
-        printf("          \"name\": \"%s%s\",\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%s%s\",\n", s + 1, a);
     }
     else {
-        printf("          \"name\": \"%s(%s)\",\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%s(%s)\",\n", s + 1, a);
     }
     free(s);
     free(a);
 
     // assert((c->entry & VALUE_MASK) == VALUE_PC);   TODO
-    printf("          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
+    fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
 
-    printf("          \"pc\": \"%d\",\n", c->pc);
-    printf("          \"fp\": \"%d\",\n", c->fp);
+    fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
+    fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
 
-    printf("          \"trace\": [\n");
-    print_method(c, c->pc, c->fp, c->vars);
-    printf("          ],\n");
+    fprintf(file, "          \"trace\": [\n");
+    print_method(file, c, c->pc, c->fp, c->vars);
+    fprintf(file, "          ],\n");
 
     s = value_string(c->this);
-    printf("          \"this\": \"%s\",\n", s);
+    fprintf(file, "          \"this\": \"%s\",\n", s);
     free(s);
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-        printf("          \"failure\": \"%s\",\n", s + 1);
+        fprintf(file, "          \"failure\": \"%s\",\n", s + 1);
         free(s);
     }
 
@@ -468,30 +468,30 @@ void print_context(uint64_t ctx, int tid, struct node *node){
         s = value_string(c->trap_pc);
         a = value_string(c->trap_arg);
         if (*a == '(') {
-            printf("          \"trap\": \"%s%s\",\n", s, a);
+            fprintf(file, "          \"trap\": \"%s%s\",\n", s, a);
         }
         else {
-            printf("          \"trap\": \"%s(%s)\",\n", s, a);
+            fprintf(file, "          \"trap\": \"%s(%s)\",\n", s, a);
         }
         free(s);
     }
 
     if (c->interruptlevel) {
-        printf("          \"interruptlevel\": \"True\",\n");
+        fprintf(file, "          \"interruptlevel\": \"True\",\n");
     }
 
     if (c->atomic != 0) {
-        printf("          \"atomic\": \"%d\",\n", c->atomic);
+        fprintf(file, "          \"atomic\": \"%d\",\n", c->atomic);
     }
     if (c->readonly != 0) {
-        printf("          \"readonly\": \"%d\",\n", c->readonly);
+        fprintf(file, "          \"readonly\": \"%d\",\n", c->readonly);
     }
 
     if (c->phase == CTX_END) {
-        printf("          \"mode\": \"terminated\",\n");
+        fprintf(file, "          \"mode\": \"terminated\",\n");
     }
     else if (c->failure != 0) {
-        printf("          \"mode\": \"failed\",\n");
+        fprintf(file, "          \"mode\": \"failed\",\n");
     }
     else {
         struct edge *edge;
@@ -501,83 +501,84 @@ void print_context(uint64_t ctx, int tid, struct node *node){
             }
         };
         if (edge == NULL || edge->node != node) {
-            printf("          \"mode\": \"running\",\n");
+            fprintf(file, "          \"mode\": \"running\",\n");
         }
         else {
-            printf("          \"mode\": \"blocked\",\n");
+            fprintf(file, "          \"mode\": \"blocked\",\n");
         }
     }
 
-    printf("          \"stack\": [\n");
+    fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
-        printf("            \"%s\",\n", s);
+        fprintf(file, "            \"%s\",\n", s);
         free(s);
     }
-    printf("          ]\n");
+    fprintf(file, "          ]\n");
 
-    printf("        },\n");
+    fprintf(file, "        },\n");
 }
 
-void print_state(struct node *node){
-    printf("      \"shared\": ");
-    print_vars(node->state->vars);
-    printf(",\n");
+void print_state(FILE *file, struct node *node){
+    fprintf(file, "      \"shared\": ");
+    print_vars(file, node->state->vars);
+    fprintf(file, ",\n");
 
-    printf("      \"contexts\": [\n");
+    fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
-        print_context(processes[i], i, node);
+        print_context(file, processes[i], i, node);
     }
-    printf("      ]\n");
+    fprintf(file, "      ]\n");
 }
 
-void diff_state(struct state *oldstate, struct state *newstate,
+void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
                 struct context *oldctx, struct context *newctx,
                 bool interrupt){
-    printf("        {\n");
+    fprintf(file, "        {\n");
     if (newstate->vars != oldstate->vars) {
-        printf("          \"shared\": ");
-        print_vars(newstate->vars);
-        printf(",\n");
+        fprintf(file, "          \"shared\": ");
+        print_vars(file, newstate->vars);
+        fprintf(file, ",\n");
     }
     if (interrupt) {
-        printf("          \"interrupt\": \"True\",\n");
+        fprintf(file, "          \"interrupt\": \"True\",\n");
     }
     if (false && newstate->ctxbag != oldstate->ctxbag) {
         char *val = value_string(newstate->ctxbag);
         printf("NEW RUNNING CONTEXTS %s\n", val);
         free(val);
     }
+    fprintf(file, "          \"pc\": \"%d\",\n", oldctx->pc);
     if (newctx->pc != oldctx->pc) {
-        printf("          \"pc\": \"%d\",\n", newctx->pc);
+        fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     }
     if (newctx->fp != oldctx->fp) {
-        printf("          \"fp\": \"%d\",\n", newctx->fp);
+        fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
     }
     if (newctx->this != oldctx->this) {
         char *val = value_string(newctx->this);
-        printf("          \"this\": \"%s\",\n", val);
+        fprintf(file, "          \"this\": \"%s\",\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
-        printf("          \"local\": ");
-        print_vars(newctx->vars);
-        printf(",\n");
+        fprintf(file, "          \"local\": ");
+        print_vars(file, newctx->vars);
+        fprintf(file, ",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
-        printf("          \"atomic\": \"%d\",\n", newctx->atomic);
+        fprintf(file, "          \"atomic\": \"%d\",\n", newctx->atomic);
     }
     if (newctx->readonly != oldctx->readonly) {
-        printf("          \"readonly\": \"%d\",\n", newctx->readonly);
+        fprintf(file, "          \"readonly\": \"%d\",\n", newctx->readonly);
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-        printf("          \"failure\": \"%s\",\n", val + 1);
-        printf("          \"mode\": \"failed\",\n");
+        fprintf(file, "          \"failure\": \"%s\",\n", val + 1);
+        fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
     else if (newctx->phase == CTX_END) {
-        printf("          \"mode\": \"terminated\",\n");
+        fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
     int common;
@@ -587,22 +588,22 @@ void diff_state(struct state *oldstate, struct state *newstate,
         }
     }
     if (common < oldctx->sp) {
-        printf("          \"pop\": \"%d\",\n", oldctx->sp - common);
+        fprintf(file, "          \"pop\": \"%d\",\n", oldctx->sp - common);
     }
-    printf("          \"push\": [");
+    fprintf(file, "          \"push\": [");
     for (int i = common; i < newctx->sp; i++) {
         if (i > common) {
-            printf(",");
+            fprintf(file, ",");
         }
         char *val = value_string(newctx->stack[i]);
-        printf(" \"%s\"", val);
+        fprintf(file, " \"%s\"", val);
         free(val);
     }
-    printf(" ]\n");
-    printf("        },\n");
+    fprintf(file, " ]\n");
+    fprintf(file, "        },\n");
 }
 
-void diff_dump(struct state *oldstate, struct state *newstate,
+void diff_dump(FILE *file, struct state *oldstate, struct state *newstate,
                 struct context **oldctx, struct context *newctx,
                 bool interrupt){
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
@@ -614,7 +615,7 @@ void diff_dump(struct state *oldstate, struct state *newstate,
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(oldstate, newstate, *oldctx, newctx, interrupt);
+    diff_state(file, oldstate, newstate, *oldctx, newctx, interrupt);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -622,7 +623,7 @@ void diff_dump(struct state *oldstate, struct state *newstate,
 }
 
 // similar to onestep.  TODO.  Use flag to onestep?
-uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
+uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         bool interrupt, struct state *oldstate, struct context **oldctx){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -631,7 +632,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    diff_dump(oldstate, sc, oldctx, cc, node->interrupt);
+    diff_dump(file, oldstate, sc, oldctx, cc, node->interrupt);
     if (cc->phase == CTX_END || cc->failure != 0) {
         free(cc);
         return ctx;
@@ -677,7 +678,7 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
             *p = (void *) 1;
         }
 
-        diff_dump(oldstate, sc, oldctx, cc, false);
+        diff_dump(file, oldstate, sc, oldctx, cc, false);
         if (cc->phase == CTX_END || cc->failure != 0) {
             break;
         }
@@ -726,12 +727,12 @@ uint64_t twostep(struct node *node, uint64_t ctx, uint64_t choice,
     return ctx;
 }
 
-void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
+void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
             struct state *oldstate, struct context **oldctx, bool interrupt){
     if (last == NULL) {
         return;
     }
-    path_dump(last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
+    path_dump(file, last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
 
 
     /* Match each context to a process.
@@ -776,9 +777,9 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
 
     if (last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
-            printf("      ],\n");
-            print_state(last);
-            printf("    },\n");
+            fprintf(file, "      ],\n");
+            print_state(file, last);
+            fprintf(file, "    },\n");
         }
 
         struct context *context = value_get(ctx, NULL);
@@ -786,16 +787,16 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
         char *name = value_string(context->name);
         char *arg = value_string(context->arg);
         // char *c = value_string(choice);
-        printf("    \"switch\": {\n");
-        printf("      \"tid\": \"%d\",\n", pid);
+        fprintf(file, "    \"switch\": {\n");
+        fprintf(file, "      \"tid\": \"%d\",\n", pid);
         if (*arg == '(') {
-            printf("      \"name\": \"%s%s\",\n", name + 1, arg);
+            fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
         }
         else {
-            printf("      \"name\": \"%s(%s)\",\n", name + 1, arg);
+            fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
         }
-        // printf("      \"choice\": \"%s\",\n", c);
-        printf("      \"microsteps\": [\n");
+        // fprintf(file, "      \"choice\": \"%s\",\n", c);
+        fprintf(file, "      \"microsteps\": [\n");
         free(name);
         free(arg);
         // free(c);
@@ -803,7 +804,7 @@ void path_dump(struct node *last, uint64_t ctx, uint64_t choice,
     }
 
     // Recreate the steps
-    processes[pid] = twostep(last, ctx, choice, interrupt, oldstate, oldctx);
+    processes[pid] = twostep(file, last, ctx, choice, interrupt, oldstate, oldctx);
 }
 
 static struct stack {
@@ -1063,33 +1064,36 @@ int main(int argc, char **argv){
         }
     }
 
-    printf("{\n");
+    FILE *out = fopen("charm.json", "w");
+    assert(out != NULL);
+    fprintf(out, "{\n");
 
     switch (bad->type) {
     case FAIL_SAFETY:
-        printf("  \"issue\": \"Safety violation\",\n");
+        fprintf(out, "  \"issue\": \"Safety violation\",\n");
         break;
     case FAIL_INVARIANT:
-        printf("  \"issue\": \"Invariant violation\",\n");
+        fprintf(out, "  \"issue\": \"Invariant violation\",\n");
         break;
     case FAIL_TERMINATION:
-        printf("  \"issue\": \"Non-terminating state\",\n");
+        fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     default:
         assert(0);
     }
 
-    printf("  \"megasteps\": [\n");
+    fprintf(out, "  \"megasteps\": [\n");
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
-    path_dump(bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
+    oldctx->pc = -1;
+    path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
-    printf("      ],\n");
-    print_state(bad->node);
-    printf("    },\n");
-    printf("  ]\n");
-    printf("}\n");
+    fprintf(out, "      ],\n");
+    print_state(out, bad->node);
+    fprintf(out, "    },\n");
+    fprintf(out, "  ]\n");
+    fprintf(out, "}\n");
 
     return 0;
 }
