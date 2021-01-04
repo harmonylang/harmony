@@ -510,6 +510,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         }
     }
 
+#ifdef notdef
     fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
@@ -522,6 +523,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         free(s);
     }
     fprintf(file, "          ]\n");
+#endif
 
     fprintf(file, "        }");
 }
@@ -570,7 +572,6 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         printf("NEW RUNNING CONTEXTS %s\n", val);
         free(val);
     }
-    fprintf(file, "          \"pc\": \"%d\",\n", oldctx->pc);
     if (newctx->pc != oldctx->pc) {
         fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     }
@@ -603,6 +604,7 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
+#ifdef notdef
     int common;
     for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
         if (newctx->stack[common] != oldctx->stack[common]) {
@@ -621,7 +623,11 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, " \"%s\"", val);
         free(val);
     }
-    fprintf(file, " ]\n");
+    fprintf(file, " ],\n");
+#endif
+
+    fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
+
     fprintf(file, "        }");
 }
 
@@ -1117,7 +1123,40 @@ int main(int argc, char **argv){
     fprintf(out, "\n      ],\n");
     print_state(out, bad->node);
     fprintf(out, "    }\n");
+    fprintf(out, "  ],\n");
+
+    fprintf(out, "  \"code\": [\n");
+    jc = dict_lookup(jv->u.map, "pretty", 6);
+    assert(jc->type == JV_LIST);
+    for (int i = 0; i < jc->u.list.nvals; i++) {
+        struct json_value *next = jc->u.list.vals[i];
+        assert(next->type == JV_LIST);
+        assert(next->u.list.nvals == 2);
+        struct json_value *codestr = next->u.list.vals[0];
+        assert(codestr->type == JV_ATOM);
+        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
+        if (i < jc->u.list.nvals - 1) {
+            fprintf(out, ",");
+        }
+        fprintf(out, "\n");
+    }
+    fprintf(out, "  ],\n");
+
+    fprintf(out, "  \"explain\": [\n");
+    for (int i = 0; i < jc->u.list.nvals; i++) {
+        struct json_value *next = jc->u.list.vals[i];
+        assert(next->type == JV_LIST);
+        assert(next->u.list.nvals == 2);
+        struct json_value *codestr = next->u.list.vals[1];
+        assert(codestr->type == JV_ATOM);
+        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
+        if (i < jc->u.list.nvals - 1) {
+            fprintf(out, ",");
+        }
+        fprintf(out, "\n");
+    }
     fprintf(out, "  ]\n");
+
     fprintf(out, "}\n");
 
     return 0;

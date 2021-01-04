@@ -5487,6 +5487,13 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         else:
             print(code[pc], file=f)
     if printCode == "json":
+        print("  ],", file=f);
+        print('  "pretty": [', file=f)
+        for pc in range(len(code)):
+            if pc < len(code) - 1:
+                print('    ["%s","%s"],'%(code[pc], code[pc].explain()), file=f)
+            else:
+                print('    ["%s","%s"]'%(code[pc], code[pc].explain()), file=f)
         print("  ]", file=f);
         print("}", file=f);
 
