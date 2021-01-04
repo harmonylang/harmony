@@ -1,4 +1,4 @@
-dir=harmony-0.9
+dir=harmony-1.0
 for i in code modules python
 do
     cp ../$i/* $dir/$i

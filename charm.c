@@ -649,7 +649,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    diff_dump(file, oldstate, sc, oldctx, cc, node->interrupt);
+    // diff_dump(file, oldstate, sc, oldctx, cc, node->interrupt);
     if (cc->phase == CTX_END || cc->failure != 0) {
         free(cc);
         return ctx;
@@ -659,6 +659,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         extern void interrupt_invoke(struct context **pctx);
 		assert(cc->trap_pc != 0);
         interrupt_invoke(&cc);
+        diff_dump(file, oldstate, sc, oldctx, cc, true);
     }
 
     bool choosing = false;
@@ -1104,7 +1105,6 @@ int main(int argc, char **argv){
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
-    oldctx->pc = -1;
     dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
