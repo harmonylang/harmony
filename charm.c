@@ -820,6 +820,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
         free(arg);
         // free(c);
         memset(*oldctx, 0, sizeof(**oldctx));
+        (*oldctx)->pc = context->pc;
     }
 
     // Recreate the steps
