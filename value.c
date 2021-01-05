@@ -240,17 +240,43 @@ static char *value_string_bool(uint64_t v) {
     return r;
 }
 
+static char *value_json_bool(uint64_t v) {
+    char *r;
+    if (v != 0 && v != (1 << VALUE_BITS)) {
+        fprintf(stderr, "value_string_bool %llx\n", v);
+    }
+    assert(v == 0 || v == (1 << VALUE_BITS));
+    asprintf(&r, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
+    return r;
+}
+
 static char *value_string_int(uint64_t v) {
     char *r;
-    v >>= VALUE_BITS;
-    if (v == VALUE_MAX) {
+
+    if ((v >> VALUE_BITS) == VALUE_MAX) {
         asprintf(&r, "inf");
     }
-    else if (v == VALUE_MIN) {
+    else if ((v >> VALUE_BITS) == VALUE_MIN) {
         asprintf(&r, "-inf");
     }
     else {
-        asprintf(&r, "%"PRId64"", v);
+        asprintf(&r, "%"PRId64"", ((int64_t) v) >> VALUE_BITS);
+    }
+    return r;
+}
+
+static char *value_json_int(uint64_t v) {
+    char *r;
+
+    if ((v >> VALUE_BITS) == VALUE_MAX) {
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"inf\" }");
+    }
+    else if ((v >> VALUE_BITS) == VALUE_MIN) {
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"-inf\" }");
+    }
+    else {
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }",
+                            ((int64_t) v) >> VALUE_BITS);
     }
     return r;
 }
@@ -263,10 +289,24 @@ static char *value_string_atom(uint64_t v) {
     return r;
 }
 
+static char *value_json_atom(uint64_t v) {
+    void *p = (void *) v;
+    int size;
+    char *s = dict_retrieve(p, &size), *r;
+    asprintf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+    return r;
+}
+
 static char *value_string_pc(uint64_t v) {
     char *r;
     assert((v >> VALUE_BITS) < 10000);      // debug
     asprintf(&r, "PC(%"PRIu64")", v >> VALUE_BITS);
+    return r;
+}
+
+static char *value_json_pc(uint64_t v) {
+    char *r;
+    asprintf(&r, "\"type\": \"pc\", \"value\": \"%"PRIu64"\" }", v >> VALUE_BITS);
     return r;
 }
 
@@ -298,6 +338,34 @@ static char *value_string_dict(uint64_t v) {
     return r;
 }
 
+static char *value_json_dict(uint64_t v) {
+    char *r;
+
+    if (v == 0) {
+        asprintf(&r, "{ \"type\": \"dict\", \"value\": [] }");
+        return r;
+    }
+
+    void *p = (void *) v;
+    int size;
+    uint64_t *vals = dict_retrieve(p, &size);
+    size /= 2 * sizeof(uint64_t);
+
+    asprintf(&r, "{ \"type\": \"dict\", \"value\": [");
+    for (int i = 0; i < size; i++) {
+        if (i != 0) {
+            append_printf(&r, ", ");
+        }
+        char *key = value_json(vals[2*i]);
+        char *val = value_json(vals[2*i+1]);
+        append_printf(&r, "{ \"key\": %s, \"value\": %s }", key, val);
+        free(key);
+        free(val);
+    }
+    append_printf(&r, " ] }");
+    return r;
+}
+
 static char *value_string_set(uint64_t v) {
     char *r;
 
@@ -323,6 +391,34 @@ static char *value_string_set(uint64_t v) {
         free(val);
     }
     append_printf(&r, " }");
+    return r;
+}
+
+static char *value_json_set(uint64_t v) {
+    char *r;
+
+    if (v == 0) {
+        asprintf(&r, "{ \"type\": \"set\", \"value\": [] }");
+        return r;
+    }
+
+    void *p = (void *) v;
+    int size;
+    uint64_t *vals = dict_retrieve(p, &size);
+    size /= sizeof(uint64_t);
+
+    asprintf(&r, "{ \"type\": \"set\", \"value\": [");
+    for (int i = 0; i < size; i++) {
+        char *val = value_json(vals[i]);
+        if (i == 0) {
+            append_printf(&r, "%s", val);
+        }
+        else {
+            append_printf(&r, ", %s", val);
+        }
+        free(val);
+    }
+    append_printf(&r, " ] }");
     return r;
 }
 
@@ -356,12 +452,61 @@ static char *value_string_address(uint64_t v) {
     return r;
 }
 
+static char *value_json_address(uint64_t v) {
+    char *r;
+    if (v == 0) {
+        asprintf(&r, "{ \"type\": \"address\", \"value\": [] }");
+        return r;
+    }
+
+    void *p = (void *) v;
+    int size;
+    uint64_t *vals = dict_retrieve(p, &size);
+    size /= sizeof(uint64_t);
+    assert(size > 0);
+    asprintf(&r, "{ \"type\": \"address\", \"value\": [");
+    for (int i = 0; i < size; i++) {
+        char *val = value_json(vals[i]);
+        if (i == 0) {
+            append_printf(&r, "%s", val);
+        }
+        else {
+            append_printf(&r, ", %s", val);
+        }
+        free(val);
+    }
+
+    append_printf(&r, " ] }");
+    return r;
+}
+
 static char *value_string_context(uint64_t v) {
     struct context *ctx = value_get(v, NULL);
     char *name = value_string(ctx->name);
     char *r;
     asprintf(&r, "CONTEXT(%s, %d)", name, ctx->pc);
     free(name);
+    return r;
+}
+
+static char *value_json_context(uint64_t v) {
+    struct context *ctx = value_get(v, NULL);
+    char *r, *val;
+    asprintf(&r, "{ \"type\": \"context\", \"value\": {");
+
+    val = value_json(ctx->name);
+    append_printf(&r, "\"name\": \"%s\"", val);
+    free(val);
+
+    val = value_json(ctx->arg);
+    append_printf(&r, ", \"arg\": \"%s\"", val);
+    free(val);
+
+    val = value_json(ctx->pc);
+    append_printf(&r, ", \"pc\": \"%s\"", val);
+    free(val);
+
+    append_printf(&r, " } }");
     return r;
 }
 
@@ -383,6 +528,29 @@ char *value_string(uint64_t v){
         return value_string_address(v & ~VALUE_MASK);
     case VALUE_CONTEXT:
         return value_string_context(v & ~VALUE_MASK);
+    default:
+        assert(0);
+    }
+}
+
+char *value_json(uint64_t v){
+    switch (v & VALUE_MASK) {
+    case VALUE_BOOL:
+        return value_json_bool(v & ~VALUE_MASK);
+    case VALUE_INT:
+        return value_json_int(v & ~VALUE_MASK);
+    case VALUE_ATOM:
+        return value_json_atom(v & ~VALUE_MASK);
+    case VALUE_PC:
+        return value_json_pc(v & ~VALUE_MASK);
+    case VALUE_DICT:
+        return value_json_dict(v & ~VALUE_MASK);
+    case VALUE_SET:
+        return value_json_set(v & ~VALUE_MASK);
+    case VALUE_ADDRESS:
+        return value_json_address(v & ~VALUE_MASK);
+    case VALUE_CONTEXT:
+        return value_json_context(v & ~VALUE_MASK);
     default:
         assert(0);
     }

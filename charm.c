@@ -367,8 +367,8 @@ void print_vars(FILE *file, uint64_t v){
             fprintf(file, ",");
         }
         char *k = value_string(vars[i]);
-        char *v = value_string(vars[i+1]);
-        fprintf(file, " \"%s\": \"%s\"", k+1, v);
+        char *v = value_json(vars[i+1]);
+        fprintf(file, " \"%s\": %s", k+1, v);
         free(k);
         free(v);
     }
@@ -456,10 +456,6 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
-    s = value_string(c->this);
-    fprintf(file, "          \"this\": \"%s\",\n", s);
-    free(s);
-
     if (c->failure != 0) {
         s = value_string(c->failure);
         fprintf(file, "          \"failure\": \"%s\",\n", s + 1);
@@ -525,6 +521,10 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     fprintf(file, "          ]\n");
 #endif
 
+    s = value_json(c->this);
+    fprintf(file, "          \"this\": %s\n", s);
+    free(s);
+
     fprintf(file, "        }");
 }
 
@@ -563,13 +563,8 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"interrupt\": \"True\",\n");
     }
     if (choose) {
-        char *val = value_string(choice);
-        fprintf(file, "          \"choose\": \"%s\",\n", val);
-        free(val);
-    }
-    if (false && newstate->ctxbag != oldstate->ctxbag) {
-        char *val = value_string(newstate->ctxbag);
-        printf("NEW RUNNING CONTEXTS %s\n", val);
+        char *val = value_json(choice);
+        fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
     }
     if (newctx->pc != oldctx->pc) {
@@ -579,8 +574,8 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
     }
     if (newctx->this != oldctx->this) {
-        char *val = value_string(newctx->this);
-        fprintf(file, "          \"this\": \"%s\",\n", val);
+        char *val = value_json(newctx->this);
+        fprintf(file, "          \"this\": %s,\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
@@ -619,8 +614,8 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         if (i > common) {
             fprintf(file, ",");
         }
-        char *val = value_string(newctx->stack[i]);
-        fprintf(file, " \"%s\"", val);
+        char *val = value_json(newctx->stack[i]);
+        fprintf(file, " %s", val);
         free(val);
     }
     fprintf(file, " ],\n");
@@ -680,9 +675,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
 
         struct op_info *oi = code[pc].oi;
         if (code[pc].choose) {
-            char *p = value_string(choice);
-            // printf("--- %d: CHOOSE %s\n", pc, p);
-            free(p);
             cc->stack[cc->sp - 1] = choice;
             cc->pc++;
         }

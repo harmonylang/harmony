@@ -29,7 +29,7 @@ struct code {
 };
 
 struct context {     // context value
-    uint64_t name;        // name tag
+    uint64_t name;        // name of method
     uint64_t entry;       // entry point of main method
     uint64_t arg;         // argument provided to spawn
     uint64_t this;        // thread-local state
@@ -80,6 +80,7 @@ uint64_t value_put_dict(void *p, int size);
 uint64_t value_put_address(void *p, int size);
 uint64_t value_put_context(struct context *ctx);
 char *value_string(uint64_t v);
+char *value_json(uint64_t v);
 
 #define VALUE_BITS      3
 #define VALUE_MASK      ((uint64_t) ((1 << VALUE_BITS) - 1))
