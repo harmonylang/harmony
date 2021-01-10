@@ -1810,28 +1810,6 @@ class JumpCondOp(Op):
         else:
             context.pc += 1
 
-class BagOp(Op):
-    def __repr__(self):
-        return "Bag"
-
-    def jdump(self):
-        return '{ "op": "Bag" }'
-
-    def explain(self):
-        return "pop a number n and n values and push a bag"
-
-    def eval(self, state, context):
-        nitems = context.pop()
-        d = {}
-        for i in range(nitems):
-            v = context.pop()
-            if v not in d:
-                d[v] = 1
-            else:
-                d[v] += 1
-        context.push(DictValue(d))
-        context.pc += 1
-
 class NaryOp(Op):
     def __init__(self, op, n):
         self.op = op
@@ -2165,6 +2143,15 @@ class NaryOp(Op):
             elif op == "SetAdd":
                 assert isinstance(e1, SetValue)
                 context.push(SetValue(e1.s | {e2}))
+            elif op == "BagAdd":
+                assert isinstance(e1, DictValue)
+                d = e1.d.copy()
+                if e2 in d:
+                    assert isinstance(d[e2], int)
+                    d[e2] += 1
+                else:
+                    d[e2] = 1
+                context.push(DictValue(d))
             else:
                 assert False, self
         elif self.n == 3:
@@ -2310,9 +2297,14 @@ class AST:
                 code.append(NaryOp(("SetAdd", file, line, column), 2))
             elif ctype == "dict":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
-            elif ctype in { "bag", "list" }:
-                if ctype == "list":
-                    code.append(NaryOp(("DictAdd", file, line, column), 3))
+            elif ctype == "list":
+                code.append(NaryOp(("DictAdd", file, line, column), 3))
+                code.append(LoadVarOp(N))
+                code.append(PushOp((1, file, line, column)))
+                code.append(NaryOp(("+", file, line, column), 2))
+                code.append(StoreVarOp(N))
+            elif ctype == "bag":
+                code.append(NaryOp(("BagAdd", file, line, column), 2))
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
@@ -2374,19 +2366,12 @@ class AST:
             code.append(PushOp((SetValue(set()), file, line, column)))
         elif ctype == "dict":
             code.append(PushOp((novalue, file, line, column)))
-        elif ctype == "list":
+        elif ctype in { "bag", "list" }:
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
             code.append(PushOp((novalue, file, line, column)))
-        elif ctype == "bag":
-            code.append(PushOp((0, file, line, column)))
-            code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
-        if ctype == "bag":
-            code.append(LoadVarOp(N))
-            code.append(BagOp())
-            code.append(DelVarOp(N))
-        elif ctype == "list":
+        if ctype == { "bag", "list" }:
             code.append(DelVarOp(N))
 
     def doImport(self, scope, code, module):
@@ -2526,10 +2511,10 @@ class BagAST(AST):
         return all(x.isConstant(scope) for x in self.collection)
 
     def gencode(self, scope, code):
+        code.append(PushOp((novalue, None, None, None)))
         for e in self.collection:
             e.compile(scope, code)
-        code.append(PushOp((len(self.collection), None, None, None)))
-        code.append(BagOp())
+            code.append(NaryOp(("BagAdd", None, None, None), 2))
 
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):

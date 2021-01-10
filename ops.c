@@ -553,27 +553,6 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
     ctx->pc++;
 }
 
-void op_Bag(const void *env, struct state *state, struct context **pctx){
-    uint64_t n = ctx_pop(pctx);
-    assert((n & VALUE_MASK) == VALUE_INT);
-    n >>= VALUE_BITS;
-
-    uint64_t d = VALUE_DICT;
-    for (int i = 0; i < n; i++) {
-        uint64_t v = ctx_pop(pctx), cnt;
-        if (dict_tryload(d, v, &cnt)) {
-            assert((cnt & VALUE_MASK) == VALUE_INT);
-            cnt = (cnt >> VALUE_BITS) + 1;
-        }
-        else {
-            cnt = 1;
-        }
-        d = dict_store(d, v, (cnt << VALUE_BITS) | VALUE_INT);
-    }
-    ctx_push(pctx, d);
-    (*pctx)->pc++;
-}
-
 void op_Choose(const void *env, struct state *state, struct context **pctx){
     assert(false);
 }
@@ -1084,7 +1063,6 @@ void *init_Assert(struct dict *map){ return NULL; }
 void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
 void *init_AtomicInc(struct dict *map){ return NULL; }
-void *init_Bag(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
 void *init_Cut(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
@@ -1999,7 +1977,7 @@ uint64_t f_dict_add(struct state *state, struct context *ctx, uint64_t *args, in
     int size;
     uint64_t *vals = value_get(dict, &size), *v;
 
-    int i = 0, cmp = -1;
+    int i = 0, cmp = 1;
     for (v = vals; i < size; i += 2 * sizeof(uint64_t), v++) {
         cmp = value_cmp(key, *v);
         if (cmp <= 0) {
@@ -2060,6 +2038,47 @@ uint64_t f_set_add(struct state *state, struct context *ctx, uint64_t *args, int
     uint64_t result = value_put_set(nvals, size + sizeof(uint64_t));
     free(nvals);
     return result;
+}
+
+uint64_t f_bag_add(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 2);
+    int64_t elt = args[0], dict = args[1];
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+    int size;
+    uint64_t *vals = value_get(dict, &size), *v;
+
+    int i = 0, cmp = 1;
+    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v++) {
+        cmp = value_cmp(elt, *v);
+        if (cmp <= 0) {
+            break;
+        }
+    }
+
+    if (cmp == 0) {
+        assert((v[1] & VALUE_MASK) == VALUE_INT);
+        int cnt = (v[1] >> VALUE_BITS) + 1;
+        uint64_t *nvals = malloc(size);
+        memcpy(nvals, vals, size);
+        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) =
+                                        (cnt << VALUE_BITS) | VALUE_INT;
+
+        uint64_t result = value_put_dict(nvals, size);
+        free(nvals);
+        return result;
+    }
+    else {
+        uint64_t *nvals = malloc(size + 2*sizeof(uint64_t));
+        memcpy(nvals, vals, i);
+        * (uint64_t *) ((char *) nvals + i) = elt;
+        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) =
+                                        (1 << VALUE_BITS) | VALUE_INT;
+        memcpy((char *) nvals + i + 2*sizeof(uint64_t), v, size - i);
+
+        uint64_t result = value_put_dict(nvals, size + 2*sizeof(uint64_t));
+        free(nvals);
+        return result;
+    }
 }
 
 uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -2311,7 +2330,6 @@ struct op_info op_table[] = {
 	{ "Assert2", init_Assert2, op_Assert2 },
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
-	{ "Bag", init_Bag, op_Bag },
 	{ "Choose", init_Choose, op_Choose },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
@@ -2364,6 +2382,7 @@ struct f_info f_table[] = {
     { "all", f_all },
     { "any", f_any },
     { "atLabel", f_atLabel },
+    { "BagAdd", f_bag_add },
     { "DictAdd", f_dict_add },
     { "get_context", f_get_context },
     { "in", f_in },
