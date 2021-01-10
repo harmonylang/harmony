@@ -1810,27 +1810,6 @@ class JumpCondOp(Op):
         else:
             context.pc += 1
 
-class DictOp(Op):
-    def __repr__(self):
-        return "Dict"
-
-    def jdump(self):
-        return '{ "op": "Dict" }'
-
-    def explain(self):
-        return "pop a number n and n key/value pairs and push a dictionary"
-
-    def eval(self, state, context):
-        nitems = context.pop()
-        d = {}
-        for i in range(nitems):
-            v = context.pop()
-            k = context.pop()
-            if k not in d or keyValue(v) > keyValue(d[k]):
-                d[k] = v
-        context.push(DictValue(d))
-        context.pc += 1
-
 class BagOp(Op):
     def __repr__(self):
         return "Bag"
