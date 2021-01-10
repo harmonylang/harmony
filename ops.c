@@ -629,24 +629,6 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
     (*pctx)->pc++;
 }
 
-void op_Dict(const void *env, struct state *state, struct context **pctx){
-    uint64_t n = ctx_pop(pctx);
-    assert((n & VALUE_MASK) == VALUE_INT);
-    n >>= VALUE_BITS;
-
-    uint64_t d = VALUE_DICT;
-    for (int i = 0; i < n; i++) {
-        uint64_t v = ctx_pop(pctx);
-        uint64_t k = ctx_pop(pctx);
-        uint64_t old;
-        if (!dict_tryload(d, k, &old) || value_cmp(v, old) > 0) {
-            d = dict_store(d, k, v);
-        }
-    }
-    ctx_push(pctx, d);
-    (*pctx)->pc++;
-}
-
 void op_Dup(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
 
@@ -928,27 +910,6 @@ static int sort(uint64_t *vals, int n){
     return p - vals;
 }
 
-void op_Set(const void *env, struct state *state, struct context **pctx){
-    uint64_t n = ctx_pop(pctx);
-    assert((n & VALUE_MASK) == VALUE_INT);
-    n >>= VALUE_BITS;
-	if (n == 0) {
-		ctx_push(pctx, VALUE_SET);
-		(*pctx)->pc++;
-		return;
-	}
-
-    uint64_t *vals = malloc(n * sizeof(uint64_t));
-    for (int i = 0; i < n; i++) {
-        vals[i] = ctx_pop(pctx);
-    }
-
-    n = sort(vals, n);
-    ctx_push(pctx, value_put_set(vals, n * sizeof(uint64_t)));
-    free(vals);
-    (*pctx)->pc++;
-}
-
 void op_SetIntLevel(const void *env, struct state *state, struct context **pctx){
 	bool oldlevel = (*pctx)->interruptlevel;
 	uint64_t newlevel =  ctx_pop(pctx);
@@ -1127,13 +1088,11 @@ void *init_Bag(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
 void *init_Cut(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
-void *init_Dict(struct dict *map){ return NULL; }
 void *init_Dup(struct dict *map){ return NULL; }
 void *init_Pop(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
-void *init_Set(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
@@ -2033,6 +1992,76 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     return result;
 }
 
+uint64_t f_dict_add(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 3);
+    int64_t value = args[0], key = args[1], dict = args[2];
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+    int size;
+    uint64_t *vals = value_get(dict, &size), *v;
+
+    int i = 0, cmp = -1;
+    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v++) {
+        cmp = value_cmp(key, *v);
+        if (cmp <= 0) {
+            break;
+        }
+    }
+
+    // See if we found the key.  In that case, we take the bigger value.
+    if (cmp == 0) {
+        cmp = value_cmp(value, v[1]);
+        if (cmp <= 0) {
+            return dict;
+        }
+        uint64_t *nvals = malloc(size);
+        memcpy(nvals, vals, size);
+        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) = value;
+
+        uint64_t result = value_put_dict(nvals, size);
+        free(nvals);
+        return result;
+    }
+    else {
+        uint64_t *nvals = malloc(size + 2*sizeof(uint64_t));
+        memcpy(nvals, vals, i);
+        * (uint64_t *) ((char *) nvals + i) = key;
+        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) = value;
+        memcpy((char *) nvals + i + 2*sizeof(uint64_t), v, size - i);
+
+        uint64_t result = value_put_dict(nvals, size + 2*sizeof(uint64_t));
+        free(nvals);
+        return result;
+    }
+}
+
+uint64_t f_set_add(struct state *state, struct context *ctx, uint64_t *args, int n){
+    assert(n == 2);
+    int64_t elt = args[0], set = args[1];
+    assert((set & VALUE_MASK) == VALUE_SET);
+    int size;
+    uint64_t *vals = value_get(set, &size), *v;
+
+    int i = 0;
+    for (v = vals; i < size; i += sizeof(uint64_t), v++) {
+        int cmp = value_cmp(elt, *v);
+        if (cmp == 0) {
+            return set;
+        }
+        if (cmp < 0) {
+            break;
+        }
+    }
+
+    uint64_t *nvals = malloc(size + sizeof(uint64_t));
+    memcpy(nvals, vals, i);
+    * (uint64_t *) ((char *) nvals + i) = elt;
+    memcpy((char *) nvals + i + sizeof(uint64_t), v, size - i);
+
+    uint64_t result = value_put_set(nvals, size + sizeof(uint64_t));
+    free(nvals);
+    return result;
+}
+
 uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, int n){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
@@ -2287,7 +2316,6 @@ struct op_info op_table[] = {
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
-	{ "Dict", init_Dict, op_Dict },
 	{ "Dup", init_Dup, op_Dup },
 	{ "Frame", init_Frame, op_Frame },
 	{ "Invariant", init_Invariant, op_Invariant },
@@ -2302,7 +2330,6 @@ struct op_info op_table[] = {
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
 	{ "Return", init_Return, op_Return },
-	{ "Set", init_Set, op_Set },
 	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
@@ -2337,6 +2364,7 @@ struct f_info f_table[] = {
     { "all", f_all },
     { "any", f_any },
     { "atLabel", f_atLabel },
+    { "DictAdd", f_dict_add },
     { "get_context", f_get_context },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
@@ -2346,6 +2374,7 @@ struct f_info f_table[] = {
     { "min", f_min },
 	{ "mod", f_mod },
     { "not", f_not },
+    { "SetAdd", f_set_add },
     { NULL, NULL }
 };
 

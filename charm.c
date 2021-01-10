@@ -188,7 +188,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
                 free(p);
                 lasttime = now;
             }
-            timecnt = 1000;
+            timecnt = 1;
         }
 
         struct op_info *oi = code[pc].oi;
@@ -1154,12 +1154,15 @@ int main(int argc, char **argv){
 
     switch (bad->type) {
     case FAIL_SAFETY:
+        printf("Safety Violation\n");
         fprintf(out, "  \"issue\": \"Safety violation\",\n");
         break;
     case FAIL_INVARIANT:
+        printf("Invariant Violation\n");
         fprintf(out, "  \"issue\": \"Invariant violation\",\n");
         break;
     case FAIL_TERMINATION:
+        printf("Non-terminating state\n");
         fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     default:

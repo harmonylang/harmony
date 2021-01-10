@@ -37,6 +37,8 @@ assert ([v(1), 2, 3] | [2, 1]) == [2, 2, 3];
 assert ([v(1), 2, 3] & [2, 1]) == [1, 1];
 assert { i%2 for i in { 1, 2, 3 } } == { 0, 1 };
 assert bag{ i%2 for i in { 1, 2, 3 } } == bag{ 1, 0, 1 };
+assert { v(1), 2, 3 } == { 3, 2, 1 };
+assert { v(1), 2, 1 } == { 2, 1 };
 
 # x = v(3) + v(False);
 # x = all v([3, 4]);

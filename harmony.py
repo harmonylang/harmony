@@ -1810,24 +1810,6 @@ class JumpCondOp(Op):
         else:
             context.pc += 1
 
-class SetOp(Op):
-    def __repr__(self):
-        return "Set"
-
-    def jdump(self):
-        return '{ "op": "Set" }'
-
-    def explain(self):
-        return "pop a number n and n values and push a set with the value"
-
-    def eval(self, state, context):
-        nitems = context.pop()
-        s = set()
-        for i in range(nitems):
-            s.add(context.pop())
-        context.push(SetValue(s))
-        context.pc += 1
-
 class DictOp(Op):
     def __repr__(self):
         return "Dict"
@@ -2201,6 +2183,27 @@ class NaryOp(Op):
                     return
                 else:
                     context.push(e1 in e2.d.values())
+            elif op == "SetAdd":
+                assert isinstance(e1, SetValue)
+                context.push(SetValue(e1.s | {e2}))
+            else:
+                assert False, self
+        elif self.n == 3:
+            e3 = context.pop()
+            e2 = context.pop()
+            e1 = context.pop()
+            if op == "DictAdd":
+                assert isinstance(e1, DictValue)
+                d = e1.d.copy()
+                if e2 in d:
+                    if keyValue(d[e2]) >= keyValue(e3):
+                        context.push(e1)
+                    else:
+                        d[e2] = e3
+                        context.push(DictValue(d))
+                else:
+                    d[e2] = e3
+                    context.push(DictValue(d))
             else:
                 assert False, self
         else:
@@ -2324,7 +2327,13 @@ class AST:
             elif ctype == "dict":
                 code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
             self.value.compile(scope, code)
-            if ctype in { "set", "bag", "list", "dict" }:
+            if ctype == "set":
+                code.append(NaryOp(("SetAdd", file, line, column), 2))
+            elif ctype == "dict":
+                code.append(NaryOp(("DictAdd", file, line, column), 3))
+            elif ctype in { "bag", "list" }:
+                if ctype == "list":
+                    code.append(NaryOp(("DictAdd", file, line, column), 3))
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
@@ -2382,21 +2391,23 @@ class AST:
         uid = len(code)
         (lexeme, file, line, column) = self.token
         N = ("__size__"+str(uid), file, line, column)
-        if ctype in { "set", "bag", "list", "dict" }:
+        if ctype == "set":
+            code.append(PushOp((SetValue(set()), file, line, column)))
+        elif ctype == "dict":
+            code.append(PushOp((novalue, file, line, column)))
+        elif ctype == "list":
+            code.append(PushOp((0, file, line, column)))
+            code.append(StoreVarOp(N))
+            code.append(PushOp((novalue, file, line, column)))
+        elif ctype == "bag":
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
-        if ctype == "set":
-            code.append(LoadVarOp(N))
-            code.append(SetOp())
-            code.append(DelVarOp(N))
-        elif ctype == "bag":
+        if ctype == "bag":
             code.append(LoadVarOp(N))
             code.append(BagOp())
             code.append(DelVarOp(N))
-        elif ctype in { "list", "dict" }:
-            code.append(LoadVarOp(N))
-            code.append(DictOp())
+        elif ctype == "list":
             code.append(DelVarOp(N))
 
     def doImport(self, scope, code, module):
@@ -2520,10 +2531,10 @@ class SetAST(AST):
         return all(x.isConstant(scope) for x in self.collection)
 
     def gencode(self, scope, code):
+        code.append(PushOp((SetValue(set()), None, None, None)))
         for e in self.collection:
             e.compile(scope, code)
-        code.append(PushOp((len(self.collection), None, None, None)))
-        code.append(SetOp())
+            code.append(NaryOp(("SetAdd", None, None, None), 2))
 
 class BagAST(AST):
     def __init__(self, collection):
@@ -2572,11 +2583,11 @@ class TupleAST(AST):
 
     def gencode(self, scope, code):
         (lexeme, file, line, column) = self.token
+        code.append(PushOp((novalue, file, line, column)))
         for (i, v) in enumerate(self.list):
             code.append(PushOp((i, file, line, column)))
             v.compile(scope, code)
-        code.append(PushOp((len(self.list), file, line, None)))
-        code.append(DictOp())
+            code.append(NaryOp(("DictAdd", file, line, column), 3))
 
     def isShared(self, scope):
         assert False
@@ -2604,11 +2615,11 @@ class DictAST(AST):
                         for (k, v) in self.record)
 
     def gencode(self, scope, code):
+        code.append(PushOp((novalue, None, None, None)))
         for (k, v) in self.record:
             k.compile(scope, code)
             v.compile(scope, code)
-        code.append(PushOp((len(self.record), None, None, None)))
-        code.append(DictOp())
+            code.append(NaryOp(("DictAdd", None, None, None), 3))
 
 class SetComprehensionAST(AST):
     def __init__(self, value, iter, token):
@@ -3555,8 +3566,7 @@ class SpawnAST(AST):
 
     def compile(self, scope, code):
         if self.this == None:
-            code.append(PushOp((0, None, None, None)))
-            code.append(DictOp())
+            code.append(PushOp((novalue, None, None, None)))
         else:
             self.this.compile(scope, code)
         self.arg.compile(scope, code)

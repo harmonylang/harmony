@@ -306,7 +306,7 @@ static char *value_string_pc(uint64_t v) {
 
 static char *value_json_pc(uint64_t v) {
     char *r;
-    asprintf(&r, "{ \"TYPE\": \"pc\", \"value\": \"%"PRIu64"\" }", v >> VALUE_BITS);
+    asprintf(&r, "{ \"type\": \"pc\", \"value\": \"%"PRIu64"\" }", v >> VALUE_BITS);
     return r;
 }
 
