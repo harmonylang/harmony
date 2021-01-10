@@ -5228,8 +5228,6 @@ Assert, Assert2 & pop $b$ and check that it is \texttt{True}.  Assert2 also pops
 \hline
 AtomicInc/Dec & increment/decrement the atomic counter of this context \\
 \hline
-Bag & pop $n$ and $n$ values and push a bag \\
-\hline
 Continue & no-op (but causes a context switch) \\
 \hline
 Choose & choose an element from the set on top of the stack \\
@@ -5239,8 +5237,6 @@ Cut & pop set or dict and push minimum and remainder \\
 Del [$v$] & delete shared variable $v$ \\
 \hline
 DelVar [$v$] & delete thread variable $v$ \\
-\hline
-Dict & pop $n$ and $n$ key/value pairs and push a dictionary \\
 \hline
 Dup & duplicate the top element of the stack \\
 \hline
@@ -5268,8 +5264,6 @@ Push $c$ & push constant $c$ onto the stack \\
 ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
-\hline
-Set & pop $n$ and $n$ elements and push a set of the elements \\
 \hline
 SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
 \hline
