@@ -5441,7 +5441,18 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                 print('    ["%s","%s"],'%(code[pc], code[pc].explain()), file=f)
             else:
                 print('    ["%s","%s"]'%(code[pc], code[pc].explain()), file=f)
-        print("  ]", file=f);
+        print("  ],", file=f);
+        print("  \"locations\": {", file=f, end="");
+        firstTime = True
+        for pc, (file, line) in scope.locations.items():
+            if firstTime:
+                firstTime = False
+                print(file=f)
+            else:
+                print(",", file=f)
+            print("    \"%d\": { \"file\": \"%s\", \"line\": \"%d\" }"%(pc, file, line), file=f, end="")
+        print(file=f)
+        print("  }", file=f);
         print("}", file=f);
 
 def usage():

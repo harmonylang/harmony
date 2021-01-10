@@ -375,7 +375,7 @@ void print_vars(FILE *file, uint64_t v){
     fprintf(file, " }");
 }
 
-void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
+bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
 	int level = 0;
     while (pc > 0) {
         if (strcmp(code[pc].oi->name, "Return") == 0) {
@@ -387,8 +387,9 @@ void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
-					print_method(file, ctx, npc, nfp, nvars);
-                    fprintf(file, ",\n");
+					if (print_method(file, ctx, npc, nfp, nvars)) {
+                        fprintf(file, ",\n");
+                    }
 				}
 				fprintf(file, "            {\n");
 				const struct env_Frame *ef = code[pc].env;
@@ -416,14 +417,16 @@ void print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 				print_vars(file, vars);
 				fprintf(file, "\n");
 				fprintf(file, "            }");
-				break;
+				return true;
 			}
-		}
-		else {
-			level--;
-		}
+            else {
+                assert(level > 0);
+                level--;
+            }
+        }
         pc--;
     }
+    return false;
 }
 
 void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
@@ -506,7 +509,6 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         }
     }
 
-#ifdef notdef
     fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
@@ -519,7 +521,6 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         free(s);
     }
     fprintf(file, "          ]\n");
-#endif
 
     s = value_json(c->this);
     fprintf(file, "          \"this\": %s\n", s);
@@ -529,6 +530,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 }
 
 void print_state(FILE *file, struct node *node){
+#ifdef notdef
     fprintf(file, "      \"shared\": ");
     print_vars(file, node->state->vars);
     fprintf(file, ",\n");
@@ -542,6 +544,9 @@ void print_state(FILE *file, struct node *node){
         fprintf(file, "\n");
     }
     fprintf(file, "      ]\n");
+#else
+    fprintf(file, "      \"dummy\": \"dummy\"\n");
+#endif
 }
 
 void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
@@ -567,11 +572,13 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
     }
-    if (newctx->pc != oldctx->pc) {
-        fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
-    }
+    fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newctx->fp != oldctx->fp) {
         fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
+        fprintf(file, "          \"trace\": [\n");
+        print_method(file, newctx, newctx->pc, newctx->fp, newctx->vars);
+        fprintf(file, "\n");
+        fprintf(file, "          ],\n");
     }
     if (newctx->this != oldctx->this) {
         char *val = value_json(newctx->this);
@@ -599,7 +606,6 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
-#ifdef notdef
     int common;
     for (common = 0; common < newctx->sp && common < oldctx->sp; common++) {
         if (newctx->stack[common] != oldctx->stack[common]) {
@@ -619,7 +625,6 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         free(val);
     }
     fprintf(file, " ],\n");
-#endif
 
     fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
 
@@ -897,6 +902,62 @@ static int find_scc(void){
     return count;
 }
 
+static void enum_loc(void *env, const void *key, unsigned int key_size,
+                                HASHDICT_VALUE_TYPE value){
+    static bool notfirst = false;
+    FILE *out = env;
+
+    if (notfirst) {
+        fprintf(out, ",\n");
+    }
+    else {
+        notfirst = true;
+        fprintf(out, "\n");
+    }
+    fprintf(out, "    \"%.*s\": { ", key_size, key);
+
+    struct json_value *jv = value;
+    assert(jv->type == JV_MAP);
+
+    struct json_value *file = dict_lookup(jv->u.map, "file", 4);
+    assert(file->type == JV_ATOM);
+    fprintf(out, "\"file\": \"%.*s\", ", file->u.atom.len, file->u.atom.base);
+
+    struct json_value *line = dict_lookup(jv->u.map, "line", 4);
+    assert(line->type == JV_ATOM);
+    fprintf(out, "\"line\": \"%.*s\"", line->u.atom.len, line->u.atom.base);
+
+    // parse the line number
+    char *cline = malloc(line->u.atom.len + 1);
+    strncpy(cline, line->u.atom.base, line->u.atom.len);
+    cline[line->u.atom.len] = 0;
+    int lineno = atoi(cline);
+    free(cline);
+
+    // copy the file name
+    char *cfile = malloc(file->u.atom.len + 1);
+    strncpy(cfile, file->u.atom.base, file->u.atom.len);
+    cfile[file->u.atom.len] = 0;
+
+    // TODO.  Should cache the contents of the file
+    FILE *fp = fopen(cfile, "r");
+    assert(fp != NULL);
+    char buf[1024];
+    while (fgets(buf, 1024, fp) != NULL) {
+        if (--lineno == 0) {
+            buf[1023] = 0;
+            int len = strlen(buf);
+            if (len > 0 && buf[len - 1] == '\n') {
+                buf[len - 1] = 0;
+            }
+            fprintf(out, ", \"code\": \"%s\"", buf);
+            break;
+        }
+    }
+    fclose(fp);
+    fprintf(out, " }");
+}
+
 int main(int argc, char **argv){
     printf("Charm v1\n");
 
@@ -1147,7 +1208,13 @@ int main(int argc, char **argv){
         }
         fprintf(out, "\n");
     }
-    fprintf(out, "  ]\n");
+    fprintf(out, "  ],\n");
+
+    fprintf(out, "  \"locations\": {");
+    jc = dict_lookup(jv->u.map, "locations", 9);
+    assert(jc->type == JV_MAP);
+    dict_iter(jc->u.map, enum_loc, out);
+    fprintf(out, "\n  }\n");
 
     fprintf(out, "}\n");
 
