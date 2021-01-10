@@ -121,7 +121,7 @@ function getShared(time) {
   return shared;
 }
 
-function stackTrace(table, trace) {
+function stackTrace(table, trace, failure) {
   table.innerHTML = "";
   for (var i = 0; i < trace.length; i++) {
     var row = table.insertRow();
@@ -134,6 +134,13 @@ function stackTrace(table, trace) {
     var vtext = document.createTextNode(stringify(trace[i].vars));
     vcell.appendChild(vtext);
   }
+  if (failure != null) {
+    var row = table.insertRow();
+    var fcell = row.insertCell();
+    fcell.innerHTML = failure;
+    fcell.colSpan = 2;
+    fcell.style.color = "red";
+  }
 }
 
 function drawTimeLines() {
@@ -142,7 +149,10 @@ function drawTimeLines() {
     if (y == null) {
         break;
     }
-    stackTrace(y, []);
+    stackTrace(y, [], null);
+
+    var z = document.getElementById("threadtable").rows[i+1].cells;
+    z[1].innerHTML = "init"
   }
   for (var i = 0; i < megasteps.length; i++) {
     var mes = megasteps[i];
@@ -150,16 +160,23 @@ function drawTimeLines() {
     var microsteps = state.megasteps[i].microsteps;
     var x = document.getElementById("mestable").rows[i+2].cells;
     var y = document.getElementById("threadinfo" + mes.tid);
+    var z = document.getElementById("threadtable").rows[mes.tid+1].cells;
     if (mes.startTime < currentTime) {
       if (currentTime < mes.startTime + mes.nsteps) {
         x[2].innerHTML = microsteps[currentTime - mes.startTime].pc;
         x[3].innerHTML = getShared(currentTime);
-        stackTrace(y, mes.microsteps[currentTime - mes.startTime].trace);
+        stackTrace(y,
+            mes.microsteps[currentTime - mes.startTime].trace,
+            mes.microsteps[currentTime - mes.startTime].failure);
+        z[1].innerHTML = mes.microsteps[currentTime - mes.startTime].mode;
       }
       else {
         x[2].innerHTML = microsteps[microsteps.length-1].npc;
         x[3].innerHTML = getShared(mes.startTime + mes.nsteps);
-        stackTrace(y, mes.microsteps[mes.nsteps-1].trace);
+        stackTrace(y,
+            mes.microsteps[mes.nsteps-1].trace,
+            mes.microsteps[mes.nsteps-1].failure);
+        z[1].innerHTML = mes.microsteps[mes.nsteps-1].mode;
       }
     }
     else {
@@ -220,6 +237,22 @@ function init_megastep(i) {
       // deep copy first
       mis[misidx].trace = JSON.parse(JSON.stringify(mis[misidx].trace))
       mis[misidx].trace[0].vars = state.megasteps[i].microsteps[misidx].local;
+    }
+
+    // Also get the failure if any
+    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("failure")) {
+      mis[misidx].failure = state.megasteps[i].microsteps[misidx].failure;
+    }
+    else {
+      mis[misidx].failure = null
+    }
+
+    // Also get the mode if any
+    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("mode")) {
+      mis[misidx].mode = state.megasteps[i].microsteps[misidx].mode;
+    }
+    else {
+      mis[misidx].mode = "running";
     }
   }
   mes.microsteps = mis;
