@@ -214,6 +214,13 @@ function init_megastep(i) {
     else {
       mis[misidx].trace = misidx == 0 ? [] : mis[misidx - 1].trace;
     }
+
+    // Update local variables
+    if (mis[misidx].trace.length > 0 && state.megasteps[i].microsteps[misidx].hasOwnProperty("local")) {
+      // deep copy first
+      mis[misidx].trace = JSON.parse(JSON.stringify(mis[misidx].trace))
+      mis[misidx].trace[0].vars = state.megasteps[i].microsteps[misidx].local;
+    }
   }
   mes.microsteps = mis;
 }

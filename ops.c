@@ -828,6 +828,13 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         (*pctx)->vars = ctx_pop(pctx);
         assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
         (void) ctx_pop(pctx);   // argument saved for stack trace
+        if ((*pctx)->sp == 0) {     // __init__
+            (*pctx)->phase = CTX_END;
+            if (false) {
+                printf("RETURN INIT\n");
+            }
+            return;
+        }
         uint64_t calltype = ctx_pop(pctx);
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {

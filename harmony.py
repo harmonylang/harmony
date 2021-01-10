@@ -1628,6 +1628,9 @@ class ReturnOp(Op):
         context.vars = context.pop()
         context.pop()       # argument saved for stack trace
         assert isinstance(context.vars, DictValue)
+        if len(context.stack) == 0:
+            context.phase = "end"
+            return
         calltype = context.pop()
         if calltype == "normal":
             pc = context.pop()
@@ -4625,7 +4628,10 @@ def doCompile(filenames, consts, mods):
             exit(1)
 
     scope = Scope(None)
-    code = []
+    code = [
+        PushOp((novalue, None, None, None)),
+        FrameOp(("__init__", None, None, None), [])
+    ]
     if filenames == []:
         usage()
     else:
