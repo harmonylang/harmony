@@ -376,14 +376,15 @@ void print_vars(FILE *file, uint64_t v){
 }
 
 bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
-	int level = 0;
+	int level = 0, orig_pc = pc;
     while (pc > 0) {
         if (strcmp(code[pc].oi->name, "Return") == 0) {
 			level++;
 		}
         else if (strcmp(code[pc].oi->name, "Frame") == 0) {
 			if (level == 0) {
-				if (fp > 0) {
+				if (fp >= 5) {
+                    assert((ctx->stack[fp - 5] & VALUE_MASK) == VALUE_PC);
 					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
@@ -392,6 +393,8 @@ bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
                     }
 				}
 				fprintf(file, "            {\n");
+				fprintf(file, "              \"pc\": \"%d\",\n", orig_pc);
+
 				const struct env_Frame *ef = code[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
 				if (fp == 0) {
@@ -453,6 +456,15 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
     fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
+
+#ifdef notdef
+    {
+        fprintf(file, "STACK %d:\n", c->fp);
+        for (int x = 0; x < c->sp; x++) {
+            fprintf(file, "    %d: %s\n", x, value_string(c->stack[x]));
+        }
+    }
+#endif
 
     fprintf(file, "          \"trace\": [\n");
     print_method(file, c, c->pc, c->fp, c->vars);

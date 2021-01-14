@@ -86,7 +86,7 @@ function json_string(obj) {
     return obj.value;
     break;
   case "set":
-    return json_string_dict(obj.value);
+    return json_string_set(obj.value);
   case "dict":
     return json_string_dict(obj.value);
   case "pc":
@@ -98,7 +98,7 @@ function json_string(obj) {
   }
 }
 
-function stringify(obj) {
+function stringify_vars(obj) {
   var result = "";
   for (var k in obj) {
     if (result != "") {
@@ -118,7 +118,7 @@ function getShared(time) {
         return shared;
       }
       if (mes.microsteps[misidx].hasOwnProperty("shared")) {
-        shared = stringify(mes.microsteps[misidx].shared);
+        shared = stringify_vars(mes.microsteps[misidx].shared);
       }
       time -= 1;
     }
@@ -136,9 +136,12 @@ function stackTrace(table, trace, failure) {
     mcell.appendChild(mtext);
 
     var vcell = row.insertCell();
-    // var vtext = document.createTextNode(stringify(trace[i].vars));
-    // vcell.appendChild(vtext);
-    vcell.innerHTML = "yyy";
+    if (!trace[i].hasOwnProperty("vars")) {
+        alert("???");
+    }
+    var vtext = document.createTextNode(stringify_vars(trace[i].vars));
+    vcell.appendChild(vtext);
+    // vcell.innerHTML = "yyy";
   }
   if (failure != null) {
     var row = table.insertRow();
@@ -350,7 +353,7 @@ function init_microstep(masidx, misidx) {
   }
 
   if (mis.hasOwnProperty("shared")) {
-    microsteps[t].shared = stringify(mis.shared);
+    microsteps[t].shared = stringify_vars(mis.shared);
   }
   else {
     microsteps[t].shared = microsteps[t-1].shared;
