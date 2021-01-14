@@ -79,6 +79,6 @@ with open("charm.json") as f:
     top = json.load(f)
     assert isinstance(top, dict)
     print("Issue:", top["issue"])
-    assert isinstance(top["megasteps"], list)
-    for mes in top["megasteps"]:
+    assert isinstance(top["macrosteps"], list)
+    for mes in top["macrosteps"]:
         print_megastep(mes)

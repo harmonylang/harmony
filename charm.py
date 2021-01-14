@@ -152,7 +152,7 @@ def html_top(glob):
             nsteps += 1
             tid = mas["tid"]
             name = mas["name"]
-            nmicrosteps = 0
+            nmicrosteps = len(mas["microsteps"])
     html_megastep(glob, nsteps, tid, name, nmicrosteps)
     print("  </tbody>")
     print("</table>")

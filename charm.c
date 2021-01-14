@@ -751,11 +751,10 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
 
 void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
             struct state *oldstate, struct context **oldctx, bool interrupt){
-    if (last == NULL) {
-        return;
+    if (last->parent != NULL) {
+        path_dump(file, last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
+        fprintf(file, "    },\n");
     }
-    path_dump(file, last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
-
 
     /* Match each context to a process.
      */
@@ -797,38 +796,32 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
     }
     assert(pid < nprocesses);
 
-    if (true || last->parent == NULL || last->after != ctx) {
-        if (last->parent != NULL) {
-            fprintf(file, "\n      ],\n");
-            print_state(file, last);
-            fprintf(file, "    },\n");
-        }
-
-        struct context *context = value_get(ctx, NULL);
-        assert(context->phase != CTX_END);
-        char *name = value_string(context->name);
-        char *arg = value_string(context->arg);
-        // char *c = value_string(choice);
-        fprintf(file, "    {\n");
-        fprintf(file, "      \"tid\": \"%d\",\n", pid);
-        if (*arg == '(') {
-            fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
-        }
-        else {
-            fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
-        }
-        // fprintf(file, "      \"choice\": \"%s\",\n", c);
-        dumpfirst = true;
-        fprintf(file, "      \"microsteps\": [\n");
-        free(name);
-        free(arg);
-        // free(c);
-        memset(*oldctx, 0, sizeof(**oldctx));
-        (*oldctx)->pc = context->pc;
+    struct context *context = value_get(ctx, NULL);
+    assert(context->phase != CTX_END);
+    char *name = value_string(context->name);
+    char *arg = value_string(context->arg);
+    // char *c = value_string(choice);
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"tid\": \"%d\",\n", pid);
+    if (*arg == '(') {
+        fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
     }
+    else {
+        fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
+    }
+    // fprintf(file, "      \"choice\": \"%s\",\n", c);
+    dumpfirst = true;
+    fprintf(file, "      \"microsteps\": [\n");
+    free(name);
+    free(arg);
+    // free(c);
+    memset(*oldctx, 0, sizeof(**oldctx));
+    (*oldctx)->pc = context->pc;
 
     // Recreate the steps
     processes[pid] = twostep(file, last, ctx, choice, interrupt, oldstate, oldctx);
+    fprintf(file, "\n      ],\n");
+    print_state(file, last);
 }
 
 static struct stack {
@@ -1172,8 +1165,6 @@ int main(int argc, char **argv){
     dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
     free(oldctx);
-    fprintf(out, "\n      ],\n");
-    print_state(out, bad->node);
     fprintf(out, "    }\n");
     fprintf(out, "  ],\n");
 
