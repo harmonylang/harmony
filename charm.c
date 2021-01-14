@@ -514,7 +514,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
             }
         };
         if (edge == NULL || edge->node != node) {
-            fprintf(file, "          \"mode\": \"running\",\n");
+            fprintf(file, "          \"mode\": \"runnable\",\n");
         }
         else {
             fprintf(file, "          \"mode\": \"blocked\",\n");

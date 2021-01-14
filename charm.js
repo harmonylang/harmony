@@ -33,13 +33,10 @@ function drawTimeLine(mes) {
 }
 
 function currentMegaStep() {
-  for (var i = 0; i < megasteps.length; i++) {
-    var mes = megasteps[i];
-    if (mes.startTime + mes.nsteps >= currentTime) {
-      return i;
-    }
+  if (currentTime == totalTime) {
+    return microsteps[currentTime - 1].mesidx;
   }
-  alert("currentMegaStep");
+  return microsteps[currentTime].mesidx;
 }
 
 function json_string_set(obj) {
@@ -109,23 +106,6 @@ function stringify_vars(obj) {
   return result;
 }
 
-function getShared(time) {
-  var shared = "";
-  for (var mesidx = 0; mesidx < state.megasteps.length; mesidx++) {
-    var mes = state.megasteps[mesidx];
-    for (var misidx = 0; misidx < mes.microsteps.length; misidx++) {
-      if (time == 0) {
-        return shared;
-      }
-      if (mes.microsteps[misidx].hasOwnProperty("shared")) {
-        shared = stringify_vars(mes.microsteps[misidx].shared);
-      }
-      time -= 1;
-    }
-  }
-  return shared;
-}
-
 function stackTrace(table, trace, failure) {
   table.innerHTML = "";
   for (var i = 0; i < trace.length; i++) {
@@ -136,12 +116,8 @@ function stackTrace(table, trace, failure) {
     mcell.appendChild(mtext);
 
     var vcell = row.insertCell();
-    if (!trace[i].hasOwnProperty("vars")) {
-        alert("???");
-    }
     var vtext = document.createTextNode(stringify_vars(trace[i].vars));
     vcell.appendChild(vtext);
-    // vcell.innerHTML = "yyy";
   }
   if (failure != null) {
     var row = table.insertRow();
@@ -152,121 +128,11 @@ function stackTrace(table, trace, failure) {
   }
 }
 
-function drawTimeLines() {
-  for (var i = 0;; i++) {
-    var y = document.getElementById("threadinfo" + i);
-    if (y == null) {
-        break;
-    }
-    stackTrace(y, [], null);
-
-    var z = document.getElementById("threadtable").rows[i+1].cells;
-    z[1].innerHTML = "init"
-  }
-  for (var i = 0; i < megasteps.length; i++) {
-    var mes = megasteps[i];
-    drawTimeLine(mes);
-    var microsteps = state.megasteps[i].microsteps;
-    var x = document.getElementById("mestable").rows[i+2].cells;
-    var y = document.getElementById("threadinfo" + mes.tid);
-    var z = document.getElementById("threadtable").rows[mes.tid+1].cells;
-    if (mes.startTime < currentTime) {
-      if (currentTime < mes.startTime + mes.nsteps) {
-        x[2].innerHTML = microsteps[currentTime - mes.startTime].pc;
-        x[3].innerHTML = getShared(currentTime);
-        stackTrace(y,
-            mes.microsteps[currentTime - mes.startTime].trace,
-            mes.microsteps[currentTime - mes.startTime].failure);
-        z[1].innerHTML = mes.microsteps[currentTime - mes.startTime].mode;
-      }
-      else {
-        x[2].innerHTML = microsteps[microsteps.length-1].npc;
-        x[3].innerHTML = getShared(mes.startTime + mes.nsteps);
-        stackTrace(y,
-            mes.microsteps[mes.nsteps-1].trace,
-            mes.microsteps[mes.nsteps-1].failure);
-        z[1].innerHTML = mes.microsteps[mes.nsteps-1].mode;
-      }
-    }
-    else {
-      x[2].innerHTML = ""
-      x[3].innerHTML = ""
-    }
-  }
-}
-
 function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
   run_microsteps()
-}
-
-function init_megastep(i) {
-  var mes = megasteps[i];
-  mes.startTime = currentTime;
-  mes.canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
-  currentTime += mes.nsteps;
-
-  // Copy over the microsteps.
-  var mis = [];
-  var stack = [];
-  for (var misidx = 0; misidx < mes.nsteps; misidx++) {
-    mis[misidx] = { stack: [] };
-
-    if (0) {
-        // Reconstruct the stack        (TODO: don't actually need this)
-        if (state.megasteps[i].microsteps[misidx].hasOwnProperty("pop")) {
-          stack.length -= parseInt(state.megasteps[i].microsteps[misidx].pop);
-        }
-        if (state.megasteps[i].microsteps[misidx].hasOwnProperty("push")) {
-          stack[stack.length] = state.megasteps[i].microsteps[misidx].push;
-        }
-        for (var idx = 0; idx < stack.length; idx++) {
-          mis[misidx].stack[idx] = stack[idx];
-        }
-    }
-
-    // Copy over the fp or inherit from prior slot
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("fp")) {
-      mis[misidx].fp = parseInt(state.megasteps[i].microsteps[misidx].fp);
-    }
-    else {
-      mis[misidx].fp = misidx == 0 ? 0 : mis[misidx - 1].fp;
-    }
-
-    // Copy over the stack trace or inherit from prior slot
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("trace")) {
-      mis[misidx].trace = state.megasteps[i].microsteps[misidx].trace;
-    }
-    else {
-      mis[misidx].trace = misidx == 0 ? [] : mis[misidx - 1].trace;
-    }
-
-    // Update local variables
-    if (mis[misidx].trace.length > 0 && state.megasteps[i].microsteps[misidx].hasOwnProperty("local")) {
-      // deep copy first
-      mis[misidx].trace = JSON.parse(JSON.stringify(mis[misidx].trace))
-      mis[misidx].trace[0].vars = state.megasteps[i].microsteps[misidx].local;
-    }
-
-    // Also get the failure if any
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("failure")) {
-      mis[misidx].failure = state.megasteps[i].microsteps[misidx].failure;
-    }
-    else {
-      mis[misidx].failure = null
-    }
-
-    // Also get the mode if any
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("mode")) {
-      mis[misidx].mode = state.megasteps[i].microsteps[misidx].mode;
-    }
-    else {
-      mis[misidx].mode = "running";
-    }
-  }
-  mes.microsteps = mis;
 }
 
 function handleKeyPress(e) {
@@ -286,17 +152,19 @@ function handleKeyPress(e) {
     case 'ArrowUp':
       var mesidx = currentMegaStep();
       var mes = megasteps[mesidx];
+      if (currentTime == mes.startTime && mesidx > 0) {
+          mes = megasteps[mesidx - 1];
+      }
       currentTime = mes.startTime;
       run_microsteps();
       break;
     case 'ArrowDown':
       var mesidx = currentMegaStep();
       var mes = megasteps[mesidx];
-      if (currentTime == mes.startTime + mes.nsteps &&
-                          mesidx < megasteps.length - 1) {
-          mes = megasteps[mesidx + 1];
-      }
       currentTime = mes.startTime + mes.nsteps;
+      if (currentTime > totalTime) {
+        currentTime = totalTime;
+      }
       run_microsteps();
       break;
     default:
@@ -312,13 +180,15 @@ function init_microstep(masidx, misidx) {
     curMegaStep++;
     megasteps[curMegaStep].startTime = t;
   }
-  megasteps[curMegaStep].nsteps++;
+  var mes = megasteps[curMegaStep];
+  mes.nsteps++;
   microsteps[t] = {
     mesidx: curMegaStep,
     masidx: masidx,
     misidx: misidx,
     tid: parseInt(mas.tid),
-    pc: parseInt(mis.pc)
+    pc: parseInt(mis.pc),
+    contexts: mas.contexts
   };
 
   if (mis.hasOwnProperty("npc")) {
@@ -328,11 +198,18 @@ function init_microstep(masidx, misidx) {
     microsteps[t].npc = mis.pc;
   }
 
-  if (mis.hasOwnProperty("fp")) {
-    microsteps[t].fp = mis.fp;
+  if (mis.hasOwnProperty("mode")) {
+    microsteps[t].mode = mis.mode;
   }
   else {
-    microsteps[t].fp = t == 0 ? 0 : microsteps[t-1].fp;
+    microsteps[t].mode = t == mes.startTime ? "running" : microsteps[t-1].mode;
+  }
+
+  if (mis.hasOwnProperty("failure")) {
+    microsteps[t].failure = mis.failure;
+  }
+  else {
+    microsteps[t].failure = null;
   }
 
   if (mis.hasOwnProperty("trace")) {
@@ -373,7 +250,13 @@ function run_microstep(t) {
   mes.cells[3].innerHTML = mis.npc;
   mes.cells[4].innerHTML = mis.shared;
 
-  stackTrace(threads[mis.tid].tracetable, mis.trace, null);
+  stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
+
+  for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
+    var tid = parseInt(mis.contexts[ctx].tid);
+    threadtable.rows[tid + 1].cells[1].innerHTML = mis.contexts[ctx].mode;
+  }
+  threadtable.rows[mis.tid + 1].cells[1].innerHTML = mis.mode;
 }
 
 function run_microsteps() {
@@ -393,6 +276,8 @@ function run_microsteps() {
   }
 }
 
+// Initialization starts here
+
 for (var tid = 0; tid < nthreads; tid++) {
   threads[tid] = {
     status: "normal",
@@ -402,7 +287,12 @@ for (var tid = 0; tid < nthreads; tid++) {
 }
 for (let i = 0; i < nmegasteps; i++) {
   var canvas = document.getElementById("timeline" + i);
-  megasteps[i] = { canvas: canvas, startTime: 0, nsteps: 0 };
+  megasteps[i] = {
+    canvas: canvas,
+    startTime: 0,
+    nsteps: 0,
+    contexts: []
+  };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
 }
 for (var j = 0; j < state.macrosteps.length; j++) {
