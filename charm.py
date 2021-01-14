@@ -1,5 +1,12 @@
 import json
 
+class Glob:
+    def __init__(self, top):
+        self.top = top
+        self.nmegasteps = 0
+        self.nmicrosteps = 0
+        self.nthreads = 0
+
 def json_kv(js):
     return json_string(js["key"]) + ": " + json_string(js["value"])
 
@@ -77,32 +84,37 @@ def file_include(name):
     with open(name) as f:
         print(f.read())
 
-def html_megastep(step, mas):
-    print("<td>")
-    print("  T%s: %s"%(mas["tid"], mas["name"]), end="")
-    print("</td>")
+def html_megastep(glob, step, tid, name, nmicrosteps):
+    print("<tr>")
+    print("  <td align='right'>")
+    print("    %d"%step)
+    print("  </td>")
 
-    print("<td>")
-    time = len(mas["microsteps"])
+    print("  <td>")
+    print("    T%s: %s"%(tid, name), end="")
+    print("  </td>")
+
+    print("  <td>")
+    time = nmicrosteps
     nrows = (time + 29) // 30
-    print("  <canvas id='timeline%d' width='300px' height='%dpx'>"%(step, 10*nrows))
-    print("  </canvas>")
-    print("</td>")
+    print("    <canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows))
+    print("    </canvas>")
+    print("  </td>")
 
-    print("<td align='center'>");
-    print(mas["microsteps"][time - 1]["npc"])
-    print("</td>")
+    print("  <td align='center'>");
+    print("  </td>")
 
     # print_vars(mas["shared"])
-    print("<td>");
-    print("</td>")
+    print("  <td>");
+    print("  </td>")
+    print("</tr>")
 
-def html_top(top):
+def html_top(glob):
     print("<table border='1' id='mestable'>")
     print("  <thead>")
     print("    <tr>")
-    print("      <th colspan='3' style='color:red;'>")
-    print("        Issue:", top["issue"])
+    print("      <th colspan='4' style='color:red;'>")
+    print("        Issue:", glob.top["issue"])
     print("      </th>")
     print("      <th rowspan='2' align='center'>")
     print("        Shared Variables")
@@ -110,6 +122,9 @@ def html_top(top):
     print("    </tr>")
 
     print("    <tr>")
+    print("      <th align='center'>")
+    print("        Step")
+    print("      </th>")
     print("      <th align='center'>")
     print("        Thread")
     print("      </th>")
@@ -123,15 +138,26 @@ def html_top(top):
     print("  </thead>")
 
     print("  <tbody>")
-    assert isinstance(top["megasteps"], list)
-    for step, mes in enumerate(top["megasteps"]):
-        print("    <tr>")
-        html_megastep(step, mes)
-        print("    </tr>")
+    assert isinstance(glob.top["macrosteps"], list)
+    nsteps = 0
+    tid = None
+    name = None
+    nmicrosteps = 0
+    for mas in glob.top["macrosteps"]:
+        if tid == mas["tid"]:
+            nmicrosteps += len(mas["microsteps"])
+        else:
+            if tid != None:
+                html_megastep(glob, nsteps, tid, name, nmicrosteps)
+            nsteps += 1
+            tid = mas["tid"]
+            name = mas["name"]
+            nmicrosteps = 0
+    html_megastep(glob, nsteps, tid, name, nmicrosteps)
     print("  </tbody>")
     print("</table>")
 
-def html_bottom(top):
+def html_bottom(glob):
     print("<table border='1' id='threadtable'>")
     print("  <thead>")
     print("    <tr>")
@@ -148,10 +174,7 @@ def html_bottom(top):
     print("  </thead>")
     print("  <tbody>")
     maxtid = 0
-    for mes in top["megasteps"]:
-        if int(mes["tid"]) > maxtid:
-            maxtid = int(mes["tid"])
-    for i in range(maxtid + 1):
+    for i in range(glob.nthreads):
         print("    <tr>")
         print("      <td align='center'>")
         print("        T%d"%i)
@@ -167,11 +190,11 @@ def html_bottom(top):
     print("  </tbody>")
     print("</table>")
 
-def html_outer(top):
+def html_outer(glob):
     print("<table>")
     print("  <tr>")
     print("    <td>")
-    html_top(top)
+    html_top(glob)
     print("    </td>")
     print("  </tr>")
     print("  <tr>")
@@ -181,40 +204,56 @@ def html_outer(top):
     print("  </tr>")
     print("  <tr>")
     print("    <td>")
-    html_bottom(top)
+    html_bottom(glob)
     print("    </td>")
     print("  </tr>")
     print("</table>")
 
-def html_script(top):
+def html_script(glob):
     print("<script>")
-    print("var megasteps = [")
-    for step, mes in enumerate(top["megasteps"]):
-        print("  {")
-        print("    canvas: document.getElementById('timeline%d'),"%step)
-        print("    tid: %s,"%mes["tid"])
-        print("    nsteps: %d"%len(mes["microsteps"]))
-        print("  },")
-    print("];")
+    print("var nthreads = %d;"%glob.nthreads)
+    print("var nmegasteps = %d;"%glob.nmegasteps)
+    # print("var megasteps = [")
+    # for step, mes in enumerate(top["megasteps"]):
+    #     print("  {")
+    #     print("    canvas: document.getElementById('timeline%d'),"%step)
+    #     print("    tid: %s,"%mes["tid"])
+    #     print("    nsteps: %d"%len(mes["microsteps"]))
+    #     print("  },")
+    # print("];")
     print("var state =")
     file_include("charm.json")
     print(";")
     file_include("charm.js")
-    print("}")
     print("</script>")
 
-def html_body():
+def html_body(glob):
     print("<body>")
-    with open("charm.json") as f:
-        top = json.load(f)
-        assert isinstance(top, dict)
-        html_outer(top)
-        html_script(top)
+    html_outer(glob)
+    html_script(glob)
     print("</body>")
 
-def html():
+def html(glob):
     print("<html>")
-    html_body()
+    html_body(glob)
     print("</html>")
 
-html()
+def main():
+    # First figure out how many megasteps there are and how many threads
+    lasttid = -1
+    with open("charm.json") as f:
+        glob = Glob(json.load(f))
+        assert isinstance(glob.top, dict)
+        macrosteps = glob.top["macrosteps"]
+        for mas in macrosteps:
+            tid = int(mas["tid"])
+            if tid >= glob.nthreads:
+                glob.nthreads = tid + 1
+            if tid != lasttid:
+                glob.nmegasteps += 1
+                lasttid = tid
+            glob.nmicrosteps += len(mas["microsteps"])
+
+    html(glob)
+
+main()

@@ -520,7 +520,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         }
         free(s);
     }
-    fprintf(file, "          ]\n");
+    fprintf(file, "          ],\n");
 
     s = value_json(c->this);
     fprintf(file, "          \"this\": %s\n", s);
@@ -530,7 +530,6 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 }
 
 void print_state(FILE *file, struct node *node){
-#ifdef notdef
     fprintf(file, "      \"shared\": ");
     print_vars(file, node->state->vars);
     fprintf(file, ",\n");
@@ -544,9 +543,6 @@ void print_state(FILE *file, struct node *node){
         fprintf(file, "\n");
     }
     fprintf(file, "      ]\n");
-#else
-    fprintf(file, "      \"dummy\": \"dummy\"\n");
-#endif
 }
 
 void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
@@ -801,7 +797,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
     }
     assert(pid < nprocesses);
 
-    if (last->parent == NULL || last->after != ctx) {
+    if (true || last->parent == NULL || last->after != ctx) {
         if (last->parent != NULL) {
             fprintf(file, "\n      ],\n");
             print_state(file, last);
@@ -1169,7 +1165,7 @@ int main(int argc, char **argv){
         assert(0);
     }
 
-    fprintf(out, "  \"megasteps\": [\n");
+    fprintf(out, "  \"macrosteps\": [\n");
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));

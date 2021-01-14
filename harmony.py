@@ -2302,12 +2302,14 @@ class AST:
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
             elif ctype == "list":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
+                # TODO.  Turn these four instructions into 1 instruction
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
                 code.append(StoreVarOp(N))
             elif ctype == "bag":
                 code.append(NaryOp(("BagAdd", file, line, column), 2))
+                # TODO.  Ditto
                 code.append(LoadVarOp(N))
                 code.append(PushOp((1, file, line, column)))
                 code.append(NaryOp(("+", file, line, column), 2))
@@ -2339,6 +2341,8 @@ class AST:
             code.append(NaryOp(("IsEmpty", file, line, column), 1))
             tst = len(code)
             code.append(None)       # going to plug in a Jump op here
+
+            # TODO.  Turn these four instructions into one instruction
             code.append(LoadVarOp(S))
             code.append(CutOp())  
             code.append(StoreVarOp(S))

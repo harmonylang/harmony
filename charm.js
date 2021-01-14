@@ -1,7 +1,11 @@
 var boxSize = 10;
 var currentTime = 0;
 var totalTime = 0;
+var microsteps = [];
+var megasteps = []
 var threads = [];
+var curMegaStep = 0;
+var mestable = document.getElementById("mestable");
 
 function drawTimeLine(mes) {
   var c = mes.canvas.getContext("2d");
@@ -190,7 +194,7 @@ function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
   currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
-  drawTimeLines()
+  run_microsteps()
 }
 
 function init_megastep(i) {
@@ -205,15 +209,17 @@ function init_megastep(i) {
   for (var misidx = 0; misidx < mes.nsteps; misidx++) {
     mis[misidx] = { stack: [] };
 
-    // Reconstruct the stack        (TODO: don't actually need this)
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("pop")) {
-      stack.length -= parseInt(state.megasteps[i].microsteps[misidx].pop);
-    }
-    if (state.megasteps[i].microsteps[misidx].hasOwnProperty("push")) {
-      stack[stack.length] = state.megasteps[i].microsteps[misidx].push;
-    }
-    for (var idx = 0; idx < stack.length; idx++) {
-      mis[misidx].stack[idx] = stack[idx];
+    if (0) {
+        // Reconstruct the stack        (TODO: don't actually need this)
+        if (state.megasteps[i].microsteps[misidx].hasOwnProperty("pop")) {
+          stack.length -= parseInt(state.megasteps[i].microsteps[misidx].pop);
+        }
+        if (state.megasteps[i].microsteps[misidx].hasOwnProperty("push")) {
+          stack[stack.length] = state.megasteps[i].microsteps[misidx].push;
+        }
+        for (var idx = 0; idx < stack.length; idx++) {
+          mis[misidx].stack[idx] = stack[idx];
+        }
     }
 
     // Copy over the fp or inherit from prior slot
@@ -264,19 +270,19 @@ function handleKeyPress(e) {
       if (currentTime > 0) {
         currentTime -= 1;
       }
-      drawTimeLines();
+      run_microsteps();
       break;
     case 'ArrowRight':
       if (currentTime < totalTime) {
         currentTime += 1;
       }
-      drawTimeLines();
+      run_microsteps();
       break;
     case 'ArrowUp':
       var mesidx = currentMegaStep();
       var mes = megasteps[mesidx];
       currentTime = mes.startTime;
-      drawTimeLines();
+      run_microsteps();
       break;
     case 'ArrowDown':
       var mesidx = currentMegaStep();
@@ -286,15 +292,85 @@ function handleKeyPress(e) {
           mes = megasteps[mesidx + 1];
       }
       currentTime = mes.startTime + mes.nsteps;
-      drawTimeLines();
+      run_microsteps();
       break;
     default:
       // alert("unknown key " + e.code);
   }
 }
 
-for (var i = 0; i < megasteps.length; i++) {
-  init_megastep(i);
-totalTime = currentTime;
-drawTimeLines();
+function init_microstep(masidx, misidx) {
+  var mas = state.macrosteps[masidx];
+  var mis = mas.microsteps[misidx];
+  var t = microsteps.length;
+  if (t > 0 && microsteps[t - 1].tid != mas.tid) {
+    curMegaStep++;
+    megasteps[curMegaStep].startTime = t;
+  }
+  megasteps[curMegaStep].nsteps++;
+  microsteps[t] = {
+    mesidx: curMegaStep,
+    masidx: masidx,
+    misidx: misidx,
+    tid: mas.tid,
+    pc: parseInt(mis.pc)
+  };
+
+  if (mis.hasOwnProperty("npc")) {
+    microsteps[t].npc = mis.npc;
+  }
+  else {
+    microsteps[t].npc = mis.pc;
+  }
+
+  if (mis.hasOwnProperty("shared")) {
+    microsteps[t].shared = stringify(mis.shared);
+  }
+  else {
+    microsteps[t].shared = microsteps[t-1].shared;
+  }
+}
+
+function init_macrostep(i) {
+  var mas = state.macrosteps[i];
+  for (var j = 0; j < mas.microsteps.length; j++) {
+    init_microstep(i, j);
+  }
+}
+
+function run_microstep(t) {
+  var mis = microsteps[t];
+  // document.write(mis.mesidx);
+  var mes = mestable.rows[mis.mesidx + 2];
+  mes.cells[3].innerHTML = mis.npc;
+  mes.cells[4].innerHTML = mis.shared;
+}
+
+function run_microsteps() {
+  for (var i = 0; i < nmegasteps; i++) {
+    mestable.rows[i + 2].cells[3].innerHTML = "";
+    mestable.rows[i + 2].cells[4].innerHTML = "";
+  }
+  for (var t = 0; t < currentTime; t++) {
+    run_microstep(t);
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i]);
+  }
+}
+
+for (var tid = 0; tid < nthreads; tid++) {
+  threads[tid] = { status: "normal", stacktrace: [] };
+}
+for (let i = 0; i < nmegasteps; i++) {
+  var canvas = document.getElementById("timeline" + i);
+  megasteps[i] = { canvas: canvas, startTime: 0, nsteps: 0 };
+  canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
+}
+for (var j = 0; j < state.macrosteps.length; j++) {
+  init_macrostep(j);
+}
+
+currentTime = totalTime = microsteps.length;
+run_microsteps();
 document.addEventListener('keydown', handleKeyPress);
