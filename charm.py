@@ -199,7 +199,7 @@ def html_botleft(glob):
         print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc))
         print("          </td>")
         print("          <td>")
-        print("            <span title='%s'>"%glob.top["explain"][pc])
+        print("            <span title='%s' id='C%d'>"%(glob.top["explain"][pc], pc))
         print("              %s"%instr);
         print("            </span>")
         print("          </td>")
@@ -251,7 +251,7 @@ def html_outer(glob):
     print("  </tr>")
     print("  <tr>")
     print("    <td colspan='2'>")
-    print("      <h2 id='coderow'>CODE GOES HERE</h2>")
+    print("      <h2 style='color:green;' id='coderow'>CODE GOES HERE</h2>")
     print("    </td>")
     print("  </tr>")
     print("  <tr>")

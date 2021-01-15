@@ -10,6 +10,7 @@ var threadtable = document.getElementById("threadtable");
 var coderow = document.getElementById("coderow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
+var currCloc = 0;
 
 function drawTimeLine(mes) {
   var c = mes.canvas.getContext("2d");
@@ -216,6 +217,7 @@ function init_microstep(masidx, misidx) {
   microsteps[t].code = getCode(microsteps[t].npc);
   var rowToScrollTo = document.getElementById('P' + microsteps[t].npc);
   microsteps[t].offset = rowToScrollTo.offsetTop; 
+  microsteps[t].cloc = document.getElementById('C' + microsteps[t].npc);
 
   if (mis.hasOwnProperty("mode")) {
     microsteps[t].mode = mis.mode;
@@ -283,6 +285,8 @@ function run_microstep(t) {
   coderow.innerHTML = mis.code.file + "/" + mis.code.line + ": " + mis.code.code;
 
   // window.location.href = "#P" + mis.npc;
+  currCloc.style = "color:block;";
+  currCloc = mis.cloc;
   currOffset = mis.offset;
 }
 
@@ -301,7 +305,9 @@ function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i]);
   }
-  container.scrollTop = currOffset;
+  container.scrollTop = currOffset - 75;
+
+  currCloc.style = "color:red;";
 }
 
 // Initialization starts here
