@@ -7,6 +7,9 @@ var threads = [];
 var curMegaStep = 0;
 var mestable = document.getElementById("mestable");
 var threadtable = document.getElementById("threadtable");
+var coderow = document.getElementById("coderow");
+var container = document.getElementById('table-scroll');
+var currOffset = 0;
 
 function drawTimeLine(mes) {
   var c = mes.canvas.getContext("2d");
@@ -172,6 +175,18 @@ function handleKeyPress(e) {
   }
 }
 
+function getCode(pc) {
+  locs = state.locations;
+  while (pc >= 0 ) {
+    s = "" + pc;
+    if (locs.hasOwnProperty(s)) {
+      return locs[s];
+    }
+    pc -= 1;
+  }
+  return { file: "", line: "", code: "" };
+}
+
 function init_microstep(masidx, misidx) {
   var mas = state.macrosteps[masidx];
   var mis = mas.microsteps[misidx];
@@ -198,6 +213,10 @@ function init_microstep(masidx, misidx) {
     microsteps[t].npc = mis.pc;
   }
 
+  microsteps[t].code = getCode(microsteps[t].npc);
+  var rowToScrollTo = document.getElementById('P' + microsteps[t].npc);
+  microsteps[t].offset = rowToScrollTo.offsetTop; 
+
   if (mis.hasOwnProperty("mode")) {
     microsteps[t].mode = mis.mode;
   }
@@ -223,7 +242,7 @@ function init_microstep(masidx, misidx) {
   }
 
   // Update local variables
-  if (false && microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
     // deep copy first
     microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
     microsteps[t].trace[0].vars = mis.local;
@@ -246,9 +265,9 @@ function init_macrostep(i) {
 
 function run_microstep(t) {
   var mis = microsteps[t];
-  var mes = mestable.rows[mis.mesidx + 2];
-  mes.cells[3].innerHTML = mis.npc;
-  mes.cells[4].innerHTML = mis.shared;
+  var mesrow = mestable.rows[mis.mesidx + 2];
+  mesrow.cells[3].innerHTML = mis.npc;
+  mesrow.cells[4].innerHTML = mis.shared;
 
   stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
 
@@ -256,7 +275,15 @@ function run_microstep(t) {
     var tid = parseInt(mis.contexts[ctx].tid);
     threadtable.rows[tid + 1].cells[1].innerHTML = mis.contexts[ctx].mode;
   }
-  threadtable.rows[mis.tid + 1].cells[1].innerHTML = mis.mode;
+  var mes = megasteps[mis.mesidx];
+  if (t != mes.startTime + mes.nsteps - 1) {
+    threadtable.rows[mis.tid + 1].cells[1].innerHTML = mis.mode;
+  }
+
+  coderow.innerHTML = mis.code.file + "/" + mis.code.line + ": " + mis.code.code;
+
+  // window.location.href = "#P" + mis.npc;
+  currOffset = mis.offset;
 }
 
 function run_microsteps() {
@@ -274,6 +301,7 @@ function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i]);
   }
+  container.scrollTop = currOffset;
 }
 
 // Initialization starts here

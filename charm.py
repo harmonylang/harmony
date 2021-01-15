@@ -2,10 +2,41 @@ import json
 
 class Glob:
     def __init__(self, top):
-        self.top = top
+        self.top = top                  # charm.json
         self.nmegasteps = 0
         self.nmicrosteps = 0
         self.nthreads = 0
+
+style = """
+#table-wrapper {
+  position:relative;
+}
+#table-scroll {
+  height:200px;
+  overflow:auto;  
+}
+#table-wrapper table {
+  width:100%;
+}
+#table-wrapper table * {
+  color:black;
+}
+#table-wrapper table thead th .text {
+  position:absolute;   
+  top:-20px;
+  z-index:2;
+  height:20px;
+  width:35%;
+  border:1px solid red;
+}
+table {
+    border-collapse: collapse;
+    border-style: hidden;
+}
+table td, table th {
+    border: 1px solid black;
+}
+"""
 
 def json_kv(js):
     return json_string(js["key"]) + ": " + json_string(js["value"])
@@ -157,7 +188,28 @@ def html_top(glob):
     print("  </tbody>")
     print("</table>")
 
-def html_bottom(glob):
+def html_botleft(glob):
+    print("<div id='table-wrapper'>")
+    print("  <div id='table-scroll'>")
+    print("    <table border='1'>")
+    print("      <tbody>")
+    for pc, instr in enumerate(glob.top["code"]):
+        print("        <tr id='P%d'>"%pc)
+        print("          <td align='right'>")
+        print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc))
+        print("          </td>")
+        print("          <td>")
+        print("            <span title='%s'>"%glob.top["explain"][pc])
+        print("              %s"%instr);
+        print("            </span>")
+        print("          </td>")
+        print("        </tr>")
+    print("      </body>")
+    print("    </table>")
+    print("  </div>")
+    print("</div>")
+
+def html_botright(glob):
     print("<table border='1' id='threadtable'>")
     print("  <thead>")
     print("    <tr>")
@@ -193,18 +245,21 @@ def html_bottom(glob):
 def html_outer(glob):
     print("<table>")
     print("  <tr>")
-    print("    <td>")
+    print("    <td colspan='2'>")
     html_top(glob)
     print("    </td>")
     print("  </tr>")
     print("  <tr>")
-    print("    <td>")
-    print("      &nbsp;")
+    print("    <td colspan='2'>")
+    print("      <h2 id='coderow'>CODE GOES HERE</h2>")
     print("    </td>")
     print("  </tr>")
     print("  <tr>")
-    print("    <td>")
-    html_bottom(glob)
+    print("    <td valign='top'>")
+    html_botleft(glob)
+    print("    </td>")
+    print("    <td valign='top'>")
+    html_botright(glob)
     print("    </td>")
     print("  </tr>")
     print("</table>")
@@ -233,8 +288,16 @@ def html_body(glob):
     html_script(glob)
     print("</body>")
 
+def html_head():
+    print("<head>")
+    print("  <style>")
+    print(style)
+    print("  </style>")
+    print("</head>")
+
 def html(glob):
     print("<html>")
+    html_head()
     html_body(glob)
     print("</html>")
 
