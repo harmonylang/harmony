@@ -513,7 +513,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
                 break;
             }
         };
-        if (edge == NULL || edge->node != node) {
+        if (edge != NULL && edge->node != node) {
             fprintf(file, "          \"mode\": \"runnable\",\n");
         }
         else {
@@ -521,6 +521,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         }
     }
 
+#ifdef notdef
     fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
@@ -533,6 +534,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         free(s);
     }
     fprintf(file, "          ],\n");
+#endif
 
     s = value_json(c->this);
     fprintf(file, "          \"this\": %s\n", s);
@@ -542,9 +544,11 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 }
 
 void print_state(FILE *file, struct node *node){
+#ifdef notdef
     fprintf(file, "      \"shared\": ");
     print_vars(file, node->state->vars);
     fprintf(file, ",\n");
+#endif
 
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
@@ -814,6 +818,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
     char *arg = value_string(context->arg);
     // char *c = value_string(choice);
     fprintf(file, "    {\n");
+    fprintf(file, "      \"id\": \"%d\",\n", last->id);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     if (*arg == '(') {
         fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
@@ -1125,9 +1130,9 @@ int main(int argc, char **argv){
                 nbad++;
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_TERMINATION;
-                f->ctx = node->after;
-                f->choice = 0;          // TODO
-                f->node = node;
+                f->ctx = node->before;
+                f->choice = node->choice;
+                f->node = node->parent;
                 queue_enqueue(failures, f);
             }
         }
