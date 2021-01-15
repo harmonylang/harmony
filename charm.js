@@ -21,16 +21,10 @@ function drawTimeLine(mes) {
   for (var y = 0; y < yboxes; y++) {
     var xboxes = y < yboxes - 1 ? 30 : (mes.nsteps % 30);
     for (var x = 0; x < xboxes; x++) {
-      if (t >= currentTime) {
-        c.fillStyle = "white";
-        c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
-        c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
-        c.stroke();
-      }
-      else {
-        c.fillStyle = "yellow";
-        c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
-      }
+      c.fillStyle = t < currentTime ? "yellow" : "white";
+      c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.stroke();
       t += 1;
     }
   }
@@ -55,6 +49,9 @@ function json_string_set(obj) {
 }
 
 function json_string_dict(obj) {
+  if (obj.length == 0) {
+    return "()"
+  }
   var result = "";
   for (var i = 0; i < obj.length; i++) {
     if (result != "") {
@@ -65,7 +62,7 @@ function json_string_dict(obj) {
     var v = json_string(kv.value);
     result += k + ": " + v;
   }
-  return "{ " + result + " }";
+  return "dict{ " + result + " }";
 }
 
 function json_string_address(obj) {
