@@ -28,7 +28,7 @@ function drawTimeLine(mes) {
         c.stroke();
       }
       else {
-        c.fillStyle = "black";
+        c.fillStyle = "yellow";
         c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
       }
       t += 1;
@@ -308,6 +308,28 @@ function run_microsteps() {
   container.scrollTop = currOffset - 75;
 
   currCloc.style = "color:red;";
+
+  var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
+  for (var mes = 0; mes < nmegasteps; mes++) {
+    var row = document.getElementById("mes" + mes)
+    if (mes == curmes) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
+
+  var curtid = microsteps[currentTime == 0 ? 0 : (currentTime-1)].tid;
+  for (var tid = 0; tid < nthreads; tid++) {
+    var row = document.getElementById("thread" + tid)
+    if (tid == curtid) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
 }
 
 // Initialization starts here

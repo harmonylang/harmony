@@ -116,7 +116,7 @@ def file_include(name):
         print(f.read())
 
 def html_megastep(glob, step, tid, name, nmicrosteps):
-    print("<tr>")
+    print("<tr id='mes%d'>"%(step-1))
     print("  <td align='right'>")
     print("    %d"%step)
     print("  </td>")
@@ -160,7 +160,7 @@ def html_top(glob):
     print("        Thread")
     print("      </th>")
     print("      <th align='center'>")
-    print("        Steps")
+    print("        Instructions")
     print("      </th>")
     print("      <th align='center'>")
     print("        &nbsp;PC&nbsp;")
@@ -227,7 +227,7 @@ def html_botright(glob):
     print("  <tbody>")
     maxtid = 0
     for i in range(glob.nthreads):
-        print("    <tr>")
+        print("    <tr id='thread%d'>"%i)
         print("      <td align='center'>")
         print("        T%d"%i)
         print("      </td>")
@@ -251,7 +251,7 @@ def html_outer(glob):
     print("  </tr>")
     print("  <tr>")
     print("    <td colspan='2'>")
-    print("      <h2 style='color:green;' id='coderow'>CODE GOES HERE</h2>")
+    print("      <h2 style='color:blue;' id='coderow'>CODE GOES HERE</h2>")
     print("    </td>")
     print("  </tr>")
     print("  <tr>")
