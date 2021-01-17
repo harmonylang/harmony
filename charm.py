@@ -1,4 +1,5 @@
 import json
+import queue
 
 class Glob:
     def __init__(self, top):
@@ -6,6 +7,7 @@ class Glob:
         self.nmegasteps = 0
         self.nmicrosteps = 0
         self.nthreads = 0
+        self.vardir = {}
 
 style = """
 #table-wrapper {
@@ -116,7 +118,7 @@ def file_include(name):
     with open(name) as f:
         print(f.read())
 
-def html_megastep(glob, step, tid, name, nmicrosteps):
+def html_megastep(glob, step, tid, name, nmicrosteps, width):
     print("<tr id='mes%d'>"%(step-1))
     print("  <td align='right'>")
     print("    %d&nbsp;"%step)
@@ -137,39 +139,72 @@ def html_megastep(glob, step, tid, name, nmicrosteps):
     print("  </td>")
 
     # print_vars(mas["shared"])
-    print("  <td>");
+    print("  <td colspan='%s'>"%width);
     print("  </td>")
     print("</tr>")
 
+def vardim(d):
+    totalwidth = 0
+    maxheight = 0
+    if isinstance(d, dict):
+        for k in sorted(d.keys()):
+            (w, h) = vardim(d[k])
+            totalwidth += w
+            if h + 1 > maxheight:
+                maxheight = h + 1
+    else:
+        return (1, 0)
+    return (totalwidth, maxheight)
+
+def varhdr(d, name, nrows):
+    q = queue.Queue()
+    level = 0
+    q.put((d, level))
+    while not q.empty():
+        (nd, nl) = q.get()
+        if nl > level:
+            print("</tr><tr>")
+            level = nl
+        if isinstance(nd, dict):
+            for k in sorted(nd.keys()):
+                (w,h) = vardim(nd[k])
+                if h == 0:
+                    print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,k))
+                else:
+                    print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,k))
+                q.put((nd[k], nl+1))
+
 def html_top(glob):
-    print("<table border='1' id='mestable'>")
+    (width, height) = vardim(glob.vardir)
+    print("<table border='1'>")
     print("  <thead>")
     print("    <tr>")
     print("      <th colspan='4' style='color:red;'>")
     print("        Issue:", glob.top["issue"])
     print("      </th>")
-    print("      <th rowspan='2' align='center'>")
+    print("      <th align='center' colspan='%d'>"%width)
     print("        Shared Variables")
     print("      </th>")
     print("    </tr>")
 
     print("    <tr>")
-    print("      <th align='center'>")
+    print("      <th align='center' rowspan='%d'>"%height)
     print("        Step")
     print("      </th>")
-    print("      <th align='center'>")
+    print("      <th align='center' rowspan='%d'>"%height)
     print("        Thread")
     print("      </th>")
-    print("      <th align='center'>")
+    print("      <th align='center' rowspan='%d'>"%height)
     print("        Instructions")
     print("      </th>")
-    print("      <th align='center'>")
+    print("      <th align='center' rowspan='%d'>"%height)
     print("        &nbsp;PC&nbsp;")
     print("      </th>")
+    varhdr(glob.vardir, "", height)
     print("    </tr>")
     print("  </thead>")
 
-    print("  <tbody>")
+    print("  <tbody id='mestable'>")
     assert isinstance(glob.top["macrosteps"], list)
     nsteps = 0
     tid = None
@@ -180,12 +215,12 @@ def html_top(glob):
             nmicrosteps += len(mas["microsteps"])
         else:
             if tid != None:
-                html_megastep(glob, nsteps, tid, name, nmicrosteps)
+                html_megastep(glob, nsteps, tid, name, nmicrosteps, width)
             nsteps += 1
             tid = mas["tid"]
             name = mas["name"]
             nmicrosteps = len(mas["microsteps"])
-    html_megastep(glob, nsteps, tid, name, nmicrosteps)
+    html_megastep(glob, nsteps, tid, name, nmicrosteps, width)
     print("  </tbody>")
     print("</table>")
 
@@ -331,7 +366,6 @@ def vars_add(vardir, shared):
 def main():
     # First figure out how many megasteps there are and how many threads
     lasttid = -1
-    vardir = {}
     with open("charm.json") as f:
         glob = Glob(json.load(f))
         assert isinstance(glob.top, dict)
@@ -346,7 +380,7 @@ def main():
             glob.nmicrosteps += len(mas["microsteps"])
             for mis in mas["microsteps"]:
                 if "shared" in mis:
-                    vars_add(vardir, mis["shared"])
+                    vars_add(glob.vardir, mis["shared"])
 
     html(glob)
 

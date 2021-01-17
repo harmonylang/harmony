@@ -267,7 +267,7 @@ function init_macrostep(i) {
 
 function run_microstep(t) {
   var mis = microsteps[t];
-  var mesrow = mestable.rows[mis.mesidx + 2];
+  var mesrow = mestable.rows[mis.mesidx];
   mesrow.cells[3].innerHTML = mis.npc;
   mesrow.cells[4].innerHTML = mis.shared;
 
@@ -292,8 +292,8 @@ function run_microstep(t) {
 
 function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
-    mestable.rows[i + 2].cells[3].innerHTML = "";
-    mestable.rows[i + 2].cells[4].innerHTML = "";
+    mestable.rows[i].cells[3].innerHTML = "";
+    mestable.rows[i].cells[4].innerHTML = "";
   }
   for (var i = 0; i < nthreads; i++) {
     threadtable.rows[i + 1].cells[1].innerHTML = "init";

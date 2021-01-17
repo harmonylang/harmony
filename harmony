@@ -395,7 +395,7 @@ def count(bg, elt):
     ;
 ;
 def bchoose(bg):
-    # TODO.  Assert that no elements are mapped to 0
+    # TODO. Assert that no elements are mapped to 0
     assert 0 not in { bg[k] for k in keys(bg) };
     result = choose(keys(bg));
 ;
@@ -1093,7 +1093,7 @@ class SetIntLevelOp(Op):
         context.push(before)
         context.pc += 1
 
-# Splits a non-empty set in its minimum element and its remainder
+# Splits a non-empty set or dict in its minimum element and its remainder
 class CutOp(Op):
     def __init__(self, s, v):
         self.s = s

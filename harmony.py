@@ -1040,7 +1040,7 @@ class SetIntLevelOp(Op):
         context.push(before)
         context.pc += 1
 
-# Splits a non-empty set in its minimum element and its remainder
+# Splits a non-empty set or dict in its minimum element and its remainder
 class CutOp(Op):
     def __init__(self, s, v):
         self.s = s
