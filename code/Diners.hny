@@ -2,10 +2,10 @@ from synch import Lock, acquire, release;
 
 const N = 5;
 
-forks = dict{ Lock() for i in {1..N} };
+forks = [Lock(),] * N;
 
 def diner(which):
-    let left, right = (which, (which % N) + 1):
+    let left, right = (which - 1, which % N):
         while choose({ False, True }):
             acquire(?forks[left]);
             acquire(?forks[right]);

@@ -69,6 +69,7 @@ def json_string(js):
         return "?" + v[0]["value"] + "".join([ json_idx(kv) for kv in v[1:] ])
     if type == "context":
         return "CONTEXT(" + json_string(v["name"]) + ")"
+    assert False
 
 def print_vars(d):
     print("<td>")
@@ -301,9 +302,36 @@ def html(glob):
     html_body(glob)
     print("</html>")
 
+def var_convert(v):
+    if v["type"] != "dict":
+        return json_string(v)
+    d = {}
+    for kv in v["value"]:
+        k = json_string(kv["key"])
+        d[k] = var_convert(kv["value"])
+    return d
+
+def dict_merge(vardir, d):
+    for (k, v) in d.items():
+        if not isinstance(v, dict):
+            vardir[k] = v
+        elif v != {}:
+            if k not in vardir:
+                vardir[k] = {}
+            elif not isinstance(vardir[k], dict):
+                continue
+            dict_merge(vardir[k], v)
+
+def vars_add(vardir, shared):
+    d = {}
+    for (k, v) in shared.items():
+        d[k] = var_convert(v)
+    dict_merge(vardir, d)
+
 def main():
     # First figure out how many megasteps there are and how many threads
     lasttid = -1
+    vardir = {}
     with open("charm.json") as f:
         glob = Glob(json.load(f))
         assert isinstance(glob.top, dict)
@@ -316,6 +344,9 @@ def main():
                 glob.nmegasteps += 1
                 lasttid = tid
             glob.nmicrosteps += len(mas["microsteps"])
+            for mis in mas["microsteps"]:
+                if "shared" in mis:
+                    vars_add(vardir, mis["shared"])
 
     html(glob)
 
