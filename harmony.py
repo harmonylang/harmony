@@ -1007,7 +1007,7 @@ class Op:
                 context.failure = "Error: pc = %d: tried to assign %s to %s"%(
                     context.pc, val, self.convert(var))
             elif len(var) != len(val.d):
-                context.failure = "Error: pc = %d: can't assign %s to %s"%(
+                context.failure = "Error: pc = %d: cannot assign %s to %s"%(
                     context.pc, val, self.convert(var))
             else:
                 for i in range(len(var)):
@@ -1732,7 +1732,7 @@ class ReadonlyIncOp(Op):
         return '{ "op": "ReadonlyInc" }'
 
     def explain(self):
-        return "increment readonly counter of context; process can't mutate shared variables if > 0"
+        return "increment readonly counter of context; process cannot mutate shared variables if > 0"
 
     def eval(self, state, context):
         context.readonly += 1

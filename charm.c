@@ -136,8 +136,8 @@ void check_invariants(struct node *node, struct context **pctx){
             printf("INVARIANT FAILED\n");
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
-            f->ctx = node->after;
-            f->choice = 0;
+            f->ctx = node->before;
+            f->choice = node->choice;
             f->node = node;
             queue_enqueue(failures, f);
         }
@@ -297,6 +297,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->len = node->len + weight;
         graph_add(next);
 
+        // TODO.  Is this the right place?  Don't check when choice?
         if (sc->invariants != VALUE_SET) {
             check_invariants(next, pinv_ctx);
         }
@@ -347,7 +348,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_SAFETY;
-        f->ctx = after;
+        f->ctx = ctx;
         f->choice = choice_copy;
         f->node = next;
         queue_enqueue(failures, f);
@@ -432,6 +433,25 @@ bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
     return false;
 }
 
+char *ctx_status(struct node *node, uint64_t ctx) {
+    if (node->state->choosing == ctx) {
+        return "choosing";
+    }
+    while (node->state->choosing != 0) {
+        node = node->parent;
+    }
+    struct edge *edge;
+    for (edge = node->fwd; edge != NULL; edge = edge->next) {
+        if (edge->ctx == ctx) {
+            break;
+        }
+    };
+    if (edge != NULL && edge->node == node) {
+        return "blocked";
+    }
+    return "runnable";
+}
+
 void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     char *s, *a;
 
@@ -507,18 +527,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         fprintf(file, "          \"mode\": \"failed\",\n");
     }
     else {
-        struct edge *edge;
-        for (edge = node->fwd; edge != NULL; edge = edge->next) {
-            if (edge->ctx == ctx) {
-                break;
-            }
-        };
-        if (edge != NULL && edge->node != node) {
-            fprintf(file, "          \"mode\": \"runnable\",\n");
-        }
-        else {
-            fprintf(file, "          \"mode\": \"blocked\",\n");
-        }
+        fprintf(file, "          \"mode\": \"%s\",\n", ctx_status(node, ctx));
     }
 
 #ifdef notdef
@@ -767,16 +776,60 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
 
 void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
             struct state *oldstate, struct context **oldctx, bool interrupt){
-    if (last->parent != NULL) {
-        path_dump(file, last->parent, last->before, last->choice, oldstate, oldctx, last->interrupt);
-        fprintf(file, "    },\n");
+    struct node *node = last;
+
+    last = last->parent;
+    if (last->parent == NULL) {
+        fprintf(file, "\n");
     }
+    else {
+        path_dump(file, last, last->before, last->choice, oldstate, oldctx, last->interrupt);
+        fprintf(file, ",\n");
+    }
+
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"id\": \"%d\",\n", node->id);
+
+    /* Find this context in the list of processes.
+     */
+    int pid;
+    for (pid = 0; pid < nprocesses; pid++) {
+        if (processes[pid] == ctx) {
+            break;
+        }
+    }
+    assert(pid < nprocesses);
+
+    struct context *context = value_get(ctx, NULL);
+    assert(context->phase != CTX_END);
+    char *name = value_string(context->name);
+    char *arg = value_string(context->arg);
+    // char *c = value_string(choice);
+    fprintf(file, "      \"tid\": \"%d\",\n", pid);
+    if (*arg == '(') {
+        fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
+    }
+    else {
+        fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
+    }
+    // fprintf(file, "      \"choice\": \"%s\",\n", c);
+    dumpfirst = true;
+    fprintf(file, "      \"microsteps\": [");
+    free(name);
+    free(arg);
+    // free(c);
+    memset(*oldctx, 0, sizeof(**oldctx));
+    (*oldctx)->pc = context->pc;
+
+    // Recreate the steps
+    processes[pid] = twostep(file, last, ctx, choice, interrupt, oldstate, oldctx);
+    fprintf(file, "\n      ],\n");
 
     /* Match each context to a process.
      */
     bool *matched = calloc(nprocesses, sizeof(bool));
     int nctxs;
-    uint64_t *ctxs = value_get(last->state->ctxbag, &nctxs);
+    uint64_t *ctxs = value_get(node->state->ctxbag, &nctxs);
     nctxs /= sizeof(uint64_t);
     for (int i = 0; i < nctxs; i += 2) {
         assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
@@ -800,45 +853,9 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
         }
     }
     free(matched);
-
-    /* See if we can find this context in the list of processes.  If not
-     * add it.
-     */
-    int pid;
-    for (pid = 0; pid < nprocesses; pid++) {
-        if (processes[pid] == ctx) {
-            break;
-        }
-    }
-    assert(pid < nprocesses);
-
-    struct context *context = value_get(ctx, NULL);
-    assert(context->phase != CTX_END);
-    char *name = value_string(context->name);
-    char *arg = value_string(context->arg);
-    // char *c = value_string(choice);
-    fprintf(file, "    {\n");
-    fprintf(file, "      \"id\": \"%d\",\n", last->id);
-    fprintf(file, "      \"tid\": \"%d\",\n", pid);
-    if (*arg == '(') {
-        fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
-    }
-    else {
-        fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
-    }
-    // fprintf(file, "      \"choice\": \"%s\",\n", c);
-    dumpfirst = true;
-    fprintf(file, "      \"microsteps\": [\n");
-    free(name);
-    free(arg);
-    // free(c);
-    memset(*oldctx, 0, sizeof(**oldctx));
-    (*oldctx)->pc = context->pc;
-
-    // Recreate the steps
-    processes[pid] = twostep(file, last, ctx, choice, interrupt, oldstate, oldctx);
-    fprintf(file, "\n      ],\n");
-    print_state(file, last);
+  
+    print_state(file, node);
+    fprintf(file, "    }");
 }
 
 static struct stack {
@@ -1015,6 +1032,9 @@ int main(int argc, char **argv){
     uint64_t ictx = value_put_context(&init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->invariants = VALUE_SET;
+    processes = new_alloc(uint64_t);
+    *processes = ictx;
+    nprocesses = 1;
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new(0);
@@ -1132,7 +1152,7 @@ int main(int argc, char **argv){
                 f->type = FAIL_TERMINATION;
                 f->ctx = node->before;
                 f->choice = node->choice;
-                f->node = node->parent;
+                f->node = node;
                 queue_enqueue(failures, f);
             }
         }
@@ -1175,14 +1195,14 @@ int main(int argc, char **argv){
         assert(0);
     }
 
-    fprintf(out, "  \"macrosteps\": [\n");
+    fprintf(out, "  \"macrosteps\": [");
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
+    fprintf(out, "\n");
     free(oldctx);
-    fprintf(out, "    }\n");
     fprintf(out, "  ],\n");
 
     fprintf(out, "  \"code\": [\n");

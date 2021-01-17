@@ -118,7 +118,7 @@ def file_include(name):
 def html_megastep(glob, step, tid, name, nmicrosteps):
     print("<tr id='mes%d'>"%(step-1))
     print("  <td align='right'>")
-    print("    %d"%step)
+    print("    %d&nbsp;"%step)
     print("  </td>")
 
     print("  <td>")

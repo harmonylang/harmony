@@ -21,7 +21,7 @@ function drawTimeLine(mes) {
   for (var y = 0; y < yboxes; y++) {
     var xboxes = y < yboxes - 1 ? 30 : (mes.nsteps % 30);
     for (var x = 0; x < xboxes; x++) {
-      c.fillStyle = t < currentTime ? "yellow" : "white";
+      c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
       c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
       c.stroke();
@@ -219,6 +219,9 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("mode")) {
     microsteps[t].mode = mis.mode;
   }
+  // else if (mis.hasOwnProperty("choose")) {
+  //   microsteps[t].mode = "choose XXX";
+  // }
   else {
     microsteps[t].mode = t == mes.startTime ? "running" : microsteps[t-1].mode;
   }
