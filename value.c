@@ -233,7 +233,8 @@ void append_printf(char **p, char *fmt, ...){
 static char *value_string_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_string_bool %llx\n", v);
+        fprintf(stderr, "value_string_bool %"PRIu64"\n", v);
+		assert(false);
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
     asprintf(&r, v == 0 ? "False" : "True");
@@ -243,7 +244,8 @@ static char *value_string_bool(uint64_t v) {
 static char *value_json_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_string_bool %llx\n", v);
+        fprintf(stderr, "value_json_bool %"PRIu64"\n", v);
+		assert(false);
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
     asprintf(&r, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");

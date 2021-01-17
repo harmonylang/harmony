@@ -342,7 +342,7 @@ def count(bg, elt):
     ;
 ;
 def bchoose(bg):
-    # TODO.  Assert that no elements are mapped to 0
+    # TODO. Assert that no elements are mapped to 0
     assert 0 not in { bg[k] for k in keys(bg) };
     result = choose(keys(bg));
 ;

@@ -129,7 +129,6 @@ void check_invariants(struct node *node, struct context **pctx){
         int cnt = invariant_cnt(code[(*pctx)->pc].env);
         bool b = invariant_check(node->state, pctx, (*pctx)->pc + cnt);
         if ((*pctx)->failure != 0) {
-            printf("IC FAIL %llx\n", (*pctx)->failure);
             printf("IC FAIL %s\n", value_string((*pctx)->failure));
         }
         if (!b) {
@@ -937,7 +936,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
         notfirst = true;
         fprintf(out, "\n");
     }
-    fprintf(out, "    \"%.*s\": { ", key_size, key);
+    fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
 
     struct json_value *jv = value;
     assert(jv->type == JV_MAP);

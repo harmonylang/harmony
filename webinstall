@@ -1,4 +1,4 @@
-dir=/people/rv22/harmony
+dir=/research/harmony
 cp harmony harmony.py $dir
 cp book/paper.pdf $dir/book.pdf
 cp HarmonyOnWindows.pdf $dir
