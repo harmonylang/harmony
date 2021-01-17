@@ -558,7 +558,10 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Cut(const void *env, struct state *state, struct context **pctx){
-    uint64_t v = ctx_pop(pctx);
+    const struct env_Cut *ec = env;
+    struct context *ctx = *pctx;
+
+    uint64_t v = dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
         assert(v != VALUE_SET);
         void *p = (void *) (v & ~VALUE_MASK);
@@ -567,14 +570,14 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         uint64_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx_push(pctx, vals[0]);
-        ctx_push(pctx, value_put_set(&vals[1], size - sizeof(uint64_t)));
+        ctx->vars = dict_store(ctx->vars, ec->set, value_put_set(&vals[1], size - sizeof(uint64_t)));
+        ctx->vars = dict_store(ctx->vars, ec->var, vals[0]);
         (*pctx)->pc++;
         return;
     }
     if ((v & VALUE_MASK) == VALUE_DICT) {
         assert(v != VALUE_DICT);
-        assert(false);
+        assert(false);              // TODO
         return;
     }
     assert(false);
@@ -596,27 +599,12 @@ void op_Del(const void *env, struct state *state, struct context **pctx){
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
     const struct env_DelVar *ed = env;
-    if (false) {
-        char *p = value_string(ed->name);
-        char *q = value_string((*pctx)->vars);
-        printf("DELVAR %s %s\n", p, q);
-        free(p);
-        free(q);
-    }
-
     (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
     (*pctx)->pc++;
 }
 
 void op_Dup(const void *env, struct state *state, struct context **pctx){
     uint64_t v = ctx_pop(pctx);
-
-    if (false) {
-        char *p = value_string(v);
-        printf("DUP %s\n", p);
-        free(p);
-    }
-
     ctx_push(pctx, v);
     ctx_push(pctx, v);
     (*pctx)->pc++;
@@ -1071,7 +1059,6 @@ void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
 void *init_AtomicInc(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
-void *init_Cut(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
 void *init_Dup(struct dict *map){ return NULL; }
 void *init_Pop(struct dict *map){ return NULL; }
@@ -1081,6 +1068,17 @@ void *init_Return(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
+
+void *init_Cut(struct dict *map){
+    struct env_Cut *env = new_alloc(struct env_Cut);
+    struct json_value *set = dict_lookup(map, "set", 3);
+    assert(set->type == JV_ATOM);
+    env->set = value_put_atom(set->u.atom.base, set->u.atom.len);
+    struct json_value *var = dict_lookup(map, "var", 3);
+    assert(var->type == JV_ATOM);
+    env->var = value_put_atom(var->u.atom.base, var->u.atom.len);
+    return env;
+}
 
 void *init_DelVar(struct dict *map){
     struct env_DelVar *env = new_alloc(struct env_DelVar);

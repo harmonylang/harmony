@@ -106,6 +106,10 @@ bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result);
 uint64_t dict_remove(uint64_t dict, uint64_t key);
 uint64_t bag_add(uint64_t bag, uint64_t v);
 
+struct env_Cut {
+    uint64_t set, var;
+};
+
 struct env_DelVar {
     uint64_t name;
 };

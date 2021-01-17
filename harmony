@@ -1095,27 +1095,31 @@ class SetIntLevelOp(Op):
 
 # Splits a non-empty set in its minimum element and its remainder
 class CutOp(Op):
+    def __init__(self, s, v):
+        self.s = s
+        self.v = v
+
     def __repr__(self):
-        return "Cut"
+        return "Cut(" + self.s[0] + ", " + self.v[0] + ")"
 
     def jdump(self):
-        return '{ "op": "Cut" }'
+        return '{ "op": "Cut", "set": \"%s\", "var": \"%s\" }'%(self.s[0], self.v[0])
 
     def explain(self):
-        return "pops a set or dict value and pushes the smallest element and the remainder"
+        return "remove smallest element from %s and assign to %s"%(self.s[0], self.v[0])
 
     def eval(self, state, context):
-        v = context.pop()
+        v = self.load(context, self.s)
         if isinstance(v, DictValue):
             if v.d == {}:
                 context.failure = "pc = " + str(context.pc) + \
                     ": Error: expected non-empty dict value"
             else:
                 select = min(v.d.keys(), key=keyValue)
-                context.push(v.d[select])
+                self.store(context, self.v, v.d[select])
                 copy = v.d.copy()
                 del copy[select]
-                context.push(DictValue(copy))
+                self.store(context, self.s, DictValue(copy))
                 context.pc += 1
         else:
             if not isinstance(v, SetValue):
@@ -1126,8 +1130,8 @@ class CutOp(Op):
                     ": Error: expected non-empty set value"
             else:
                 lst = sorted(v.s, key=keyValue)
-                context.push(lst[0])
-                context.push(SetValue(set(lst[1:])))
+                self.store(context, self.v, lst[0])
+                self.store(context, self.s, SetValue(set(lst[1:])))
                 context.pc += 1
 
 # Splits a tuple into its elements
@@ -2394,18 +2398,10 @@ class AST:
             code.append(NaryOp(("IsEmpty", file, line, column), 1))
             tst = len(code)
             code.append(None)       # going to plug in a Jump op here
-
-            # TODO.  Turn these four instructions into one instruction
-            code.append(LoadVarOp(S))
-            code.append(CutOp())  
-            code.append(StoreVarOp(S))
-            code.append(StoreVarOp(var))
-
+            code.append(CutOp(S, var))  
             self.rec_comprehension(scope, code, iter[1:], pc, N, vars + [var], ctype)
-
             code.append(JumpOp(pc))
             code[tst] = JumpCondOp(True, len(code))
-
             self.delete(scope, code, var)
             code.append(DelVarOp(S))
 
