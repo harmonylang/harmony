@@ -240,11 +240,15 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("mode")) {
     microsteps[t].mode = mis.mode;
   }
-  // else if (mis.hasOwnProperty("choose")) {
-  //   microsteps[t].mode = "choose XXX";
-  // }
   else {
     microsteps[t].mode = t == mes.startTime ? "running" : microsteps[t-1].mode;
+  }
+
+  if (mis.hasOwnProperty("choose")) {
+    microsteps[t].choose = "chose " + json_string(mis["choose"]);
+  }
+  else {
+    microsteps[t].choose = null;
   }
 
   if (mis.hasOwnProperty("failure")) {
@@ -305,7 +309,12 @@ function run_microstep(t) {
     mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
   }
 
-  stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
+  if (mis.failure != null) {
+    stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
+  }
+  else {
+    stackTrace(threads[mis.tid].tracetable, mis.trace, mis.choose);
+  }
 
   for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
     var tid = parseInt(mis.contexts[ctx].tid);
