@@ -339,7 +339,7 @@ function run_microstep(t) {
     threadtable.rows[mis.tid + 1].cells[1].innerHTML = mis.mode;
   }
 
-  coderow.innerHTML = mis.code.file + "/" + mis.code.line + ": " + mis.code.code;
+  coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
 
   currCloc = mis.cloc;
   currOffset = mis.offset;
