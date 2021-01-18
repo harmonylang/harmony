@@ -10,7 +10,7 @@ var threadtable = document.getElementById("threadtable");
 var coderow = document.getElementById("coderow");
 var container = document.getElementById('table-scroll');
 var currOffset = 0;
-var currCloc = 0;
+var currCloc = null;
 
 function drawTimeLine(mes) {
   var c = mes.canvas.getContext("2d");
@@ -157,6 +157,20 @@ function handleClick(e, mesIdx) {
   run_microsteps()
 }
 
+var noloc = { file: "", line: "", code: "" };
+
+function getCode(pc) {
+  var locs = state.locations;
+  while (pc >= 0) {
+    s = "" + pc;
+    if (locs.hasOwnProperty(s)) {
+      return locs[s];
+    }
+    pc--;
+  }
+  return noloc;
+}
+
 function handleKeyPress(e) {
   switch (e.key) {
     case 'ArrowLeft':
@@ -189,21 +203,21 @@ function handleKeyPress(e) {
       }
       run_microsteps();
       break;
+    case 'Enter':
+      if (currentTime < totalTime) {
+        var cloc = getCode(microsteps[currentTime].pc);
+        while (++currentTime < totalTime) {
+          var nloc = getCode(microsteps[currentTime].pc);
+          if (nloc != cloc) {
+            break;
+          }
+        }
+        run_microsteps();
+      }
+      break;
     default:
       // alert("unknown key " + e.code);
   }
-}
-
-function getCode(pc) {
-  locs = state.locations;
-  while (pc >= 0 ) {
-    s = "" + pc;
-    if (locs.hasOwnProperty(s)) {
-      return locs[s];
-    }
-    pc -= 1;
-  }
-  return { file: "", line: "", code: "" };
 }
 
 function init_microstep(masidx, misidx) {
@@ -327,13 +341,15 @@ function run_microstep(t) {
 
   coderow.innerHTML = mis.code.file + "/" + mis.code.line + ": " + mis.code.code;
 
-  // window.location.href = "#P" + mis.npc;
-  currCloc.style = "color:block;";
   currCloc = mis.cloc;
   currOffset = mis.offset;
 }
 
 function run_microsteps() {
+  if (currCloc != null) {
+    currCloc.style = "color:black;";
+    currCloc = null;
+  }
   for (var i = 0; i < nmegasteps; i++) {
     mestable.rows[i].cells[3].innerHTML = "";
     for (var j = 0; j < vardir.length; j++) {
