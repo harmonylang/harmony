@@ -2,11 +2,11 @@ from synch import *;
 
 const N = 5;
 
-forks = dict{ Lock() for i in {1..N} };
+forks = [Lock(),] * N;
 sema = Semaphore(N - 1);
 
 def diner(which):
-    let left, right = (which, (which % N) + 1):
+    let left, right = (which - 1, which % N):
         while choose({ False, True }):
             P(?sema);
             acquire(?forks[left]);

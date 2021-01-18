@@ -3,11 +3,11 @@ import synch;
 const N = 5;
 
 mutex = synch.Lock();
-forks = dict{ False for i in {1..N} };
-conds = dict{ synch.Condition(?mutex) for i in {1..N} };
+forks = [False,] * N;
+conds = [synch.Condition(?mutex),] * N;
 
 def diner(which):
-    let left, right = (which, (which % N) + 1):
+    let left, right = (which - 1, which % N):
         while choose({ False, True }):
             synch.acquire(?mutex);
             while forks[left] or forks[right]:
@@ -33,6 +33,7 @@ def diner(which):
         ;
     ;
 ;
+
 for i in {1..N}:
     spawn diner(i);
 ;

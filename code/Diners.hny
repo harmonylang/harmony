@@ -16,6 +16,7 @@ def diner(which):
         ;
     ;
 ;
+
 for i in {1..N}:
     spawn diner(i);
 ;
