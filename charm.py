@@ -291,7 +291,7 @@ def html_outer(glob):
     print("  </tr>")
     print("  <tr>")
     print("    <td colspan='2'>")
-    print("      <h2 style='color:blue;' id='coderow'>CODE GOES HERE</h2>")
+    print("      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>")
     print("    </td>")
     print("  </tr>")
     print("  <tr>")

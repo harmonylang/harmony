@@ -248,7 +248,7 @@ function init_microstep(masidx, misidx) {
     misidx: misidx,
     tid: parseInt(mas.tid),
     pc: parseInt(mis.pc),
-    invfails: mas.invfails,
+    invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
     contexts: mas.contexts
   };
 
