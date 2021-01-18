@@ -99,12 +99,12 @@ bool invariant_check(struct state *state, struct context **pctx, int end){
         struct op_info *oi = code[(*pctx)->pc].oi;
         int oldpc = (*pctx)->pc;
         (*oi->op)(code[oldpc].env, state, pctx);
-        assert((*pctx)->pc != oldpc);
-        assert((*pctx)->phase != CTX_END);
         if ((*pctx)->failure != 0) {
             (*pctx)->sp = 0;
             return false;
         }
+        assert((*pctx)->pc != oldpc);
+        assert((*pctx)->phase != CTX_END);
     }
     assert((*pctx)->sp == 1);
     (*pctx)->sp = 0;
@@ -627,7 +627,7 @@ void print_state(FILE *file, struct node *node){
             }
             else {
                 char *val = value_string(inv_ctx->failure);
-                fprintf(file, "          \"reason\": \"%s violated\"\n", val);
+                fprintf(file, "          \"reason\": \"%s\"\n", val + 1);
                 free(val);
             }
             nfailures++;
@@ -635,6 +635,7 @@ void print_state(FILE *file, struct node *node){
         }
     }
     fprintf(file, "\n      ],\n");
+    free(inv_ctx);
 
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
