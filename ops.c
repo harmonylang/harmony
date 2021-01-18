@@ -1118,7 +1118,7 @@ void *init_Frame(struct dict *map){
 
 void *init_IncVar(struct dict *map){
     struct env_IncVar *env = new_alloc(struct env_IncVar);
-    struct json_value *name = dict_lookup(map, "name", 4);
+    struct json_value *name = dict_lookup(map, "value", 5);
     assert(name->type == JV_ATOM);
     env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
     return env;
