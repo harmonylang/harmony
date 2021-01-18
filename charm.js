@@ -346,6 +346,7 @@ function run_microstep(t) {
 }
 
 function run_microsteps() {
+  coderow.innerHTML = "";
   if (currCloc != null) {
     currCloc.style = "color:black;";
     currCloc = null;
