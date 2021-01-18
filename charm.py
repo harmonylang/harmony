@@ -230,12 +230,15 @@ def html_botleft(glob):
     print("  <div id='table-scroll'>")
     print("    <table border='1'>")
     print("      <tbody>")
+    alter = False;
     for pc, instr in enumerate(glob.top["code"]):
+        if str(pc) in glob.top["locations"]:
+            alter = not alter;
         print("        <tr id='P%d'>"%pc)
         print("          <td align='right'>")
         print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc))
         print("          </td>")
-        print("          <td>")
+        print("          <td style='background-color: %s;'>"%("#E6E6E6" if alter else "white"))
         print("            <span title='%s' id='C%d'>"%(glob.top["explain"][pc], pc))
         print("              %s"%instr);
         print("            </span>")
