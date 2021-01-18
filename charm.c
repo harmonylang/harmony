@@ -377,7 +377,7 @@ void print_vars(FILE *file, uint64_t v){
 
 bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
 	int level = 0, orig_pc = pc;
-    while (pc > 0) {
+    while (--pc >= 0) {
         if (strcmp(code[pc].oi->name, "Return") == 0) {
 			level++;
 		}
@@ -427,7 +427,6 @@ bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
                 level--;
             }
         }
-        pc--;
     }
     return false;
 }
