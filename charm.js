@@ -107,6 +107,27 @@ function stringify_vars(obj) {
   return result;
 }
 
+function convert_var(obj) {
+  if (obj.type != "dict") {
+    return json_string(obj);
+  }
+  result = {};
+  for (var i = 0; i < obj.value.length; i++) {
+    var kv = obj.value[i];
+    var k = json_string(kv.key);
+    result[k] = convert_var(kv.value);
+  }
+  return result;
+}
+
+function convert_vars(obj) {
+  var result = {};
+  for (var k in obj) {
+    result[k] = convert_var(obj[k]);
+  }
+  return result;
+}
+
 function stackTrace(table, trace, failure) {
   table.innerHTML = "";
   for (var i = 0; i < trace.length; i++) {
@@ -251,7 +272,7 @@ function init_microstep(masidx, misidx) {
   }
 
   if (mis.hasOwnProperty("shared")) {
-    microsteps[t].shared = stringify_vars(mis.shared);
+    microsteps[t].shared = convert_vars(mis.shared);
   }
   else {
     microsteps[t].shared = microsteps[t-1].shared;
@@ -265,11 +286,24 @@ function init_macrostep(i) {
   }
 }
 
+function get_shared(shared, path) {
+  if (!shared.hasOwnProperty(path[0])) {
+    return "";
+  }
+  if (path.length == 1) {
+    return shared[path[0]];
+  }
+  return get_shared(shared[path[0]], path.slice(1));
+}
+
 function run_microstep(t) {
   var mis = microsteps[t];
   var mesrow = mestable.rows[mis.mesidx];
   mesrow.cells[3].innerHTML = mis.npc;
-  mesrow.cells[4].innerHTML = mis.shared;
+
+  for (var i = 0; i < vardir.length; i++) {
+    mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+  }
 
   stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
 
@@ -293,7 +327,9 @@ function run_microstep(t) {
 function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
     mestable.rows[i].cells[3].innerHTML = "";
-    mestable.rows[i].cells[4].innerHTML = "";
+    for (var j = 0; j < vardir.length; j++) {
+      mestable.rows[i].cells[j + 4].innerHTML = "";
+    }
   }
   for (var i = 0; i < nthreads; i++) {
     threadtable.rows[i + 1].cells[1].innerHTML = "init";

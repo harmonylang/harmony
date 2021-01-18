@@ -139,8 +139,9 @@ def html_megastep(glob, step, tid, name, nmicrosteps, width):
     print("  </td>")
 
     # print_vars(mas["shared"])
-    print("  <td colspan='%s'>"%width);
-    print("  </td>")
+    for i in range(width):
+      print("  <td>")
+      print("  </td>")
     print("</tr>")
 
 def vardim(d):
@@ -300,18 +301,24 @@ def html_outer(glob):
     print("  </tr>")
     print("</table>")
 
+def vardir_dump(d, path, index):
+    if isinstance(d, dict):
+        for k in sorted(d.keys()):
+            index = vardir_dump(d[k], path + [k], index)
+        return index
+    if index > 0:
+        print(",")
+    print("  " + str(path), end="")
+    return index + 1
+
 def html_script(glob):
     print("<script>")
     print("var nthreads = %d;"%glob.nthreads)
     print("var nmegasteps = %d;"%glob.nmegasteps)
-    # print("var megasteps = [")
-    # for step, mes in enumerate(top["megasteps"]):
-    #     print("  {")
-    #     print("    canvas: document.getElementById('timeline%d'),"%step)
-    #     print("    tid: %s,"%mes["tid"])
-    #     print("    nsteps: %d"%len(mes["microsteps"]))
-    #     print("  },")
-    # print("];")
+    print("var vardir = [")
+    vardir_dump(glob.vardir, [], 0)
+    print()
+    print("];")
     print("var state =")
     file_include("charm.json")
     print(";")
