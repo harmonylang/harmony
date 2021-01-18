@@ -4651,7 +4651,6 @@ def doCompile(filenames, consts, mods):
 
     scope = Scope(None)
     code = [
-        PushOp((novalue, None, None, None)),
         FrameOp(("__init__", None, None, None), [])
     ]
     if filenames == []:
@@ -4726,6 +4725,8 @@ def run(code, labels, blockflag):
     state = State(code, labels)
     ctx = ContextValue(("__init__", None, None, None), 0, novalue, novalue)
     ctx.atomic = 1
+    ctx.push("process")
+    ctx.push(novalue)
     bag_add(state.ctxbag, ctx)
     node = Node(state, 0, None, None, None, [], 0)
 

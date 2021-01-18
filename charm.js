@@ -134,8 +134,20 @@ function stackTrace(table, trace, failure) {
     var row = table.insertRow();
 
     var mcell = row.insertCell();
-    var mtext = document.createTextNode(trace[i].method);
-    mcell.appendChild(mtext);
+    mcell.innerHTML = trace[i].method;
+    switch (trace[i].calltype) {
+    case "process":
+        mcell.style.color = "blue";
+        break;
+    case "normal":
+        mcell.style.color = "black";
+        break;
+    case "interrupt":
+        mcell.style.color = "orange";
+        break;
+    default:
+        mcell.style.color = "red";
+    }
 
     var vcell = row.insertCell();
     var vtext = document.createTextNode(stringify_vars(trace[i].vars));
@@ -236,6 +248,7 @@ function init_microstep(masidx, misidx) {
     misidx: misidx,
     tid: parseInt(mas.tid),
     pc: parseInt(mis.pc),
+    invfails: mas.invfails,
     contexts: mas.contexts
   };
 
@@ -255,7 +268,37 @@ function init_microstep(masidx, misidx) {
     microsteps[t].mode = mis.mode;
   }
   else {
-    microsteps[t].mode = t == mes.startTime ? "running" : microsteps[t-1].mode;
+    microsteps[t].mode = misidx == 0 ? "running" : microsteps[t-1].mode;
+  }
+
+  if (mis.hasOwnProperty("atomic")) {
+    microsteps[t].atomic = mis["atomic"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].atomic = 0;
+  }
+  else {
+    microsteps[t].atomic = microsteps[t-1].atomic;
+  }
+
+  if (mis.hasOwnProperty("readonly")) {
+    microsteps[t].readonly = mis["readonly"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].readonly = 0;
+  }
+  else {
+    microsteps[t].readonly = microsteps[t-1].readonly;
+  }
+
+  if (mis.hasOwnProperty("interruptlevel")) {
+    microsteps[t].interruptlevel = mis["interruptlevel"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].interruptlevel = 0;
+  }
+  else {
+    microsteps[t].interruptlevel = microsteps[t-1].interruptlevel;
   }
 
   if (mis.hasOwnProperty("choose")) {
@@ -275,7 +318,7 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("trace")) {
     microsteps[t].trace = mis.trace;
   }
-  else if (t == 0) {
+  else if (misidx == 0) {
     microsteps[t].trace = [];
   }
   else {
@@ -291,6 +334,9 @@ function init_microstep(masidx, misidx) {
 
   if (mis.hasOwnProperty("shared")) {
     microsteps[t].shared = convert_vars(mis.shared);
+  }
+  else if (misidx == 0) {
+    microsteps[t].shared = {};
   }
   else {
     microsteps[t].shared = microsteps[t-1].shared;
@@ -314,6 +360,22 @@ function get_shared(shared, path) {
   return get_shared(shared[path[0]], path.slice(1));
 }
 
+function get_status(ctx) {
+  var status = ctx.mode;
+  if (status != "terminated") {
+    if (ctx.atomic > 0) {
+      status += " atomic";
+    }
+    if (ctx.readonly > 0) {
+      status += " read-only";
+    }
+    if (ctx.interruptlevel > 0) {
+      status += " interrupts-disabled";
+    }
+  }
+  return status;
+}
+
 function run_microstep(t) {
   var mis = microsteps[t];
   var mesrow = mestable.rows[mis.mesidx];
@@ -332,14 +394,23 @@ function run_microstep(t) {
 
   for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
     var tid = parseInt(mis.contexts[ctx].tid);
-    threadtable.rows[tid + 1].cells[1].innerHTML = mis.contexts[ctx].mode;
+    threadtable.rows[tid + 1].cells[1].innerHTML = get_status(mis.contexts[ctx]);
   }
   var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {
-    threadtable.rows[mis.tid + 1].cells[1].innerHTML = mis.mode;
+    threadtable.rows[mis.tid + 1].cells[1].innerHTML = get_status(mis);
   }
 
-  coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
+  if (mis.invfails.length > 0) {
+    inv = mis.invfails[0];
+    code = getCode(inv.pc);
+    coderow.style.color = "red";
+    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + code.code + " (" + inv.reason + ")";
+  }
+  else {
+    coderow.style.color = "blue";
+    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
+  }
 
   currCloc = mis.cloc;
   currOffset = mis.offset;
@@ -348,7 +419,7 @@ function run_microstep(t) {
 function run_microsteps() {
   coderow.innerHTML = "";
   if (currCloc != null) {
-    currCloc.style = "color:black;";
+    currCloc.style.color = "black";
     currCloc = null;
   }
   for (var i = 0; i < nmegasteps; i++) {
@@ -369,7 +440,7 @@ function run_microsteps() {
   }
   container.scrollTop = currOffset - 75;
 
-  currCloc.style = "color:red;";
+  currCloc.style.color = "red";
 
   var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
   for (var mes = 0; mes < nmegasteps; mes++) {

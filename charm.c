@@ -127,9 +127,10 @@ void check_invariants(struct node *node, struct context **pctx){
         (*pctx)->pc = vals[i] >> VALUE_BITS;
         assert(strcmp(code[(*pctx)->pc].oi->name, "Invariant") == 0);
         int cnt = invariant_cnt(code[(*pctx)->pc].env);
-        bool b = invariant_check(node->state, pctx, (*pctx)->pc + cnt);
+        bool b = invariant_check(state, pctx, (*pctx)->pc + cnt);
         if ((*pctx)->failure != 0) {
             printf("IC FAIL %s\n", value_string((*pctx)->failure));
+            b = false;
         }
         if (!b) {
             printf("INVARIANT FAILED\n");
@@ -375,8 +376,32 @@ void print_vars(FILE *file, uint64_t v){
     fprintf(file, " }");
 }
 
-bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
+bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars){
+    if (fp == 0) {
+        return false;
+    }
+    assert(fp >= 4);
+
 	int level = 0, orig_pc = pc;
+    if (strcmp(code[pc].oi->name, "Frame") == 0) {
+        uint64_t ct = ctx->stack[ctx->sp - 2];
+        assert((ct & VALUE_MASK) == VALUE_INT);
+        switch (ct >> VALUE_BITS) {
+        case CALLTYPE_PROCESS:
+            pc++;
+            break;
+        case CALLTYPE_INTERRUPT:
+        case CALLTYPE_NORMAL:
+            {
+                uint64_t retaddr = ctx->stack[ctx->sp - 3];
+                assert((retaddr & VALUE_MASK) == VALUE_PC);
+                pc = retaddr >> VALUE_BITS;
+            }
+            break;
+        default:
+            assert(false);
+        }
+    }
     while (--pc >= 0) {
         if (strcmp(code[pc].oi->name, "Return") == 0) {
 			level++;
@@ -388,7 +413,7 @@ bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
-					if (print_method(file, ctx, npc, nfp, nvars)) {
+					if (print_trace(file, ctx, npc, nfp, nvars)) {
                         fprintf(file, ",\n");
                     }
 				}
@@ -397,23 +422,30 @@ bool print_method(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars
 
 				const struct env_Frame *ef = code[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
-				if (fp == 0) {
-					if (ctx->sp > 1) {
-						a = value_string(ctx->stack[1]);
-					}
-				}
-				else {
-					a = value_string(ctx->stack[fp - 3]);
-				}
-				if (a == NULL) {
-					fprintf(file, "              \"method\": \"%s()\",\n", s + 1);
-				}
-				else if (*a == '(') {
+                a = value_string(ctx->stack[fp - 3]);
+				if (*a == '(') {
 					fprintf(file, "              \"method\": \"%s%s\",\n", s + 1, a);
 				}
 				else {
 					fprintf(file, "              \"method\": \"%s(%s)\",\n", s + 1, a);
 				}
+
+                uint64_t ct = ctx->stack[fp - 4];
+                assert((ct & VALUE_MASK) == VALUE_INT);
+                switch (ct >> VALUE_BITS) {
+                case CALLTYPE_PROCESS:
+                    fprintf(file, "              \"calltype\": \"process\",\n");
+                    break;
+                case CALLTYPE_NORMAL:
+                    fprintf(file, "              \"calltype\": \"normal\",\n");
+                    break;
+                case CALLTYPE_INTERRUPT:
+                    fprintf(file, "              \"calltype\": \"interrupt\",\n");
+                    break;
+                default:
+                    assert(false);
+                }
+
 				free(s);
 				free(a);
 				fprintf(file, "              \"vars\": ");
@@ -485,7 +517,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 #endif
 
     fprintf(file, "          \"trace\": [\n");
-    print_method(file, c, c->pc, c->fp, c->vars);
+    print_trace(file, c, c->pc, c->fp, c->vars);
     fprintf(file, "\n");
     fprintf(file, "          ],\n");
 
@@ -508,7 +540,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     }
 
     if (c->interruptlevel) {
-        fprintf(file, "          \"interruptlevel\": \"True\",\n");
+        fprintf(file, "          \"interruptlevel\": \"1\",\n");
     }
 
     if (c->atomic != 0) {
@@ -557,6 +589,53 @@ void print_state(FILE *file, struct node *node){
     fprintf(file, ",\n");
 #endif
 
+    struct state *state = node->state;
+    extern int invariant_cnt(const void *env);
+    struct context *inv_ctx = new_alloc(struct context);
+    uint64_t inv_nv = value_put_atom("name", 4);
+    uint64_t inv_tv = value_put_atom("tag", 3);
+    inv_ctx->name = value_put_atom("__invariant__", 13);
+    inv_ctx->arg = VALUE_DICT;
+    inv_ctx->this = VALUE_DICT;
+    inv_ctx->vars = VALUE_DICT;
+    inv_ctx->atomic = inv_ctx->readonly = 1;
+    inv_ctx->interruptlevel = false;
+
+    fprintf(file, "      \"invfails\": [");
+    assert((state->invariants & VALUE_MASK) == VALUE_SET);
+    int size;
+    uint64_t *vals = value_get(state->invariants, &size);
+    size /= sizeof(uint64_t);
+    int nfailures = 0;
+    for (int i = 0; i < size; i++) {
+        assert((vals[i] & VALUE_MASK) == VALUE_PC);
+        inv_ctx->pc = vals[i] >> VALUE_BITS;
+        assert(strcmp(code[inv_ctx->pc].oi->name, "Invariant") == 0);
+        int cnt = invariant_cnt(code[inv_ctx->pc].env);
+        bool b = invariant_check(state, &inv_ctx, inv_ctx->pc + cnt);
+        if (inv_ctx->failure != 0) {
+            b = false;
+        }
+        if (!b) {
+            if (nfailures != 0) {
+                fprintf(file, ",");
+            }
+            fprintf(file, "\n        {\n");
+            fprintf(file, "          \"pc\": \"%"PRIu64"\",\n", vals[i] >> VALUE_BITS);
+            if (inv_ctx->failure == 0) {
+                fprintf(file, "          \"reason\": \"invariant violated\"\n");
+            }
+            else {
+                char *val = value_string(inv_ctx->failure);
+                fprintf(file, "          \"reason\": \"%s violated\"\n", val);
+                free(val);
+            }
+            nfailures++;
+            fprintf(file, "        }");
+        }
+    }
+    fprintf(file, "\n      ],\n");
+
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
         print_context(file, processes[i], i, node);
@@ -595,7 +674,7 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
     if (newctx->fp != oldctx->fp) {
         fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
         fprintf(file, "          \"trace\": [\n");
-        print_method(file, newctx, newctx->pc, newctx->fp, newctx->vars);
+        print_trace(file, newctx, newctx->pc, newctx->fp, newctx->vars);
         fprintf(file, "\n");
         fprintf(file, "          ],\n");
     }
@@ -614,6 +693,9 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
     }
     if (newctx->readonly != oldctx->readonly) {
         fprintf(file, "          \"readonly\": \"%d\",\n", newctx->readonly);
+    }
+    if (newctx->interruptlevel != oldctx->interruptlevel) {
+        fprintf(file, "          \"interruptlevel\": \"%d\",\n", newctx->interruptlevel ? 1 : 0);
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
@@ -1016,18 +1098,19 @@ int main(int argc, char **argv){
     }
 
     // Create an initial state
-    struct context init_ctx;
-    memset(&init_ctx, 0, sizeof(init_ctx));
+    struct context *init_ctx = new_alloc(struct context);;
     uint64_t nv = value_put_atom("name", 4);
     uint64_t tv = value_put_atom("tag", 3);
-    init_ctx.name = value_put_atom("__init__", 8);
-    init_ctx.arg = VALUE_DICT;
-    init_ctx.this = VALUE_DICT;
-    init_ctx.vars = VALUE_DICT;
-    init_ctx.atomic = 1;
+    init_ctx->name = value_put_atom("__init__", 8);
+    init_ctx->arg = VALUE_DICT;
+    init_ctx->this = VALUE_DICT;
+    init_ctx->vars = VALUE_DICT;
+    init_ctx->atomic = 1;
+    ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
+    ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
-    uint64_t ictx = value_put_context(&init_ctx);
+    uint64_t ictx = value_put_context(init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->invariants = VALUE_SET;
     processes = new_alloc(uint64_t);
@@ -1190,7 +1273,7 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     default:
-        assert(0);
+        assert(false);
     }
 
     fprintf(out, "  \"macrosteps\": [");

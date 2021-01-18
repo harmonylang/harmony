@@ -4,6 +4,10 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
+#define CALLTYPE_PROCESS       1
+#define CALLTYPE_NORMAL        2
+#define CALLTYPE_INTERRUPT     3
+
 struct queue *queue_init(void);
 void queue_enqueue(struct queue *queue, void *item);
 void queue_prepend(struct queue *queue, void *item);
@@ -105,6 +109,7 @@ uint64_t dict_load(uint64_t dict, uint64_t key);
 bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result);
 uint64_t dict_remove(uint64_t dict, uint64_t key);
 uint64_t bag_add(uint64_t bag, uint64_t v);
+void ctx_push(struct context **pctx, uint64_t v);
 
 struct env_Cut {
     uint64_t set, var;

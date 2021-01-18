@@ -12,10 +12,6 @@
 
 #define MAX_ARITY   10
 
-#define CALLTYPE_PROCESS       1
-#define CALLTYPE_NORMAL        2
-#define CALLTYPE_INTERRUPT     3
-
 struct val_info {
     int size, index;
     uint64_t *vals;

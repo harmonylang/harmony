@@ -196,7 +196,7 @@ def html_top(glob):
     print("        Thread")
     print("      </th>")
     print("      <th align='center' rowspan='%d'>"%height)
-    print("        Instructions")
+    print("        Instructions Executed")
     print("      </th>")
     print("      <th align='center' rowspan='%d'>"%height)
     print("        &nbsp;PC&nbsp;")
