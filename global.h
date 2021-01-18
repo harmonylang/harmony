@@ -119,6 +119,10 @@ struct env_Frame {
     struct var_tree *args;
 };
 
+struct env_IncVar {
+    uint64_t name;
+};
+
 struct env_Invariant {
     int cnt;
 };

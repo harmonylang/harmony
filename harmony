@@ -1249,6 +1249,24 @@ class LoadVarOp(Op):
             context.push(self.load(context, self.v))
         context.pc += 1
 
+class IncVarOp(Op):
+    def __init__(self, v):
+        self.v = v
+
+    def __repr__(self):
+        return "IncVar " + self.convert(self.v)
+
+    def jdump(self):
+        return '{ "op": "IncVar", "value": "%s" }'%self.convert(self.v)
+
+    def explain(self):
+        return "increment the value of " + self.convert(self.v)
+
+    def eval(self, state, context):
+        v = self.load(context, self.v)
+        self.store(context, self.v, v + 1)
+        context.pc += 1
+
 class PushOp(Op):
     def __init__(self, constant):
         self.constant = constant
@@ -2360,17 +2378,21 @@ class AST:
             elif ctype == "list":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
                 # TODO.  Turn these four instructions into 1 instruction
-                code.append(LoadVarOp(N))
-                code.append(PushOp((1, file, line, column)))
-                code.append(NaryOp(("+", file, line, column), 2))
-                code.append(StoreVarOp(N))
+                code.append(IncVarOp(N))
+                if False:
+                    code.append(LoadVarOp(N))
+                    code.append(PushOp((1, file, line, column)))
+                    code.append(NaryOp(("+", file, line, column), 2))
+                    code.append(StoreVarOp(N))
             elif ctype == "bag":
                 code.append(NaryOp(("BagAdd", file, line, column), 2))
                 # TODO.  Ditto
-                code.append(LoadVarOp(N))
-                code.append(PushOp((1, file, line, column)))
-                code.append(NaryOp(("+", file, line, column), 2))
-                code.append(StoreVarOp(N))
+                code.append(IncVarOp(N))
+                if False:
+                    code.append(LoadVarOp(N))
+                    code.append(PushOp((1, file, line, column)))
+                    code.append(NaryOp(("+", file, line, column), 2))
+                    code.append(StoreVarOp(N))
             return
 
         (type, rest) = iter[0]

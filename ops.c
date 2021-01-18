@@ -635,6 +635,19 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_IncVar(const void *env, struct state *state, struct context **pctx){
+    const struct env_IncVar *ei = env;
+    struct context *ctx = *pctx;
+
+    assert((ctx->vars & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t v = dict_load(ctx->vars, ei->name);
+    assert((v & VALUE_MASK) == VALUE_INT);
+    v += 1 << VALUE_BITS;
+    ctx->vars = dict_store(ctx->vars, ei->name, v);
+    (*pctx)->pc++;
+}
+
 void op_Invariant(const void *env, struct state *state, struct context **pctx){
     const struct env_Invariant *ei = env;
 
@@ -1100,6 +1113,14 @@ void *init_Frame(struct dict *map){
     int index = 0;
     env->args = var_parse(args->u.atom.base, args->u.atom.len, &index);
 
+    return env;
+}
+
+void *init_IncVar(struct dict *map){
+    struct env_IncVar *env = new_alloc(struct env_IncVar);
+    struct json_value *name = dict_lookup(map, "name", 4);
+    assert(name->type == JV_ATOM);
+    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
     return env;
 }
 
@@ -2341,6 +2362,7 @@ struct op_info op_table[] = {
 	{ "DelVar", init_DelVar, op_DelVar },
 	{ "Dup", init_Dup, op_Dup },
 	{ "Frame", init_Frame, op_Frame },
+	{ "IncVar", init_IncVar, op_IncVar },
 	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
 	{ "JumpCond", init_JumpCond, op_JumpCond },
