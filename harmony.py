@@ -5516,6 +5516,10 @@ def main():
         with open("harmony.json", "w") as fd:
             dumpCode("json", code, scope, f=fd)
         r = os.system("./charm harmony.json");
+        if r != 0:
+            print("charm model checker failed")
+            sys.exit(r);
+        r = os.system("python3 charm.py");
         sys.exit(r);
 
     if printCode == None:

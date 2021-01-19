@@ -73,76 +73,34 @@ def json_string(js):
         return "CONTEXT(" + json_string(v["name"]) + ")"
     assert False
 
-def print_vars(d):
-    print("<td>")
-    first = True
-    for k, v in d.items():
-        if first:
-            first = False
-        else:
-            print(",", end="")
-        print(" %s: %s"%(k, json_string(v)), end="")
-    print("</td>")
+def file_include(name, f):
+    with open(name) as g:
+        print(g.read(), file=f)
 
-def print_range(mis, start, end, first):
-    if not first:
-        print(",", end="")
-    if start + 1 == end:
-        print("%s"%mis[start]["pc"], end="")
-    else:
-        print("%s-%s"%(mis[start]["pc"], mis[end-1]["pc"]), end="")
+def html_megastep(glob, step, tid, name, nmicrosteps, width, f):
+    print("<tr id='mes%d'>"%(step-1), file=f)
+    print("  <td align='right'>", file=f)
+    print("    %d&nbsp;"%step, file=f)
+    print("  </td>", file=f)
 
-if False:
-    mis = mas["microsteps"]
-    start = 0
-    first = True
-    for i in range(1, len(mis)):
-        if "interrupt" in mis[i-1]:
-            print_range(mis, start, i-1, first)
-            first = False
-            start = i
-            print(",interrupt", end="")
-        elif "choose" in mis[i]:
-            print_range(mis, start, i+1, first)
-            first = False
-            start = i+1
-            print("(choose %s)"%json_string(mis[i]["choose"]), end="")
-        elif int(mis[i]["pc"]) != int(mis[i-1]["pc"]) + 1:
-            print_range(mis, start, i, first)
-            first = False
-            start = i
-    print_range(mis, start, len(mis), first)
-    print("] ", end="")
+    print("  <td>", file=f)
+    print("    T%s: %s"%(tid, name), file=f, end="")
+    print("  </td>", file=f)
 
-def file_include(name):
-    with open(name) as f:
-        print(f.read())
-
-def html_megastep(glob, step, tid, name, nmicrosteps, width):
-    print("<tr id='mes%d'>"%(step-1))
-    print("  <td align='right'>")
-    print("    %d&nbsp;"%step)
-    print("  </td>")
-
-    print("  <td>")
-    print("    T%s: %s"%(tid, name), end="")
-    print("  </td>")
-
-    print("  <td>")
+    print("  <td>", file=f)
     time = nmicrosteps
     nrows = (time + 29) // 30
-    print("    <canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows))
-    print("    </canvas>")
-    print("  </td>")
+    print("    <canvas id='timeline%d' width='300px' height='%dpx'>"%(step-1, 10*nrows), file=f)
+    print("    </canvas>", file=f)
+    print("  </td>", file=f)
 
-    print("  <td align='center'>");
-    print("  </td>")
+    print("  <td align='center'>", file=f);
+    print("  </td>", file=f)
 
-    # print_vars(mas["shared"])
     for i in range(width):
-      print("  <td>")
-      print("  </td>")
-    print("</tr>")
+      print("  <td>", file=f)
+      print("  </td>", file=f)
+    print("</tr>", file=f)
 
 def vardim(d):
     totalwidth = 0
@@ -157,55 +115,55 @@ def vardim(d):
         return (1, 0)
     return (totalwidth, maxheight)
 
-def varhdr(d, name, nrows):
+def varhdr(d, name, nrows, f):
     q = queue.Queue()
     level = 0
     q.put((d, level))
     while not q.empty():
         (nd, nl) = q.get()
         if nl > level:
-            print("</tr><tr>")
+            print("</tr><tr>", file=f)
             level = nl
         if isinstance(nd, dict):
             for k in sorted(nd.keys()):
                 (w,h) = vardim(nd[k])
                 if h == 0:
-                    print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,k))
+                    print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,k), file=f)
                 else:
-                    print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,k))
+                    print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,k), file=f)
                 q.put((nd[k], nl+1))
 
-def html_top(glob):
+def html_top(glob, f):
     (width, height) = vardim(glob.vardir)
-    print("<table border='1'>")
-    print("  <thead>")
-    print("    <tr>")
-    print("      <th colspan='4' style='color:red;'>")
-    print("        Issue:", glob.top["issue"])
-    print("      </th>")
-    print("      <th align='center' colspan='%d'>"%width)
-    print("        Shared Variables")
-    print("      </th>")
-    print("    </tr>")
+    print("<table border='1'>", file=f)
+    print("  <thead>", file=f)
+    print("    <tr>", file=f)
+    print("      <th colspan='4' style='color:red;'>", file=f)
+    print("        Issue:", glob.top["issue"], file=f)
+    print("      </th>", file=f)
+    print("      <th align='center' colspan='%d'>"%width, file=f)
+    print("        Shared Variables", file=f)
+    print("      </th>", file=f)
+    print("    </tr>", file=f)
 
-    print("    <tr>")
-    print("      <th align='center' rowspan='%d'>"%height)
-    print("        Step")
-    print("      </th>")
-    print("      <th align='center' rowspan='%d'>"%height)
-    print("        Thread")
-    print("      </th>")
-    print("      <th align='center' rowspan='%d'>"%height)
-    print("        Instructions Executed")
-    print("      </th>")
-    print("      <th align='center' rowspan='%d'>"%height)
-    print("        &nbsp;PC&nbsp;")
-    print("      </th>")
-    varhdr(glob.vardir, "", height)
-    print("    </tr>")
-    print("  </thead>")
+    print("    <tr>", file=f)
+    print("      <th align='center' rowspan='%d'>"%height, file=f)
+    print("        Step", file=f)
+    print("      </th>", file=f)
+    print("      <th align='center' rowspan='%d'>"%height, file=f)
+    print("        Thread", file=f)
+    print("      </th>", file=f)
+    print("      <th align='center' rowspan='%d'>"%height, file=f)
+    print("        Instructions Executed", file=f)
+    print("      </th>", file=f)
+    print("      <th align='center' rowspan='%d'>"%height, file=f)
+    print("        &nbsp;PC&nbsp;", file=f)
+    print("      </th>", file=f)
+    varhdr(glob.vardir, "", height, f)
+    print("    </tr>", file=f)
+    print("  </thead>", file=f)
 
-    print("  <tbody id='mestable'>")
+    print("  <tbody id='mestable'>", file=f)
     assert isinstance(glob.top["macrosteps"], list)
     nsteps = 0
     tid = None
@@ -216,136 +174,136 @@ def html_top(glob):
             nmicrosteps += len(mas["microsteps"])
         else:
             if tid != None:
-                html_megastep(glob, nsteps, tid, name, nmicrosteps, width)
+                html_megastep(glob, nsteps, tid, name, nmicrosteps, width, f)
             nsteps += 1
             tid = mas["tid"]
             name = mas["name"]
             nmicrosteps = len(mas["microsteps"])
-    html_megastep(glob, nsteps, tid, name, nmicrosteps, width)
-    print("  </tbody>")
-    print("</table>")
+    html_megastep(glob, nsteps, tid, name, nmicrosteps, width, f)
+    print("  </tbody>", file=f)
+    print("</table>", file=f)
 
-def html_botleft(glob):
-    print("<div id='table-wrapper'>")
-    print("  <div id='table-scroll'>")
-    print("    <table border='1'>")
-    print("      <tbody>")
+def html_botleft(glob, f):
+    print("<div id='table-wrapper'>", file=f)
+    print("  <div id='table-scroll'>", file=f)
+    print("    <table border='1'>", file=f)
+    print("      <tbody>", file=f)
     alter = False;
     for pc, instr in enumerate(glob.top["code"]):
         if str(pc) in glob.top["locations"]:
             alter = not alter;
-        print("        <tr id='P%d'>"%pc)
-        print("          <td align='right'>")
-        print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc))
-        print("          </td>")
-        print("          <td style='background-color: %s;'>"%("#E6E6E6" if alter else "white"))
-        print("            <span title='%s' id='C%d'>"%(glob.top["explain"][pc], pc))
-        print("              %s"%instr);
-        print("            </span>")
-        print("          </td>")
-        print("        </tr>")
-    print("      </body>")
-    print("    </table>")
-    print("  </div>")
-    print("</div>")
+        print("        <tr id='P%d'>"%pc, file=f)
+        print("          <td align='right'>", file=f)
+        print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc), file=f)
+        print("          </td>", file=f)
+        print("          <td style='background-color: %s;'>"%("#E6E6E6" if alter else "white"), file=f)
+        print("            <span title='%s' id='C%d'>"%(glob.top["explain"][pc], pc), file=f)
+        print("              %s"%instr, file=f);
+        print("            </span>", file=f)
+        print("          </td>", file=f)
+        print("        </tr>", file=f)
+    print("      </body>", file=f)
+    print("    </table>", file=f)
+    print("  </div>", file=f)
+    print("</div>", file=f)
 
-def html_botright(glob):
-    print("<table border='1' id='threadtable'>")
-    print("  <thead>")
-    print("    <tr>")
-    print("      <th>")
-    print("        Thread")
-    print("      </th>")
-    print("      <th>")
-    print("        Status")
-    print("      </th>")
-    print("      <th>")
-    print("        Stack Trace")
-    print("      </th>")
-    print("    </tr>")
-    print("  </thead>")
-    print("  <tbody>")
+def html_botright(glob, f):
+    print("<table border='1' id='threadtable'>", file=f)
+    print("  <thead>", file=f)
+    print("    <tr>", file=f)
+    print("      <th>", file=f)
+    print("        Thread", file=f)
+    print("      </th>", file=f)
+    print("      <th>", file=f)
+    print("        Status", file=f)
+    print("      </th>", file=f)
+    print("      <th>", file=f)
+    print("        Stack Trace", file=f)
+    print("      </th>", file=f)
+    print("    </tr>", file=f)
+    print("  </thead>", file=f)
+    print("  <tbody>", file=f)
     maxtid = 0
     for i in range(glob.nthreads):
-        print("    <tr id='thread%d'>"%i)
-        print("      <td align='center'>")
-        print("        T%d"%i)
-        print("      </td>")
-        print("      <td align='center'>")
-        print("        init")
-        print("      </td>")
-        print("      <td>")
-        print("        <table id='threadinfo%d' border='1'>"%i)
-        print("        </table>")
-        print("      </td>")
-        print("    </tr>")
-    print("  </tbody>")
-    print("</table>")
+        print("    <tr id='thread%d'>"%i, file=f)
+        print("      <td align='center'>", file=f)
+        print("        T%d"%i, file=f)
+        print("      </td>", file=f)
+        print("      <td align='center'>", file=f)
+        print("        init", file=f)
+        print("      </td>", file=f)
+        print("      <td>", file=f)
+        print("        <table id='threadinfo%d' border='1'>"%i, file=f)
+        print("        </table>", file=f)
+        print("      </td>", file=f)
+        print("    </tr>", file=f)
+    print("  </tbody>", file=f)
+    print("</table>", file=f)
 
-def html_outer(glob):
-    print("<table>")
-    print("  <tr>")
-    print("    <td colspan='2'>")
-    html_top(glob)
-    print("    </td>")
-    print("  </tr>")
-    print("  <tr>")
-    print("    <td colspan='2'>")
-    print("      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>")
-    print("    </td>")
-    print("  </tr>")
-    print("  <tr>")
-    print("    <td valign='top'>")
-    html_botleft(glob)
-    print("    </td>")
-    print("    <td valign='top'>")
-    html_botright(glob)
-    print("    </td>")
-    print("  </tr>")
-    print("</table>")
+def html_outer(glob, f):
+    print("<table>", file=f)
+    print("  <tr>", file=f)
+    print("    <td colspan='2'>", file=f)
+    html_top(glob, f)
+    print("    </td>", file=f)
+    print("  </tr>", file=f)
+    print("  <tr>", file=f)
+    print("    <td colspan='2'>", file=f)
+    print("      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>", file=f)
+    print("    </td>", file=f)
+    print("  </tr>", file=f)
+    print("  <tr>", file=f)
+    print("    <td valign='top'>", file=f)
+    html_botleft(glob, f)
+    print("    </td>", file=f)
+    print("    <td valign='top'>", file=f)
+    html_botright(glob, f)
+    print("    </td>", file=f)
+    print("  </tr>", file=f)
+    print("</table>", file=f)
 
-def vardir_dump(d, path, index):
+def vardir_dump(d, path, index, f):
     if isinstance(d, dict):
         for k in sorted(d.keys()):
-            index = vardir_dump(d[k], path + [k], index)
+            index = vardir_dump(d[k], path + [k], index, f)
         return index
     if index > 0:
-        print(",")
-    print("  " + str(path), end="")
+        print(",", file=f)
+    print("  " + str(path), end="", file=f)
     return index + 1
 
-def html_script(glob):
-    print("<script>")
-    print("var nthreads = %d;"%glob.nthreads)
-    print("var nmegasteps = %d;"%glob.nmegasteps)
-    print("var vardir = [")
-    vardir_dump(glob.vardir, [], 0)
-    print()
-    print("];")
-    print("var state =")
-    file_include("charm.json")
-    print(";")
-    file_include("charm.js")
-    print("</script>")
+def html_script(glob, f):
+    print("<script>", file=f)
+    print("var nthreads = %d;"%glob.nthreads, file=f)
+    print("var nmegasteps = %d;"%glob.nmegasteps, file=f)
+    print("var vardir = [", file=f)
+    vardir_dump(glob.vardir, [], 0, f)
+    print(file=f)
+    print("];", file=f)
+    print("var state =", file=f)
+    file_include("charm.json", f)
+    print(";", file=f)
+    file_include("charm.js", f)
+    print("</script>", file=f)
 
-def html_body(glob):
-    print("<body>")
-    html_outer(glob)
-    html_script(glob)
-    print("</body>")
+def html_body(glob, f):
+    print("<body>", file=f)
+    html_outer(glob, f)
+    html_script(glob, f)
+    print("</body>", file=f)
 
-def html_head():
-    print("<head>")
-    print("  <style>")
-    print(style)
-    print("  </style>")
-    print("</head>")
+def html_head(f):
+    print("<head>", file=f)
+    print("  <style>", file=f)
+    print(style, file=f)
+    print("  </style>", file=f)
+    print("</head>", file=f)
 
-def html(glob):
-    print("<html>")
-    html_head()
-    html_body(glob)
-    print("</html>")
+def html(glob, f):
+    print("<html>", file=f)
+    html_head(f)
+    html_body(glob, f)
+    print("</html>", file=f)
 
 def var_convert(v):
     if v["type"] != "dict":
@@ -392,6 +350,8 @@ def main():
                 if "shared" in mis:
                     vars_add(glob.vardir, mis["shared"])
 
-    html(glob)
+    with open("harmony.html", "w") as out:
+        html(glob, out)
 
-main()
+if __name__ == "__main__":
+    main()
