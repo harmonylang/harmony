@@ -98,7 +98,7 @@ def html_megastep(glob, step, tid, name, nmicrosteps, width, f):
     print("  </td>", file=f)
 
     for i in range(width):
-      print("  <td>", file=f)
+      print("  <td align='center'>", file=f)
       print("  </td>", file=f)
     print("</tr>", file=f)
 

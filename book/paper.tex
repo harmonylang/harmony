@@ -1047,8 +1047,8 @@ An address is itself a Harmony value.
 #states 32
 Safety Violation
 T0: __init__() [0-5,32-40] { count: 0, done: [ False, False ] }
-T1: incrementer(0) [6 - 9] { count: 0, done: [ False, False ] }
-T2: incrementer(1) [6 -18] { count: 1, done: [ False, True  ] }
+T1: incrementer(0) [ 6- 9] { count: 0, done: [ False, False ] }
+T2: incrementer(1) [ 6-18] { count: 1, done: [ False, True  ] }
 T1: incrementer(0) [10-28] { count: 1, done: [ True,  True  ] }
 Harmony assertion failed: 1
 open file:///Users/rvr/github/harmony/harmony.html for more information
@@ -1084,12 +1084,12 @@ At first there is one thread, named \texttt{\_\_init\_\_},
 which initializes the state.
 It starts executing at instruction 0 and keeps executing until the last
 execution in the program.
-In this case, it executes instructions 0 through 4 first.
+In this case, it executes instructions 0 through 5 first.
 The last instruction is a \texttt{JUMP} instruction that sets the
-program counter to 31 (skipping over the code for the methods).
-At program counter 5 is the code for the \texttt{incrementer} method.
-All methods start with a \texttt{Frame} instruction and end with a \texttt{Return}
-instruction.
+program counter to 32 (skipping over the code for \texttt{incrementer} method).
+At program counter 6 is the code for the \texttt{incrementer} method.
+All methods start with a \texttt{Frame} instruction and end with a
+\texttt{Return} instruction.
 
 \autoref{ap:harmonybytecode} provides a list of all HVM machine instructions,
 in case you want to read about the details.
@@ -1098,7 +1098,7 @@ names of its arguments.
 The code generated from $\mathit{count} := \mathit{count} + 1$ in line~5 of
 \texttt{Up.hny} is as follows (see \autoref{fig:inccode}):
 
-\begin{enumerate} \setcounter{enumi}{5}
+\begin{enumerate} \setcounter{enumi}{6}
 \item The \texttt{Load} instruction pushes the value of the
 \textit{count} variable onto the stack.
 \item The \texttt{Push} instruction pushes the constant 1
@@ -1118,17 +1118,22 @@ instructions.
 \texttt{Up.hny} program.
 
 \begin{figure}
-\includegraphics[width=\textwidth]{figures/Up1.png}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/Up1.png}
+\end{center}
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
-There are three sections.
+There are four sections.
 The top shows the steps to the problematic state.
-The bottom left shows the source code and bytecode
-of the program.
-The bottom right shows the state of each thread after the selected step.
-Each row in the stack trace of a thread shows the current program counter,
-the method that is being evaluated, and the line of code that is
-being evaluated.}
+Each step shows a thread identifier, the method the thread is executing,
+a ``timeline'' containing a block for each instruction executed, the
+program counter of the thread, and the values of the shared variables
+at those steps.
+The middle section shows the line of code that is being executed.
+The bottom left shows the bytecode of the program.
+The bottom right shows the state of each thread.
+Each row in the stack trace of a thread shows
+the method that is being evaluated and the values of its method variables.}
 \label{fig:inchtml1}
 \end{figure}
 
@@ -1139,7 +1144,7 @@ at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
 It also includes certain infinite loops.
-Harmony will print at trace of the shortest bad execution that it found.
+Harmony will print a trace of the shortest bad execution that it found.
 \item \texttt{Non-terminating States}: Harmony found one or more states
 from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
@@ -1161,7 +1166,6 @@ The output has five columns:
 \item A thread identifier;
 \item The main method and argument of the thread;
 \item The sequence of program counters of the HVM instructions that the thread executed;
-\item The current program counter of the thread;
 \item The contents of the shared memory.
 \end{enumerate}
 
@@ -1171,23 +1175,30 @@ shared variable \textit{done} to \texttt{[False, False]}.
 If we look at the next three steps, we see that:
 \begin{itemize}
 \item Thread \texttt{incrementer(0)}
-executed instructions 5 through 8, loading the value of
+executed instructions 6 through 9, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
 \item Thread \texttt{incrementer(1)}
-executed instructions 5 through 15, storing 1 into
+executed instructions 6 through 18, storing 1 into
 into \textit{count} and storing \texttt{True} into \textit{done}[1];
 \item Thread \texttt{incrementer(0)}
-continues execution, executing instructions 9 through 15
-storing value 1 into \textit{count}
-and storing \texttt{True} into \textit{done}[0].
+continues execution, executing instructions 10 through 28
+storing value 1 into \textit{count} (instruction 10),
+storing \texttt{True} into \textit{done}[0] (instructions 11 through 15)
+finding that \textit{done}[1] is \texttt{True} (instructions 16 through 21),
+and finally detecting that the assertion is violated
+(instructions 22 through 28).
 \end{itemize}
-Finally, thread \texttt{main()} runs and finds the problem.
-This makes precise the concurrency issue that we encountered.
 
 Harmony also generates an HTML file that allows exploring more details
 of the execution interactively.
 Open the suggested HTML file and you should see something like
 \autoref{fig:inchtml1}.
+You can go to any point in the execution by clicking on one of the
+blocks in the ``execution timelines.''  Using the left and right arrow
+keys you can go forwards and backwards one instruction at a time.
+With the down and up arrow keys you can go through the execution one
+step at a time.
+If you hit enter, it will to go to the next line of Harmony code.
 If you hover the mouse over a machine instruction, it provides a
 brief explanation.
 
