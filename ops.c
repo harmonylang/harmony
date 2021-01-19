@@ -364,12 +364,13 @@ bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
     return true;
 }
 
-uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
+bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, uint64_t *result){
     assert((dict & VALUE_MASK) == VALUE_DICT);
     assert(n > 0);
 
     if (n == 1) {
-        return dict_store(dict, indices[0], value);
+        *result = dict_store(dict, indices[0], value);
+        return true;
     }
     else {
         uint64_t *vals;
@@ -389,9 +390,13 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
             if (vals[i] == indices[0]) {
                 uint64_t d = vals[i+1];
                 assert((d & VALUE_MASK) == VALUE_DICT);
-                uint64_t nd = ind_store(d, indices + 1, n - 1, value);
+                uint64_t nd;
+                if (!ind_trystore(d, indices + 1, n - 1, value, &nd)) {
+                    return false;
+                }
                 if (d == nd) {
-                    return dict;
+                    *result = dict;
+                    return true;
                 }
                 int n = size * sizeof(uint64_t);
                 uint64_t *copy = malloc(n);
@@ -399,7 +404,8 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
                 copy[i + 1] = nd;
                 uint64_t v = value_put_dict(copy, n);
                 free(copy);
-                return v;
+                *result = v;
+                return true;
             }
             /* 
                 if (value_cmp(vals[i], key) > 0) {
@@ -407,9 +413,8 @@ uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
                 }
             */
         }
-
-        assert(false);
     }
+    return false;
 }
 
 uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
@@ -987,7 +992,10 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
 
     uint64_t v = ctx_pop(pctx);
     uint64_t type = v & VALUE_MASK;
-    assert(type == VALUE_DICT || type == VALUE_SET);
+    if (type != VALUE_DICT && type != VALUE_SET) {
+        ctx_failure(*pctx, "Can only split tuples or sets");
+        return;
+    }
     if (v == VALUE_DICT || v == VALUE_SET) {
         assert(es->count == 0);
         (*pctx)->pc++;
@@ -1025,6 +1033,10 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
 
     if (es == 0) {
         uint64_t av = ctx_pop(pctx);
+        if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+            ctx_failure(*pctx, "op_Store: not an address");
+            return;
+        }
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -1043,10 +1055,16 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
             }
         }
 
-        state->vars = ind_store(state->vars, indices, size, v);
+        if (!ind_trystore(state->vars, indices, size, v, &state->vars)) {
+            ctx_failure(*pctx, "Store: bad address");
+            return;
+        }
     }
     else {
-        state->vars = ind_store(state->vars, es->indices, es->n, v);
+        if (!ind_trystore(state->vars, es->indices, es->n, v, &state->vars)) {
+            ctx_failure(*pctx, "Store: bad variable");
+            return;
+        }
     }
     (*pctx)->pc++;
 }
@@ -1065,7 +1083,10 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        (*pctx)->vars = ind_store((*pctx)->vars, indices, size, v);
+        if (!ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars)) {
+            ctx_failure(*pctx, "StoreVar: bad address");
+            return;
+        }
         (*pctx)->pc++;
     }
     else {

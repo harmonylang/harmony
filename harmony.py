@@ -4397,7 +4397,7 @@ class Scope:
                 #    return None
                 return tv
             ancestor = ancestor.parent
-        print("Warning: unknown name:", name, " (assuming global variable)")
+        # print("Warning: unknown name:", name, " (assuming global variable)")
         self.names[lexeme] = ("global", lexeme)
         return ("global", lexeme)
 

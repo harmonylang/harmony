@@ -83,6 +83,8 @@ function json_string(obj) {
   case "bool": case "int":
     return obj.value;
     break;
+  case "atom":
+    return "." + obj.value;
   case "set":
     return json_string_set(obj.value);
   case "dict":
