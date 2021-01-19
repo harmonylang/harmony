@@ -5405,7 +5405,7 @@ table td, table th {
             """%(row, sid), file=f)
         print("</body>", file=f)
         print("</html>", file=f)
-    print("Open file://" + os.getcwd() + "/harmony.html for more information")
+    print("open file://" + os.getcwd() + "/harmony.html for more information")
 
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
@@ -5520,6 +5520,8 @@ def main():
             print("charm model checker failed")
             sys.exit(r);
         r = os.system("python3 charm.py");
+        if r == 0:
+            print("open file://" + os.getcwd() + "/harmony.html for more information")
         sys.exit(r);
 
     if printCode == None:
