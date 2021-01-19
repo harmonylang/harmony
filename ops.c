@@ -353,12 +353,15 @@ uint64_t dict_store(uint64_t dict, uint64_t key, uint64_t value){
     return v;
 }
 
-uint64_t ind_load(uint64_t dict, uint64_t *indices, int n){
+bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
     uint64_t d = dict;
     for (int i = 0; i < n; i++) {
-        d = dict_load(d, indices[i]);
+        if (!dict_tryload(d, indices[i], &d)) {
+            return false;
+        }
     }
-    return d;
+    *result = d;
+    return true;
 }
 
 uint64_t ind_store(uint64_t dict, uint64_t *indices, int n, uint64_t value){
@@ -488,8 +491,15 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
     uint64_t type = method & VALUE_MASK;
     switch (type) {
     case VALUE_DICT:
-        ctx_push(pctx, dict_load(method, e));
-        (*pctx)->pc++;
+        {
+            uint64_t v;
+            if (!dict_tryload(method, e, &v)) {
+                ctx_failure(*pctx, "Bad index");
+                return;
+            }
+            ctx_push(pctx, v);
+            (*pctx)->pc++;
+        }
         return;
     case VALUE_PC:
         ctx_push(pctx, (((*pctx)->pc + 1) << VALUE_BITS) | VALUE_PC);
@@ -707,6 +717,7 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
+    uint64_t v;
     if (el == 0) {
         uint64_t av = ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
@@ -716,19 +727,18 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        if (false) {
-            printf("LOAD IND %d\n", size);
-            for (int i = 0; i < size; i++) {
-                char *index = value_string(indices[i]);
-                printf(">> %s\n", index);
-                free(index);
-            }
+        if (!ind_tryload(state->vars, indices, size, &v)) {
+            ctx_failure(*pctx, "Load: unknown address");
+            return;
         }
-
-        ctx_push(pctx, ind_load(state->vars, indices, size));
+        ctx_push(pctx, v);
     }
     else {
-        ctx_push(pctx, ind_load(state->vars, el->indices, el->n));
+        if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
+            ctx_failure(*pctx, "Load: unknown variable");
+            return;
+        }
+        ctx_push(pctx, v);
     }
     (*pctx)->pc++;
 }
@@ -737,6 +747,7 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     const struct env_LoadVar *el = env;
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
 
+    uint64_t v;
     if (el == NULL) {
         uint64_t av = ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
@@ -746,10 +757,18 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        ctx_push(pctx, ind_load((*pctx)->vars, indices, size));
+        if (!ind_tryload((*pctx)->vars, indices, size, &v)) {
+            ctx_failure(*pctx, "Loadvar: unknown address");
+            return;
+        }
+        ctx_push(pctx, v);
     }
     else {
-        ctx_push(pctx, dict_load((*pctx)->vars, el->name));
+        if (!dict_tryload((*pctx)->vars, el->name, &v)) {
+            ctx_failure(*pctx, "Loadvar: unknown variable");
+            return;
+        }
+        ctx_push(pctx, v);
     }
     (*pctx)->pc++;
 }
