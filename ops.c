@@ -1035,12 +1035,18 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
     const struct env_Store *es = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
+
+    if ((*pctx)->readonly > 0) {
+        ctx_failure(*pctx, "Store: in read-only mode");
+        return;
+    }
+
     uint64_t v = ctx_pop(pctx);
 
     if (es == 0) {
         uint64_t av = ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-            ctx_failure(*pctx, "op_Store: not an address");
+            ctx_failure(*pctx, "Store: not an address");
             return;
         }
         assert((av & VALUE_MASK) == VALUE_ADDRESS);

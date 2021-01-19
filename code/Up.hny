@@ -4,12 +4,9 @@ done = [ False, False ];
 def incrementer(self):
     count = count + 1;
     done[self] = True;
-;
-def main():
-    await all(done);
+    await done[1 - self];
     assert count == 2, count;
 ;
 
 spawn incrementer(0);
 spawn incrementer(1);
-spawn main();
