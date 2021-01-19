@@ -62,6 +62,8 @@ CODE = \
     naiveLock.tex \
     naiveTurn.tex \
     oo.tex \
+    prog1.tex \
+    prog2.tex \
     qbarrier.tex \
     queue.tex \
     queueMS.tex \

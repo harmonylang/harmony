@@ -628,13 +628,45 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 \chapter{The Problem of Concurrent Programming}
 \label{ch:concurrent}
 
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{ccc}
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{prog1}
+\end{tcolorbox}
+& \rule{0.05\linewidth}{0in} &
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{prog2}
+\end{tcolorbox}
+\\
+(a) \harmonylink{code/prog1.hny} Sequential && (b) \harmonylink{code/prog2.hny} Concurrent
+\end{tabular}
+\end{center}
+\caption{ A sequential and a concurrent program.}
+\label{fig:progs}
+\end{figure}
+
 \glsadd{thread}%
 
 Concurrent programming, aka multithreaded programming, involves multiple
 threads
 \index{thread}%
 running in parallel while sharing variables.
-\autoref{fig:inc} presents a simple example.
+\autoref{fig:progs} shows two programs.  Program (a) is sequential.
+It sets \textit{shared} to \texttt{True}, asserts that
+\textit{shared} = \texttt{True}, and finally sets
+\textit{shared} to \texttt{False}.
+If you run the program through Harmony, it will find not problems.
+Program (b) is concurrent.  It executes methods \texttt{f()} and
+\texttt{g()} in parallel.
+If method \texttt{g()} runs and completes before \texttt{f()}, then
+the assertion in \texttt{f()} will fail when \texttt{f()} runs.
+Harmony will find this problem.
+This problem is an example of non-determinism: methods \texttt{f()}
+and \texttt{g()} can run in either order.
+
+\autoref{fig:inc} presents a more subtle example that illustrates
+non-atomicity.
 The program
 initializes two shared variables: an integer \textit{count} and
 an array \textit{done} with two booleans.
@@ -4636,7 +4668,7 @@ Generic operators on Harmony values include:
 \end{tabular}
 \end{center}
 
-\section{Booleans}
+\section{Boolean}
 
 The Boolean type has only two possible values: \texttt{False} and
 \texttt{True}.  Unlike in Python, in Harmony booleans are distinct
@@ -4663,7 +4695,7 @@ Operations on booleans include:
 \end{tabular}
 \end{center}
 
-\section{Integers}
+\section{Integer}
 
 The integer type supports any whole number, as well as $-\mathtt{inf}$
 and $\mathtt{inf}$.  In the Python-based model checker, integers are
@@ -4709,7 +4741,7 @@ Operations on integers include:
 \end{tabular}
 \end{center}
 
-\section{Atoms}
+\section{Atom}
 
 Atoms are essentially names and consist of one or more unicode characters.
 If they do not contain special characters and do not start with a digit,
