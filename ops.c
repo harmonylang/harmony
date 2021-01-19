@@ -928,7 +928,10 @@ static int sort(uint64_t *vals, int n){
 void op_SetIntLevel(const void *env, struct state *state, struct context **pctx){
 	bool oldlevel = (*pctx)->interruptlevel;
 	uint64_t newlevel =  ctx_pop(pctx);
-    assert((newlevel & VALUE_MASK) == VALUE_BOOL);
+    if ((newlevel & VALUE_MASK) != VALUE_BOOL) {
+        ctx_failure(*pctx, "setintlevel can only be set to a boolean");
+        return;
+    }
     (*pctx)->interruptlevel = newlevel >> VALUE_BITS;
 	ctx_push(pctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
     (*pctx)->pc++;
@@ -951,7 +954,10 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
 
     uint64_t pc = ctx_pop(pctx);
-    assert((pc & VALUE_MASK) == VALUE_PC);
+    if ((pc & VALUE_MASK) != VALUE_PC) {
+        ctx_failure(*pctx, "spawn: not a method");
+        return;
+    }
     pc >>= VALUE_BITS;
 
     assert(pc < code_len);
@@ -1101,7 +1107,10 @@ void op_Trap(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
 
     (*pctx)->trap_pc = ctx_pop(pctx);
-    assert(((*pctx)->trap_pc & VALUE_MASK) == VALUE_PC);
+    if (((*pctx)->trap_pc & VALUE_MASK) != VALUE_PC) {
+        ctx_failure(*pctx, "trap: not a method");
+        return;
+    }
     int pc = (*pctx)->trap_pc >> VALUE_BITS;
     assert(pc < code_len);
     assert(strcmp(code[pc].oi->name, "Frame") == 0);
@@ -1423,10 +1432,14 @@ uint64_t nametag(struct context *ctx){
 }
 
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n){
-    assert(ctx->atomic > 0);
     assert(n == 1);
+    if (ctx->atomic == 0) {
+        return ctx_failure(ctx, "atLabel: can only be called in atomic mode");
+    }
     uint64_t e = args[0];
-    assert((e & VALUE_MASK) == VALUE_PC);
+    if ((e & VALUE_MASK) != VALUE_PC) {
+        return ctx_failure(ctx, "atLabel: not a method");
+    }
     e >>= VALUE_BITS;
 
     int size;
@@ -1454,7 +1467,11 @@ uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n){
     if ((e2 & VALUE_MASK) != VALUE_INT) {
         return ctx_failure(ctx, "left argument to / not an integer");
     }
-    int64_t result = (e2 >> VALUE_BITS) / (e1 >> VALUE_BITS);
+    e1 >>= VALUE_BITS;
+    if (e1 == 0) {
+        return ctx_failure(ctx, "divide by zero");
+    }
+    int64_t result = (e2 >> VALUE_BITS) / e1;
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
@@ -1613,13 +1630,15 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         return result;
     }
 
-    assert((e1 & VALUE_MASK) == VALUE_DICT);
+    if ((e1 & VALUE_MASK) != VALUE_DICT) {
+        return ctx_failure(ctx, "'&' can only be applied to ints and dicts");
+    }
     // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_DICT) {
-            return ctx_failure(ctx, "'|' applied to mix of dictionaries and other types");
+            return ctx_failure(ctx, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2275,7 +2294,9 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         return result;
     }
 
-    assert((e1 & VALUE_MASK) == VALUE_DICT);
+    if ((e1 & VALUE_MASK) != VALUE_DICT) {
+        return ctx_failure(ctx, "'|' can only be applied to ints and dicts");
+    }
     // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
