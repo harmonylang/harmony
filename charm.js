@@ -260,9 +260,13 @@ function init_microstep(masidx, misidx) {
   }
 
   microsteps[t].code = getCode(microsteps[t].npc);
-  var rowToScrollTo = document.getElementById('P' + microsteps[t].npc);
-  microsteps[t].offset = rowToScrollTo.offsetTop; 
+
   microsteps[t].cloc = document.getElementById('C' + microsteps[t].npc);
+  var npc = microsteps[t].npc - 4;
+  if (npc < 0) {
+    npc = 0;
+  }
+  microsteps[t].offset = document.getElementById('P' + npc);
 
   if (mis.hasOwnProperty("mode")) {
     microsteps[t].mode = mis.mode;
@@ -310,6 +314,7 @@ function init_microstep(masidx, misidx) {
 
   if (mis.hasOwnProperty("failure")) {
     microsteps[t].failure = mis.failure;
+    microsteps[t].cloc = null;
   }
   else {
     microsteps[t].failure = null;
@@ -335,7 +340,7 @@ function init_microstep(masidx, misidx) {
   if (mis.hasOwnProperty("shared")) {
     microsteps[t].shared = convert_vars(mis.shared);
   }
-  else if (misidx == 0) {
+  else if (t == 0) {
     microsteps[t].shared = {};
   }
   else {
@@ -406,6 +411,7 @@ function run_microstep(t) {
     code = getCode(inv.pc);
     coderow.style.color = "red";
     coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + code.code + " (" + inv.reason + ")";
+    mis.cloc = null;
   }
   else {
     coderow.style.color = "blue";
@@ -438,9 +444,11 @@ function run_microsteps() {
   for (var i = 0; i < nmegasteps; i++) {
     drawTimeLine(megasteps[i]);
   }
-  container.scrollTop = currOffset - 75;
+  container.scrollTop = currOffset.offsetTop;
 
-  currCloc.style.color = "red";
+  if (currCloc != null) {
+    currCloc.style.color = "red";
+  }
 
   var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
   for (var mes = 0; mes < nmegasteps; mes++) {
