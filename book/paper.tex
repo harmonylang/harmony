@@ -1044,15 +1044,14 @@ An address is itself a Harmony value.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states = 53 diameter = 5
-==== Safety violation ====
-T0: __init__() [0-4,31-46] 46 { count: 0, done[0]: False, done[1]: False }
-T1: incrementer(0) [ 5- 8]  9 { count: 0, done[0]: False, done[1]: False }
-T2: incrementer(1) [ 5-15] 15 { count: 1, done[0]: False, done[1]: True  }
-T1: incrementer(0) [ 9-15] 15 { count: 1, done[0]: True,  done[1]: True  }
-T3: main()         [17-27] 27 { count: 1, done[0]: True,  done[1]: True  }
->>> Harmony Assertion (file=code/Up.hny, line=10) failed: 1
-Open file:///Users/rvr/github/harmony/harmony.html for more information
+#states 32
+Safety Violation
+T0: __init__() [0-5,32-40] { count: 0, done: [ False, False ] }
+T1: incrementer(0) [6 - 9] { count: 0, done: [ False, False ] }
+T2: incrementer(1) [6 -18] { count: 1, done: [ False, True  ] }
+T1: incrementer(0) [10-28] { count: 1, done: [ True,  True  ] }
+Harmony assertion failed: 1
+open file:///Users/rvr/github/harmony/harmony.html for more information
 \end{verbatim}
 \end{code}
 \caption{The text output of running Harmony on \autoref{fig:inc}.}

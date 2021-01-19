@@ -5572,6 +5572,7 @@ def main():
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
+        os.system("python3 brief.py");
         r = os.system("python3 charm.py");
         if r == 0:
             print("open file://" + os.getcwd() + "/harmony.html for more information")

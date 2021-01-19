@@ -183,9 +183,12 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             gettimeofday(&tv, NULL);
             double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
             if (now - lasttime > 1) {
-                char *p = value_string(cc->name);
-                printf("%s pc=%d states=%d queue=%d\n", p, cc->pc, enqueued, enqueued - dequeued);
-                free(p);
+                if (lasttime != 0) {
+                    char *p = value_string(cc->name);
+                    printf("%s pc=%d states=%d queue=%d\n",
+                            p, cc->pc, enqueued, enqueued - dequeued);
+                    free(p);
+                }
                 lasttime = now;
             }
             timecnt = 1;

@@ -524,7 +524,6 @@ void op_Assert(const void *env, struct state *state, struct context **pctx){
         ctx_failure(*pctx, "assert can only be applied to bool values");
     }
     if (v == VALUE_FALSE) {
-        // printf("HARMONY ASSERTION FAILED\n");
         ctx_failure(*pctx, "Harmony assertion failed");
     }
     else {
@@ -540,7 +539,6 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx){
     }
     if (v == VALUE_FALSE) {
         char *p = value_string(e);
-        printf("HARMONY ASSERTION FAILED: %s\n", p);
         ctx_failure(*pctx, "Harmony assertion failed: %s", p);
         free(p);
     }
