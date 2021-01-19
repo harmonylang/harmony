@@ -579,7 +579,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         uint64_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx->vars = dict_store(ctx->vars, ec->set, value_put_set(&vals[2], size - 2 * sizeof(uint64_t)));
+        ctx->vars = dict_store(ctx->vars, ec->set, value_put_dict(&vals[2], size - 2 * sizeof(uint64_t)));
         ctx->vars = dict_store(ctx->vars, ec->var, vals[1]);
         (*pctx)->pc++;
         return;
