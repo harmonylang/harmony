@@ -667,12 +667,16 @@ and \texttt{g()} can run in either order.
 
 \autoref{fig:inc} presents a more subtle example that illustrates
 non-atomicity.
-The program
-initializes two shared variables: an integer \textit{count} and
+The program initializes two shared variables:
+an integer \textit{count} and
 an array \textit{done} with two booleans.
+The program then spawns three threads.
+The first runs \texttt{incrementer(0)}, the second runs
+\texttt{incrementer(1)}.
+
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
-Method \texttt{main} waits until both \textit{done} flags are set to \texttt{True}.
+It then waits until the other thread is done.
 (\textbf{await} $c$ is semantically the same as \textbf{while not} $c$: \textbf{pass}.)
 After that, method \texttt{incrementer}
 verifies that the value of \textit{count} equals 2.
@@ -681,9 +685,6 @@ the first is a Boolean condition, and the second is a value that is
 reported if the condition fails, in this case
 the value of \textit{count}.
 
-The program spawns three threads.
-The first runs \texttt{incrementer(0)}, the second runs
-\texttt{incrementer(1)}, and the last runs \texttt{main()}.
 Note that although the threads are \emph{spawned} one at a time,
 they will execute concurrently.  It is, for example, quite possible
 that \texttt{incrementer(1)} finishes before \texttt{incrementer(0)}
@@ -973,50 +974,45 @@ have the same context.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
+   0 Frame __init__ ()
 code/Up.hny:1 count = 0;
-   0 Push 0
-   1 Store count
+   1 Push 0
+   2 Store count
 code/Up.hny:2 done = [ False, False ];
-   2 Push [False, False]
-   3 Store done
+   3 Push [False, False]
+   4 Store done
 code/Up.hny:4 def incrementer(self):
-   4 Jump 31
-   5 Frame incrementer self
+   5 Jump 32
+   6 Frame incrementer self
 code/Up.hny:5     count = count + 1;
-   6 Load count
-   7 Push 1
-   8 2-ary +
-   9 Store count
+   7 Load count
+   8 Push 1
+   9 2-ary +
+   10 Store count
 code/Up.hny:6     done[self] = True;
-   10 Push ?done
-   11 LoadVar self
-   12 Address
-   13 Push True
-   14 Store
-   15 Return
-code/Up.hny:8 def main():
-   16 Jump 31
-   17 Frame main ()
-code/Up.hny:9     await all(done);
-   18 Load done
-   19 1-ary all
-   20 JumpCond False 18
-code/Up.hny:10     assert count == 2, count;
-   21 ReadonlyInc
-   22 AtomicInc
-   23 Load count
-   24 Push 2
-   25 2-ary ==
-   26 Load count
-   27 Assert2
-   28 AtomicDec
-   29 ReadonlyDec
-   30 Return
-code/Up.hny:13 spawn incrementer(0);
-   31 Push 0
-   32 Dup
-   33 Push PC(5)
-   34 Spawn
+   11 Push ?done
+   12 LoadVar self
+   13 Address
+   14 Push True
+   15 Store
+code/Up.hny:7     await done[1 - self];
+   16 Push 1
+   17 LoadVar self
+   18 2-ary -
+   19 Load done
+   20 Apply
+   21 JumpCond False 16
+code/Up.hny:8     assert count == 2, count;
+   22 ReadonlyInc
+   23 AtomicInc
+   24 Load count
+   25 Push 2
+   26 2-ary ==
+   27 Load count
+   28 Assert2
+   29 AtomicDec
+   30 ReadonlyDec
+   31 Return
 \end{verbatim}
 \end{code}
 \caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}.}
