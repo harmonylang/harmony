@@ -551,6 +551,7 @@ class Brief:
             self.lastmis = mis[i]
             if "failure" in self.lastmis:
                 self.failure = self.lastmis["failure"]
+            self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
     def run(self):
         with open("charm.json") as f:
