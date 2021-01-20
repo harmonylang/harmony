@@ -1,14 +1,14 @@
 import json
 
-def json_kv(js):
-    return (json_string(js["key"]), json_string(js["value"]))
+def brief_kv(js):
+    return (brief_string(js["key"]), brief_string(js["value"]))
 
-def json_idx(js):
+def brief_idx(js):
     if js["type"] == "atom":
-        return json_string(js)
-    return "[" + json_string(js) + "]"
+        return brief_string(js)
+    return "[" + brief_string(js) + "]"
 
-def json_string(js):
+def brief_string(js):
     type = js["type"]
     v = js["value"]
     if type in { "bool", "int" }:
@@ -22,7 +22,7 @@ def json_string(js):
     if type == "dict":
         if v == []:
             return "()"
-        lst = [ json_kv(kv) for kv in v ]
+        lst = [ brief_kv(kv) for kv in v ]
         keys = [ k for k,v in lst ]
         if keys == [str(i) for i in range(len(v))]:
             return "[ " + ", ".join([v for k,v in lst]) + " ]" 
@@ -33,11 +33,11 @@ def json_string(js):
     if type == "address":
         if v == []:
             return "None"
-        return "?" + v[0]["value"] + "".join([ json_idx(kv) for kv in v[1:] ])
+        return "?" + v[0]["value"] + "".join([ brief_idx(kv) for kv in v[1:] ])
     if type == "context":
-        return "CONTEXT(" + json_string(v["name"]) + ")"
+        return "CONTEXT(" + brief_string(v["name"]) + ")"
 
-def print_vars(d):
+def brief_print_vars(d):
     print("{", end="")
     first = True
     for k, v in d.items():
@@ -45,80 +45,87 @@ def print_vars(d):
             first = False
         else:
             print(",", end="")
-        print(" %s: %s"%(k, json_string(v)), end="")
+        print(" %s: %s"%(k, brief_string(v)), end="")
     print(" }")
 
-def print_range(start, end):
+def brief_print_range(start, end):
+    if start == end:
+        return "%d"%(start)
+    if start + 1 == end:
+        return "%d,%d"%(start, end)
     return "%d-%d"%(start, end)
 
-tid = None
-name = None
-start = 0
-steps = ""
-interrupted = False
-lastmis = {}
-shared = {}
-failure = ""
+class Brief:
+    def __init__(self):
+        self.tid = None
+        self.name = None
+        self.start = 0
+        self.steps = ""
+        self.interrupted = False        # TODO
+        self.lastmis = {}
+        self.shared = {}
+        self.failure = ""
 
-def flush():
-    global tid, name, steps, start, lastmis, shared
+    def flush(self):
+        if self.tid != None:
+            print("T%s: %s ["%(self.tid, self.name), end="")
+            if self.steps != "":
+                self.steps += ","
+            self.steps += brief_print_range(self.start, int(self.lastmis["pc"]))
+            print(self.steps + "] ", end="");
+            brief_print_vars(self.shared);
 
-    if tid != None:
-        print("T%s: %s ["%(tid, name), end="")
-        if steps != "":
-            steps += ","
-        steps += print_range(start, int(lastmis["pc"]))
-        print(steps + "] ", end="");
-        print_vars(shared);
+    def print_macrostep(self, mas):
+        mis = mas["microsteps"]
+        if mas["tid"] != self.tid:
+            self.flush()
+            self.tid = mas["tid"]
+            self.name = mas["name"]
+            self.interrupted = False
+            self.lastmis = mis[0]
+            self.start = int(self.lastmis["pc"])
+            if "shared" in self.lastmis:
+                self.shared = self.lastmis["shared"]
+            lastpc = 0
+            self.steps = ""
+            begin = 1
+        else:
+            begin = 0
+        for i in range(begin, len(mis)):
+            if "shared" in mis[i]:
+                self.shared = mis[i]["shared"]
+            if self.interrupted:
+                if self.steps != "":
+                    self.steps += ","
+                self.steps += brief_print_range(self.start, int(self.lastmis["pc"]))
+                self.start = int(mis[i]["pc"])
+                self.steps += ",interrupt"
+            elif "choose" in mis[i]:
+                if self.steps != "":
+                    self.steps += ","
+                self.steps += brief_print_range(self.start, int(mis[i]["pc"]))
+                self.steps += "(choose %s)"%brief_string(mis[i]["choose"])
+                self.start = int(mis[i]["pc"]) + 1
+            elif int(mis[i]["pc"]) != int(self.lastmis["pc"]) + 1:
+                if self.steps != "":
+                    self.steps += ","
+                self.steps += brief_print_range(self.start, int(self.lastmis["pc"]))
+                self.start = int(mis[i]["pc"])
+            self.lastmis = mis[i]
+            if "failure" in self.lastmis:
+                self.failure = self.lastmis["failure"]
 
-def print_macrostep(mas):
-    global tid, name, start, steps, lastmis, interrupted, shared, failure
+    def run(self):
+        with open("charm.json") as f:
+            top = json.load(f)
+            assert isinstance(top, dict)
+            # print("Issue:", top["issue"])
+            assert isinstance(top["macrosteps"], list)
+            for mes in top["macrosteps"]:
+                self.print_macrostep(mes)
+            self.flush()
+        print(self.failure)
 
-    mis = mas["microsteps"]
-    if mas["tid"] != tid:
-        flush()
-        tid = mas["tid"]
-        name = mas["name"]
-        interrupted = False
-        lastmis = mis[0]
-        start = int(lastmis["pc"])
-        if "shared" in lastmis:
-            shared = lastmis["shared"]
-        lastpc = 0
-        steps = ""
-        begin = 1
-    else:
-        begin = 0
-    for i in range(begin, len(mis)):
-        if "shared" in mis[i]:
-            shared = mis[i]["shared"]
-        if interrupted:
-            if steps != "":
-                steps += ","
-            steps += print_range(start, int(lastmis["pc"]))
-            start = int(mis[i]["pc"])
-            steps += ",interrupt"
-        elif "choose" in mis[i]:
-            if steps != "":
-                steps += ","
-            steps += print_range(start, int(mis[i]["pc"]))
-            steps += "(choose %s)"%json_string(mis[i]["choose"])
-            start = int(mis[i]["pc"]) + 1
-        elif int(mis[i]["pc"]) != int(lastmis["pc"]) + 1:
-            if steps != "":
-                steps += ","
-            steps += print_range(start, int(lastmis["pc"]))
-            start = int(mis[i]["pc"])
-        lastmis = mis[i]
-        if "failure" in lastmis:
-            failure = lastmis["failure"]
-
-with open("charm.json") as f:
-    top = json.load(f)
-    assert isinstance(top, dict)
-    # print("Issue:", top["issue"])
-    assert isinstance(top["macrosteps"], list)
-    for mes in top["macrosteps"]:
-        print_macrostep(mes)
-    flush()
-    print(failure)
+if __name__ == "__main__":
+    b = Brief()
+    b.run()
