@@ -1225,12 +1225,16 @@ Status information for a thread can include:
 \item[] \texttt{runnable}: the thread is runnable but not
 currently running.  In Harmony, threads are interleaved and so
 at most one thread is actually running;
+\item[] \texttt{running}: the thread is currently executing
+instructions;
 \item[] \texttt{terminated}: the thread has completed all its
 instructions;
 \item[] \texttt{failed}: the thread has encountered an error,
 such as violating an assertion or divide by zero;
 \item[] \texttt{blocked}: the thread cannot make progress until
-another thread has updated the shared state;
+another thread has updated the shared state.  For example, this
+occurs when one of the implementers is waiting for the other
+to set its \textit{done} flag;
 \item[] \texttt{atomic}: the thread is in \emph{atomic} mode,
 not allowing other threads to be scheduled.  This is, for example,
 the case when an assertion is being checked;
@@ -1252,14 +1256,14 @@ the last instruction.
 As mentioned above, you can go to any point in the execution by
 clicking on one of the blocks in the time lines.
 There are also various handy keyboard shortcuts:
-\begin{itemize}
-\item \emph{Right arrow}: go to the next instruction;
-\item \emph{Left arrow}: go to the previous instruction;
-\item \emph{Down arrow}: go to the next step;
-\item \emph{Up arrow}: go to the previous step;
-\item \emph{Enter (aka Return)}: go to the next line of Harmony code;
-\item \emph{0}: go to the initial state.
-\end{itemize}
+\begin{tabular}{rl}
+\emph{Right arrow}: & go to the next instruction; \\
+\emph{Left arrow}: & go to the previous instruction; \\
+\emph{Down arrow}: & go to the next step; \\
+\emph{Up arrow}: & go to the previous step; \\
+\emph{Enter (aka Return)}: & go to the next line of Harmony code; \\
+\emph{0}: & go to the initial state.
+\end{tabular}
 
 If you want to see an animation of the entire execution, one instruction
 at a time, you can first hit 0 and then hold down the right arrow.
