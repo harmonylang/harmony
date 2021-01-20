@@ -498,7 +498,7 @@ class Brief:
         self.name = None
         self.start = 0
         self.steps = ""
-        self.interrupted = False        # TODO
+        self.interrupted = False
         self.lastmis = {}
         self.shared = {}
         self.failure = ""
