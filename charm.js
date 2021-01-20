@@ -187,6 +187,10 @@ function getCode(pc) {
 
 function handleKeyPress(e) {
   switch (e.key) {
+    case '0':
+      currentTime = 0;
+      run_microsteps();
+      break;
     case 'ArrowLeft':
       if (currentTime > 0) {
         currentTime -= 1;
