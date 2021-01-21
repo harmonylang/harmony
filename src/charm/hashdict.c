@@ -1,4 +1,7 @@
+#ifndef HARMONY_COMBINE
 #include "hashdict.h"
+#endif
+
 #define hash_func meiyan
 
 static inline uint32_t meiyan(const char *key, int count) {

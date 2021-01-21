@@ -5,8 +5,10 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
-#include "json.h"
+#endif
 
 #define CHUNK_SIZE	4096
 
@@ -30,6 +32,11 @@ unsigned long to_ulong(const char *p, int len){
 		p++;
 	}
 	return r;
+}
+
+void panic(char *s){
+    fprintf(stderr, "Panic: %s\n", s);
+    exit(1);
 }
 
 #ifdef notdef

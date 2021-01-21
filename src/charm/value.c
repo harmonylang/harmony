@@ -6,8 +6,10 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
-#include "json.h"
+#endif
 
 static struct dict *atom_map;
 static struct dict *dict_map;
@@ -93,7 +95,8 @@ int value_cmp_atom(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_pc(uint64_t v1, uint64_t v2){
-    assert(0);
+    panic("value_cmp_pc: not yet implemented");
+    return 0;
 }
 
 int value_cmp_dict(uint64_t v1, uint64_t v2){
@@ -206,7 +209,8 @@ int value_cmp(uint64_t v1, uint64_t v2){
     case VALUE_CONTEXT:
         return value_cmp_context(v1 & ~VALUE_MASK, v2 & ~VALUE_MASK);
     default:
-        assert(0);
+        panic("value_cmp: bad value type");
+        return 0;
     }
 }
 
@@ -234,7 +238,7 @@ static char *value_string_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
         fprintf(stderr, "value_string_bool %"PRIu64"\n", v);
-		assert(false);
+        panic("value_string_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
     asprintf(&r, v == 0 ? "False" : "True");
@@ -245,7 +249,7 @@ static char *value_json_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
         fprintf(stderr, "value_json_bool %"PRIu64"\n", v);
-		assert(false);
+        panic("value_json_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
     asprintf(&r, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
@@ -531,7 +535,8 @@ char *value_string(uint64_t v){
     case VALUE_CONTEXT:
         return value_string_context(v & ~VALUE_MASK);
     default:
-        assert(0);
+        panic("value_string: bad value type");
+        return NULL;
     }
 }
 
@@ -554,7 +559,8 @@ char *value_json(uint64_t v){
     case VALUE_CONTEXT:
         return value_json_context(v & ~VALUE_MASK);
     default:
-        assert(0);
+        panic("value_json: bad value type");
+        return NULL;
     }
 }
 
@@ -575,7 +581,7 @@ uint64_t value_bool(struct dict *map){
     if (atom_cmp(value->u.atom, "True")) {
         return (1 << VALUE_BITS) | VALUE_BOOL;
     }
-    assert(0);
+    panic("value_bool: bad value");
     return 0;
 }
 
@@ -705,7 +711,8 @@ uint64_t value_from_json(struct dict *map){
         return value_address(map);
     }
     else {
-        assert(0);
+        panic("value_from_json: bad type");
+        return 0;
     }
 }
 

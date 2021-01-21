@@ -4,8 +4,10 @@
 #include <string.h>
 #include <inttypes.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
-#include "json.h"
+#endif
 
 #define CHUNKSIZE   (1 << 12)
 
@@ -402,7 +404,7 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
             }
             break;
         default:
-            assert(false);
+            panic("print_trace: bad call type 1");
         }
     }
     while (--pc >= 0) {
@@ -446,7 +448,7 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
                     fprintf(file, "              \"calltype\": \"interrupt\",\n");
                     break;
                 default:
-                    assert(false);
+                    panic("print_trace: bad call type 2");
                 }
 
 				free(s);
@@ -1245,8 +1247,14 @@ int main(int argc, char **argv){
         printf("%d components, %d bad nodes\n", ncomponents, nbad);
     }
 
+    FILE *out = fopen("charm.json", "w");
+    assert(out != NULL);
+    fprintf(out, "{\n");
+
     if (queue_empty(failures)) {
-        printf("no issues\n");
+        printf("No issues\n");
+        fprintf(out, "  \"issue\": \"No issues\"\n");
+        fprintf(out, "}\n");
         exit(0);
     }
 
@@ -1258,10 +1266,6 @@ int main(int argc, char **argv){
             bad = f;
         }
     }
-
-    FILE *out = fopen("charm.json", "w");
-    assert(out != NULL);
-    fprintf(out, "{\n");
 
     switch (bad->type) {
     case FAIL_SAFETY:
@@ -1277,7 +1281,7 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     default:
-        assert(false);
+        panic("main: bad fail type");
     }
 
     fprintf(out, "  \"macrosteps\": [");

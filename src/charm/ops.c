@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -7,8 +9,10 @@
 #include <inttypes.h>
 #include <ctype.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
-#include "json.h"
+#endif
 
 #define MAX_ARITY   10
 
@@ -85,7 +89,8 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt,
         }
         return vars;
     default:
-        assert(false);
+        panic("var_tree_rec: bad vartree type");
+        return 0;
     }
 }
 
@@ -111,7 +116,7 @@ void var_dump(struct var_tree *vt){
         printf(" )");
         break;
     default:
-        assert(false);
+        panic("var_dump: bad vartree type");
     }
 }
 
@@ -154,7 +159,7 @@ struct var_tree *var_parse(char *s, int len, int *index){
     else if (s[*index] == '[') {
         vt->type = VT_TUPLE;
         (*index)++;
-        assert(false);      // TODO
+        panic("var_parse: TODO");
     }
     else {
         vt->type = VT_NAME;
@@ -225,8 +230,8 @@ uint64_t dict_load(uint64_t dict, uint64_t key){
     }
 
 	printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
-
-    assert(false);
+    panic("dict_load");
+    return 0;
 }
 
 uint64_t dict_remove(uint64_t dict, uint64_t key){
@@ -235,7 +240,7 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
     uint64_t *vals;
     int size;
     if (dict == VALUE_DICT) {
-        assert(false);
+        return VALUE_DICT;
     }
     vals = value_get(dict & ~VALUE_MASK, &size);
     size /= sizeof(uint64_t);
@@ -461,7 +466,8 @@ uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
             */
         }
 
-        assert(false);
+        panic("ind_remove");        // TODO.  Should this return orig dict?
+        return 0;
     }
 }
 
@@ -563,7 +569,7 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Choose(const void *env, struct state *state, struct context **pctx){
-    assert(false);
+    panic("op_Choose: should not be called");
 }
 
 void op_Cut(const void *env, struct state *state, struct context **pctx){
@@ -597,7 +603,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc++;
         return;
     }
-    assert(false);
+    panic("op_Cut: not a set or dict");
 }
 
 void op_Del(const void *env, struct state *state, struct context **pctx){
@@ -888,7 +894,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
 			(*pctx)->pc = pc;
 			break;
         default:
-            assert(false);
+            panic("op_Return: bad call type");
         }
     }
 }
@@ -1026,7 +1032,7 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc++;
         return;
     }
-    assert(false);
+    panic("op_Split: not a set or dict");
 }
 
 void op_Store(const void *env, struct state *state, struct context **pctx){
@@ -1718,7 +1724,8 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
     if ((e & VALUE_MASK) == VALUE_SET) {
         return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
     }
-    assert(false);
+    panic("op_isEmpty: not a set or dict");
+    return 0;
 }
 
 uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n){

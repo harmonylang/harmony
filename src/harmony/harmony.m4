@@ -186,12 +186,16 @@ class Brief:
         with open("charm.json") as f:
             top = json.load(f)
             assert isinstance(top, dict)
+            if top["issue"] == "No issues":
+                return True
+
             # print("Issue:", top["issue"])
             assert isinstance(top["macrosteps"], list)
             for mes in top["macrosteps"]:
                 self.print_macrostep(mes)
             self.flush()
-        print(self.failure)
+            print(self.failure)
+            return False;
 
 class GenHTML:
     def __init__(self):
@@ -6154,10 +6158,10 @@ def main():
             print("charm model checker failed")
             sys.exit(r);
         b = Brief()
-        b.run();
-        gh = GenHTML()
-        gh.run()
-        print("open file://" + os.getcwd() + "/harmony.html for more information")
+        if not b.run():
+            gh = GenHTML()
+            gh.run()
+            print("open file://" + os.getcwd() + "/harmony.html for more information")
         sys.exit(0);
 
     if printCode == None:

@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifndef HARMONY_COMBINE
 #include "hashdict.h"
+#include "json.h"
+#endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
@@ -70,8 +74,6 @@ struct op_info {
     void *(*init)(struct dict *);
     void (*op)(const void *env, struct state *state, struct context **pctx);
 };
-
-#include "json.h"
 
 void value_init();
 uint64_t value_from_json(struct dict *map);
@@ -175,3 +177,5 @@ struct env_Store {
 struct env_StoreVar {
     struct var_tree *args;
 };
+
+void panic(char *s);

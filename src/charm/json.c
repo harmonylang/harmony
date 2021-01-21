@@ -3,8 +3,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
-#include "json.h"
+#endif
 
 #define buf_adv(b)		do { assert((b)->len > 0); (b)->base++; (b)->len--; } while (false)
 

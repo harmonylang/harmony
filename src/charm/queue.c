@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <assert.h>
+
+#ifndef HARMONY_COMBINE
 #include "global.h"
+#endif
 
 #define MAX_CACHE	5000
 
