@@ -6190,6 +6190,7 @@ table {
 table td, table th {
     border: 1px solid black;
 }
+
         """
         self.js = """
 var boxSize = 10;
@@ -6699,6 +6700,7 @@ for (var j = 0; j < state.macrosteps.length; j++) {
 currentTime = totalTime = microsteps.length;
 run_microsteps();
 document.addEventListener('keydown', handleKeyPress);
+
         """
 
     def json_kv(self, js):

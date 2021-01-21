@@ -1,0 +1,3 @@
+sh getmods.scr > modules
+(cd ../charm/; sh gen.scr) | sed 's/\\/\\\\/g' > charmsrc
+m4 -P harmony.m4
