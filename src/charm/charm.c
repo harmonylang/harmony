@@ -1066,7 +1066,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 }
 
 int main(int argc, char **argv){
-    printf("Charm v1\n");
+    // printf("Charm v1\n");
 
     failures = queue_init();
 

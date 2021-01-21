@@ -6098,6 +6098,7 @@ def usage():
     print("    -b: blocking execution")
     print("    -c name=value: define a constant")
     print("    -d: htmldump full state into html file")
+    print("    -f: run with internal model checker")
     print("    -h: help")
     print("    -m module=version: select a module version")
     print("    -s: silent (do not print periodic status updates)")
@@ -6111,7 +6112,7 @@ def main():
     mods = []
     printCode = None
     blockflag = False
-    charmflag = False
+    charmflag = True
     fulldump = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
@@ -6127,7 +6128,7 @@ def main():
         elif o == "-j":
             printCode = "json"
         elif o == "-f":
-            charmflag = True
+            charmflag = False
         elif o == "-b":
             blockflag = True
         elif o in { "-c", "--const" }:
