@@ -13,5 +13,5 @@ Running harmony:
 
     Windows:
         - you can't use the harmony script probably
-        - run
-            python3 harmony.py [args ...]
+        - try to run
+            python3 harmony.py -f [args ...]
