@@ -44,6 +44,10 @@ m4_include(modules)
 #############################
 }
 
+charm_src = """
+m4_include(charmsrc)
+"""
+
 import sys
 import os
 import getopt
@@ -6153,6 +6157,13 @@ def main():
     if charmflag:
         with open("harmony.json", "w") as fd:
             dumpCode("json", code, scope, f=fd)
+        if not os.path.exists("charm"):
+            with open("charm.c", "w") as fd:
+                print(charm_src, file=fd)
+            r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o charm");
+            if r != 0:
+                print("can't create charm model checker")
+                sys.exit(r);
         r = os.system("./charm harmony.json");
         if r != 0:
             print("charm model checker failed")
