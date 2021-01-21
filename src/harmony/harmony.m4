@@ -44,8 +44,19 @@ m4_include(modules)
 #############################
 }
 
-charm_src = """
-m4_include(charmsrc)
+charm_src = r"""
+#define _GNU_SOURCE
+
+m4_include(../charm/hashdict.h)
+m4_include(../charm/json.h)
+m4_include(../charm/global.h)
+m4_include(../charm/charm.c)
+m4_include(../charm/global.c)
+m4_include(../charm/hashdict.c)
+m4_include(../charm/json.c)
+m4_include(../charm/ops.c)
+m4_include(../charm/queue.c)
+m4_include(../charm/value.c)
 """
 
 import sys

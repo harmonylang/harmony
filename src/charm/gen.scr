@@ -1,2 +1,0 @@
-echo '#define _GNU_SOURCE'
-cat hashdict.h json.h global.h charm.c global.c hashdict.c json.c ops.c queue.c value.c

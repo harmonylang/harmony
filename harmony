@@ -468,8 +468,9 @@ def free(r):
 #############################
 }
 
-charm_src = """
+charm_src = r"""
 #define _GNU_SOURCE
+
 // Downloaded from https://github.com/exebook/hashdict.c
 
 #ifndef HASHDICTC
@@ -505,6 +506,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
 #endif
+
 #ifndef JSON_H
 #define JSON_H
 
@@ -536,6 +538,7 @@ struct json_value *json_lookup_map(struct dict *map, char *key);
 struct json_value *json_lookup_value(struct dict *map, char *key);
 
 #endif /* JSON_H */
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -717,6 +720,7 @@ struct env_StoreVar {
 };
 
 void panic(char *s);
+
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -799,7 +803,7 @@ static void code_get(struct json_value *jv){
     assert(op->type == JV_ATOM);
     struct op_info *oi = ops_get(op->u.atom.base, op->u.atom.len);
     if (oi == NULL) {
-        fprintf(stderr, "Unknown HVM instruction: %.*s\\n", op->u.atom.len, op->u.atom.base);
+        fprintf(stderr, "Unknown HVM instruction: %.*s\n", op->u.atom.len, op->u.atom.base);
         exit(1);
     }
     code = realloc(code, (code_len + 1) * 2 * sizeof(struct code));
@@ -850,11 +854,11 @@ void check_invariants(struct node *node, struct context **pctx){
         int cnt = invariant_cnt(code[(*pctx)->pc].env);
         bool b = invariant_check(state, pctx, (*pctx)->pc + cnt);
         if ((*pctx)->failure != 0) {
-            printf("IC FAIL %s\\n", value_string((*pctx)->failure));
+            printf("IC FAIL %s\n", value_string((*pctx)->failure));
             b = false;
         }
         if (!b) {
-            printf("INVARIANT FAILED\\n");
+            printf("INVARIANT FAILED\n");
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
             f->ctx = node->before;
@@ -878,7 +882,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     assert(cc->failure == 0);
 
     if (false) {
-        printf("ONESTEP %"PRIx64" %"PRIx64"\\n", ctx, sc->ctxbag);
+        printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
     }
 
     // See if we should also try an interrupt.
@@ -906,7 +910,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             if (now - lasttime > 1) {
                 if (lasttime != 0) {
                     char *p = value_string(cc->name);
-                    printf("%s pc=%d states=%d queue=%d\\n",
+                    printf("%s pc=%d states=%d queue=%d\n",
                             p, cc->pc, enqueued, enqueued - dequeued);
                     free(p);
                 }
@@ -945,7 +949,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             break;
         }
         if (cc->pc == pc) {
-            fprintf(stderr, ">>> %s\\n", oi->name);
+            fprintf(stderr, ">>> %s\n", oi->name);
         }
         assert(cc->pc != pc);
 
@@ -1093,7 +1097,7 @@ void print_vars(FILE *file, uint64_t v){
         }
         char *k = value_string(vars[i]);
         char *v = value_json(vars[i+1]);
-        fprintf(file, " \\"%s\\": %s", k+1, v);
+        fprintf(file, " \"%s\": %s", k+1, v);
         free(k);
         free(v);
     }
@@ -1138,33 +1142,33 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
 					uint64_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
 					if (print_trace(file, ctx, npc, nfp, nvars)) {
-                        fprintf(file, ",\\n");
+                        fprintf(file, ",\n");
                     }
 				}
-				fprintf(file, "            {\\n");
-				fprintf(file, "              \\"pc\\": \\"%d\\",\\n", orig_pc);
+				fprintf(file, "            {\n");
+				fprintf(file, "              \"pc\": \"%d\",\n", orig_pc);
 
 				const struct env_Frame *ef = code[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
                 a = value_string(ctx->stack[fp - 3]);
 				if (*a == '(') {
-					fprintf(file, "              \\"method\\": \\"%s%s\\",\\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%s%s\",\n", s + 1, a);
 				}
 				else {
-					fprintf(file, "              \\"method\\": \\"%s(%s)\\",\\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%s(%s)\",\n", s + 1, a);
 				}
 
                 uint64_t ct = ctx->stack[fp - 4];
                 assert((ct & VALUE_MASK) == VALUE_INT);
                 switch (ct >> VALUE_BITS) {
                 case CALLTYPE_PROCESS:
-                    fprintf(file, "              \\"calltype\\": \\"process\\",\\n");
+                    fprintf(file, "              \"calltype\": \"process\",\n");
                     break;
                 case CALLTYPE_NORMAL:
-                    fprintf(file, "              \\"calltype\\": \\"normal\\",\\n");
+                    fprintf(file, "              \"calltype\": \"normal\",\n");
                     break;
                 case CALLTYPE_INTERRUPT:
-                    fprintf(file, "              \\"calltype\\": \\"interrupt\\",\\n");
+                    fprintf(file, "              \"calltype\": \"interrupt\",\n");
                     break;
                 default:
                     panic("print_trace: bad call type 2");
@@ -1172,9 +1176,9 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
 
 				free(s);
 				free(a);
-				fprintf(file, "              \\"vars\\": ");
+				fprintf(file, "              \"vars\": ");
 				print_vars(file, vars);
-				fprintf(file, "\\n");
+				fprintf(file, "\n");
 				fprintf(file, "            }");
 				return true;
 			}
@@ -1209,45 +1213,45 @@ char *ctx_status(struct node *node, uint64_t ctx) {
 void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     char *s, *a;
 
-    fprintf(file, "        {\\n");
-    fprintf(file, "          \\"tid\\": \\"%d\\",\\n", tid);
+    fprintf(file, "        {\n");
+    fprintf(file, "          \"tid\": \"%d\",\n", tid);
 
     struct context *c = value_get(ctx, NULL);
 
     s = value_string(c->name);
     a = value_string(c->arg);
     if (*a == '(') {
-        fprintf(file, "          \\"name\\": \\"%s%s\\",\\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%s%s\",\n", s + 1, a);
     }
     else {
-        fprintf(file, "          \\"name\\": \\"%s(%s)\\",\\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%s(%s)\",\n", s + 1, a);
     }
     free(s);
     free(a);
 
     // assert((c->entry & VALUE_MASK) == VALUE_PC);   TODO
-    fprintf(file, "          \\"entry\\": \\"%d\\",\\n", (int) (c->entry >> VALUE_BITS));
+    fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
 
-    fprintf(file, "          \\"pc\\": \\"%d\\",\\n", c->pc);
-    fprintf(file, "          \\"fp\\": \\"%d\\",\\n", c->fp);
+    fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
+    fprintf(file, "          \"fp\": \"%d\",\n", c->fp);
 
 #ifdef notdef
     {
-        fprintf(file, "STACK %d:\\n", c->fp);
+        fprintf(file, "STACK %d:\n", c->fp);
         for (int x = 0; x < c->sp; x++) {
-            fprintf(file, "    %d: %s\\n", x, value_string(c->stack[x]));
+            fprintf(file, "    %d: %s\n", x, value_string(c->stack[x]));
         }
     }
 #endif
 
-    fprintf(file, "          \\"trace\\": [\\n");
+    fprintf(file, "          \"trace\": [\n");
     print_trace(file, c, c->pc, c->fp, c->vars);
-    fprintf(file, "\\n");
-    fprintf(file, "          ],\\n");
+    fprintf(file, "\n");
+    fprintf(file, "          ],\n");
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-        fprintf(file, "          \\"failure\\": \\"%s\\",\\n", s + 1);
+        fprintf(file, "          \"failure\": \"%s\",\n", s + 1);
         free(s);
     }
 
@@ -1255,52 +1259,52 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         s = value_string(c->trap_pc);
         a = value_string(c->trap_arg);
         if (*a == '(') {
-            fprintf(file, "          \\"trap\\": \\"%s%s\\",\\n", s, a);
+            fprintf(file, "          \"trap\": \"%s%s\",\n", s, a);
         }
         else {
-            fprintf(file, "          \\"trap\\": \\"%s(%s)\\",\\n", s, a);
+            fprintf(file, "          \"trap\": \"%s(%s)\",\n", s, a);
         }
         free(s);
     }
 
     if (c->interruptlevel) {
-        fprintf(file, "          \\"interruptlevel\\": \\"1\\",\\n");
+        fprintf(file, "          \"interruptlevel\": \"1\",\n");
     }
 
     if (c->atomic != 0) {
-        fprintf(file, "          \\"atomic\\": \\"%d\\",\\n", c->atomic);
+        fprintf(file, "          \"atomic\": \"%d\",\n", c->atomic);
     }
     if (c->readonly != 0) {
-        fprintf(file, "          \\"readonly\\": \\"%d\\",\\n", c->readonly);
+        fprintf(file, "          \"readonly\": \"%d\",\n", c->readonly);
     }
 
     if (c->phase == CTX_END) {
-        fprintf(file, "          \\"mode\\": \\"terminated\\",\\n");
+        fprintf(file, "          \"mode\": \"terminated\",\n");
     }
     else if (c->failure != 0) {
-        fprintf(file, "          \\"mode\\": \\"failed\\",\\n");
+        fprintf(file, "          \"mode\": \"failed\",\n");
     }
     else {
-        fprintf(file, "          \\"mode\\": \\"%s\\",\\n", ctx_status(node, ctx));
+        fprintf(file, "          \"mode\": \"%s\",\n", ctx_status(node, ctx));
     }
 
 #ifdef notdef
-    fprintf(file, "          \\"stack\\": [\\n");
+    fprintf(file, "          \"stack\": [\n");
     for (int i = 0; i < c->sp; i++) {
         s = value_string(c->stack[i]);
         if (i < c->sp - 1) {
-            fprintf(file, "            \\"%s\\",\\n", s);
+            fprintf(file, "            \"%s\",\n", s);
         }
         else {
-            fprintf(file, "            \\"%s\\"\\n", s);
+            fprintf(file, "            \"%s\"\n", s);
         }
         free(s);
     }
-    fprintf(file, "          ],\\n");
+    fprintf(file, "          ],\n");
 #endif
 
     s = value_json(c->this);
-    fprintf(file, "          \\"this\\": %s\\n", s);
+    fprintf(file, "          \"this\": %s\n", s);
     free(s);
 
     fprintf(file, "        }");
@@ -1308,9 +1312,9 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
 
 void print_state(FILE *file, struct node *node){
 #ifdef notdef
-    fprintf(file, "      \\"shared\\": ");
+    fprintf(file, "      \"shared\": ");
     print_vars(file, node->state->vars);
-    fprintf(file, ",\\n");
+    fprintf(file, ",\n");
 #endif
 
     struct state *state = node->state;
@@ -1325,7 +1329,7 @@ void print_state(FILE *file, struct node *node){
     inv_ctx->atomic = inv_ctx->readonly = 1;
     inv_ctx->interruptlevel = false;
 
-    fprintf(file, "      \\"invfails\\": [");
+    fprintf(file, "      \"invfails\": [");
     assert((state->invariants & VALUE_MASK) == VALUE_SET);
     int size;
     uint64_t *vals = value_get(state->invariants, &size);
@@ -1344,32 +1348,32 @@ void print_state(FILE *file, struct node *node){
             if (nfailures != 0) {
                 fprintf(file, ",");
             }
-            fprintf(file, "\\n        {\\n");
-            fprintf(file, "          \\"pc\\": \\"%"PRIu64"\\",\\n", vals[i] >> VALUE_BITS);
+            fprintf(file, "\n        {\n");
+            fprintf(file, "          \"pc\": \"%"PRIu64"\",\n", vals[i] >> VALUE_BITS);
             if (inv_ctx->failure == 0) {
-                fprintf(file, "          \\"reason\\": \\"invariant violated\\"\\n");
+                fprintf(file, "          \"reason\": \"invariant violated\"\n");
             }
             else {
                 char *val = value_string(inv_ctx->failure);
-                fprintf(file, "          \\"reason\\": \\"%s\\"\\n", val + 1);
+                fprintf(file, "          \"reason\": \"%s\"\n", val + 1);
                 free(val);
             }
             nfailures++;
             fprintf(file, "        }");
         }
     }
-    fprintf(file, "\\n      ],\\n");
+    fprintf(file, "\n      ],\n");
     free(inv_ctx);
 
-    fprintf(file, "      \\"contexts\\": [\\n");
+    fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < nprocesses; i++) {
         print_context(file, processes[i], i, node);
         if (i < nprocesses - 1) {
             fprintf(file, ",");
         }
-        fprintf(file, "\\n");
+        fprintf(file, "\n");
     }
-    fprintf(file, "      ]\\n");
+    fprintf(file, "      ]\n");
 }
 
 void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
@@ -1381,55 +1385,55 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
     else {
         fprintf(file, ",");
     }
-    fprintf(file, "\\n        {\\n");
+    fprintf(file, "\n        {\n");
     if (newstate->vars != oldstate->vars) {
-        fprintf(file, "          \\"shared\\": ");
+        fprintf(file, "          \"shared\": ");
         print_vars(file, newstate->vars);
-        fprintf(file, ",\\n");
+        fprintf(file, ",\n");
     }
     if (interrupt) {
-        fprintf(file, "          \\"interrupt\\": \\"True\\",\\n");
+        fprintf(file, "          \"interrupt\": \"True\",\n");
     }
     if (choose) {
         char *val = value_json(choice);
-        fprintf(file, "          \\"choose\\": %s,\\n", val);
+        fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
     }
-    fprintf(file, "          \\"npc\\": \\"%d\\",\\n", newctx->pc);
+    fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newctx->fp != oldctx->fp) {
-        fprintf(file, "          \\"fp\\": \\"%d\\",\\n", newctx->fp);
-        fprintf(file, "          \\"trace\\": [\\n");
+        fprintf(file, "          \"fp\": \"%d\",\n", newctx->fp);
+        fprintf(file, "          \"trace\": [\n");
         print_trace(file, newctx, newctx->pc, newctx->fp, newctx->vars);
-        fprintf(file, "\\n");
-        fprintf(file, "          ],\\n");
+        fprintf(file, "\n");
+        fprintf(file, "          ],\n");
     }
     if (newctx->this != oldctx->this) {
         char *val = value_json(newctx->this);
-        fprintf(file, "          \\"this\\": %s,\\n", val);
+        fprintf(file, "          \"this\": %s,\n", val);
         free(val);
     }
     if (newctx->vars != oldctx->vars) {
-        fprintf(file, "          \\"local\\": ");
+        fprintf(file, "          \"local\": ");
         print_vars(file, newctx->vars);
-        fprintf(file, ",\\n");
+        fprintf(file, ",\n");
     }
     if (newctx->atomic != oldctx->atomic) {
-        fprintf(file, "          \\"atomic\\": \\"%d\\",\\n", newctx->atomic);
+        fprintf(file, "          \"atomic\": \"%d\",\n", newctx->atomic);
     }
     if (newctx->readonly != oldctx->readonly) {
-        fprintf(file, "          \\"readonly\\": \\"%d\\",\\n", newctx->readonly);
+        fprintf(file, "          \"readonly\": \"%d\",\n", newctx->readonly);
     }
     if (newctx->interruptlevel != oldctx->interruptlevel) {
-        fprintf(file, "          \\"interruptlevel\\": \\"%d\\",\\n", newctx->interruptlevel ? 1 : 0);
+        fprintf(file, "          \"interruptlevel\": \"%d\",\n", newctx->interruptlevel ? 1 : 0);
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-        fprintf(file, "          \\"failure\\": \\"%s\\",\\n", val + 1);
-        fprintf(file, "          \\"mode\\": \\"failed\\",\\n");
+        fprintf(file, "          \"failure\": \"%s\",\n", val + 1);
+        fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
     else if (newctx->phase == CTX_END) {
-        fprintf(file, "          \\"mode\\": \\"terminated\\",\\n");
+        fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
     int common;
@@ -1439,9 +1443,9 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         }
     }
     if (common < oldctx->sp) {
-        fprintf(file, "          \\"pop\\": \\"%d\\",\\n", oldctx->sp - common);
+        fprintf(file, "          \"pop\": \"%d\",\n", oldctx->sp - common);
     }
-    fprintf(file, "          \\"push\\": [");
+    fprintf(file, "          \"push\": [");
     for (int i = common; i < newctx->sp; i++) {
         if (i > common) {
             fprintf(file, ",");
@@ -1450,9 +1454,9 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, " %s", val);
         free(val);
     }
-    fprintf(file, " ],\\n");
+    fprintf(file, " ],\n");
 
-    fprintf(file, "          \\"pc\\": \\"%d\\"\\n", oldctx->pc);
+    fprintf(file, "          \"pc\": \"%d\"\n", oldctx->pc);
 
     fprintf(file, "        }");
 }
@@ -1510,7 +1514,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             cc->pc++;
         }
         else {
-            // printf("--- %d: %s\\n", pc, oi->name);
+            // printf("--- %d: %s\n", pc, oi->name);
             if (code[pc].breakable) {
                 cc->phase = CTX_MIDDLE;
             }
@@ -1535,7 +1539,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             break;
         }
         if (cc->pc == pc) {
-            fprintf(stderr, ">>> %s\\n", oi->name);
+            fprintf(stderr, ">>> %s\n", oi->name);
         }
         assert(cc->pc != pc);
 
@@ -1567,7 +1571,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
 
     if (false && cc->failure != 0) {
         char *r = value_string(cc->failure);
-        printf("Safety violation: %s\\n", r + 1);
+        printf("Safety violation: %s\n", r + 1);
         free(r);
     }
 
@@ -1585,15 +1589,15 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
 
     last = last->parent;
     if (last->parent == NULL) {
-        fprintf(file, "\\n");
+        fprintf(file, "\n");
     }
     else {
         path_dump(file, last, last->before, last->choice, oldstate, oldctx, last->interrupt);
-        fprintf(file, ",\\n");
+        fprintf(file, ",\n");
     }
 
-    fprintf(file, "    {\\n");
-    fprintf(file, "      \\"id\\": \\"%d\\",\\n", node->id);
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"id\": \"%d\",\n", node->id);
 
     /* Find this context in the list of processes.
      */
@@ -1610,16 +1614,16 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
     char *name = value_string(context->name);
     char *arg = value_string(context->arg);
     // char *c = value_string(choice);
-    fprintf(file, "      \\"tid\\": \\"%d\\",\\n", pid);
+    fprintf(file, "      \"tid\": \"%d\",\n", pid);
     if (*arg == '(') {
-        fprintf(file, "      \\"name\\": \\"%s%s\\",\\n", name + 1, arg);
+        fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
     }
     else {
-        fprintf(file, "      \\"name\\": \\"%s(%s)\\",\\n", name + 1, arg);
+        fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
     }
-    // fprintf(file, "      \\"choice\\": \\"%s\\",\\n", c);
+    // fprintf(file, "      \"choice\": \"%s\",\n", c);
     dumpfirst = true;
-    fprintf(file, "      \\"microsteps\\": [");
+    fprintf(file, "      \"microsteps\": [");
     free(name);
     free(arg);
     // free(c);
@@ -1628,7 +1632,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
 
     // Recreate the steps
     processes[pid] = twostep(file, last, ctx, choice, interrupt, oldstate, oldctx);
-    fprintf(file, "\\n      ],\\n");
+    fprintf(file, "\n      ],\n");
 
     /* Match each context to a process.
      */
@@ -1736,24 +1740,24 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     FILE *out = env;
 
     if (notfirst) {
-        fprintf(out, ",\\n");
+        fprintf(out, ",\n");
     }
     else {
         notfirst = true;
-        fprintf(out, "\\n");
+        fprintf(out, "\n");
     }
-    fprintf(out, "    \\"%.*s\\": { ", key_size, (char *) key);
+    fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
 
     struct json_value *jv = value;
     assert(jv->type == JV_MAP);
 
     struct json_value *file = dict_lookup(jv->u.map, "file", 4);
     assert(file->type == JV_ATOM);
-    fprintf(out, "\\"file\\": \\"%.*s\\", ", file->u.atom.len, file->u.atom.base);
+    fprintf(out, "\"file\": \"%.*s\", ", file->u.atom.len, file->u.atom.base);
 
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
-    fprintf(out, "\\"line\\": \\"%.*s\\"", line->u.atom.len, line->u.atom.base);
+    fprintf(out, "\"line\": \"%.*s\"", line->u.atom.len, line->u.atom.base);
 
     // parse the line number
     char *cline = malloc(line->u.atom.len + 1);
@@ -1775,10 +1779,10 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
         if (--lineno == 0) {
             buf[1023] = 0;
             int len = strlen(buf);
-            if (len > 0 && buf[len - 1] == '\\n') {
+            if (len > 0 && buf[len - 1] == '\n') {
                 buf[len - 1] = 0;
             }
-            fprintf(out, ", \\"code\\": \\"%s\\"", buf);
+            fprintf(out, ", \"code\": \"%s\"", buf);
             break;
         }
     }
@@ -1787,7 +1791,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 }
 
 int main(int argc, char **argv){
-    // printf("Charm v1\\n");
+    // printf("Charm v1\n");
 
     failures = queue_init();
 
@@ -1818,7 +1822,7 @@ int main(int argc, char **argv){
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
     for (int i = 0; i < jc->u.list.nvals; i++) {
-        // printf("Line %d\\n", i);
+        // printf("Line %d\n", i);
         code_get(jc->u.list.vals[i]);
     }
 
@@ -1880,7 +1884,7 @@ int main(int argc, char **argv){
         if (state->choosing != 0) {
             assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
             if (false) {
-                printf("CHOOSING %"PRIx64"\\n", state->choosing);
+                printf("CHOOSING %"PRIx64"\n", state->choosing);
             }
 
             struct context *cc = value_get(state->choosing, NULL);
@@ -1894,11 +1898,11 @@ int main(int argc, char **argv){
             assert(size > 0);
             for (int i = 0; i < size; i++) {
                 if (false) {
-                    printf("NEXT CHOICE %d %d %"PRIx64"\\n", i, size, vals[i]);
+                    printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
                 onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx);
                 if (false) {
-                    printf("NEXT CHOICE DONE\\n");
+                    printf("NEXT CHOICE DONE\n");
                 }
             }
         }
@@ -1909,19 +1913,19 @@ int main(int argc, char **argv){
             assert(size > 0);
             for (int i = 0; i < size; i += 2) {
                 if (false) {
-                    printf("NEXT CONTEXT %d %"PRIx64"\\n", i, ctxs[i]);
+                    printf("NEXT CONTEXT %d %"PRIx64"\n", i, ctxs[i]);
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
                 onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx);
                 if (false) {
-                    printf("NEXT CONTEXT DONE\\n");
+                    printf("NEXT CONTEXT DONE\n");
                 }
             }
         }
     }
 
-    printf("#states %d\\n", graph_size);
+    printf("#states %d\n", graph_size);
 
     if (queue_empty(failures)) {
         // find the strongly connected components
@@ -1963,17 +1967,17 @@ int main(int argc, char **argv){
             }
         }
 
-        printf("%d components, %d bad nodes\\n", ncomponents, nbad);
+        printf("%d components, %d bad nodes\n", ncomponents, nbad);
     }
 
     FILE *out = fopen("charm.json", "w");
     assert(out != NULL);
-    fprintf(out, "{\\n");
+    fprintf(out, "{\n");
 
     if (queue_empty(failures)) {
-        printf("No issues\\n");
-        fprintf(out, "  \\"issue\\": \\"No issues\\"\\n");
-        fprintf(out, "}\\n");
+        printf("No issues\n");
+        fprintf(out, "  \"issue\": \"No issues\"\n");
+        fprintf(out, "}\n");
         exit(0);
     }
 
@@ -1988,32 +1992,32 @@ int main(int argc, char **argv){
 
     switch (bad->type) {
     case FAIL_SAFETY:
-        printf("Safety Violation\\n");
-        fprintf(out, "  \\"issue\\": \\"Safety violation\\",\\n");
+        printf("Safety Violation\n");
+        fprintf(out, "  \"issue\": \"Safety violation\",\n");
         break;
     case FAIL_INVARIANT:
-        printf("Invariant Violation\\n");
-        fprintf(out, "  \\"issue\\": \\"Invariant violation\\",\\n");
+        printf("Invariant Violation\n");
+        fprintf(out, "  \"issue\": \"Invariant violation\",\n");
         break;
     case FAIL_TERMINATION:
-        printf("Non-terminating state\\n");
-        fprintf(out, "  \\"issue\\": \\"Non-terminating state\\",\\n");
+        printf("Non-terminating state\n");
+        fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     default:
         panic("main: bad fail type");
     }
 
-    fprintf(out, "  \\"macrosteps\\": [");
+    fprintf(out, "  \"macrosteps\": [");
     struct state oldstate;
 	memset(&oldstate, 0, sizeof(oldstate));
     struct context *oldctx = calloc(1, sizeof(*oldctx));
     dumpfirst = true;
     path_dump(out, bad->node, bad->ctx, bad->choice, &oldstate, &oldctx, false);
-    fprintf(out, "\\n");
+    fprintf(out, "\n");
     free(oldctx);
-    fprintf(out, "  ],\\n");
+    fprintf(out, "  ],\n");
 
-    fprintf(out, "  \\"code\\": [\\n");
+    fprintf(out, "  \"code\": [\n");
     jc = dict_lookup(jv->u.map, "pretty", 6);
     assert(jc->type == JV_LIST);
     for (int i = 0; i < jc->u.list.nvals; i++) {
@@ -2022,39 +2026,40 @@ int main(int argc, char **argv){
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[0];
         assert(codestr->type == JV_ATOM);
-        fprintf(out, "    \\"%.*s\\"", codestr->u.atom.len, codestr->u.atom.base);
+        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
         if (i < jc->u.list.nvals - 1) {
             fprintf(out, ",");
         }
-        fprintf(out, "\\n");
+        fprintf(out, "\n");
     }
-    fprintf(out, "  ],\\n");
+    fprintf(out, "  ],\n");
 
-    fprintf(out, "  \\"explain\\": [\\n");
+    fprintf(out, "  \"explain\": [\n");
     for (int i = 0; i < jc->u.list.nvals; i++) {
         struct json_value *next = jc->u.list.vals[i];
         assert(next->type == JV_LIST);
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[1];
         assert(codestr->type == JV_ATOM);
-        fprintf(out, "    \\"%.*s\\"", codestr->u.atom.len, codestr->u.atom.base);
+        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
         if (i < jc->u.list.nvals - 1) {
             fprintf(out, ",");
         }
-        fprintf(out, "\\n");
+        fprintf(out, "\n");
     }
-    fprintf(out, "  ],\\n");
+    fprintf(out, "  ],\n");
 
-    fprintf(out, "  \\"locations\\": {");
+    fprintf(out, "  \"locations\": {");
     jc = dict_lookup(jv->u.map, "locations", 9);
     assert(jc->type == JV_MAP);
     dict_iter(jc->u.map, enum_loc, out);
-    fprintf(out, "\\n  }\\n");
+    fprintf(out, "\n  }\n");
 
-    fprintf(out, "}\\n");
+    fprintf(out, "}\n");
 
     return 0;
 }
+
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -2092,7 +2097,7 @@ unsigned long to_ulong(const char *p, int len){
 }
 
 void panic(char *s){
-    fprintf(stderr, "Panic: %s\\n", s);
+    fprintf(stderr, "Panic: %s\n", s);
     exit(1);
 }
 
@@ -2128,6 +2133,7 @@ bool file_read(char *filename, /* OUT */ json_buf_t *buf){
 	return true;
 }
 #endif // notdef
+
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #endif
@@ -2279,6 +2285,7 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
 		}
 	}
 }
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2358,7 +2365,7 @@ void json_map_append(struct json_value *map, json_buf_t key, struct json_value *
 	assert(map->type == JV_MAP);
 	void **p = dict_insert(map->u.map, key.base, key.len);
 	if (*p != 0) {
-		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\\n",
+		fprintf(stderr, "json_map_append: duplicate key: '%.*s'\n",
 							(int) key.len, key.base);
 	}
 	assert(*p == 0);
@@ -2434,7 +2441,7 @@ static struct json_value *json_parse_list(json_buf_t *buf){
 
 static struct json_value *json_parse_string(json_buf_t *buf){
 	assert(buf->len > 0);
-	assert(*buf->base == '"' || *buf->base == '\\'');
+	assert(*buf->base == '"' || *buf->base == '\'');
 	char delim = *buf->base;
 	buf_adv(buf);
 
@@ -2442,48 +2449,48 @@ static struct json_value *json_parse_string(json_buf_t *buf){
 	jv->type = JV_ATOM;
 
 	while (buf->len > 0) {
-		if (*buf->base == '\\\\') {
+		if (*buf->base == '\\') {
 			buf_adv(buf);
 			assert(buf->len > 0);
 			switch (*buf->base) {
 			case 0:
 				json_string_add(&jv->u.atom, 0);
 				break;
-			case '\\\\':
-				json_string_add(&jv->u.atom, '\\\\');
+			case '\\':
+				json_string_add(&jv->u.atom, '\\');
 				break;
-			case '\\'':
-				json_string_add(&jv->u.atom, '\\'');
+			case '\'':
+				json_string_add(&jv->u.atom, '\'');
 				break;
-			case '\\"':
-				json_string_add(&jv->u.atom, '\\"');
+			case '\"':
+				json_string_add(&jv->u.atom, '\"');
 				break;
-			case '\\?':
-				json_string_add(&jv->u.atom, '\\?');
+			case '\?':
+				json_string_add(&jv->u.atom, '\?');
 				break;
 			case 'a':
-				json_string_add(&jv->u.atom, '\\a');
+				json_string_add(&jv->u.atom, '\a');
 				break;
 			case 'b':
-				json_string_add(&jv->u.atom, '\\b');
+				json_string_add(&jv->u.atom, '\b');
 				break;
 			case 'e':
-				json_string_add(&jv->u.atom, '\\e');
+				json_string_add(&jv->u.atom, '\e');
 				break;
 			case 'f':
-				json_string_add(&jv->u.atom, '\\f');
+				json_string_add(&jv->u.atom, '\f');
 				break;
 			case 'n':
-				json_string_add(&jv->u.atom, '\\n');
+				json_string_add(&jv->u.atom, '\n');
 				break;
 			case 'r':
-				json_string_add(&jv->u.atom, '\\r');
+				json_string_add(&jv->u.atom, '\r');
 				break;
 			case 't':
-				json_string_add(&jv->u.atom, '\\t');
+				json_string_add(&jv->u.atom, '\t');
 				break;
 			case 'v':
-				json_string_add(&jv->u.atom, '\\v');
+				json_string_add(&jv->u.atom, '\v');
 				break;
 			default:
 				json_string_add(&jv->u.atom, *buf->base);
@@ -2510,11 +2517,11 @@ struct json_value *json_parse_value(json_buf_t *buf){
 		return json_parse_struct(buf);
 	case '[':
 		return json_parse_list(buf);
-	case '"': case '\\'':
+	case '"': case '\'':
 		return json_parse_string(buf);
 	default:
 		if (!is_atom_char(*buf->base)) {
-			fprintf(stderr, "--> '%.*s'\\n", (int) buf->len, buf->base);
+			fprintf(stderr, "--> '%.*s'\n", (int) buf->len, buf->base);
 		}
 		assert(is_atom_char(*buf->base));
 		struct json_value *jv = new_alloc(struct json_value);
@@ -2560,7 +2567,7 @@ static void json_dump_string(json_buf_t buf){
 		}
 	}
 	if (i == buf.len) {
-		printf("%.*s\\n", (int) buf.len, buf.base);
+		printf("%.*s\n", (int) buf.len, buf.base);
 		return;
 	}
 
@@ -2568,16 +2575,16 @@ static void json_dump_string(json_buf_t buf){
 	for (i = 0; i < buf.len; i++) {
 		switch (buf.base[i]) {
 		case 0:
-			printf("\\\\0");
+			printf("\\0");
 			break;
 		case '"':
-			printf("\\\\\\"");
+			printf("\\\"");
 			break;
 		default:
 			putchar(buf.base[i]);
 		}
 	}
-	printf("\\"\\n");
+	printf("\"\n");
 }
 
 static void json_dump_ind(struct json_value *jv, unsigned int ind){
@@ -2586,18 +2593,18 @@ static void json_dump_ind(struct json_value *jv, unsigned int ind){
 		json_dump_string(jv->u.atom);
 		break;
 	case JV_MAP:
-		printf("{\\n");
+		printf("{\n");
 		dict_iter(jv->u.map, json_dump_map, (void *) (size_t) (ind + 2));
-		json_indent(ind); printf("}\\n");
+		json_indent(ind); printf("}\n");
 		break;
 	case JV_LIST:
-		printf("[\\n");
+		printf("[\n");
 		int i;
 		for (i = 0; i < jv->u.list.nvals; i++) {
 			json_indent(ind + 2);
 			json_dump_ind(jv->u.list.vals[i], ind + 4);
 		}
-		json_indent(ind); printf("]\\n");
+		json_indent(ind); printf("]\n");
 		break;
 	default:
 		assert(0);
@@ -2643,6 +2650,7 @@ struct json_value *json_lookup_value(struct dict *map, char *key){
 	}
 	return jv;
 }
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -2874,7 +2882,7 @@ uint64_t dict_load(uint64_t dict, uint64_t key){
         */
     }
 
-	printf("CAN'T FIND %s in %s\\n", value_string(key), value_string(dict));
+	printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
     panic("dict_load");
     return 0;
 }
@@ -2955,7 +2963,7 @@ uint64_t dict_store(uint64_t dict, uint64_t key, uint64_t value){
         char *p = value_string(value);
         char *q = value_string(dict);
         char *r = value_string(key);
-        printf("DICT_STORE %s %s %s\\n", p, q, r);
+        printf("DICT_STORE %s %s %s\n", p, q, r);
         free(p);
         free(q);
         free(r);
@@ -3128,7 +3136,7 @@ void op_Address(const void *env, struct state *state, struct context **pctx){
         return;
     }
     if (false) {
-        printf("ADDRESS %"PRIx64"\\n", index);
+        printf("ADDRESS %"PRIx64"\n", index);
     }
 
     int size;
@@ -3283,7 +3291,7 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     if (false) {
         printf("FRAME %d %d %"PRIx64" ", (*pctx)->pc, (*pctx)->sp, ef->name);
         var_dump(ef->args);
-        printf("\\n");
+        printf("\n");
     }
 
     uint64_t arg = ctx_pop(pctx);
@@ -3345,7 +3353,7 @@ void op_Jump(const void *env, struct state *state, struct context **pctx){
     const struct env_Jump *ej = env;
 
     if (false) {
-        printf("JUMP %d\\n", ej->pc);
+        printf("JUMP %d\n", ej->pc);
     }
     (*pctx)->pc = ej->pc;
 }
@@ -3354,7 +3362,7 @@ void op_JumpCond(const void *env, struct state *state, struct context **pctx){
     const struct env_JumpCond *ej = env;
 
     if (false) {
-        printf("JUMPCOND %d\\n", ej->pc);
+        printf("JUMPCOND %d\n", ej->pc);
     }
     uint64_t v = ctx_pop(pctx);
     if (v == ej->cond) {
@@ -3464,7 +3472,7 @@ void op_Push(const void *env, struct state *state, struct context **pctx){
 
     if (false) {
         char *p = value_string(ep->value);
-        printf("PUSH %s\\n", p);
+        printf("PUSH %s\n", p);
         free(p);
     }
 
@@ -3491,7 +3499,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->sp == 0) {     // __init__
         (*pctx)->phase = CTX_END;
         if (false) {
-            printf("RETURN INIT\\n");
+            printf("RETURN INIT\n");
         }
     }
     else {
@@ -3509,7 +3517,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         if ((*pctx)->sp == 0) {     // __init__
             (*pctx)->phase = CTX_END;
             if (false) {
-                printf("RETURN INIT\\n");
+                printf("RETURN INIT\n");
             }
             return;
         }
@@ -3614,7 +3622,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     uint64_t arg = ctx_pop(pctx);
     uint64_t this = ctx_pop(pctx);
     if (false) {
-        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\\n", pc, arg, this);
+        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\n", pc, arg, this);
     }
 
     struct context *ctx = new_alloc(struct context);
@@ -3635,7 +3643,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 
     if (false) {
         char *p = value_string(state->ctxbag);
-        printf("SPAWN --> %s\\n", p);
+        printf("SPAWN --> %s\n", p);
         free(p);
     }
 
@@ -3706,12 +3714,12 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (false) {
-            printf("STORE IND %d %d %d %"PRIx64" %s %s\\n", (*pctx)->pc, (*pctx)->sp, size, v,
+            printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
                     value_string((*pctx)->stack[(*pctx)->sp - 1]),
                     value_string(av));
             for (int i = 0; i < size; i++) {
                 char *index = value_string(indices[i]);
-                printf(">> %s\\n", index);
+                printf(">> %s\n", index);
                 free(index);
             }
         }
@@ -3891,7 +3899,7 @@ void *init_Nary(struct dict *map){
     assert(op->type == JV_ATOM);
     struct f_info *fi = dict_lookup(f_map, op->u.atom.base, op->u.atom.len);
     if (fi == NULL) {
-        fprintf(stderr, "Nary: unknown function '%.*s'\\n", op->u.atom.len, op->u.atom.base);
+        fprintf(stderr, "Nary: unknown function '%.*s'\n", op->u.atom.len, op->u.atom.base);
         exit(1);
     }
     env->fi = fi;
@@ -5162,6 +5170,7 @@ void ops_init(){
         *p = fi;
     }
 }
+
 #include <stdlib.h>
 #include <assert.h>
 
@@ -5272,6 +5281,7 @@ void queue_cleanup(void){
 	}
 	assert(queue_csize == 0);
 }
+
 #define _GNU_SOURCE
 
 #include <stdarg.h>
@@ -5511,7 +5521,7 @@ void append_printf(char **p, char *fmt, ...){
 static char *value_string_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_string_bool %"PRIu64"\\n", v);
+        fprintf(stderr, "value_string_bool %"PRIu64"\n", v);
         panic("value_string_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
@@ -5522,11 +5532,11 @@ static char *value_string_bool(uint64_t v) {
 static char *value_json_bool(uint64_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_json_bool %"PRIu64"\\n", v);
+        fprintf(stderr, "value_json_bool %"PRIu64"\n", v);
         panic("value_json_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
-    asprintf(&r, "{ \\"type\\": \\"bool\\", \\"value\\": \\"%s\\" }", v == 0 ? "False" : "True");
+    asprintf(&r, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
     return r;
 }
 
@@ -5549,13 +5559,13 @@ static char *value_json_int(uint64_t v) {
     char *r;
 
     if ((v >> VALUE_BITS) == VALUE_MAX) {
-        asprintf(&r, "{ \\"type\\": \\"int\\", \\"value\\": \\"inf\\" }");
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"inf\" }");
     }
     else if ((v >> VALUE_BITS) == VALUE_MIN) {
-        asprintf(&r, "{ \\"type\\": \\"int\\", \\"value\\": \\"-inf\\" }");
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"-inf\" }");
     }
     else {
-        asprintf(&r, "{ \\"type\\": \\"int\\", \\"value\\": \\"%"PRId64"\\" }",
+        asprintf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }",
                             ((int64_t) v) >> VALUE_BITS);
     }
     return r;
@@ -5573,7 +5583,7 @@ static char *value_json_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
     char *s = dict_retrieve(p, &size), *r;
-    asprintf(&r, "{ \\"type\\": \\"atom\\", \\"value\\": \\"%.*s\\" }", size, s);
+    asprintf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
     return r;
 }
 
@@ -5586,7 +5596,7 @@ static char *value_string_pc(uint64_t v) {
 
 static char *value_json_pc(uint64_t v) {
     char *r;
-    asprintf(&r, "{ \\"type\\": \\"pc\\", \\"value\\": \\"%"PRIu64"\\" }", v >> VALUE_BITS);
+    asprintf(&r, "{ \"type\": \"pc\", \"value\": \"%"PRIu64"\" }", v >> VALUE_BITS);
     return r;
 }
 
@@ -5622,7 +5632,7 @@ static char *value_json_dict(uint64_t v) {
     char *r;
 
     if (v == 0) {
-        asprintf(&r, "{ \\"type\\": \\"dict\\", \\"value\\": [] }");
+        asprintf(&r, "{ \"type\": \"dict\", \"value\": [] }");
         return r;
     }
 
@@ -5631,14 +5641,14 @@ static char *value_json_dict(uint64_t v) {
     uint64_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(uint64_t);
 
-    asprintf(&r, "{ \\"type\\": \\"dict\\", \\"value\\": [");
+    asprintf(&r, "{ \"type\": \"dict\", \"value\": [");
     for (int i = 0; i < size; i++) {
         if (i != 0) {
             append_printf(&r, ", ");
         }
         char *key = value_json(vals[2*i]);
         char *val = value_json(vals[2*i+1]);
-        append_printf(&r, "{ \\"key\\": %s, \\"value\\": %s }", key, val);
+        append_printf(&r, "{ \"key\": %s, \"value\": %s }", key, val);
         free(key);
         free(val);
     }
@@ -5678,7 +5688,7 @@ static char *value_json_set(uint64_t v) {
     char *r;
 
     if (v == 0) {
-        asprintf(&r, "{ \\"type\\": \\"set\\", \\"value\\": [] }");
+        asprintf(&r, "{ \"type\": \"set\", \"value\": [] }");
         return r;
     }
 
@@ -5687,7 +5697,7 @@ static char *value_json_set(uint64_t v) {
     uint64_t *vals = dict_retrieve(p, &size);
     size /= sizeof(uint64_t);
 
-    asprintf(&r, "{ \\"type\\": \\"set\\", \\"value\\": [");
+    asprintf(&r, "{ \"type\": \"set\", \"value\": [");
     for (int i = 0; i < size; i++) {
         char *val = value_json(vals[i]);
         if (i == 0) {
@@ -5735,7 +5745,7 @@ static char *value_string_address(uint64_t v) {
 static char *value_json_address(uint64_t v) {
     char *r;
     if (v == 0) {
-        asprintf(&r, "{ \\"type\\": \\"address\\", \\"value\\": [] }");
+        asprintf(&r, "{ \"type\": \"address\", \"value\": [] }");
         return r;
     }
 
@@ -5744,7 +5754,7 @@ static char *value_json_address(uint64_t v) {
     uint64_t *vals = dict_retrieve(p, &size);
     size /= sizeof(uint64_t);
     assert(size > 0);
-    asprintf(&r, "{ \\"type\\": \\"address\\", \\"value\\": [");
+    asprintf(&r, "{ \"type\": \"address\", \"value\": [");
     for (int i = 0; i < size; i++) {
         char *val = value_json(vals[i]);
         if (i == 0) {
@@ -5772,18 +5782,18 @@ static char *value_string_context(uint64_t v) {
 static char *value_json_context(uint64_t v) {
     struct context *ctx = value_get(v, NULL);
     char *r, *val;
-    asprintf(&r, "{ \\"type\\": \\"context\\", \\"value\\": {");
+    asprintf(&r, "{ \"type\": \"context\", \"value\": {");
 
     val = value_json(ctx->name);
-    append_printf(&r, "\\"name\\": \\"%s\\"", val);
+    append_printf(&r, "\"name\": \"%s\"", val);
     free(val);
 
     val = value_json(ctx->arg);
-    append_printf(&r, ", \\"arg\\": \\"%s\\"", val);
+    append_printf(&r, ", \"arg\": \"%s\"", val);
     free(val);
 
     val = value_json(ctx->pc);
-    append_printf(&r, ", \\"pc\\": \\"%s\\"", val);
+    append_printf(&r, ", \"pc\": \"%s\"", val);
     free(val);
 
     append_printf(&r, " } }");
