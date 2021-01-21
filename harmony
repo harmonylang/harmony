@@ -6153,6 +6153,7 @@ class Brief:
             print(self.failure)
             return False;
 
+
 class GenHTML:
     def __init__(self):
         self.top = {}
@@ -7017,6 +7018,7 @@ document.addEventListener('keydown', handleKeyPress);
 
         with open("harmony.html", "w") as out:
             self.html(out)
+
 
 def bag_add(bag, item):
     cnt = bag.get(item)
