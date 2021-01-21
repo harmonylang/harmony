@@ -1,7 +1,10 @@
 all:    harmony charm
 
-harmony:    harmony.preamble harmony.py
-	(cat harmony.preamble harmony.py; echo ++++++) > harmony
+harmony:
+	(cd src/harmony; sh gen.scr) > harmony.py
+	(cat src/harmony/harmony.preamble harmony.py; echo ++++++) > harmony
 
-charm: charm.c json.c global.c ops.c value.c queue.c hashdict.c hashdict.h global.h
-	gcc -g charm.c json.c global.c ops.c value.c queue.c hashdict.c -o charm
+
+charm:
+	(cd src/charm; sh gen.scr) > charm.c
+	gcc -g charm.c -o charm

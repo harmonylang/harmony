@@ -89,7 +89,6 @@ internal_modules = {
 #############################
 #     START OF MODULES      #
 #############################
-# RELOAD THE FOLLOWING BY RUNNING "sh getmods.scr"
 
     "synch": """import list;
 import bag;
@@ -463,6 +462,7 @@ def free(r):
 ;
 """,
 
+
 #############################
 #      END OF MODULES       #
 #############################
@@ -551,7 +551,7 @@ class Brief:
         self.name = None
         self.start = 0
         self.steps = ""
-        self.interrupted = False        # TODO
+        self.interrupted = False
         self.lastmis = {}
         self.shared = {}
         self.failure = ""
@@ -1592,7 +1592,7 @@ def isnamechar(c):
 
 def isprint(c):
     return isinstance(c, str) and len(c) == 1 and (
-        isalnum(c) or c in " ~`!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?")
+        isalnum(c) or c in " ~!@#$%^&*()-_=+[{]}\\|;:\",<.>/?")
 
 def isnumber(s):
     return all(isnumeral(c) for c in s)
