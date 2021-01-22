@@ -352,6 +352,31 @@ function init_microstep(masidx, misidx) {
   else {
     microsteps[t].shared = microsteps[t-1].shared;
   }
+
+  if (mis.hasOwnProperty("fp")) {
+    microsteps[t].fp = mis.fp;
+  }
+  else if (misidx == 0) {
+    microsteps[t].fp = 0;
+  }
+  else {
+    microsteps[t].fp = microsteps[t-1].fp;
+  }
+  if (mis.hasOwnProperty("pop")) {
+    var n = parseInt(mis.pop);
+    microsteps[t].stack = microsteps[t-1].stack.slice(0,
+                              microsteps[t-1].stack.length - n);
+  }
+  else if (misidx == 0) {
+    microsteps[t].stack = [];
+  }
+  else {
+    microsteps[t].stack = microsteps[t-1].stack;
+  }
+  if (mis.hasOwnProperty("push")) {
+    var vals = mis.push.map(x => json_string(x));
+    microsteps[t].stack = microsteps[t].stack.concat(vals);
+  }
 }
 
 function init_macrostep(i) {
@@ -410,6 +435,7 @@ function run_microstep(t) {
   var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {
     threadtable.rows[mis.tid + 1].cells[1].innerHTML = get_status(mis);
+    threadtable.rows[mis.tid + 1].cells[3].innerHTML = mis.stack.slice(mis.fp);
   }
 
   if (mis.invfails.length > 0) {
@@ -443,6 +469,7 @@ function run_microsteps() {
   for (var i = 0; i < nthreads; i++) {
     threadtable.rows[i + 1].cells[1].innerHTML = "init";
     stackTrace(threads[i].tracetable, [], null);
+    threadtable.rows[i + 1].cells[3].innerHTML = "";
   }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
@@ -484,6 +511,7 @@ function run_microsteps() {
 for (var tid = 0; tid < nthreads; tid++) {
   threads[tid] = {
     status: "normal",
+    stack: [],
     stacktrace: [],
     tracetable: document.getElementById("threadinfo" + tid)
   };
