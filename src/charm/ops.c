@@ -48,7 +48,9 @@ uint64_t ctx_failure(struct context *ctx, char *fmt, ...){
     assert(ctx->failure == 0);
 
     va_start(args, fmt);
-    vasprintf(&r, fmt, args);
+    if (vasprintf(&r, fmt, args) < 0) {
+		panic("ctx_failure: vasprintf");
+	}
     va_end(args);
 
     ctx->failure = value_put_atom(r, strlen(r));
