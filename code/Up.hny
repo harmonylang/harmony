@@ -5,7 +5,7 @@ def incrementer(self):
     count = count + 1;
     done[self] = True;
     await done[1 - self];
-    assert count == 2, count;
+    assert count == 2;
 ;
 
 spawn incrementer(0);

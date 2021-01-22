@@ -50,9 +50,31 @@ function json_string_set(obj) {
 
 function json_string_dict(obj) {
   if (obj.length == 0) {
-    return "()"
+    return "( )"
   }
+
+  var islist = true;
+  for (var i = 0; i < obj.length; i++) {
+    if (obj[i].key.type != "int" || obj[i].key.value != i.toString()) {
+      islist = false;
+      break;
+    }
+  }
+
   var result = "";
+  if (islist) {
+    for (var i = 0; i < obj.length; i++) {
+      if (i != 0) {
+        result += ", ";
+      }
+      result += json_string(obj[i].value);
+    }
+    if (obj.length == 1) {
+      result += ",";
+    }
+    return "[" + result + "]";
+  }
+
   for (var i = 0; i < obj.length; i++) {
     if (result != "") {
       result += ", ";
@@ -130,8 +152,14 @@ function convert_vars(obj) {
   return result;
 }
 
-function stackTrace(table, trace, failure) {
+function stackTrace(tid, trace, failure) {
+  var table = threads[tid].tracetable;
   table.innerHTML = "";
+  if (trace.length == 0) {
+    var row = table.insertRow();
+    var mcell = row.insertCell();
+    mcell.innerHTML = threads[tid].name;
+  }
   for (var i = 0; i < trace.length; i++) {
     var row = table.insertRow();
 
@@ -377,6 +405,7 @@ function init_microstep(masidx, misidx) {
     var vals = mis.push.map(x => json_string(x));
     microsteps[t].stack = microsteps[t].stack.concat(vals);
   }
+  // microsteps[t].choose = microsteps[t].stack;
 }
 
 function init_macrostep(i) {
@@ -422,21 +451,22 @@ function run_microstep(t) {
   }
 
   if (mis.failure != null) {
-    stackTrace(threads[mis.tid].tracetable, mis.trace, mis.failure);
+    stackTrace(mis.tid, mis.trace, mis.failure);
   }
   else {
-    stackTrace(threads[mis.tid].tracetable, mis.trace, mis.choose);
+    stackTrace(mis.tid, mis.trace, mis.choose);
   }
 
   for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
     var tid = parseInt(mis.contexts[ctx].tid);
-    threadtable.rows[tid + 1].cells[1].innerHTML = get_status(mis.contexts[ctx]);
+    threads[tid].name = mis.contexts[ctx].name;
+    threadtable.rows[tid].cells[1].innerHTML = get_status(mis.contexts[ctx]);
   }
   var mes = megasteps[mis.mesidx];
   if (t != mes.startTime + mes.nsteps - 1) {
-    threadtable.rows[mis.tid + 1].cells[1].innerHTML = get_status(mis);
-    threadtable.rows[mis.tid + 1].cells[3].innerHTML = mis.stack.slice(mis.fp);
+    threadtable.rows[mis.tid].cells[1].innerHTML = get_status(mis);
   }
+  threadtable.rows[mis.tid].cells[3].innerHTML = mis.stack.slice(mis.fp);
 
   if (mis.invfails.length > 0) {
     inv = mis.invfails[0];
@@ -466,10 +496,10 @@ function run_microsteps() {
       mestable.rows[i].cells[j + 4].innerHTML = "";
     }
   }
-  for (var i = 0; i < nthreads; i++) {
-    threadtable.rows[i + 1].cells[1].innerHTML = "init";
-    stackTrace(threads[i].tracetable, [], null);
-    threadtable.rows[i + 1].cells[3].innerHTML = "";
+  for (var tid = 0; tid < nthreads; tid++) {
+    threadtable.rows[tid].cells[1].innerHTML = "init";
+    stackTrace(tid, [], null);
+    threadtable.rows[tid].cells[3].innerHTML = "";
   }
   for (var t = 0; t < currentTime; t++) {
     run_microstep(t);
@@ -510,6 +540,7 @@ function run_microsteps() {
 
 for (var tid = 0; tid < nthreads; tid++) {
   threads[tid] = {
+    name: "T" + tid,
     status: "normal",
     stack: [],
     stacktrace: [],

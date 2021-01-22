@@ -1165,7 +1165,8 @@ The middle section shows the line of code that is being executed.
 The bottom left shows the bytecode of the program.
 The bottom right shows the state of each thread.
 Each row in the stack trace of a thread shows
-the method that is being evaluated and the values of its method variables.}
+the method that is being evaluated and
+the values of its method variables.}
 \label{fig:inchtml1}
 \end{figure}
 
@@ -1244,12 +1245,14 @@ arbitrary code including methods, but they are not allowed to
 modify the shared state.
 \end{itemize}
 
-Next to the status, the table shows the \emph{stack trace} of the
-thread.  A stack trace is a list of methods that are being invoked.
+The stack of each thread is subdivided into two parts: the
+\emph{stack trace} and the \emph{stack top}.
+A stack trace is a list of methods that are being invoked.
 In this case, the \texttt{implementer} method does not invoke any
 other methods, and so the list is of length 1.
 For each entry in the stack trace, it shows the method name and
 arguments, as well as the variables of the method.
+The stack top shows the values on the stack beyond the stack trace.
 
 When you load the HTML file, it shows the state after executing
 the last instruction.
@@ -1450,7 +1453,9 @@ specification.
 \end{figure}
 
 \begin{figure}
-\includegraphics[width=\textwidth]{figures/naiveLock.png}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/naiveLock.pdf}
+\end{center}
 \caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:uplock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
@@ -1464,7 +1469,9 @@ specification.
 \end{figure}
 
 \begin{figure}
-\includegraphics[width=\textwidth]{figures/naiveFlags.png}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/naiveFlags.pdf}
+\end{center}
 \caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:upflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
