@@ -9,7 +9,7 @@ def incrementer(self):
     done[self] = True
     while not done[1 - self]:
         pass
-    assert count == 2, count
+    assert count == 2
 
 threading.Thread(target=incrementer, args=(0,)).start()
 threading.Thread(target=incrementer, args=(1,)).start()

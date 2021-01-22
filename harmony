@@ -6343,6 +6343,9 @@ function json_string(obj) {
 function stringify_vars(obj) {
   var result = "";
   for (var k in obj) {
+    if (k == "result" && obj[k].type == "dict" && obj[k].value.length == 0) {
+      continue;
+    }
     if (result != "") {
       result += ", ";
     }
