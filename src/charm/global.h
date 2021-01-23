@@ -169,6 +169,10 @@ struct env_Split {
     int count;
 };
 
+struct env_Stop {
+    uint64_t name;
+};
+
 struct env_Store {
     uint64_t *indices;
     int n;

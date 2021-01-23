@@ -574,6 +574,10 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
     panic("op_Choose: should not be called");
 }
 
+void op_Continue(const void *env, struct state *state, struct context **pctx){
+    panic("op_Continue");
+}
+
 void op_Cut(const void *env, struct state *state, struct context **pctx){
     const struct env_Cut *ec = env;
     struct context *ctx = *pctx;
@@ -658,6 +662,10 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->failure == 0) {
         ctx->pc += 1;
     }
+}
+
+void op_Go(const void *env, struct state *state, struct context **pctx){
+    panic("op_Go");
 }
 
 void op_IncVar(const void *env, struct state *state, struct context **pctx){
@@ -845,7 +853,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx)
 }
 
 void op_Return(const void *env, struct state *state, struct context **pctx){
-    if ((*pctx)->sp == 0) {     // __init__
+    if ((*pctx)->sp == 0) {     // __init__    TODO: no longer the case
         (*pctx)->phase = CTX_END;
         if (false) {
             printf("RETURN INIT\n");
@@ -1037,6 +1045,10 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
     panic("op_Split: not a set or dict");
 }
 
+void op_Stop(const void *env, struct state *state, struct context **pctx){
+    panic("op_Stop");
+}
+
 void op_Store(const void *env, struct state *state, struct context **pctx){
     const struct env_Store *es = env;
 
@@ -1137,8 +1149,10 @@ void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
 void *init_AtomicInc(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
+void *init_Continue(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
 void *init_Dup(struct dict *map){ return NULL; }
+void *init_Go(struct dict *map){ return NULL; }
 void *init_Pop(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
@@ -1318,6 +1332,17 @@ void *init_Split(struct dict *map){
     copy[count->u.atom.len] = 0;
     env->count = atoi(copy);
     free(copy);
+    return env;
+}
+
+void *init_Stop(struct dict *map){
+    struct json_value *name = dict_lookup(map, "value", 5);
+    if (name == NULL) {
+        return NULL;
+    }
+    struct env_Stop *env = new_alloc(struct env_Stop);
+    assert(name->type == JV_ATOM);
+    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
     return env;
 }
 
@@ -2435,11 +2460,13 @@ struct op_info op_table[] = {
 	{ "AtomicDec", init_AtomicDec, op_AtomicDec },
 	{ "AtomicInc", init_AtomicInc, op_AtomicInc },
 	{ "Choose", init_Choose, op_Choose },
+	{ "Continue", init_Continue, op_Continue },
 	{ "Cut", init_Cut, op_Cut },
 	{ "Del", init_Del, op_Del },
 	{ "DelVar", init_DelVar, op_DelVar },
 	{ "Dup", init_Dup, op_Dup },
 	{ "Frame", init_Frame, op_Frame },
+	{ "Go", init_Go, op_Go },
 	{ "IncVar", init_IncVar, op_IncVar },
 	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
@@ -2456,6 +2483,7 @@ struct op_info op_table[] = {
 	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
+	{ "Stop", init_Stop, op_Stop },
 	{ "Store", init_Store, op_Store },
 	{ "StoreVar", init_StoreVar, op_StoreVar },
 	{ "Trap", init_Trap, op_Trap },
