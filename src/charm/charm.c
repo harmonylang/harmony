@@ -812,7 +812,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         }
 
         diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
-        if (cc->phase == CTX_END || cc->failure != 0) {
+        if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
             break;
         }
         if (cc->pc == pc) {
@@ -844,12 +844,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
                 code[cc->pc].breakable) {
             break;
         }
-    }
-
-    if (false && cc->failure != 0) {
-        char *r = value_string(cc->failure);
-        printf("Safety violation: %s\n", r + 1);
-        free(r);
     }
 
     ctx = value_put_context(cc);

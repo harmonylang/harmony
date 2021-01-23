@@ -575,6 +575,7 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Continue(const void *env, struct state *state, struct context **pctx){
+    panic("CONTINUE");
     (*pctx)->pc++;
 }
 
@@ -864,7 +865,9 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         uint64_t fp = ctx_pop(pctx);
         if ((fp & VALUE_MASK) != VALUE_INT) {
             printf("XXX %d %d %s\n", (*pctx)->pc, (*pctx)->sp, value_string(fp));
-            exit(1);
+            ctx_failure(*pctx, "XXX");
+            return;
+            // exit(1);
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
@@ -1068,6 +1071,7 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
+        (*pctx)->stopped = true;
         (*pctx)->pc++;
         uint64_t v = value_put_context(*pctx);
 
@@ -1077,6 +1081,7 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
         }
     }
     else {
+        (*pctx)->stopped = true;
         (*pctx)->pc++;
         uint64_t v = value_put_context(*pctx);
 
