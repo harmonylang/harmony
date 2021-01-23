@@ -575,7 +575,7 @@ void op_Choose(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Continue(const void *env, struct state *state, struct context **pctx){
-    panic("op_Continue");
+    (*pctx)->pc++;
 }
 
 void op_Cut(const void *env, struct state *state, struct context **pctx){
@@ -863,8 +863,8 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         uint64_t result = dict_load((*pctx)->vars, value_put_atom("result", 6));
         uint64_t fp = ctx_pop(pctx);
         if ((fp & VALUE_MASK) != VALUE_INT) {
-            printf("XXX %d %d %s", (*pctx)->pc, (*pctx)->sp, value_string(fp));
-            exit(0);
+            printf("XXX %d %d %s\n", (*pctx)->pc, (*pctx)->sp, value_string(fp));
+            exit(1);
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
@@ -1046,7 +1046,45 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Stop(const void *env, struct state *state, struct context **pctx){
-    panic("op_Stop");
+    const struct env_Stop *es = env;
+
+    assert((state->vars & VALUE_MASK) == VALUE_DICT);
+
+    if ((*pctx)->readonly > 0) {
+        ctx_failure(*pctx, "Stop: in read-only mode");
+        return;
+    }
+
+    if (es == 0) {
+        uint64_t av = ctx_pop(pctx);
+        if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+            ctx_failure(*pctx, "Stop: not an address");
+            return;
+        }
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        (*pctx)->pc++;
+        uint64_t v = value_put_context(*pctx);
+
+        if (!ind_trystore(state->vars, indices, size, v, &state->vars)) {
+            ctx_failure(*pctx, "Store: bad address");
+            return;
+        }
+    }
+    else {
+        (*pctx)->pc++;
+        uint64_t v = value_put_context(*pctx);
+
+        if (!ind_trystore(state->vars, es->indices, es->n, v, &state->vars)) {
+            ctx_failure(*pctx, "Store: bad variable");
+            return;
+        }
+    }
 }
 
 void op_Store(const void *env, struct state *state, struct context **pctx){
@@ -1336,13 +1374,19 @@ void *init_Split(struct dict *map){
 }
 
 void *init_Stop(struct dict *map){
-    struct json_value *name = dict_lookup(map, "value", 5);
-    if (name == NULL) {
+    struct json_value *jv = dict_lookup(map, "value", 5);
+    if (jv == NULL) {
         return NULL;
     }
+    assert(jv->type == JV_LIST);
     struct env_Stop *env = new_alloc(struct env_Stop);
-    assert(name->type == JV_ATOM);
-    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
+    env->n = jv->u.list.nvals;
+    env->indices = malloc(env->n * sizeof(uint64_t));
+    for (int i = 0; i < env->n; i++) {
+        struct json_value *index = jv->u.list.vals[i];
+        assert(index->type == JV_MAP);
+        env->indices[i] = value_from_json(index->u.map);
+    }
     return env;
 }
 

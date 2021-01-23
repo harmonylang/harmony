@@ -222,7 +222,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             *p = (void *) 1;
         }
 
-        if (cc->phase == CTX_END || cc->failure != 0) {
+        if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
             break;
         }
         if (cc->pc == pc) {
@@ -280,8 +280,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         sc->choosing = after;
     }
 
-    // Add new context to state unless it's terminated
-    if (cc->phase != CTX_END) {
+    // Add new context to state unless it's terminated or stopped
+    if (cc->phase != CTX_END && !cc->stopped) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 

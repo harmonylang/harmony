@@ -55,6 +55,7 @@ struct context {     // context value
     int atomic;           // atomic counter
     int readonly;         // readonly counter
     bool interruptlevel;  // interrupt level
+    bool stopped;         // context is stopped
     int sp;               // stack size
     uint64_t stack[0];
 };
@@ -64,7 +65,6 @@ struct state {
     uint64_t choosing;    // context that is choosing if non-zero
     uint64_t ctxbag;      // bag of running contexts
     uint64_t stopbag;     // bag of stopped contexts
-    uint64_t failbag;     // bag of failed contexts
     uint64_t termbag;     // bag of terminated contexts
     uint64_t invariants;  // set of invariants that must hold
 };
@@ -170,7 +170,8 @@ struct env_Split {
 };
 
 struct env_Stop {
-    uint64_t name;
+    uint64_t *indices;
+    int n;
 };
 
 struct env_Store {
