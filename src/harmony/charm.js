@@ -140,6 +140,9 @@ function convert_var(obj) {
   if (obj.type != "dict") {
     return json_string(obj);
   }
+  if (obj.value.length == 0) {
+    return "[]";
+  }
   var result = {};
   for (var i = 0; i < obj.value.length; i++) {
     var kv = obj.value[i];

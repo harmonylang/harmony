@@ -114,7 +114,7 @@ def acquired(binsema):
 def acquire(binsema):
     atomic:
         if binsema->acquired:
-            stop binsema->suspended;
+            stop binsema->suspended[len binsema->suspended];
             assert binsema->acquired;
         else:
             binsema->acquired = True;
@@ -141,7 +141,7 @@ def Condition(lk):
 def wait(c, lk):
     atomic:
         release(lk);
-        stop !c;
+        stop (!c)[len !c];
     ;
     acquire(lk);
 ;
@@ -166,22 +166,22 @@ def Semaphore(cnt):
 ;
 def P(sema):
     atomic:
-        if (!sema).count > 0:
-            (!sema).count -= 1;
+        if sema->count > 0:
+            sema->count -= 1;
         else:
-            stop (!sema).waiters;
+            stop sema->waiters[len sema->waiters];
         ;
     ;
 ;
 def V(sema):
     atomic:
-        let cnt, waiters = (!sema).count, (!sema).waiters:
+        let cnt, waiters = sema->count, sema->waiters:
             if waiters != []:
                 assert cnt == 0;
                 go (waiters[0]) ();
-                (!sema).waiters = list.tail(waiters);
+                sema->waiters = list.tail(waiters);
             else:
-                (!sema).count = cnt + 1;
+                sema->count = cnt + 1;
             ;
         ;
     ;
@@ -193,7 +193,7 @@ def get(q):
     atomic:
         let list = q->list:
             if list == []:
-                stop q->waiters;
+                stop q->waiters[len q->waiters];
             ;
             result = list.head(list);
             q->list = list.tail(list);
