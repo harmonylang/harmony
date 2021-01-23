@@ -1,7 +1,7 @@
-
 <html>
-  <head>
-    <style>
+<head>
+  <style>
+
 #table-wrapper {
   position:relative;
 }
@@ -30,1102 +30,2189 @@ table {
 table td, table th {
     border: 1px solid black;
 }
-    </style>
-  </head>
-  <body>
+
         
+  </style>
+</head>
+<body>
 <table>
-<col style='width:50%'>
-<col style='width:50%'>
-<tr><td colspan='2'>
-<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: Process Failure</th><th></th>
-<th colspan='2'>Shared Variables</th>
-<col style='width:15%'>
-<tr><th>Process</th><th>Steps</th><th></th>
-<td align='center' style='font-style: italic'>count</td>
-<td align='center' style='font-style: italic'>done</td>
-</tr><tr><td><td></tr>
-<tr><td>P0: <a href='javascript:rowshow(2,1)'>__init__/()</a></td>
-<td><a href='#P0'>0-4</a> <a href='#P31'>31-43</a></td><td></td>
-<td align='center'>0</td>
-<td align='center'>[False, False]</td>
+  <tr>
+    <td colspan='2'>
+<table border='1'>
+  <thead>
+    <tr>
+      <th colspan='4' style='color:red;'>
+        Issue: Safety violation
+      </th>
+      <th align='center' colspan='3'>
+        Shared Variables
+      </th>
+    </tr>
+    <tr>
+      <th align='center' rowspan='2'>
+        Step
+      </th>
+      <th align='center' rowspan='2'>
+        Thread
+      </th>
+      <th align='center' rowspan='2'>
+        Instructions Executed
+      </th>
+      <th align='center' rowspan='2'>
+        &nbsp;PC&nbsp;
+      </th>
+<td align='center' style='font-style: italic' colspan='1' rowspan='2'>count</td>
+<td align='center' style='font-style: italic' colspan='2'>done</td>
+</tr><tr>
+<td align='center' style='font-style: italic' colspan='1' rowspan='1'>0</td>
+<td align='center' style='font-style: italic' colspan='1' rowspan='1'>1</td>
+</tr><tr>
+    </tr>
+  </thead>
+  <tbody id='mestable'>
+<tr id='mes0'>
+  <td align='right'>
+    1&nbsp;
+  </td>
+  <td>
+    T0: __init__()  </td>
+  <td>
+    <canvas id='timeline0' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P1: <a href='javascript:rowshow(3,7)'>incrementer/0</a></td>
-<td><a href='#P5'>5-8</a></td><td></td>
-<td align='center'>0</td>
-<td align='center'>[False, False]</td>
+<tr id='mes1'>
+  <td align='right'>
+    2&nbsp;
+  </td>
+  <td>
+    T1: incrementer(0)  </td>
+  <td>
+    <canvas id='timeline1' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P2: <a href='javascript:rowshow(4,34)'>incrementer/1</a></td>
-<td><a href='#P5'>5-15</a></td><td></td>
-<td align='center'>1</td>
-<td align='center'>[False, True]</td>
+<tr id='mes2'>
+  <td align='right'>
+    3&nbsp;
+  </td>
+  <td>
+    T2: incrementer(1)  </td>
+  <td>
+    <canvas id='timeline2' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P1: <a href='javascript:rowshow(5,64)'>incrementer/0</a></td>
-<td><a href='#P9'>9-15</a></td><td></td>
-<td align='center'>1</td>
-<td align='center'>[True, True]</td>
+<tr id='mes3'>
+  <td align='right'>
+    4&nbsp;
+  </td>
+  <td>
+    T1: incrementer(0)  </td>
+  <td>
+    <canvas id='timeline3' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P3: <a href='javascript:rowshow(6,70)'>main/()</a></td>
-<td><a href='#P17'>17-27</a></td><td></td>
-<td align='center'>1</td>
-<td align='center'>[True, True]</td>
-</tr>
+  </tbody>
 </table>
-</td></tr>
-<tr><td></td></tr>
-<tr>
-<td valign='top'>
+    </td>
+  </tr>
+  <tr><td></td></tr>
+  <tr>
+    <td colspan='2'>
+      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>
+    </td>
+  </tr>
+  <tr><td></td></tr>
+  <tr>
+    <td valign='top'>
 <div id='table-wrapper'>
-<div id='table-scroll'>
-<table border='1'>
-<tbody>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:1 count = 0; </th>
-</tr><tr>
-<td><a name='P0'> 0 </a></td><td>
-<span title='push constant 0'>
-Push 0
-</span></td></tr>
-<tr>
-<td><a name='P1'> 1 </a></td><td>
-<span title='pop a value and store it in shared variable count'>
-Store count
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:2 done = [ False, False ]; </th>
-</tr><tr>
-<td><a name='P2'> 2 </a></td><td>
-<span title='push constant [False, False]'>
-Push [False, False]
-</span></td></tr>
-<tr>
-<td><a name='P3'> 3 </a></td><td>
-<span title='pop a value and store it in shared variable done'>
-Store done
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:4 def incrementer(self): </th>
-</tr><tr>
-<td><a name='P4'> 4 </a></td><td>
-<span title='set program counter to 31'>
-<a href='#P31'> Jump 31 </a>
-</span></td></tr>
-<tr>
-<td><a name='P5'> 5 </a></td><td>
-<span title='start of method incrementer'>
-Frame incrementer self
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:5     count = count + 1; </th>
-</tr><tr>
-<td><a name='P6'> 6 </a></td><td>
-<span title='push value of shared variable count'>
-Load count
-</span></td></tr>
-<tr>
-<td><a name='P7'> 7 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P8'> 8 </a></td><td>
-<span title='pop 2 values and push the result of applying +'>
-2-ary +
-</span></td></tr>
-<tr>
-<td><a name='P9'> 9 </a></td><td>
-<span title='pop a value and store it in shared variable count'>
-Store count
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:6     done[self] = True; </th>
-</tr><tr>
-<td><a name='P10'> 10 </a></td><td>
-<span title='push constant ?done'>
-Push ?done
-</span></td></tr>
-<tr>
-<td><a name='P11'> 11 </a></td><td>
-<span title='push the value of self'>
-LoadVar self
-</span></td></tr>
-<tr>
-<td><a name='P12'> 12 </a></td><td>
-<span title='combine the top two values on the stack into an address and push the result'>
-Address
-</span></td></tr>
-<tr>
-<td><a name='P13'> 13 </a></td><td>
-<span title='push constant True'>
-Push True
-</span></td></tr>
-<tr>
-<td><a name='P14'> 14 </a></td><td>
-<span title='pop a value and an address and store the value at the address'>
-Store
-</span></td></tr>
-<tr>
-<td><a name='P15'> 15 </a></td><td>
-<span title='restore caller method state and push result'>
-Return
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:8 def main(): </th>
-</tr><tr>
-<td><a name='P16'> 16 </a></td><td>
-<span title='set program counter to 31'>
-<a href='#P31'> Jump 31 </a>
-</span></td></tr>
-<tr>
-<td><a name='P17'> 17 </a></td><td>
-<span title='start of method main'>
-Frame main ()
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:9     await all(done); </th>
-</tr><tr>
-<td><a name='P18'> 18 </a></td><td>
-<span title='push value of shared variable done'>
-Load done
-</span></td></tr>
-<tr>
-<td><a name='P19'> 19 </a></td><td>
-<span title='pop 1 value and push the result of applying all'>
-1-ary all
-</span></td></tr>
-<tr>
-<td><a name='P20'> 20 </a></td><td>
-<span title='pop a value and jump to 18 if the value is False'>
-<a href='#P18'> JumpCond False 18 </a>
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:10     assert count == 2, count; </th>
-</tr><tr>
-<td><a name='P21'> 21 </a></td><td>
-<span title='increment readonly counter of context; process can&#x27;t mutate shared variables if &gt; 0'>
-ReadonlyInc
-</span></td></tr>
-<tr>
-<td><a name='P22'> 22 </a></td><td>
-<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
-AtomicInc
-</span></td></tr>
-<tr>
-<td><a name='P23'> 23 </a></td><td>
-<span title='push value of shared variable count'>
-Load count
-</span></td></tr>
-<tr>
-<td><a name='P24'> 24 </a></td><td>
-<span title='push constant 2'>
-Push 2
-</span></td></tr>
-<tr>
-<td><a name='P25'> 25 </a></td><td>
-<span title='pop 2 values and push the result of applying =='>
-2-ary ==
-</span></td></tr>
-<tr>
-<td><a name='P26'> 26 </a></td><td>
-<span title='push value of shared variable count'>
-Load count
-</span></td></tr>
-<tr>
-<td><a name='P27'> 27 </a></td><td>
-<span title='pop a value and a condition and raise exception if condition is false'>
-Assert2
-</span></td></tr>
-<tr>
-<td><a name='P28'> 28 </a></td><td>
-<span title='decrement atomic counter of context'>
-AtomicDec
-</span></td></tr>
-<tr>
-<td><a name='P29'> 29 </a></td><td>
-<span title='decrement readonly counter of context'>
-ReadonlyDec
-</span></td></tr>
-<tr>
-<td><a name='P30'> 30 </a></td><td>
-<span title='restore caller method state and push result'>
-Return
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:13 spawn incrementer(0); </th>
-</tr><tr>
-<td><a name='P31'> 31 </a></td><td>
-<span title='push constant 0'>
-Push 0
-</span></td></tr>
-<tr>
-<td><a name='P32'> 32 </a></td><td>
-<span title='push a copy of the top value on the stack'>
-Dup
-</span></td></tr>
-<tr>
-<td><a name='P33'> 33 </a></td><td>
-<span title='push constant PC(5)'>
-Push <a href='#P5'> PC(5) </a>
-</span></td></tr>
-<tr>
-<td><a name='P34'> 34 </a></td><td>
-<span title='pop a pc, argument, and tag and spawn a new process'>
-Spawn
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:14 spawn incrementer(1); </th>
-</tr><tr>
-<td><a name='P35'> 35 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P36'> 36 </a></td><td>
-<span title='push a copy of the top value on the stack'>
-Dup
-</span></td></tr>
-<tr>
-<td><a name='P37'> 37 </a></td><td>
-<span title='push constant PC(5)'>
-Push <a href='#P5'> PC(5) </a>
-</span></td></tr>
-<tr>
-<td><a name='P38'> 38 </a></td><td>
-<span title='pop a pc, argument, and tag and spawn a new process'>
-Spawn
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>Up.hny:15 spawn main(); </th>
-</tr><tr>
-<td><a name='P39'> 39 </a></td><td>
-<span title='push constant ()'>
-Push ()
-</span></td></tr>
-<tr>
-<td><a name='P40'> 40 </a></td><td>
-<span title='push a copy of the top value on the stack'>
-Dup
-</span></td></tr>
-<tr>
-<td><a name='P41'> 41 </a></td><td>
-<span title='push constant PC(17)'>
-Push <a href='#P17'> PC(17) </a>
-</span></td></tr>
-<tr>
-<td><a name='P42'> 42 </a></td><td>
-<span title='pop a pc, argument, and tag and spawn a new process'>
-Spawn
-</span></td></tr>
-<tr>
-<td><a name='P43'> 43 </a></td><td>
-<span title='restore caller method state and push result'>
-Return
-</span></td></tr>
-</tbody>
-</table>
+  <div id='table-scroll'>
+    <table border='1'>
+      <tbody>
+        <tr id='P0'>
+          <td align='right'>
+            <a name='P0'>0</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='start of method __init__' id='C0'>
+              Frame __init__ ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P1'>
+          <td align='right'>
+            <a name='P1'>1</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant 0' id='C1'>
+              Push 0
+            </span>
+          </td>
+        </tr>
+        <tr id='P2'>
+          <td align='right'>
+            <a name='P2'>2</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and store it in shared variable count' id='C2'>
+              Store count
+            </span>
+          </td>
+        </tr>
+        <tr id='P3'>
+          <td align='right'>
+            <a name='P3'>3</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant [False, False]' id='C3'>
+              Push [False, False]
+            </span>
+          </td>
+        </tr>
+        <tr id='P4'>
+          <td align='right'>
+            <a name='P4'>4</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a value and store it in shared variable done' id='C4'>
+              Store done
+            </span>
+          </td>
+        </tr>
+        <tr id='P5'>
+          <td align='right'>
+            <a name='P5'>5</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='set program counter to 31' id='C5'>
+              Jump 31
+            </span>
+          </td>
+        </tr>
+        <tr id='P6'>
+          <td align='right'>
+            <a name='P6'>6</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='start of method incrementer' id='C6'>
+              Frame incrementer self
+            </span>
+          </td>
+        </tr>
+        <tr id='P7'>
+          <td align='right'>
+            <a name='P7'>7</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push value of shared variable count' id='C7'>
+              Load count
+            </span>
+          </td>
+        </tr>
+        <tr id='P8'>
+          <td align='right'>
+            <a name='P8'>8</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 1' id='C8'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P9'>
+          <td align='right'>
+            <a name='P9'>9</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 2 values and push the result of applying +' id='C9'>
+              2-ary +
+            </span>
+          </td>
+        </tr>
+        <tr id='P10'>
+          <td align='right'>
+            <a name='P10'>10</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a value and store it in shared variable count' id='C10'>
+              Store count
+            </span>
+          </td>
+        </tr>
+        <tr id='P11'>
+          <td align='right'>
+            <a name='P11'>11</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant ?done' id='C11'>
+              Push ?done
+            </span>
+          </td>
+        </tr>
+        <tr id='P12'>
+          <td align='right'>
+            <a name='P12'>12</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push the value of self' id='C12'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P13'>
+          <td align='right'>
+            <a name='P13'>13</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='combine the top two values on the stack into an address and push the result' id='C13'>
+              Address
+            </span>
+          </td>
+        </tr>
+        <tr id='P14'>
+          <td align='right'>
+            <a name='P14'>14</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant True' id='C14'>
+              Push True
+            </span>
+          </td>
+        </tr>
+        <tr id='P15'>
+          <td align='right'>
+            <a name='P15'>15</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and an address and store the value at the address' id='C15'>
+              Store
+            </span>
+          </td>
+        </tr>
+        <tr id='P16'>
+          <td align='right'>
+            <a name='P16'>16</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 1' id='C16'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P17'>
+          <td align='right'>
+            <a name='P17'>17</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push the value of self' id='C17'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P18'>
+          <td align='right'>
+            <a name='P18'>18</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 2 values and push the result of applying -' id='C18'>
+              2-ary -
+            </span>
+          </td>
+        </tr>
+        <tr id='P19'>
+          <td align='right'>
+            <a name='P19'>19</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push value of shared variable done' id='C19'>
+              Load done
+            </span>
+          </td>
+        </tr>
+        <tr id='P20'>
+          <td align='right'>
+            <a name='P20'>20</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a pc or dictionary f and an index i and push f(i)' id='C20'>
+              Apply
+            </span>
+          </td>
+        </tr>
+        <tr id='P21'>
+          <td align='right'>
+            <a name='P21'>21</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a value and jump to 16 if the value is False' id='C21'>
+              JumpCond False 16
+            </span>
+          </td>
+        </tr>
+        <tr id='P22'>
+          <td align='right'>
+            <a name='P22'>22</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='increment readonly counter of context; process cannot mutate shared variables if > 0' id='C22'>
+              ReadonlyInc
+            </span>
+          </td>
+        </tr>
+        <tr id='P23'>
+          <td align='right'>
+            <a name='P23'>23</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C23'>
+              AtomicInc
+            </span>
+          </td>
+        </tr>
+        <tr id='P24'>
+          <td align='right'>
+            <a name='P24'>24</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push value of shared variable count' id='C24'>
+              Load count
+            </span>
+          </td>
+        </tr>
+        <tr id='P25'>
+          <td align='right'>
+            <a name='P25'>25</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant 2' id='C25'>
+              Push 2
+            </span>
+          </td>
+        </tr>
+        <tr id='P26'>
+          <td align='right'>
+            <a name='P26'>26</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop 2 values and push the result of applying ==' id='C26'>
+              2-ary ==
+            </span>
+          </td>
+        </tr>
+        <tr id='P27'>
+          <td align='right'>
+            <a name='P27'>27</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a condition and raise exception if condition is false' id='C27'>
+              Assert
+            </span>
+          </td>
+        </tr>
+        <tr id='P28'>
+          <td align='right'>
+            <a name='P28'>28</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='decrement atomic counter of context' id='C28'>
+              AtomicDec
+            </span>
+          </td>
+        </tr>
+        <tr id='P29'>
+          <td align='right'>
+            <a name='P29'>29</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='decrement readonly counter of context' id='C29'>
+              ReadonlyDec
+            </span>
+          </td>
+        </tr>
+        <tr id='P30'>
+          <td align='right'>
+            <a name='P30'>30</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C30'>
+              Return
+            </span>
+          </td>
+        </tr>
+        <tr id='P31'>
+          <td align='right'>
+            <a name='P31'>31</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant ()' id='C31'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P32'>
+          <td align='right'>
+            <a name='P32'>32</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 0' id='C32'>
+              Push 0
+            </span>
+          </td>
+        </tr>
+        <tr id='P33'>
+          <td align='right'>
+            <a name='P33'>33</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant PC(6)' id='C33'>
+              Push PC(6)
+            </span>
+          </td>
+        </tr>
+        <tr id='P34'>
+          <td align='right'>
+            <a name='P34'>34</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C34'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P35'>
+          <td align='right'>
+            <a name='P35'>35</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant ()' id='C35'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P36'>
+          <td align='right'>
+            <a name='P36'>36</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant 1' id='C36'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P37'>
+          <td align='right'>
+            <a name='P37'>37</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant PC(6)' id='C37'>
+              Push PC(6)
+            </span>
+          </td>
+        </tr>
+        <tr id='P38'>
+          <td align='right'>
+            <a name='P38'>38</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C38'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P39'>
+          <td align='right'>
+            <a name='P39'>39</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C39'>
+              Return
+            </span>
+          </td>
+        </tr>
+      </body>
+    </table>
+  </div>
 </div>
-</div>
-</td>
-<td valign='top'>
-<div id='div70' style='display:none'>
-<div class='container'>
-<a name='N70'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>main/()</td>
-<td>failed</td>
-<td>
-<table id='loc1' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P27'>27</a> 
-<a href='javascript:setrow(1,0)'>
-main()</a>:
-    assert count == 2, count;
-</td></tr>
-<tr style='color: red'><td>Harmony Assertion (file=code/Up.hny, line=10) failed: 1</td></tr>
+    </td>
+    <td valign='top'>
+<table border='1'
+  <thead>
+    <tr>
+      <th colspan='4'>Threads</th>
+    </tr>
+    <tr>
+      <th>
+        ID
+      </th>
+      <th>
+        Status
+      </th>
+      <th>
+        Stack Trace
+      </th>
+      <th>
+        Stack Top
+      </th>
+    </tr>
+  </thead>
+  <tbody id='threadtable'>
+    <tr id='thread0'>
+      <td align='center'>
+        T0
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo0' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+    <tr id='thread1'>
+      <td align='center'>
+        T1
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo1' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+    <tr id='thread2'>
+      <td align='center'>
+        T2
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo2' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+  </tbody>
 </table>
-</td>
-<td>
-<div id='vars1_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
+    </td>
+  </tr>
 </table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div69' style='display:none'>
-<div class='container'>
-<a name='N69'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>main/()</td>
-<td>running</td>
-<td>
-<table id='loc2' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P22'>22</a> 
-<a href='javascript:setrow(2,0)'>
-main()</a>:
-    assert count == 2, count;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars2_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div66' style='display:none'>
-<div class='container'>
-<a name='N66'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>main/()</td>
-<td>running</td>
-<td>
-<table id='loc3' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P18'>18</a> 
-<a href='javascript:setrow(3,0)'>
-main()</a>:
-    await all(done);
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars3_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div64' style='display:none'>
-<div class='container'>
-<a name='N64'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>main/()</td>
-<td>running</td>
-<td>
-<table id='loc4' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(4,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars4_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div36' style='display:none'>
-<div class='container'>
-<a name='N36'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc5' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P14'>14</a> 
-<a href='javascript:setrow(5,0)'>
-incrementer(0)</a>:
-    done[self] = True;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars5_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc6' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(6,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars6_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div34' style='display:none'>
-<div class='container'>
-<a name='N34'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc7' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(7,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars7_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc8' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(8,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars8_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div31' style='display:none'>
-<div class='container'>
-<a name='N31'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc9' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(9,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars9_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc10' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P14'>14</a> 
-<a href='javascript:setrow(10,0)'>
-incrementer(1)</a>:
-    done[self] = True;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars10_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc11' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(11,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars11_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div28' style='display:none'>
-<div class='container'>
-<a name='N28'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc12' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(12,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars12_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc13' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(13,0)'>
-incrementer(1)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars13_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc14' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(14,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars14_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div8' style='display:none'>
-<div class='container'>
-<a name='N8'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc15' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(15,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars15_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc16' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P6'>6</a> 
-<a href='javascript:setrow(16,0)'>
-incrementer(1)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars16_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc17' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(17,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars17_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div7' style='display:none'>
-<div class='container'>
-<a name='N7'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc18' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P9'>9</a> 
-<a href='javascript:setrow(18,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars18_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc19' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(19,0)'>
-</a>:
-def incrementer(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars19_0' style='display:block'>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc20' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(20,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars20_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div2' style='display:none'>
-<div class='container'>
-<a name='N2'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc21' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P6'>6</a> 
-<a href='javascript:setrow(21,0)'>
-incrementer(0)</a>:
-    count = count + 1;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars21_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc22' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(22,0)'>
-</a>:
-def incrementer(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars22_0' style='display:block'>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc23' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(23,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars23_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div1' style='display:none'>
-<div class='container'>
-<a name='N1'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>incrementer/0</td>
-<td>running</td>
-<td>
-<table id='loc24' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(24,0)'>
-</a>:
-def incrementer(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars24_0' style='display:block'>
-</div>
-</td>
-</tr>
-<tr>
-<td>incrementer/1</td>
-<td>running</td>
-<td>
-<table id='loc25' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(25,0)'>
-</a>:
-def incrementer(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars25_0' style='display:block'>
-</div>
-</td>
-</tr>
-<tr>
-<td>main/()</td>
-<td>blocked</td>
-<td>
-<table id='loc26' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P17'>17</a> 
-<a href='javascript:setrow(26,0)'>
-</a>:
-def main():
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars26_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div0' style='display:none'>
-<div class='container'>
-<a name='N0'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>__init__/()</td>
-<td>running</td>
-<td>
-<table id='loc27' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P0'>0</a> 
-<a href='javascript:setrow(27,0)'>
-</a>:
-count = 0;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars27_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-</td>
-</tr>
-</table>
+<script>
+var nthreads = 3;
+var nmegasteps = 4;
+var vardir = [
+  ['count'],
+  ['done', '0'],
+  ['done', '1']
+];
+var state =
+{
+  "issue": "Safety violation",
+  "macrosteps": [
+    {
+      "id": "1",
+      "tid": "0",
+      "name": "__init__()",
+      "microsteps": [
+        {
+          "shared": { },
+          "npc": "1",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "1",
+              "method": "__init__()",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] } },
+          "atomic": "1",
+          "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "0"
+        },
+        {
+          "npc": "2",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "1"
+        },
+        {
+          "shared": { "count": { "type": "int", "value": "0" } },
+          "npc": "3",
+          "pop": "1",
+          "push": [ ],
+          "pc": "2"
+        },
+        {
+          "npc": "4",
+          "push": [ { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } ],
+          "pc": "3"
+        },
+        {
+          "shared": { "count": { "type": "int", "value": "0" }, "done": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } },
+          "npc": "5",
+          "pop": "1",
+          "push": [ ],
+          "pc": "4"
+        },
+        {
+          "npc": "31",
+          "push": [ ],
+          "pc": "5"
+        },
+        {
+          "npc": "32",
+          "push": [ { "type": "dict", "value": [] } ],
+          "pc": "31"
+        },
+        {
+          "npc": "33",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "32"
+        },
+        {
+          "npc": "34",
+          "push": [ { "type": "pc", "value": "6" } ],
+          "pc": "33"
+        },
+        {
+          "npc": "35",
+          "pop": "3",
+          "push": [ ],
+          "pc": "34"
+        },
+        {
+          "npc": "36",
+          "push": [ { "type": "dict", "value": [] } ],
+          "pc": "35"
+        },
+        {
+          "npc": "37",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "36"
+        },
+        {
+          "npc": "38",
+          "push": [ { "type": "pc", "value": "6" } ],
+          "pc": "37"
+        },
+        {
+          "npc": "39",
+          "pop": "3",
+          "push": [ ],
+          "pc": "38"
+        },
+        {
+          "npc": "39",
+          "fp": "0",
+          "trace": [
 
-                <div id='divNone' style='display:none';>
-                  <div class='container'>
-                    <p>
-                        State information not available.
-                        Use harmony -d for a complete htmldump.
-                    </p>
-                  </div>
-                </div>
+          ],
+          "local": { },
+          "mode": "terminated",
+          "pop": "4",
+          "push": [ ],
+          "pc": "39"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
 
-                <script>
-                  var current = 1;
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "6",
+          "fp": "0",
+          "trace": [
 
-                  function show(id) {
-                      x = document.getElementById('div' + current);
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'none';
-                      x = document.getElementById('div' + id)
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'block';
-                      current = id;
-                  }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "6",
+          "fp": "0",
+          "trace": [
 
-                  function rowshow(row, id) {
-                    show(id);
-                    var tbl = document.getElementById("issuestbl");
-                    for (var i = 1; i < tbl.rows.length; i++) {
-                        if (i == row + 1) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                        }
-                    }
-                  }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
+          "npc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "6"
+        },
+        {
+          "npc": "8",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "7"
+        },
+        {
+          "npc": "9",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "8"
+        },
+        {
+          "npc": "10",
+          "pop": "2",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "9"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
 
-                  function setrow(tblid, row) {
-                    var tbl = document.getElementById('loc' + tblid);
-                    for (var i = 0; i < tbl.rows.length; i++) {
-                        var div = document.getElementById('vars' + tblid + '_' + i);
-                        if (i == row) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                            div.style.display = 'block';
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                            div.style.display = 'none';
-                        }
-                    }
-                  }
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "6",
+          "fp": "0",
+          "trace": [
 
-                  rowshow(6, 70)
-                </script>
-            
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "tid": "2",
+      "name": "incrementer(1)",
+      "microsteps": [
+        {
+          "npc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "6"
+        },
+        {
+          "npc": "8",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "7"
+        },
+        {
+          "npc": "9",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "8"
+        },
+        {
+          "npc": "10",
+          "pop": "2",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "9"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "tid": "2",
+      "name": "incrementer(1)",
+      "microsteps": [
+        {
+          "shared": { "count": { "type": "int", "value": "1" }, "done": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } },
+          "npc": "11",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "11",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "10"
+        },
+        {
+          "npc": "12",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" } ] } ],
+          "pc": "11"
+        },
+        {
+          "npc": "13",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "12"
+        },
+        {
+          "npc": "14",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" }, { "type": "int", "value": "1" } ] } ],
+          "pc": "13"
+        },
+        {
+          "npc": "15",
+          "push": [ { "type": "bool", "value": "True" } ],
+          "pc": "14"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "15",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "15",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "tid": "2",
+      "name": "incrementer(1)",
+      "microsteps": [
+        {
+          "shared": { "count": { "type": "int", "value": "1" }, "done": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "True" } } ] } },
+          "npc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "15"
+        },
+        {
+          "npc": "17",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "16"
+        },
+        {
+          "npc": "18",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "17"
+        },
+        {
+          "npc": "19",
+          "pop": "2",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "18"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "blocked",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
+          "npc": "11",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "11",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "10"
+        },
+        {
+          "npc": "12",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" } ] } ],
+          "pc": "11"
+        },
+        {
+          "npc": "13",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "12"
+        },
+        {
+          "npc": "14",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" }, { "type": "int", "value": "0" } ] } ],
+          "pc": "13"
+        },
+        {
+          "npc": "15",
+          "push": [ { "type": "bool", "value": "True" } ],
+          "pc": "14"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "15",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "15",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "blocked",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "24",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
+          "shared": { "count": { "type": "int", "value": "1" }, "done": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "True" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "True" } } ] } },
+          "npc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "15"
+        },
+        {
+          "npc": "17",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "16"
+        },
+        {
+          "npc": "18",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "17"
+        },
+        {
+          "npc": "19",
+          "pop": "1",
+          "push": [ ],
+          "pc": "18"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "25",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
+          "npc": "20",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "20",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "True" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "True" } } ] } ],
+          "pc": "19"
+        },
+        {
+          "npc": "21",
+          "pop": "2",
+          "push": [ { "type": "bool", "value": "True" } ],
+          "pc": "20"
+        },
+        {
+          "npc": "22",
+          "pop": "1",
+          "push": [ ],
+          "pc": "21"
+        },
+        {
+          "npc": "23",
+          "readonly": "1",
+          "push": [ ],
+          "pc": "22"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "23",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "23",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "readonly": "1",
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "27",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
+          "npc": "24",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "24",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "atomic": "1",
+          "readonly": "1",
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "23"
+        },
+        {
+          "npc": "25",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "24"
+        },
+        {
+          "npc": "26",
+          "push": [ { "type": "int", "value": "2" } ],
+          "pc": "25"
+        },
+        {
+          "npc": "27",
+          "pop": "2",
+          "push": [ { "type": "bool", "value": "False" } ],
+          "pc": "26"
+        },
+        {
+          "npc": "27",
+          "failure": "Harmony assertion failed",
+          "mode": "failed",
+          "pop": "1",
+          "push": [ ],
+          "pc": "27"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "39",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "27",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "27",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "failure": "Harmony assertion failed",
+          "atomic": "1",
+          "readonly": "1",
+          "mode": "failed",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "19",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "19",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    }
+  ],
+  "code": [
+    "Frame __init__ ()",
+    "Push 0",
+    "Store count",
+    "Push [False, False]",
+    "Store done",
+    "Jump 31",
+    "Frame incrementer self",
+    "Load count",
+    "Push 1",
+    "2-ary +",
+    "Store count",
+    "Push ?done",
+    "LoadVar self",
+    "Address",
+    "Push True",
+    "Store",
+    "Push 1",
+    "LoadVar self",
+    "2-ary -",
+    "Load done",
+    "Apply",
+    "JumpCond False 16",
+    "ReadonlyInc",
+    "AtomicInc",
+    "Load count",
+    "Push 2",
+    "2-ary ==",
+    "Assert",
+    "AtomicDec",
+    "ReadonlyDec",
+    "Return",
+    "Push ()",
+    "Push 0",
+    "Push PC(6)",
+    "Spawn",
+    "Push ()",
+    "Push 1",
+    "Push PC(6)",
+    "Spawn",
+    "Return"
+  ],
+  "explain": [
+    "start of method __init__",
+    "push constant 0",
+    "pop a value and store it in shared variable count",
+    "push constant [False, False]",
+    "pop a value and store it in shared variable done",
+    "set program counter to 31",
+    "start of method incrementer",
+    "push value of shared variable count",
+    "push constant 1",
+    "pop 2 values and push the result of applying +",
+    "pop a value and store it in shared variable count",
+    "push constant ?done",
+    "push the value of self",
+    "combine the top two values on the stack into an address and push the result",
+    "push constant True",
+    "pop a value and an address and store the value at the address",
+    "push constant 1",
+    "push the value of self",
+    "pop 2 values and push the result of applying -",
+    "push value of shared variable done",
+    "pop a pc or dictionary f and an index i and push f(i)",
+    "pop a value and jump to 16 if the value is False",
+    "increment readonly counter of context; process cannot mutate shared variables if > 0",
+    "increment atomic counter of context; process runs uninterrupted if larger than 0",
+    "push value of shared variable count",
+    "push constant 2",
+    "pop 2 values and push the result of applying ==",
+    "pop a condition and raise exception if condition is false",
+    "decrement atomic counter of context",
+    "decrement readonly counter of context",
+    "restore caller method state and push result",
+    "push constant ()",
+    "push constant 0",
+    "push constant PC(6)",
+    "pop a pc, argument, and tag and spawn a new process",
+    "push constant ()",
+    "push constant 1",
+    "push constant PC(6)",
+    "pop a pc, argument, and tag and spawn a new process",
+    "restore caller method state and push result"
+  ],
+  "locations": {
+    "3": { "file": "code/Up.hny", "line": "2", "code": "done = [ False, False ];" },
+    "11": { "file": "code/Up.hny", "line": "6", "code": "    done[self] = True;" },
+    "7": { "file": "code/Up.hny", "line": "5", "code": "    count = count + 1;" },
+    "22": { "file": "code/Up.hny", "line": "8", "code": "    assert count == 2;" },
+    "1": { "file": "code/Up.hny", "line": "1", "code": "count = 0;" },
+    "5": { "file": "code/Up.hny", "line": "4", "code": "def incrementer(self):" },
+    "35": { "file": "code/Up.hny", "line": "12", "code": "spawn incrementer(1);" },
+    "31": { "file": "code/Up.hny", "line": "11", "code": "spawn incrementer(0);" },
+    "16": { "file": "code/Up.hny", "line": "7", "code": "    await done[1 - self];" }
+  }
+}
+
+;
+
+var boxSize = 10;
+var currentTime = 0;
+var totalTime = 0;
+var microsteps = [];
+var megasteps = []
+var threads = [];
+var curMegaStep = 0;
+var mestable = document.getElementById("mestable");
+var threadtable = document.getElementById("threadtable");
+var coderow = document.getElementById("coderow");
+var container = document.getElementById('table-scroll');
+var currOffset = 0;
+var currCloc = null;
+
+function drawTimeLine(mes) {
+  var c = mes.canvas.getContext("2d");
+  c.beginPath();
+  c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
+  var t = mes.startTime;
+  var yboxes = Math.floor((mes.nsteps + 29) / 30);
+  for (var y = 0; y < yboxes; y++) {
+    var xboxes = y < yboxes - 1 ? 30 : (mes.nsteps % 30);
+    for (var x = 0; x < xboxes; x++) {
+      c.fillStyle = t < currentTime ? "orange" : "white";
+      c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.stroke();
+      t += 1;
+    }
+  }
+}
+
+function currentMegaStep() {
+  if (currentTime == totalTime) {
+    return microsteps[currentTime - 1].mesidx;
+  }
+  return microsteps[currentTime].mesidx;
+}
+
+function json_string_set(obj) {
+  var result = "";
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += json_string(obj[i]);
+  }
+  return "{ " + result + " }";
+}
+
+function json_string_dict(obj) {
+  if (obj.length == 0) {
+    return "( )"
+  }
+
+  var islist = true;
+  for (var i = 0; i < obj.length; i++) {
+    if (obj[i].key.type != "int" || obj[i].key.value != i.toString()) {
+      islist = false;
+      break;
+    }
+  }
+
+  var result = "";
+  if (islist) {
+    for (var i = 0; i < obj.length; i++) {
+      if (i != 0) {
+        result += ", ";
+      }
+      result += json_string(obj[i].value);
+    }
+    if (obj.length == 1) {
+      result += ",";
+    }
+    return "[" + result + "]";
+  }
+
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    var kv = obj[i];
+    var k = json_string(kv.key);
+    var v = json_string(kv.value);
+    result += k + ": " + v;
+  }
+  return "dict{ " + result + " }";
+}
+
+function json_string_address(obj) {
+  result = "?" + obj[0].value;
+  for (var i = 1; i < obj.length; i++) {
+    if (obj[i].type == "atom") {
+      result += "." + obj[i].value;
+    }
+    else {
+      result += "[" + json_string(obj[i]) + "]";
+    }
+  }
+  return result;
+}
+
+function json_string(obj) {
+  switch (obj.type) {
+  case "bool": case "int":
+    return obj.value;
+    break;
+  case "atom":
+    return "." + obj.value;
+  case "set":
+    return json_string_set(obj.value);
+  case "dict":
+    return json_string_dict(obj.value);
+  case "pc":
+    return "PC(" + obj.value + ")"
+  case "address":
+    return json_string_address(obj.value);
+  default:
+    return JSON.stringify(obj);
+  }
+}
+
+function stringify_vars(obj) {
+  var result = "";
+  for (var k in obj) {
+    if (k == "result" && obj[k].type == "dict" && obj[k].value.length == 0) {
+      continue;
+    }
+    if (result != "") {
+      result += ", ";
+    }
+    result += k + ": " + json_string(obj[k]);
+  }
+  return result;
+}
+
+function convert_var(obj) {
+  if (obj.type != "dict") {
+    return json_string(obj);
+  }
+  result = {};
+  for (var i = 0; i < obj.value.length; i++) {
+    var kv = obj.value[i];
+    var k = json_string(kv.key);
+    result[k] = convert_var(kv.value);
+  }
+  return result;
+}
+
+function convert_vars(obj) {
+  var result = {};
+  for (var k in obj) {
+    result[k] = convert_var(obj[k]);
+  }
+  return result;
+}
+
+function stackTrace(tid, trace, failure) {
+  var table = threads[tid].tracetable;
+  table.innerHTML = "";
+  if (trace.length == 0) {
+    var row = table.insertRow();
+    var mcell = row.insertCell();
+    mcell.innerHTML = threads[tid].name;
+  }
+  for (var i = 0; i < trace.length; i++) {
+    var row = table.insertRow();
+
+    var mcell = row.insertCell();
+    mcell.innerHTML = trace[i].method;
+    switch (trace[i].calltype) {
+    case "process":
+        mcell.style.color = "blue";
+        break;
+    case "normal":
+        mcell.style.color = "black";
+        break;
+    case "interrupt":
+        mcell.style.color = "orange";
+        break;
+    default:
+        mcell.style.color = "red";
+    }
+
+    var vcell = row.insertCell();
+    var vtext = document.createTextNode(stringify_vars(trace[i].vars));
+    vcell.appendChild(vtext);
+  }
+  if (failure != null) {
+    var row = table.insertRow();
+    var fcell = row.insertCell();
+    fcell.innerHTML = failure;
+    fcell.colSpan = 2;
+    fcell.style.color = "red";
+  }
+}
+
+function handleClick(e, mesIdx) {
+  var x = Math.floor(e.offsetX / boxSize);
+  var y = Math.floor(e.offsetY / boxSize);
+  currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
+  run_microsteps()
+}
+
+var noloc = { file: "", line: "", code: "" };
+
+function getCode(pc) {
+  var locs = state.locations;
+  while (pc >= 0) {
+    s = "" + pc;
+    if (locs.hasOwnProperty(s)) {
+      return locs[s];
+    }
+    pc--;
+  }
+  return noloc;
+}
+
+function handleKeyPress(e) {
+  switch (e.key) {
+    case '0':
+      currentTime = 0;
+      run_microsteps();
+      break;
+    case 'ArrowLeft':
+      if (currentTime > 0) {
+        currentTime -= 1;
+      }
+      run_microsteps();
+      break;
+    case 'ArrowRight':
+      if (currentTime < totalTime) {
+        currentTime += 1;
+      }
+      run_microsteps();
+      break;
+    case 'ArrowUp':
+      var mesidx = currentMegaStep();
+      var mes = megasteps[mesidx];
+      if (currentTime == mes.startTime && mesidx > 0) {
+          mes = megasteps[mesidx - 1];
+      }
+      currentTime = mes.startTime;
+      run_microsteps();
+      break;
+    case 'ArrowDown':
+      var mesidx = currentMegaStep();
+      var mes = megasteps[mesidx];
+      currentTime = mes.startTime + mes.nsteps;
+      if (currentTime > totalTime) {
+        currentTime = totalTime;
+      }
+      run_microsteps();
+      break;
+    case 'Enter':
+      if (currentTime < totalTime) {
+        var cloc = getCode(microsteps[currentTime].pc);
+        while (++currentTime < totalTime) {
+          var nloc = getCode(microsteps[currentTime].pc);
+          if (nloc != cloc) {
+            break;
+          }
+        }
+        run_microsteps();
+      }
+      break;
+    default:
+      // alert("unknown key " + e.code);
+  }
+}
+
+function init_microstep(masidx, misidx) {
+  var mas = state.macrosteps[masidx];
+  var mis = mas.microsteps[misidx];
+  var t = microsteps.length;
+  if (t > 0 && microsteps[t - 1].tid != mas.tid) {
+    curMegaStep++;
+    megasteps[curMegaStep].startTime = t;
+  }
+  var mes = megasteps[curMegaStep];
+  mes.nsteps++;
+  microsteps[t] = {
+    mesidx: curMegaStep,
+    masidx: masidx,
+    misidx: misidx,
+    tid: parseInt(mas.tid),
+    pc: parseInt(mis.pc),
+    invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
+    contexts: mas.contexts
+  };
+
+  if (mis.hasOwnProperty("npc")) {
+    microsteps[t].npc = mis.npc;
+  }
+  else {
+    microsteps[t].npc = mis.pc;
+  }
+
+  microsteps[t].code = getCode(microsteps[t].npc);
+
+  microsteps[t].cloc = document.getElementById('C' + microsteps[t].npc);
+  var npc = microsteps[t].npc - 4;
+  if (npc < 0) {
+    npc = 0;
+  }
+  microsteps[t].offset = document.getElementById('P' + npc);
+
+  if (mis.hasOwnProperty("mode")) {
+    microsteps[t].mode = mis.mode;
+  }
+  else {
+    microsteps[t].mode = misidx == 0 ? "running" : microsteps[t-1].mode;
+  }
+
+  if (mis.hasOwnProperty("atomic")) {
+    microsteps[t].atomic = mis["atomic"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].atomic = 0;
+  }
+  else {
+    microsteps[t].atomic = microsteps[t-1].atomic;
+  }
+
+  if (mis.hasOwnProperty("readonly")) {
+    microsteps[t].readonly = mis["readonly"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].readonly = 0;
+  }
+  else {
+    microsteps[t].readonly = microsteps[t-1].readonly;
+  }
+
+  if (mis.hasOwnProperty("interruptlevel")) {
+    microsteps[t].interruptlevel = mis["interruptlevel"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].interruptlevel = 0;
+  }
+  else {
+    microsteps[t].interruptlevel = microsteps[t-1].interruptlevel;
+  }
+
+  if (mis.hasOwnProperty("choose")) {
+    microsteps[t].choose = "chose " + json_string(mis["choose"]);
+  }
+  else {
+    microsteps[t].choose = null;
+  }
+
+  if (mis.hasOwnProperty("failure")) {
+    microsteps[t].failure = mis.failure;
+    microsteps[t].cloc = null;
+  }
+  else {
+    microsteps[t].failure = null;
+  }
+
+  if (mis.hasOwnProperty("trace")) {
+    microsteps[t].trace = mis.trace;
+  }
+  else if (misidx == 0) {
+    microsteps[t].trace = [];
+  }
+  else {
+    microsteps[t].trace = microsteps[t-1].trace;
+  }
+
+  // Update local variables
+  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+    // deep copy first
+    microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
+    microsteps[t].trace[0].vars = mis.local;
+  }
+
+  if (mis.hasOwnProperty("shared")) {
+    microsteps[t].shared = convert_vars(mis.shared);
+  }
+  else if (t == 0) {
+    microsteps[t].shared = {};
+  }
+  else {
+    microsteps[t].shared = microsteps[t-1].shared;
+  }
+
+  if (mis.hasOwnProperty("fp")) {
+    microsteps[t].fp = mis.fp;
+  }
+  else if (misidx == 0) {
+    microsteps[t].fp = 0;
+  }
+  else {
+    microsteps[t].fp = microsteps[t-1].fp;
+  }
+  if (mis.hasOwnProperty("pop")) {
+    var n = parseInt(mis.pop);
+    microsteps[t].stack = microsteps[t-1].stack.slice(0,
+                              microsteps[t-1].stack.length - n);
+  }
+  else if (misidx == 0) {
+    microsteps[t].stack = [];
+  }
+  else {
+    microsteps[t].stack = microsteps[t-1].stack;
+  }
+  if (mis.hasOwnProperty("push")) {
+    var vals = mis.push.map(x => json_string(x));
+    microsteps[t].stack = microsteps[t].stack.concat(vals);
+  }
+  // microsteps[t].choose = microsteps[t].stack;
+}
+
+function init_macrostep(i) {
+  var mas = state.macrosteps[i];
+  for (var j = 0; j < mas.microsteps.length; j++) {
+    init_microstep(i, j);
+  }
+}
+
+function get_shared(shared, path) {
+  if (!shared.hasOwnProperty(path[0])) {
+    return "";
+  }
+  if (path.length == 1) {
+    return shared[path[0]];
+  }
+  return get_shared(shared[path[0]], path.slice(1));
+}
+
+function get_status(ctx) {
+  var status = ctx.mode;
+  if (status != "terminated") {
+    if (ctx.atomic > 0) {
+      status += " atomic";
+    }
+    if (ctx.readonly > 0) {
+      status += " read-only";
+    }
+    if (ctx.interruptlevel > 0) {
+      status += " interrupts-disabled";
+    }
+  }
+  return status;
+}
+
+function run_microstep(t) {
+  var mis = microsteps[t];
+  var mesrow = mestable.rows[mis.mesidx];
+  mesrow.cells[3].innerHTML = mis.npc;
+
+  for (var i = 0; i < vardir.length; i++) {
+    mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+  }
+
+  if (mis.failure != null) {
+    stackTrace(mis.tid, mis.trace, mis.failure);
+  }
+  else {
+    stackTrace(mis.tid, mis.trace, mis.choose);
+  }
+
+  for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
+    var tid = parseInt(mis.contexts[ctx].tid);
+    threads[tid].name = mis.contexts[ctx].name;
+    threadtable.rows[tid].cells[1].innerHTML = get_status(mis.contexts[ctx]);
+  }
+  var mes = megasteps[mis.mesidx];
+  if (t != mes.startTime + mes.nsteps - 1) {
+    threadtable.rows[mis.tid].cells[1].innerHTML = get_status(mis);
+  }
+  threadtable.rows[mis.tid].cells[3].innerHTML = mis.stack.slice(mis.fp);
+
+  if (mis.invfails.length > 0) {
+    inv = mis.invfails[0];
+    code = getCode(inv.pc);
+    coderow.style.color = "red";
+    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + code.code + " (" + inv.reason + ")";
+    mis.cloc = null;
+  }
+  else {
+    coderow.style.color = "blue";
+    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
+  }
+
+  currCloc = mis.cloc;
+  currOffset = mis.offset;
+}
+
+function run_microsteps() {
+  coderow.innerHTML = "";
+  if (currCloc != null) {
+    currCloc.style.color = "black";
+    currCloc = null;
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    mestable.rows[i].cells[3].innerHTML = "";
+    for (var j = 0; j < vardir.length; j++) {
+      mestable.rows[i].cells[j + 4].innerHTML = "";
+    }
+  }
+  for (var tid = 0; tid < nthreads; tid++) {
+    threadtable.rows[tid].cells[1].innerHTML = "init";
+    stackTrace(tid, [], null);
+    threadtable.rows[tid].cells[3].innerHTML = "";
+  }
+  for (var t = 0; t < currentTime; t++) {
+    run_microstep(t);
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i]);
+  }
+  container.scrollTop = currOffset.offsetTop;
+
+  if (currCloc != null) {
+    currCloc.style.color = "red";
+  }
+
+  var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
+  for (var mes = 0; mes < nmegasteps; mes++) {
+    var row = document.getElementById("mes" + mes)
+    if (mes == curmes) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
+
+  var curtid = microsteps[currentTime == 0 ? 0 : (currentTime-1)].tid;
+  for (var tid = 0; tid < nthreads; tid++) {
+    var row = document.getElementById("thread" + tid)
+    if (tid == curtid) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
+}
+
+// Initialization starts here
+
+for (var tid = 0; tid < nthreads; tid++) {
+  threads[tid] = {
+    name: "T" + tid,
+    status: "normal",
+    stack: [],
+    stacktrace: [],
+    tracetable: document.getElementById("threadinfo" + tid)
+  };
+}
+for (let i = 0; i < nmegasteps; i++) {
+  var canvas = document.getElementById("timeline" + i);
+  megasteps[i] = {
+    canvas: canvas,
+    startTime: 0,
+    nsteps: 0,
+    contexts: []
+  };
+  canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
+}
+for (var j = 0; j < state.macrosteps.length; j++) {
+  init_macrostep(j);
+}
+
+currentTime = totalTime = microsteps.length;
+run_microsteps();
+document.addEventListener('keydown', handleKeyPress);
+
+        
+</script>
 </body>
 </html>

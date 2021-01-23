@@ -1,7 +1,7 @@
-
 <html>
-  <head>
-    <style>
+<head>
+  <style>
+
 #table-wrapper {
   position:relative;
 }
@@ -30,807 +30,1972 @@ table {
 table td, table th {
     border: 1px solid black;
 }
-    </style>
-  </head>
-  <body>
+
         
+  </style>
+</head>
+<body>
 <table>
-<col style='width:50%'>
-<col style='width:50%'>
-<tr><td colspan='2'>
-<table id='issuestbl' border='1' width='100%'><tr><th colspan='2' align='left' style='color: red'>Issue: Non-terminating State</th><th></th>
-<th>Shared Variable</th>
-<col style='width:15%'>
-<tr><th>Process</th><th>Steps</th><th></th>
-<td align='center' style='font-style: italic'>flags</td>
-</tr><tr><td><td></tr>
-<tr><td>P0: <a href='javascript:rowshow(2,1)'>__init__/()</a></td>
-<td><a href='#P0'>0-2</a> <a href='#P40'>40-48</a></td><td></td>
-<td align='center'>[False, False]</td>
+  <tr>
+    <td colspan='2'>
+<table border='1'>
+  <thead>
+    <tr>
+      <th colspan='4' style='color:red;'>
+        Issue: Non-terminating state
+      </th>
+      <th align='center' colspan='2'>
+        Shared Variables
+      </th>
+    </tr>
+    <tr>
+      <th align='center' rowspan='2'>
+        Step
+      </th>
+      <th align='center' rowspan='2'>
+        Thread
+      </th>
+      <th align='center' rowspan='2'>
+        Instructions Executed
+      </th>
+      <th align='center' rowspan='2'>
+        &nbsp;PC&nbsp;
+      </th>
+<td align='center' style='font-style: italic' colspan='2'>flags</td>
+</tr><tr>
+<td align='center' style='font-style: italic' colspan='1' rowspan='1'>0</td>
+<td align='center' style='font-style: italic' colspan='1' rowspan='1'>1</td>
+</tr><tr>
+    </tr>
+  </thead>
+  <tbody id='mestable'>
+<tr id='mes0'>
+  <td align='right'>
+    1&nbsp;
+  </td>
+  <td>
+    T0: __init__()  </td>
+  <td>
+    <canvas id='timeline0' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P1: <a href='javascript:rowshow(3,7)'>process/0</a></td>
-<td><a href='#P3'>3-4</a> <a href='#P5'>5</a>(choose True) <a href='#P6'>6-14</a></td><td></td>
-<td align='center'>[True, False]</td>
+<tr id='mes1'>
+  <td align='right'>
+    2&nbsp;
+  </td>
+  <td>
+    T1: thread(0)  </td>
+  <td>
+    <canvas id='timeline1' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
-<tr><td>P2: <a href='javascript:rowshow(4,28)'>process/1</a></td>
-<td><a href='#P3'>3-4</a> <a href='#P5'>5</a>(choose True) <a href='#P6'>6-14</a></td><td></td>
-<td align='center'>[True, True]</td>
+<tr id='mes2'>
+  <td align='right'>
+    3&nbsp;
+  </td>
+  <td>
+    T2: thread(1)  </td>
+  <td>
+    <canvas id='timeline2' width='300px' height='10px'>
+    </canvas>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
+  <td align='center'>
+  </td>
 </tr>
+  </tbody>
 </table>
-</td></tr>
-<tr><td></td></tr>
-<tr>
-<td valign='top'>
+    </td>
+  </tr>
+  <tr><td></td></tr>
+  <tr>
+    <td colspan='2'>
+      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>
+    </td>
+  </tr>
+  <tr><td></td></tr>
+  <tr>
+    <td valign='top'>
 <div id='table-wrapper'>
-<div id='table-scroll'>
-<table border='1'>
-<tbody>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:1 flags = [ False, False ]; </th>
-</tr><tr>
-<td><a name='P0'> 0 </a></td><td>
-<span title='push constant [False, False]'>
-Push [False, False]
-</span></td></tr>
-<tr>
-<td><a name='P1'> 1 </a></td><td>
-<span title='pop a value and store it in shared variable flags'>
-Store flags
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:3 def process(self): </th>
-</tr><tr>
-<td><a name='P2'> 2 </a></td><td>
-<span title='set program counter to 40'>
-<a href='#P40'> Jump 40 </a>
-</span></td></tr>
-<tr>
-<td><a name='P3'> 3 </a></td><td>
-<span title='start of method process'>
-Frame process self
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:4     while choose({ False, True }): </th>
-</tr><tr>
-<td><a name='P4'> 4 </a></td><td>
-<span title='push constant { False, True }'>
-Push { False, True }
-</span></td></tr>
-<tr>
-<td><a name='P5'> 5 </a></td><td>
-<span title='pop a set value and push one of its elements'>
-Choose
-</span></td></tr>
-<tr>
-<td><a name='P6'> 6 </a></td><td>
-<span title='pop a value and jump to 39 if the value is False'>
-<a href='#P39'> JumpCond False 39 </a>
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:6         flags[self] = True; </th>
-</tr><tr>
-<td><a name='P7'> 7 </a></td><td>
-<span title='push constant ?flags'>
-Push ?flags
-</span></td></tr>
-<tr>
-<td><a name='P8'> 8 </a></td><td>
-<span title='push the value of self'>
-LoadVar self
-</span></td></tr>
-<tr>
-<td><a name='P9'> 9 </a></td><td>
-<span title='combine the top two values on the stack into an address and push the result'>
-Address
-</span></td></tr>
-<tr>
-<td><a name='P10'> 10 </a></td><td>
-<span title='push constant True'>
-Push True
-</span></td></tr>
-<tr>
-<td><a name='P11'> 11 </a></td><td>
-<span title='pop a value and an address and store the value at the address'>
-Store
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:7         await not flags[1 - self]; </th>
-</tr><tr>
-<td><a name='P12'> 12 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P13'> 13 </a></td><td>
-<span title='push the value of self'>
-LoadVar self
-</span></td></tr>
-<tr>
-<td><a name='P14'> 14 </a></td><td>
-<span title='pop 2 values and push the result of applying -'>
-2-ary -
-</span></td></tr>
-<tr>
-<td><a name='P15'> 15 </a></td><td>
-<span title='push value of shared variable flags'>
-Load flags
-</span></td></tr>
-<tr>
-<td><a name='P16'> 16 </a></td><td>
-<span title='pop a pc or dictionary f and an index i and push f(i)'>
-Apply
-</span></td></tr>
-<tr>
-<td><a name='P17'> 17 </a></td><td>
-<span title='pop a value and jump to 12 if the value is True'>
-<a href='#P12'> JumpCond True 12 </a>
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:10         @cs: assert atLabel.cs == dict{ nametag(): 1 }; </th>
-</tr><tr>
-<td><a name='P18'> 18 </a></td><td>
-<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
-AtomicInc
-</span></td></tr>
-<tr>
-<td><a name='P19'> 19 </a></td><td>
-<span title='increment readonly counter of context; process can&#x27;t mutate shared variables if &gt; 0'>
-ReadonlyInc
-</span></td></tr>
-<tr>
-<td><a name='P20'> 20 </a></td><td>
-<span title='increment atomic counter of context; process runs uninterrupted if larger than 0'>
-AtomicInc
-</span></td></tr>
-<tr>
-<td><a name='P21'> 21 </a></td><td>
-<span title='push constant .cs'>
-Push .cs
-</span></td></tr>
-<tr>
-<td><a name='P22'> 22 </a></td><td>
-<span title='pop 1 value and push the result of applying atLabel'>
-1-ary atLabel
-</span></td></tr>
-<tr>
-<td><a name='P23'> 23 </a></td><td>
-<span title='push constant ()'>
-Push ()
-</span></td></tr>
-<tr>
-<td><a name='P24'> 24 </a></td><td>
-<span title='pop 1 value and push the result of applying nametag'>
-1-ary nametag
-</span></td></tr>
-<tr>
-<td><a name='P25'> 25 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P26'> 26 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P27'> 27 </a></td><td>
-<span title='pop a number n and n key/value pairs and push a dictionary'>
-Dict
-</span></td></tr>
-<tr>
-<td><a name='P28'> 28 </a></td><td>
-<span title='pop 2 values and push the result of applying =='>
-2-ary ==
-</span></td></tr>
-<tr>
-<td><a name='P29'> 29 </a></td><td>
-<span title='pop a condition and raise exception if condition is false'>
-Assert
-</span></td></tr>
-<tr>
-<td><a name='P30'> 30 </a></td><td>
-<span title='decrement atomic counter of context'>
-AtomicDec
-</span></td></tr>
-<tr>
-<td><a name='P31'> 31 </a></td><td>
-<span title='decrement readonly counter of context'>
-ReadonlyDec
-</span></td></tr>
-<tr>
-<td><a name='P32'> 32 </a></td><td>
-<span title='decrement atomic counter of context'>
-AtomicDec
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:13         flags[self] = False; </th>
-</tr><tr>
-<td><a name='P33'> 33 </a></td><td>
-<span title='push constant ?flags'>
-Push ?flags
-</span></td></tr>
-<tr>
-<td><a name='P34'> 34 </a></td><td>
-<span title='push the value of self'>
-LoadVar self
-</span></td></tr>
-<tr>
-<td><a name='P35'> 35 </a></td><td>
-<span title='combine the top two values on the stack into an address and push the result'>
-Address
-</span></td></tr>
-<tr>
-<td><a name='P36'> 36 </a></td><td>
-<span title='push constant False'>
-Push False
-</span></td></tr>
-<tr>
-<td><a name='P37'> 37 </a></td><td>
-<span title='pop a value and an address and store the value at the address'>
-Store
-</span></td></tr>
-<tr>
-<td><a name='P38'> 38 </a></td><td>
-<span title='set program counter to 4'>
-<a href='#P4'> Jump 4 </a>
-</span></td></tr>
-<tr>
-<td><a name='P39'> 39 </a></td><td>
-<span title='restore caller method state and push result'>
-Return
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:17 spawn process(0); </th>
-</tr><tr>
-<td><a name='P40'> 40 </a></td><td>
-<span title='push constant 0'>
-Push 0
-</span></td></tr>
-<tr>
-<td><a name='P41'> 41 </a></td><td>
-<span title='push a copy of the top value on the stack'>
-Dup
-</span></td></tr>
-<tr>
-<td><a name='P42'> 42 </a></td><td>
-<span title='push constant PC(3)'>
-Push <a href='#P3'> PC(3) </a>
-</span></td></tr>
-<tr>
-<td><a name='P43'> 43 </a></td><td>
-<span title='pop a pc, argument, and tag and spawn a new process'>
-Spawn
-</span></td></tr>
-<tr>
-<th colspan='3' align='left' style='background-color: yellow'>naiveFlags.hny:18 spawn process(1); </th>
-</tr><tr>
-<td><a name='P44'> 44 </a></td><td>
-<span title='push constant 1'>
-Push 1
-</span></td></tr>
-<tr>
-<td><a name='P45'> 45 </a></td><td>
-<span title='push a copy of the top value on the stack'>
-Dup
-</span></td></tr>
-<tr>
-<td><a name='P46'> 46 </a></td><td>
-<span title='push constant PC(3)'>
-Push <a href='#P3'> PC(3) </a>
-</span></td></tr>
-<tr>
-<td><a name='P47'> 47 </a></td><td>
-<span title='pop a pc, argument, and tag and spawn a new process'>
-Spawn
-</span></td></tr>
-<tr>
-<td><a name='P48'> 48 </a></td><td>
-<span title='restore caller method state and push result'>
-Return
-</span></td></tr>
-</tbody>
-</table>
+  <div id='table-scroll'>
+    <table border='1'>
+      <tbody>
+        <tr id='P0'>
+          <td align='right'>
+            <a name='P0'>0</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='start of method __init__' id='C0'>
+              Frame __init__ ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P1'>
+          <td align='right'>
+            <a name='P1'>1</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant [False, False]' id='C1'>
+              Push [False, False]
+            </span>
+          </td>
+        </tr>
+        <tr id='P2'>
+          <td align='right'>
+            <a name='P2'>2</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and store it in shared variable flags' id='C2'>
+              Store flags
+            </span>
+          </td>
+        </tr>
+        <tr id='P3'>
+          <td align='right'>
+            <a name='P3'>3</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='set program counter to 45' id='C3'>
+              Jump 45
+            </span>
+          </td>
+        </tr>
+        <tr id='P4'>
+          <td align='right'>
+            <a name='P4'>4</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='start of method thread' id='C4'>
+              Frame thread self
+            </span>
+          </td>
+        </tr>
+        <tr id='P5'>
+          <td align='right'>
+            <a name='P5'>5</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant { False, True }' id='C5'>
+              Push { False, True }
+            </span>
+          </td>
+        </tr>
+        <tr id='P6'>
+          <td align='right'>
+            <a name='P6'>6</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a set value and push one of its elements' id='C6'>
+              Choose
+            </span>
+          </td>
+        </tr>
+        <tr id='P7'>
+          <td align='right'>
+            <a name='P7'>7</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and jump to 44 if the value is False' id='C7'>
+              JumpCond False 44
+            </span>
+          </td>
+        </tr>
+        <tr id='P8'>
+          <td align='right'>
+            <a name='P8'>8</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant ?flags' id='C8'>
+              Push ?flags
+            </span>
+          </td>
+        </tr>
+        <tr id='P9'>
+          <td align='right'>
+            <a name='P9'>9</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push the value of self' id='C9'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P10'>
+          <td align='right'>
+            <a name='P10'>10</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='combine the top two values on the stack into an address and push the result' id='C10'>
+              Address
+            </span>
+          </td>
+        </tr>
+        <tr id='P11'>
+          <td align='right'>
+            <a name='P11'>11</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant True' id='C11'>
+              Push True
+            </span>
+          </td>
+        </tr>
+        <tr id='P12'>
+          <td align='right'>
+            <a name='P12'>12</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a value and an address and store the value at the address' id='C12'>
+              Store
+            </span>
+          </td>
+        </tr>
+        <tr id='P13'>
+          <td align='right'>
+            <a name='P13'>13</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant 1' id='C13'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P14'>
+          <td align='right'>
+            <a name='P14'>14</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push the value of self' id='C14'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P15'>
+          <td align='right'>
+            <a name='P15'>15</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop 2 values and push the result of applying -' id='C15'>
+              2-ary -
+            </span>
+          </td>
+        </tr>
+        <tr id='P16'>
+          <td align='right'>
+            <a name='P16'>16</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push value of shared variable flags' id='C16'>
+              Load flags
+            </span>
+          </td>
+        </tr>
+        <tr id='P17'>
+          <td align='right'>
+            <a name='P17'>17</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a pc or dictionary f and an index i and push f(i)' id='C17'>
+              Apply
+            </span>
+          </td>
+        </tr>
+        <tr id='P18'>
+          <td align='right'>
+            <a name='P18'>18</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and jump to 13 if the value is True' id='C18'>
+              JumpCond True 13
+            </span>
+          </td>
+        </tr>
+        <tr id='P19'>
+          <td align='right'>
+            <a name='P19'>19</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C19'>
+              AtomicInc
+            </span>
+          </td>
+        </tr>
+        <tr id='P20'>
+          <td align='right'>
+            <a name='P20'>20</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='increment readonly counter of context; process cannot mutate shared variables if > 0' id='C20'>
+              ReadonlyInc
+            </span>
+          </td>
+        </tr>
+        <tr id='P21'>
+          <td align='right'>
+            <a name='P21'>21</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C21'>
+              AtomicInc
+            </span>
+          </td>
+        </tr>
+        <tr id='P22'>
+          <td align='right'>
+            <a name='P22'>22</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant PC(19)' id='C22'>
+              Push PC(19)
+            </span>
+          </td>
+        </tr>
+        <tr id='P23'>
+          <td align='right'>
+            <a name='P23'>23</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 1 value and push the result of applying atLabel' id='C23'>
+              1-ary atLabel
+            </span>
+          </td>
+        </tr>
+        <tr id='P24'>
+          <td align='right'>
+            <a name='P24'>24</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant ()' id='C24'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P25'>
+          <td align='right'>
+            <a name='P25'>25</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant ()' id='C25'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P26'>
+          <td align='right'>
+            <a name='P26'>26</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 0' id='C26'>
+              Push 0
+            </span>
+          </td>
+        </tr>
+        <tr id='P27'>
+          <td align='right'>
+            <a name='P27'>27</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant PC(4)' id='C27'>
+              Push PC(4)
+            </span>
+          </td>
+        </tr>
+        <tr id='P28'>
+          <td align='right'>
+            <a name='P28'>28</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 3 values and push the result of applying DictAdd' id='C28'>
+              3-ary DictAdd
+            </span>
+          </td>
+        </tr>
+        <tr id='P29'>
+          <td align='right'>
+            <a name='P29'>29</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 1' id='C29'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P30'>
+          <td align='right'>
+            <a name='P30'>30</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push the value of self' id='C30'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P31'>
+          <td align='right'>
+            <a name='P31'>31</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 3 values and push the result of applying DictAdd' id='C31'>
+              3-ary DictAdd
+            </span>
+          </td>
+        </tr>
+        <tr id='P32'>
+          <td align='right'>
+            <a name='P32'>32</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 2 values and push the result of applying BagAdd' id='C32'>
+              2-ary BagAdd
+            </span>
+          </td>
+        </tr>
+        <tr id='P33'>
+          <td align='right'>
+            <a name='P33'>33</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop 2 values and push the result of applying ==' id='C33'>
+              2-ary ==
+            </span>
+          </td>
+        </tr>
+        <tr id='P34'>
+          <td align='right'>
+            <a name='P34'>34</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a condition and raise exception if condition is false' id='C34'>
+              Assert
+            </span>
+          </td>
+        </tr>
+        <tr id='P35'>
+          <td align='right'>
+            <a name='P35'>35</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='decrement atomic counter of context' id='C35'>
+              AtomicDec
+            </span>
+          </td>
+        </tr>
+        <tr id='P36'>
+          <td align='right'>
+            <a name='P36'>36</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='decrement readonly counter of context' id='C36'>
+              ReadonlyDec
+            </span>
+          </td>
+        </tr>
+        <tr id='P37'>
+          <td align='right'>
+            <a name='P37'>37</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='decrement atomic counter of context' id='C37'>
+              AtomicDec
+            </span>
+          </td>
+        </tr>
+        <tr id='P38'>
+          <td align='right'>
+            <a name='P38'>38</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant ?flags' id='C38'>
+              Push ?flags
+            </span>
+          </td>
+        </tr>
+        <tr id='P39'>
+          <td align='right'>
+            <a name='P39'>39</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push the value of self' id='C39'>
+              LoadVar self
+            </span>
+          </td>
+        </tr>
+        <tr id='P40'>
+          <td align='right'>
+            <a name='P40'>40</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='combine the top two values on the stack into an address and push the result' id='C40'>
+              Address
+            </span>
+          </td>
+        </tr>
+        <tr id='P41'>
+          <td align='right'>
+            <a name='P41'>41</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant False' id='C41'>
+              Push False
+            </span>
+          </td>
+        </tr>
+        <tr id='P42'>
+          <td align='right'>
+            <a name='P42'>42</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a value and an address and store the value at the address' id='C42'>
+              Store
+            </span>
+          </td>
+        </tr>
+        <tr id='P43'>
+          <td align='right'>
+            <a name='P43'>43</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='set program counter to 5' id='C43'>
+              Jump 5
+            </span>
+          </td>
+        </tr>
+        <tr id='P44'>
+          <td align='right'>
+            <a name='P44'>44</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C44'>
+              Return
+            </span>
+          </td>
+        </tr>
+        <tr id='P45'>
+          <td align='right'>
+            <a name='P45'>45</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant ()' id='C45'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P46'>
+          <td align='right'>
+            <a name='P46'>46</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant 0' id='C46'>
+              Push 0
+            </span>
+          </td>
+        </tr>
+        <tr id='P47'>
+          <td align='right'>
+            <a name='P47'>47</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='push constant PC(4)' id='C47'>
+              Push PC(4)
+            </span>
+          </td>
+        </tr>
+        <tr id='P48'>
+          <td align='right'>
+            <a name='P48'>48</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C48'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P49'>
+          <td align='right'>
+            <a name='P49'>49</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant ()' id='C49'>
+              Push ()
+            </span>
+          </td>
+        </tr>
+        <tr id='P50'>
+          <td align='right'>
+            <a name='P50'>50</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant 1' id='C50'>
+              Push 1
+            </span>
+          </td>
+        </tr>
+        <tr id='P51'>
+          <td align='right'>
+            <a name='P51'>51</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant PC(4)' id='C51'>
+              Push PC(4)
+            </span>
+          </td>
+        </tr>
+        <tr id='P52'>
+          <td align='right'>
+            <a name='P52'>52</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C52'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P53'>
+          <td align='right'>
+            <a name='P53'>53</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C53'>
+              Return
+            </span>
+          </td>
+        </tr>
+      </body>
+    </table>
+  </div>
 </div>
-</div>
-</td>
-<td valign='top'>
-<div id='div28' style='display:none'>
-<div class='container'>
-<a name='N28'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>blocked</td>
-<td>
-<table id='loc1' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P15'>15</a> 
-<a href='javascript:setrow(1,0)'>
-process(0)</a>:
-        await not flags[1 - self];
-</td></tr>
+    </td>
+    <td valign='top'>
+<table border='1'
+  <thead>
+    <tr>
+      <th colspan='4'>Threads</th>
+    </tr>
+    <tr>
+      <th>
+        ID
+      </th>
+      <th>
+        Status
+      </th>
+      <th>
+        Stack Trace
+      </th>
+      <th>
+        Stack Top
+      </th>
+    </tr>
+  </thead>
+  <tbody id='threadtable'>
+    <tr id='thread0'>
+      <td align='center'>
+        T0
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo0' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+    <tr id='thread1'>
+      <td align='center'>
+        T1
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo1' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+    <tr id='thread2'>
+      <td align='center'>
+        T2
+      </td>
+      <td align='center'>
+        init
+      </td>
+      <td>
+        <table id='threadinfo2' border='1'>
+        </table>
+      </td>
+      <td align='left'>
+      </td>
+    </tr>
+  </tbody>
 </table>
-</td>
-<td>
-<div id='vars1_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
+    </td>
+  </tr>
 </table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>blocked</td>
-<td>
-<table id='loc2' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P15'>15</a> 
-<a href='javascript:setrow(2,0)'>
-process(1)</a>:
-        await not flags[1 - self];
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars2_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div26' style='display:none'>
-<div class='container'>
-<a name='N26'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>running</td>
-<td>
-<table id='loc3' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P15'>15</a> 
-<a href='javascript:setrow(3,0)'>
-process(0)</a>:
-        await not flags[1 - self];
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars3_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>running</td>
-<td>
-<table id='loc4' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P11'>11</a> 
-<a href='javascript:setrow(4,0)'>
-process(1)</a>:
-        flags[self] = True;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars4_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div8' style='display:none'>
-<div class='container'>
-<a name='N8'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>choosing</td>
-<td>
-<table id='loc5' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P15'>15</a> 
-<a href='javascript:setrow(5,0)'>
-process(0)</a>:
-        await not flags[1 - self];
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars5_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>choosing</td>
-<td>
-<table id='loc6' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(6,0)'>
-process(1)</a>:
-    while choose({ False, True }):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars6_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 1</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div7' style='display:none'>
-<div class='container'>
-<a name='N7'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>running</td>
-<td>
-<table id='loc7' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P15'>15</a> 
-<a href='javascript:setrow(7,0)'>
-process(0)</a>:
-        await not flags[1 - self];
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars7_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>running</td>
-<td>
-<table id='loc8' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P3'>3</a> 
-<a href='javascript:setrow(8,0)'>
-</a>:
-def process(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars8_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div5' style='display:none'>
-<div class='container'>
-<a name='N5'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>running</td>
-<td>
-<table id='loc9' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P11'>11</a> 
-<a href='javascript:setrow(9,0)'>
-process(0)</a>:
-        flags[self] = True;
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars9_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>running</td>
-<td>
-<table id='loc10' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P3'>3</a> 
-<a href='javascript:setrow(10,0)'>
-</a>:
-def process(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars10_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div2' style='display:none'>
-<div class='container'>
-<a name='N2'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>choosing</td>
-<td>
-<table id='loc11' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P5'>5</a> 
-<a href='javascript:setrow(11,0)'>
-process(0)</a>:
-    while choose({ False, True }):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars11_0' style='display:block'>
-<table>
-<tr>
-<td>result = ()</td>
-</tr>
-<tr>
-<td>self = 0</td>
-</tr>
-</table>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>choosing</td>
-<td>
-<table id='loc12' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P3'>3</a> 
-<a href='javascript:setrow(12,0)'>
-</a>:
-def process(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars12_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div1' style='display:none'>
-<div class='container'>
-<a name='N1'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>process/0</td>
-<td>running</td>
-<td>
-<table id='loc13' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P3'>3</a> 
-<a href='javascript:setrow(13,0)'>
-</a>:
-def process(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars13_0' style='display:block'>
-</div>
-</td>
-</tr>
-<tr>
-<td>process/1</td>
-<td>running</td>
-<td>
-<table id='loc14' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P3'>3</a> 
-<a href='javascript:setrow(14,0)'>
-</a>:
-def process(self):
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars14_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div id='div0' style='display:none'>
-<div class='container'>
-<a name='N0'/>
-<table border='1'>
-<tr><th>Process</th><th>Status</th><th>Stack Trace</th><th>Variables</th>
-</tr>
-<tr><td></td><td></td><td></td><td></td></tr>
-<tr>
-<td>__init__/()</td>
-<td>running</td>
-<td>
-<table id='loc15' border='1' width='100%'>
-<tr style='background-color: #A5FF33'>
-<td>
-<a href='#P0'>0</a> 
-<a href='javascript:setrow(15,0)'>
-</a>:
-flags = [ False, False ];
-</td></tr>
-</table>
-</td>
-<td>
-<div id='vars15_0' style='display:block'>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-</td>
-</tr>
-</table>
+<script>
+var nthreads = 3;
+var nmegasteps = 3;
+var vardir = [
+  ['flags', '0'],
+  ['flags', '1']
+];
+var state =
+{
+  "issue": "Non-terminating state",
+  "macrosteps": [
+    {
+      "id": "1",
+      "tid": "0",
+      "name": "__init__()",
+      "microsteps": [
+        {
+          "shared": { },
+          "npc": "1",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "1",
+              "method": "__init__()",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] } },
+          "atomic": "1",
+          "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "0"
+        },
+        {
+          "npc": "2",
+          "push": [ { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } ],
+          "pc": "1"
+        },
+        {
+          "shared": { "flags": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "False" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } },
+          "npc": "3",
+          "pop": "1",
+          "push": [ ],
+          "pc": "2"
+        },
+        {
+          "npc": "45",
+          "push": [ ],
+          "pc": "3"
+        },
+        {
+          "npc": "46",
+          "push": [ { "type": "dict", "value": [] } ],
+          "pc": "45"
+        },
+        {
+          "npc": "47",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "46"
+        },
+        {
+          "npc": "48",
+          "push": [ { "type": "pc", "value": "4" } ],
+          "pc": "47"
+        },
+        {
+          "npc": "49",
+          "pop": "3",
+          "push": [ ],
+          "pc": "48"
+        },
+        {
+          "npc": "50",
+          "push": [ { "type": "dict", "value": [] } ],
+          "pc": "49"
+        },
+        {
+          "npc": "51",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "50"
+        },
+        {
+          "npc": "52",
+          "push": [ { "type": "pc", "value": "4" } ],
+          "pc": "51"
+        },
+        {
+          "npc": "53",
+          "pop": "3",
+          "push": [ ],
+          "pc": "52"
+        },
+        {
+          "npc": "53",
+          "fp": "0",
+          "trace": [
 
-                <div id='divNone' style='display:none';>
-                  <div class='container'>
-                    <p>
-                        State information not available.
-                        Use harmony -d for a complete htmldump.
-                    </p>
-                  </div>
-                </div>
+          ],
+          "local": { },
+          "mode": "terminated",
+          "pop": "4",
+          "push": [ ],
+          "pc": "53"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "53",
+          "fp": "0",
+          "trace": [
 
-                <script>
-                  var current = 1;
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "thread(0)",
+          "entry": "4",
+          "pc": "4",
+          "fp": "0",
+          "trace": [
 
-                  function show(id) {
-                      x = document.getElementById('div' + current);
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'none';
-                      x = document.getElementById('div' + id)
-                      if (x == null) {
-                          x = document.getElementById('divNone')
-                      }
-                      x.style.display = 'block';
-                      current = id;
-                  }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "thread(1)",
+          "entry": "4",
+          "pc": "4",
+          "fp": "0",
+          "trace": [
 
-                  function rowshow(row, id) {
-                    show(id);
-                    var tbl = document.getElementById("issuestbl");
-                    for (var i = 1; i < tbl.rows.length; i++) {
-                        if (i == row + 1) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                        }
-                    }
-                  }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "tid": "1",
+      "name": "thread(0)",
+      "microsteps": [
+        {
+          "npc": "5",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "5",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "4"
+        },
+        {
+          "npc": "6",
+          "push": [ { "type": "set", "value": [{ "type": "bool", "value": "False" }, { "type": "bool", "value": "True" } ] } ],
+          "pc": "5"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "53",
+          "fp": "0",
+          "trace": [
 
-                  function setrow(tblid, row) {
-                    var tbl = document.getElementById('loc' + tblid);
-                    for (var i = 0; i < tbl.rows.length; i++) {
-                        var div = document.getElementById('vars' + tblid + '_' + i);
-                        if (i == row) {
-                            tbl.rows[i].style.backgroundColor = "#A5FF33";
-                            div.style.display = 'block';
-                        }
-                        else {
-                            tbl.rows[i].style.backgroundColor = "";
-                            div.style.display = 'none';
-                        }
-                    }
-                  }
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "thread(0)",
+          "entry": "4",
+          "pc": "6",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "6",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "choosing",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "thread(1)",
+          "entry": "4",
+          "pc": "4",
+          "fp": "0",
+          "trace": [
 
-                  rowshow(4, 28)
-                </script>
-            
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "tid": "1",
+      "name": "thread(0)",
+      "microsteps": [
+        {
+          "choose": { "type": "bool", "value": "True" },
+          "npc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
+          "pc": "6"
+        },
+        {
+          "npc": "8",
+          "pop": "1",
+          "push": [ ],
+          "pc": "7"
+        },
+        {
+          "npc": "9",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "flags" } ] } ],
+          "pc": "8"
+        },
+        {
+          "npc": "10",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "9"
+        },
+        {
+          "npc": "11",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "flags" }, { "type": "int", "value": "0" } ] } ],
+          "pc": "10"
+        },
+        {
+          "npc": "12",
+          "push": [ { "type": "bool", "value": "True" } ],
+          "pc": "11"
+        },
+        {
+          "shared": { "flags": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "True" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "False" } } ] } },
+          "npc": "13",
+          "pop": "2",
+          "push": [ ],
+          "pc": "12"
+        },
+        {
+          "npc": "14",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "13"
+        },
+        {
+          "npc": "15",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "14"
+        },
+        {
+          "npc": "16",
+          "pop": "1",
+          "push": [ ],
+          "pc": "15"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "53",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "thread(0)",
+          "entry": "4",
+          "pc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "thread(1)",
+          "entry": "4",
+          "pc": "4",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "tid": "2",
+      "name": "thread(1)",
+      "microsteps": [
+        {
+          "npc": "5",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "5",
+              "method": "thread(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "pc": "4"
+        },
+        {
+          "npc": "6",
+          "push": [ { "type": "set", "value": [{ "type": "bool", "value": "False" }, { "type": "bool", "value": "True" } ] } ],
+          "pc": "5"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "53",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "thread(0)",
+          "entry": "4",
+          "pc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "thread(1)",
+          "entry": "4",
+          "pc": "6",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "6",
+              "method": "thread(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "choosing",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "27",
+      "tid": "2",
+      "name": "thread(1)",
+      "microsteps": [
+        {
+          "choose": { "type": "bool", "value": "True" },
+          "npc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "method": "thread(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
+          "pc": "6"
+        },
+        {
+          "npc": "8",
+          "pop": "1",
+          "push": [ ],
+          "pc": "7"
+        },
+        {
+          "npc": "9",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "flags" } ] } ],
+          "pc": "8"
+        },
+        {
+          "npc": "10",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "9"
+        },
+        {
+          "npc": "11",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "flags" }, { "type": "int", "value": "1" } ] } ],
+          "pc": "10"
+        },
+        {
+          "npc": "12",
+          "push": [ { "type": "bool", "value": "True" } ],
+          "pc": "11"
+        },
+        {
+          "shared": { "flags": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "True" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "True" } } ] } },
+          "npc": "13",
+          "pop": "2",
+          "push": [ ],
+          "pc": "12"
+        },
+        {
+          "npc": "14",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "13"
+        },
+        {
+          "npc": "15",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "14"
+        },
+        {
+          "npc": "16",
+          "pop": "2",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "15"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "53",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "1",
+          "name": "thread(0)",
+          "entry": "4",
+          "pc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "thread(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "blocked",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "thread(1)",
+          "entry": "4",
+          "pc": "16",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "16",
+              "method": "thread(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "blocked",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    }
+  ],
+  "code": [
+    "Frame __init__ ()",
+    "Push [False, False]",
+    "Store flags",
+    "Jump 45",
+    "Frame thread self",
+    "Push { False, True }",
+    "Choose",
+    "JumpCond False 44",
+    "Push ?flags",
+    "LoadVar self",
+    "Address",
+    "Push True",
+    "Store",
+    "Push 1",
+    "LoadVar self",
+    "2-ary -",
+    "Load flags",
+    "Apply",
+    "JumpCond True 13",
+    "AtomicInc",
+    "ReadonlyInc",
+    "AtomicInc",
+    "Push PC(19)",
+    "1-ary atLabel",
+    "Push ()",
+    "Push ()",
+    "Push 0",
+    "Push PC(4)",
+    "3-ary DictAdd",
+    "Push 1",
+    "LoadVar self",
+    "3-ary DictAdd",
+    "2-ary BagAdd",
+    "2-ary ==",
+    "Assert",
+    "AtomicDec",
+    "ReadonlyDec",
+    "AtomicDec",
+    "Push ?flags",
+    "LoadVar self",
+    "Address",
+    "Push False",
+    "Store",
+    "Jump 5",
+    "Return",
+    "Push ()",
+    "Push 0",
+    "Push PC(4)",
+    "Spawn",
+    "Push ()",
+    "Push 1",
+    "Push PC(4)",
+    "Spawn",
+    "Return"
+  ],
+  "explain": [
+    "start of method __init__",
+    "push constant [False, False]",
+    "pop a value and store it in shared variable flags",
+    "set program counter to 45",
+    "start of method thread",
+    "push constant { False, True }",
+    "pop a set value and push one of its elements",
+    "pop a value and jump to 44 if the value is False",
+    "push constant ?flags",
+    "push the value of self",
+    "combine the top two values on the stack into an address and push the result",
+    "push constant True",
+    "pop a value and an address and store the value at the address",
+    "push constant 1",
+    "push the value of self",
+    "pop 2 values and push the result of applying -",
+    "push value of shared variable flags",
+    "pop a pc or dictionary f and an index i and push f(i)",
+    "pop a value and jump to 13 if the value is True",
+    "increment atomic counter of context; process runs uninterrupted if larger than 0",
+    "increment readonly counter of context; process cannot mutate shared variables if > 0",
+    "increment atomic counter of context; process runs uninterrupted if larger than 0",
+    "push constant PC(19)",
+    "pop 1 value and push the result of applying atLabel",
+    "push constant ()",
+    "push constant ()",
+    "push constant 0",
+    "push constant PC(4)",
+    "pop 3 values and push the result of applying DictAdd",
+    "push constant 1",
+    "push the value of self",
+    "pop 3 values and push the result of applying DictAdd",
+    "pop 2 values and push the result of applying BagAdd",
+    "pop 2 values and push the result of applying ==",
+    "pop a condition and raise exception if condition is false",
+    "decrement atomic counter of context",
+    "decrement readonly counter of context",
+    "decrement atomic counter of context",
+    "push constant ?flags",
+    "push the value of self",
+    "combine the top two values on the stack into an address and push the result",
+    "push constant False",
+    "pop a value and an address and store the value at the address",
+    "set program counter to 5",
+    "restore caller method state and push result",
+    "push constant ()",
+    "push constant 0",
+    "push constant PC(4)",
+    "pop a pc, argument, and tag and spawn a new process",
+    "push constant ()",
+    "push constant 1",
+    "push constant PC(4)",
+    "pop a pc, argument, and tag and spawn a new process",
+    "restore caller method state and push result"
+  ],
+  "locations": {
+    "3": { "file": "code/naiveFlags.hny", "line": "3", "code": "def thread(self):" },
+    "8": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True;" },
+    "13": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self];" },
+    "1": { "file": "code/naiveFlags.hny", "line": "1", "code": "flags = [ False, False ];" },
+    "5": { "file": "code/naiveFlags.hny", "line": "4", "code": "    while choose({ False, True }):" },
+    "45": { "file": "code/naiveFlags.hny", "line": "17", "code": "spawn thread(0);" },
+    "49": { "file": "code/naiveFlags.hny", "line": "18", "code": "spawn thread(1);" },
+    "19": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == bag{ (thread, self) };" },
+    "38": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False;" }
+  }
+}
+
+;
+
+var boxSize = 10;
+var currentTime = 0;
+var totalTime = 0;
+var microsteps = [];
+var megasteps = []
+var threads = [];
+var curMegaStep = 0;
+var mestable = document.getElementById("mestable");
+var threadtable = document.getElementById("threadtable");
+var coderow = document.getElementById("coderow");
+var container = document.getElementById('table-scroll');
+var currOffset = 0;
+var currCloc = null;
+
+function drawTimeLine(mes) {
+  var c = mes.canvas.getContext("2d");
+  c.beginPath();
+  c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
+  var t = mes.startTime;
+  var yboxes = Math.floor((mes.nsteps + 29) / 30);
+  for (var y = 0; y < yboxes; y++) {
+    var xboxes = y < yboxes - 1 ? 30 : (mes.nsteps % 30);
+    for (var x = 0; x < xboxes; x++) {
+      c.fillStyle = t < currentTime ? "orange" : "white";
+      c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.rect(x * boxSize, y * boxSize, boxSize, boxSize);
+      c.stroke();
+      t += 1;
+    }
+  }
+}
+
+function currentMegaStep() {
+  if (currentTime == totalTime) {
+    return microsteps[currentTime - 1].mesidx;
+  }
+  return microsteps[currentTime].mesidx;
+}
+
+function json_string_set(obj) {
+  var result = "";
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += json_string(obj[i]);
+  }
+  return "{ " + result + " }";
+}
+
+function json_string_dict(obj) {
+  if (obj.length == 0) {
+    return "( )"
+  }
+
+  var islist = true;
+  for (var i = 0; i < obj.length; i++) {
+    if (obj[i].key.type != "int" || obj[i].key.value != i.toString()) {
+      islist = false;
+      break;
+    }
+  }
+
+  var result = "";
+  if (islist) {
+    for (var i = 0; i < obj.length; i++) {
+      if (i != 0) {
+        result += ", ";
+      }
+      result += json_string(obj[i].value);
+    }
+    if (obj.length == 1) {
+      result += ",";
+    }
+    return "[" + result + "]";
+  }
+
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    var kv = obj[i];
+    var k = json_string(kv.key);
+    var v = json_string(kv.value);
+    result += k + ": " + v;
+  }
+  return "dict{ " + result + " }";
+}
+
+function json_string_address(obj) {
+  result = "?" + obj[0].value;
+  for (var i = 1; i < obj.length; i++) {
+    if (obj[i].type == "atom") {
+      result += "." + obj[i].value;
+    }
+    else {
+      result += "[" + json_string(obj[i]) + "]";
+    }
+  }
+  return result;
+}
+
+function json_string(obj) {
+  switch (obj.type) {
+  case "bool": case "int":
+    return obj.value;
+    break;
+  case "atom":
+    return "." + obj.value;
+  case "set":
+    return json_string_set(obj.value);
+  case "dict":
+    return json_string_dict(obj.value);
+  case "pc":
+    return "PC(" + obj.value + ")"
+  case "address":
+    return json_string_address(obj.value);
+  default:
+    return JSON.stringify(obj);
+  }
+}
+
+function stringify_vars(obj) {
+  var result = "";
+  for (var k in obj) {
+    if (k == "result" && obj[k].type == "dict" && obj[k].value.length == 0) {
+      continue;
+    }
+    if (result != "") {
+      result += ", ";
+    }
+    result += k + ": " + json_string(obj[k]);
+  }
+  return result;
+}
+
+function convert_var(obj) {
+  if (obj.type != "dict") {
+    return json_string(obj);
+  }
+  result = {};
+  for (var i = 0; i < obj.value.length; i++) {
+    var kv = obj.value[i];
+    var k = json_string(kv.key);
+    result[k] = convert_var(kv.value);
+  }
+  return result;
+}
+
+function convert_vars(obj) {
+  var result = {};
+  for (var k in obj) {
+    result[k] = convert_var(obj[k]);
+  }
+  return result;
+}
+
+function stackTrace(tid, trace, failure) {
+  var table = threads[tid].tracetable;
+  table.innerHTML = "";
+  if (trace.length == 0) {
+    var row = table.insertRow();
+    var mcell = row.insertCell();
+    mcell.innerHTML = threads[tid].name;
+  }
+  for (var i = 0; i < trace.length; i++) {
+    var row = table.insertRow();
+
+    var mcell = row.insertCell();
+    mcell.innerHTML = trace[i].method;
+    switch (trace[i].calltype) {
+    case "process":
+        mcell.style.color = "blue";
+        break;
+    case "normal":
+        mcell.style.color = "black";
+        break;
+    case "interrupt":
+        mcell.style.color = "orange";
+        break;
+    default:
+        mcell.style.color = "red";
+    }
+
+    var vcell = row.insertCell();
+    var vtext = document.createTextNode(stringify_vars(trace[i].vars));
+    vcell.appendChild(vtext);
+  }
+  if (failure != null) {
+    var row = table.insertRow();
+    var fcell = row.insertCell();
+    fcell.innerHTML = failure;
+    fcell.colSpan = 2;
+    fcell.style.color = "red";
+  }
+}
+
+function handleClick(e, mesIdx) {
+  var x = Math.floor(e.offsetX / boxSize);
+  var y = Math.floor(e.offsetY / boxSize);
+  currentTime = megasteps[mesIdx].startTime + y*30 + x + 1;
+  run_microsteps()
+}
+
+var noloc = { file: "", line: "", code: "" };
+
+function getCode(pc) {
+  var locs = state.locations;
+  while (pc >= 0) {
+    s = "" + pc;
+    if (locs.hasOwnProperty(s)) {
+      return locs[s];
+    }
+    pc--;
+  }
+  return noloc;
+}
+
+function handleKeyPress(e) {
+  switch (e.key) {
+    case '0':
+      currentTime = 0;
+      run_microsteps();
+      break;
+    case 'ArrowLeft':
+      if (currentTime > 0) {
+        currentTime -= 1;
+      }
+      run_microsteps();
+      break;
+    case 'ArrowRight':
+      if (currentTime < totalTime) {
+        currentTime += 1;
+      }
+      run_microsteps();
+      break;
+    case 'ArrowUp':
+      var mesidx = currentMegaStep();
+      var mes = megasteps[mesidx];
+      if (currentTime == mes.startTime && mesidx > 0) {
+          mes = megasteps[mesidx - 1];
+      }
+      currentTime = mes.startTime;
+      run_microsteps();
+      break;
+    case 'ArrowDown':
+      var mesidx = currentMegaStep();
+      var mes = megasteps[mesidx];
+      currentTime = mes.startTime + mes.nsteps;
+      if (currentTime > totalTime) {
+        currentTime = totalTime;
+      }
+      run_microsteps();
+      break;
+    case 'Enter':
+      if (currentTime < totalTime) {
+        var cloc = getCode(microsteps[currentTime].pc);
+        while (++currentTime < totalTime) {
+          var nloc = getCode(microsteps[currentTime].pc);
+          if (nloc != cloc) {
+            break;
+          }
+        }
+        run_microsteps();
+      }
+      break;
+    default:
+      // alert("unknown key " + e.code);
+  }
+}
+
+function init_microstep(masidx, misidx) {
+  var mas = state.macrosteps[masidx];
+  var mis = mas.microsteps[misidx];
+  var t = microsteps.length;
+  if (t > 0 && microsteps[t - 1].tid != mas.tid) {
+    curMegaStep++;
+    megasteps[curMegaStep].startTime = t;
+  }
+  var mes = megasteps[curMegaStep];
+  mes.nsteps++;
+  microsteps[t] = {
+    mesidx: curMegaStep,
+    masidx: masidx,
+    misidx: misidx,
+    tid: parseInt(mas.tid),
+    pc: parseInt(mis.pc),
+    invfails: misidx == mas.microsteps.length - 1 ? mas.invfails : [],
+    contexts: mas.contexts
+  };
+
+  if (mis.hasOwnProperty("npc")) {
+    microsteps[t].npc = mis.npc;
+  }
+  else {
+    microsteps[t].npc = mis.pc;
+  }
+
+  microsteps[t].code = getCode(microsteps[t].npc);
+
+  microsteps[t].cloc = document.getElementById('C' + microsteps[t].npc);
+  var npc = microsteps[t].npc - 4;
+  if (npc < 0) {
+    npc = 0;
+  }
+  microsteps[t].offset = document.getElementById('P' + npc);
+
+  if (mis.hasOwnProperty("mode")) {
+    microsteps[t].mode = mis.mode;
+  }
+  else {
+    microsteps[t].mode = misidx == 0 ? "running" : microsteps[t-1].mode;
+  }
+
+  if (mis.hasOwnProperty("atomic")) {
+    microsteps[t].atomic = mis["atomic"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].atomic = 0;
+  }
+  else {
+    microsteps[t].atomic = microsteps[t-1].atomic;
+  }
+
+  if (mis.hasOwnProperty("readonly")) {
+    microsteps[t].readonly = mis["readonly"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].readonly = 0;
+  }
+  else {
+    microsteps[t].readonly = microsteps[t-1].readonly;
+  }
+
+  if (mis.hasOwnProperty("interruptlevel")) {
+    microsteps[t].interruptlevel = mis["interruptlevel"];
+  }
+  else if (misidx == 0) {
+    microsteps[t].interruptlevel = 0;
+  }
+  else {
+    microsteps[t].interruptlevel = microsteps[t-1].interruptlevel;
+  }
+
+  if (mis.hasOwnProperty("choose")) {
+    microsteps[t].choose = "chose " + json_string(mis["choose"]);
+  }
+  else {
+    microsteps[t].choose = null;
+  }
+
+  if (mis.hasOwnProperty("failure")) {
+    microsteps[t].failure = mis.failure;
+    microsteps[t].cloc = null;
+  }
+  else {
+    microsteps[t].failure = null;
+  }
+
+  if (mis.hasOwnProperty("trace")) {
+    microsteps[t].trace = mis.trace;
+  }
+  else if (misidx == 0) {
+    microsteps[t].trace = [];
+  }
+  else {
+    microsteps[t].trace = microsteps[t-1].trace;
+  }
+
+  // Update local variables
+  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+    // deep copy first
+    microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
+    microsteps[t].trace[0].vars = mis.local;
+  }
+
+  if (mis.hasOwnProperty("shared")) {
+    microsteps[t].shared = convert_vars(mis.shared);
+  }
+  else if (t == 0) {
+    microsteps[t].shared = {};
+  }
+  else {
+    microsteps[t].shared = microsteps[t-1].shared;
+  }
+
+  if (mis.hasOwnProperty("fp")) {
+    microsteps[t].fp = mis.fp;
+  }
+  else if (misidx == 0) {
+    microsteps[t].fp = 0;
+  }
+  else {
+    microsteps[t].fp = microsteps[t-1].fp;
+  }
+  if (mis.hasOwnProperty("pop")) {
+    var n = parseInt(mis.pop);
+    microsteps[t].stack = microsteps[t-1].stack.slice(0,
+                              microsteps[t-1].stack.length - n);
+  }
+  else if (misidx == 0) {
+    microsteps[t].stack = [];
+  }
+  else {
+    microsteps[t].stack = microsteps[t-1].stack;
+  }
+  if (mis.hasOwnProperty("push")) {
+    var vals = mis.push.map(x => json_string(x));
+    microsteps[t].stack = microsteps[t].stack.concat(vals);
+  }
+  // microsteps[t].choose = microsteps[t].stack;
+}
+
+function init_macrostep(i) {
+  var mas = state.macrosteps[i];
+  for (var j = 0; j < mas.microsteps.length; j++) {
+    init_microstep(i, j);
+  }
+}
+
+function get_shared(shared, path) {
+  if (!shared.hasOwnProperty(path[0])) {
+    return "";
+  }
+  if (path.length == 1) {
+    return shared[path[0]];
+  }
+  return get_shared(shared[path[0]], path.slice(1));
+}
+
+function get_status(ctx) {
+  var status = ctx.mode;
+  if (status != "terminated") {
+    if (ctx.atomic > 0) {
+      status += " atomic";
+    }
+    if (ctx.readonly > 0) {
+      status += " read-only";
+    }
+    if (ctx.interruptlevel > 0) {
+      status += " interrupts-disabled";
+    }
+  }
+  return status;
+}
+
+function run_microstep(t) {
+  var mis = microsteps[t];
+  var mesrow = mestable.rows[mis.mesidx];
+  mesrow.cells[3].innerHTML = mis.npc;
+
+  for (var i = 0; i < vardir.length; i++) {
+    mesrow.cells[i + 4].innerHTML = get_shared(mis.shared, vardir[i])
+  }
+
+  if (mis.failure != null) {
+    stackTrace(mis.tid, mis.trace, mis.failure);
+  }
+  else {
+    stackTrace(mis.tid, mis.trace, mis.choose);
+  }
+
+  for (var ctx = 0; ctx < mis.contexts.length; ctx++) {
+    var tid = parseInt(mis.contexts[ctx].tid);
+    threads[tid].name = mis.contexts[ctx].name;
+    threadtable.rows[tid].cells[1].innerHTML = get_status(mis.contexts[ctx]);
+  }
+  var mes = megasteps[mis.mesidx];
+  if (t != mes.startTime + mes.nsteps - 1) {
+    threadtable.rows[mis.tid].cells[1].innerHTML = get_status(mis);
+  }
+  threadtable.rows[mis.tid].cells[3].innerHTML = mis.stack.slice(mis.fp);
+
+  if (mis.invfails.length > 0) {
+    inv = mis.invfails[0];
+    code = getCode(inv.pc);
+    coderow.style.color = "red";
+    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + code.code + " (" + inv.reason + ")";
+    mis.cloc = null;
+  }
+  else {
+    coderow.style.color = "blue";
+    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
+  }
+
+  currCloc = mis.cloc;
+  currOffset = mis.offset;
+}
+
+function run_microsteps() {
+  coderow.innerHTML = "";
+  if (currCloc != null) {
+    currCloc.style.color = "black";
+    currCloc = null;
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    mestable.rows[i].cells[3].innerHTML = "";
+    for (var j = 0; j < vardir.length; j++) {
+      mestable.rows[i].cells[j + 4].innerHTML = "";
+    }
+  }
+  for (var tid = 0; tid < nthreads; tid++) {
+    threadtable.rows[tid].cells[1].innerHTML = "init";
+    stackTrace(tid, [], null);
+    threadtable.rows[tid].cells[3].innerHTML = "";
+  }
+  for (var t = 0; t < currentTime; t++) {
+    run_microstep(t);
+  }
+  for (var i = 0; i < nmegasteps; i++) {
+    drawTimeLine(megasteps[i]);
+  }
+  container.scrollTop = currOffset.offsetTop;
+
+  if (currCloc != null) {
+    currCloc.style.color = "red";
+  }
+
+  var curmes = microsteps[currentTime == 0 ? 0 : (currentTime-1)].mesidx;
+  for (var mes = 0; mes < nmegasteps; mes++) {
+    var row = document.getElementById("mes" + mes)
+    if (mes == curmes) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
+
+  var curtid = microsteps[currentTime == 0 ? 0 : (currentTime-1)].tid;
+  for (var tid = 0; tid < nthreads; tid++) {
+    var row = document.getElementById("thread" + tid)
+    if (tid == curtid) {
+      row.style = 'background-color: #A5FF33;';
+    }
+    else {
+      row.style = 'background-color: white;';
+    }
+  }
+}
+
+// Initialization starts here
+
+for (var tid = 0; tid < nthreads; tid++) {
+  threads[tid] = {
+    name: "T" + tid,
+    status: "normal",
+    stack: [],
+    stacktrace: [],
+    tracetable: document.getElementById("threadinfo" + tid)
+  };
+}
+for (let i = 0; i < nmegasteps; i++) {
+  var canvas = document.getElementById("timeline" + i);
+  megasteps[i] = {
+    canvas: canvas,
+    startTime: 0,
+    nsteps: 0,
+    contexts: []
+  };
+  canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
+}
+for (var j = 0; j < state.macrosteps.length; j++) {
+  init_macrostep(j);
+}
+
+currentTime = totalTime = microsteps.length;
+run_microsteps();
+document.addEventListener('keydown', handleKeyPress);
+
+        
+</script>
 </body>
 </html>
