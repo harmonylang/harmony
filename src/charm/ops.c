@@ -748,7 +748,9 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
-            ctx_failure(*pctx, "Load: unknown address");
+            char *x = value_string(state->vars);
+            char *y = value_string(av);
+            ctx_failure(*pctx, "Load: unknown address %s / %s", x, y);
             return;
         }
         ctx_push(pctx, v);
@@ -2154,7 +2156,7 @@ uint64_t f_dict_add(struct state *state, struct context *ctx, uint64_t *args, in
     uint64_t *vals = value_get(dict, &size), *v;
 
     int i = 0, cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v++) {
+    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v += 2) {
         cmp = value_cmp(key, *v);
         if (cmp <= 0) {
             break;

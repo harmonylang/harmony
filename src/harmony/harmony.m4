@@ -249,11 +249,10 @@ def isreserved(s):
         "setintlevel",
         "spawn",
         "stop",
-        "such",
-        "that",
         "trap",
         "try",
         "True",
+        "where",
         "while"
         "with"
     }
@@ -2018,7 +2017,7 @@ class AST:
             return
 
         (type, rest) = iter[0]
-        assert type == "for" or type == "suchthat", type
+        assert type == "for" or type == "where", type
 
         if type == "for":
             (var, expr) = rest
@@ -2050,7 +2049,7 @@ class AST:
             code.append(DelVarOp(S))
 
         else:
-            assert type == "suchthat"
+            assert type == "where"
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
@@ -2478,28 +2477,26 @@ class Rule:
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
         self.expect("for expression", lexeme == "in", t[0], "expected 'in'")
-        (expr, t) = NaryRule(closers | { "such", "for" }).parse(t[1:])
+        (expr, t) = NaryRule(closers | { "where", "for" }).parse(t[1:])
         return ((bv, expr), t)
 
-    def suchthatParse(self, t, closers):
-        (lexeme, file, line, column) = t[0]
-        self.expect("such that expression", lexeme == "that", t[0], "expected 'that'")
-        return NaryRule(closers | { "for", "such" }).parse(t[1:])
+    def whereParse(self, t, closers):
+        return NaryRule(closers | { "for", "where" }).parse(t)
 
     def iterParse(self, t, closers):
         (ve, t) = self.forParse(t, closers)
         lst = [("for", ve)]
         (lexeme, file, line, column) = t[0]
         while lexeme not in closers:
-            self.expect("for expression", lexeme == "for" or lexeme == "such",
-                            lexeme, "expected 'for' or 'such that'")
+            self.expect("for expression", lexeme == "for" or lexeme == "where",
+                            lexeme, "expected 'for' or 'where'")
             if lexeme == "for":
                 (ve, t) = self.forParse(t[1:], closers)
                 lst.append(("for", ve))
             else:
-                assert lexeme == "such"
-                (st, t) = self.suchthatParse(t[1:], closers)
-                lst.append(("suchthat", st))
+                assert lexeme == "where"
+                (st, t) = self.whereParse(t[1:], closers)
+                lst.append(("where", st))
             (lexeme, file, line, column) = t[0]
         return (lst, t)
 
@@ -5165,10 +5162,13 @@ def main():
     for o, a in opts:
         if o == "-a":
             printCode = "verbose"
+            charmflag = False
         elif o == "-A":
             printCode = "terse"
+            charmflag = False
         elif o == "-j":
             printCode = "json"
+            charmflag = False
         elif o == "-f":
             charmflag = False
         elif o == "-b":

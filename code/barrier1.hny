@@ -1,10 +1,12 @@
-import synch;
+from synch import Queue, put, get;
 
 const NROUNDS = 3;
 const NPROC = 3;
 
+queues = [ Queue() for i in {0..NPROC} ];
+
 def barrier_enter(self):
-    for i in {0..NPROC-1} such that i != self:
+    for i in {0..NPROC-1} where i != self:
         put(?queues[i], i);
     ;
     for i in {1..NPROC-1}:
@@ -14,7 +16,6 @@ def barrier_enter(self):
 def barrier_exit(self):
     pass;
 ;
-queues = [ Queue() for i in {0..NPROC} ];
 
 # check that all non-None values in round are the same
 def check():
@@ -31,6 +32,9 @@ def check():
     ;
 ;
 
+round = [None,] * NPROC;
+done = [False,] * NPROC;
+
 def process(self):
     for r in {0..NROUNDS-1}:
         barrier_enter(self);
@@ -45,8 +49,6 @@ def main():
     await all(done);
 ;
 
-round = [None,] * NPROC;
-done = [False,] * NPROC;
 for i in {0..NPROC-1}:
     spawn process(i);
 ;
