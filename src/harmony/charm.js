@@ -88,7 +88,7 @@ function json_string_dict(obj) {
 }
 
 function json_string_address(obj) {
-  result = "?" + obj[0].value;
+  var result = "?" + obj[0].value;
   for (var i = 1; i < obj.length; i++) {
     if (obj[i].type == "atom") {
       result += "." + obj[i].value;
@@ -140,7 +140,7 @@ function convert_var(obj) {
   if (obj.type != "dict") {
     return json_string(obj);
   }
-  result = {};
+  var result = {};
   for (var i = 0; i < obj.value.length; i++) {
     var kv = obj.value[i];
     var k = json_string(kv.key);
