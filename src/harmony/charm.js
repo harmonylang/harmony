@@ -115,6 +115,8 @@ function json_string(obj) {
     return "PC(" + obj.value + ")"
   case "address":
     return json_string_address(obj.value);
+  case "context":
+    return "CONTEXT";
   default:
     return JSON.stringify(obj);
   }

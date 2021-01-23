@@ -561,6 +561,9 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
     else if (c->failure != 0) {
         fprintf(file, "          \"mode\": \"failed\",\n");
     }
+    else if (c->stopped) {
+        fprintf(file, "          \"mode\": \"stopped\",\n");
+    }
     else {
         fprintf(file, "          \"mode\": \"%s\",\n", ctx_status(node, ctx));
     }
