@@ -4876,7 +4876,7 @@ by applying \texttt{f} to all elements in $s$ (where $s$ is a set or
 a list).
 This is known as \emph{mapping}.  But set comprehension is much more
 powerful and can include joining multiple sets (using nested for
-loops) and filtering (using the \texttt{such that} keywords).
+loops) and filtering (using the \texttt{where} keyword).
 
 For example:
 \texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ such that $(x * y) == 4$ \}}
@@ -5780,13 +5780,13 @@ For example:
 \begin{code}
 \texttt{for} $i$ in \{ 1..10 \}
 \texttt{for} $j$ in \{ 1..10 \}
-\texttt{such that} $i < j$: ...
+\texttt{where} $i < j$: ...
 \end{code}
 
 Harmony also supports set, list, and dictionary comprehensions.
 \index{comprehensions}%
 Set and list comprehensions are similar to Python, except that filtering uses
-the keywords \texttt{such that} instead of \texttt{if}.
+the keyword \texttt{where} instead of \texttt{if}.
 Dictionary comprehensions are a little different.
 The dictionary comprehension \texttt{dict}\{ f($i$) \texttt{for} $i$ \texttt{in} $I$ \}
 creates a dictionary of $i$:f($i$) entries.

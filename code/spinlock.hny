@@ -3,7 +3,7 @@ const N = 3;
 shared = False;
 private = [ True, ] * N;
 
-invariant len([ x for x in [shared,] + private such that not x ]) <= 1;
+invariant len([ x for x in [shared,] + private where not x ]) <= 1;
 
 def tas(s, p):
     atomic:

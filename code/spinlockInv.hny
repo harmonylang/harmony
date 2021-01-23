@@ -2,5 +2,5 @@ import spinlock;
 
 invariant len([ x
     for x in [spinlock.shared,] + spinlock.private
-    such that not x ]) <= 1
+    where not x ]) <= 1
 ;
