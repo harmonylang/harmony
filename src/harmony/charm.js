@@ -368,10 +368,11 @@ function init_microstep(masidx, misidx) {
   }
 
   // Update local variables
-  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+  var trl = microsteps[t].trace.length; 
+  if (trl > 0 && mis.hasOwnProperty("local")) {
     // deep copy first
     microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
-    microsteps[t].trace[0].vars = mis.local;
+    microsteps[t].trace[trl - 1].vars = mis.local;
   }
 
   if (mis.hasOwnProperty("shared")) {
