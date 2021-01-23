@@ -804,6 +804,9 @@ class GoOp(Op):
     def __repr__(self):
         return "Go"
 
+    def jdump(self):
+        return '{ "op": "Go" }'
+
     def explain(self):
         return "pops a context and a value, restores the corresponding process, and pushes the value on its stack"
 
@@ -1064,6 +1067,13 @@ class StopOp(Op):
         else:
             return "Stop"
 
+    def jdump(self):
+        if self.name != None:
+            (lexeme, file, line, column) = self.name
+            return '{ "op": "Stop", "value": %s }'%lexeme
+        else:
+            return '{ "op": "Stop" }'
+
     def explain(self):
         if self.name == None:
             return "pop an address and store context at that address"
@@ -1102,6 +1112,9 @@ class ContinueOp(Op):
 
     def explain(self):
         return "a no-op, must follow a Stop operation"
+
+    def jdump(self):
+        return '{ "op": "Continue" }'
 
     def eval(self, state, context):
         context.pc += 1
