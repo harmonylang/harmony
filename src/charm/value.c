@@ -513,16 +513,14 @@ static char *value_json_context(uint64_t v) {
     alloc_printf(&r, "{ \"type\": \"context\", \"value\": {");
 
     val = value_json(ctx->name);
-    append_printf(&r, "\"name\": \"%s\"", val);
+    append_printf(&r, "\"name\": %s", val);
     free(val);
 
     val = value_json(ctx->arg);
-    append_printf(&r, ", \"arg\": \"%s\"", val);
+    append_printf(&r, ", \"arg\": %s", val);
     free(val);
 
-    val = value_json(ctx->pc);
-    append_printf(&r, ", \"pc\": \"%s\"", val);
-    free(val);
+    append_printf(&r, ", \"pc\": \"%d\"", ctx->pc);
 
     append_printf(&r, " } }");
     return r;

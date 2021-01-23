@@ -5194,7 +5194,8 @@ def main():
         if not os.path.exists("charm"):
             with open("charm.c", "w") as fd:
                 print(charm_src, file=fd)
-            r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o charm");
+            # r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o charm");
+            r = os.system("cc -g -DHARMONY_COMBINE charm.c -o charm");
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
