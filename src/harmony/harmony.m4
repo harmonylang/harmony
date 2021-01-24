@@ -2743,6 +2743,8 @@ class ArrowExpressionRule(Rule):
                     "expected a name after ->")
             ast = ApplyAST(PointerAST(ast, token), ConstantAST(t[1]), token)
             t = t[2:]
+            if t == []:
+                break
             (lexeme, file, line, column) = token = t[0]
         return (ast, t)
 

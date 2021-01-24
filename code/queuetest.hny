@@ -1,21 +1,17 @@
-import queue;
+import queue
 
 def sender(q, v):
-    queue.put(q, v);
-;
+    queue.put(q, v)
+
 def receiver(q):
     let done = False:
         while not done:
             let v = queue.get(q):
-                done = v == None;
-                assert done or (v in { 1, 2 });
-            ;
-        ;
-    ;
-;
+                done = v == None
+                assert done or (v in { 1, 2 })
 
-testq = queue.Queue();
-spawn sender(?testq, 1);
-spawn sender(?testq, 2);
-spawn receiver(?testq);
-spawn receiver(?testq);
+testq = queue.Queue()
+spawn sender(?testq, 1)
+spawn sender(?testq, 2)
+spawn receiver(?testq)
+spawn receiver(?testq)
