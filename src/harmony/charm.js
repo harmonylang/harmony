@@ -100,6 +100,13 @@ function json_string_address(obj) {
   return result;
 }
 
+function json_string_context(obj) {
+  var name = json_string(obj.name);
+  var arg = json_string(obj.arg);
+  var pc = json_string(obj.pc);
+  return "CTX(" + name + "(" + arg + "):" + pc + ")";
+}
+
 function json_string(obj) {
   switch (obj.type) {
   case "bool": case "int":
@@ -116,7 +123,7 @@ function json_string(obj) {
   case "address":
     return json_string_address(obj.value);
   case "context":
-    return "CONTEXT";
+    return json_string_context(obj.value);
   default:
     return JSON.stringify(obj);
   }
@@ -141,7 +148,7 @@ function convert_var(obj) {
     return json_string(obj);
   }
   if (obj.value.length == 0) {
-    return "[]";
+    return "";
   }
   var result = {};
   for (var i = 0; i < obj.value.length; i++) {

@@ -520,7 +520,7 @@ static char *value_json_context(uint64_t v) {
     append_printf(&r, ", \"arg\": %s", val);
     free(val);
 
-    append_printf(&r, ", \"pc\": \"%d\"", ctx->pc);
+    append_printf(&r, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
 
     append_printf(&r, " } }");
     return r;

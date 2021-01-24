@@ -666,6 +666,10 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Go(const void *env, struct state *state, struct context **pctx){
+    ctx_failure(*pctx, "op_Go");
+    if (true) {
+        return;
+    }
     panic("op_Go");
 }
 
