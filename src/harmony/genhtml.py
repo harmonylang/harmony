@@ -31,7 +31,7 @@ m4_include(charm.js)
         if type == "set":
             if v == []:
                 return "{}"
-            return "{ " + ", ".join(v) + " }"
+            return "{ " + ", ".join([ self.json_string(val) for val in v]) + " }"
         if type == "dict":
             if v == []:
                 return "()"

@@ -3507,17 +3507,54 @@ class BoundVarRule(Rule):
             t = t[2:]
 
 class StatementRule(Rule):
+    def rec_slice(self, t):
+        (lexeme, file, line, column) = t[0]
+        if lexeme == '(': bracket = ')'
+        elif lexeme == '[': bracket = ']'
+        else:
+            assert lexeme == '{'
+            bracket = '}'
+        t = t[1:]
+        tokens = []
+        while t != []:
+            tokens.append(t[0])
+            (lexeme, file, line, column) = t[0]
+            if lexeme == bracket:
+                return (tokens, t[1:])
+            if lexeme in [')', ']', '}']:
+                print("unmatched bracket:", t[0])
+                exit(1)
+            if lexeme in ['(', '[', '{']:
+                (more, t) = self.rec_slice(t)
+                tokens += more
+                tokens.append(t[0])
+            t = t[1:]
+        print("closing bracket missing:", (lexeme, file, line, column))
+        exit(1)
+
     def slice(self, t, indent):
         if t == []:
             return ([], [])
         tokens = []
         (lexeme, file, line, column) = t[0]
+        if lexeme in ['(', '[', '{']:
+            tokens.append(t[0])
+            (more, t) = self.rec_slice(t)
+            tokens += more
+            (lexeme, file, line, column) = t[0]
         while column > indent and lexeme != ";":
             tokens.append(t[0])
             t = t[1:]
             if t == []:
                 break
             (lexeme, file, line, column) = t[0]
+            if lexeme in ['(', '[', '{']:
+                tokens.append(t[0])
+                (more, t) = self.rec_slice(t)
+                tokens += more
+                if t == []:
+                    break
+                (lexeme, file, line, column) = t[0]
         return (tokens, t)
 
     def parse(self, t):
@@ -3672,12 +3709,16 @@ class StatementRule(Rule):
             return (AssertAST(token, cond, expr), t)
         
         # If we get here, the next statement is either an expression
-        # or an assignment.  The grammar is either
+        # or an assignment.  The assignment grammar is either
         #   (tuple_expression '=')* tuple_expression
         # or
         #   tuple_expression 'op=' tuple_expression
-        (tokens, t) = self.slice(t[1:], column)
-        tokens = [token] + tokens
+        (lexeme, file, line, column) = t[0]
+        if lexeme in ['(', '[', '{']:
+            (tokens, t) = self.slice(t, column)
+        else:
+            (tokens, t) = self.slice(t[1:], column)
+            tokens = [token] + tokens
         exprs = []
         assignop = None
         while tokens != []:

@@ -16,7 +16,8 @@ def brief_string(js):
     if type == "set":
         if v == []:
             return "{}"
-        return "{ " + ", ".join(v) + " }"
+        lst = [ brief_string(val) for val in v ]
+        return "{ " + ", ".join(lst) + " }"
     if type == "dict":
         if v == []:
             return "()"
