@@ -14,11 +14,11 @@ m4_include(charm.js)
         """
 
     def json_kv(self, js):
-        return json_string(js["key"]) + ": " + json_string(js["value"])
+        return self.json_string(js["key"]) + ": " + self.json_string(js["value"])
 
     def json_idx(self, js):
         if js["type"] == "atom":
-            return json_string(js)
+            return self.json_string(js)
         return "[" + self.json_string(js) + "]"
 
     def json_string(self, js):

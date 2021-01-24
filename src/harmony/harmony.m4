@@ -3508,9 +3508,11 @@ class BoundVarRule(Rule):
 
 class StatementRule(Rule):
     def rec_slice(self, t):
-        (lexeme, file, line, column) = t[0]
-        if lexeme == '(': bracket = ')'
-        elif lexeme == '[': bracket = ']'
+        (lexeme, file, line, column) = first = t[0]
+        if lexeme == '(':
+            bracket = ')'
+        elif lexeme == '[':
+            bracket = ']'
         else:
             assert lexeme == '{'
             bracket = '}'
@@ -3527,9 +3529,11 @@ class StatementRule(Rule):
             if lexeme in ['(', '[', '{']:
                 (more, t) = self.rec_slice(t)
                 tokens += more
-                tokens.append(t[0])
-            t = t[1:]
-        print("closing bracket missing:", (lexeme, file, line, column))
+                if t == []:
+                    break
+            else:
+                t = t[1:]
+        print("closing bracket missing:", first, tokens, t)
         exit(1)
 
     def slice(self, t, indent):
@@ -3541,6 +3545,8 @@ class StatementRule(Rule):
             tokens.append(t[0])
             (more, t) = self.rec_slice(t)
             tokens += more
+            if t == []:
+                return (tokens, [])
             (lexeme, file, line, column) = t[0]
         while column > indent and lexeme != ";":
             tokens.append(t[0])
