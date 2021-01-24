@@ -2,7 +2,7 @@ from synch import *;
 
 def Barrier(limit):
     result =
-        dict{
+        {
             .limit: limit,
             .mutex: Lock(),
             .full: Condition(), .others: Condition(),

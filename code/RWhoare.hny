@@ -7,7 +7,7 @@ def mon_exit():
     V(?mutex);
 ;
 def H_Condition(mon):
-    result = dict{ .lock: mon, .sema: Semaphore(0), .count: 0 };
+    result = { .lock: mon, .sema: Semaphore(0), .count: 0 };
 ;
 def H_wait(cond):
     cond->count += 1;

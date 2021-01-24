@@ -14,7 +14,7 @@ def unlock(lk):
     !lk = False;
 ;
 def Condition(lk):
-    result = dict{ .lock: lk, .waiters: {} };
+    result = { .lock: lk, .waiters: {} };
 ;
 def wait(c):
     let lk, blocked = None, True:

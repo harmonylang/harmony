@@ -1,30 +1,25 @@
-from synch import Lock, acquire, release;
-from alloc import malloc, free;
+from synch import Lock, acquire, release
+from alloc import malloc, free
 
 def Queue():
-    let dummy = malloc(dict{ .value: (), .next: None }):
-        result = dict{ .head: dummy, .tail: dummy, .hdlock: Lock(), .tllock: Lock() };
-    ;
-;
+    let dummy = malloc({ .value: (), .next: None }):
+        result = { .head: dummy, .tail: dummy, .hdlock: Lock(), .tllock: Lock() }
+
 def put(q, v):
-    let node = malloc(dict{ .value: v, .next: None }):
-        acquire(?q->tllock);
-        q->tail->next = node;
-        q->tail = node;
-        release(?q->tllock);
-    ;
-;
+    let node = malloc({ .value: v, .next: None }):
+        acquire(?q->tllock)
+        q->tail->next = node
+        q->tail = node
+        release(?q->tllock)
+
 def get(q):
-    acquire(?q->hdlock);
+    acquire(?q->hdlock)
     let dummy = q->head
     let node = dummy->next:
         if node == None:
-            result = None;
+            result = None
         else:
-            free(dummy);
-            result = node->value;
-            q->head = node;
-        ;
-    ;
-    release(?q->hdlock);
-;
+            free(dummy)
+            result = node->value
+            q->head = node
+    release(?q->hdlock)

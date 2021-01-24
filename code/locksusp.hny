@@ -1,7 +1,7 @@
 import list
 
 def BinSema(acquired):
-    result = dict{ .acquired: acquired, .suspended: [] }
+    result = { .acquired: acquired, .suspended: [] }
 
 def Lock():
     result = BinSema(False)

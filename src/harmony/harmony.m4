@@ -1,7 +1,7 @@
 """
 	This is the Harmony compiler and model checker.
 
-    Copyright (C) 2020  Robbert van Renesse
+    Copyright (C) 2020, 2021  Robbert van Renesse
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -222,7 +222,6 @@ def isreserved(s):
         "contexts",
         "def",
         "del",
-        "dict",
         "elif",
         "else",
         "end",
@@ -288,7 +287,7 @@ assignops = {
 def isbinaryop(s):
     return isxbinop(s) or iscmpop(s) or s == "in"
 
-tokens = { "bag{", "dict{", "==", "!=", "<=", ">=", "=>",
+tokens = { "bag{", "{", "==", "!=", "<=", ">=", "=>",
                         "//", "**", "<<", ">>", "..", "->" } | assignops
 
 def lexer(s, file):
@@ -296,11 +295,25 @@ def lexer(s, file):
     line = 1
     column = 1
     while s != "":
+        if s[0] == "\r":     # msdos...
+            s = s[1:]
+            continue
+
         # see if it's a blank
         if s[0] in { " ", "\t" }:
             s = s[1:]
             column += 1
             continue
+
+        # ignore backslash at end of line
+        if s[0] == "\\":
+            if len(s) == 1:
+                break
+            if s[1] == "\n" or s[1] == "\r":
+                s = s[2:]
+                line += 1
+                column = 1
+                continue
 
         if s[0] == "\n":
             s = s[1:]
@@ -532,7 +545,7 @@ class DictValue(Value):
             if result != "":
                 result += ", ";
             result += strValue(k) + ":" + strValue(self.d[k])
-        return "dict{ " + result + " }"
+        return "{ " + result + " }"
 
     def jdump(self):
         result = ""
@@ -1994,7 +2007,8 @@ class AST:
             if ctype == "list":
                 code.append(LoadVarOp(N))
             elif ctype == "dict":
-                code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
+                # code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
+                self.key.compile(scope, code)
             self.value.compile(scope, code)
             if ctype == "set":
                 code.append(NaryOp(("SetAdd", file, line, column), 2))
@@ -2313,13 +2327,14 @@ class BagComprehensionAST(AST):
         self.comprehension(scope, code, "bag")
 
 class DictComprehensionAST(AST):
-    def __init__(self, value, iter, token):
+    def __init__(self, key, value, iter, token):
+        self.key = key
         self.value = value
         self.iter = iter
         self.token = token
 
     def __repr__(self):
-        return "DictComprehension(" + str(self.var) + ")"
+        return "DictComprehension(" + str(self.key) + ")"
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "dict")
@@ -2597,13 +2612,14 @@ class BagComprehensionRule(Rule):
         return (BagComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
-    def __init__(self, value):
+    def __init__(self, key, value):
+        self.key = key
         self.value = value
 
     def parse(self, t):
         token = t[0]
         (lst, t) = self.iterParse(t[1:], {"}"})
-        return (DictComprehensionAST(self.value, lst, token), t[1:])
+        return (DictComprehensionAST(self.key, self.value, lst, token), t[1:])
 
 class ListComprehensionRule(Rule):
     def __init__(self, value, closers):
@@ -2624,11 +2640,15 @@ class SetRule(Rule):
             return (SetAST([]), t[2:])
         s = []
         while True:
-            (next, t) = NaryRule({"for", "..", ",", "}"}).parse(t[1:])
+            (next, t) = NaryRule({":", "for", "..", ",", "}"}).parse(t[1:])
             if next == False:
-                return (next, t)
+                return (False, t)
             s.append(next)
             (lexeme, file, line, column) = t[0]
+            if lexeme == ":":
+                self.expect("set/dict", len(s) == 1, t[0],
+                            "cannot mix set values and value maps")
+                return DictSuffixRule(s[0]).parse(t[1:])
             if lexeme == "for":
                 self.expect("set comprehension", len(s) == 1, t[0],
                     "can have only one expression")
@@ -2673,32 +2693,34 @@ class BagRule(Rule):
             self.expect("bag expression", lexeme == ",", t[0],
                     "expected a comma")
 
-class DictRule(Rule):
+class DictSuffixRule(Rule):
+    def __init__(self, first):
+        self.first = first
+
     def parse(self, t):
-        (lexeme, file, line, column) = t[0]
-        self.expect("dict expression", lexeme == "dict{", t[0],
-                "expected dict{")
-        (lexeme, file, line, column) = t[1]
-        if lexeme == "}":
-            return (DictAST([]), t[2:])
+        key = self.first
         d = []
-        while lexeme != "}":
-            (key, t) = NaryRule({":", "for"}).parse(t[1:])
-            if key == False:
-                return (key, t)
+        while True:
+            (value, t) = NaryRule({",", "}", "for"}).parse(t)
             (lexeme, file, line, column) = t[0]
+            self.expect("dict expression", lexeme in { ",", "}", "for" }, t[0],
+                                    "expected a comma or '}'")
             if lexeme == "for":
                 self.expect("dict comprehension", d == [], t[0],
                     "expected single expression")
-                return DictComprehensionRule(key).parse(t)
+                return DictComprehensionRule(key, value).parse(t)
+
+            d.append((key, value))
+            if lexeme == "}":
+                return (DictAST(d), t[1:])
+
+            (key, t) = NaryRule({":"}).parse(t[1:])
+            if key == False:
+                return (key, t)
+            (lexeme, file, line, column) = t[0]
             self.expect("dict expression", lexeme == ":", t[0],
                                         "expected a colon")
-            (value, t) = NaryRule({",", "}"}).parse(t[1:])
-            (lexeme, file, line, column) = t[0]
-            self.expect("dict expression", lexeme in { ",", "}" }, t[0],
-                                    "expected a comma or '}'")
-            d.append((key, value))
-        return (DictAST(d), t[1:])
+            t = t[1:]
 
 class TupleRule(Rule):
     def __init__(self, closers):
@@ -2724,8 +2746,11 @@ class TupleRule(Rule):
                 return (TupleAST(d, token), t[1:])
             (next, t) = NaryRule(self.closers.union({ "," })).parse(t[1:])
             d.append(next)
+            if t == []:
+                break
             (lexeme, file, line, column) = token = t[0]
-        self.expect("tuple expression", lexeme in self.closers, t[0],
+        if t != []:
+            self.expect("tuple expression", lexeme in self.closers, t[0],
                 "expected %s"%self.closers)
         return (TupleAST(d, token), t)
 
@@ -2776,8 +2801,6 @@ class BasicExpressionRule(Rule):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
             return SetRule().parse(t)
-        if lexeme == "dict{":
-            return DictRule().parse(t)
         if lexeme == "bag{":
             return BagRule().parse(t)
         if lexeme == "(" or lexeme == "[":

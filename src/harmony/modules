@@ -103,7 +103,7 @@ def put(q, item):
     "synchS": """import list;
 
 def BinSema(acquired):
-    result = dict{ .acquired: acquired, .suspended: [] };
+    result = { .acquired: acquired, .suspended: [] };
 ;
 def Lock():
     result = BinSema(False);
@@ -162,7 +162,7 @@ def notifyAll(c):
     ;
 ;
 def Semaphore(cnt):
-    result = dict{ .count: cnt, .waiters: [] };
+    result = { .count: cnt, .waiters: [] };
 ;
 def P(sema):
     atomic:
@@ -187,7 +187,7 @@ def V(sema):
     ;
 ;
 def Queue():
-    result = dict{ .list: [], .waiters: [] };
+    result = { .list: [], .waiters: [] };
 ;
 def get(q):
     atomic:
@@ -292,13 +292,13 @@ def reversed(d):
 ;
 """,
     "bag": """def empty():
-    result = dict{};
+    result = [];
 ;
 def fromSet(s):
-    result = dict{ 1 for elt in s };
+    result = { elt:1 for elt in s };
 ;
 def fromList(a):
-    result = dict{};
+    result = [];
     for i in keys(a):
         if a[i] in keys(result):
             result[a[i]] += 1;

@@ -2,10 +2,10 @@ import hoare;
 
 def BB(size):
     result =
-        dict{
+        {
             .mon: hoare.Monitor(),
             .prod: hoare.Condition(), .cons: hoare.Condition(),
-            .buf: dict{ () for x in {1..size} },
+            .buf: { x:() for x in {1..size} },
             .head: 1, .tail: 1,
             .count: 0, .size: size
         }

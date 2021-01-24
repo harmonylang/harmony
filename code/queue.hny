@@ -2,10 +2,10 @@ from synch import Lock, acquire, release
 from alloc import malloc, free
 
 def Queue():
-    result = dict{ .head: None, .tail: None, .lock: Lock() }
+    result = { .head: None, .tail: None, .lock: Lock() }
 
 def put(q, v):
-    let node = malloc(dict{ .value: v, .next: None }):
+    let node = malloc({ .value: v, .next: None }):
         acquire(?q->lock)
         if q->head == None:
             q->head = q->tail = node

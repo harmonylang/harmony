@@ -1,5 +1,5 @@
 def Qsort(arr):
-    result = dict{ .arr: arr, .todo: { (0, len(arr) - 1) } };
+    result = { .arr: arr, .todo: { (0, len(arr) - 1) } };
 ;
 def swap(p, q):               # swap !p and !q
     !p, !q = !q, !p; 

@@ -10,7 +10,7 @@ def exit(mon):
     synch.release(mon);
 ;
 def Condition():
-    result = dict{ .sema: synch.BinSema(True), .count: 0 };
+    result = { .sema: synch.BinSema(True), .count: 0 };
 ;
 def wait(cond, mon):
     cond->count += 1;

@@ -4,7 +4,7 @@ const MAX = 2
 const NACCOUNTS = 2
 const NTHREADS = 2
 
-accounts = [ dict{ .lock: synch.Lock(), .balance: choose({0..MAX}) }
+accounts = [ { .lock: synch.Lock(), .balance: choose({0..MAX}) }
                 for i in {0..NACCOUNTS-1} ]
 
 def transfer(a1, a2, amount):

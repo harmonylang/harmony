@@ -1,7 +1,7 @@
 import list;
 
 def BinSema(acquired):
-    result = dict{ .acquired: acquired, .suspended: [] };
+    result = { .acquired: acquired, .suspended: [] };
 ;
 def Lock():
     result = BinSema(False);
@@ -60,7 +60,7 @@ def notifyAll(c):
     ;
 ;
 def Semaphore(cnt):
-    result = dict{ .count: cnt, .waiters: [] };
+    result = { .count: cnt, .waiters: [] };
 ;
 def P(sema):
     atomic:
@@ -85,7 +85,7 @@ def V(sema):
     ;
 ;
 def Queue():
-    result = dict{ .list: [], .waiters: [] };
+    result = { .list: [], .waiters: [] };
 ;
 def get(q):
     atomic:

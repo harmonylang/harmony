@@ -1,11 +1,11 @@
 def empty():
-    result = dict{};
+    result = [];
 ;
 def fromSet(s):
-    result = dict{ 1 for elt in s };
+    result = { elt:1 for elt in s };
 ;
 def fromList(a):
-    result = dict{};
+    result = [];
     for i in keys(a):
         if a[i] in keys(result):
             result[a[i]] += 1;

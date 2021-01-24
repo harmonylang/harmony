@@ -7,10 +7,10 @@ pc_queue = synch.Queue();
 queues = [ synch.Queue() for i in {0..NITEMS-1} ];
 
 def produce(q, item):
-    synch.put(?pc_queue, dict{ .type: .produce, .item: item });
+    synch.put(?pc_queue, { .type: .produce, .item: item });
 ;
 def consume(q1, q2):
-    synch.put(q1, dict{ .type: .consume, .queue: q2 });
+    synch.put(q1, { .type: .consume, .queue: q2 });
     result = synch.get(q2);
 ;
 

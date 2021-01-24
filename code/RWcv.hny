@@ -2,7 +2,7 @@ from synch import *;
 
 def RWlock():
     result =
-        dict{
+        {
             .nreaders: 0, .nwriters: 0, .mutex: Lock(),
             .r_cond: Condition(), .w_cond: Condition()
         }
