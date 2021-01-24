@@ -341,7 +341,7 @@ static char *value_string_dict(uint64_t v) {
     uint64_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(uint64_t);
 
-    alloc_printf(&r, "dict{ ");
+    alloc_printf(&r, "{ ");
     for (int i = 0; i < size; i++) {
         if (i != 0) {
             append_printf(&r, ", ");

@@ -35,7 +35,7 @@ m4_include(charm.js)
         if type == "dict":
             if v == []:
                 return "()"
-            return "dict{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
+            return "{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
         if type == "pc":
             return "PC(%s)"%v
         if type == "address":

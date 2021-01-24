@@ -5649,7 +5649,7 @@ static char *value_string_dict(uint64_t v) {
     uint64_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(uint64_t);
 
-    alloc_printf(&r, "dict{ ");
+    alloc_printf(&r, "{ ");
     for (int i = 0; i < size; i++) {
         if (i != 0) {
             append_printf(&r, ", ");
@@ -6093,7 +6093,7 @@ def brief_string(js):
         if keys == [str(i) for i in range(len(v))]:
             return "[ " + ", ".join([v for k,v in lst]) + " ]" 
         else:
-            return "dict{ " + ", ".join([k + ": " + v for k,v in lst]) + " }" 
+            return "{ " + ", ".join([k + ": " + v for k,v in lst]) + " }" 
     if type == "pc":
         return "PC(%s)"%v
     if type == "address":
@@ -6324,7 +6324,7 @@ function json_string_dict(obj) {
     var v = json_string(kv.value);
     result += k + ": " + v;
   }
-  return "dict{ " + result + " }";
+  return "{ " + result + " }";
 }
 
 function json_string_address(obj) {
@@ -6845,7 +6845,7 @@ document.addEventListener('keydown', handleKeyPress);
         if type == "dict":
             if v == []:
                 return "()"
-            return "dict{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
+            return "{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
         if type == "pc":
             return "PC(%s)"%v
         if type == "address":

@@ -84,7 +84,7 @@ function json_string_dict(obj) {
     var v = json_string(kv.value);
     result += k + ": " + v;
   }
-  return "dict{ " + result + " }";
+  return "{ " + result + " }";
 }
 
 function json_string_address(obj) {
