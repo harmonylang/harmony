@@ -1,24 +1,19 @@
-from synch import Queue, put, get;
+from synch import Queue, put, get
 
-const N = 3;        # number of threads
-const R = 4;        # number of rounds
+const N = 3        # number of threads
+const R = 4        # number of rounds
 
-round = [ 0 for i in {0..N-1} ];
-q = [ Queue() for i in {0..N-1} ];
+round = [ 0 for i in {0..N-1} ]
+q = [ Queue() for i in {0..N-1} ]
 
 def thread(self):
     for r in {1..R}:
-        for i in {0..N-1} such that i != self:
-            put(?q[i], None);
-        ;
-        for i in {0..N-1} such that i != self:
-            get(?q[self]);
-        ;
-        round[self] = (round[self] + 1);
-        assert (max(round) - min(round)) <= 1;
-    ;
-;
+        for i in {0..N-1} where i != self:
+            put(?q[i], None)
+        for i in {0..N-1} where i != self:
+            get(?q[self])
+        round[self] = (round[self] + 1)
+        assert (max(round) - min(round)) <= 1
 
 for i in {0..N-1}:
-    spawn thread(i);
-;
+    spawn thread(i)

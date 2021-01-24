@@ -71,6 +71,7 @@ def isreserved(s):
         "from",
         "False",
         "for",
+        "get_context",
         "go",
         "hash",
         "if",

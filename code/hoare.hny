@@ -1,26 +1,24 @@
-import synch;
+import synch
 
 def Monitor():
-    result = synch.Lock();
-;
+    result = synch.Lock()
+
 def enter(mon):
-    synch.acquire(mon);
-;
+    synch.acquire(mon)
+
 def exit(mon):
-    synch.release(mon);
-;
+    synch.release(mon)
+
 def Condition():
-    result = { .sema: synch.BinSema(True), .count: 0 };
-;
+    result = { .sema: synch.BinSema(True), .count: 0 }
+
 def wait(cond, mon):
-    cond->count += 1;
-    exit(mon);
-    synch.acquire(?cond->sema);
-    cond->count -= 1;
-;
+    cond->count += 1
+    exit(mon)
+    synch.acquire(?cond->sema)
+    cond->count -= 1
+
 def signal(cond, mon):
     if cond->count > 0:
-        synch.release(?cond->sema);
-        enter(mon);
-    ;
-;
+        synch.release(?cond->sema)
+        enter(mon)

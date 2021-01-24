@@ -1,40 +1,34 @@
 def lst_find(lst, v):   # find 'neighboring' nodes of v in list
     let before = lst let after = before->next:
-        acquire(?before->lock);
-        acquire(?after->lock);
+        acquire(?before->lock)
+        acquire(?after->lock)
         while after->value < v:
-            release(?before->lock);
-            before = after;
-            after = before->next;
-            acquire(?after->lock);
-        ;
-        result = (before, after);
-    ;
-;
+            release(?before->lock)
+            before = after
+            after = before->next
+            acquire(?after->lock)
+        result = (before, after)
+
 def lst_insert(lst, v):
     let before, after = lst_find(lst, v):
         if after->value != v:
-            before->next = lst_node(v, after);
-        ;
-        release(?before->lock);
-        release(?after->lock);
-    ;
-;
+            before->next = lst_node(v, after)
+        release(?before->lock)
+        release(?after->lock)
+
 def lst_remove(lst, v):
     let before, after = lst_find(lst, v):
         if after->value == v:
-            before->next = after->next;
-            release(?after->lock);
-            free(after);
+            before->next = after->next
+            release(?after->lock)
+            free(after)
         else:
-            release(?after->lock);
-        ;
-        release(?before->lock);
-    ;
-;
+            release(?after->lock)
+        
+        release(?before->lock)
 
-mylist = lst_node(-inf, lst_node(inf, None));
-lst_insert(mylist, 3);
-assert lst_contains(mylist, 3);
-lst_remove(mylist, 3);
-assert not lst_contains(mylist, 3);
+mylist = lst_node(-inf, lst_node(inf, None))
+lst_insert(mylist, 3)
+assert lst_contains(mylist, 3)
+lst_remove(mylist, 3)
+assert not lst_contains(mylist, 3)

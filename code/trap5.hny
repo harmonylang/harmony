@@ -1,21 +1,19 @@
-count = 0;
-done = False;
+count = 0
+done = False
 
 def increment():
     let prior = setintlevel(True):
-        count += 1;
-        setintlevel(prior);
-    ;
-;
-def handler():
-    increment();
-    done = True;
-;
-def main():
-    trap handler();
-    increment();
-    await done;
-    assert count == 2;
-;
+        count += 1
+        setintlevel(prior)
 
-spawn main();
+def handler():
+    increment()
+    done = True
+
+def main():
+    trap handler()
+    increment()
+    await done
+    assert count == 2
+
+spawn main()

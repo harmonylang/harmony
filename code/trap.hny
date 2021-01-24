@@ -1,14 +1,13 @@
-count = 0;
-done = False;
+count = 0
+done = False
 
 def handler():
-    count += 1;
-    done = True;
-;
-def main():
-    trap handler();
-    await done;
-    assert count == 1;
-;
+    count += 1
+    done = True
 
-spawn main();
+def main():
+    trap handler()
+    await done
+    assert count == 1
+
+spawn main()

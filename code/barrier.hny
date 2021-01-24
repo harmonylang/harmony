@@ -1,37 +1,30 @@
-from synch import *;
+from synch import *
 
 def Barrier(limit):
-    result =
-        {
+    result = {
             .limit: limit,
             .mutex: Lock(),
             .full: Condition(), .others: Condition(),
             .entered: 0, .left: limit
         }
-    ;
-;
+
 def enter(b):
-    acquire(?b->mutex);
+    acquire(?b->mutex)
     while b->entered == b->limit:
-        wait(?b->full, ?b->mutex);
-    ;
-    b->entered += 1;
+        wait(?b->full, ?b->mutex)
+    b->entered += 1
     if b->entered == b->limit:
-        b->left = 0;
-        notifyAll(?b->others);
+        b->left = 0
+        notifyAll(?b->others)
     else:
         while b->entered < b->limit:
-            wait(?b->others, ?b->mutex);
-        ;
-    ;
-    release(?b->mutex);
-;
+            wait(?b->others, ?b->mutex)
+    release(?b->mutex)
+
 def exit(b):
-    acquire(?b->mutex);
-    b->left += 1;
+    acquire(?b->mutex)
+    b->left += 1
     if b->left == b->limit:
-        b->entered = 0;
-        notifyAll(?b->full);
-    ;
-    release(?b->mutex);
-;
+        b->entered = 0
+        notifyAll(?b->full)
+    release(?b->mutex)

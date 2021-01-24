@@ -1,15 +1,13 @@
-from alloc import malloc, free;
+from alloc import malloc, free
 
 def Stack():
-    result = None;
-;
+    result = None
+
 def push(st, v):
-    !st = malloc({ .value: v, .rest: !st });
-;
+    !st = malloc({ .value: v, .rest: !st })
+
 def pop(st):
     let node = !st:
-        result = node->value;
-        !st = node->rest;
-        free(node);
-    ;
-;
+        result = node->value
+        !st = node->rest
+        free(node)

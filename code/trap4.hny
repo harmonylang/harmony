@@ -1,17 +1,16 @@
-count = 0;
-done = False;
+count = 0
+done = False
 
 def handler():
-    count += 1;
-    done = True;
-;
-def main():
-    trap handler();
-    setintlevel(True);
-        count += 1;
-    setintlevel(False);
-    await done;
-    assert count == 2;
-;
+    count += 1
+    done = True
 
-spawn main();
+def main():
+    trap handler()
+    setintlevel(True)
+    count += 1
+    setintlevel(False)
+    await done
+    assert count == 2
+
+spawn main()

@@ -1,19 +1,15 @@
-import abp;
+import abp
 
-const NMSGS = 5;
+const NMSGS = 5
 
 def sender():
     for i in {1..NMSGS}:
-        abp.app_send(i);
-    ;
-;
+        abp.app_send(i)
+    
 def receiver():
     for i in {1..NMSGS}:
         let payload = abp.app_recv(i == NMSGS):
-            assert payload == i;
-        ;
-    ;
-;
+            assert payload == i
 
-spawn sender();
-spawn receiver();
+spawn sender()
+spawn receiver()

@@ -1,21 +1,19 @@
-import synch;
-import actor;
+import synch
+import actor
 
-const NITEMS = 3;
+const NITEMS = 3
 
-pc_queue = synch.Queue();
-queues = [ synch.Queue() for i in {0..NITEMS-1} ];
+pc_queue = synch.Queue()
+queues = [ synch.Queue() for i in {0..NITEMS-1} ]
 
 def produce(q, item):
-    synch.put(?pc_queue, { .type: .produce, .item: item });
-;
-def consume(q1, q2):
-    synch.put(q1, { .type: .consume, .queue: q2 });
-    result = synch.get(q2);
-;
+    synch.put(?pc_queue, { .type: .produce, .item: item })
 
-actor.init(?pc_queue, 2 * NITEMS);
+def consume(q1, q2):
+    synch.put(q1, { .type: .consume, .queue: q2 })
+    result = synch.get(q2)
+
+actor.init(?pc_queue, 2 * NITEMS)
 for i in {0..NITEMS-1}:
-    spawn produce(?pc_queue, i);
-    spawn consume(?pc_queue, ?queues[i]);
-;
+    spawn produce(?pc_queue, i)
+    spawn consume(?pc_queue, ?queues[i])

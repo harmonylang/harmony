@@ -9636,7 +9636,8 @@ class NaryRule(Rule):
                     print("expected an expression after else in", op)
                     exit(1)
                 args.append(ast3)
-                (lexeme, file, line, column) = t[0]
+                if t != []:
+                    (lexeme, file, line, column) = t[0]
             elif (op[0] == lexeme) and (lexeme in { "+", "|", "&", "^", "and", "or" }):
                 while lexeme == op[0]:
                     (ast3, t) = ExpressionRule().parse(t[1:])

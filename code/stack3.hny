@@ -1,12 +1,10 @@
 def Stack():
-    result = ();
-;
+    result = ()
+
 def push(st, v):
-    (!st) = (v, !st);
-;
+    (!st) = (v, !st)
+
 def pop(st):
     let (top, rest) = !st:
-        result = top;
-        !st = rest;
-    ;
-;
+        result = top
+        !st = rest

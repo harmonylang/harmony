@@ -48,6 +48,7 @@ CODE = \
     csbarebones.tex \
     csonebit.tex \
     dinersfix.tex \
+    dinersfix2.tex \
     gpu.tex \
     hoare.tex \
     hoaremon.tex \

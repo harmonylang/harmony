@@ -1,39 +1,31 @@
-const MAX_ITEMS = 3;
+const MAX_ITEMS = 3
 
-back = 0;
-items = [ () for i in {0..MAX_ITEMS} ];
+back = 0
+items = [ () for i in {0..MAX_ITEMS} ]
 
 def inc(pcnt):
     atomic:
-        result = !pcnt;
-        !pcnt += 1;
-    ;
-;
+        result = !pcnt
+        !pcnt += 1
+
 def exch(pv):
     atomic:
-        result = !pv;
-        !pv = ();
-    ;
-;
+        result = !pv
+        !pv = ()
+
 def produce(item):
-    items[inc(?back)] = (item,);
-;
+    items[inc(?back)] = (item,)
+
 def consume():
-    result = ();
+    result = ()
     while result == ():
         let range, i = back, 0:
             while (i < range) and (result == ()):
-                result = exch(?items[i]);
-                i += 1;
-            ;
-        ;
-    ;
+                result = exch(?items[i])
+                i += 1
     result = result[0];     # convert (item,) into item
-;
 
 for i in {1..MAX_ITEMS}:
-    spawn produce(i);
-;
+    spawn produce(i)
 for i in {1..choose({0..MAX_ITEMS})}:
-    spawn consume();
-;
+    spawn consume()

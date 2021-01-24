@@ -1,14 +1,11 @@
-from synch import Lock, acquire, release;
-from alloc import malloc, free;;
+from synch import Lock, acquire, release
+from alloc import malloc, free
 
 def lst_node(v, n):     # allocate and initialize a new list node
-    result = malloc({ .lock: Lock(), .value: v, .next: n });
-;
+    result = malloc({ .lock: Lock(), .value: v, .next: n })
+
 def lst_contains(lst, v):   # check if v is in the list
     let n = lst:
         while n->value < v:
-            n = n->next;
-        ;
-        result = n->value == v;
-    ;
-;
+            n = n->next
+        result = n->value == v

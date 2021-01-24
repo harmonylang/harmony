@@ -1,31 +1,25 @@
-from synch import Lock, acquire, release;
+from synch import Lock, acquire, release
 
-count = 0;
-countlock = Lock();
-done = [ False, False ];
+count = 0
+countlock = Lock()
+done = [ False, False ]
 
 def increment():
     let prior = setintlevel(True):
-        acquire(?countlock);
-            count += 1;
-        release(?countlock);
-        setintlevel(prior);
-    ;
-;
-def handler(self):
-    increment();
-    done[self] = True;
-;
-def thread(self):
-    trap handler(self);
-    increment();
-    await done[self];
-;
-def main(self):
-    await all(done);
-    assert count == 4, count;
-;
+        acquire(?countlock)
+        count += 1
+        release(?countlock)
+        setintlevel(prior)
 
-spawn thread(0);
-spawn thread(1);
-spawn main();
+def handler(self):
+    increment()
+    done[self] = True
+
+def thread(self):
+    trap handler(self)
+    increment()
+    await all(done)
+    assert count == 4, count
+
+spawn thread(0)
+spawn thread(1)

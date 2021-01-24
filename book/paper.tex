@@ -3921,6 +3921,14 @@ before the higher numbered fork, like so:
 \end{code}
 \vspace{1em}
 
+or like so:
+
+\vspace{1em}
+\begin{code}
+\harmonysource{dinersfix2}
+\end{code}
+\vspace{1em}
+
 This completes all the Havender methods.
 There is, however, another approach, which is sometimes called deadlock
 \emph{avoidance}
@@ -4883,6 +4891,8 @@ A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
 The generic syntax of a dictionary is
 $\{ k_0:v_0, k_1:v_1, ... \}$.
+Different from Python, the empty dictionary is either $()$ or $[]$
+(because $\{\}$ is the empty set in Harmony).
 If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
@@ -5605,7 +5615,7 @@ you can add the \texttt{P\_enter} and
 like so:
 \begin{code}
 \begin{verbatim}
-dict{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
+{ .turn: 0, .flags: [ False, False ], .enter: P_enter, .exit: P_exit }
 \end{verbatim}
 \end{code}
 That would allow you to simulate object methods.
