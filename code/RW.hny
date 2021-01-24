@@ -1,32 +1,30 @@
-from synch import Lock, acquire, release;
+from synch import Lock, acquire, release
 
-def acquire_rlock():
-    acquire(?rwlock);
-    while nwriters > 0:
-        release(?rwlock);
-        acquire(?rwlock);
-    ;
-    nreaders += 1;
-    release(?rwlock);
-;
-def release_rlock():
-    acquire(?rwlock);
-    nreaders -= 1;
-    release(?rwlock);
-;
-def acquire_wlock():
-    acquire(?rwlock);
-    while (nreaders + nwriters) > 0:
-        release(?rwlock);
-        acquire(?rwlock);
-    ;
-    nwriters = 1;
-    release(?rwlock);
-;
-def release_wlock():
-    acquire(?rwlock);
-    nwriters = 0;
-    release(?rwlock);
-;
-rwlock = Lock();
-nreaders, nwriters = 0, 0;
+def RWlock():
+    result = { .lock: Lock(), .nreaders: 0, .nwriters: 0 }
+
+def acquire_rlock(rw):
+    acquire(?rw->lock)
+    while rw->nwriters > 0:
+        release(?rw->lock)
+        acquire(?rw->lock)
+    rw->nreaders += 1
+    release(?rw->lock)
+
+def release_rlock(rw):
+    acquire(?rw->lock)
+    rw->nreaders -= 1
+    release(?rw->lock)
+
+def acquire_wlock(rw):
+    acquire(?rw->lock)
+    while (rw->nreaders + rw->nwriters) > 0:
+        release(?rw->lock)
+        acquire(?rw->lock)
+    rw->nwriters = 1
+    release(?rw->lock)
+
+def release_wlock(rw):
+    acquire(?rw->lock)
+    rw->nwriters = 0
+    release(?rw->lock)

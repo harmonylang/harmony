@@ -1,111 +1,91 @@
-import list;
+import list
 
 def BinSema(acquired):
-    result = { .acquired: acquired, .suspended: [] };
-;
+    result = { .acquired: acquired, .suspended: [] }
+
 def Lock():
-    result = BinSema(False);
-;
+    result = BinSema(False)
+
 def acquired(binsema):
-    result = binsema->acquired;
-;
+    result = binsema->acquired
+
 def acquire(binsema):
     atomic:
         if binsema->acquired:
-            stop binsema->suspended[len binsema->suspended];
-            assert binsema->acquired;
+            stop binsema->suspended[len binsema->suspended]
+            assert binsema->acquired
         else:
-            binsema->acquired = True;
-        ;
-    ;
-;
+            binsema->acquired = True
+
 def release(binsema):
     atomic:
-        assert binsema->acquired;
+        assert binsema->acquired
         if binsema->suspended == []:
-            binsema->acquired = False;
+            binsema->acquired = False
         else:
-            go (list.head(binsema->suspended)) ();
-            binsema->suspended = list.tail(binsema->suspended);
-        ;
-    ;
-;
+            go (list.head(binsema->suspended)) ()
+            binsema->suspended = list.tail(binsema->suspended)
+
 def held(binsema):
-    result = binsema->acquired;
-;
+    result = binsema->acquired
+
 def Condition(lk):
-    result = [];
-;
+    result = []
+
 def wait(c, lk):
     atomic:
-        release(lk);
-        stop (!c)[len !c];
-    ;
-    acquire(lk);
-;
+        release(lk)
+        stop (!c)[len !c]
+    acquire(lk)
+
 def notify(c):
     atomic:
         if !c != []:
-            go (list.head(!c)) ();
-            !c = list.tail(!c);
-        ;
-    ;
-;
+            go (list.head(!c)) ()
+            !c = list.tail(!c)
+        
 def notifyAll(c):
     atomic:
         while !c != []:
-            go (list.head(!c)) ();
-            !c = list.tail(!c);
-        ;
-    ;
-;
+            go (list.head(!c)) ()
+            !c = list.tail(!c)
+        
 def Semaphore(cnt):
-    result = { .count: cnt, .waiters: [] };
-;
+    result = { .count: cnt, .waiters: [] }
+
 def P(sema):
     atomic:
         if sema->count > 0:
-            sema->count -= 1;
+            sema->count -= 1
         else:
-            stop sema->waiters[len sema->waiters];
-        ;
-    ;
-;
+            stop sema->waiters[len sema->waiters]
+        
 def V(sema):
     atomic:
         let cnt, waiters = sema->count, sema->waiters:
             if waiters != []:
-                assert cnt == 0;
-                go (waiters[0]) ();
-                sema->waiters = list.tail(waiters);
+                assert cnt == 0
+                go (waiters[0]) ()
+                sema->waiters = list.tail(waiters)
             else:
-                sema->count = cnt + 1;
-            ;
-        ;
-    ;
-;
+                sema->count = cnt + 1
+
 def Queue():
-    result = { .list: [], .waiters: [] };
-;
+    result = { .list: [], .waiters: [] }
+
 def get(q):
     atomic:
         let list = q->list:
             if list == []:
-                stop q->waiters[len q->waiters];
-            ;
-            result = list.head(list);
-            q->list = list.tail(list);
-        ;
-    ;
-;
+                stop q->waiters[len q->waiters]
+            
+            result = list.head(list)
+            q->list = list.tail(list)
+
 def put(q, item):
     atomic:
-        q->list = list.append(q->list, item);
+        q->list = list.append(q->list, item)
         let waiters = q->waiters:
             if waiters != []:
-                go (waiters[0]) item;
-                q->waiters = list.tail(waiters);
-            ;
-        ;
-    ;
-;
+                go (waiters[0]) item
+                q->waiters = list.tail(waiters)

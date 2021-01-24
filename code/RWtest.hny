@@ -1,23 +1,19 @@
-import RW;
+import RW
 
-rw = RW.RWlock();
+rw = RW.RWlock()
 
 def thread():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
-            RW.read_acquire(?rw);
-            @rcs: assert atLabel(wcs) == ();
-            RW.read_release(?rw);
+            RW.read_acquire(?rw)
+            @rcs: assert atLabel(wcs) == ()
+            RW.read_release(?rw)
         else:                       # .write
-            RW.write_acquire(?rw);
+            RW.write_acquire(?rw)
             @wcs: assert (atLabel(wcs) == { (thread, ()): 1 }) and
                          (atLabel(rcs) == ())
-                  ;
-            RW.write_release(?rw);
-        ;
-    ;
-;
+            RW.write_release(?rw)
 
 for i in {1..3}:
-    spawn thread();
-;
+    spawn thread()
+

@@ -1,67 +1,52 @@
 def tas(lk):
     atomic:
-        result = !lk;
-        !lk = True;
-    ;
-;
+        result = !lk
+        !lk = True
+    
 def Lock():
-    result = False;
-;
+    result = False
+
 def lock(lk):
-    await not tas(lk);
-;
+    await not tas(lk)
+
 def unlock(lk):
-    !lk = False;
-;
+    !lk = False
+
 def Condition(lk):
-    result = { .lock: lk, .waiters: {} };
-;
+    result = { .lock: lk, .waiters: {} }
+
 def wait(c):
     let lk, blocked = None, True:
         atomic:
-            lk = c->lock;
-            c->waiters += { nametag() };
-            !lk = False;
-        ;
+            lk = c->lock
+            c->waiters += { nametag() }
+            !lk = False
+        
         while blocked:
             atomic:
                 if (not (!lk)) and (not ((nametag()) in c->waiters)):
-                    !lk = True;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    !lk = True
+                    blocked = False
+
 def notify(c):
     atomic:
         let waiters = c->waiters:
             if waiters != {}:
-                c->waiters = waiters - { choose(waiters) };
-            ;
-        ;
-    ;
-;
+                c->waiters = waiters - { choose(waiters) }
+            
 def notifyAll(c):
-    c->waiters = {};
-;
+    c->waiters = {}
+
 def Semaphore(cnt):
-    result = cnt;
-;
+    result = cnt
+
 def P(sema):
     let blocked = True:
         while blocked:
             atomic:
                 if (!sema) > 0:
-                    !sema -= 1;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    !sema -= 1
+                    blocked = False
+
 def V(sema):
-    atomic:
-        !sema += 1;
-    ;
-;
+    atomic: !sema += 1

@@ -90,376 +90,306 @@ internal_modules = {
 #     START OF MODULES      #
 #############################
 
-    "synch": """import list;
-import bag;
+    "synch": """import list
+import bag
 
 def tas(lk):
     atomic:
-        result = !lk;
-        !lk = True;
-    ;
-;
+        result = !lk
+        !lk = True
+
 def BinSema(acquired):
-    result = acquired;
-;
+    result = acquired
+
 def Lock():
-    result = BinSema(False);
-;
+    result = BinSema(False)
+
 def acquired(binsema):
-    result = !binsema;
-;
+    result = !binsema
+
 def acquire(binsema):
-    await not tas(binsema);
-;
+    await not tas(binsema)
+
 def release(binsema):
     atomic:
-        assert !binsema;
-        !binsema = False;
-    ;
-;
+        assert !binsema
+        !binsema = False
+    
 def held(binsema):
-    result = !binsema;
-;
+    result = !binsema
+
 def Condition(lk):
-    result = bag.empty();
-;
+    result = bag.empty()
+
 def wait(c, lk):
     let blocked, cnt, ctx = True, 0, get_context():
         atomic:
-            cnt = bag.count(!c, ctx);
-            bag.add(c, ctx);
-            !lk = False;
-        ;
+            cnt = bag.count(!c, ctx)
+            bag.add(c, ctx)
+            !lk = False
         while blocked:
             atomic:
                 if (not !lk) and (bag.count(!c, ctx) <= cnt):
-                    !lk = True;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    !lk = True
+                    blocked = False
+
 def notify(c):
     atomic:
         if !c != bag.empty():
-            bag.remove(c, bag.bchoose(!c));
-        ;
-    ;
-;
+            bag.remove(c, bag.bchoose(!c))
+
 def notifyAll(c):
-    !c = bag.empty();
-;
+    !c = bag.empty()
+
 def Semaphore(cnt):
-    result = cnt;
-;
+    result = cnt
+
 def P(sema):
     let blocked = True:
         while blocked:
             atomic:
                 if !sema > 0:
-                    !sema -= 1;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    !sema -= 1
+                    blocked = False
 def V(sema):
-    atomic:
-        !sema += 1;
-    ;
-;
+    atomic: !sema += 1
+    
 def Queue():
-    result = [];
-;
+    result = []
+
 def get(q):
     let blocked = True:
         while blocked:
             atomic:
                 if !q != []:
-                    result = list.head(!q);
-                    !q = list.tail(!q);
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    result = list.head(!q)
+                    !q = list.tail(!q)
+                    blocked = False
+
 def put(q, item):
-    atomic:
-        !q = list.append(!q, item);
-    ;
-;
+    atomic: !q = list.append(!q, item)
 """,
-    "synchS": """import list;
+    "synchS": """import list
 
 def BinSema(acquired):
-    result = { .acquired: acquired, .suspended: [] };
-;
+    result = { .acquired: acquired, .suspended: [] }
+
 def Lock():
-    result = BinSema(False);
-;
+    result = BinSema(False)
+
 def acquired(binsema):
-    result = binsema->acquired;
-;
+    result = binsema->acquired
+
 def acquire(binsema):
     atomic:
         if binsema->acquired:
-            stop binsema->suspended[len binsema->suspended];
-            assert binsema->acquired;
+            stop binsema->suspended[len binsema->suspended]
+            assert binsema->acquired
         else:
-            binsema->acquired = True;
-        ;
-    ;
-;
+            binsema->acquired = True
+
 def release(binsema):
     atomic:
-        assert binsema->acquired;
+        assert binsema->acquired
         if binsema->suspended == []:
-            binsema->acquired = False;
+            binsema->acquired = False
         else:
-            go (list.head(binsema->suspended)) ();
-            binsema->suspended = list.tail(binsema->suspended);
-        ;
-    ;
-;
+            go (list.head(binsema->suspended)) ()
+            binsema->suspended = list.tail(binsema->suspended)
+
 def held(binsema):
-    result = binsema->acquired;
-;
+    result = binsema->acquired
+
 def Condition(lk):
-    result = [];
-;
+    result = []
+
 def wait(c, lk):
     atomic:
-        release(lk);
-        stop (!c)[len !c];
-    ;
-    acquire(lk);
-;
+        release(lk)
+        stop (!c)[len !c]
+    acquire(lk)
+
 def notify(c):
     atomic:
         if !c != []:
-            go (list.head(!c)) ();
-            !c = list.tail(!c);
-        ;
-    ;
-;
+            go (list.head(!c)) ()
+            !c = list.tail(!c)
+        
 def notifyAll(c):
     atomic:
         while !c != []:
-            go (list.head(!c)) ();
-            !c = list.tail(!c);
-        ;
-    ;
-;
+            go (list.head(!c)) ()
+            !c = list.tail(!c)
+        
 def Semaphore(cnt):
-    result = { .count: cnt, .waiters: [] };
-;
+    result = { .count: cnt, .waiters: [] }
+
 def P(sema):
     atomic:
         if sema->count > 0:
-            sema->count -= 1;
+            sema->count -= 1
         else:
-            stop sema->waiters[len sema->waiters];
-        ;
-    ;
-;
+            stop sema->waiters[len sema->waiters]
+        
 def V(sema):
     atomic:
         let cnt, waiters = sema->count, sema->waiters:
             if waiters != []:
-                assert cnt == 0;
-                go (waiters[0]) ();
-                sema->waiters = list.tail(waiters);
+                assert cnt == 0
+                go (waiters[0]) ()
+                sema->waiters = list.tail(waiters)
             else:
-                sema->count = cnt + 1;
-            ;
-        ;
-    ;
-;
+                sema->count = cnt + 1
+
 def Queue():
-    result = { .list: [], .waiters: [] };
-;
+    result = { .list: [], .waiters: [] }
+
 def get(q):
     atomic:
         let list = q->list:
             if list == []:
-                stop q->waiters[len q->waiters];
-            ;
-            result = list.head(list);
-            q->list = list.tail(list);
-        ;
-    ;
-;
+                stop q->waiters[len q->waiters]
+            
+            result = list.head(list)
+            q->list = list.tail(list)
+
 def put(q, item):
     atomic:
-        q->list = list.append(q->list, item);
+        q->list = list.append(q->list, item)
         let waiters = q->waiters:
             if waiters != []:
-                go (waiters[0]) item;
-                q->waiters = list.tail(waiters);
-            ;
-        ;
-    ;
-;
+                go (waiters[0]) item
+                q->waiters = list.tail(waiters)
 """,
     "list": """# return s[b:e]
 def subseq(s, b, e):
-    result = [ s[x] for x in {b..e-1} ];
-;
+    result = [ s[x] for x in {b..e-1} ]
 
 def append(s, e):
-    result = s + [e,];
-;
+    result = s + [e,]
+
 def head(s):
-    result = s[0];
-;
+    result = s[0]
+
 def tail(s):
-    result = subseq(s, 1, len(s));
-;
+    result = subseq(s, 1, len(s))
 
 # sum of a list or set
 def sum(a):
-    result = 0;
+    result = 0
     for v in a:
-        result += v;
-    ;
-;
+        result += v
 
 # convert list (or values of a dict) to a set
 def set(a):
-    result = { v for v in a };
-;
+    result = { v for v in a }
 
 # convert set into a (sorted) list
 def list(a):
-    result = [ v for v in a ];
-;
+    result = [ v for v in a ]
 
 # convert values of a dictionary into a list
 def values(d):
-    result = [ d[k] for k in keys d ];
-;
+    result = [ d[k] for k in keys d ]
 
 # like Python .items()
 def items(d):
-    result = [ (k, d[k]) for k in keys d ];
-;
+    result = [ (k, d[k]) for k in keys d ]
 
 # like Python enumerate()
 def enumerate(d):
-    result = [];
+    result = []
     let index = 0:
         for k in keys d:
-            result += [ (index, d[k]), ];
-            index += 1;
-        ;
-    ;
-;
-
+            result += [ (index, d[k]), ]
+            index += 1
+        
 # quicksort of a list
 def qsort(a):
     if a == []:
-        result = [];
+        result = []
     else:
         let (pivot, rest) = head(a), tail(a)
         let lower = [ v for v in rest such that v < pivot ]
         let higher = [ v for v in rest such that v >= pivot ]:
-            result = qsort(lower) + [pivot,] + qsort(higher);
-        ;
-    ;
-;
+            result = qsort(lower) + [pivot,] + qsort(higher)
 
 # like Python sorted()
 def sorted(d):
-    result = qsort(list(d));
-;
+    result = qsort(list(d))
 
 # like Python reversed()
 def reversed(d):
     let n = len(d):
-        result = [ d[n-i] for i in { 1..n } ];
-    ;
-;
+        result = [ d[n-i] for i in { 1..n } ]
 """,
     "bag": """def empty():
-    result = [];
-;
+    result = []
+
 def fromSet(s):
-    result = { elt:1 for elt in s };
-;
+    result = { elt:1 for elt in s }
+
 def fromList(a):
-    result = [];
+    result = []
     for i in keys(a):
         if a[i] in keys(result):
-            result[a[i]] += 1;
+            result[a[i]] += 1
         else:
-            result[a[i]] = 1;
-        ;
-    ;
-;
+            result[a[i]] = 1
+
 def count(bg, elt):
     if elt in keys(bg):
-        result = bg[elt];
+        result = bg[elt]
     else:
-        result = 0;
-    ;
-;
+        result = 0
+
 def bchoose(bg):
     # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bg[k] for k in keys(bg) };
-    result = choose(keys(bg));
-;
+    assert 0 not in { bg[k] for k in keys(bg) }
+    result = choose(keys(bg))
+
 def add(pb, elt):
     if elt in keys(!pb):
-        (!pb)[elt] += 1;
+        (!pb)[elt] += 1
     else:
-        (!pb)[elt] = 1;
-    ;
-;
+        (!pb)[elt] = 1
+
 def remove(pb, elt):
     if (elt in keys(!pb)) and ((!pb)[elt] > 0):
-        (!pb)[elt] -= 1;
-    ;
+        (!pb)[elt] -= 1
+    
     if (!pb)[elt] <= 0:
-        del (!pb)[elt];
-    ;
-;
+        del (!pb)[elt]
 """,
     "set": """def issubset(s, t):
-    result = (s & t) == s;
-;
-def issuperset(s, t):
-    result = (s & t) == t;
-;
-""",
-    "alloc": """import synch;
+    result = (s & t) == s
 
-pool = [];
+def issuperset(s, t):
+    result = (s & t) == t
+""",
+    "alloc": """import synch
+
+pool = []
 flist = None;           # free list
-lock = synch.Lock();
+lock = synch.Lock()
 
 def malloc(v):
-    synch.acquire(?lock);
+    synch.acquire(?lock)
     if flist == None:
         let i = len(pool):
-            pool[i] = None;
-            result = ?pool[i];
-        ;
+            pool[i] = None
+            result = ?pool[i]
     else:
-        result = flist;
-        flist = !result;
-    ;
-    synch.release(?lock);
-    !result = v;
-;
+        result = flist
+        flist = !result
+    synch.release(?lock)
+    !result = v
+
 def free(r):
-    synch.acquire(?lock);
-    !r = flist;
-    flist = r;
-    synch.release(?lock);
-;
+    synch.acquire(?lock)
+    !r = flist
+    flist = r
+    synch.release(?lock)
 """,
 
 

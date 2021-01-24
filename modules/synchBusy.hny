@@ -1,46 +1,40 @@
 def tas(lk):
     atomic:
-        result = !lk;
-        !lk = True;
-    ;
-;
+        result = !lk
+        !lk = True
+
 def Lock():
-    result = False;
-;
+    result = False
+
 def lock(lk):
-    await not tas(lk);
-;
+    await not tas(lk)
+
 def unlock(lk):
-    !lk = False;
-;
+    !lk = False
+
 def Condition(lk):
-    result = lk;
-;
+    result = lk
+
 def wait(c):
-    unlock(!c);
-    lock(!c);
-;
+    unlock(!c)
+    lock(!c)
+
 def notify(c):
-;
+    pass
+
 def notifyAll(c):
-;
+    pass
+
 def Semaphore(cnt):
-    result = cnt;
-;
+    result = cnt
+
 def P(sema):
     let blocked = True:
         while blocked:
             atomic:
                 if !sema > 0:
-                    !sema -= 1;
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-;
+                    !sema -= 1
+                    blocked = False
+                
 def V(sema):
-    atomic:
-        !sema += 1;
-    ;
-;
+    atomic: !sema += 1

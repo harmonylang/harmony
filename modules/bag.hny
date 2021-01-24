@@ -1,43 +1,37 @@
 def empty():
-    result = [];
-;
+    result = []
+
 def fromSet(s):
-    result = { elt:1 for elt in s };
-;
+    result = { elt:1 for elt in s }
+
 def fromList(a):
-    result = [];
+    result = []
     for i in keys(a):
         if a[i] in keys(result):
-            result[a[i]] += 1;
+            result[a[i]] += 1
         else:
-            result[a[i]] = 1;
-        ;
-    ;
-;
+            result[a[i]] = 1
+
 def count(bg, elt):
     if elt in keys(bg):
-        result = bg[elt];
+        result = bg[elt]
     else:
-        result = 0;
-    ;
-;
+        result = 0
+
 def bchoose(bg):
     # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bg[k] for k in keys(bg) };
-    result = choose(keys(bg));
-;
+    assert 0 not in { bg[k] for k in keys(bg) }
+    result = choose(keys(bg))
+
 def add(pb, elt):
     if elt in keys(!pb):
-        (!pb)[elt] += 1;
+        (!pb)[elt] += 1
     else:
-        (!pb)[elt] = 1;
-    ;
-;
+        (!pb)[elt] = 1
+
 def remove(pb, elt):
     if (elt in keys(!pb)) and ((!pb)[elt] > 0):
-        (!pb)[elt] -= 1;
-    ;
+        (!pb)[elt] -= 1
+    
     if (!pb)[elt] <= 0:
-        del (!pb)[elt];
-    ;
-;
+        del (!pb)[elt]
