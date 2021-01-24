@@ -17,7 +17,7 @@ def thread(self):
             tas(?shared, ?private[self])
 
         # Critical section
-        @cs: assert (not private[self]) and (atLabel(cs) == bag{ (thread, self) })
+        @cs: assert (not private[self]) and (atLabel(cs) == { (thread, self): 1 })
 
         # Leave critical section
         private[self] = True

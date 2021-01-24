@@ -8,7 +8,7 @@ def tas(s):
 def thread():
     while choose({ False, True }):
         await not tas(?lock)
-        @cs: assert atLabel(cs) == bag{ (thread, ()) }
+        @cs: assert atLabel(cs) == { (thread, ()): 1 }
         lock = False
     
 for i in {1..10}:

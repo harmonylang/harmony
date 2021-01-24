@@ -16,7 +16,7 @@ mutex = P_mutex()
 def thread(self):
     while choose({ False, True }):
         P_enter(?mutex, self)
-        @cs: assert atLabel(cs) == bag{ (thread, self) }
+        @cs: assert atLabel(cs) == { (thread, self): 1 }
         P_exit(?mutex, self)
 
 spawn thread(0)

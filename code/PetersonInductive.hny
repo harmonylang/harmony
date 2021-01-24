@@ -10,7 +10,7 @@ def thread(self):
 
         # Critical section
         @cs: assert (not flags[1 - self]) or (turn == self) or
-                    (atLabel(gate) == bag{(thread, 1 - self)})
+                    (atLabel(gate) == {(thread, 1 - self): 1})
 
         # Leave critical section
         flags[self] = False

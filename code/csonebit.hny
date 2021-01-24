@@ -9,7 +9,7 @@ def thread(self):
             flags[self] = True
         
         # Critical section
-        @cs: assert atLabel(cs) == bag{ (thread, self) }
+        @cs: assert atLabel(cs) == { (thread, self): 1 }
 
         # Leave critical section
         flags[self] = False
