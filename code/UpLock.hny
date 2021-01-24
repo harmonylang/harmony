@@ -1,20 +1,19 @@
-from synch import Lock, acquire, release;
+from synch import Lock, acquire, release
 
-count = 0;
-countlock = Lock();
-done = [ False, False ];
+count = 0
+countlock = Lock()
+done = [ False, False ]
 
 def thread(self):
-    acquire(?countlock);
-    count = count + 1;
-    release(?countlock);
-    done[self] = True;
-;
-def main(self):
-    await all(done);
-    assert count == 2, count;
-;
+    acquire(?countlock)
+    count = count + 1
+    release(?countlock)
+    done[self] = True
 
-spawn thread(0);
-spawn thread(1);
-spawn main();
+def main(self):
+    await all(done)
+    assert count == 2
+
+spawn thread(0)
+spawn thread(1)
+spawn main()

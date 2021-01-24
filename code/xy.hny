@@ -1,7 +1,5 @@
 x, y = 0, 100
 
-invariant (x + y) == 100
-
 def setX(a):
     x = a
     y = 100 - a
@@ -9,4 +7,9 @@ def setX(a):
 def getXY():
     result = [x, y]
 
+def checker():
+    let xy = getXY():
+        assert (xy[0] + xy[1]) == 100, xy
+    
+spawn checker()
 spawn setX(50)
