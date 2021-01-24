@@ -868,12 +868,11 @@ just a name.  An atom is denoted using a period followed by the
 name.  For example, \texttt{.main} is an atom.
 
 Harmony makes extensive use of dictionaries.
-A dictionary maps values, known as \emph{keys}, to values.
-The Harmony dictionary syntax and properties are a little different from Python.
+A dictionary maps keys to values.
 Unlike Python, any Harmony value can be a key, including another
 dictionary.
-Harmony dictionaries are written as
-$\mathtt{dict}\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
+Dictionaries are written as
+$\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
 If $d$ is a dictionary, and $k$ is a key, then the
 following expression retrieves the Harmony value that $k$ maps to in $d$:
 \begin{code}
@@ -887,7 +886,7 @@ that is familiar to Python programmers:
 \begin{code}
 $d$[$k$]
 \end{code}
-However, if $d$ = \texttt{dict\{ .count: 3 \}}, then you can write
+However, if $d = \{ \mathtt{.count}: 3 \}$, then you can write
 $d$.\texttt{count} (which has value 3) instead of having to write
 $d$\texttt{[.count]} (although both will work).
 Thus, using atoms, a dictionary can be made to look much like a Python object.
@@ -895,8 +894,8 @@ Thus, using atoms, a dictionary can be made to look much like a Python object.
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
 \texttt{(5, False)} is the same Harmony value as
-\texttt{dict\{ 0:5, 1:False \}}.
-The empty tuple \texttt{()} is the same value as \texttt{dict\{\}}.
+\texttt{\{ 0:5, 1:False \}}.
+The empty tuple is written as \texttt{()}.
 Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by including a comma.
 For example, \texttt{(1,)} is a tuple consisting just of the number 1.
@@ -905,7 +904,7 @@ Importantly, $(1) = 1 \ne (1,)$.
 Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
 is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
-which in turn is the same Harmony value as \texttt{dict\{ 0:a, 1:b, 2:c \}}.
+which in turn is the same Harmony value as \texttt{\{ 0:a, 1:b, 2:c \}}.
 So if $x$ = \texttt{[False, True]},
 then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
@@ -4688,7 +4687,7 @@ Atom & \texttt{.example}, \texttt{.test1}, \texttt{.0x4A} \\
 \hline
 Program Counter & (method names are program counter constants) \\
 \hline
-Dictionary & \texttt{dict\{ .account: 12345, .valid: False \} } \\
+Dictionary & \texttt{\{ .account: 12345, .valid: False \} } \\
 \hline
 Set & \texttt{\{ 1, 2, 3 \}, \{ False, .id, 3 \} } \\
 \hline
@@ -4883,14 +4882,13 @@ that, when multiplied, have the value 4.
 A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
 The generic syntax of a dictionary is
-\texttt{dict\{ $k_0:v_0, k_1:v_1, ...$ \}}.
+$\{ k_0:v_0, k_1:v_1, ... \}$.
 If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
 
 Dictionaries support comprehension.  The  basic form is:
-\texttt{dict\{ f($v$) for $v$ in $s$ \}}.  This creates a dictionary
-that maps each element $v$ in $s$ to $\mathtt{f}(v)$.
+\texttt{\{ f($k$):g($k$) for $k$ in $s$ \}}.
 
 There are various special cases of dictionaries,
 including lists, tuples, strings,
@@ -5706,7 +5704,7 @@ So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
 
 Because tuples and lists are dictionaries, the \texttt{del} statement is
 different than in Python.  For example, if $x$ = [.a, .b, .c], then
-\texttt{del} $x$[1] results in $x$ = \texttt{dict}\{ 0:.a, 2:.c \}, \emph{not}
+\texttt{del} $x$[1] results in $x$ = \{ 0:.a, 2:.c \}, \emph{not}
 $x$ = [.a, .c].
 Harmony also does not support special slicing syntax like Python.
 To modify lists, use the \texttt{subseq} method in the \texttt{list} module
@@ -5780,11 +5778,8 @@ For example:
 
 Harmony also supports set, list, and dictionary comprehensions.
 \index{comprehensions}%
-Set and list comprehensions are similar to Python, except that filtering uses
+Comprehensions are similar to Python, except that filtering uses
 the keyword \texttt{where} instead of \texttt{if}.
-Dictionary comprehensions are a little different.
-The dictionary comprehension \texttt{dict}\{ f($i$) \texttt{for} $i$ \texttt{in} $I$ \}
-creates a dictionary of $i$:f($i$) entries.
 
 \section{Dynamic Allocation}
 
