@@ -1,17 +1,15 @@
-turn = 0;
+turn = 0
 
 def thread(self):
     while choose({ False, True }):
         # Enter critical section
-        turn = 1 - self;
-        await turn == self;
+        turn = 1 - self
+        await turn == self
 
         # Critical section
-        @cs: assert atLabel(cs) == bag{ (thread, self) };
+        @cs: assert atLabel(cs) == bag{ (thread, self) }
 
         # Leave critical section
-    ;
-;
 
-spawn thread(0);
-spawn thread(1);
+spawn thread(0)
+spawn thread(1)

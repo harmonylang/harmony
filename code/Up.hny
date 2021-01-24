@@ -1,12 +1,11 @@
-count = 0;
-done = [ False, False ];
+count = 0
+done = [ False, False ]
 
 def incrementer(self):
-    count = count + 1;
-    done[self] = True;
-    await done[1 - self];
-    assert count == 2;
-;
+    count = count + 1
+    done[self] = True
+    await done[1 - self]
+    assert count == 2
 
-spawn incrementer(0);
-spawn incrementer(1);
+spawn incrementer(0)
+spawn incrementer(1)

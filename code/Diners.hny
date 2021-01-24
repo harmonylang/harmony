@@ -1,22 +1,18 @@
-from synch import Lock, acquire, release;
+from synch import Lock, acquire, release
 
-const N = 5;
+const N = 5
 
-forks = [Lock(),] * N;
+forks = [Lock(),] * N
 
 def diner(which):
     let left, right = (which - 1, which % N):
         while choose({ False, True }):
-            acquire(?forks[left]);
-            acquire(?forks[right]);
+            acquire(?forks[left])
+            acquire(?forks[right])
             # dine
-            release(?forks[left]);
-            release(?forks[right]);
+            release(?forks[left])
+            release(?forks[right])
             # think
-        ;
-    ;
-;
 
 for i in {1..N}:
-    spawn diner(i);
-;
+    spawn diner(i)

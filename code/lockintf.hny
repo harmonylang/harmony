@@ -1,22 +1,20 @@
 def tas(lk):
     atomic:
-        result = !lk;
-        !lk = True;
-    ;
-;
+        result = !lk
+        !lk = True
+
 def BinSema(acquired):
-    result = acquired;
-;
+    result = acquired
+
 def Lock():
-    result = BinSema(False);
-;
+    result = BinSema(False)
+
 def acquire(binsema):
-    await not tas(binsema);
-;
+    await not tas(binsema)
+
 def release(binsema):
-    assert binsema;
-    !binsema = False;
-;
+    assert binsema
+    !binsema = False
+
 def held(binsema):
-    result = !binsema;
-;
+    result = !binsema

@@ -1,11 +1,10 @@
-shared = True;
+shared = True
 
 def f():
-    assert shared;
-;
-def g():
-    shared = False;
-;
+    assert shared
 
-spawn f();
-spawn g();
+def g():
+    shared = False
+
+spawn f()
+spawn g()

@@ -1,31 +1,27 @@
-const N = 3;
+const N = 3
 
-shared = False;
-private = [ True, ] * N;
+shared = False
+private = [ True, ] * N
 
-invariant len([ x for x in [shared,] + private where not x ]) <= 1;
+invariant len([ x for x in [shared,] + private where not x ]) <= 1
 
 def tas(s, p):
     atomic:
-        !p = !s;
-        !s = True;
-    ;
-;
+        !p = !s
+        !s = True
+
 def thread(self):
     while choose({ False, True }):
         # Enter critical section
         while private[self]:
-            tas(?shared, ?private[self]);
-        ;
+            tas(?shared, ?private[self])
 
         # Critical section
-        @cs: assert (not private[self]) and (atLabel(cs) == bag{ (thread, self) });
+        @cs: assert (not private[self]) and (atLabel(cs) == bag{ (thread, self) })
 
         # Leave critical section
-        private[self] = True;
-        shared = False;
-    ;
-;
+        private[self] = True
+        shared = False
+
 for i in {0..N-1}:
-    spawn thread(i);
-;
+    spawn thread(i)

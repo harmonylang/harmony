@@ -540,11 +540,6 @@ Like Python, Harmony is an imperative,
 dynamically typed, and garbage collected programming language.
 There are also some important differences:
 \begin{itemize}
-\item Every statement in Harmony must be terminated by a semicolon
-(even \textbf{def} statements).
-In Python semicolons are optional and rarely used.
-There is no syntactic significance to indentation in Harmony.
-Correct indentation in Harmony is encouraged but not enforced.
 \item Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
 \item Harmony does not (currently) support floating point, iterators, or I/O;
@@ -766,7 +761,7 @@ Either the specification or the implementation (or both) must have a bug.
 We could change the specification by changing the assertion as follows:
 
 \begin{code}
-\textbf{assert} (\textit{count} == 1) or (\textit{count} == 2);
+\textbf{assert} (\textit{count} == 1) or (\textit{count} == 2)
 \end{code}
 
 This would fix the issue, but more likely it is the program that must
@@ -975,34 +970,34 @@ have the same context.
 \begin{code}
 \begin{verbatim}
    0 Frame __init__ ()
-code/Up.hny:1 count = 0;
+code/Up.hny:1 count = 0
    1 Push 0
    2 Store count
-code/Up.hny:2 done = [ False, False ];
+code/Up.hny:2 done = [ False, False ]
    3 Push [False, False]
    4 Store done
 code/Up.hny:4 def incrementer(self):
    5 Jump 32
    6 Frame incrementer self
-code/Up.hny:5     count = count + 1;
+code/Up.hny:5     count = count + 1
    7 Load count
    8 Push 1
    9 2-ary +
    10 Store count
-code/Up.hny:6     done[self] = True;
+code/Up.hny:6     done[self] = True
    11 Push ?done
    12 LoadVar self
    13 Address
    14 Push True
    15 Store
-code/Up.hny:7     await done[1 - self];
+code/Up.hny:7     await done[1 - self]
    16 Push 1
    17 LoadVar self
    18 2-ary -
    19 Load done
    20 Apply
    21 JumpCond False 16
-code/Up.hny:8     assert count == 2, count;
+code/Up.hny:8     assert count == 2
    22 ReadonlyInc
    23 AtomicInc
    24 Load count
@@ -1381,7 +1376,7 @@ However, mutual exclusion by itself is easy to ensure.
 For example, we could insert the following code to enter the
 critical section:
 \begin{code}
-\texttt{await False;}
+\texttt{await False}
 \end{code}
 This code will surely prevent two or more threads from being
 at label \texttt{@cs} at the same time.
@@ -1587,7 +1582,7 @@ section, mutual exclusion is violated,
 the assertion should fail, and a trace should be reported.
 Now insert
 \begin{code}
-\texttt{await False;}
+\texttt{await False}
 \end{code}
 just before entering the critical section
 in \autoref{fig:cs} and run Harmony again.

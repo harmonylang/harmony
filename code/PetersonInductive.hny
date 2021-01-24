@@ -1,22 +1,19 @@
-flags = [ False, False ];
-turn = choose({0, 1});
+flags = [ False, False ]
+turn = choose({0, 1})
 
 def thread(self):
     while choose({ False, True }):
         # Enter critical section
-        flags[self] = True;
-        @gate: turn = 1 - self;
-        await (not flags[1 - self]) or (turn == self);
+        flags[self] = True
+        @gate: turn = 1 - self
+        await (not flags[1 - self]) or (turn == self)
 
         # Critical section
         @cs: assert (not flags[1 - self]) or (turn == self) or
                     (atLabel(gate) == bag{(thread, 1 - self)})
-             ;
 
         # Leave critical section
-        flags[self] = False;
-    ;
-;
+        flags[self] = False
 
-spawn thread(0);
-spawn thread(1);
+spawn thread(0)
+spawn thread(1)

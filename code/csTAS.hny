@@ -1,19 +1,15 @@
-lock = False;
+lock = False
 
 def tas(s):
     atomic:
-        result = !s;
-        !s = True;
-    ;
-;
+        result = !s
+        !s = True
+    
 def thread():
     while choose({ False, True }):
-        await not tas(?lock);
-        @cs: assert atLabel(cs) == bag{ (thread, ()) };
-        lock = False;
-    ;
-;
-
+        await not tas(?lock)
+        @cs: assert atLabel(cs) == bag{ (thread, ()) }
+        lock = False
+    
 for i in {1..10}:
-    spawn thread();
-;
+    spawn thread()
