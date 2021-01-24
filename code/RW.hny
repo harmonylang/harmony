@@ -3,7 +3,7 @@ from synch import Lock, acquire, release
 def RWlock():
     result = { .lock: Lock(), .nreaders: 0, .nwriters: 0 }
 
-def acquire_rlock(rw):
+def read_acquire(rw):
     acquire(?rw->lock)
     while rw->nwriters > 0:
         release(?rw->lock)
@@ -11,12 +11,12 @@ def acquire_rlock(rw):
     rw->nreaders += 1
     release(?rw->lock)
 
-def release_rlock(rw):
+def read_release(rw):
     acquire(?rw->lock)
     rw->nreaders -= 1
     release(?rw->lock)
 
-def acquire_wlock(rw):
+def write_acquire(rw):
     acquire(?rw->lock)
     while (rw->nreaders + rw->nwriters) > 0:
         release(?rw->lock)
@@ -24,7 +24,7 @@ def acquire_wlock(rw):
     rw->nwriters = 1
     release(?rw->lock)
 
-def release_wlock(rw):
+def write_release(rw):
     acquire(?rw->lock)
     rw->nwriters = 0
     release(?rw->lock)
