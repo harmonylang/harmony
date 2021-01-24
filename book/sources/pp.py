@@ -91,10 +91,9 @@ def isreserved(s):
         "setintlevel",
         "spawn",
         "stop",
-        "such",
-        "that",
         "trap",
         "True",
+        "where",
         "while"
     ]
 
