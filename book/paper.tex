@@ -4709,7 +4709,6 @@ Characters are one-character atoms, which can be expressed
 in hexadecimal unicode using the syntax \texttt{.0xXX}.
 A bag or multiset is a dictionary that maps a value to how many
 times it occurs in the bag.
-The syntax is \texttt{bag\{ $e$, $e$, ... \}}.
 
 All Harmony values are ordered with respect to one another.  First they
 are ordered by type according to the table above.
@@ -4992,14 +4991,28 @@ can be \emph{escaped} using a backslash.
 Multi-line strings can be terminated by triple quotes or
 triple double-quotes.
 
+Native operations on strings include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{$s~k$} & indexing \\
+\hline
+\texttt{$s$ + $s$ + ...} & concatenation \\
+\hline
+\texttt{$s$ * $n$} & $n$ copies of $s$ concatenated \\
+\hline
+\texttt{$c$ [not] in $s$} & check if $c$ (a one-character atom) is in $s$ \\
+\hline
+\texttt{len $s$} & the length of $s$ \\
+\hline
+\end{tabular}
+\end{center}
+
 \section{Bag or Multiset}
 
-Harmony has native support for bags (aka multisets), which are sets
-that can contain multiple copies of the same element.
-It is represented by a dictionary that maps each element to its
-multiplicity.
-So \texttt{bag\{ 10, 10, 12 \} = dict\{ 10:2, 12:1 \}}.
-
+A bag is represented by a dictionary that maps each element to its
+multiplicity, for example: \{ 10:2, 12:1 \}.
 The \texttt{bag} module (\autoref{ap:bag}) contains various
 convenient routines that operate on lists or tuples.
 Native operations on bags include the following:
@@ -5015,8 +5028,6 @@ Native operations on bags include the following:
 \hline
 \end{tabular}
 \end{center}
-
-Bags also support comprehension.
 
 \section{Program Counter}
 
