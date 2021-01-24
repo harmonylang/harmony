@@ -1,35 +1,30 @@
-from synch import Lock, acquire, release;
+from synch import Lock, acquire, release
 
-const N_ACCTS = 2;
-const N_CUSTOMERS = 2;
-const N_ATMS = 2;
-const MAX_BALANCE = 1;
+const N_ACCTS = 2
+const N_CUSTOMERS = 2
+const N_ATMS = 2
+const MAX_BALANCE = 1
 
 accounts = [ dict{ .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
                     for acct in {0..N_ACCTS-1} ]
-;
 
-invariant min(accounts[acct].balance for acct in {0..N_ACCTS-1}) >= 0;
+invariant min(accounts[acct].balance for acct in {0..N_ACCTS-1}) >= 0
 
 def atm_check_balance(acct):    # return the balance on acct
-    acquire(?accounts[acct].lock);
-    result = accounts[acct].balance;
-    release(?accounts[acct].lock);
-;
+    acquire(?accounts[acct].lock)
+    result = accounts[acct].balance
+    release(?accounts[acct].lock)
+
 def atm_withdraw(acct, amount): # withdraw amount from acct
-    acquire(?accounts[acct].lock);
-    accounts[acct].balance -= amount;
-    result = True;              # return success
-    release(?accounts[acct].lock);
-;
+    acquire(?accounts[acct].lock)
+    accounts[acct].balance -= amount
+    result = True              # return success
+    release(?accounts[acct].lock)
 
 def customer(atm, acct, amount):
     let balance = atm_check_balance(acct):
         if amount <= balance:
-            atm_withdraw(acct, amount);
-        ;
-    ;
-;
+            atm_withdraw(acct, amount)
+        
 for i in {1..N_ATMS}:
-    spawn customer(i, choose({0..N_ACCTS-1}), choose({0..MAX_BALANCE}));
-;
+    spawn customer(i, choose({0..N_ACCTS-1}), choose({0..MAX_BALANCE}))

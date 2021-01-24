@@ -3513,6 +3513,9 @@ class StatementRule(Rule):
                 (cond, t) = NaryRule({":"}).parse(t[1:])
                 (stat, t) = StatListRule(column).parse(t[1:])
                 alts += [(cond, stat)]
+                if t == []:
+                    nextColumn = column
+                    break
                 (lexeme, file, line, nextColumn) = t[0]
                 assert nextColumn <= column
                 if nextColumn < column:
