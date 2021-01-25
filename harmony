@@ -1732,8 +1732,12 @@ int main(int argc, char **argv){
     value_init();
 
     // open the file
-    FILE *fp = fopen(argc == 1 ? "harmony.json" : argv[1], "r");
-    assert(fp != NULL);
+    char *fname = argc == 1 ? "harmony.json" : argv[1];
+    FILE *fp = fopen(fname, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "%s: can't open %s\n", argv[0], fname);
+        exit(1);
+    }
 
     // read the file
     json_buf_t buf;
