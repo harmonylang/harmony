@@ -166,7 +166,7 @@ struct var_tree *var_parse(char *s, int len, int *index){
     else {
         vt->type = VT_NAME;
         int i = *index;
-        assert(isalpha(s[i]) || s[i] == '_');
+        assert(isalpha(s[i]) || s[i] == '_' || s[i] == '$');
         i++;
         while (i < len && (isalpha(s[i]) || s[i] == '_' || isdigit(s[i]))) {
             i++;

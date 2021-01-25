@@ -286,7 +286,7 @@ assignops = {
 def isbinaryop(s):
     return isxbinop(s) or iscmpop(s) or s == "in"
 
-tokens = { "bag{", "{", "==", "!=", "<=", ">=", "=>",
+tokens = { "{", "==", "!=", "<=", ">=", "=>",
                         "//", "**", "<<", ">>", "..", "->" } | assignops
 
 def lexer(s, file):
@@ -2045,7 +2045,7 @@ class AST:
 
             # Evaluate the set and store in a temporary variable
             expr.compile(scope, code)
-            S = ("__set__"+str(uid), file, line, column)
+            S = ("$s"+str(uid), file, line, column)
             code.append(StoreVarOp(S))
 
             # Now generate the code:
@@ -2077,7 +2077,7 @@ class AST:
         # Keep track of the size
         uid = len(code)
         (lexeme, file, line, column) = self.token
-        N = ("__size__"+str(uid), file, line, column)
+        N = ("$n"+str(uid), file, line, column)
         if ctype == "set":
             code.append(PushOp((SetValue(set()), file, line, column)))
         elif ctype == "dict":
@@ -2801,8 +2801,8 @@ class BasicExpressionRule(Rule):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
             return SetRule().parse(t)
-        if lexeme == "bag{":
-            return BagRule().parse(t)
+        # if lexeme == "bag{":
+        #     return BagRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (ast, t) = TupleRule({closer}).parse(t[1:])
