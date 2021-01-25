@@ -104,6 +104,7 @@ def doImport(scope, code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO
     if lexeme not in imported:
+        # TODO.  Only do the following if the modules have variables?
         code.append(PushOp((novalue, file, line, column)))
         code.append(StoreOp(module, module, []))
 
@@ -142,15 +143,13 @@ def load_string(all, filename, scope, code):
     tokens = lexer(all, filename)
     # assert False, (tokens1, tokens)
 
-    if False:
-        try:
-            (ast, rem) = StatListRule(-1).parse(tokens)
-        except IndexError:
-            # best guess...
-            print("Parsing", filename, "hit EOF")
-            # print(traceback.format_exc())
-            exit(1)
-    (ast, rem) = StatListRule(-1).parse(tokens)
+    try:
+        (ast, rem) = StatListRule(-1).parse(tokens)
+    except IndexError:
+        # best guess...
+        print("Parsing", filename, "hit EOF")
+        # print(traceback.format_exc())
+        exit(1)
 
     for mod in ast.getImports():
         doImport(scope, code, mod)

@@ -314,7 +314,9 @@ m4_include(charm.js)
     def vars_add(self, vardir, shared):
         d = {}
         for (k, v) in shared.items():
-            d[k] = self.var_convert(v)
+            val = self.var_convert(v)
+            if val != {}:
+                d[k] = val
         self.dict_merge(vardir, d)
 
     def run(self):
