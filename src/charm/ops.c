@@ -1897,13 +1897,10 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n){
         int size;
         uint64_t *v = value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
-        uint64_t max = v[0];
+        uint64_t max = v[1];
         for (int i = 0; i < size; i++) {
-            if (v[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
-                return ctx_failure(ctx, "max() cannot be applied to a dictionary");
-            }
             if (value_cmp(v[2*i+1], max) > 0) {
-                max = v[i];
+                max = v[2*i+1];
             }
         }
 		return max;
@@ -1936,13 +1933,10 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n){
         int size;
         uint64_t *v = value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
-        uint64_t min = v[0];
+        uint64_t min = v[1];
         for (int i = 0; i < size; i++) {
-            if (v[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
-                return ctx_failure(ctx, "min() cannot be applied to a dictionary");
-            }
             if (value_cmp(v[2*i+1], min) < 0) {
-                min = v[i];
+                min = v[2*i+1];
             }
         }
 		return min;
