@@ -62,6 +62,7 @@ m4_include(../charm/value.c)
 import sys
 import os
 import pathlib
+import tempfile
 import getopt
 import traceback
 import collections
@@ -5317,7 +5318,9 @@ def main():
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
-        with open("harmony.json", "w") as fd:
+        fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
+        os.close(fd)
+        with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         charm = "%s/.charm"%pathlib.Path.home()
         if not os.path.exists(charm):
@@ -5328,7 +5331,8 @@ def main():
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("%s harmony.json"%charm);
+        r = os.system("%s %s"%(charm, tmpfile));
+        os.remove(tmpfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
