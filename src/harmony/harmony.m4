@@ -61,6 +61,7 @@ m4_include(../charm/value.c)
 
 import sys
 import os
+import pathlib
 import getopt
 import traceback
 import collections
@@ -5318,15 +5319,16 @@ def main():
     if charmflag:
         with open("harmony.json", "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        if not os.path.exists("charm"):
+        charm = "%s/.charm"%pathlib.Path.home()
+        if not os.path.exists(charm):
             with open("charm.c", "w") as fd:
                 print(charm_src, file=fd)
-            # r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o charm");
-            r = os.system("cc -g -DHARMONY_COMBINE charm.c -o charm");
+            # r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o %s"%charm);
+            r = os.system("cc -g -DHARMONY_COMBINE charm.c -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("./charm harmony.json");
+        r = os.system("%s harmony.json"%charm);
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
