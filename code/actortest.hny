@@ -4,7 +4,7 @@ import actor
 const NITEMS = 3
 
 pc_queue = synch.Queue()
-queues = [ synch.Queue() for i in {0..NITEMS-1} ]
+queues = [synch.Queue(),] * NITEMS
 
 def produce(q, item):
     synch.put(?pc_queue, { .type: .produce, .item: item })

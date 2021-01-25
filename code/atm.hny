@@ -5,8 +5,7 @@ const N_CUSTOMERS = 2
 const N_ATMS = 2
 const MAX_BALANCE = 1
 
-accounts = [ { .lock: Lock(), .balance: choose({0..MAX_BALANCE}) }
-                    for acct in {0..N_ACCTS-1} ]
+accounts = [{ .lock: Lock(), .balance: choose({0..MAX_BALANCE})},] * N_ACCTS
 
 invariant min(accounts[acct].balance for acct in {0..N_ACCTS-1}) >= 0
 

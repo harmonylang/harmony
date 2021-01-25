@@ -3,8 +3,8 @@ from synch import Queue, put, get
 const N = 3        # number of threads
 const R = 4        # number of rounds
 
-round = [ 0 for i in {0..N-1} ]
-q = [ Queue() for i in {0..N-1} ]
+round = [0,] * N
+q = [Queue(),] * N
 
 def thread(self):
     for r in {1..R}:
