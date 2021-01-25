@@ -118,7 +118,7 @@ def putchar(c):
     print(c, end="")
 
 constants = { "False", "True", "None", "inf",
-    "lock", "unlock", "wait", "notify", "notifyAll", "signal", "P", "V" }
+    "acquire", "release", "wait", "notify", "notifyAll", "signal", "P", "V" }
 
 def doimport(module, file):
     for dir in [ os.path.dirname(file), "../../modules", "." ]:
