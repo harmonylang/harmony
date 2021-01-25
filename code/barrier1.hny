@@ -1,55 +1,45 @@
-from synch import Queue, put, get;
+from synch import Queue, put, get
 
-const NROUNDS = 3;
-const NPROC = 3;
+const NROUNDS = 3
+const NPROC = 3
 
-queues = [ Queue() for i in {0..NPROC} ];
+queues = [ Queue(), ] * NPROC
 
 def barrier_enter(self):
     for i in {0..NPROC-1} where i != self:
-        put(?queues[i], i);
-    ;
+        put(?queues[i], i)
     for i in {1..NPROC-1}:
-        get(?queues[self]);
-    ;
-;
+        get(?queues[self])
+
 def barrier_exit(self):
-    pass;
-;
+    pass
 
 # check that all non-None values in round are the same
 def check():
-    result = True;
+    result = True
     let x = None:
         for i in {0..NPROC-1}:
             if result and (round[i] != None):
                 if x != None:
-                    result = round[i] == x;
-                ;
-                x = round[i];
-            ;
-        ;
-    ;
-;
+                    result = round[i] == x
+                x = round[i]
 
-round = [None,] * NPROC;
-done = [False,] * NPROC;
+round = [None,] * NPROC
+done = [False,] * NPROC
 
 def process(self):
     for r in {0..NROUNDS-1}:
-        barrier_enter(self);
-        round[self] = r;
-        assert check();
-        round[self] = None;
-        barrier_exit(self);
-    ;
-    done[self] = True;
-;
+        barrier_enter(self)
+        round[self] = r
+        assert check()
+        round[self] = None
+        barrier_exit(self)
+    done[self] = True
+
 def main():
-    await all(done);
-;
+    await all(done)
 
 for i in {0..NPROC-1}:
-    spawn process(i);
-;
-spawn main();
+    spawn process(i)
+
+spawn main()
