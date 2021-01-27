@@ -337,6 +337,10 @@ m4_include(charm.js)
                 for mis in mas["microsteps"]:
                     if "shared" in mis:
                         self.vars_add(self.vardir, mis["shared"])
+                for ctx in mas["contexts"]:
+                    tid = int(ctx["tid"])
+                    if tid >= self.nthreads:
+                        self.nthreads = tid + 1
 
         with open("harmony.html", "w") as out:
             self.html(out)
