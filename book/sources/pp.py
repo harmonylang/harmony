@@ -12,7 +12,7 @@ modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
 
-def load(f, filename, silent):
+def load(f, filename):
     if filename in files:
         return
     namestack.append(filename)
@@ -21,7 +21,7 @@ def load(f, filename, silent):
     for line in f:
         files[filename] += [line]
         all += line
-    tokens = lexer(all, filename, silent)
+    tokens = lexer(all, filename)
     namestack.pop()
 
 def islower(c):
@@ -118,54 +118,48 @@ def putchar(c):
     print(c, end="")
 
 constants = { "False", "True", "None", "inf",
-    "acquire", "release", "wait", "notify", "notifyAll", "signal", "P", "V" }
+    "acquire", "release", "wait", "notify", "notifyAll", "signal",
+    "P", "V", "malloc", "free" }
 
-def doimport(module, file):
-    for dir in [ os.path.dirname(file), "../../modules", "." ]:
-        filename = dir + "/" + module + ".hny"
-        if os.path.exists(filename):
-            with open(filename) as f:
-                load(f, filename, True)
-
-def lexer(s, file, silent):
+def lexer(s, file):
     result = []
     line = 1
     column = 1
     nextconst = False;
-    nextimport = False;
     while s != "":
         if column == 1:
-            if line != 1 and not silent: print("\\\\\n")
-            if not silent: print("\>{\\tiny %d}\\'\\>"%line, end="")
+            if line != 1: print("\\\\\n")
+            print("\>{\\tiny %d}\\'\\>"%line, end="")
 
         # see if it's a blank
         if s[0] in { " ", "\t" }:
             s = s[1:]
             column += 1
-            if not silent: putchar("~")
+            putchar("~")
             continue
 
         if s[0] == "\n":
             s = s[1:]
             line += 1
             column = 1
+            nextconst = False
             continue
 
         # skip over line comments
         if s.startswith("#"):
             s = s[1:]
-            if not silent: print("\\emph{\\#", end="")
+            print("\\emph{\\#", end="")
             while len(s) > 0 and s[0] != '\n':
                 column += 1
-                if not silent:
-                    if s[0] in ["&", "%", "{", "}", "#", "^", "_"]:
-                        print("\\" + s[0], end="")
-                    elif s[0] in [ "<", ">", "-" ]:
-                        print("$" + s[0] + "$", end="")
-                    else:
-                        putchar(s[0])
+                if s[0] in ["&", "%", "{", "}", "#", "^", "_"]:
+                    print("\\" + s[0], end="")
+                elif s[0] in [ "<", ">", "-" ]:
+                    print("$" + s[0] + "$", end="")
+                else:
+                    putchar(s[0])
                 s = s[1:]
-            if not silent: print("}", end="")
+            print("}", end="")
+            nextconst = False
             continue
 
         # skip over nested comments
@@ -189,6 +183,7 @@ def lexer(s, file, silent):
                 else:
                     s = s[1:]
                     column += 1
+            nextconst = False
             continue
 
         # see if it's a multi-character token.  Match with the longest one
@@ -197,16 +192,17 @@ def lexer(s, file, silent):
             if s.startswith(t) and len(t) > len(found):
                 found = t
         if found != "":
+            nextconst = False
             result += [ (found, file, line, column) ]
-            if not silent:
-                if found in [ "<=", ">=" ]:
-                    print("$%s$"%found, end="")
-                elif found == "->":
-                    print("$\\rightarrow$", end="")
-                elif found == "[]":
-                    print("[~]", end="")
-                else:
-                    print(found, end="")
+            if found in [ "<=", ">=" ]:
+                print("$%s$"%found, end="")
+            elif found == "->":
+                print("$\\rightarrow$", end="")
+                nextconst = True
+            elif found == "[]":
+                print("[~]", end="")
+            else:
+                print(found, end="")
             s = s[len(found):]
             column += len(found)
             continue
@@ -218,23 +214,19 @@ def lexer(s, file, silent):
                 i += 1
             found = s[:i].replace("_", "\\_")
             if isreserved(found):
-                if not silent: print("\\texttt{\\textbf{%s}}"%found, end="")
-                if found in [ "def", "const", "import", "from" ]:
-                    nextconst = True
-                    if found in { "import", "from" }:
-                        nextimport = True
+                print("\\texttt{\\textbf{%s}}"%found, end="")
+                nextconst = found in [ "def", "const", "import", "from" ]
             elif isletter(found[0]):
                 if nextconst:
                     constants.add(found)
-                    if nextimport:
-                        doimport(found, file)
-                    if not silent: print("%s"%found, end="")
+                    print("%s"%found, end="")
+                    nextconst = False
                 elif found in constants:
-                    if not silent: print("%s"%found, end="")
+                    print("%s"%found, end="")
                 else:
-                    if not silent: print("\\textit{%s}"%found, end="")
+                    print("\\textit{%s}"%found, end="")
             else:
-                if not silent: print("%s"%found, end="")
+                print("%s"%found, end="")
             result += [ (s[:i], file, line, column) ]
             s = s[i:]
             column += i
@@ -242,11 +234,11 @@ def lexer(s, file, silent):
 
         # string
         if s[0] == '"':
-            if not silent: print("````", end="")
+            print("````", end="")
             i = 1
             str = '"'
             while i < len(s) and s[i] != '"':
-                if not silent: putchar(s[i])
+                putchar(s[i])
                 if s[i] == '\\':
                     i += 1
                     if i == len(s):
@@ -271,7 +263,8 @@ def lexer(s, file, silent):
             if i < len(s):
                 i += 1
             str += '"'
-            if not silent: print("''''", end="")
+            print("''''", end="")
+            nextconst = False
             result += [ (str, file, line, column) ]
             s = s[i:]
             column += i
@@ -280,24 +273,22 @@ def lexer(s, file, silent):
         # everything else is a single character token
         result += [ (s[0], file, line, column) ]
         nextconst = False
-        nextimport = False
 
         if s[0] in ["&", "%", "{", "}"]:
-            if not silent: print("\\" + s[0], end="")
+            print("\\" + s[0], end="")
         elif s[0] == "^":
-            if not silent: print("\\^{}", end="")
+            print("\\^{}", end="")
         elif s[0] == "|":
-            if not silent: print("$\\vert$", end="")
+            print("$\\vert$", end="")
         else:
             if s[0] in ["@", "."]:
                 nextconst = True
-            if not silent:
-                if s[0] == "-":
-                    print("--", end="")
-                elif s[0] in [ "<", ">" ]:
-                    print("$" + s[0] + "$", end="")
-                else:
-                    putchar(s[0])
+            if s[0] == "-":
+                print("--", end="")
+            elif s[0] in [ "<", ">" ]:
+                print("$" + s[0] + "$", end="")
+            else:
+                putchar(s[0])
         s = s[1:]
         column += 1
     return result
@@ -309,7 +300,7 @@ def doCompile(filenames):
     else:
         for fname in filenames:
             with open(fname) as fd:
-                load(fd, fname, False)
+                load(fd, fname)
 
 def usage():
     print("Usage: harmony [options] [harmony-file...]")
