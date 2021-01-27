@@ -1,16 +1,14 @@
-import BBhoare;
+import BBhoare
 
 def producer(bb, v):
-    BBhoare.put(bb, v);
-;
+    BBhoare.put(bb, v)
+
 def consumer(bb):
     let v = BBhoare.get(bb):
-        assert v in { 1, 2 };
-    ;
-;
+        assert v in { 1, 2 }
 
-testbb = BBhoare.BB(1);
-spawn producer(?testbb, 1);
-spawn producer(?testbb, 2);
-spawn consumer(?testbb);
-spawn consumer(?testbb);
+testbb = BBhoare.BB(1)
+spawn producer(?testbb, 1)
+spawn producer(?testbb, 2)
+spawn consumer(?testbb)
+spawn consumer(?testbb)
