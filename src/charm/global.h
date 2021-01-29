@@ -183,4 +183,5 @@ struct env_StoreVar {
     struct var_tree *args;
 };
 
+uint64_t ctx_failure(struct context *ctx, char *fmt, ...);
 void panic(char *s);

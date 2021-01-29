@@ -653,6 +653,7 @@ struct env_StoreVar {
     struct var_tree *args;
 };
 
+uint64_t ctx_failure(struct context *ctx, char *fmt, ...);
 void panic(char *s);
 
 #include <sys/time.h>
@@ -891,12 +892,22 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         oi = code[cc->pc].oi;
         if (code[cc->pc].choose) {
             assert(cc->sp > 0);
+            if (cc->readonly > 0) {
+                ctx_failure(cc, "can't choose in assertion or invariant");
+                break;
+            }
             uint64_t s = cc->stack[cc->sp - 1];
-            assert((s & VALUE_MASK) == VALUE_SET);
+            if ((s & VALUE_MASK) != VALUE_SET) {
+                ctx_failure(cc, "choose operation requires a set");
+                break;
+            }
             int size;
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
-            assert(size > 0);
+            if (size == 0) {
+                ctx_failure(cc, "choose operation requires a non-empty set");
+                break;
+            }
             if (size == 1) {
                 choice = vals[0];
             }
@@ -1452,8 +1463,8 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             cc->pc++;
         }
         else {
-            // printf("--- %d: %s\n", pc, oi->name);
             if (code[pc].breakable) {
+                assert(cc->phase != CTX_END);
                 cc->phase = CTX_MIDDLE;
             }
             (*oi->op)(code[pc].env, sc, &cc);
@@ -1486,12 +1497,25 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         oi = code[cc->pc].oi;
         if (code[cc->pc].choose) {
             assert(cc->sp > 0);
+            if (cc->readonly > 0) {
+                ctx_failure(cc, "can't choose in assertion or invariant");
+                diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
+                break;
+            }
             uint64_t s = cc->stack[cc->sp - 1];
-            assert((s & VALUE_MASK) == VALUE_SET);
+            if ((s & VALUE_MASK) != VALUE_SET) {
+                ctx_failure(cc, "choose operation requires a set");
+                diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
+                break;
+            }
             int size;
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
-            assert(size > 0);
+            if (size == 0) {
+                ctx_failure(cc, "choose operation requires a non-empty set");
+                diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
+                break;
+            }
             if (size == 1) {
                 choice = vals[0];
             }
