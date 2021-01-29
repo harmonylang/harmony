@@ -507,7 +507,11 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
         {
             uint64_t v;
             if (!dict_tryload(method, e, &v)) {
-                ctx_failure(*pctx, "Bad index");
+                char *m = value_string(method);
+                char *x = value_string(e);
+                ctx_failure(*pctx, "Bad index %s: not in %s", x, m);
+                free(m);
+                free(x);
                 return;
             }
             ctx_push(pctx, v);

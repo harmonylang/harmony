@@ -75,12 +75,11 @@ def Queue():
 
 def get(q):
     atomic:
-        let list = q->list:
-            if list == []:
-                stop q->waiters[len q->waiters]
-            
-            result = list.head(list)
-            q->list = list.tail(list)
+        if q->list == []:
+            stop q->waiters[len q->waiters]
+        
+        result = list.head(q->list)
+        q->list = list.tail(q->list)
 
 def put(q, item):
     atomic:

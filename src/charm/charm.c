@@ -1249,7 +1249,7 @@ int main(int argc, char **argv){
             }
         }
 
-        printf("%d components, %d bad nodes\n", ncomponents, nbad);
+        printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
     FILE *out = fopen("charm.json", "w");

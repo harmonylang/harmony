@@ -246,12 +246,12 @@ def Queue():
 
 def get(q):
     atomic:
-        let list = q->list:
-            if list == []:
+        let lst = q->list:
+            if lst == []:
                 stop q->waiters[len q->waiters]
             
-            result = list.head(list)
-            q->list = list.tail(list)
+            result = list.head(lst)
+            q->list = list.tail(lst)
 
 def put(q, item):
     atomic:
@@ -1907,7 +1907,7 @@ int main(int argc, char **argv){
             }
         }
 
-        printf("%d components, %d bad nodes\n", ncomponents, nbad);
+        printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
     FILE *out = fopen("charm.json", "w");
@@ -3100,7 +3100,11 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
         {
             uint64_t v;
             if (!dict_tryload(method, e, &v)) {
-                ctx_failure(*pctx, "Bad index");
+                char *m = value_string(method);
+                char *x = value_string(e);
+                ctx_failure(*pctx, "Bad index %s: not in %s", x, m);
+                free(m);
+                free(x);
                 return;
             }
             ctx_push(pctx, v);
