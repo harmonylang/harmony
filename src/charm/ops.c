@@ -670,6 +670,21 @@ void op_Go(const void *env, struct state *state, struct context **pctx){
         ctx_failure(*pctx, "Go: not a context");
         return;
     }
+
+    // Remove from stopbag if it's there
+    uint64_t count;
+    if (dict_tryload(state->stopbag, ctx, &count)) {
+        assert((count & VALUE_MASK) == VALUE_INT);
+        assert(count != VALUE_INT);
+        count -= 1 << VALUE_BITS;
+        if (count != VALUE_INT) {
+            state->stopbag = dict_store(state->stopbag, ctx, count);
+        }
+        else {
+            state->stopbag = dict_remove(state->stopbag, ctx);
+        }
+    }
+
     uint64_t result = ctx_pop(pctx);
     struct context *copy = value_copy(ctx, NULL);
     ctx_push(&copy, result);

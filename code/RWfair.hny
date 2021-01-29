@@ -1,3 +1,12 @@
+from synch import BinSema, acquire, release
+
+def RWlock():
+    result = {
+            .nreaders: 0, .nwriters: 0, .mutex: BinSema(False),
+            .r_gate: { .sema: BinSema(True), .count: 0 },
+            .w_gate: { .sema: BinSema(True), .count: 0 }
+        }
+
 def read_acquire(rw):
     acquire(?rw->mutex)
     if (rw->nwriters > 0) or (rw->w_gate.count > 0):

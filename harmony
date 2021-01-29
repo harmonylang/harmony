@@ -939,7 +939,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     }
 
     // Add new context to state unless it's terminated or stopped
-    if (cc->phase != CTX_END && !cc->stopped) {
+    if (cc->stopped) {
+        sc->stopbag = bag_add(sc->stopbag, after);
+    }
+    else if (cc->phase != CTX_END) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 
@@ -1777,6 +1780,7 @@ int main(int argc, char **argv){
     state->vars = VALUE_DICT;
     uint64_t ictx = value_put_context(init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
+    state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     processes = new_alloc(uint64_t);
     *processes = ictx;
@@ -1876,7 +1880,7 @@ int main(int argc, char **argv){
             if (comp->good) {
                 continue;
             }
-            if (node->state->ctxbag == VALUE_DICT) {
+            if (node->state->ctxbag == VALUE_DICT && node->state->stopbag == VALUE_DICT) {
                 comp->good = true;
                 continue;
             }
@@ -3259,6 +3263,21 @@ void op_Go(const void *env, struct state *state, struct context **pctx){
         ctx_failure(*pctx, "Go: not a context");
         return;
     }
+
+    // Remove from stopbag if it's there
+    uint64_t count;
+    if (dict_tryload(state->stopbag, ctx, &count)) {
+        assert((count & VALUE_MASK) == VALUE_INT);
+        assert(count != VALUE_INT);
+        count -= 1 << VALUE_BITS;
+        if (count != VALUE_INT) {
+            state->stopbag = dict_store(state->stopbag, ctx, count);
+        }
+        else {
+            state->stopbag = dict_remove(state->stopbag, ctx);
+        }
+    }
+
     uint64_t result = ctx_pop(pctx);
     struct context *copy = value_copy(ctx, NULL);
     ctx_push(&copy, result);

@@ -281,7 +281,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     }
 
     // Add new context to state unless it's terminated or stopped
-    if (cc->phase != CTX_END && !cc->stopped) {
+    if (cc->stopped) {
+        sc->stopbag = bag_add(sc->stopbag, after);
+    }
+    else if (cc->phase != CTX_END) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 
@@ -1119,6 +1122,7 @@ int main(int argc, char **argv){
     state->vars = VALUE_DICT;
     uint64_t ictx = value_put_context(init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
+    state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     processes = new_alloc(uint64_t);
     *processes = ictx;
@@ -1218,7 +1222,7 @@ int main(int argc, char **argv){
             if (comp->good) {
                 continue;
             }
-            if (node->state->ctxbag == VALUE_DICT) {
+            if (node->state->ctxbag == VALUE_DICT && node->state->stopbag == VALUE_DICT) {
                 comp->good = true;
                 continue;
             }
