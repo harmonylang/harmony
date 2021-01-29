@@ -4856,21 +4856,25 @@ Native operations on sets include:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{len $e$} & cardinality \\
+\texttt{len $s$} & cardinality \\
 \hline
-\texttt{$e$ - $e$} & set difference \\
+\texttt{$s$ - $s$} & set difference \\
 \hline
-\texttt{$e$ \& $e$ \& ...} & intersection \\
+\texttt{$s$ \& $s$ \& ...} & intersection \\
 \hline
-\texttt{$e$ | $e$ | ...} & union \\
+\texttt{$s$ | $s$ | ...} & union \\
 \hline
-\texttt{$e$ \string^ $e$ \string^ ...} & inclusion/exclusion (elements in odd number of sets) \\
+\texttt{$s$ \string^ $s$ \string^ ...} & inclusion/exclusion (elements in odd number of sets) \\
 \hline
-\texttt{choose $e$} & select an element (Harmony will try all) \\
+\texttt{choose $s$} & select an element (Harmony will try all) \\
 \hline
-\texttt{min $e$} & minimum element \\
+\texttt{min $s$} & minimum element \\
 \hline
-\texttt{max $e$} & maximum element \\
+\texttt{max $s$} & maximum element \\
+\hline
+\texttt{any $s$} & \texttt{True} if any value is \texttt{True} \\
+\hline
+\texttt{all $s$} & \texttt{True} if all values are \texttt{True} \\
 \hline
 \end{tabular}
 \end{center}
@@ -4921,6 +4925,14 @@ Operations on dictionaries include the following:
 \texttt{$v$ [not] in keys $d$} & check if $v$ is a \emph{key} in $d$ \\
 \hline
 \texttt{$v$ [not] in $d$} & check if $v$ is a \emph{value} in $d$ \\
+\hline
+\texttt{min $d$} & the minimum value in $d$ \\
+\hline
+\texttt{max $d$} & the maximum value in $d$ \\
+\hline
+\texttt{any $d$} & \texttt{True} if any value is \texttt{True} \\
+\hline
+\texttt{all $d$} & \texttt{True} if all values are \texttt{True} \\
 \hline
 \texttt{$d$ \& $d$ \& ...} & dictionary intersection \\
 \hline
@@ -4977,6 +4989,14 @@ Native operations on lists or tuples include the following:
 \texttt{$v$ [not] in $t$} & check if $v$ is a \emph{value} in $t$ \\
 \hline
 \texttt{len $t$} & the length of $t$ \\
+\hline
+\texttt{min $t$} & the minimum value in $t$ \\
+\hline
+\texttt{max $t$} & the maximum value in $t$ \\
+\hline
+\texttt{any $t$} & \texttt{True} if any value is \texttt{True} \\
+\hline
+\texttt{all $t$} & \texttt{True} if all values are \texttt{True} \\
 \hline
 \texttt{$t$ \& $t$ \& ...} & pairwise list minimum \\
 \hline
