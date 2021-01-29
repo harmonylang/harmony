@@ -1,0 +1,34 @@
+import synch
+import barrier
+
+const NROUNDS = 3
+const NPROC = 3
+
+# check that all non-None values in round are the same
+def check():
+    result = True
+    let x = None:
+        for i in {0..NPROC-1}:
+            if result and (round[i] != None):
+                if x != None:
+                    result = round[i] == x
+                x = round[i]
+
+def thread(self, b):
+    for r in {0..NROUNDS-1}:
+        barrier.enter(b)
+        round[self] = r
+        assert check()
+        round[self] = None
+        barrier.exit(b)
+    done[self] = True
+
+def main():
+    await all(done)
+
+barr = barrier.Barrier(NPROC)
+round = [None,] * NPROC
+done = [False,] * NPROC
+for i in {0..NPROC-1}:
+    spawn thread(i, ?barr)
+spawn main()
