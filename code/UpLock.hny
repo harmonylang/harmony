@@ -9,11 +9,7 @@ def thread(self):
     count = count + 1
     release(?countlock)
     done[self] = True
-
-def main(self):
-    await all(done)
-    assert count == 2
+    await done[1 - self]
 
 spawn thread(0)
 spawn thread(1)
-spawn main()
