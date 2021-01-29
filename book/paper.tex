@@ -2285,16 +2285,17 @@ and can be suspended until some condition changes.
 For example, a thread that is trying to acquire a lock can be suspended until the lock is
 available.
 In Harmony, a thread can suspend itself and save its context (state) in a
-list.  Recall that the context of a thread contains
+shared variable.  Recall that the context of a thread contains
 its program counter, stack, and registers.
 A context is a regular (if complex) Harmony value.
 The syntax of the expression is as follows:
 
 \begin{code}
-\textbf{stop} $L$
+\textbf{stop} $s$
 \end{code}
 
-Here $L$ is a shared variable containing a list.
+This causes the context of the thread to be saved in $s$ and
+the thread to be no longer running.
 Another thread can revive the thread using the \textbf{go}
 \index{go statement}%
 statement:
@@ -2322,6 +2323,7 @@ acquire the binary semaphore.
 \texttt{acquire}()
 \index{acquire}%
 acquires the binary semaphore if available and suspends the invoking thread if not.
+In the latter case, the context of the thread is added to the end of the list of contexts.
 Note that \textbf{stop} is called within an \textbf{atomic} statement---this is
 the only exception to an atomic statement running to completion.  While the
 thread is running no other threads can run, but when the thread suspends itself

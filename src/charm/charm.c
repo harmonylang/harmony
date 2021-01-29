@@ -135,7 +135,6 @@ void check_invariants(struct node *node, struct context **pctx){
             b = false;
         }
         if (!b) {
-            printf("INVARIANT FAILED\n");
             struct failure *f = new_alloc(struct failure);
             f->type = FAIL_INVARIANT;
             f->ctx = node->before;
@@ -305,8 +304,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->len = node->len + weight;
         graph_add(next);
 
-        // TODO.  Is this the right place?  Don't check when choice?
-        if (sc->invariants != VALUE_SET) {
+        if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
             check_invariants(next, pinv_ctx);
         }
 

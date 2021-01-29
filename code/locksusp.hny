@@ -12,7 +12,7 @@ def acquired(binsema):
 def acquire(binsema):
     atomic:
         if binsema->acquired:
-            stop binsema->suspended
+            stop binsema->suspended[len binsema->suspended]
             assert binsema->acquired
         else:
             binsema->acquired = True
@@ -25,6 +25,6 @@ def release(binsema):
         else:
             go (list.head(binsema->suspended)) ()
             binsema->suspended = list.tail(binsema->suspended)
-        
+
 def held(binsema):
     result = binsema->acquired
