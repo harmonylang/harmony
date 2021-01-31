@@ -905,7 +905,7 @@ the indexes into the tuple.  For example, the tuple
 \texttt{(5, False)} is the same Harmony value as
 \texttt{\{ 0:5, 1:False \}}.
 The empty tuple is written as \texttt{()}.
-Note that this is different from the empty set, which is \texttt{\{\}}.
+% Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by including a comma.
 For example, \texttt{(1,)} is a tuple consisting just of the number 1.
 Importantly, $(1) = 1 \ne (1,)$.
@@ -971,7 +971,7 @@ The state of a HVM
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}%
 \index{multiset}%
-of contexts.  It is a multiset of contexts because two different threads can
+of contexts.  It is a multiset of contexts because two threads can
 have the same context.
 
 \begin{figure}
@@ -1068,14 +1068,17 @@ All instructions are atomically executed.
 Most instructions pop values from the stack or push values onto the stack.
 At first there is one thread, named \texttt{\_\_init\_\_},
 which initializes the state.
-It starts executing at instruction 0 and keeps executing until the last
-execution in the program.
+It starts executing at instruction 0 and keeps executing until
+it reaches the last instruction in the program.
 In this case, it executes instructions 0 through 5 first.
-The last instruction is a \texttt{JUMP} instruction that sets the
-program counter to 32 (skipping over the code for \texttt{incrementer} method).
-At program counter 6 is the code for the \texttt{incrementer} method.
-All methods start with a \texttt{Frame} instruction and end with a
-\texttt{Return} instruction.
+The last instruction in that sequence is a \texttt{JUMP}
+instruction that sets the program counter to 32
+(skipping over the code for \texttt{incrementer} method).
+The \texttt{\_\_init\_\_} thread then executes instructions
+32 through 40 and finishes.
+Once initialization completes, any threads that were spawned
+(in this case \texttt{incrementer(0)} and \texttt{incrementer(0)})
+can run.
 
 \begin{figure}
 \begin{code}
@@ -1094,6 +1097,9 @@ open file:///Users/rvr/github/harmony/harmony.html for more information
 \label{fig:incoutput}
 \end{figure}
 
+At program counter 6 is the code for the \texttt{incrementer} method.
+All methods start with a \texttt{Frame} instruction and end with a
+\texttt{Return} instruction.
 \autoref{ap:harmonybytecode} provides a list of all HVM machine instructions,
 in case you want to read about the details.
 The \texttt{Frame} instruction lists the name of the method and the
@@ -1114,13 +1120,12 @@ a Harmony value (the sum of the \textit{count} variable and 1) and
 stores it in the \textit{count} variable.
 \end{enumerate}
 
-Once initialization completes, any threads that were spawned can run.
 You can think of Harmony as trying every possible interleaving of threads executing
 instructions.
 \autoref{fig:incoutput} shows the output produced by running Harmony on the
 \texttt{Up.hny} program.
 
-Harmony can report a variety of failure types:
+Harmony can report the following failure types:
 \begin{itemize}
 \item \texttt{Safety violation}: this means something went wrong with
 at least one of the executions of the program that it tried.  This
@@ -1133,17 +1138,17 @@ from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
 the shortest trace, but also the list of threads
 at that state, along with their program counters.
-\item \texttt{Stopped States}: Similar to non-terminating states,
-these are states in which some threads are left that cannot
-terminate.  \autoref{ch:synch} will explain what it means for
-a thread to be stopped.
+% \item \texttt{Stopped States}: Similar to non-terminating states,
+% these are states in which some threads are left that cannot
+% terminate.  \autoref{ch:synch} will explain what it means for
+% a thread to be stopped.
 \end{itemize}
 
-In our case, Harmony reports a safety violation, in particular it
-reports that the assertion and that
-\textit{count} has value 1 instead of 2.
+In our case, Harmony reports a safety violation.
+In particular, it reports that the assertion failed
+because \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
-The program got to the faulty execution in 4 ``steps.''
+The program got to the failed assertion in 4 ``steps.''
 The output has four columns:
 \begin{enumerate}
 \item A thread identifier;
@@ -1180,11 +1185,11 @@ The four steps in the execution are as follows:
 sets shared variable \textit{count} to 0 and
 shared variable \textit{done} to \texttt{[False, False]}.
 \item Thread \texttt{incrementer(0)} (with identifier T1)
-executed instructions 6 through 9, loading the value of
+executes instructions 6 through 9, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
 \item Thread \texttt{incrementer(1)} (with identifier T2)
-executed instructions 6 through 18, storing 1 into
-into \textit{count} and storing \texttt{True} into \textit{done}[1];
+executes instructions 6 through 18, storing 1 into
+\textit{count} and storing \texttt{True} into \textit{done}[1];
 \item Thread \texttt{incrementer(0)}
 continues execution, executing instructions 10 through 28
 storing value 1 into \textit{count} (instruction 10),
@@ -1203,9 +1208,9 @@ In the top right, the HTML file contains the reported issue in red.
 Underneath it, a table shows the four steps in the execution.
 Instead of listing explicitly the program counters of the executed
 instructions, the HTML file contains a list of blocks for each
-executed instruction.  We call this the \emph{time line}.
+executed instruction.  We call this the \emph{timeline}.
 You can click on such a block to see the state of the Harmony
-virtual machine just after executing that instruction.
+virtual machine just after executing the corresponding instruction.
 The step that is being executed is highlighted in green.
 The table also lists the program counter of the thread at each step,
 and the values of the shared variables.
@@ -1260,7 +1265,7 @@ The stack top shows the values on the stack beyond the stack trace.
 When you load the HTML file, it shows the state after executing
 the last instruction.
 As mentioned above, you can go to any point in the execution by
-clicking on one of the blocks in the time lines.
+clicking on one of the blocks in the timeline.
 There are also various handy keyboard shortcuts:
 \begin{tabular}{rl}
 \emph{Right arrow}: & go to the next instruction; \\
