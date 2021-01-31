@@ -1348,7 +1348,7 @@ multiple operations.  Maintaining ``consistency'' is certainly much easier
 thread also tries to access the binary tree.
 Typically, you want some invariant property of the data structure to hold
 at the beginning and at the end of the critical section, but in the middle
-the invariant may be temporarily broken---this is no issue as critical
+the invariant may be temporarily broken---this is not a problem as critical
 sections guarantee that no other
 thread will be able to see it.
 An implementation of a data structure that can be safely accessed by multiple
@@ -1524,8 +1524,9 @@ to run.
 to see what it does.)
 Because \textit{lockTaken} is still \texttt{False}, it too
 believes it can acquire the lock, and stores \texttt{True} in
-\texttt{lockTaken} and moves on to the critical section.
-Finally, thread~0 moves on, also stores \texttt{True} and also moves
+\textit{lockTaken} and moves on to the critical section.
+Finally, thread~0 moves on, also stores \texttt{True}
+into \textit{lockTaken} and also moves
 into the critical section.  Thread~0 is the one that detects the
 problem.
 The \textit{lockTaken} variable
@@ -1566,7 +1567,10 @@ until time $t_2$.
 However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
 it turns out the solution
 does have a problem: if both try to enter the critical section at the same
-time, they may end up waiting for one another indefinitely.  Thus the
+time, they may end up waiting for one another indefinitely.
+(This is a form of \emph{deadlock}, which will be discussed in
+\autoref{ch:deadlock}.)
+Thus the
 solution violates \emph{progress}.
 
 The final na\"{\i}ve solution that we propose
@@ -1585,8 +1589,8 @@ Run the program through Harmony.  It turns out that this solution also violates
 \emph{progress}, albeit for a different reason:
 if thread~$i$ terminates instead of entering the critical section,
 thread $1-i$, politely, ends up waiting indefinitely for its turn.
-Too bad, it would have been a great solution if both threads try to enter the
-critical section continually.
+Too bad, because it would have been a great solution if both
+threads try to enter the critical section ad infinitum.
 
 \section*{Exercises}
 \begin{problems}
@@ -1609,7 +1613,7 @@ mutual exclusion and progress.  Try them with Harmony and see if they work or no
 If they don't, try to understand why.
 Do not despair if you can't figure out how to develop a solution that satisfies both
 mutual exclusion and progress---as
-we will find out, it is possible but not easy.
+we will find out, it is possible but not obvious.
 \end{problems}
 
 \chapter{Peterson's Algorithm}
