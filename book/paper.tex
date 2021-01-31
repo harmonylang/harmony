@@ -652,7 +652,9 @@ running in parallel while sharing variables.
 It sets \textit{shared} to \texttt{True}, asserts that
 \textit{shared} = \texttt{True}, and finally sets
 \textit{shared} to \texttt{False}.
-If you run the program through Harmony, it will find not problems.
+If you run the program through Harmony, it will not find any problems
+because there is only one execution possible and 1) in that execution
+the assertion does not fail and 2) the execution terminates.
 Program (b) is concurrent.  It executes methods \texttt{f()} and
 \texttt{g()} in parallel.
 If method \texttt{g()} runs and completes before \texttt{f()}, then
@@ -666,16 +668,16 @@ non-atomicity.
 The program initializes two shared variables:
 an integer \textit{count} and
 an array \textit{done} with two booleans.
-The program then spawns three threads.
-The first runs \texttt{incrementer(0)}, the second runs
+The program then spawns two threads.
+The first runs \texttt{incrementer(0)}; the second runs
 \texttt{incrementer(1)}.
 
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
 It then waits until the other thread is done.
-(\textbf{await} $c$ is semantically the same as \textbf{while not} $c$: \textbf{pass}.)
+(\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}) and semantically the same.
 After that, method \texttt{incrementer}
-verifies that the value of \textit{count} equals 2.
+verifies that the value of \textit{count} equals~2.
 % Like Python, Harmony supports \texttt{assert} statements with two arguments:
 % the first is a Boolean condition, and the second is a value that is
 % reported if the condition fails, in this case
@@ -715,7 +717,7 @@ machine.  The details of this appear in \autoref{ch:harmonymachine},
 but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
-increment or decrement values in memory locations.
+increment or decrement values in shared memory locations.
 So to increment a value in memory,
 the machine must do at least three machine instructions.  Conceptually:
 \begin{enumerate}
@@ -735,16 +737,16 @@ executing machine instructions.
 
 If the threads run one at a time, then \textit{count} will be incremented
 twice and ends up being 2.  However, the following is also
-a possible interleaving of incrementers~0 and~1:
+a possible interleaving of \texttt{incrementer(0)} and \texttt{incrementer(1)}:
 \begin{enumerate}
-\item incrementer 0 loads the value of \textit{count}, which is 0;
-\item incrementer 1 loads the value of \textit{count}, which is still 0;
-\item incrementer 1 adds one to the value that it loaded (0), and
+\item \texttt{incrementer(0)} loads the value of \textit{count}, which is 0;
+\item \texttt{incrementer(1)} loads the value of \textit{count}, which is still 0;
+\item \texttt{incrementer(1)} adds one to the value that it loaded (0), and
 stores $1$ into \textit{count};
-\item incrementer 0 adds one to the value that it loaded (0), and
+\item \texttt{incrementer(0)} adds one to the value that it loaded (0), and
 stores $1$ into \textit{count};
-\item incrementer 0 sets \textit{done}[0] to \texttt{True};
-\item incrementer 1 sets \textit{done}[1] to \texttt{True}.
+\item \texttt{incrementer(0)} sets \textit{done}[0] to \texttt{True};
+\item \texttt{incrementer(1)} sets \textit{done}[1] to \texttt{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \textit{count} ends up
