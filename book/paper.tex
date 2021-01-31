@@ -746,9 +746,9 @@ a possible interleaving of \texttt{incrementer(0)} and \texttt{incrementer(1)}:
 \begin{enumerate}
 \item \texttt{incrementer(0)} loads the value of \textit{count}, which is 0;
 \item \texttt{incrementer(1)} loads the value of \textit{count}, which is still 0;
-\item \texttt{incrementer(1)} adds one to the value that it loaded (0), and
+\item \texttt{incrementer(1)} adds 1 to the value that it loaded (0), and
 stores $1$ into \textit{count};
-\item \texttt{incrementer(0)} adds one to the value that it loaded (0), and
+\item \texttt{incrementer(0)} adds 1 to the value that it loaded (0), and
 stores $1$ into \textit{count};
 \item \texttt{incrementer(0)} sets \textit{done}[0] to \texttt{True};
 \item \texttt{incrementer(1)} sets \textit{done}[1] to \texttt{True}.
