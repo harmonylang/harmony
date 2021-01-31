@@ -413,7 +413,7 @@ likely it would be triggered and the model checker would produce a
 scenario that would make it easy to find the source of the bug.
 
 However, if the model checker does not find any bugs, we do not
-know for sure that the algorithm works for lists with more than
+know for sure that the algorithm works for lists of more than
 five numbers or for lists that have values other than the numbers
 1 through 5.  Still, we would expect that the likelihood that there
 are bugs remaining in the sorting algorithm is small.
@@ -484,13 +484,13 @@ underlying concurrency better.
 of critical sections to demonstrate that implementing a critical section
 is not trivial.
 \item \autoref{ch:peterson} introduces \emph{Peterson's Algorithm}, an
-elegant solution to implementating a critical section.
+elegant (although not very efficient or practical) solution to implementating a critical section.
 \item \autoref{ch:method} gives some more details on the Harmony
 language needed for the rest of the book.
-\item \autoref{ch:spinlock} introduces ``hardware'' \emph{locks}
+\item \autoref{ch:spinlock} introduces atomic \emph{locks}
 for implemented critical sections.
 \item \autoref{ch:synch} presents Harmony modules
-that supports locks and other synchronization primitives.
+that support locks and other synchronization primitives.
 \item \autoref{ch:cds} gives an introduction to building concurrent
 data structures.
 \item \autoref{ch:condwait} talks about threads having to wait for
@@ -524,7 +524,7 @@ and \emph{message passing} as an approach to synchronization.
 \item \autoref{ch:barrier} describes \emph{barrier synchronization},
 useful in high-performance computing applications such as parallel simulations.
 \item \autoref{ch:interrupts} discusses how to handle interrupts,
-a problem closely related to synchronization among multiple threads.
+a problem closely related to---but not the same as---synchronizing threads.
 \item \autoref{ch:nonblocking} introduces \emph{non-blocking} or
 \emph{wait-free} synchronization algorithms,
 which prevent threads waiting for one another more than a bounded number of
@@ -537,6 +537,8 @@ network.
 \chapter{Introduction to Harmony}
 \label{ch:harmonyintro}
 
+Harmony is a programming language that borrows much of
+Python's syntax.
 Like Python, Harmony is an imperative,
 dynamically typed, and garbage collected programming language.
 There are also some important differences:
@@ -546,8 +548,8 @@ Use parentheses liberally to remove ambiguity.
 \item Harmony does not (currently) support floating point, iterators, or I/O;
 Harmony does support \textbf{for} loops and various ``comprehensions.''
 \item Python is object-oriented, supporting classes with methods and
-inheritance; Harmony has objects but does not support classes.  Harmony supports
-pointers to objects and methods.
+inheritance; Harmony has objects but does not support classes.
+On the other hand, Harmony supports pointers to objects and methods.
 \end{itemize}
 There are also less important ones that you will discover as
 you get more familiar with programming in Harmony.
@@ -569,7 +571,10 @@ an integer number as argument.  Each method has a variable called
 method (there is no \textbf{return} statement in Harmony).  The method
 also has a variable called \textit{n} containing the value of the
 argument.  The \{ \textit{x..y} \} notation generates a set containing the numbers
-from~\textit{x} to~\textit{y} (inclusive).  The last two lines in the program are
+from~\textit{x} to~\textit{y} (inclusive).
+(Harmony does not have iterators and in particular does
+not have a \texttt{range} operator.)
+The last two lines in the program are
 the most interesting.
 The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
 and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
