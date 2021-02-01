@@ -3483,7 +3483,7 @@ upon exit.
 Each condition variable maintains a binary semaphore and a counter for
 the number of threads waiting on the condition.
 \texttt{wait} increments the condition's counter, releases the monitor mutex,
-blocks while trying to acquire the condition's semaphore, and after resuming
+blocks while trying to acquire the condition's semaphore, and upon resuming
 decrements the counter---in much the same way as we have seen for split binary
 semaphores (SBS).
 \texttt{signal} checks to see if the condition's count is non-zero, if so
@@ -3494,7 +3494,8 @@ and then blocks by trying to acquire the mutex again.
 Hoare monitors.
 It is written in much the same way you would if using
 the SBS technique (see \autoref{ex:bbsbs}).
-There is no \texttt{release\_one} method.  Instead, one can conclude
+However, there is no \texttt{release\_one} method.
+Instead, one can conclude
 that \texttt{put} guarantees that the queue will be non-empty, and
 \texttt{signal} will check if there are any threads waiting for
 this event.  If so, \texttt{signal} will pass control to one such thread
@@ -3506,7 +3507,7 @@ straightforward, unfortunately.  When a writer releases the lock, it
 has to choose whether to signal a reader or another writer.  For that
 it needs to know if there is a reader or writer waiting.  The simplest
 solution would be to peek at the counters inside the respective condition
-variable, but that breaks the abstraction.  The alternative is for the
+variables, but that breaks the abstraction.  The alternative is for the
 reader/writer implementation to keep track of that state explicitly,
 which complicates the code.  Also, it requires a deep understanding of
 the SBS method to remember to place a call to \texttt{signal} in the
@@ -3525,8 +3526,8 @@ However, there are some subtle but important differences with Hoare
 monitors that make Mesa monitors quite unlike split binary semaphores
 and mostly easier to use in practice.
 
-As in Hoare monitors, there is a hidden mutex associated with each monitor,
-and the mutex is automatically acquired upon entry to a method and released
+As in Hoare monitors, there is a hidden mutex associated with each Mesa monitor,
+and the mutex must be acquired upon entry to a method and released
 upon exit.
 Mesa monitors also have condition variables that a thread can wait on.
 Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
@@ -3538,12 +3539,10 @@ When a thread $p$ invokes \texttt{notify}, it does not immediately pass
 control to a thread that is waiting on the corresponding condition (if there
 is such a thread).  Instead, $p$ remains in the critical section
 until it leaves the monitor explicitly
-(by calling either \texttt{release()} or \texttt{wait()}).
+(by calling either \texttt{release} or \texttt{wait}).
 At that point, any thread that
 was notified will have a chance to enter the critical section, but they compete
 with other threads trying to enter the critical section.
-Basically, there is just one gate to enter the critical section, instead
-of a main gate and a gate per waiting condition.
 
 \begin{comment}
 \begin{figure}
@@ -3592,6 +3591,8 @@ do is check, again, to see if the condition holds.  If not, it should go back
 into the bedroom corresponding to the condition.
 \end{comment}
 
+Basically, there is just one gate to enter the critical section, instead
+of a main gate and a gate per waiting condition.
 This is a very important difference.  In Hoare monitors, when a thread
 enters through a waiting gate, it can assume that the condition associated
 with the waiting gate still holds because no other thread can run in between.
@@ -3605,7 +3606,7 @@ A Mesa monitor therefore is more closely related to busy waiting
 than to split binary semaphores.
 
 Mesa monitors also allow notifying multiple threads.
-For example, a thread can invoke \texttt{notify()} twice---if there are
+For example, a thread can invoke \texttt{notify} twice---if there are
 two or more threads waiting on the condition variable, two will be resumed.
 Operation \texttt{notifyAll}
 \index{notifyAll}%
@@ -3658,7 +3659,7 @@ Implementation of condition variables in the \texttt{synch} module.}
 \label{fig:RWcv}
 \end{figure}
 
-Harmony provides support for monitors
+Harmony provides support for Mesa monitors
 through the Harmony \texttt{synch} module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the \texttt{synch} module.
@@ -3690,7 +3691,7 @@ loop that checks for the condition that the thread is waiting for.
 It is \emph{imperative} that there is always a \textbf{while} loop
 around any invocation of \texttt{wait} containing the negation of
 the condition that the thread is waiting for.  Many implementation
-of condition variables depend on this, and optimized implementations
+of Mesa condition variables depend on this, and optimized implementations
 of condition variables often allow so-called ``spurious wakeups,''
 where \texttt{wait} may sometimes return even if the conditon
 variable has not been notified.
@@ -3767,6 +3768,7 @@ In this version,
 a thread is allowed to allocate a set of GPUs and release a set of GPUs that it
 has allocated.  Method \texttt{gpuAllocSet(n)} should block until $n$ GPUs are
 available, but it should grant them as soon as they are available.
+It returns a set of $n$ GPU identifiers.
 Method \texttt{gpuReleaseSet(s)} takes a set of GPU identifiers as argument.
 A thread does not have to return all the GPUs it allocated at once.
 (You may want to try implementing this with Split Binary Semaphores.  It is not as easy.)
@@ -3776,8 +3778,8 @@ it is fair.
 \item \label{ex:qsort}
 Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and \autoref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in shared variable \textit{textqs.arr}.
-Another shared variable, \textit{testqs.todo}, contains the ranges of the
+The array to be sorted is stored in shared variable \textit{textqs}.\texttt{arr}.
+Another shared variable, \textit{testqs}.\texttt{todo}, contains the ranges of the
 array that need to be sorted (initially the entire array).
 Re-using as much of this code as you can, implement a parallel version of
 this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
