@@ -27,8 +27,7 @@ struct f_info {
 };
 
 struct var_tree {
-    // TODO.  Is VT_LIST really a thing?
-    enum { VT_NAME, VT_TUPLE, VT_LIST } type;
+    enum { VT_NAME, VT_TUPLE } type;
     union {
         uint64_t name;
         struct {
@@ -644,6 +643,8 @@ void op_Dup(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Frame(const void *env, struct state *state, struct context **pctx){
+    static uint64_t result = 0;
+
     const struct env_Frame *ef = env;
     if (false) {
         printf("FRAME %d %d %"PRIx64" ", (*pctx)->pc, (*pctx)->sp, ef->name);
@@ -659,8 +660,10 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
     ctx->fp = ctx->sp;
 
-    ctx->vars = dict_store(VALUE_DICT,
-        value_put_atom("result", 6), VALUE_DICT);       // TODO "result" atom
+    if (result == 0) {
+        result = value_put_atom("result", 6);
+    }
+    ctx->vars = dict_store(VALUE_DICT, result, VALUE_DICT);
 
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure == 0) {
@@ -887,6 +890,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx)
 
 void op_Return(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->sp == 0) {     // __init__    TODO: no longer the case
+        assert(false);
         (*pctx)->phase = CTX_END;
         if (false) {
             printf("RETURN INIT\n");
