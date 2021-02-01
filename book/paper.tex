@@ -3466,22 +3466,22 @@ an abstraction of the concept in a programming language paradigm called
 (A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
-There is a split binary semaphore associated with each such class.
-The \textit{mutex} is hidden: it is automatically acquired when invoking a
-method and released upon exit.
-The other semaphores are encapsulated in \emph{condition variables}.
-\index{condition variable}%
-Each condition variable also keeps track of the number of threads waiting
-on the condition variable.
-
+A monitor also has special variables called \emph{condition variables},
+one per waiting condition.
 There are two operations on condition variables: \texttt{wait}
 \index{wait}%
 and
 \texttt{signal}.
 \index{signal}%
-\autoref{fig:hoare} presents the semantics by giving an implementation of
-\texttt{wait} and \texttt{signal} as well as the code that is used to enter
-and exit monitor methods.
+
+Harmony does not have language support for Hoare monitors but it
+has a module called \texttt{hoare}.
+\autoref{fig:hoare} shows its implementation.
+A monitor uses a hidden split binary semaphore.
+The mutex semaphore is acquired when entering a monitor and released
+upon exit.
+Each condition variable maintains a binary semaphore and a counter for
+the number of threads waiting on the condition.
 \texttt{wait} increments the condition's counter, releases the monitor mutex,
 blocks while trying to acquire the condition's semaphore, and after resuming
 decrements the counter---in much the same way as we have seen for split binary
@@ -3491,7 +3491,8 @@ releases the condition's semaphore,
 and then blocks by trying to acquire the mutex again.
 
 \autoref{fig:hoaretest} presents a bounded buffer implemented using
-Hoare monitors.  It is written in much the same way you would if using
+Hoare monitors.
+It is written in much the same way you would if using
 the SBS technique (see \autoref{ex:bbsbs}).
 There is no \texttt{release\_one} method.  Instead, one can conclude
 that \texttt{put} guarantees that the queue will be non-empty, and
