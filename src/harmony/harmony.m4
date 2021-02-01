@@ -5282,9 +5282,10 @@ def main():
     blockflag = False
     charmflag = True
     fulldump = False
+    testflag = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "Aabc:dfhjm:s", ["const=", "help", "module="])
+                        "Aabc:dfhjm:st", ["const=", "help", "module="])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -5310,6 +5311,8 @@ def main():
             mods.append(a)
         elif o == "-s":
             silent = True
+        elif o == "-t":
+            testflag = True
         elif o in { "-h", "--help" }:
             usage()
         else:
@@ -5318,22 +5321,27 @@ def main():
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
-        # fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
-        # os.close(fd)
-        tmpfile = "harmony.json"
+        if testflag:
+            tmpfile = "harmony.json"
+        else:
+            fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
+            os.close(fd)
         with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         charm = "%s/.charm"%pathlib.Path.home()
         if not os.path.exists(charm):
             with open("charm.c", "w") as fd:
                 print(charm_src, file=fd)
-            # r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o %s"%charm);
-            r = os.system("cc -g -DHARMONY_COMBINE charm.c -o %s"%charm);
+            if testflag:
+                r = os.system("cc -g -DHARMONY_COMBINE charm.c -o %s"%charm);
+            else:
+                r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
         r = os.system("%s %s"%(charm, tmpfile));
-        # os.remove(tmpfile)
+        if not testflag:
+            os.remove(tmpfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
