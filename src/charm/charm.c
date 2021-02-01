@@ -342,6 +342,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         }
     }
     else {
+        free(sc);
+
         if (next->len > node->len + weight) {
             next->parent = node;
             next->before = ctx;
@@ -380,7 +382,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         queue_enqueue(failures, f);
     }
 
-    free(sc);
     free(cc);
 }
 
