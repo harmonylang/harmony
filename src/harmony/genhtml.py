@@ -123,7 +123,7 @@ m4_include(charm.js)
 
         print("    <tr>", file=f)
         print("      <th align='center' rowspan='%d'>"%height, file=f)
-        print("        Step", file=f)
+        print("        Turn", file=f)
         print("      </th>", file=f)
         print("      <th align='center' rowspan='%d'>"%height, file=f)
         print("        Thread", file=f)
