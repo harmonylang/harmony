@@ -1129,7 +1129,7 @@ Harmony can report the following failure types:
 at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
-It also includes certain infinite loops.
+% It also includes certain infinite loops.
 Harmony will print a trace of the shortest bad execution that it found.
 \item \texttt{Non-terminating States}: Harmony found one or more states
 from which there does not exist an execution such that all threads
@@ -2287,8 +2287,8 @@ A thread trying to
 acquire a test-and-set spinlock held by another thread is a good example
 of a thread being blocked.
 The only way forward is if the other thread releases the spinlock.
-A thread that is in an infinite loop is also considered blocked,
-although Harmony can often detect infinite loops specifically.
+A thread that is in an infinite loop is also considered blocked.
+% although Harmony can often detect infinite loops specifically.
 
 \begin{figure}
 \begin{code}
@@ -5548,7 +5548,7 @@ the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
 of the top-level method (when the stack frame is of type \texttt{thread})
 or when it hits an exception.  Exceptions include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
-variable, infinite loops of microsteps, as well as when an assertion fails;
+variable, as well as when an assertion fails;
 \item The execution of a thread in \emph{atomic mode} does not get interleaved
 with that of other threads.
 \item The execution of a thread in \emph{read-only mode} is not allowed

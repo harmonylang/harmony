@@ -151,7 +151,8 @@ void check_invariants(struct node *node, struct context **pctx){
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
-        struct dict *visited, struct queue *todo, struct context **pinv_ctx){
+        struct dict *visited, struct queue *todo, struct context **pinv_ctx,
+        bool infloop_detect){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -173,13 +174,13 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         interrupt_invoke(&cc);
     }
     else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(node, ctx, choice, true, visited, todo, pinv_ctx);
+        onestep(node, ctx, choice, true, visited, todo, pinv_ctx, infloop_detect);
     }
 
     // Copy the choice
     uint64_t choice_copy = choice;
 
-    bool choosing = false;
+    bool choosing = false, infinite_loop = false;;
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
@@ -213,7 +214,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if (cc->phase != CTX_END && cc->failure == 0 && loopcnt > 1000) {
+        if (cc->phase != CTX_END && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
@@ -224,13 +225,21 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             combo->state = *sc;
             memcpy(&combo->context, cc, sizeof(*cc) + stacksize);
             void **p = dict_insert(infloop, combo, combosize);
+            free(combo);
             if (*p == (void *) 0) {
                 *p = (void *) 1;
             }
-            else {
+            else if (infloop_detect) {
                 cc->failure = value_put_atom("infinite loop", 13);
+                infinite_loop = true;
             }
-            free(combo);
+            else {
+                // start over, as twostep does not have loopcnt optimization
+                onestep(node, ctx, choice_copy, interrupt, visited, todo, pinv_ctx, true);
+                free(cc);
+                free(sc);
+                return;
+            }
         }
 
         if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
@@ -262,7 +271,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
                 ctx_failure(cc, "choose operation requires a non-empty set");
                 break;
             }
-            if (size == 1) {
+            if (size == 1) {            // TODO.  This optimization is probably not worth it
                 choice = vals[0];
             }
             else {
@@ -375,7 +384,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
     if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_SAFETY;
+        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->ctx = ctx;
         f->choice = choice_copy;
         f->node = next;
@@ -1222,7 +1231,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx);
+                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -1239,7 +1248,7 @@ int main(int argc, char **argv){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx);
+                onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx, false);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }
