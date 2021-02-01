@@ -11,6 +11,11 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct combined {           // combination of current state and current context
+    struct state state;
+    struct context context;
+};
+
 struct component {
     bool good;          // terminating or out-going edge
 };
@@ -208,17 +213,24 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if ((cc->phase != CTX_END && cc->failure == 0) && loopcnt > 1000) {
+        if (0 && (cc->phase != CTX_END && cc->failure == 0) && loopcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
-            // TODO.  Also add global state?
-            void **p = dict_insert(infloop, cc,
-                            sizeof(*cc) + (cc->sp * sizeof(uint64_t)));
-            if (*p != (void *) 0) {
+
+            int stacksize = cc->sp * sizeof(uint64_t);
+            int combosize = sizeof(struct combined) + stacksize;
+            struct combined *combo = calloc(1, combosize);
+            combo->state = *sc;
+            memcpy(&combo->context, cc, sizeof(*cc) + stacksize);
+            void **p = dict_insert(infloop, combo, combosize);
+            if (*p == (void *) 0) {
+                *p = (void *) 1;
+            }
+            else {
                 cc->failure = value_put_atom("infinite loop", 13);
             }
-            *p = (void *) 1;
+            free(combo);
         }
 
         if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
@@ -330,8 +342,6 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         }
     }
     else {
-        free(sc);
-
         if (next->len > node->len + weight) {
             next->parent = node;
             next->before = ctx;
@@ -370,6 +380,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         queue_enqueue(failures, f);
     }
 
+    free(sc);
     free(cc);
 }
 
@@ -812,17 +823,24 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if (cc->phase != CTX_END && cc->failure == 0) {
+        if (0 && cc->phase != CTX_END && cc->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
-            // TODO.  Also add global state?
-            void **p = dict_insert(infloop, cc,
-                            sizeof(*cc) + (cc->sp * sizeof(uint64_t)));
-            if (*p != (void *) 0) {
+
+            int stacksize = cc->sp * sizeof(uint64_t);
+            int combosize = sizeof(struct combined) + stacksize;
+            struct combined *combo = calloc(1, combosize);
+            combo->state = *sc;
+            memcpy(&combo->context, cc, sizeof(*cc) + stacksize);
+            void **p = dict_insert(infloop, combo, combosize);
+            if (*p == (void *) 0) {
+                *p = (void *) 1;
+            }
+            else {
                 cc->failure = value_put_atom("infinite loop", 13);
             }
-            *p = (void *) 1;
+            free(combo);
         }
 
         diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
