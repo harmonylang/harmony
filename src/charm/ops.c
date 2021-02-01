@@ -1663,13 +1663,16 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         }
         return e1;
     }
+	if (e1 == VALUE_SET) {
+		return VALUE_SET;
+	}
     if ((e1 & VALUE_MASK) == VALUE_SET) {
         // get all the sets
+		assert(n > 0);
         struct val_info *vi = malloc(n * sizeof(*vi));
-        int min_size = -1;      // minimum set size
-        uint64_t max_val;       // maximum value over the minima of all sets
-        bool some_empty = false;
-        for (int i = 0; i < n; i++) {
+        int min_size = vi[0].size;              // minimum set size
+        uint64_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
+        for (int i = 1; i < n; i++) {
             if ((args[i] & VALUE_MASK) != VALUE_SET) {
                 return ctx_failure(ctx, "'&' applied to mix of sets and other types");
             }
@@ -1679,18 +1682,12 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
             else {
                 vi[i].vals = value_get(args[i], &vi[i].size); 
                 vi[i].index = 0;
-                if (min_size < 0) {
-                    min_size = vi[i].size;
-                    max_val = vi[i].vals[0];
-                }
-                else {
-                    if (vi[i].size < min_size) {
-                        min_size = vi[i].size;
-                    }
-                    if (value_cmp(vi[i].vals[0], max_val) > 0) {
-                        max_val = vi[i].vals[0];
-                    }
-                }
+				if (vi[i].size < min_size) {
+					min_size = vi[i].size;
+				}
+				if (value_cmp(vi[i].vals[0], max_val) > 0) {
+					max_val = vi[i].vals[0];
+				}
             }
         }
 
@@ -1700,7 +1697,7 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         }
 
         // Allocate sufficient memory.
-        uint64_t *vals = malloc(min_size), *v = vals;
+        uint64_t *vals = malloc((size_t) min_size), *v = vals;
 
         bool done = false;
         for (int i = 0; i < min_size; i++) {
@@ -1752,6 +1749,9 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         return result;
     }
 
+	if (e1 == VALUE_DICT) {
+		return VALUE_DICT;
+	}
     if ((e1 & VALUE_MASK) != VALUE_DICT) {
         return ctx_failure(ctx, "'&' can only be applied to ints and dicts");
     }
