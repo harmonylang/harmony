@@ -1628,15 +1628,15 @@ var state =
     "restore caller method state and push result"
   ],
   "locations": {
-    "3": { "file": "code/Up.hny", "line": "2", "code": "done = [ False, False ];" },
-    "11": { "file": "code/Up.hny", "line": "6", "code": "    done[self] = True;" },
-    "7": { "file": "code/Up.hny", "line": "5", "code": "    count = count + 1;" },
-    "22": { "file": "code/Up.hny", "line": "8", "code": "    assert count == 2;" },
-    "1": { "file": "code/Up.hny", "line": "1", "code": "count = 0;" },
+    "3": { "file": "code/Up.hny", "line": "2", "code": "done = [ False, False ]" },
+    "11": { "file": "code/Up.hny", "line": "6", "code": "    done[self] = True" },
+    "7": { "file": "code/Up.hny", "line": "5", "code": "    count = count + 1" },
+    "22": { "file": "code/Up.hny", "line": "8", "code": "    assert count == 2" },
+    "1": { "file": "code/Up.hny", "line": "1", "code": "count = 0" },
     "5": { "file": "code/Up.hny", "line": "4", "code": "def incrementer(self):" },
-    "35": { "file": "code/Up.hny", "line": "12", "code": "spawn incrementer(1);" },
-    "31": { "file": "code/Up.hny", "line": "11", "code": "spawn incrementer(0);" },
-    "16": { "file": "code/Up.hny", "line": "7", "code": "    await done[1 - self];" }
+    "35": { "file": "code/Up.hny", "line": "11", "code": "spawn incrementer(1)" },
+    "31": { "file": "code/Up.hny", "line": "10", "code": "spawn incrementer(0)" },
+    "16": { "file": "code/Up.hny", "line": "7", "code": "    await done[1 - self]" }
   }
 }
 
@@ -1728,11 +1728,14 @@ function json_string_dict(obj) {
     var v = json_string(kv.value);
     result += k + ": " + v;
   }
-  return "dict{ " + result + " }";
+  return "{ " + result + " }";
 }
 
 function json_string_address(obj) {
-  result = "?" + obj[0].value;
+  if (obj.length == 0) {
+    return "None";
+  }
+  var result = "?" + obj[0].value;
   for (var i = 1; i < obj.length; i++) {
     if (obj[i].type == "atom") {
       result += "." + obj[i].value;
@@ -1742,6 +1745,13 @@ function json_string_address(obj) {
     }
   }
   return result;
+}
+
+function json_string_context(obj) {
+  var name = json_string(obj.name);
+  var arg = json_string(obj.arg);
+  var pc = json_string(obj.pc);
+  return "CTX(" + name + "(" + arg + "):" + pc + ")";
 }
 
 function json_string(obj) {
@@ -1759,6 +1769,8 @@ function json_string(obj) {
     return "PC(" + obj.value + ")"
   case "address":
     return json_string_address(obj.value);
+  case "context":
+    return json_string_context(obj.value);
   default:
     return JSON.stringify(obj);
   }
@@ -1782,7 +1794,10 @@ function convert_var(obj) {
   if (obj.type != "dict") {
     return json_string(obj);
   }
-  result = {};
+  if (obj.value.length == 0) {
+    return "";
+  }
+  var result = {};
   for (var i = 0; i < obj.value.length; i++) {
     var kv = obj.value[i];
     var k = json_string(kv.key);
@@ -2012,10 +2027,11 @@ function init_microstep(masidx, misidx) {
   }
 
   // Update local variables
-  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+  var trl = microsteps[t].trace.length; 
+  if (trl > 0 && mis.hasOwnProperty("local")) {
     // deep copy first
     microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
-    microsteps[t].trace[0].vars = mis.local;
+    microsteps[t].trace[trl - 1].vars = mis.local;
   }
 
   if (mis.hasOwnProperty("shared")) {

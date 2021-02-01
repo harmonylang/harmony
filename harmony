@@ -12453,8 +12453,9 @@ def main():
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
-        fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
-        os.close(fd)
+        # fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
+        # os.close(fd)
+        tmpfile = "harmony.json"
         with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         charm = "%s/.charm"%pathlib.Path.home()
@@ -12467,7 +12468,7 @@ def main():
                 print("can't create charm model checker")
                 sys.exit(r);
         r = os.system("%s %s"%(charm, tmpfile));
-        os.remove(tmpfile)
+        # os.remove(tmpfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);

@@ -1,9 +1,24 @@
 dir=/research/harmony
+mkdir -p $dir/code
+mkdir -p $dir/modules
+mkdir -p $dir/python
+mkdir -p $dir/output
+
+mkdir -p output
+make
+./harmony code/Up.hny
+mv harmony.html output/Up.html
+./harmony code/naiveLock.hny
+mv harmony.html output/naiveLock.html
+./harmony code/naiveFlags.hny
+mv harmony.html output/naiveFlags.html
+cp output/*.html $dir/output
+
 cp harmony harmony.py $dir
 cp book/paper.pdf $dir/book.pdf
 cp HarmonyOnWindows.pdf $dir
-cp code/* $dir/code
-cp modules/* $dir/modules
-cp python/* $dir/python
-cp output/* $dir/output
+
+cp code/*.hny $dir/code
+cp modules/*.hny $dir/modules
+cp python/*.py $dir/python
 cp distributions/*.zip $dir/distributions

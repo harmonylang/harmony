@@ -178,8 +178,8 @@ table td, table th {
             <a name='P3'>3</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='set program counter to 35' id='C3'>
-              Jump 35
+            <span title='set program counter to 36' id='C3'>
+              Jump 36
             </span>
           </td>
         </tr>
@@ -218,8 +218,8 @@ table td, table th {
             <a name='P7'>7</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a value and jump to 34 if the value is False' id='C7'>
-              JumpCond False 34
+            <span title='pop a value and jump to 35 if the value is False' id='C7'>
+              JumpCond False 35
             </span>
           </td>
         </tr>
@@ -398,8 +398,8 @@ table td, table th {
             <a name='P25'>25</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 2 values and push the result of applying BagAdd' id='C25'>
-              2-ary BagAdd
+            <span title='push constant 1' id='C25'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -408,8 +408,8 @@ table td, table th {
             <a name='P26'>26</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 2 values and push the result of applying ==' id='C26'>
-              2-ary ==
+            <span title='pop 3 values and push the result of applying DictAdd' id='C26'>
+              3-ary DictAdd
             </span>
           </td>
         </tr>
@@ -418,8 +418,8 @@ table td, table th {
             <a name='P27'>27</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a condition and raise exception if condition is false' id='C27'>
-              Assert
+            <span title='pop 2 values and push the result of applying ==' id='C27'>
+              2-ary ==
             </span>
           </td>
         </tr>
@@ -428,8 +428,8 @@ table td, table th {
             <a name='P28'>28</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='decrement atomic counter of context' id='C28'>
-              AtomicDec
+            <span title='pop a condition and raise exception if condition is false' id='C28'>
+              Assert
             </span>
           </td>
         </tr>
@@ -438,8 +438,8 @@ table td, table th {
             <a name='P29'>29</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='decrement readonly counter of context' id='C29'>
-              ReadonlyDec
+            <span title='decrement atomic counter of context' id='C29'>
+              AtomicDec
             </span>
           </td>
         </tr>
@@ -448,8 +448,8 @@ table td, table th {
             <a name='P30'>30</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='decrement atomic counter of context' id='C30'>
-              AtomicDec
+            <span title='decrement readonly counter of context' id='C30'>
+              ReadonlyDec
             </span>
           </td>
         </tr>
@@ -457,9 +457,9 @@ table td, table th {
           <td align='right'>
             <a name='P31'>31</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant False' id='C31'>
-              Push False
+          <td style='background-color: white;'>
+            <span title='decrement atomic counter of context' id='C31'>
+              AtomicDec
             </span>
           </td>
         </tr>
@@ -468,8 +468,8 @@ table td, table th {
             <a name='P32'>32</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a value and store it in shared variable lockTaken' id='C32'>
-              Store lockTaken
+            <span title='push constant False' id='C32'>
+              Push False
             </span>
           </td>
         </tr>
@@ -478,8 +478,8 @@ table td, table th {
             <a name='P33'>33</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='set program counter to 5' id='C33'>
-              Jump 5
+            <span title='pop a value and store it in shared variable lockTaken' id='C33'>
+              Store lockTaken
             </span>
           </td>
         </tr>
@@ -488,8 +488,8 @@ table td, table th {
             <a name='P34'>34</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C34'>
-              Return
+            <span title='set program counter to 5' id='C34'>
+              Jump 5
             </span>
           </td>
         </tr>
@@ -497,9 +497,9 @@ table td, table th {
           <td align='right'>
             <a name='P35'>35</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
-            <span title='push constant ()' id='C35'>
-              Push ()
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C35'>
+              Return
             </span>
           </td>
         </tr>
@@ -508,8 +508,8 @@ table td, table th {
             <a name='P36'>36</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant 0' id='C36'>
-              Push 0
+            <span title='push constant ()' id='C36'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -518,8 +518,8 @@ table td, table th {
             <a name='P37'>37</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant PC(4)' id='C37'>
-              Push PC(4)
+            <span title='push constant 0' id='C37'>
+              Push 0
             </span>
           </td>
         </tr>
@@ -528,8 +528,8 @@ table td, table th {
             <a name='P38'>38</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C38'>
-              Spawn
+            <span title='push constant PC(4)' id='C38'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -537,9 +537,9 @@ table td, table th {
           <td align='right'>
             <a name='P39'>39</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C39'>
-              Push ()
+          <td style='background-color: white;'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C39'>
+              Spawn
             </span>
           </td>
         </tr>
@@ -548,8 +548,8 @@ table td, table th {
             <a name='P40'>40</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 1' id='C40'>
-              Push 1
+            <span title='push constant ()' id='C40'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -558,8 +558,8 @@ table td, table th {
             <a name='P41'>41</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(4)' id='C41'>
-              Push PC(4)
+            <span title='push constant 1' id='C41'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -568,8 +568,8 @@ table td, table th {
             <a name='P42'>42</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C42'>
-              Spawn
+            <span title='push constant PC(4)' id='C42'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -578,7 +578,17 @@ table td, table th {
             <a name='P43'>43</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C43'>
+            <span title='pop a pc, argument, and tag and spawn a new process' id='C43'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P44'>
+          <td align='right'>
+            <a name='P44'>44</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C44'>
               Return
             </span>
           </td>
@@ -703,54 +713,54 @@ var state =
           "pc": "2"
         },
         {
-          "npc": "35",
+          "npc": "36",
           "push": [ ],
           "pc": "3"
         },
         {
-          "npc": "36",
-          "push": [ { "type": "dict", "value": [] } ],
-          "pc": "35"
-        },
-        {
           "npc": "37",
-          "push": [ { "type": "int", "value": "0" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "36"
         },
         {
           "npc": "38",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "int", "value": "0" } ],
           "pc": "37"
         },
         {
           "npc": "39",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "38"
         },
         {
           "npc": "40",
-          "push": [ { "type": "dict", "value": [] } ],
+          "pop": "3",
+          "push": [ ],
           "pc": "39"
         },
         {
           "npc": "41",
-          "push": [ { "type": "int", "value": "1" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "40"
         },
         {
           "npc": "42",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "41"
         },
         {
           "npc": "43",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "42"
         },
         {
-          "npc": "43",
+          "npc": "44",
+          "pop": "3",
+          "push": [ ],
+          "pc": "43"
+        },
+        {
+          "npc": "44",
           "fp": "0",
           "trace": [
 
@@ -759,7 +769,7 @@ var state =
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
-          "pc": "43"
+          "pc": "44"
         }
       ],
       "invfails": [
@@ -769,7 +779,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -838,7 +848,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -930,7 +940,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1004,7 +1014,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1101,7 +1111,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1176,7 +1186,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1250,7 +1260,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1384,23 +1394,28 @@ var state =
         },
         {
           "npc": "26",
-          "pop": "2",
-          "push": [ { "type": "dict", "value": [{ "key": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "pc", "value": "4" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "int", "value": "0" } } ] }, "value": { "type": "int", "value": "1" } } ] } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "25"
         },
         {
           "npc": "27",
-          "pop": "2",
-          "push": [ { "type": "bool", "value": "False" } ],
+          "pop": "3",
+          "push": [ { "type": "dict", "value": [{ "key": { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "pc", "value": "4" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "int", "value": "0" } } ] }, "value": { "type": "int", "value": "1" } } ] } ],
           "pc": "26"
         },
         {
-          "npc": "27",
+          "npc": "28",
+          "pop": "2",
+          "push": [ { "type": "bool", "value": "False" } ],
+          "pc": "27"
+        },
+        {
+          "npc": "28",
           "failure": "Harmony assertion failed",
           "mode": "failed",
           "pop": "1",
           "push": [ ],
-          "pc": "27"
+          "pc": "28"
         }
       ],
       "invfails": [
@@ -1410,7 +1425,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "43",
+          "pc": "44",
           "fp": "0",
           "trace": [
 
@@ -1423,11 +1438,11 @@ var state =
           "tid": "1",
           "name": "thread(0)",
           "entry": "4",
-          "pc": "27",
+          "pc": "28",
           "fp": "4",
           "trace": [
             {
-              "pc": "27",
+              "pc": "28",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1463,11 +1478,11 @@ var state =
     "Frame __init__ ()",
     "Push False",
     "Store lockTaken",
-    "Jump 35",
+    "Jump 36",
     "Frame thread self",
     "Push { False, True }",
     "Choose",
-    "JumpCond False 34",
+    "JumpCond False 35",
     "Load lockTaken",
     "JumpCond True 8",
     "Push True",
@@ -1485,7 +1500,8 @@ var state =
     "Push 1",
     "LoadVar self",
     "3-ary DictAdd",
-    "2-ary BagAdd",
+    "Push 1",
+    "3-ary DictAdd",
     "2-ary ==",
     "Assert",
     "AtomicDec",
@@ -1509,11 +1525,11 @@ var state =
     "start of method __init__",
     "push constant False",
     "pop a value and store it in shared variable lockTaken",
-    "set program counter to 35",
+    "set program counter to 36",
     "start of method thread",
     "push constant { False, True }",
     "pop a set value and push one of its elements",
-    "pop a value and jump to 34 if the value is False",
+    "pop a value and jump to 35 if the value is False",
     "push value of shared variable lockTaken",
     "pop a value and jump to 8 if the value is True",
     "push constant True",
@@ -1531,7 +1547,8 @@ var state =
     "push constant 1",
     "push the value of self",
     "pop 3 values and push the result of applying DictAdd",
-    "pop 2 values and push the result of applying BagAdd",
+    "push constant 1",
+    "pop 3 values and push the result of applying DictAdd",
     "pop 2 values and push the result of applying ==",
     "pop a condition and raise exception if condition is false",
     "decrement atomic counter of context",
@@ -1553,14 +1570,14 @@ var state =
   ],
   "locations": {
     "3": { "file": "code/naiveLock.hny", "line": "3", "code": "def thread(self):" },
-    "12": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == bag{ (thread, self) };" },
-    "8": { "file": "code/naiveLock.hny", "line": "6", "code": "        await not lockTaken;" },
-    "10": { "file": "code/naiveLock.hny", "line": "7", "code": "        lockTaken = True;" },
-    "39": { "file": "code/naiveLock.hny", "line": "18", "code": "spawn thread(1);" },
-    "1": { "file": "code/naiveLock.hny", "line": "1", "code": "lockTaken = False;" },
+    "12": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "8": { "file": "code/naiveLock.hny", "line": "6", "code": "        await not lockTaken" },
+    "40": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "10": { "file": "code/naiveLock.hny", "line": "7", "code": "        lockTaken = True" },
+    "32": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "1": { "file": "code/naiveLock.hny", "line": "1", "code": "lockTaken = False" },
     "5": { "file": "code/naiveLock.hny", "line": "4", "code": "    while choose({ False, True }):" },
-    "35": { "file": "code/naiveLock.hny", "line": "17", "code": "spawn thread(0);" },
-    "31": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False;" }
+    "36": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" }
   }
 }
 
@@ -1652,11 +1669,14 @@ function json_string_dict(obj) {
     var v = json_string(kv.value);
     result += k + ": " + v;
   }
-  return "dict{ " + result + " }";
+  return "{ " + result + " }";
 }
 
 function json_string_address(obj) {
-  result = "?" + obj[0].value;
+  if (obj.length == 0) {
+    return "None";
+  }
+  var result = "?" + obj[0].value;
   for (var i = 1; i < obj.length; i++) {
     if (obj[i].type == "atom") {
       result += "." + obj[i].value;
@@ -1666,6 +1686,13 @@ function json_string_address(obj) {
     }
   }
   return result;
+}
+
+function json_string_context(obj) {
+  var name = json_string(obj.name);
+  var arg = json_string(obj.arg);
+  var pc = json_string(obj.pc);
+  return "CTX(" + name + "(" + arg + "):" + pc + ")";
 }
 
 function json_string(obj) {
@@ -1683,6 +1710,8 @@ function json_string(obj) {
     return "PC(" + obj.value + ")"
   case "address":
     return json_string_address(obj.value);
+  case "context":
+    return json_string_context(obj.value);
   default:
     return JSON.stringify(obj);
   }
@@ -1706,7 +1735,10 @@ function convert_var(obj) {
   if (obj.type != "dict") {
     return json_string(obj);
   }
-  result = {};
+  if (obj.value.length == 0) {
+    return "";
+  }
+  var result = {};
   for (var i = 0; i < obj.value.length; i++) {
     var kv = obj.value[i];
     var k = json_string(kv.key);
@@ -1936,10 +1968,11 @@ function init_microstep(masidx, misidx) {
   }
 
   // Update local variables
-  if (microsteps[t].trace.length > 0 && mis.hasOwnProperty("local")) {
+  var trl = microsteps[t].trace.length; 
+  if (trl > 0 && mis.hasOwnProperty("local")) {
     // deep copy first
     microsteps[t].trace = JSON.parse(JSON.stringify(microsteps[t].trace))
-    microsteps[t].trace[0].vars = mis.local;
+    microsteps[t].trace[trl - 1].vars = mis.local;
   }
 
   if (mis.hasOwnProperty("shared")) {
