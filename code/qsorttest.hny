@@ -1,9 +1,8 @@
 import qsort, bag
 
 const NITEMS = 4
-const VALUES = {1..NITEMS}
 
-a = [ choose(VALUES) for i in {1..choose({1..NITEMS})} ]
+a = [ choose({1..NITEMS}) for i in {1..choose({1..NITEMS})} ]
 testqs = qsort.Qsort(a)
 sa = qsort.sort(?testqs)
 assert all(sa[i - 1] <= sa[i] for i in {1..len(sa)-1}) # sorted?
