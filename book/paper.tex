@@ -2596,7 +2596,8 @@ time, conflicting accesses are avoided.  However, not all concurrent
 accesses conflict, and opportunities for concurrency may be lost,
 hurting performance.  One important case is when multiple threads
 are simply reading the data structure.
-In many applications, reads are the majority of all accesses.
+In many applications, reads are the majority of all accesses,
+and read operations do not conflict with one another.
 Allowing reads to proceed concurrently can significantly improve performance.
 
 What we want is a special kind of lock that allows either (i) one writer
@@ -2979,6 +2980,8 @@ If the buffer is full, the enqueuer must wait; if the buffer is empty, the
 dequeuer must wait.
 This problem is known as the ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
+Multiple producers and multiple consumers may all share
+the same bounded buffer.
 
 The producer/consumer pattern is common.  Threads may be arranged
 in \emph{pipelines},
@@ -2993,9 +2996,6 @@ some thread may act as a \emph{server} that clients can send requests to
 and receive responses from.  In that case, there is a bounded buffer
 for each client/server pair. Clients produce requests and
 consume responses, while the server consumes requests and produces responses.
-%
-Multiple producers and multiple consumers may all share
-the same bounded buffer.
 
 \begin{comment}
 \autoref{fig:pc} gives a high-level description.  The
