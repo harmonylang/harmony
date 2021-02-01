@@ -272,9 +272,7 @@ XX\=XXX\=XXX\kill
 {
   name=step,
   description={is the execution of a machine instruction by a thread, updating
-        its state.  Harmony distinguishes micro steps (machine instructions) and macro
-        step (a sequence of instructions with at most one effect visible by
-        other threads)}
+        its state.}
 }
 \newglossaryentry{thread safety}
 {
@@ -1148,7 +1146,7 @@ In our case, Harmony reports a safety violation.
 In particular, it reports that the assertion failed
 because \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
-The program got to the failed assertion in 4 ``steps.''
+The program got to the failed assertion in 4 ``turns.''
 The output has four columns:
 \begin{enumerate}
 \item A thread identifier;
@@ -1164,11 +1162,11 @@ The output has four columns:
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
 There are four sections.
-The top shows the steps to the problematic state.
-Each step shows a thread identifier, the method the thread is executing,
+The top shows the turns to the problematic state.
+Each turn shows a thread identifier, the method the thread is executing,
 a ``timeline'' containing a block for each instruction executed, the
 program counter of the thread, and the values of the shared variables
-at those steps.
+at those turns.
 The middle section shows the line of code that is being executed.
 The bottom left shows the bytecode of the program.
 The bottom right shows the state of each thread.
@@ -1178,7 +1176,7 @@ the values of its method variables.}
 \label{fig:inchtml1}
 \end{figure}
 
-The four steps in the execution are as follows:
+The four turns in the execution are as follows:
 
 \begin{enumerate}
 \item Thread \texttt{\_\_init\_\_} (with identifier T0)
@@ -1205,14 +1203,14 @@ Open the suggested HTML file and you should see something like
 \autoref{fig:inchtml1}.
 
 In the top right, the HTML file contains the reported issue in red.
-Underneath it, a table shows the four steps in the execution.
+Underneath it, a table shows the four turns in the execution.
 Instead of listing explicitly the program counters of the executed
 instructions, the HTML file contains a list of blocks for each
 executed instruction.  We call this the \emph{timeline}.
 You can click on such a block to see the state of the Harmony
 virtual machine just after executing the corresponding instruction.
-The step that is being executed is highlighted in green.
-The table also lists the program counter of the thread at each step,
+The turn that is being executed is highlighted in green.
+The table also lists the program counter of the thread at each turn,
 and the values of the shared variables.
 
 Underneath the table it shows the line of Harmony code that is being
@@ -1270,8 +1268,8 @@ There are also various handy keyboard shortcuts:
 \begin{tabular}{rl}
 \emph{Right arrow}: & go to the next instruction; \\
 \emph{Left arrow}: & go to the previous instruction; \\
-\emph{Down arrow}: & go to the next step; \\
-\emph{Up arrow}: & go to the previous step; \\
+\emph{Down arrow}: & go to the next turn; \\
+\emph{Up arrow}: & go to the previous turn; \\
 \emph{Enter (aka Return)}: & go to the next line of Harmony code; \\
 \emph{0}: & go to the initial state.
 \end{tabular}
@@ -1687,8 +1685,9 @@ one thread and its program counter is~0.  A \emph{trace}
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
 \index{non-determinism}%
-in Harmony.\footnote{Actually, there is a third type called
-an \emph{interrupt}, discussed in \autoref{ch:interrupts}.}
+in Harmony.
+% \footnote{Actually, there is a third type called
+% an \emph{interrupt}, discussed in \autoref{ch:interrupts}.}
 One is when
 there is more than one thread that can make a step.  The other is
 when a thread executes a \texttt{choose} operation and there is
@@ -1697,7 +1696,7 @@ Because there is non-determinism, there are multiple possible traces.
 We call a state \emph{reachable}
 \index{reachable state}%
 if it is either the initial state
-or it can be reached from the initial state through a trace.
+or it can be reached from the initial state through a finite trace.
 A state is final
 when there are no threads left to make state changes.
 
@@ -1753,7 +1752,7 @@ Unfortunately, exclusivity is not an \emph{inductive} invariant.
 To see why, consider the following state $s$: let thread~0 be at label \texttt{@cs}
 and thread~1 be at the start of the \textbf{await} statement.
 Also, in state $s$, $\mathit{turn} = 1$.  Now let
-thread~1 make a sequence of steps.  Because $\mathit{turn} = 1$,
+thread~1 make a step.  Because $\mathit{turn} = 1$,
 thread~1 will stop waiting and also enter the critical
 section, entering a state that is not exclusive.
 So exclusivity is an invariant (holds over every reachable state, as demonstrated
@@ -1782,6 +1781,7 @@ Since $\mathcal{F}(i)$ holds, there are two cases to consider:
 \begin{enumerate}
 \item states in which $\mathit{flags}[i] = \texttt{true}$
 \item states in which $\lnot \mathtt{thread}(i)@[8 \cdots 15]$
+(because false implies anything)
 \end{enumerate}
 In each case we need to show that if thread $i$ takes a step, 
 $\mathcal{F}(i)$ still holds.
@@ -1808,7 +1808,7 @@ the critical section: $\mathtt{thread}(i)@cs \Rightarrow \mathcal{C}(i)$.
 However, because thread $1-i$ is executing concurrently, this property does not
 hold.  In particular, suppose thread 0 is at the critical section, $\mathit{flags}[0]$ = true,
 $\mathit{turn} = 1$, and thread 1 just finished the step in line 7,
-setting $\mathit{flags}[1]$ to true.  Notice that $C(0)$ is violated.
+setting $\mathit{flags}[1]$ to true.  Notice that $C(0)$ is now violated.
 
 \begin{figure}
 \begin{code}
@@ -1819,7 +1819,7 @@ setting $\mathit{flags}[1]$ to true.  Notice that $C(0)$ is violated.
 \end{figure}
 
 Instead, we will use the following property: $\mathcal{G}(i) =
-\mathtt{thread}(i)@cs \Rightarrow \mathcal{C}(i) \lor \mathtt{thread}(1-i)@[8]$.
+\mathtt{thread}(i)@\mathtt{cs} \Rightarrow \mathcal{C}(i) \lor \mathtt{thread}(1-i)@\mathtt{gate}$.
 That is, if thread $i$ is at the critical section, then
 either $\mathcal{C}(i)$ holds or thread $1-i$ is about to execute line 8.
 \autoref{fig:petersonproof} formalizes $\mathcal{G}(i)$ in Harmony.
@@ -1836,8 +1836,8 @@ This then implies that $\mathit{turn} = 0 \land \mathit{turn} = 1$, providing
 the desired contradiction.
 
 We claim that $\mathcal{G}(i)$ is an inductive invariant.
-First, since neither thread exists in the initial state, it is clear that
-$\mathcal{G}(i)$ holds in the initial state.
+First, since neither thread in in the critical section in the initial state,
+it is clear that $\mathcal{G}(i)$ holds in the initial state.
 Without loss of generality, suppose $i=0$ (a benefit from the fact that the algorithm is
 symmetric for both threads).  We still have to show that if we are in a state
 in which $\mathcal{G}(0)$ holds, then any step will result in a
@@ -2004,7 +2004,7 @@ Harmony does not have a \textbf{return} statement.  (You can assign a return val
 to a method by setting the \textit{result} variable.)  Neither does it support
 \textbf{break} or \textbf{continue} statements in loops.  One reason for their absence is
 that, particularly in concurrent programming, such control flow directions are highly
-error-prone.  It's easy to forget to, say, release a lock when returning a value in the
+error-prone.  It's too easy to forget to, say, release a lock when returning a value in the
 middle of a method, a major source of bugs in practice.
 
 Harmony is not an object-oriented language like Python is.  In Python
@@ -2036,7 +2036,7 @@ section.
 The name \textit{mutex} is often used to denote a variable or value
 that is used for mutual exclusion.
 \texttt{P\_mutex} is a method that returns a ``mutex,'' which, in this
-case, is a dictionary that contains Peterson's Algorithm's state:
+case, is a dictionary that contains Peterson's Algorithm's shared memory state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
 a pointer to a mutex and the thread identifier (0 or 1).
@@ -2121,7 +2121,7 @@ Variable \textit{shared} is initialized to \texttt{False} while
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
-lines $18 \cdots 25$ (which includes the critical section),
+lines $18 \cdots 22$ (which includes the critical section),
 then \textit{private}[$i$] == \texttt{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
