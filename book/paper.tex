@@ -3140,8 +3140,7 @@ for the gate associated with that condition to open.
 Note that the following invariants hold:
 \begin{itemize}
 \item At any time, at most one gate is open;
-\item If some gate is open, then no thread is in the critical section;
-\item If some thread is in the critical section, all gates are closed;
+\item If some gate is open, then no thread is in the critical section.  Equivalently, if some thread is in the critical section, all gates are closed;
 \item At any time, at most one thread is in the critical section.
 \end{itemize}
 
@@ -3163,9 +3162,9 @@ The state of a reader/writer lock thus consists of the following:
 \begin{itemize}
 \item \textit{nreaders}: the number of readers in the critical section;
 \item \textit{nwriters}: the number of writers in the critical section;
-\item \textit{mutex}: the ``main gate'' binary semaphore;
-\item \textit{r\_gate}: the ``waiting gate'' used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
-\item \textit{w\_gate}: the ``waiting gate'' used by writers, similar to the readers' gate.
+\item \textit{mutex}: the main gate binary semaphore;
+\item \textit{r\_gate}: the waiting gate used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
+\item \textit{w\_gate}: the waiting gate used by writers, similar to the readers' gate.
 \end{itemize}
 
 Each of the
@@ -3196,7 +3195,7 @@ Then, in the case that the thread
 finds that there is a writer in the critical section
 ($\mathit{nwriters > 0}$), it increments the counter associated with
 the readers' gate, leaves the critical section (\texttt{release\_one}),
-and then tries to acquire the semaphore associated with the gate.
+and then tries to acquire the semaphore associated with the waiting gate.
 This will cause it to block until some thread opens that gate.
 
 Now consider the case where there is a writer in the critical
@@ -3209,8 +3208,8 @@ the writer calls \texttt{write\_release}:
 \texttt{release\_one()} finds that there are no writers in the critical section
 and there are two readers waiting.  It therefore releases not
 \textit{mutex} but the readers' gate's binary semaphore.
-\item One of the waiting reader can now re-enter the critical section.
-When it does, the reader decrements the gate's counter (from 2 to 1),
+\item One of the waiting readers can now re-enter the critical section.
+When it does, the reader decrements the gate's counter (from 2 to 1)
 and increments \textit{nreaders} (from~0 to~1).
 The reader finally calls \texttt{release\_one()}.
 \item Again, \texttt{release\_one()} finds that there are no writers and
@@ -3265,7 +3264,7 @@ concurrency can be improved if a thread \emph{downgrades} its write lock
 to a read lock when its done writing but not done reading.  Add
 a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
 (Similarly, you may want to try to implement an \emph{upgrade} of a
-read lock to a write lock.)
+read lock to a write lock.  Why is this problematic?)
 % How easy or hard would it be to do the same for the code in
 % \autoref{fig:rw2lock}?
 % Note, you cannot simply release the
