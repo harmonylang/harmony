@@ -1060,6 +1060,29 @@ static int find_scc(void){
     return count;
 }
 
+static char *json_string_encode(char *s){
+    char *result = malloc(4 * strlen(s)), *p = result;
+
+    while (*s != 0) {
+        switch (*s) {
+        case '\r':
+            break;
+        case '\t':
+            *p++ = '\\'; *p++ = 't';
+            break;
+        case '"':
+            *p++ = '\\'; *p++ = '"';
+            break;
+        default:
+            *p++ = *s;
+        }
+        s++;
+    }
+    *p++ = 0;
+    return result;
+}
+            
+
 static void enum_loc(void *env, const void *key, unsigned int key_size,
                                 HASHDICT_VALUE_TYPE value){
     static bool notfirst = false;
@@ -1108,7 +1131,9 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
             if (len > 0 && buf[len - 1] == '\n') {
                 buf[len - 1] = 0;
             }
-            fprintf(out, ", \"code\": \"%s\"", buf);
+            char *enc = json_string_encode(buf);
+            fprintf(out, ", \"code\": \"%s\"", enc);
+            free(enc);
             break;
         }
     }
