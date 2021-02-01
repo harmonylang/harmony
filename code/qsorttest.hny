@@ -1,11 +1,10 @@
-from qsort import Qsort, qsort
-import bag
+import qsort, bag
 
 const NITEMS = 4
-const values = {1..NITEMS}
+const VALUES = {1..NITEMS}
 
-a = [ choose(values) for i in {1..choose({1..NITEMS})} ]
-testqs = Qsort(a)
-sa = qsort(?testqs)
+a = [ choose(VALUES) for i in {1..choose({1..NITEMS})} ]
+testqs = qsort.Qsort(a)
+sa = qsort.sort(?testqs)
 assert all(sa[i - 1] <= sa[i] for i in {1..len(sa)-1}) # sorted?
 assert bag.fromList(a) == bag.fromList(sa); # is it a permutation?

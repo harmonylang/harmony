@@ -19,7 +19,7 @@ def sortrange(qs, range):
         if (pivot + 1) < hi:
             qs->todo |= { (pivot + 1, hi) }
 
-def qsort(qs):
+def sort(qs):
     while qs->todo != {}:
         let range = choose(qs->todo):
             qs->todo -= { range }
