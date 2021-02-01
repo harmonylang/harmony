@@ -871,7 +871,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if (0 && (cc->phase != CTX_END && cc->failure == 0) && loopcnt > 1000) {
+        if (cc->phase != CTX_END && cc->failure == 0 && loopcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
@@ -1482,7 +1482,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if (0 && cc->phase != CTX_END && cc->failure == 0) {
+        if (cc->phase != CTX_END && cc->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
