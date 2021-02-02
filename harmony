@@ -6784,6 +6784,10 @@ function init_macrostep(i) {
   for (var j = 0; j < mas.microsteps.length; j++) {
     init_microstep(i, j);
   }
+  for (var ctx = 0; ctx < mas.contexts.length; ctx++) {
+    var tid = parseInt(mas.contexts[ctx].tid);
+    threads[tid].name = mas.contexts[ctx].name;
+  }
 }
 
 function get_shared(shared, path) {
