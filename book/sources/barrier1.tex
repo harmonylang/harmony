@@ -1,0 +1,89 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Queue,~\textit{put},~\textit{get}\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NROUNDS~=~3\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{const}}~NPROC~=~3\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\textit{queues}~=~[~Queue(),~]~*~NPROC\\
+
+\>{\tiny 7}\'\>\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{def}}~barrier\_enter(\textit{self}):\\
+
+\>{\tiny 9}\'\>~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..NPROC--1\}~\texttt{\textbf{where}}~\textit{i}~!=~\textit{self}:\\
+
+\>{\tiny 10}\'\>~~~~~~~~\textit{put}(?\textit{queues}[\textit{i}],~\textit{i})\\
+
+\>{\tiny 11}\'\>~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NPROC--1\}:\\
+
+\>{\tiny 12}\'\>~~~~~~~~\textit{get}(?\textit{queues}[\textit{self}])\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{def}}~barrier\_exit(\textit{self}):\\
+
+\>{\tiny 15}\'\>~~~~\texttt{\textbf{pass}}\\
+
+\>{\tiny 16}\'\>\\
+
+\>{\tiny 17}\'\>\emph{\# check that all non$-$None values in round are the same}\\
+
+\>{\tiny 18}\'\>\texttt{\textbf{def}}~check():\\
+
+\>{\tiny 19}\'\>~~~~\textit{result}~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 20}\'\>~~~~\texttt{\textbf{let}}~\textit{x}~=~\texttt{\textbf{None}}:\\
+
+\>{\tiny 21}\'\>~~~~~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..NPROC--1\}:\\
+
+\>{\tiny 22}\'\>~~~~~~~~~~~~\texttt{\textbf{if}}~\textit{result}~\texttt{\textbf{and}}~(\textit{round}[\textit{i}]~!=~\texttt{\textbf{None}}):\\
+
+\>{\tiny 23}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{if}}~\textit{x}~!=~\texttt{\textbf{None}}:\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~~~~~~~~~\textit{result}~=~\textit{round}[\textit{i}]~==~\textit{x}\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~~~~~~~\textit{x}~=~\textit{round}[\textit{i}]\\
+
+\>{\tiny 26}\'\>\\
+
+\>{\tiny 27}\'\>\textit{round}~=~[\texttt{\textbf{None}},]~*~NPROC\\
+
+\>{\tiny 28}\'\>\textit{done}~=~[\texttt{\textbf{False}},]~*~NPROC\\
+
+\>{\tiny 29}\'\>\\
+
+\>{\tiny 30}\'\>\texttt{\textbf{def}}~process(\textit{self}):\\
+
+\>{\tiny 31}\'\>~~~~\texttt{\textbf{for}}~\textit{r}~\texttt{\textbf{in}}~\{0..NROUNDS--1\}:\\
+
+\>{\tiny 32}\'\>~~~~~~~~barrier\_enter(\textit{self})\\
+
+\>{\tiny 33}\'\>~~~~~~~~\textit{round}[\textit{self}]~=~\textit{r}\\
+
+\>{\tiny 34}\'\>~~~~~~~~\texttt{\textbf{assert}}~check()\\
+
+\>{\tiny 35}\'\>~~~~~~~~\textit{round}[\textit{self}]~=~\texttt{\textbf{None}}\\
+
+\>{\tiny 36}\'\>~~~~~~~~barrier\_exit(\textit{self})\\
+
+\>{\tiny 37}\'\>~~~~\textit{done}[\textit{self}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 38}\'\>\\
+
+\>{\tiny 39}\'\>\texttt{\textbf{def}}~main():\\
+
+\>{\tiny 40}\'\>~~~~\texttt{\textbf{await}}~\texttt{\textbf{all}}(\textit{done})\\
+
+\>{\tiny 41}\'\>\\
+
+\>{\tiny 42}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..NPROC--1\}:\\
+
+\>{\tiny 43}\'\>~~~~\texttt{\textbf{spawn}}~process(\textit{i})\\
+
+\>{\tiny 44}\'\>\\
+
+\>{\tiny 45}\'\>\texttt{\textbf{spawn}}~main()

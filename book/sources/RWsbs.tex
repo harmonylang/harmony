@@ -1,0 +1,75 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~BinSema,~acquire,~release\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~RWlock():\\
+
+\>{\tiny 4}\'\>~~~~\textit{result}~=~\{\\
+
+\>{\tiny 5}\'\>~~~~~~~~~~~~.nreaders:~0,~.nwriters:~0,~.mutex:~BinSema(\texttt{\textbf{False}}),\\
+
+\>{\tiny 6}\'\>~~~~~~~~~~~~.r\_gate:~\{~.sema:~BinSema(\texttt{\textbf{True}}),~.count:~0~\},\\
+
+\>{\tiny 7}\'\>~~~~~~~~~~~~.w\_gate:~\{~.sema:~BinSema(\texttt{\textbf{True}}),~.count:~0~\}\\
+
+\>{\tiny 8}\'\>~~~~~~~~\}\\
+
+\>{\tiny 9}\'\>\\
+
+\>{\tiny 10}\'\>\texttt{\textbf{def}}~release\_one(\textit{rw}):\\
+
+\>{\tiny 11}\'\>~~~~\texttt{\textbf{if}}~(\textit{rw}$\rightarrow$nwriters~==~0)~\texttt{\textbf{and}}~(\textit{rw}$\rightarrow$r\_gate.count~$>$~0):\\
+
+\>{\tiny 12}\'\>~~~~~~~~release(?\textit{rw}$\rightarrow$r\_gate.sema)\\
+
+\>{\tiny 13}\'\>~~~~\texttt{\textbf{elif}}~((\textit{rw}$\rightarrow$nreaders~+~\textit{rw}$\rightarrow$nwriters)~==~0)~\texttt{\textbf{and}}~(\textit{rw}$\rightarrow$w\_gate.count~$>$~0):\\
+
+\>{\tiny 14}\'\>~~~~~~~~release(?\textit{rw}$\rightarrow$w\_gate.sema)\\
+
+\>{\tiny 15}\'\>~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 16}\'\>~~~~~~~~release(?\textit{rw}$\rightarrow$mutex)\\
+
+\>{\tiny 17}\'\>\\
+
+\>{\tiny 18}\'\>\texttt{\textbf{def}}~read\_acquire(\textit{rw}):\\
+
+\>{\tiny 19}\'\>~~~~acquire(?\textit{rw}$\rightarrow$mutex)\\
+
+\>{\tiny 20}\'\>~~~~\texttt{\textbf{if}}~\textit{rw}$\rightarrow$nwriters~$>$~0:\\
+
+\>{\tiny 21}\'\>~~~~~~~~\textit{rw}$\rightarrow$r\_gate.count~+=~1;~release\_one(\textit{rw})\\
+
+\>{\tiny 22}\'\>~~~~~~~~acquire(?\textit{rw}$\rightarrow$r\_gate.sema);~\textit{rw}$\rightarrow$r\_gate.count~--=~1\\
+
+\>{\tiny 23}\'\>~~~~\textit{rw}$\rightarrow$nreaders~+=~1\\
+
+\>{\tiny 24}\'\>~~~~release\_one(\textit{rw})\\
+
+\>{\tiny 25}\'\>\\
+
+\>{\tiny 26}\'\>\texttt{\textbf{def}}~read\_release(\textit{rw}):\\
+
+\>{\tiny 27}\'\>~~~~acquire(?\textit{rw}$\rightarrow$mutex);~\textit{rw}$\rightarrow$nreaders~--=~1;~release\_one(\textit{rw})\\
+
+\>{\tiny 28}\'\>\\
+
+\>{\tiny 29}\'\>\texttt{\textbf{def}}~write\_acquire(\textit{rw}):\\
+
+\>{\tiny 30}\'\>~~~~acquire(?\textit{rw}$\rightarrow$mutex)\\
+
+\>{\tiny 31}\'\>~~~~\texttt{\textbf{if}}~(\textit{rw}$\rightarrow$nreaders~+~\textit{rw}$\rightarrow$nwriters)~$>$~0:\\
+
+\>{\tiny 32}\'\>~~~~~~~~\textit{rw}$\rightarrow$w\_gate.count~+=~1;~release\_one(\textit{rw})\\
+
+\>{\tiny 33}\'\>~~~~~~~~acquire(?\textit{rw}$\rightarrow$w\_gate.sema);~\textit{rw}$\rightarrow$w\_gate.count~--=~1\\
+
+\>{\tiny 34}\'\>~~~~\textit{rw}$\rightarrow$nwriters~+=~1\\
+
+\>{\tiny 35}\'\>~~~~release\_one(\textit{rw})\\
+
+\>{\tiny 36}\'\>\\
+
+\>{\tiny 37}\'\>\texttt{\textbf{def}}~write\_release(\textit{rw}):\\
+
+\>{\tiny 38}\'\>~~~~acquire(?\textit{rw}$\rightarrow$mutex);~\textit{rw}$\rightarrow$nwriters~--=~1;~release\_one(\textit{rw})

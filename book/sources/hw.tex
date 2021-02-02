@@ -1,0 +1,61 @@
+\>{\tiny 1}\'\>\texttt{\textbf{const}}~MAX\_ITEMS~=~3\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\textit{back}~=~0\\
+
+\>{\tiny 4}\'\>\textit{items}~=~[~()~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..MAX\_ITEMS\}~]\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~inc(\textit{pcnt}):\\
+
+\>{\tiny 7}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 8}\'\>~~~~~~~~\textit{result}~=~!\textit{pcnt}\\
+
+\>{\tiny 9}\'\>~~~~~~~~!\textit{pcnt}~+=~1\\
+
+\>{\tiny 10}\'\>\\
+
+\>{\tiny 11}\'\>\texttt{\textbf{def}}~exch(\textit{pv}):\\
+
+\>{\tiny 12}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 13}\'\>~~~~~~~~\textit{result}~=~!\textit{pv}\\
+
+\>{\tiny 14}\'\>~~~~~~~~!\textit{pv}~=~()\\
+
+\>{\tiny 15}\'\>\\
+
+\>{\tiny 16}\'\>\texttt{\textbf{def}}~produce(\textit{item}):\\
+
+\>{\tiny 17}\'\>~~~~\textit{items}[inc(?\textit{back})]~=~(\textit{item},)\\
+
+\>{\tiny 18}\'\>\\
+
+\>{\tiny 19}\'\>\texttt{\textbf{def}}~consume():\\
+
+\>{\tiny 20}\'\>~~~~\textit{result}~=~()\\
+
+\>{\tiny 21}\'\>~~~~\texttt{\textbf{while}}~\textit{result}~==~():\\
+
+\>{\tiny 22}\'\>~~~~~~~~\texttt{\textbf{let}}~\textit{range},~\textit{i}~=~\textit{back},~0:\\
+
+\>{\tiny 23}\'\>~~~~~~~~~~~~\texttt{\textbf{while}}~(\textit{i}~$<$~\textit{range})~\texttt{\textbf{and}}~(\textit{result}~==~()):\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~~~~~\textit{result}~=~exch(?\textit{items}[\textit{i}])\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~~~~~~~\textit{i}~+=~1\\
+
+\>{\tiny 26}\'\>~~~~\textit{result}~=~\textit{result}[0];~~~~~\emph{\# convert (item,) into item}\\
+
+\>{\tiny 27}\'\>\\
+
+\>{\tiny 28}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..MAX\_ITEMS\}:\\
+
+\>{\tiny 29}\'\>~~~~\texttt{\textbf{spawn}}~produce(\textit{i})\\
+
+\>{\tiny 30}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..\texttt{\textbf{choose}}(\{0..MAX\_ITEMS\})\}:\\
+
+\>{\tiny 31}\'\>~~~~\texttt{\textbf{spawn}}~consume()

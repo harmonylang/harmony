@@ -1,0 +1,53 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~synch;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~acquire\_rlock():\\
+
+\>{\tiny 4}\'\>~~~~\textit{lock}(?\textit{rlock});\\
+
+\>{\tiny 5}\'\>~~~~\texttt{\textbf{if}}~\textit{nreaders}~==~0:\\
+
+\>{\tiny 6}\'\>~~~~~~~~\textit{lock}(?\textit{rwlock});\\
+
+\>{\tiny 7}\'\>~~~~;\\
+
+\>{\tiny 8}\'\>~~~~\textit{nreaders}~+=~1;\\
+
+\>{\tiny 9}\'\>~~~~\textit{unlock}(?\textit{rlock});\\
+
+\>{\tiny 10}\'\>;\\
+
+\>{\tiny 11}\'\>\texttt{\textbf{def}}~release\_rlock():\\
+
+\>{\tiny 12}\'\>~~~~\textit{lock}(?\textit{rlock});\\
+
+\>{\tiny 13}\'\>~~~~\textit{nreaders}~--=~1;\\
+
+\>{\tiny 14}\'\>~~~~\texttt{\textbf{if}}~\textit{nreaders}~==~0:\\
+
+\>{\tiny 15}\'\>~~~~~~~~\textit{unlock}(?\textit{rwlock});\\
+
+\>{\tiny 16}\'\>~~~~;\\
+
+\>{\tiny 17}\'\>~~~~\textit{unlock}(?\textit{rlock});\\
+
+\>{\tiny 18}\'\>;\\
+
+\>{\tiny 19}\'\>\texttt{\textbf{def}}~acquire\_wlock():\\
+
+\>{\tiny 20}\'\>~~~~\textit{lock}(?\textit{rwlock});\\
+
+\>{\tiny 21}\'\>;\\
+
+\>{\tiny 22}\'\>\texttt{\textbf{def}}~release\_wlock():\\
+
+\>{\tiny 23}\'\>~~~~\textit{unlock}(?\textit{rwlock});\\
+
+\>{\tiny 24}\'\>;\\
+
+\>{\tiny 25}\'\>\textit{rwlock}~=~\textit{Lock}();\\
+
+\>{\tiny 26}\'\>\textit{rlock}~=~\textit{Lock}();\\
+
+\>{\tiny 27}\'\>\textit{nreaders}~=~0;

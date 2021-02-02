@@ -1,0 +1,19 @@
+\>{\tiny 1}\'\>\texttt{\textbf{const}}~N~=~10\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\textit{availGPUs}~=~\{1..N\}\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\texttt{\textbf{def}}~gpuAlloc():\\
+
+\>{\tiny 6}\'\>~~~~\textit{result}~=~\texttt{\textbf{choose}}(\textit{availGPUs})\\
+
+\>{\tiny 7}\'\>~~~~\textit{availGPUs}~--=~\{~\textit{result}~\}\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~gpuRelease(\textit{gpu}):\\
+
+\>{\tiny 10}\'\>~~~~\textit{availGPUs}~$\vert$=~\{~\textit{gpu}~\}

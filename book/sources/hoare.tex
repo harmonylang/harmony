@@ -1,0 +1,47 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~synch\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~Monitor():\\
+
+\>{\tiny 4}\'\>~~~~\textit{result}~=~synch.Lock()\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~enter(\textit{mon}):\\
+
+\>{\tiny 7}\'\>~~~~synch.acquire(\textit{mon})\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~exit(\textit{mon}):\\
+
+\>{\tiny 10}\'\>~~~~synch.release(\textit{mon})\\
+
+\>{\tiny 11}\'\>\\
+
+\>{\tiny 12}\'\>\texttt{\textbf{def}}~Condition():\\
+
+\>{\tiny 13}\'\>~~~~\textit{result}~=~\{~.sema:~synch.BinSema(\texttt{\textbf{True}}),~.count:~0~\}\\
+
+\>{\tiny 14}\'\>\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{def}}~wait(\textit{cond},~\textit{mon}):\\
+
+\>{\tiny 16}\'\>~~~~\textit{cond}$\rightarrow$count~+=~1\\
+
+\>{\tiny 17}\'\>~~~~exit(\textit{mon})\\
+
+\>{\tiny 18}\'\>~~~~synch.acquire(?\textit{cond}$\rightarrow$sema)\\
+
+\>{\tiny 19}\'\>~~~~\textit{cond}$\rightarrow$count~--=~1\\
+
+\>{\tiny 20}\'\>\\
+
+\>{\tiny 21}\'\>\texttt{\textbf{def}}~signal(\textit{cond},~\textit{mon}):\\
+
+\>{\tiny 22}\'\>~~~~\texttt{\textbf{if}}~\textit{cond}$\rightarrow$count~$>$~0:\\
+
+\>{\tiny 23}\'\>~~~~~~~~synch.release(?\textit{cond}$\rightarrow$sema)\\
+
+\>{\tiny 24}\'\>~~~~~~~~enter(\textit{mon})

@@ -1,0 +1,53 @@
+\>{\tiny 1}\'\>\texttt{\textbf{def}}~Qsort(\textit{arr}):\\
+
+\>{\tiny 2}\'\>~~~~\textit{result}~=~\{~.arr:~arr,~.todo:~\{~(0,~\texttt{\textbf{len}}(arr)~--~1)~\}~\}\\
+
+\>{\tiny 3}\'\>\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{def}}~swap(\textit{p},~\textit{q}):~~~~~~~~~~~~~~~\emph{\# swap !p and !q}\\
+
+\>{\tiny 5}\'\>~~~~!\textit{p},~!\textit{q}~=~!\textit{q},~!\textit{p};~\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~partition(\textit{qs},~\textit{lo},~\textit{hi}):\\
+
+\>{\tiny 8}\'\>~~~~\textit{result}~=~\textit{lo}\\
+
+\>{\tiny 9}\'\>~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{\textit{lo}..\textit{hi}~--~1\}:\\
+
+\>{\tiny 10}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{qs}$\rightarrow$arr[\textit{i}]~$<=$~\textit{qs}$\rightarrow$arr[\textit{hi}]:\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~swap(?\textit{qs}$\rightarrow$arr[\textit{result}],~?\textit{qs}$\rightarrow$arr[\textit{i}])\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~\textit{result}~+=~1\\
+
+\>{\tiny 13}\'\>~~~~swap(?\textit{qs}$\rightarrow$arr[\textit{result}],~?\textit{qs}$\rightarrow$arr[\textit{hi}]);~\\
+
+\>{\tiny 14}\'\>\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{def}}~sortrange(\textit{qs},~\textit{range}):\\
+
+\>{\tiny 16}\'\>~~~~\texttt{\textbf{let}}~\textit{lo},~\textit{hi}~=~\textit{range}~\texttt{\textbf{let}}~\textit{pivot}~=~partition(\textit{qs},~\textit{lo},~\textit{hi}):\\
+
+\>{\tiny 17}\'\>~~~~~~~~\texttt{\textbf{if}}~(\textit{pivot}~--~1)~$>$~\textit{lo}:\\
+
+\>{\tiny 18}\'\>~~~~~~~~~~~~\textit{qs}$\rightarrow$todo~$\vert$=~\{~(\textit{lo},~\textit{pivot}~--~1)~\}\\
+
+\>{\tiny 19}\'\>~~~~~~~~\texttt{\textbf{if}}~(\textit{pivot}~+~1)~$<$~\textit{hi}:\\
+
+\>{\tiny 20}\'\>~~~~~~~~~~~~\textit{qs}$\rightarrow$todo~$\vert$=~\{~(\textit{pivot}~+~1,~\textit{hi})~\}\\
+
+\>{\tiny 21}\'\>\\
+
+\>{\tiny 22}\'\>\texttt{\textbf{def}}~sort(\textit{qs}):\\
+
+\>{\tiny 23}\'\>~~~~\texttt{\textbf{while}}~\textit{qs}$\rightarrow$todo~!=~\{\}:\\
+
+\>{\tiny 24}\'\>~~~~~~~~\texttt{\textbf{let}}~\textit{range}~=~\texttt{\textbf{choose}}(\textit{qs}$\rightarrow$todo):\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~~~\textit{qs}$\rightarrow$todo~--=~\{~\textit{range}~\}\\
+
+\>{\tiny 26}\'\>~~~~~~~~~~~~sortrange(\textit{qs},~\textit{range})\\
+
+\>{\tiny 27}\'\>~~~~\textit{result}~=~\textit{qs}$\rightarrow$arr

@@ -1,0 +1,57 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~synch\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~N~=~5\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\textit{mutex}~=~synch.Lock()\\
+
+\>{\tiny 6}\'\>\textit{forks}~=~[\texttt{\textbf{False}},]~*~N\\
+
+\>{\tiny 7}\'\>\textit{conds}~=~[synch.Condition(?\textit{mutex}),]~*~N\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~diner(\textit{which}):\\
+
+\>{\tiny 10}\'\>~~~~\texttt{\textbf{let}}~\textit{left},~\textit{right}~=~(\textit{which}~--~1,~\textit{which}~\%~N):\\
+
+\>{\tiny 11}\'\>~~~~~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~synch.acquire(?\textit{mutex})\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~\texttt{\textbf{while}}~\textit{forks}[\textit{left}]~\texttt{\textbf{or}}~\textit{forks}[\textit{right}]:\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{if}}~\textit{forks}[\textit{left}]:\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~~~~~~~~~synch.wait(?\textit{conds}[\textit{left}],~?\textit{mutex})\\
+
+\>{\tiny 16}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{if}}~\textit{forks}[\textit{right}]:\\
+
+\>{\tiny 17}\'\>~~~~~~~~~~~~~~~~~~~~synch.wait(?\textit{conds}[\textit{right}],~?\textit{mutex})\\
+
+\>{\tiny 18}\'\>~~~~~~~~~~~~\texttt{\textbf{assert}}~\texttt{\textbf{not}}~(\textit{forks}[\textit{left}]~\texttt{\textbf{or}}~\textit{forks}[\textit{right}])\\
+
+\>{\tiny 19}\'\>~~~~~~~~~~~~\textit{forks}[\textit{left}]~=~\textit{forks}[\textit{right}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 20}\'\>~~~~~~~~~~~~synch.release(?\textit{mutex})\\
+
+\>{\tiny 21}\'\>~~~~~~~~~~~~\emph{\# dine}\\
+
+\>{\tiny 22}\'\>~~~~~~~~~~~~synch.acquire(?\textit{mutex})\\
+
+\>{\tiny 23}\'\>~~~~~~~~~~~~\textit{forks}[\textit{left}]~=~\textit{forks}[\textit{right}]~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~synch.notify(?\textit{conds}[\textit{left}]);~synch.notify(?\textit{conds}[\textit{right}])\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~~~synch.release(?\textit{mutex})\\
+
+\>{\tiny 26}\'\>~~~~~~~~~~~~\emph{\# think}\\
+
+\>{\tiny 27}\'\>\\
+
+\>{\tiny 28}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..N\}:\\
+
+\>{\tiny 29}\'\>~~~~\texttt{\textbf{spawn}}~diner(\textit{i})

@@ -1,0 +1,11 @@
+\>{\tiny 1}\'\>\texttt{\textbf{if}}~\textit{left}~$<$~\textit{right}:\\
+
+\>{\tiny 2}\'\>~~~~\textit{synch}.acquire(?\textit{forks}[\textit{left}])\\
+
+\>{\tiny 3}\'\>~~~~\textit{synch}.acquire(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{else}}:\\
+
+\>{\tiny 5}\'\>~~~~\textit{synch}.acquire(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 6}\'\>~~~~\textit{synch}.acquire(?\textit{forks}[\textit{left}])

@@ -1,0 +1,17 @@
+\>{\tiny 1}\'\>\texttt{\textbf{let}}~\textit{blocked}~=~\texttt{\textbf{True}}:\\
+
+\>{\tiny 2}\'\>~~~~\texttt{\textbf{while}}~\textit{blocked}:\\
+
+\>{\tiny 3}\'\>~~~~~~~~\textit{lock}();\\
+
+\>{\tiny 4}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{application}--\textit{condition}--\textit{holds}:\\
+
+\>{\tiny 5}\'\>~~~~~~~~~~~~\textit{blocked}~=~\texttt{\textbf{False}};\\
+
+\>{\tiny 6}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 7}\'\>~~~~~~~~~~~~\textit{unlock}():\\
+
+\>{\tiny 8}\'\>@cr:~\textit{application}--\textit{code};\\
+
+\>{\tiny 9}\'\>\textit{unlock}():

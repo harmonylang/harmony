@@ -1,0 +1,33 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~queue\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~sender(\textit{q},~\textit{v}):\\
+
+\>{\tiny 4}\'\>~~~~queue.put(\textit{q},~\textit{v})\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~receiver(\textit{q}):\\
+
+\>{\tiny 7}\'\>~~~~\texttt{\textbf{let}}~\textit{done}~=~\texttt{\textbf{False}}:\\
+
+\>{\tiny 8}\'\>~~~~~~~~\texttt{\textbf{while}}~\texttt{\textbf{not}}~\textit{done}:\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~\texttt{\textbf{let}}~\textit{v}~=~queue.get(\textit{q}):\\
+
+\>{\tiny 10}\'\>~~~~~~~~~~~~~~~~\textit{done}~=~\textit{v}~==~\texttt{\textbf{None}}\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{assert}}~\textit{done}~\texttt{\textbf{or}}~(\textit{v}~\texttt{\textbf{in}}~\{~1,~2~\})\\
+
+\>{\tiny 12}\'\>\\
+
+\>{\tiny 13}\'\>\textit{testq}~=~queue.Queue()\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{spawn}}~sender(?\textit{testq},~1)\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{spawn}}~sender(?\textit{testq},~2)\\
+
+\>{\tiny 16}\'\>\texttt{\textbf{spawn}}~receiver(?\textit{testq})\\
+
+\>{\tiny 17}\'\>\texttt{\textbf{spawn}}~receiver(?\textit{testq})

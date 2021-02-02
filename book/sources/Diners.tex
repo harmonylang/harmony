@@ -1,0 +1,35 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Lock,~acquire,~release\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~N~=~5\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\textit{forks}~=~[Lock(),]~*~N\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~diner(\textit{which}):\\
+
+\>{\tiny 8}\'\>~~~~\texttt{\textbf{let}}~\textit{left},~\textit{right}~=~(\textit{which}~--~1,~\textit{which}~\%~N):\\
+
+\>{\tiny 9}\'\>~~~~~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 10}\'\>~~~~~~~~~~~~acquire(?\textit{forks}[\textit{left}])\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~acquire(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~\emph{\# dine}\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~release(?\textit{forks}[\textit{left}])\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~release(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~\emph{\# think}\\
+
+\>{\tiny 16}\'\>\\
+
+\>{\tiny 17}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..N\}:\\
+
+\>{\tiny 18}\'\>~~~~\texttt{\textbf{spawn}}~diner(\textit{i})

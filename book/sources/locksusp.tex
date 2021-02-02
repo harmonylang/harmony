@@ -1,0 +1,59 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~list\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~BinSema(\textit{acquired}):\\
+
+\>{\tiny 4}\'\>~~~~\textit{result}~=~\{~.acquired:~acquired,~.suspended:~[~]~\}\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~Lock():\\
+
+\>{\tiny 7}\'\>~~~~\textit{result}~=~BinSema(\texttt{\textbf{False}})\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~acquired(\textit{binsema}):\\
+
+\>{\tiny 10}\'\>~~~~\textit{result}~=~\textit{binsema}$\rightarrow$acquired\\
+
+\>{\tiny 11}\'\>\\
+
+\>{\tiny 12}\'\>\texttt{\textbf{def}}~acquire(\textit{binsema}):\\
+
+\>{\tiny 13}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 14}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{binsema}$\rightarrow$acquired:\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~\texttt{\textbf{stop}}~\textit{binsema}$\rightarrow$suspended[\texttt{\textbf{len}}~\textit{binsema}$\rightarrow$suspended]\\
+
+\>{\tiny 16}\'\>~~~~~~~~~~~~\texttt{\textbf{assert}}~\textit{binsema}$\rightarrow$acquired\\
+
+\>{\tiny 17}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 18}\'\>~~~~~~~~~~~~\textit{binsema}$\rightarrow$acquired~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 19}\'\>\\
+
+\>{\tiny 20}\'\>\texttt{\textbf{def}}~release(\textit{binsema}):\\
+
+\>{\tiny 21}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 22}\'\>~~~~~~~~\texttt{\textbf{assert}}~\textit{binsema}$\rightarrow$acquired\\
+
+\>{\tiny 23}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{binsema}$\rightarrow$suspended~==~[~]:\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~\textit{binsema}$\rightarrow$acquired~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 25}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 26}\'\>~~~~~~~~~~~~\texttt{\textbf{go}}~(list.head(\textit{binsema}$\rightarrow$suspended))~()\\
+
+\>{\tiny 27}\'\>~~~~~~~~~~~~\textit{binsema}$\rightarrow$suspended~=~list.tail(\textit{binsema}$\rightarrow$suspended)\\
+
+\>{\tiny 28}\'\>\\
+
+\>{\tiny 29}\'\>\texttt{\textbf{def}}~held(\textit{binsema}):\\
+
+\>{\tiny 30}\'\>~~~~\textit{result}~=~\textit{binsema}$\rightarrow$acquired

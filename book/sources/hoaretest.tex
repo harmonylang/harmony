@@ -1,0 +1,51 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~hoare;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~acquire():\\
+
+\>{\tiny 4}\'\>~~~~\textit{mon\_enter}();\\
+
+\>{\tiny 5}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{busy}:\\
+
+\>{\tiny 6}\'\>~~~~~~~~~~~~wait(?\textit{nonbusy});\\
+
+\>{\tiny 7}\'\>~~~~~~~~;\\
+
+\>{\tiny 8}\'\>~~~~~~~~\textit{busy}~=~\texttt{\textbf{True}};\\
+
+\>{\tiny 9}\'\>~~~~\textit{mon\_exit}();\\
+
+\>{\tiny 10}\'\>;\\
+
+\>{\tiny 11}\'\>\texttt{\textbf{def}}~release():\\
+
+\>{\tiny 12}\'\>~~~~\textit{mon\_enter}();\\
+
+\>{\tiny 13}\'\>~~~~~~~~\textit{busy}~=~\texttt{\textbf{False}};\\
+
+\>{\tiny 14}\'\>~~~~~~~~signal(?\textit{nonbusy});\\
+
+\>{\tiny 15}\'\>~~~~\textit{mon\_exit}();\\
+
+\>{\tiny 16}\'\>;\\
+
+\>{\tiny 17}\'\>\textit{mutex}~=~\textit{Semaphore}(1);\\
+
+\>{\tiny 18}\'\>\textit{nonbusy}~=~\textit{Condition}(?\textit{mutex});\\
+
+\>{\tiny 19}\'\>\textit{busy}~=~\texttt{\textbf{False}};\\
+
+\>{\tiny 20}\'\>\\
+
+\>{\tiny 21}\'\>\texttt{\textbf{def}}~process():\\
+
+\>{\tiny 22}\'\>~~~~acquire();\\
+
+\>{\tiny 23}\'\>~~~~release();\\
+
+\>{\tiny 24}\'\>;\\
+
+\>{\tiny 25}\'\>\texttt{\textbf{spawn}}~process();\\
+
+\>{\tiny 26}\'\>\texttt{\textbf{spawn}}~process();

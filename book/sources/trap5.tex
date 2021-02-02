@@ -1,0 +1,37 @@
+\>{\tiny 1}\'\>\textit{count}~=~0\\
+
+\>{\tiny 2}\'\>\textit{done}~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 3}\'\>\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{def}}~increment():\\
+
+\>{\tiny 5}\'\>~~~~\texttt{\textbf{let}}~\textit{prior}~=~\texttt{\textbf{setintlevel}}(\texttt{\textbf{True}}):\\
+
+\>{\tiny 6}\'\>~~~~~~~~\textit{count}~+=~1\\
+
+\>{\tiny 7}\'\>~~~~~~~~\texttt{\textbf{setintlevel}}(\textit{prior})\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~handler():\\
+
+\>{\tiny 10}\'\>~~~~increment()\\
+
+\>{\tiny 11}\'\>~~~~\textit{done}~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 12}\'\>\\
+
+\>{\tiny 13}\'\>\texttt{\textbf{def}}~main():\\
+
+\>{\tiny 14}\'\>~~~~\texttt{\textbf{trap}}~handler()\\
+
+\>{\tiny 15}\'\>~~~~increment()\\
+
+\>{\tiny 16}\'\>~~~~\texttt{\textbf{await}}~\textit{done}\\
+
+\>{\tiny 17}\'\>~~~~\texttt{\textbf{assert}}~\textit{count}~==~2\\
+
+\>{\tiny 18}\'\>\\
+
+\>{\tiny 19}\'\>\texttt{\textbf{spawn}}~main()

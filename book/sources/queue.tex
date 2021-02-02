@@ -1,0 +1,55 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Lock,~acquire,~release\\
+
+\>{\tiny 2}\'\>\texttt{\textbf{from}}~alloc~\texttt{\textbf{import}}~malloc,~free\\
+
+\>{\tiny 3}\'\>\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{def}}~Queue():\\
+
+\>{\tiny 5}\'\>~~~~\textit{result}~=~\{~.head:~\texttt{\textbf{None}},~.tail:~\texttt{\textbf{None}},~.lock:~Lock()~\}\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~put(\textit{q},~\textit{v}):\\
+
+\>{\tiny 8}\'\>~~~~\texttt{\textbf{let}}~\textit{node}~=~malloc(\{~.value:~\textit{v},~.next:~\texttt{\textbf{None}}~\}):\\
+
+\>{\tiny 9}\'\>~~~~~~~~acquire(?\textit{q}$\rightarrow$lock)\\
+
+\>{\tiny 10}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{q}$\rightarrow$head~==~\texttt{\textbf{None}}:\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~\textit{q}$\rightarrow$head~=~\textit{q}$\rightarrow$tail~=~\textit{node}\\
+
+\>{\tiny 12}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~\textit{q}$\rightarrow$tail$\rightarrow$next~=~\textit{node}\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~\textit{q}$\rightarrow$tail~=~\textit{node}\\
+
+\>{\tiny 15}\'\>~~~~~~~~release(?\textit{q}$\rightarrow$lock)\\
+
+\>{\tiny 16}\'\>~~~~\\
+
+\>{\tiny 17}\'\>\texttt{\textbf{def}}~get(\textit{q}):\\
+
+\>{\tiny 18}\'\>~~~~acquire(?\textit{q}$\rightarrow$lock)\\
+
+\>{\tiny 19}\'\>~~~~\texttt{\textbf{let}}~\textit{node}~=~\textit{q}$\rightarrow$head:\\
+
+\>{\tiny 20}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{node}~==~\texttt{\textbf{None}}:\\
+
+\>{\tiny 21}\'\>~~~~~~~~~~~~\textit{result}~=~\texttt{\textbf{None}}\\
+
+\>{\tiny 22}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 23}\'\>~~~~~~~~~~~~\textit{result}~=~\textit{node}$\rightarrow$value\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~\textit{q}$\rightarrow$head~=~\textit{node}$\rightarrow$next\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~~~\texttt{\textbf{if}}~\textit{q}$\rightarrow$head~==~\texttt{\textbf{None}}:\\
+
+\>{\tiny 26}\'\>~~~~~~~~~~~~~~~~\textit{q}$\rightarrow$tail~=~\texttt{\textbf{None}}\\
+
+\>{\tiny 27}\'\>~~~~~~~~~~~~free(\textit{node})\\
+
+\>{\tiny 28}\'\>~~~~release(?\textit{q}$\rightarrow$lock)

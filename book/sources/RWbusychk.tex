@@ -1,0 +1,47 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~RW;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NREADERS~=~3;\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{const}}~NWRITERS~=~3;\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~reader(\textit{self}):\\
+
+\>{\tiny 7}\'\>~~~~\textit{acquire\_rlock}();\\
+
+\>{\tiny 8}\'\>~~~~@rcs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{\};\\
+
+\>{\tiny 9}\'\>~~~~\textit{release\_rlock}();\\
+
+\>{\tiny 10}\'\>;\\
+
+\>{\tiny 11}\'\>\texttt{\textbf{def}}~writer():\\
+
+\>{\tiny 12}\'\>~~~~\textit{acquire\_wlock}();\\
+
+\>{\tiny 13}\'\>~~~~@wcs:~\texttt{\textbf{assert}}~(\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{~\textit{nametag}():~1~\})~\texttt{\textbf{and}}\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~~~~~~(\texttt{\textbf{atLabel}}.rcs~==~\texttt{\textbf{dict}}\{\})\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~;\\
+
+\>{\tiny 16}\'\>~~~~\textit{release\_wlock}();\\
+
+\>{\tiny 17}\'\>;\\
+
+\>{\tiny 18}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NREADERS\}:\\
+
+\>{\tiny 19}\'\>~~~~\texttt{\textbf{spawn}}~reader(\textit{i});\\
+
+\>{\tiny 20}\'\>;\\
+
+\>{\tiny 21}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NWRITERS\}:\\
+
+\>{\tiny 22}\'\>~~~~\texttt{\textbf{spawn}}~writer();\\
+
+\>{\tiny 23}\'\>;\\
+
+\>{\tiny 24}\'\>\textit{acquire\_wlock}();

@@ -1,0 +1,29 @@
+\>{\tiny 1}\'\>\textit{lock}~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~tas(\textit{s}):\\
+
+\>{\tiny 4}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 5}\'\>~~~~~~~~\textit{result}~=~!\textit{s}\\
+
+\>{\tiny 6}\'\>~~~~~~~~!\textit{s}~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 7}\'\>~~~~\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{def}}~thread():\\
+
+\>{\tiny 9}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 10}\'\>~~~~~~~~\texttt{\textbf{await}}~\texttt{\textbf{not}}~tas(?\textit{lock})\\
+
+\>{\tiny 11}\'\>~~~~~~~~@cs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}(cs)~==~\{~(thread,~()):~1~\}\\
+
+\>{\tiny 12}\'\>~~~~~~~~\textit{lock}~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 13}\'\>~~~~\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..10\}:\\
+
+\>{\tiny 15}\'\>~~~~\texttt{\textbf{spawn}}~thread()

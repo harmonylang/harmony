@@ -1,0 +1,71 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~RWlock;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NREADERS~=~3;\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{const}}~NWRITERS~=~2;\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~reader(\textit{self}):\\
+
+\>{\tiny 7}\'\>~~~~\textit{acquire\_rlock}();\\
+
+\>{\tiny 8}\'\>~~~~@rcs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{\};\\
+
+\>{\tiny 9}\'\>~~~~\textit{flags}[\textit{self}]~=~\texttt{\textbf{True}};\\
+
+\>{\tiny 10}\'\>~~~~\texttt{\textbf{if}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 11}\'\>~~~~~~~~\texttt{\textbf{let}}~\textit{blocked}~=~\texttt{\textbf{True}}:\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~\texttt{\textbf{while}}~\textit{blocked}:\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{if}}~\texttt{\textbf{all}}(\textit{flags}[\textit{i}]~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NREADERS\}):\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~~~~~~~~~\textit{blocked}~=~\texttt{\textbf{False}};\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~~~~~;\\
+
+\>{\tiny 16}\'\>~~~~~~~~~~~~;\\
+
+\>{\tiny 17}\'\>~~~~~~~~;\\
+
+\>{\tiny 18}\'\>~~~~;\\
+
+\>{\tiny 19}\'\>~~~~\textit{release\_rlock}();\\
+
+\>{\tiny 20}\'\>;\\
+
+\>{\tiny 21}\'\>\texttt{\textbf{def}}~writer():\\
+
+\>{\tiny 22}\'\>~~~~\textit{acquire\_wlock}();\\
+
+\>{\tiny 23}\'\>~~~~@wcs:~\texttt{\textbf{assert}}~(\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{~\textit{nametag}():~1~\})~\texttt{\textbf{and}}\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~~~~~~(\texttt{\textbf{atLabel}}.rcs~==~\texttt{\textbf{dict}}\{\})\\
+
+\>{\tiny 25}\'\>~~~~~~~~~~;\\
+
+\>{\tiny 26}\'\>~~~~\textit{release\_wlock}();\\
+
+\>{\tiny 27}\'\>;\\
+
+\>{\tiny 28}\'\>\textit{rwlock}~=~\textit{Lock}();\\
+
+\>{\tiny 29}\'\>\textit{nreaders}~=~0;\\
+
+\>{\tiny 30}\'\>\textit{flags}~=~\texttt{\textbf{dict}}\{~\texttt{\textbf{False}}~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NREADERS\}~\};\\
+
+\>{\tiny 31}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NREADERS\}:\\
+
+\>{\tiny 32}\'\>~~~~\texttt{\textbf{spawn}}~reader(\textit{i});\\
+
+\>{\tiny 33}\'\>;\\
+
+\>{\tiny 34}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NWRITERS\}:\\
+
+\>{\tiny 35}\'\>~~~~\texttt{\textbf{spawn}}~writer();\\
+
+\>{\tiny 36}\'\>;

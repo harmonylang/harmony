@@ -1,0 +1,39 @@
+\>{\tiny 1}\'\>\texttt{\textbf{def}}~Semaphore(\textit{cnt}):\\
+
+\>{\tiny 2}\'\>~~~~\textit{result}~=~\textit{cnt};\\
+
+\>{\tiny 3}\'\>;\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{def}}~P(\textit{sema}):\\
+
+\>{\tiny 5}\'\>~~~~\texttt{\textbf{let}}~\textit{blocked}~=~\texttt{\textbf{True}}:\\
+
+\>{\tiny 6}\'\>~~~~~~~~\texttt{\textbf{while}}~\textit{blocked}:\\
+
+\>{\tiny 7}\'\>~~~~~~~~~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~~~~~\texttt{\textbf{if}}~(!\textit{sema})~$>$~0:\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~~~~~~~~~!\textit{sema}~--=~1;\\
+
+\>{\tiny 10}\'\>~~~~~~~~~~~~~~~~~~~~\textit{blocked}~=~\texttt{\textbf{False}};\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~~~~~;\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~;\\
+
+\>{\tiny 13}\'\>~~~~~~~~;\\
+
+\>{\tiny 14}\'\>~~~~;\\
+
+\>{\tiny 15}\'\>;\\
+
+\>{\tiny 16}\'\>\texttt{\textbf{def}}~V(\textit{sema}):\\
+
+\>{\tiny 17}\'\>~~~~\texttt{\textbf{atomic}}:\\
+
+\>{\tiny 18}\'\>~~~~~~~~!\textit{sema}~+=~1;\\
+
+\>{\tiny 19}\'\>~~~~;\\
+
+\>{\tiny 20}\'\>;

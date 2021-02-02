@@ -1,0 +1,49 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Lock,~acquire,~release\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\textit{count}~=~0\\
+
+\>{\tiny 4}\'\>\textit{countlock}~=~Lock()\\
+
+\>{\tiny 5}\'\>\textit{done}~=~[~\texttt{\textbf{False}},~\texttt{\textbf{False}}~]\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~increment():\\
+
+\>{\tiny 8}\'\>~~~~\texttt{\textbf{let}}~\textit{prior}~=~\texttt{\textbf{setintlevel}}(\texttt{\textbf{True}}):\\
+
+\>{\tiny 9}\'\>~~~~~~~~acquire(?\textit{countlock})\\
+
+\>{\tiny 10}\'\>~~~~~~~~\textit{count}~+=~1\\
+
+\>{\tiny 11}\'\>~~~~~~~~release(?\textit{countlock})\\
+
+\>{\tiny 12}\'\>~~~~~~~~\texttt{\textbf{setintlevel}}(\textit{prior})\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{def}}~handler(\textit{self}):\\
+
+\>{\tiny 15}\'\>~~~~increment()\\
+
+\>{\tiny 16}\'\>~~~~\textit{done}[\textit{self}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 17}\'\>\\
+
+\>{\tiny 18}\'\>\texttt{\textbf{def}}~thread(\textit{self}):\\
+
+\>{\tiny 19}\'\>~~~~\texttt{\textbf{trap}}~handler(\textit{self})\\
+
+\>{\tiny 20}\'\>~~~~increment()\\
+
+\>{\tiny 21}\'\>~~~~\texttt{\textbf{await}}~\texttt{\textbf{all}}(\textit{done})\\
+
+\>{\tiny 22}\'\>~~~~\texttt{\textbf{assert}}~\textit{count}~==~4,~\textit{count}\\
+
+\>{\tiny 23}\'\>\\
+
+\>{\tiny 24}\'\>\texttt{\textbf{spawn}}~thread(0)\\
+
+\>{\tiny 25}\'\>\texttt{\textbf{spawn}}~thread(1)

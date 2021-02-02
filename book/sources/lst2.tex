@@ -1,0 +1,67 @@
+\>{\tiny 1}\'\>\texttt{\textbf{def}}~lst\_find(\textit{lst},~\textit{v}):~~~\emph{\# find 'neighboring' nodes of v in list}\\
+
+\>{\tiny 2}\'\>~~~~\texttt{\textbf{let}}~\textit{before}~=~\textit{lst}~\texttt{\textbf{let}}~\textit{after}~=~\textit{before}$\rightarrow$next:\\
+
+\>{\tiny 3}\'\>~~~~~~~~acquire(?\textit{before}$\rightarrow$lock)\\
+
+\>{\tiny 4}\'\>~~~~~~~~acquire(?\textit{after}$\rightarrow$lock)\\
+
+\>{\tiny 5}\'\>~~~~~~~~\texttt{\textbf{while}}~\textit{after}$\rightarrow$value~$<$~\textit{v}:\\
+
+\>{\tiny 6}\'\>~~~~~~~~~~~~release(?\textit{before}$\rightarrow$lock)\\
+
+\>{\tiny 7}\'\>~~~~~~~~~~~~\textit{before}~=~\textit{after}\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~\textit{after}~=~\textit{before}$\rightarrow$next\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~acquire(?\textit{after}$\rightarrow$lock)\\
+
+\>{\tiny 10}\'\>~~~~~~~~\textit{result}~=~(\textit{before},~\textit{after})\\
+
+\>{\tiny 11}\'\>\\
+
+\>{\tiny 12}\'\>\texttt{\textbf{def}}~lst\_insert(\textit{lst},~\textit{v}):\\
+
+\>{\tiny 13}\'\>~~~~\texttt{\textbf{let}}~\textit{before},~\textit{after}~=~lst\_find(\textit{lst},~\textit{v}):\\
+
+\>{\tiny 14}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{after}$\rightarrow$value~!=~\textit{v}:\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~\textit{before}$\rightarrow$next~=~\textit{lst\_node}(\textit{v},~\textit{after})\\
+
+\>{\tiny 16}\'\>~~~~~~~~release(?\textit{before}$\rightarrow$lock)\\
+
+\>{\tiny 17}\'\>~~~~~~~~release(?\textit{after}$\rightarrow$lock)\\
+
+\>{\tiny 18}\'\>\\
+
+\>{\tiny 19}\'\>\texttt{\textbf{def}}~lst\_remove(\textit{lst},~\textit{v}):\\
+
+\>{\tiny 20}\'\>~~~~\texttt{\textbf{let}}~\textit{before},~\textit{after}~=~lst\_find(\textit{lst},~\textit{v}):\\
+
+\>{\tiny 21}\'\>~~~~~~~~\texttt{\textbf{if}}~\textit{after}$\rightarrow$value~==~\textit{v}:\\
+
+\>{\tiny 22}\'\>~~~~~~~~~~~~\textit{before}$\rightarrow$next~=~\textit{after}$\rightarrow$next\\
+
+\>{\tiny 23}\'\>~~~~~~~~~~~~release(?\textit{after}$\rightarrow$lock)\\
+
+\>{\tiny 24}\'\>~~~~~~~~~~~~free(\textit{after})\\
+
+\>{\tiny 25}\'\>~~~~~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 26}\'\>~~~~~~~~~~~~release(?\textit{after}$\rightarrow$lock)\\
+
+\>{\tiny 27}\'\>~~~~~~~~\\
+
+\>{\tiny 28}\'\>~~~~~~~~release(?\textit{before}$\rightarrow$lock)\\
+
+\>{\tiny 29}\'\>\\
+
+\>{\tiny 30}\'\>\textit{mylist}~=~\textit{lst\_node}(--\texttt{\textbf{inf}},~\textit{lst\_node}(\texttt{\textbf{inf}},~\texttt{\textbf{None}}))\\
+
+\>{\tiny 31}\'\>lst\_insert(\textit{mylist},~3)\\
+
+\>{\tiny 32}\'\>\texttt{\textbf{assert}}~\textit{lst\_contains}(\textit{mylist},~3)\\
+
+\>{\tiny 33}\'\>lst\_remove(\textit{mylist},~3)\\
+
+\>{\tiny 34}\'\>\texttt{\textbf{assert}}~\texttt{\textbf{not}}~\textit{lst\_contains}(\textit{mylist},~3)

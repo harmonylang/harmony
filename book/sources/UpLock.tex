@@ -1,0 +1,29 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Lock,~acquire,~release\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\textit{count}~=~0\\
+
+\>{\tiny 4}\'\>\textit{countlock}~=~Lock()\\
+
+\>{\tiny 5}\'\>\textit{done}~=~[~\texttt{\textbf{False}},~\texttt{\textbf{False}}~]\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~thread(\textit{self}):\\
+
+\>{\tiny 8}\'\>~~~~acquire(?\textit{countlock})\\
+
+\>{\tiny 9}\'\>~~~~\textit{count}~=~\textit{count}~+~1\\
+
+\>{\tiny 10}\'\>~~~~release(?\textit{countlock})\\
+
+\>{\tiny 11}\'\>~~~~\textit{done}[\textit{self}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 12}\'\>~~~~\texttt{\textbf{await}}~\textit{done}[1~--~\textit{self}]\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{spawn}}~thread(0)\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{spawn}}~thread(1)

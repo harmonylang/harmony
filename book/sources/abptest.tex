@@ -1,0 +1,29 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~abp\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NMSGS~=~5\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\texttt{\textbf{def}}~sender():\\
+
+\>{\tiny 6}\'\>~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NMSGS\}:\\
+
+\>{\tiny 7}\'\>~~~~~~~~abp.app\_send(\textit{i})\\
+
+\>{\tiny 8}\'\>~~~~\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~receiver():\\
+
+\>{\tiny 10}\'\>~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..NMSGS\}:\\
+
+\>{\tiny 11}\'\>~~~~~~~~\texttt{\textbf{let}}~\textit{payload}~=~abp.app\_recv(\textit{i}~==~NMSGS):\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~\texttt{\textbf{assert}}~\textit{payload}~==~\textit{i}\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{spawn}}~sender()\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{spawn}}~receiver()

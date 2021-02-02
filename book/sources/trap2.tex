@@ -1,0 +1,27 @@
+\>{\tiny 1}\'\>\textit{count}~=~0\\
+
+\>{\tiny 2}\'\>\textit{done}~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 3}\'\>\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{def}}~handler():\\
+
+\>{\tiny 5}\'\>~~~~\textit{count}~+=~1\\
+
+\>{\tiny 6}\'\>~~~~\textit{done}~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 7}\'\>\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{def}}~main():\\
+
+\>{\tiny 9}\'\>~~~~\texttt{\textbf{trap}}~handler()\\
+
+\>{\tiny 10}\'\>~~~~\textit{count}~+=~1\\
+
+\>{\tiny 11}\'\>~~~~\texttt{\textbf{await}}~\textit{done}\\
+
+\>{\tiny 12}\'\>~~~~\texttt{\textbf{assert}}~\textit{count}~==~2\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{spawn}}~main()

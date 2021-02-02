@@ -1,0 +1,29 @@
+\>{\tiny 1}\'\>\textit{x},~\textit{y}~=~0,~100\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~setX(\textit{a}):\\
+
+\>{\tiny 4}\'\>~~~~\textit{x}~=~\textit{a}\\
+
+\>{\tiny 5}\'\>~~~~\textit{y}~=~100~--~\textit{a}\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{def}}~getXY():\\
+
+\>{\tiny 8}\'\>~~~~\textit{result}~=~[\textit{x},~\textit{y}]\\
+
+\>{\tiny 9}\'\>\\
+
+\>{\tiny 10}\'\>\texttt{\textbf{def}}~checker():\\
+
+\>{\tiny 11}\'\>~~~~\texttt{\textbf{let}}~\textit{xy}~=~getXY():\\
+
+\>{\tiny 12}\'\>~~~~~~~~\texttt{\textbf{assert}}~(\textit{xy}[0]~+~\textit{xy}[1])~==~100,~\textit{xy}\\
+
+\>{\tiny 13}\'\>~~~~\\
+
+\>{\tiny 14}\'\>\texttt{\textbf{spawn}}~checker()\\
+
+\>{\tiny 15}\'\>\texttt{\textbf{spawn}}~setX(50)

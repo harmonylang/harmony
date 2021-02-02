@@ -1,0 +1,35 @@
+\>{\tiny 1}\'\>\textit{flags}~=~[~\texttt{\textbf{False}},~\texttt{\textbf{False}}~]\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~thread(\textit{self}):\\
+
+\>{\tiny 4}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 5}\'\>~~~~~~~~\emph{\# Enter critical section}\\
+
+\>{\tiny 6}\'\>~~~~~~~~\textit{flags}[\textit{self}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 7}\'\>~~~~~~~~\texttt{\textbf{while}}~\textit{flags}[1~--~\textit{self}]:\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~\textit{flags}[\textit{self}]~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~\textit{flags}[\textit{self}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 10}\'\>~~~~~~~~\\
+
+\>{\tiny 11}\'\>~~~~~~~~\emph{\# Critical section}\\
+
+\>{\tiny 12}\'\>~~~~~~~~@cs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}(cs)~==~\{~(thread,~\textit{self}):~1~\}\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>~~~~~~~~\emph{\# Leave critical section}\\
+
+\>{\tiny 15}\'\>~~~~~~~~\textit{flags}[\textit{self}]~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 16}\'\>\\
+
+\>{\tiny 17}\'\>\texttt{\textbf{spawn}}~thread(0)\\
+
+\>{\tiny 18}\'\>\texttt{\textbf{spawn}}~thread(1)

@@ -1,0 +1,45 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~RWqueue;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NPROCS~=~3;\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\texttt{\textbf{def}}~process(\textit{self}):\\
+
+\>{\tiny 6}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 7}\'\>~~~~~~~~\texttt{\textbf{if}}~\texttt{\textbf{choose}}(\{~.read,~.write~\})~==~.read:\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~\textit{acquire\_rlock}(?\textit{semas}[\textit{self}]);\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~@rcs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{\};\\
+
+\>{\tiny 10}\'\>~~~~~~~~~~~~\textit{release\_rlock}();\\
+
+\>{\tiny 11}\'\>~~~~~~~~\texttt{\textbf{else}}:~~~~~~~~~~~~~~~~~~~~~~~\emph{\# .write}\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~\textit{acquire\_wlock}(?\textit{semas}[\textit{self}]);\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~@wcs:~\texttt{\textbf{assert}}~(\texttt{\textbf{atLabel}}.wcs~==~\texttt{\textbf{dict}}\{~\textit{nametag}():~1~\})~\texttt{\textbf{and}}\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~~~~~~~~~~~~~~(\texttt{\textbf{atLabel}}.rcs~==~\texttt{\textbf{dict}}\{\})\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~~~~~~~;\\
+
+\>{\tiny 16}\'\>~~~~~~~~~~~~\textit{release\_wlock}();\\
+
+\>{\tiny 17}\'\>~~~~~~~~;\\
+
+\>{\tiny 18}\'\>~~~~;\\
+
+\>{\tiny 19}\'\>;\\
+
+\>{\tiny 20}\'\>\textit{semas}~=~[~\textit{Semaphore}(0)~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..NPROCS--1\}~];\\
+
+\>{\tiny 21}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{0..NPROCS--1\}:\\
+
+\>{\tiny 22}\'\>~~~~\texttt{\textbf{spawn}}~process(\textit{i});\\
+
+\>{\tiny 23}\'\>;

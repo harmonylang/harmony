@@ -1,0 +1,15 @@
+\>{\tiny 1}\'\>\texttt{\textbf{def}}~thread(\textit{self}):\\
+
+\>{\tiny 2}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{True}}:\\
+
+\>{\tiny 3}\'\>~~~~~~~~\emph{\#enter critical section}\\
+
+\>{\tiny 4}\'\>~~~~~~~~@cs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}(cs)~==~\{~(thread,~\textit{self}):~1~\}\\
+
+\>{\tiny 5}\'\>~~~~~~~~\emph{\#exit critical section}\\
+
+\>{\tiny 6}\'\>~~~~\\
+
+\>{\tiny 7}\'\>\texttt{\textbf{spawn}}~thread(0)\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{spawn}}~thread(1)

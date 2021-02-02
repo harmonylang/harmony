@@ -1,0 +1,45 @@
+\>{\tiny 1}\'\>\texttt{\textbf{def}}~P\_enter(\textit{pm},~\textit{pid}):\\
+
+\>{\tiny 2}\'\>~~~~\textit{pm}$\rightarrow$flags[\textit{pid}]~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 3}\'\>~~~~\textit{pm}$\rightarrow$turn~=~1~--~\textit{pid}\\
+
+\>{\tiny 4}\'\>~~~~\texttt{\textbf{await}}~(\texttt{\textbf{not}}~\textit{pm}$\rightarrow$flags[1~--~\textit{pid}])~\texttt{\textbf{or}}~(\textit{pm}$\rightarrow$turn~==~\textit{pid})\\
+
+\>{\tiny 5}\'\>\\
+
+\>{\tiny 6}\'\>\texttt{\textbf{def}}~P\_exit(\textit{pm},~\textit{pid}):\\
+
+\>{\tiny 7}\'\>~~~~\textit{pm}$\rightarrow$flags[\textit{pid}]~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 8}\'\>\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{def}}~P\_mutex():\\
+
+\>{\tiny 10}\'\>~~~~\textit{result}~=~\{~.turn:~\texttt{\textbf{choose}}(\{0,~1\}),~.flags:~[~\texttt{\textbf{False}},~\texttt{\textbf{False}}~]~\}\\
+
+\>{\tiny 11}\'\>\\
+
+\>{\tiny 12}\'\>\emph{\#\#\#\# The code above can go into its own Harmony module \#\#\#\#}\\
+
+\>{\tiny 13}\'\>\\
+
+\>{\tiny 14}\'\>\textit{mutex}~=~P\_mutex()\\
+
+\>{\tiny 15}\'\>\\
+
+\>{\tiny 16}\'\>\texttt{\textbf{def}}~thread(\textit{self}):\\
+
+\>{\tiny 17}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 18}\'\>~~~~~~~~P\_enter(?\textit{mutex},~\textit{self})\\
+
+\>{\tiny 19}\'\>~~~~~~~~@cs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}(cs)~==~\{~(thread,~\textit{self}):~1~\}\\
+
+\>{\tiny 20}\'\>~~~~~~~~P\_exit(?\textit{mutex},~\textit{self})\\
+
+\>{\tiny 21}\'\>\\
+
+\>{\tiny 22}\'\>\texttt{\textbf{spawn}}~thread(0)\\
+
+\>{\tiny 23}\'\>\texttt{\textbf{spawn}}~thread(1)

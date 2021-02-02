@@ -1,0 +1,37 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~RW\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\textit{rw}~=~RW.RWlock()\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\texttt{\textbf{def}}~thread():\\
+
+\>{\tiny 6}\'\>~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 7}\'\>~~~~~~~~\texttt{\textbf{if}}~\texttt{\textbf{choose}}(\{~.read,~.write~\})~==~.read:\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~RW.read\_acquire(?\textit{rw})\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~@rcs:~\texttt{\textbf{assert}}~\texttt{\textbf{atLabel}}(\textit{wcs})~==~()\\
+
+\>{\tiny 10}\'\>~~~~~~~~~~~~RW.read\_release(?\textit{rw})\\
+
+\>{\tiny 11}\'\>~~~~~~~~\texttt{\textbf{else}}:~~~~~~~~~~~~~~~~~~~~~~~\emph{\# .write}\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~RW.write\_acquire(?\textit{rw})\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~@wcs:~\texttt{\textbf{assert}}~(\texttt{\textbf{atLabel}}(wcs)~==~\{~(thread,~()):~1~\})~\texttt{\textbf{and}}\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~~~~~~~~~~~~~~(\texttt{\textbf{atLabel}}(rcs)~==~())\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~RW.write\_release(?\textit{rw})\\
+
+\>{\tiny 16}\'\>\\
+
+\>{\tiny 17}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..3\}:\\
+
+\>{\tiny 18}\'\>~~~~\texttt{\textbf{spawn}}~thread()\\
+
+\>{\tiny 19}\'\>

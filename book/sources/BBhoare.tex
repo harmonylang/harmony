@@ -1,0 +1,59 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~hoare\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{def}}~BB(\textit{size}):\\
+
+\>{\tiny 4}\'\>~~~~\textit{result}~=~\{\\
+
+\>{\tiny 5}\'\>~~~~~~~~~~~~.mon:~hoare.Monitor(),\\
+
+\>{\tiny 6}\'\>~~~~~~~~~~~~.prod:~hoare.Condition(),~.cons:~hoare.Condition(),\\
+
+\>{\tiny 7}\'\>~~~~~~~~~~~~.buf:~\{~\textit{x}:()~\texttt{\textbf{for}}~\textit{x}~\texttt{\textbf{in}}~\{1..\textit{size}\}~\},\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~.head:~1,~.tail:~1,\\
+
+\>{\tiny 9}\'\>~~~~~~~~~~~~.count:~0,~.size:~size\\
+
+\>{\tiny 10}\'\>~~~~~~~~\}\\
+
+\>{\tiny 11}\'\>~~~~\\
+
+\>{\tiny 12}\'\>\texttt{\textbf{def}}~put(\textit{bb},~\textit{item}):\\
+
+\>{\tiny 13}\'\>~~~~hoare.enter(?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 14}\'\>~~~~\texttt{\textbf{if}}~\textit{bb}$\rightarrow$count~==~\textit{bb}$\rightarrow$size:\\
+
+\>{\tiny 15}\'\>~~~~~~~~hoare.wait(?\textit{bb}$\rightarrow$prod,~?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 16}\'\>~~~~\textit{bb}$\rightarrow$buf[\textit{bb}$\rightarrow$tail]~=~\textit{item}\\
+
+\>{\tiny 17}\'\>~~~~\textit{bb}$\rightarrow$tail~=~(\textit{bb}$\rightarrow$tail~\%~\textit{bb}$\rightarrow$size)~+~1\\
+
+\>{\tiny 18}\'\>~~~~\textit{bb}$\rightarrow$count~+=~1\\
+
+\>{\tiny 19}\'\>~~~~hoare.signal(?\textit{bb}$\rightarrow$cons,~?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 20}\'\>~~~~hoare.exit(?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 21}\'\>\\
+
+\>{\tiny 22}\'\>\texttt{\textbf{def}}~get(\textit{bb}):\\
+
+\>{\tiny 23}\'\>~~~~hoare.enter(?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 24}\'\>~~~~\texttt{\textbf{if}}~\textit{bb}$\rightarrow$count~==~0:\\
+
+\>{\tiny 25}\'\>~~~~~~~~hoare.wait(?\textit{bb}$\rightarrow$cons,~?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 26}\'\>~~~~\textit{result}~=~\textit{bb}$\rightarrow$buf[\textit{bb}$\rightarrow$head]\\
+
+\>{\tiny 27}\'\>~~~~\textit{bb}$\rightarrow$head~=~(\textit{bb}$\rightarrow$head~\%~\textit{bb}$\rightarrow$size)~+~1\\
+
+\>{\tiny 28}\'\>~~~~\textit{bb}$\rightarrow$count~--=~1\\
+
+\>{\tiny 29}\'\>~~~~hoare.signal(?\textit{bb}$\rightarrow$prod,~?\textit{bb}$\rightarrow$mon)\\
+
+\>{\tiny 30}\'\>~~~~hoare.exit(?\textit{bb}$\rightarrow$mon)

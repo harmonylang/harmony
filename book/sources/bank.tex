@@ -1,0 +1,55 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~Lock,~acquire,~release\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~MAX\_BALANCE~=~2\\
+
+\>{\tiny 4}\'\>\texttt{\textbf{const}}~N\_ACCOUNTS~=~2\\
+
+\>{\tiny 5}\'\>\texttt{\textbf{const}}~N\_THREADS~=~2\\
+
+\>{\tiny 6}\'\>\\
+
+\>{\tiny 7}\'\>\textit{accounts}~=~[~\{~.lock:~Lock(),~.balance:~\texttt{\textbf{choose}}(\{0..MAX\_BALANCE\})\}\\
+
+\>{\tiny 8}\'\>~~~~~~~~~~~~~~~~~~~~~~~~~~~~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..N\_ACCOUNTS\}~]\\
+
+\>{\tiny 9}\'\>\\
+
+\>{\tiny 10}\'\>\texttt{\textbf{def}}~transfer(\textit{a1},~\textit{a2},~\textit{amount}):\\
+
+\>{\tiny 11}\'\>~~~~acquire(?\textit{accounts}[\textit{a1}].lock)\\
+
+\>{\tiny 12}\'\>~~~~\texttt{\textbf{if}}~\textit{amount}~$<=$~\textit{accounts}[\textit{a1}].balance:\\
+
+\>{\tiny 13}\'\>~~~~~~~~\textit{accounts}[\textit{a1}].balance~--=~\textit{amount}~\\
+
+\>{\tiny 14}\'\>~~~~~~~~acquire(?\textit{accounts}[\textit{a2}].lock)\\
+
+\>{\tiny 15}\'\>~~~~~~~~\textit{accounts}[\textit{a2}].balance~+=~\textit{amount}~\\
+
+\>{\tiny 16}\'\>~~~~~~~~release(?\textit{accounts}[\textit{a2}].lock)\\
+
+\>{\tiny 17}\'\>~~~~~~~~\textit{result}~=~\texttt{\textbf{True}}\\
+
+\>{\tiny 18}\'\>~~~~\texttt{\textbf{else}}:\\
+
+\>{\tiny 19}\'\>~~~~~~~~\textit{result}~=~\texttt{\textbf{False}}\\
+
+\>{\tiny 20}\'\>~~~~release(?\textit{accounts}[\textit{a1}].lock)\\
+
+\>{\tiny 21}\'\>\\
+
+\>{\tiny 22}\'\>\texttt{\textbf{def}}~thread():\\
+
+\>{\tiny 23}\'\>~~~~\texttt{\textbf{let}}~\textit{a1}~=~\texttt{\textbf{choose}}(\{0..N\_ACCOUNTS--1\})\\
+
+\>{\tiny 24}\'\>~~~~\texttt{\textbf{let}}~\textit{a2}~=~\texttt{\textbf{choose}}(\{0..N\_ACCOUNTS--1\}~--~\{~\textit{a1}~\}):\\
+
+\>{\tiny 25}\'\>~~~~~~~~transfer(\textit{a1},~\textit{a2},~\texttt{\textbf{choose}}(\{0..MAX\_BALANCE\}))\\
+
+\>{\tiny 26}\'\>\\
+
+\>{\tiny 27}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..N\_THREADS\}:\\
+
+\>{\tiny 28}\'\>~~~~\texttt{\textbf{spawn}}~thread()

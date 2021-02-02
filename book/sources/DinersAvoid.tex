@@ -1,0 +1,41 @@
+\>{\tiny 1}\'\>\texttt{\textbf{from}}~synch~\texttt{\textbf{import}}~*\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~N~=~5\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\textit{forks}~=~[\textit{Lock}(),]~*~N\\
+
+\>{\tiny 6}\'\>\textit{sema}~=~\textit{Semaphore}(N~--~1)\\
+
+\>{\tiny 7}\'\>\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{def}}~diner(\textit{which}):\\
+
+\>{\tiny 9}\'\>~~~~\texttt{\textbf{let}}~\textit{left},~\textit{right}~=~(\textit{which}~--~1,~\textit{which}~\%~N):\\
+
+\>{\tiny 10}\'\>~~~~~~~~\texttt{\textbf{while}}~\texttt{\textbf{choose}}(\{~\texttt{\textbf{False}},~\texttt{\textbf{True}}~\}):\\
+
+\>{\tiny 11}\'\>~~~~~~~~~~~~P(?\textit{sema})\\
+
+\>{\tiny 12}\'\>~~~~~~~~~~~~acquire(?\textit{forks}[\textit{left}])\\
+
+\>{\tiny 13}\'\>~~~~~~~~~~~~acquire(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 14}\'\>~~~~~~~~~~~~\emph{\# dine}\\
+
+\>{\tiny 15}\'\>~~~~~~~~~~~~release(?\textit{forks}[\textit{left}])\\
+
+\>{\tiny 16}\'\>~~~~~~~~~~~~release(?\textit{forks}[\textit{right}])\\
+
+\>{\tiny 17}\'\>~~~~~~~~~~~~V(?\textit{sema})\\
+
+\>{\tiny 18}\'\>~~~~~~~~~~~~\emph{\# think}\\
+
+\>{\tiny 19}\'\>\\
+
+\>{\tiny 20}\'\>\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..N\}:\\
+
+\>{\tiny 21}\'\>~~~~\texttt{\textbf{spawn}}~diner(\textit{i})

@@ -1,0 +1,17 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~qsort,~\texttt{\textbf{bag}}\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{const}}~NITEMS~=~4\\
+
+\>{\tiny 4}\'\>\\
+
+\>{\tiny 5}\'\>\textit{a}~=~[~\texttt{\textbf{choose}}(\{1..NITEMS\})~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..\texttt{\textbf{choose}}(\{1..NITEMS\})\}~]\\
+
+\>{\tiny 6}\'\>\textit{testqs}~=~qsort.Qsort(\textit{a})\\
+
+\>{\tiny 7}\'\>\textit{sa}~=~qsort.sort(?\textit{testqs})\\
+
+\>{\tiny 8}\'\>\texttt{\textbf{assert}}~\texttt{\textbf{all}}(\textit{sa}[\textit{i}~--~1]~$<=$~\textit{sa}[\textit{i}]~\texttt{\textbf{for}}~\textit{i}~\texttt{\textbf{in}}~\{1..\texttt{\textbf{len}}(\textit{sa})--1\})~\emph{\# sorted?}\\
+
+\>{\tiny 9}\'\>\texttt{\textbf{assert}}~\texttt{\textbf{bag}}.fromList(\textit{a})~==~\texttt{\textbf{bag}}.fromList(\textit{sa});~\emph{\# is it a permutation?}

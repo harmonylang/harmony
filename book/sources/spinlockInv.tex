@@ -1,0 +1,11 @@
+\>{\tiny 1}\'\>\texttt{\textbf{import}}~spinlock;\\
+
+\>{\tiny 2}\'\>\\
+
+\>{\tiny 3}\'\>\texttt{\textbf{invariant}}~\texttt{\textbf{len}}([~\textit{x}\\
+
+\>{\tiny 4}\'\>~~~~\texttt{\textbf{for}}~\textit{x}~\texttt{\textbf{in}}~[spinlock.shared,]~+~spinlock.private\\
+
+\>{\tiny 5}\'\>~~~~\texttt{\textbf{where}}~\texttt{\textbf{not}}~\textit{x}~])~$<=$~1\\
+
+\>{\tiny 6}\'\>;
