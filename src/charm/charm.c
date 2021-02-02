@@ -1066,12 +1066,22 @@ static char *json_string_encode(char *s){
     while (*s != 0) {
         switch (*s) {
         case '\r':
+            *p++ = '\\'; *p++ = 'r';
+            break;
+        case '\n':
+            *p++ = '\\'; *p++ = 'n';
+            break;
+        case '\f':
+            *p++ = '\\'; *p++ = 'f';
             break;
         case '\t':
             *p++ = '\\'; *p++ = 't';
             break;
         case '"':
             *p++ = '\\'; *p++ = '"';
+            break;
+        case '\\':
+            *p++ = '\\'; *p++ = '\\';
             break;
         default:
             *p++ = *s;
