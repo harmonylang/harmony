@@ -1,8 +1,8 @@
 # mutual exclusion by infinite loop: safe but not live
 
 def process():
-    await False;
-    @cs: pass;    # critical section
-;
-spawn process();
-spawn process();
+    await False
+    @cs: pass    # critical section
+
+spawn process()
+spawn process()
