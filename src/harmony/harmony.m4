@@ -5329,7 +5329,14 @@ def main():
         with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         charm = "%s/.charm"%pathlib.Path.home()
-        if not os.path.exists(charm):
+        path = pathlib.Path(charm)
+        rebuild = testflag or not path.exists()
+        if not rebuild:
+            st = path.stat()
+            now = time.time()
+            if now - st.st_mtime > 15 * 60:
+                rebuild = True
+        if rebuild:
             with open("charm.c", "w") as fd:
                 print(charm_src, file=fd)
             if testflag:
