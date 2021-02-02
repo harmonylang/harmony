@@ -5571,52 +5571,51 @@ labels & a dictionary of atoms to program counters \\
 \hline
 variables & a dictionary mapping atoms to values \\
 \hline
-ctxbag & a bag of non-stopped contexts \\
+ctxbag & a bag of runnable contexts \\
 \hline
 stopbag & a bag of stopped contexts \\
 \hline
 choosing & if not \texttt{None}, indicates a context that is choosing \\
-\hline
-initializing & boolean indicating that the state is not fully initialized. \\
 \hline
 \end{tabular}
 \vspace{1em}
 
 There is initially a single context with name
 \texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
-in atomic mode until it finishes executing the last instruction in
-the code.  All states until then are \texttt{initializing} states.
+in atomic mode until it finishes executing the last
+\texttt{Return} instruction.
 Other threads, created through \texttt{spawn} statements, do not
 start executing until then.
 
-A \emph{micro step}
-is the execution of a single HVM machine instruction
+A \emph{step} is the execution of a single HVM machine instruction
 by a context.
-Each micro step generates a new state.
+Each step generates a new state.
 When there are multiple contexts, the HVM can interleave them.
-However, trying to interleave every microstep would be needlessly expensive,
-as many micro steps involve changes to a context that are invisible to
+However, trying to interleave every step would be needlessly expensive,
+as many steps involve changes to a context that are invisible to
 other contexts.
 
-A \emph{macro step}
-\index{macro step}%
-can involve multiple micro steps.  The following
-instructions start a new macro step: \texttt{Load}, \texttt{Store},
+A \emph{stride}
+\index{stride}%
+can involve multiple steps.  The following
+instructions start a new stride: \texttt{Load}, \texttt{Store},
 \texttt{AtomicInc}, and \texttt{Continue}.  The HVM
-interleaves macro steps, not micro steps.  Like micro steps, each
-macro step involves a single context.  Unlike a micro step, a macro
-step can leave the state unchanged.
+interleaves stides, not steps.  Like steps, each
+stride involves a single context.  Unlike a step, a stride
+can leave the state unchanged (because its steps lead back
+to where the stride started).
 
 Executing a Harmony program results in a graph where the nodes are Harmony
-states and the edges are macro steps.
+states and the edges are strides.
 When a state is \texttt{choosing}, the edges from that state are
 by a single context, one for each choice.  If not, the edges from
 the state are one per context.
 
-Consecutive macro steps by the same thread are called \emph{mega steps}.
+Consecutive strides by the same thread are called a \emph{turn}.
 Each state maintains the shortest path to it from the initial state in terms
-of mega steps.
-The diameter of the graph is the length of the longest path found.
+of turns.
+The diameter of the graph is the length of the longest path found in
+terms of turns.
 
 If some states have a problem, the state with the shortest path is reported.
 Problematic states include states that experienced exceptions.
