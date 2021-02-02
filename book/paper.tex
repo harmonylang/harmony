@@ -3966,9 +3966,12 @@ happening.
 \emph{counting semaphore} to restrict the number of diners at any time to
 four.  A counting semaphore is like a binary semaphore, but can be
 acquired a given number of times.  It is supported by the \texttt{synch}
-module.
+module.  The \texttt{P} or ``procure'' operation acquires a counting
+semaphore.  That is, it tries to decrement the semaphore, blocking while
+the semaphore has a value of 0.  The \texttt{V} or ``vacate'' operation
+increments the semaphore.
 
-This concept can be generalized using something called the
+This avoidance technique can be generalized using something called the
 Banker's Algorithm~\cite{EWD108}, but it is outside the scope of this book.
 The problem with these kinds of schemes is that one needs to know ahead of time
 the set of threads and what the maximum number of resources is that each thread
