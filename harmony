@@ -1724,12 +1724,22 @@ static char *json_string_encode(char *s){
     while (*s != 0) {
         switch (*s) {
         case '\r':
+            *p++ = '\\'; *p++ = 'r';
+            break;
+        case '\n':
+            *p++ = '\\'; *p++ = 'n';
+            break;
+        case '\f':
+            *p++ = '\\'; *p++ = 'f';
             break;
         case '\t':
             *p++ = '\\'; *p++ = 't';
             break;
         case '"':
             *p++ = '\\'; *p++ = '"';
+            break;
+        case '\\':
+            *p++ = '\\'; *p++ = '\\';
             break;
         default:
             *p++ = *s;
@@ -6802,6 +6812,15 @@ function get_status(ctx) {
   return status;
 }
 
+function escapeHTML(s) {
+  return s
+     .replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#039;");
+}
+
 function run_microstep(t) {
   var mis = microsteps[t];
   var mesrow = mestable.rows[mis.mesidx];
@@ -6833,12 +6852,12 @@ function run_microstep(t) {
     inv = mis.invfails[0];
     code = getCode(inv.pc);
     coderow.style.color = "red";
-    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + code.code + " (" + inv.reason + ")";
+    coderow.innerHTML = code.file + ":" + code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(code.code) + " (" + inv.reason + ")";
     mis.cloc = null;
   }
   else {
     coderow.style.color = "blue";
-    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + mis.code.code;
+    coderow.innerHTML = mis.code.file + ":" + mis.code.line + "&nbsp;&nbsp;&nbsp;" + escapeHTML(mis.code.code);
   }
 
   currCloc = mis.cloc;
@@ -7148,7 +7167,10 @@ document.addEventListener('keydown', handleKeyPress);
         print("  <tr><td></td></tr>", file=f)
         print("  <tr>", file=f)
         print("    <td colspan='2'>", file=f)
-        print("      <h3 style='color:blue;' id='coderow'>CODE GOES HERE</h3>", file=f)
+        print("      <h3 style='color:blue;'>", file=f)
+        print("        <div id='coderow'>", file=f)
+        print("        </div>", file=f)
+        print("      </h3>", file=f)
         print("    </td>", file=f)
         print("  </tr>", file=f)
         print("  <tr><td></td></tr>", file=f)
@@ -7195,6 +7217,7 @@ document.addEventListener('keydown', handleKeyPress);
 
     def html_head(self, f):
         print("<head>", file=f)
+        print("  <meta charset='UTF-8'></meta>", file=f)
         print("  <style>", file=f)
         print(self.style, file=f)
         print("  </style>", file=f)
