@@ -272,7 +272,7 @@ table td, table th {
             <a name='P12'>12</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C12'>
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C12'>
               AtomicInc
             </span>
           </td>
@@ -282,7 +282,7 @@ table td, table th {
             <a name='P13'>13</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='increment readonly counter of context; process cannot mutate shared variables if > 0' id='C13'>
+            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C13'>
               ReadonlyInc
             </span>
           </td>
@@ -292,7 +292,7 @@ table td, table th {
             <a name='P14'>14</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C14'>
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C14'>
               AtomicInc
             </span>
           </td>
@@ -542,7 +542,7 @@ table td, table th {
             <a name='P39'>39</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C39'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C39'>
               Spawn
             </span>
           </td>
@@ -582,7 +582,7 @@ table td, table th {
             <a name='P43'>43</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C43'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C43'>
               Spawn
             </span>
           </td>
@@ -1538,9 +1538,9 @@ var state =
     "pop a value and jump to 8 if the value is True",
     "push constant True",
     "pop a value and store it in shared variable lockTaken",
-    "increment atomic counter of context; process runs uninterrupted if larger than 0",
-    "increment readonly counter of context; process cannot mutate shared variables if > 0",
-    "increment atomic counter of context; process runs uninterrupted if larger than 0",
+    "increment atomic counter of context; thread runs uninterrupted if larger than 0",
+    "increment readonly counter of context; thread cannot mutate shared variables if > 0",
+    "increment atomic counter of context; thread runs uninterrupted if larger than 0",
     "push constant PC(12)",
     "pop 1 value and push the result of applying atLabel",
     "push constant ()",
@@ -1565,11 +1565,11 @@ var state =
     "push constant ()",
     "push constant 0",
     "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new process",
+    "pop a pc, argument, and tag and spawn a new thread",
     "push constant ()",
     "push constant 1",
     "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new process",
+    "pop a pc, argument, and tag and spawn a new thread",
     "restore caller method state and push result"
   ],
   "locations": {

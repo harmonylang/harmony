@@ -392,7 +392,7 @@ table td, table th {
             <a name='P22'>22</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='increment readonly counter of context; process cannot mutate shared variables if > 0' id='C22'>
+            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C22'>
               ReadonlyInc
             </span>
           </td>
@@ -402,7 +402,7 @@ table td, table th {
             <a name='P23'>23</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='increment atomic counter of context; process runs uninterrupted if larger than 0' id='C23'>
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C23'>
               AtomicInc
             </span>
           </td>
@@ -512,7 +512,7 @@ table td, table th {
             <a name='P34'>34</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C34'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C34'>
               Spawn
             </span>
           </td>
@@ -552,7 +552,7 @@ table td, table th {
             <a name='P38'>38</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a pc, argument, and tag and spawn a new process' id='C38'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C38'>
               Spawn
             </span>
           </td>
@@ -1612,8 +1612,8 @@ var state =
     "push value of shared variable done",
     "pop a pc or dictionary f and an index i and push f(i)",
     "pop a value and jump to 16 if the value is False",
-    "increment readonly counter of context; process cannot mutate shared variables if > 0",
-    "increment atomic counter of context; process runs uninterrupted if larger than 0",
+    "increment readonly counter of context; thread cannot mutate shared variables if > 0",
+    "increment atomic counter of context; thread runs uninterrupted if larger than 0",
     "push value of shared variable count",
     "push constant 2",
     "pop 2 values and push the result of applying ==",
@@ -1624,11 +1624,11 @@ var state =
     "push constant ()",
     "push constant 0",
     "push constant PC(6)",
-    "pop a pc, argument, and tag and spawn a new process",
+    "pop a pc, argument, and tag and spawn a new thread",
     "push constant ()",
     "push constant 1",
     "push constant PC(6)",
-    "pop a pc, argument, and tag and spawn a new process",
+    "pop a pc, argument, and tag and spawn a new thread",
     "restore caller method state and push result"
   ],
   "locations": {
