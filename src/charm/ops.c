@@ -2046,7 +2046,11 @@ uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     if ((e2 & VALUE_MASK) != VALUE_INT) {
         return ctx_failure(ctx, "left argument to mod not an integer");
     }
-    int64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
+    int64_t mod = (e1 >> VALUE_BITS);
+    int64_t result = (e2 >> VALUE_BITS) % mod;
+    if (result < 0) {
+        result += mod;
+    }
     return (result << VALUE_BITS) | VALUE_INT;
 }
 

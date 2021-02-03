@@ -436,7 +436,8 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
             }
             break;
         default:
-            panic("print_trace: bad call type 1");
+            fprintf(stderr, "call type: %"PRIx64"\n", ct >> VALUE_BITS);
+            // panic("print_trace: bad call type 1");
         }
     }
     while (--pc >= 0) {

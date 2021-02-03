@@ -3,18 +3,18 @@ from synch import *
 const N = 5
 
 forks = [Lock(),] * N
-sema = Semaphore(N - 1)
+sema = Semaphore(N - 1)     # can be procured up to N-1 times
 
 def diner(which):
     let left, right = (which - 1, which % N):
         while choose({ False, True }):
-            P(?sema)
+            P(?sema)                # procure counting semaphore
             acquire(?forks[left])
             acquire(?forks[right])
             # dine
             release(?forks[left])
             release(?forks[right])
-            V(?sema)
+            V(?sema)                # vacate counting semaphore
             # think
 
 for i in {1..N}:

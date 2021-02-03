@@ -1094,7 +1094,8 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
             }
             break;
         default:
-            panic("print_trace: bad call type 1");
+            fprintf(stderr, "call type: %"PRIx64"\n", ct >> VALUE_BITS);
+            // panic("print_trace: bad call type 1");
         }
     }
     while (--pc >= 0) {
@@ -4723,7 +4724,11 @@ uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n){
     if ((e2 & VALUE_MASK) != VALUE_INT) {
         return ctx_failure(ctx, "left argument to mod not an integer");
     }
-    int64_t result = (e2 >> VALUE_BITS) % (e1 >> VALUE_BITS);
+    int64_t mod = (e1 >> VALUE_BITS);
+    int64_t result = (e2 >> VALUE_BITS) % mod;
+    if (result < 0) {
+        result += mod;
+    }
     return (result << VALUE_BITS) | VALUE_INT;
 }
 

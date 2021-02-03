@@ -7,8 +7,8 @@ server_queue = synch.Queue()
 def server():
     let counter = 0:
         while counter < NCLIENTS:
-            let q = synch.get(?server_queue):
-                synch.put(q, counter)
+            let q = synch.get(?server_queue):   # await request
+                synch.put(q, counter)           # send response
                 counter += 1
 
 spawn server()
@@ -16,8 +16,8 @@ spawn server()
 done = [False,] * NCLIENTS
 
 def client(client_queue):
-    synch.put(?server_queue, client_queue)
-    let response = synch.get(client_queue):
+    synch.put(?server_queue, client_queue)      # send request
+    let response = synch.get(client_queue):     # await response
         done[response] = True
     await all(done)
     assert done == ([True,] * NCLIENTS)
