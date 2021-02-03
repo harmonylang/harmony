@@ -1,14 +1,14 @@
 from synch import Queue, put, get
 
 const NROUNDS = 3
-const NPROC = 3
+const NTHREADS = 3
 
-queues = [ Queue(), ] * NPROC
+queues = [ Queue(), ] * NTHREADS
 
 def barrier_enter(self):
-    for i in {0..NPROC-1} where i != self:
+    for i in {0..NTHREADS-1} where i != self:
         put(?queues[i], i)
-    for i in {1..NPROC-1}:
+    for i in {1..NTHREADS-1}:
         get(?queues[self])
 
 def barrier_exit(self):
@@ -18,14 +18,14 @@ def barrier_exit(self):
 def check():
     result = True
     let x = None:
-        for i in {0..NPROC-1}:
+        for i in {0..NTHREADS-1}:
             if result and (round[i] != None):
                 if x != None:
                     result = round[i] == x
                 x = round[i]
 
-round = [None,] * NPROC
-done = [False,] * NPROC
+round = [None,] * NTHREADS
+done = [False,] * NTHREADS
 
 def process(self):
     for r in {0..NROUNDS-1}:
@@ -39,7 +39,7 @@ def process(self):
 def main():
     await all(done)
 
-for i in {0..NPROC-1}:
+for i in {0..NTHREADS-1}:
     spawn process(i)
 
 spawn main()

@@ -2,10 +2,10 @@ import synch
 import barrier
 
 const NROUNDS = 3
-const NPROC = 3
+const NTHREADS = 3
 
-barr = barrier.Barrier(NPROC)
-round = [None,] * NPROC
+barr = barrier.Barrier(NTHREADS)
+round = [None,] * NTHREADS
 
 def thread(self):
     for r in {0..NROUNDS-1}:
@@ -15,5 +15,5 @@ def thread(self):
         round[self] = None
         barrier.exit(?barr)
 
-for i in {0..NPROC-1}:
+for i in {0..NTHREADS-1}:
     spawn thread(i)

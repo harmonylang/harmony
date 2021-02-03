@@ -1,6 +1,6 @@
 import RWqueue;
 
-const NPROCS = 3;
+const NTHREADS = 3;
 
 def process(self):
     while choose({ False, True }):
@@ -17,7 +17,7 @@ def process(self):
         ;
     ;
 ;
-semas = [ Semaphore(0) for i in {0..NPROCS-1} ];
-for i in {0..NPROCS-1}:
+semas = [ Semaphore(0) for i in {0..NTHREADS-1} ];
+for i in {0..NTHREADS-1}:
     spawn process(i);
 ;
