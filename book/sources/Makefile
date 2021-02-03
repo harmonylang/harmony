@@ -40,9 +40,6 @@ CODE = \
     bank.tex \
     barrier.tex \
     barrier1.tex \
-    barrier2.tex \
-    barrier3.tex \
-    busywait.tex \
     counter.tex \
     cs.tex \
     csTAS.tex \
@@ -52,8 +49,6 @@ CODE = \
     dinersfix2.tex \
     gpu.tex \
     hoare.tex \
-    hoaremon.tex \
-    hoaretest.tex \
     hw.tex \
     lockintf.tex \
     locksusp.tex \
@@ -72,7 +67,6 @@ CODE = \
     queuetest.tex \
     qsort.tex \
     qsorttest.tex \
-    semaphore.tex \
     spinlock.tex \
     spinlockInv.tex \
     stacktest.tex \
