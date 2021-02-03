@@ -7,7 +7,7 @@ forks = [False,] * N
 conds = [synch.Condition(?mutex),] * N
 
 def diner(which):
-    let left, right = (which - 1, which % N):
+    let left, right = (which, (which + 1) % N):
         while choose({ False, True }):
             synch.acquire(?mutex)
             while forks[left] or forks[right]:
@@ -21,9 +21,10 @@ def diner(which):
             # dine
             synch.acquire(?mutex)
             forks[left] = forks[right] = False
-            synch.notify(?conds[left]); synch.notify(?conds[right])
+            synch.notify(?conds[left]);
+            synch.notify(?conds[right])
             synch.release(?mutex)
             # think
 
-for i in {1..N}:
+for i in {0..N-1}:
     spawn diner(i)

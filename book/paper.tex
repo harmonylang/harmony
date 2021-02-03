@@ -3989,6 +3989,11 @@ scenario.}
 
 \section*{Exercises}
 \begin{problems}
+\item The solution in \autoref{fig:dinerscv} can be simplified by, instead
+of having a condition variable per fork, having a condition variable per
+diner.  It is the same number of condition variables, but you will not
+need to have \textbf{if} statements nested inside the \textbf{while} loop
+waiting for the forks.  See if you can figure it out.
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated

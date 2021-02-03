@@ -5,7 +5,7 @@ const N = 5
 forks = [Lock(),] * N
 
 def diner(which):
-    let left, right = (which - 1, which % N):
+    let left, right = (which, (which + 1) % N):
         while choose({ False, True }):
             acquire(?forks[left])
             acquire(?forks[right])
@@ -14,5 +14,5 @@ def diner(which):
             release(?forks[right])
             # think
 
-for i in {1..N}:
+for i in {0..N-1}:
     spawn diner(i)

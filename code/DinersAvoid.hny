@@ -6,7 +6,7 @@ forks = [Lock(),] * N
 sema = Semaphore(N - 1)     # can be procured up to N-1 times
 
 def diner(which):
-    let left, right = (which - 1, which % N):
+    let left, right = (which, (which + 1) % N):
         while choose({ False, True }):
             P(?sema)                # procure counting semaphore
             acquire(?forks[left])
@@ -17,5 +17,5 @@ def diner(which):
             V(?sema)                # vacate counting semaphore
             # think
 
-for i in {1..N}:
+for i in {0..N-1}:
     spawn diner(i)
