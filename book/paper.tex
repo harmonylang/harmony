@@ -4134,7 +4134,8 @@ in the opposite order.  Which do you think is better?
 \end{figure}
 
 Barrier synchronization is a problem that comes up in high-performance
-parallel computing, used, among others, for scalable simulation.
+parallel computing.
+It is used, among others, for scalable simulation.
 A barrier is almost the opposite of a critical section:
 the intention is to get a group of threads to run some code at the
 same time, instead of having them execute it one at a time.
@@ -4187,6 +4188,14 @@ are more than one round apart.
 \label{fig:genbarrier}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{barriertest}
+\end{code}
+\caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}.}
+\label{fig:barriertest}
+\end{figure}
+
 More generally, barrier synchronization can be abstracted as follows.
 We want to create a \texttt{Barrier}$(n)$ object, with operations
 \texttt{enter()} and \texttt{exit()}.  It is helpful to use
@@ -4217,6 +4226,9 @@ enter sets \textit{left} to zero (and notifies the threads
 that were waiting to for the car to fill up), while the last
 thread to exit sets \textit{entered} to zero (and notifies
 the threads that were waiting for the car to empty out).
+
+\autoref{fig:barriertest} is a test program.  The threads check
+that all threads within the barrier are in the same round.
 
 \section*{Exercises}
 \begin{problems}
@@ -4366,8 +4378,8 @@ for long, interrupts should never be disabled for long.  With locks the issue is
 maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
 handlers must run quickly and cannot wait for other events.  So it is ok to invoke
-synchronization calls such as \texttt{V} and \texttt{notify}, but calls such as
-\texttt{P} and \texttt{wait} should only be used if it is certain that they will not
+non-blocking synchronization calls such as \texttt{notify}, but calls such as
+\texttt{acquire} and \texttt{wait} should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
 

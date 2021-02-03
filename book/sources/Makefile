@@ -40,6 +40,7 @@ CODE = \
     bank.tex \
     barrier.tex \
     barrier1.tex \
+    barriertest.tex \
     counter.tex \
     cs.tex \
     csTAS.tex \

@@ -12,7 +12,7 @@ def thread(self):
             put(?q[i], None)
         for i in {0..N-1} where i != self:
             get(?q[self])
-        round[self] = (round[self] + 1)
+        round[self] += 1
         assert (max(round) - min(round)) <= 1
 
 for i in {0..N-1}:

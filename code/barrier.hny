@@ -4,27 +4,27 @@ def Barrier(limit):
     result = {
             .limit: limit,
             .mutex: Lock(),
-            .full: Condition(), .others: Condition(),
+            .empty: Condition(), .full: Condition(),
             .entered: 0, .left: limit
         }
 
 def enter(b):
     acquire(?b->mutex)
-    while b->entered == b->limit:
-        wait(?b->full, ?b->mutex)
+    while b->entered == b->limit:   # wait for car to empty out
+        wait(?b->empty, ?b->mutex)
     b->entered += 1
-    if b->entered == b->limit:
+    if b->entered == b->limit:      # car is empty and ready to go
         b->left = 0
-        notifyAll(?b->others)
-    else:
+        notifyAll(?b->full)
+    else:                                  # wait for car to fill up
         while b->entered < b->limit:
-            wait(?b->others, ?b->mutex)
+            wait(?b->full, ?b->mutex)
     release(?b->mutex)
 
 def exit(b):
     acquire(?b->mutex)
     b->left += 1
-    if b->left == b->limit:
+    if b->left == b->limit:         # car is empty
         b->entered = 0
-        notifyAll(?b->full)
+        notifyAll(?b->empty)
     release(?b->mutex)
