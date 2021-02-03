@@ -43,6 +43,7 @@ CODE = \
     barrier2.tex \
     barrier3.tex \
     busywait.tex \
+    counter.tex \
     cs.tex \
     csTAS.tex \
     csbarebones.tex \

@@ -1,0 +1,30 @@
+import synch
+
+const NCLIENTS = 3
+
+server_queue = synch.Queue()
+
+def server():
+    let counter = 0:
+        while counter < NCLIENTS:
+            let q = synch.get(?server_queue):
+                synch.put(q, counter)
+                counter += 1
+
+spawn server()
+
+done = [False,] * NCLIENTS
+
+def client(client_queue):
+    synch.put(?server_queue, client_queue)
+    let response = synch.get(client_queue):
+        done[response] = True
+    await all(done)
+    assert done == ([True,] * NCLIENTS)
+
+alice_queue = synch.Queue()
+spawn client(?alice_queue)
+bob_queue = synch.Queue()
+spawn client(?bob_queue)
+charlie_queue = synch.Queue()
+spawn client(?charlie_queue)

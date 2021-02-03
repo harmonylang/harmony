@@ -2071,7 +2071,8 @@ can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple threads.
 Worse, most modern processors make accessing shared memory locations
-non-atomic to allow for efficient caching and other optimizations.
+non-atomic to allow for efficient caching, out-of-order execution,
+and other optimizations.
 So Peterson's algorithm would not even work on such processors.
 Instead, multi-core processors provide
 so-called \emph{interlock instructions}:
@@ -4026,22 +4027,14 @@ held.
 
 \begin{figure}
 \begin{code}
-\harmonysource{actor}
+\harmonysource{counter}
 \end{code}
-\caption{\harmonylink{code/actor.hny} A producer/consumer actor.}
+\caption{\harmonylink{code/counter.hny} An illustration of the actor approach.}
 \label{fig:actor}
 \end{figure}
 
-\begin{figure}
-\begin{code}
-\harmonysource{actortest}
-\end{code}
-\caption{\harmonylink{code/actortest.hny} Test code for producer/consumer actor.}
-\label{fig:actortest}
-\end{figure}
-
 Some programming languages favor a different way of implementing
-synchronization using so-called \emph{actors}~\cite{HBS73}.  Actors are
+synchronization using so-called \emph{actors}~\cite{HBS73,Agha86}.  Actors are
 threads that have only private memory and communicate through
 \emph{message passing}.
 See \autoref{fig:actorpic} for an illustration.
@@ -4082,54 +4075,30 @@ behaves much like a zero-initialized counting semaphore.
 Thus, synchronized queues can be considered a generalization of
 counting semaphores.
 
-\autoref{fig:actor} shows a Harmony solution to the
-``multiple producer / multiple consumer problem'' (with an unbounded buffer)
-using an actor (as illustrated in \autoref{fig:actorpic}).
-\texttt{pc\_actor} is essentially a matchmaker: it matches
-\texttt{.produce} requests with \texttt{.consume} requests.
-Sometimes it may have buffered \texttt{.consume} requests and is waiting for
-\texttt{.produce} requests, and sometimes it is vice versa.
-The variable \textit{balance} specifies what the situation is: if it is positive
-then it has buffered \texttt{.produce} requests;
-if it is negative
-then it has buffered \texttt{.consume} requests.
-Note that both \textit{balance} and \textit{requests} are variables that are
-local to the \texttt{pc\_actor} thread.
+\autoref{fig:actor} illustrates the actor approach.
+There are three client threads that each want to be assigned
+a unique identifier from the set $\{ 0, 1, 2 \}$.
+Normally one would use a shared 0-initialized counter and a lock.
+Each client would acquire the lock, get the value of the counter
+and increment it, and release the lock.
+Instead, in the actor approach the counter is managed by a
+separate server thread.
+Each client sends a request to the server, consisting in this case
+of simply the queue to which the server must send the response.
+The server maintains a local, zero-initialized counter variable.
+Upon receiving a request, it returns a response with the value of
+the counter and increments the counter.  No lock is required.
+The code is tested using the \textit{done} array.
 
-Each request message is a dictionary with two fields.  One of the fields is
-\texttt{.type}, which either is \texttt{.produce} or \texttt{.consume}.
-In case of \texttt{.produce}, the second field is \texttt{.item} and holds
-the data that is produced.
-In case of \texttt{.consume}, the second field is \texttt{.queue} and holds
-a pointer to the queue where the response message must be enqueued.
-\texttt{.produce} messages do not get a response.
-
-The \texttt{pc\_actor} thread has two arguments.  $q$ is a pointer
-to the queue on which it receives messages.  \textit{nrequests} is the total
-number of requests that it will handle.  We need the latter because in Harmony
-all threads are required to terminate.  In a more realistic implementation,
-the \texttt{pc\_actor} would be in an infinite loop awaiting requests.
-
-The shared memory consists entirely of message queues.
-The \texttt{produce} method takes two arguments: a pointer to the queue
-of the \texttt{pc\_actor} and the item.  The \texttt{consume} method
-takes two queue pointer arguments.  The first is a pointer to the queue
-of the \texttt{pc\_actor}.  The second is a pointer to the queue of the
-invoker: it is the queue to which the response must be posted.
-
-\autoref{fig:actortest} shows how this code may be used.  It spawns
-\texttt{NITEMS} producer and consumer threads.  Note that in that
-case the \texttt{pc\_actor} is expected to receive \texttt{2 * NITEMS}
-requests.
+This illustration is an example of the \emph{client/server} model.
+Here a single actor implements some service, and clients send request
+messages and receive response messages.  The model is particularly
+popular in distributed systems, where each actor runs on a separate
+machine and the queues are message channels.  For example, the server
+can be a web server, and its clients are web browsers.
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:cltsvr} A popular model is the \emph{client/server} model.
-Here a single actor implements some service, like computing the square of a
-number.
-A client can send a message containing an integer to the server, and the
-server returns a response message containing the square of that integer.
-Implement this.
 \item Actors and message queues are good for building pipelines.
 Develop a pipeline that computes Mersenne primes (primes that are one less
 than a power of two).  Write four actors:
@@ -4690,7 +4659,7 @@ for the last acknowledgment, or the receiver waiting for the last message.
 
 \section*{Exercises}
 \begin{problems}
-\item \autoref{ex:cltsvr} explored the \emph{client/server model}.  It is popular
+\item \autoref{ch:actor} explored the \emph{client/server model}.  It is popular
 in distributed systems as well.
 Develop a protocol for a single client and server using the same network
 model as for the ABP protocol.

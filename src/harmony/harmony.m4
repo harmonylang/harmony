@@ -825,7 +825,7 @@ class GoOp(Op):
         return '{ "op": "Go" }'
 
     def explain(self):
-        return "pops a context and a value, restores the corresponding process, and pushes the value on its stack"
+        return "pops a context and a value, restores the corresponding thread, and pushes the value on its stack"
 
     def eval(self, state, context):
         ctx = context.pop()
@@ -1372,7 +1372,7 @@ class SpawnOp(Op):
         return '{ "op": "Spawn" }'
 
     def explain(self):
-        return "pop a pc, argument, and tag and spawn a new process"
+        return "pop a pc, argument, and tag and spawn a new thread"
 
     def eval(self, state, context):
         if context.readonly > 0:
@@ -1417,7 +1417,7 @@ class AtomicIncOp(Op):
         return '{ "op": "AtomicInc" }'
 
     def explain(self):
-        return "increment atomic counter of context; process runs uninterrupted if larger than 0"
+        return "increment atomic counter of context; thread runs uninterrupted if larger than 0"
 
     def eval(self, state, context):
         context.atomic += 1
@@ -1446,7 +1446,7 @@ class ReadonlyIncOp(Op):
         return '{ "op": "ReadonlyInc" }'
 
     def explain(self):
-        return "increment readonly counter of context; process cannot mutate shared variables if > 0"
+        return "increment readonly counter of context; thread cannot mutate shared variables if > 0"
 
     def eval(self, state, context):
         context.readonly += 1
