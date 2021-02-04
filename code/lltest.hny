@@ -1,0 +1,22 @@
+from linkedlist import *
+
+mylist = LinkedList()
+
+def thread1():
+    insert(mylist, 1)
+    let x = contains(mylist, 1):
+        assert x
+
+def thread2():
+    await contains(mylist, 1)
+
+def thread3():
+    insert(mylist, 0)
+
+def thread4():
+    insert(mylist, 2)
+
+spawn thread1()
+spawn thread2()
+spawn thread3()
+spawn thread4()

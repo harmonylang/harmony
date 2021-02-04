@@ -1,7 +1,7 @@
 const MAX_ITEMS = 3
 
 back = 0
-items = [ () for i in {0..MAX_ITEMS} ]
+items = [None,] * MAX_ITEMS
 
 def inc(pcnt):
     atomic:
@@ -11,19 +11,18 @@ def inc(pcnt):
 def exch(pv):
     atomic:
         result = !pv
-        !pv = ()
+        !pv = None
 
 def produce(item):
-    items[inc(?back)] = (item,)
+    items[inc(?back)] = item
 
 def consume():
-    result = ()
-    while result == ():
+    result = None
+    while result == None:
         let range, i = back, 0:
-            while (i < range) and (result == ()):
+            while (i < range) and (result == None):
                 result = exch(?items[i])
                 i += 1
-    result = result[0];     # convert (item,) into item
 
 for i in {1..MAX_ITEMS}:
     spawn produce(i)

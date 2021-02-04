@@ -443,7 +443,12 @@ function get_shared(shared, path) {
     return "";
   }
   if (path.length == 1) {
-    return shared[path[0]];
+    if (typeof shared[path[0]] === "string") {
+      return shared[path[0]];
+    }
+    else {
+      return JSON.stringify(shared[path[0]]);
+    }
   }
   return get_shared(shared[path[0]], path.slice(1));
 }

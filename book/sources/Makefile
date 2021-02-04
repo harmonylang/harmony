@@ -51,10 +51,10 @@ CODE = \
     gpu.tex \
     hoare.tex \
     hw.tex \
+    linkedlist.tex \
+    lltest.tex \
     lockintf.tex \
     locksusp.tex \
-    lst1.tex \
-    lst2.tex \
     mesa.tex \
     naiveFlags.tex \
     naiveLock.tex \

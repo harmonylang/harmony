@@ -4416,10 +4416,10 @@ However, it can lead to starvation.  Even in the absence of starvation,
 if some thread is slow for some reason while being in the critical section,
 the other threads have to wait for it to finish executing the critical section.
 Also, using synchronization primitives in interrupt handlers is tricky
-to get right (\autoref{ch:interrupts}) and might run too long.
+to get right (\autoref{ch:interrupts}) and might be too slow.
 In this chapter, we will have a look at how one can develop concurrent
-code in which threads do not have to wait for other threads to complete their
-ongoing operations.
+code in which threads do not have to wait for other threads (or interrupt
+handlers) to complete their ongoing operations.
 
 As a first example, we will revisit the producer/consumer problem.
 The code in \autoref{fig:hw} is based on code developed by Herlihy and
@@ -4427,13 +4427,13 @@ Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
 is not necessarily practical.
 There are two variables.  \textit{items} is an unbounded array with each
-entry initialized to \texttt{()}.  \textit{back} is an index into the
+entry initialized to \texttt{None}.  \textit{back} is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two interlock instructions:
 \begin{itemize}
 \item \texttt{inc}($p$): atomically increments \texttt{!}$p$ and returns
 the old value;
-\item \texttt{exch}($p$): sets \texttt{!}$p$ to \texttt{()} and returns
+\item \texttt{exch}($p$): sets \texttt{!}$p$ to \texttt{None} and returns
 the old value.
 \end{itemize}
 
@@ -4470,16 +4470,15 @@ There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
 most accesses are read-only and the performance of updates is less
 critical. %~\cite{}.
-\autoref{fig:lst1} and \autoref{fig:lst2} implements an ordered linked
+\autoref{fig:linkedlist} implements an ordered linked
 list of integers without duplicates.
-There are two update operations:
-values can be added using \texttt{lst\_insert} or deleted using
-\texttt{lst\_remove}.
-There is also a read-only operation: \texttt{lst\_contains} checks if
+(\autoref{fig:lltest} contains test code.)
+Values can be added using \texttt{insert}.
+There is also a read-only operation: \texttt{contains} checks if
 a particular value is in the list.
 \glsadd{linearizable}%
 
-The read-only operation \texttt{lst\_contains} is wait\_free: it scans
+The read-only operation \texttt{contains} is wait\_free: it scans
 through the list without having to obtain a lock.
 Nonetheless, the implementation of the list is
 \emph{linearizable}~\cite{HW90},
@@ -4492,8 +4491,7 @@ The list has two ``book-end'' nodes with values \texttt{-inf} and
 \texttt{inf} (similar to the Python \texttt{math.inf} constant).
 Each node has a lock, a value, and \textit{next}, a pointer to the next node
 (which is \texttt{None} for the final \texttt{inf} node).
-The \texttt{lst\_find}(\textit{lst}, $v$) method is a helper function for update
-methods that
+The \texttt{insert(\textit{lst}, $v$)} method first
 finds and locks two consecutive nodes \textit{before} and \textit{after}
 such that $\mathit{before}.\mathtt{data.value} < v \le \mathit{after}.\mathtt{data.value}$.
 It does so by performing something called \emph{hand-over-hand locking}.
@@ -4502,10 +4500,7 @@ It first locks the first node, which is the \texttt{-inf} node.
 Then, iteratively, it obtains a lock on the next node and release the
 lock on the last one, and so on, similar to climbing a tree
 hand-over-hand.
-
-Having the two adjoining nodes locked, implementing \texttt{lst\_insert}
-and \texttt{lst\_remove} is straightforward.
-The \texttt{lst\_contains} method can simply scan through the list
+The \texttt{contains} method can simply scan through the list
 because the \textit{next} pointers are updated atomically in such a
 way that they always point to a legal suffix of the list.
 An invariant of the algorithm is that at any point in time the
@@ -4518,10 +4513,9 @@ is linearizable involves finding what are known as the
 \index{linearization point}%
 of the operations in an execution.  These are the unique
 points in time at which an operation appears to execute atomically.
-The linearization points for the \texttt{lst\_insert} and
-\texttt{lst\_remove} operations coincide exactly with the update
+The linearization point for the \texttt{insert} operation coincides exactly with the update
 of the \textit{before}.\texttt{next} pointer.
-The linearization point of a \texttt{lst\_contains} method
+The linearization point of a \texttt{contains} method
 execution depends on whether the value is found or not.
 If found, it coincides with retrieving the pointer to the node
 that has the value.
@@ -4530,24 +4524,24 @@ If not found, it coincides with retrieving the pointer to the
 
 \begin{figure}
 \begin{code}
-\harmonysource{lst1}
+\harmonysource{linkedlist}
 \end{code}
-\caption{\harmonylink{code/lst1.hny} List with non-blocking read operation, part 1.}
-\label{fig:lst1}
+\caption{\harmonylink{code/linkedlist.hny} Linked list with non-blocking read operation.}
+\label{fig:linkedlist}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\harmonysource{lst2}
+\harmonysource{lltest}
 \end{code}
-\caption{\harmonylink{code/lst2.hny} List with non-blocking read operation, part 2.}
-\label{fig:lst2}
+\caption{\harmonylink{code/lltest.hny} Test code for \autoref{fig:linkedlist}.}
+\label{fig:lltest}
 \end{figure}
 
 \section*{Exercises}
 \begin{problems}
-\item Add read-only methods to the data structure in \autoref{fig:lst1}
-and \autoref{fig:lst2} that report the size of the list, the minimum value in the
+\item Add read-only methods to the data structure in \autoref{fig:linkedlist}
+that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
 Are they linearizable?  If so, what are their linearization points?
 \item A \emph{seqlock}

@@ -1,0 +1,29 @@
+from synch import Lock, acquire, release
+from alloc import malloc, free
+
+def _node(v, n):     # allocate and initialize a new list node
+    result = malloc({ .lock: Lock(), .value: v, .next: n })
+
+def LinkedList():
+    result = _node(-inf, _node(inf, None))
+
+def contains(lst, v):   # check if v is in the list
+    let n = lst:
+        while n->value < v:
+            n = n->next
+        result = n->value == v
+
+def insert(lst, v):
+    let before = lst:
+        acquire(?before->lock)
+        let after = before->next:
+            acquire(?after->lock)
+            while after->value < v:
+                release(?before->lock)
+                before = after
+                after = before->next
+                acquire(?after->lock)
+            if after->value != v:
+                before->next = _node(v, after)
+            release(?before->lock)
+            release(?after->lock)
