@@ -10,13 +10,11 @@ def thread1():
 def thread2():
     await contains(mylist, 1)
 
-def thread3():
-    insert(mylist, 0)
-
-def thread4():
-    insert(mylist, 2)
+def thread3(v):
+    insert(mylist, v)
+    remove(mylist, v)
 
 spawn thread1()
 spawn thread2()
-spawn thread3()
-spawn thread4()
+spawn thread3(0)
+spawn thread3(2)

@@ -2442,7 +2442,7 @@ statement.
 \label{ch:cds}
 
 The most common use for locks is in building concurrent data structures.
-By way of example, we will demonstrate how to build a concurrent queue.
+By way of example, we will first demonstrate how to build a concurrent queue.
 The \texttt{queue} module will have the following API:
 \begin{itemize}
 \item $q = \mathtt{Queue}()$: allocate a new queue;
@@ -2505,6 +2505,82 @@ ever \texttt{None}.
 \label{fig:queueMS}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{linkedlist}
+\end{code}
+\caption{\harmonylink{code/linkedlist.hny} Linked list with non-blocking read operation.}
+\label{fig:linkedlist}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{lltest}
+\end{code}
+\caption{\harmonylink{code/lltest.hny} Test code for \autoref{fig:linkedlist}.}
+\label{fig:lltest}
+\end{figure}
+
+\index{big lock}%
+\index{lock granularity}%
+\index{fine-grained lock}%
+\index{coarse-grained lock}%
+A queue has the nice property that usually only the head or the tail is accessed.
+However, in many data structures it is necessary to ``walk'' the data structure,
+an operation that can take significant time.
+In such a case, a single lock (known as a ``big lock'')
+for the entire data structure might restrict concurrency to an unacceptable level.
+To reduce the granularity of locking, each node in the data structure must be
+endowed with its own lock instead.
+
+\autoref{fig:linkedlist} implements an ordered linked
+list of integers without duplicates.
+(\autoref{fig:lltest} contains test code.)
+Values can be added using \texttt{insert} or deleted using \texttt{remove}.
+Method \texttt{contains} checks if a particular value is in the list.
+
+The list has two dummy ``book-end'' nodes with values \texttt{-inf} and
+\texttt{inf} (similar to the Python \texttt{math.inf} constant).
+An invariant of the algorithm is that at any point in time the
+list is ``valid,'' starting with a \texttt{-inf} node and ending
+with a \texttt{inf} node.
+
+\index{hand-over-hand locking}%
+Each node has a lock, a value, and \textit{next}, a pointer to the next node
+(which is \texttt{None} for the final \texttt{inf} node).
+The \texttt{\_find(\textit{lst}, $v$)} helper method first
+finds and locks two consecutive nodes \textit{before} and \textit{after}
+such that $\mathit{before}$$\rightarrow$$\mathtt{data.value} < v \le \mathit{after}$$\rightarrow$$\mathtt{data.value}$.
+It does so by performing something called \emph{hand-over-hand locking}.
+It first locks the first node, which is the \texttt{-inf} node.
+Then, iteratively, it obtains a lock on the next node and release the
+lock on the last one, and so on, similar to climbing a tree
+hand-over-hand.
+Using \texttt{\_find} the \texttt{insert}, \texttt{remove}, and \texttt{contains}
+methods are fairly straightforward.
+
+\glsadd{linearizable}%
+The implementation of the list is
+\emph{linearizable}~\cite{HW90},
+\index{linearizable}%
+a strong notion of consistency that
+makes it appear as if each of the operations executes atomically at
+some point between their invocation and return.
+Determining if an implementation of a concurrent data structure
+is linearizable involves finding what are known as the
+\emph{linearization points}
+\index{linearization point}%
+of the operations in an execution.  These are the unique
+points in time at which an operation appears to execute atomically.
+The linearization point for the \texttt{insert} operation coincides exactly with the update
+of the \textit{before}.\texttt{next} pointer.
+The linearization point of a \texttt{contains} method
+execution depends on whether the value is found or not.
+If found, it coincides with retrieving the pointer to the node
+that has the value.
+If not found, it coincides with retrieving the pointer to the
+\texttt{inf} node.
+
 \section*{Exercises}
 \begin{problems}
 \item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to \autoref{fig:queue}
@@ -2534,10 +2610,16 @@ that removes all occurrences of $v$, if any, from queue $q$.
 and implement a better one.
 \item Create a thread-safe sorted binary tree.  Implement a module
 \texttt{bintree} with methods
+\item Add methods to the data structure in \autoref{fig:linkedlist}
+that report the size of the list, the minimum value in the
+list, the maximum value in the list, and the sum of the values in the list.
+Are they linearizable?  If so, what are their linearization points?
+\item Create a thread-safe sorted binary tree.  Implement a module \texttt{bintree}
+with methods
 $\mathtt{BinTree}()$ to create a new binary tree, $\mathtt{insert}(t, v)$ that inserts $v$ into
 tree $t$, and $\mathtt{contains}(t, v)$ that checks if $v$ is in tree $t$.  Use a single
 lock per binary tree.
-\item Bonus problem: create a binary tree that uses, instead of a single lock per tree,
+\item Create a binary tree that uses, instead of a single lock per tree,
 a lock for each node in the tree.
 \end{problems}
 
@@ -4485,84 +4567,15 @@ non-blocking (aka \emph{wait-free})
 synchronization algorithms.
 % TODO~\cite{}.
 
+\begin{comment}
 There are also various algorithms where read-only access is wait-free
 but updates do require a lock---these are useful in situations where
 most accesses are read-only and the performance of updates is less
 critical. %~\cite{}.
-\autoref{fig:linkedlist} implements an ordered linked
-list of integers without duplicates.
-(\autoref{fig:lltest} contains test code.)
-Values can be added using \texttt{insert}.
-There is also a read-only operation: \texttt{contains} checks if
-a particular value is in the list.
-\glsadd{linearizable}%
-
-The read-only operation \texttt{contains} is wait\_free: it scans
-through the list without having to obtain a lock.
-Nonetheless, the implementation of the list is
-\emph{linearizable}~\cite{HW90},
-\index{linearizable}%
-a strong notion of consistency that
-makes it appear as if each of the operations executes atomically at
-some point between their invocation and return.
-
-The list has two ``book-end'' nodes with values \texttt{-inf} and
-\texttt{inf} (similar to the Python \texttt{math.inf} constant).
-Each node has a lock, a value, and \textit{next}, a pointer to the next node
-(which is \texttt{None} for the final \texttt{inf} node).
-The \texttt{insert(\textit{lst}, $v$)} method first
-finds and locks two consecutive nodes \textit{before} and \textit{after}
-such that $\mathit{before}.\mathtt{data.value} < v \le \mathit{after}.\mathtt{data.value}$.
-It does so by performing something called \emph{hand-over-hand locking}.
-\index{hand-over-hand locking}%
-It first locks the first node, which is the \texttt{-inf} node.
-Then, iteratively, it obtains a lock on the next node and release the
-lock on the last one, and so on, similar to climbing a tree
-hand-over-hand.
-The \texttt{contains} method can simply scan through the list
-because the \textit{next} pointers are updated atomically in such a
-way that they always point to a legal suffix of the list.
-An invariant of the algorithm is that at any point in time the
-list is ``valid,'' starting with a \texttt{-inf} node and ending
-with a \texttt{inf} node.
-
-Determining if an implementation of a concurrent data structure
-is linearizable involves finding what are known as the
-\emph{linearization points}
-\index{linearization point}%
-of the operations in an execution.  These are the unique
-points in time at which an operation appears to execute atomically.
-The linearization point for the \texttt{insert} operation coincides exactly with the update
-of the \textit{before}.\texttt{next} pointer.
-The linearization point of a \texttt{contains} method
-execution depends on whether the value is found or not.
-If found, it coincides with retrieving the pointer to the node
-that has the value.
-If not found, it coincides with retrieving the pointer to the
-\texttt{inf} node.
-
-\begin{figure}
-\begin{code}
-\harmonysource{linkedlist}
-\end{code}
-\caption{\harmonylink{code/linkedlist.hny} Linked list with non-blocking read operation.}
-\label{fig:linkedlist}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{lltest}
-\end{code}
-\caption{\harmonylink{code/lltest.hny} Test code for \autoref{fig:linkedlist}.}
-\label{fig:lltest}
-\end{figure}
+\end{comment}
 
 \section*{Exercises}
 \begin{problems}
-\item Add read-only methods to the data structure in \autoref{fig:linkedlist}
-that report the size of the list, the minimum value in the
-list, the maximum value in the list, and the sum of the values in the list.
-Are they linearizable?  If so, what are their linearization points?
 \item A \emph{seqlock}
 \index{seqlock}%
 consists of a lock and a version number.
