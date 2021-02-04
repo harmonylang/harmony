@@ -2040,7 +2040,7 @@ case, is a dictionary that contains Peterson's Algorithm's shared memory state:
 a turn variable and two flags.
 Both methods \texttt{P\_enter} and \texttt{P\_exit} take two arguments:
 a pointer to a mutex and the thread identifier (0 or 1).
-$\mathit{pm}\rightarrow\mathtt{turn}$ is the value of the \texttt{.turn} key
+$\mathit{pm}$$\rightarrow$$\mathtt{turn}$ is the value of the \texttt{.turn} key
 in the dictionary that \textit{pm} points to. 
 
 You can put the first three methods in its own Harmony source file
@@ -2507,9 +2507,28 @@ ever \texttt{None}.
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to \autoref{fig:queue}
 that checks to see if $v$ is in queue $q$.
-\item Add a method $\mathtt{remove}(q, v)$ to both \autoref{fig:queue} and \autoref{fig:queueMS}
+\item Add a method $\mathtt{length}(q)$ to \autoref{fig:queue} that returns the length of the given queue.
+The complexity of the method should be $O(1)$, which is to say that you should maintain
+the length of the queue as a field member and update it in \texttt{put} and \texttt{get}.
+\item \label{ex:qlength} Write a method $\mathtt{check}(q)$
+that checks the integrity of the queue in \autoref{fig:queue}.
+In particular, it should check the following integrity properties:
+\begin{itemize}
+\item If the list is empty, $q$$\rightarrow$$\mathtt{tail}$ should be \texttt{None}.
+Otherwise, the last element in the linked list starting from $q$$\rightarrow$$\mathtt{head}$
+should equal $q$$\rightarrow$$\mathtt{head}$;
+Moreover, $q$$\rightarrow$$\texttt{tail}$$\rightarrow$$next$ should be \texttt{None}.
+\item The length field that you added in \autoref{ex:qlength} should equal the length
+of the list.
+\end{itemize}
+Method $\mathtt{check}(q)$ should not obtain a lock; instead add the following line
+just before releasing the lock in \texttt{put} and \texttt{get}:
+\begin{code}
+\textbf{assert} \texttt{check()}
+\end{code}
+\item Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queue}
 that removes all occurrences of $v$, if any, from queue $q$.
 \item The test program in \autoref{fig:queuetest} is not very thorough.  Design
 and implement a better one.
