@@ -1,4 +1,3 @@
-import synch
 import barrier
 
 const NROUNDS = 3
