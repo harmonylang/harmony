@@ -150,7 +150,7 @@ def load_string(all, filename, scope, code):
     except IndexError:
         # best guess...
         print("Parsing", filename, "hit EOF")
-        # print(traceback.format_exc())
+        print(traceback.format_exc())
         exit(1)
 
     for mod in ast.getImports():
@@ -3694,13 +3694,14 @@ class StatementRule(Rule):
                 return (FromAST(module, []), t)
             items = [tokens[2]]
             tokens = tokens[3:]
-            (lexeme, file, line, column) = tokens[0]
-            while lexeme == ',':
-                items.append(tokens[1])
-                tokens = tokens[2:]
-                if tokens == []:
-                    break;
+            if tokens != []:
                 (lexeme, file, line, column) = tokens[0]
+                while lexeme == ',':
+                    items.append(tokens[1])
+                    tokens = tokens[2:]
+                    if tokens == []:
+                        break;
+                    (lexeme, file, line, column) = tokens[0]
             assert tokens == [], tokens
             return (FromAST(module, items), t)
         if lexeme == "assert":
