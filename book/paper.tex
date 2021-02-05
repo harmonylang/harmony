@@ -2594,8 +2594,8 @@ In particular, it should check the following integrity properties:
 \begin{itemize}
 \item If the list is empty, $q$$\rightarrow$$\mathtt{tail}$ should be \texttt{None}.
 Otherwise, the last element in the linked list starting from $q$$\rightarrow$$\mathtt{head}$
-should equal $q$$\rightarrow$$\mathtt{head}$;
-Moreover, $q$$\rightarrow$$\texttt{tail}$$\rightarrow$$next$ should be \texttt{None}.
+should equal $q$$\rightarrow$$\mathtt{head}$. Moreover,
+$q$$\rightarrow$$\texttt{tail}$$\rightarrow$$next$ should be \texttt{None};
 \item The length field that you added in \autoref{ex:qlength} should equal the length
 of the list.
 \end{itemize}
@@ -5279,7 +5279,7 @@ multisets:
 \hline
 \end{tabular}
 
-\section{The \texttt{Hoare} module}
+\section{The \texttt{hoare} module}
 \label{ap:hoare}
 
 \index{list module}%
@@ -5696,7 +5696,7 @@ x = y = Lock();
 
 In Python, this creates two variables $x$ and $y$ referring to the same lock.
 In Harmony, the two variables will be two different locks.  If you want two
-variable refering to the same lock in Harmony, you would write:
+variables referring to the same lock in Harmony, you would write:
 
 \begin{code}
 \begin{verbatim}
@@ -5745,7 +5745,7 @@ There are three classes of precedence.
 Application has the highest precedence.  So \texttt{!}\textit{a b} is interpreted as
 \texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
 (\textit{a b}) \texttt{+} (\textit{c d}).
-Unary operators are have the next highest precedence,
+Unary operators have the next highest precedence,
 and the remaining operators have the lowest precedence.
 So $-2 + 3$ evaluates to 1, not $-5$.
 
@@ -5783,7 +5783,7 @@ one element must be followed by a comma.
 So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
 
 Because tuples and lists are dictionaries, the \texttt{del} statement is
-different than in Python.  For example, if $x$ = [.a, .b, .c], then
+different from Python.  For example, if $x$ = [.a, .b, .c], then
 \texttt{del} $x$[1] results in $x$ = \{ 0:.a, 2:.c \}, \emph{not}
 $x$ = [.a, .c].
 Harmony also does not support special slicing syntax like Python.
