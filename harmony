@@ -556,6 +556,7 @@ uint64_t value_put_dict(void *p, int size);
 uint64_t value_put_address(void *p, int size);
 uint64_t value_put_context(struct context *ctx);
 char *value_string(uint64_t v);
+char *indices_string(const uint64_t *vec, int size);
 char *value_json(uint64_t v);
 
 #define VALUE_BITS      3
@@ -3459,16 +3460,18 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
-            char *x = value_string(state->vars);
-            char *y = value_string(av);
-            ctx_failure(*pctx, "Load: unknown address %s / %s", x, y);
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "Load: unknown address %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);
     }
     else {
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
-            ctx_failure(*pctx, "Load: unknown variable");
+            char *x = indices_string(el->indices, el->n);
+            ctx_failure(*pctx, "Load: unknown variable %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);
@@ -5862,25 +5865,19 @@ static char *value_json_set(uint64_t v) {
     return r;
 }
 
-static char *value_string_address(uint64_t v) {
+char *indices_string(const uint64_t *vec, int size) {
     char *r;
-    if (v == 0) {
+    if (size == 0) {
         alloc_printf(&r, "None");
         return r;
     }
-
-    void *p = (void *) v;
-    int size;
-    uint64_t *indices = dict_retrieve(p, &size);
-    size /= sizeof(uint64_t);
-    assert(size > 0);
-    char *s = value_string(indices[0]);
+    char *s = value_string(vec[0]);
     assert(s[0] == '.');
     alloc_printf(&r, "?%s", s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {
-        s = value_string(indices[i]);
+        s = value_string(vec[i]);
         if (*s == '.') {
             append_printf(&r, "%s", s);
         }
@@ -5890,6 +5887,21 @@ static char *value_string_address(uint64_t v) {
     }
 
     return r;
+}
+
+static char *value_string_address(uint64_t v) {
+    if (v == 0) {
+        char *r;
+        alloc_printf(&r, "None");
+        return r;
+    }
+
+    void *p = (void *) v;
+    int size;
+    uint64_t *indices = dict_retrieve(p, &size);
+    size /= sizeof(uint64_t);
+    assert(size > 0);
+    return indices_string(indices, size);
 }
 
 static char *value_json_address(uint64_t v) {
@@ -6795,17 +6807,26 @@ function init_macrostep(i) {
   }
 }
 
+function dict_convert(d) {
+  if (typeof d === "string") {
+    return d;
+  }
+  result = "";
+  for (var k in d) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += dict_convert(k) + ":" + dict_convert(d[k]);;
+  }
+  return "{" + result + "}";
+}
+
 function get_shared(shared, path) {
   if (!shared.hasOwnProperty(path[0])) {
     return "";
   }
   if (path.length == 1) {
-    if (typeof shared[path[0]] === "string") {
-      return shared[path[0]];
-    }
-    else {
-      return JSON.stringify(shared[path[0]]);
-    }
+    return dict_convert(shared[path[0]]);
   }
   return get_shared(shared[path[0]], path.slice(1));
 }

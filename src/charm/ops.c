@@ -781,16 +781,18 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
-            char *x = value_string(state->vars);
-            char *y = value_string(av);
-            ctx_failure(*pctx, "Load: unknown address %s / %s", x, y);
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "Load: unknown address %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);
     }
     else {
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
-            ctx_failure(*pctx, "Load: unknown variable");
+            char *x = indices_string(el->indices, el->n);
+            ctx_failure(*pctx, "Load: unknown variable %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);

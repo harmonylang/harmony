@@ -86,6 +86,7 @@ uint64_t value_put_dict(void *p, int size);
 uint64_t value_put_address(void *p, int size);
 uint64_t value_put_context(struct context *ctx);
 char *value_string(uint64_t v);
+char *indices_string(const uint64_t *vec, int size);
 char *value_json(uint64_t v);
 
 #define VALUE_BITS      3

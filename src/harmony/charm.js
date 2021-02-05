@@ -438,17 +438,26 @@ function init_macrostep(i) {
   }
 }
 
+function dict_convert(d) {
+  if (typeof d === "string") {
+    return d;
+  }
+  result = "";
+  for (var k in d) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += dict_convert(k) + ":" + dict_convert(d[k]);;
+  }
+  return "{" + result + "}";
+}
+
 function get_shared(shared, path) {
   if (!shared.hasOwnProperty(path[0])) {
     return "";
   }
   if (path.length == 1) {
-    if (typeof shared[path[0]] === "string") {
-      return shared[path[0]];
-    }
-    else {
-      return JSON.stringify(shared[path[0]]);
-    }
+    return dict_convert(shared[path[0]]);
   }
   return get_shared(shared[path[0]], path.slice(1));
 }
