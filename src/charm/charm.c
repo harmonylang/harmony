@@ -436,7 +436,7 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
             }
             break;
         default:
-            fprintf(stderr, "call type: %"PRIx64"\n", ct >> VALUE_BITS);
+            fprintf(stderr, "call type: %"PRIx64" %d %d %D\n", ct, ctx->sp, ctx->fp, ctx->pc);
             // panic("print_trace: bad call type 1");
         }
     }
@@ -457,6 +457,7 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
 				}
 				fprintf(file, "            {\n");
 				fprintf(file, "              \"pc\": \"%d\",\n", orig_pc);
+				fprintf(file, "              \"xpc\": \"%d\",\n", pc);
 
 				const struct env_Frame *ef = code[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
