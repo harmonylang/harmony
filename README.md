@@ -1,7 +1,7 @@
 Harmony is a programming language for testing and experimenting with
 concurrent code.
 
-Website: http://www.cs.cornell.edu/home/rvr/harmony/
+Website: harmony.www.cs.cornell.edu
 
 Running harmony:
 
@@ -12,6 +12,8 @@ Running harmony:
           run "./harmony [args ...]" instead of just "harmony [args ...]"
 
     Windows:
-        - you can't use the harmony script probably
-        - try to run
-            python3 harmony.py -f [args ...]
+        - install gcc (http://mingw-w64.org/doku.php)
+		- make sure you can run gcc from a command prompt by add
+		  the mingw-w64/bin directory to the PATH environment variable
+        - to run a harmony program, do the following:
+            python3 harmony.py [args ...]
