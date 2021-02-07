@@ -5347,12 +5347,12 @@ def main():
                 # if os.name == "nt":
                 #     r = os.system("cl charm.c /link /out:%s"%charm);
                 # else:
-                    r = os.system("cc -g charm.c -o %s"%charm);
+                    r = os.system("gcc -g charm.c -m64 -o %s"%charm);
             else:
                 # if os.name == "nt":
                 #     r = os.system("cl charm.c /link /out:%s"%charm);
                 # else:
-                    r = os.system("cc -O3 charm.c -o %s"%charm);
+                    r = os.system("gcc -O3 charm.c -m64 -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
