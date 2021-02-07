@@ -18,8 +18,9 @@ function drawTimeLine(mes) {
   c.clearRect(0, 0, mes.canvas.width, mes.canvas.height);
   var t = mes.startTime;
   var yboxes = Math.floor((mes.nsteps + 29) / 30);
+  var nsteps = mes.nsteps;
   for (var y = 0; y < yboxes; y++) {
-    var xboxes = y < yboxes - 1 ? 30 : (mes.nsteps % 30);
+    var xboxes = nsteps > 30 ? 30 : nsteps;
     for (var x = 0; x < xboxes; x++) {
       c.fillStyle = t < currentTime ? "orange" : "white";
       c.fillRect(x * boxSize, y * boxSize, boxSize, boxSize);
@@ -27,6 +28,7 @@ function drawTimeLine(mes) {
       c.stroke();
       t += 1;
     }
+    nsteps -= xboxes;
   }
 }
 
