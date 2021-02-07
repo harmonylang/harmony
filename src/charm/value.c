@@ -362,7 +362,7 @@ static char *value_string_dict(uint64_t v) {
         append_printf(&r, ")");
     }
     else {
-        alloc_printf(&r, "XX{ ");
+        alloc_printf(&r, "{ ");
         for (int i = 0; i < size; i++) {
             if (i != 0) {
                 append_printf(&r, ", ");
