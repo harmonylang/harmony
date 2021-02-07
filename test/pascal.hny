@@ -1,23 +1,20 @@
-const N = 4;
+const N = 2
 
 def factorial(n):
-    result = 1 if n == 0 else (n * factorial(n - 1));
-;
+    result = 1 if n == 0 else (n * factorial(n - 1))
+
 def C(n, k):
-    result = factorial(n) / (factorial(k) * factorial(n - k));
-;
+    result = factorial(n) / (factorial(k) * factorial(n - k))
+
 def pascal(x, n, k):
-    result = 0;
+    result = 0
     while x > 0:
         if k == n:
-            k, n = 0, n + 1;
+            k, n = 0, n + 1
         else:
-            k += 1;
-        ;
-        result += C(n, k);
-        x -= 1;
-    ;
-;
-x = choose({0..N-1});
-# assert pascal((x * (x + 1)) / 2, 0, 0) == ((2 ** x) - 1);
-assert pascal(x, 0, 0) == x;
+            k += 1
+        result += C(n, k)
+        x -= 1
+
+x = choose({0..N})
+assert pascal(x, 0, 0) == x
