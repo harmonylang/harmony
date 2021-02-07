@@ -693,6 +693,7 @@ var state =
           "trace": [
             {
               "pc": "1",
+              "xpc": "0",
               "method": "__init__()",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] } }
@@ -701,7 +702,7 @@ var state =
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] } },
           "atomic": "1",
-          "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } } ] }, { "type": "int", "value": "0" } ],
           "pc": "0"
         },
         {
@@ -769,7 +770,6 @@ var state =
           "trace": [
 
           ],
-          "local": { },
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
@@ -829,6 +829,7 @@ var state =
           "trace": [
             {
               "pc": "5",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -836,7 +837,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "0" } } ] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
         {
@@ -870,6 +871,7 @@ var state =
           "trace": [
             {
               "pc": "6",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -904,6 +906,7 @@ var state =
           "trace": [
             {
               "pc": "7",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -911,7 +914,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "0" } } ] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
         {
@@ -962,6 +965,7 @@ var state =
           "trace": [
             {
               "pc": "11",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -995,6 +999,7 @@ var state =
           "trace": [
             {
               "pc": "5",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1002,7 +1007,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "1" } } ] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
         {
@@ -1036,6 +1041,7 @@ var state =
           "trace": [
             {
               "pc": "11",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1053,6 +1059,7 @@ var state =
           "trace": [
             {
               "pc": "6",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1075,6 +1082,7 @@ var state =
           "trace": [
             {
               "pc": "7",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1082,7 +1090,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "1" } } ] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
         {
@@ -1133,6 +1141,7 @@ var state =
           "trace": [
             {
               "pc": "11",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1150,6 +1159,7 @@ var state =
           "trace": [
             {
               "pc": "11",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1172,6 +1182,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1179,7 +1190,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "1" } } ] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
       ],
@@ -1208,6 +1219,7 @@ var state =
           "trace": [
             {
               "pc": "11",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1225,6 +1237,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1246,6 +1259,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1253,7 +1267,7 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "0" } } ] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
       ],
@@ -1282,6 +1296,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1299,6 +1314,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -1320,6 +1336,7 @@ var state =
           "trace": [
             {
               "pc": "13",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1328,7 +1345,7 @@ var state =
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
           "atomic": "1",
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [{ "key": { "type": "atom", "value": "result" }, "value": { "type": "dict", "value": [] } }, { "key": { "type": "atom", "value": "self" }, "value": { "type": "int", "value": "0" } } ] }, { "type": "int", "value": "0" } ],
           "pc": "12"
         },
         {
@@ -1447,6 +1464,7 @@ var state =
           "trace": [
             {
               "pc": "28",
+              "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
@@ -1467,6 +1485,7 @@ var state =
           "trace": [
             {
               "pc": "12",
+              "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
               "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
@@ -2027,12 +2046,26 @@ function init_macrostep(i) {
   }
 }
 
+function dict_convert(d) {
+  if (typeof d === "string") {
+    return d;
+  }
+  result = "";
+  for (var k in d) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += dict_convert(k) + ":" + dict_convert(d[k]);;
+  }
+  return "{" + result + "}";
+}
+
 function get_shared(shared, path) {
   if (!shared.hasOwnProperty(path[0])) {
     return "";
   }
   if (path.length == 1) {
-    return shared[path[0]];
+    return dict_convert(shared[path[0]]);
   }
   return get_shared(shared[path[0]], path.slice(1));
 }

@@ -436,7 +436,7 @@ bool print_trace(FILE *file, struct context *ctx, int pc, int fp, uint64_t vars)
             }
             break;
         default:
-            fprintf(stderr, "call type: %"PRIx64" %d %d %D\n", ct, ctx->sp, ctx->fp, ctx->pc);
+            fprintf(stderr, "call type: %"PRIx64" %d %d %d\n", ct, ctx->sp, ctx->fp, ctx->pc);
             // panic("print_trace: bad call type 1");
         }
     }
