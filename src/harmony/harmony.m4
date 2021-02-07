@@ -5344,14 +5344,14 @@ def main():
                 print("#define HARMONY_COMBINE", file=fd)
                 print(charm_src, file=fd)
             if testflag:
-                if os.name == "nt":
-                    r = os.system("cl charm.c /link /out:%s"%charm);
-                else:
+                # if os.name == "nt":
+                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                # else:
                     r = os.system("cc -g charm.c -o %s"%charm);
             else:
-                if os.name == "nt":
-                    r = os.system("cl charm.c /link /out:%s"%charm);
-                else:
+                # if os.name == "nt":
+                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                # else:
                     r = os.system("cc -O3 charm.c -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")

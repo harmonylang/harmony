@@ -5794,7 +5794,7 @@ static char *value_string_dict(uint64_t v) {
         append_printf(&r, ")");
     }
     else {
-        alloc_printf(&r, "XX{ ");
+        alloc_printf(&r, "{ ");
         for (int i = 0; i < size; i++) {
             if (i != 0) {
                 append_printf(&r, ", ");
@@ -12607,14 +12607,14 @@ def main():
                 print("#define HARMONY_COMBINE", file=fd)
                 print(charm_src, file=fd)
             if testflag:
-                if os.name == "nt":
-                    r = os.system("cl charm.c /link /out:%s"%charm);
-                else:
+                # if os.name == "nt":
+                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                # else:
                     r = os.system("cc -g charm.c -o %s"%charm);
             else:
-                if os.name == "nt":
-                    r = os.system("cl charm.c /link /out:%s"%charm);
-                else:
+                # if os.name == "nt":
+                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                # else:
                     r = os.system("cc -O3 charm.c -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")
