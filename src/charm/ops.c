@@ -660,6 +660,8 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     uint64_t arg = ctx_pop(pctx);
     ctx_push(pctx, arg);
 
+    uint64_t oldvars = (*pctx)->vars;
+
     // try to match against parameters
     (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
@@ -667,7 +669,7 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
         return;
     }
  
-    ctx_push(pctx, (*pctx)->vars);
+    ctx_push(pctx, oldvars);
     ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
 
     struct context *ctx = *pctx;
