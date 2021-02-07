@@ -12570,7 +12570,7 @@ def main():
             os.close(fd)
         with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        charm = "%s/.charm"%pathlib.Path.home()
+        charm = "%s/.charm.exe"%pathlib.Path.home()
         path = pathlib.Path(charm)
         rebuild = testflag or not path.exists()
         if not rebuild:
@@ -12580,11 +12580,20 @@ def main():
                 rebuild = True
         if rebuild:
             with open("charm.c", "w") as fd:
+                if not testflag:
+                    print("#define NDEBUG", file=fd)
+                print("#define HARMONY_COMBINE", file=fd)
                 print(charm_src, file=fd)
             if testflag:
-                r = os.system("cc -g -DHARMONY_COMBINE charm.c -o %s"%charm);
+                if os.name == "nt":
+                    r = os.system("cl charm.c /link /out:%s"%charm);
+                else:
+                    r = os.system("cc -g charm.c -o %s"%charm);
             else:
-                r = os.system("cc -O3 -DNDEBUG -DHARMONY_COMBINE charm.c -o %s"%charm);
+                if os.name == "nt":
+                    r = os.system("cl charm.c /link /out:%s"%charm);
+                else:
+                    r = os.system("cc -O3 charm.c -o %s"%charm);
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
