@@ -1892,8 +1892,9 @@ other using inductive invariants and proof by induction.  The former
 is certainly easier, but it does not provide intuition for why the
 algorithm works.  The second provides much more insight.
 
-Even though they are not strictly necessary, we encourage to include invariants
-in your Harmony code. They can provide important insights into why the code works.
+Even though they are not strictly necessary, we encourage you
+to include invariants in your Harmony code.
+They can provide important insights into why the code works.
 
 A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
@@ -2154,7 +2155,7 @@ $\mathcal{I}_2(i)$ is checked by the \texttt{assert} statement.
 But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
-premisse is that there is a thread at that label.  However, we would
+premise is that there is a thread at that label.  However, we would
 like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 Harmony supports checking such invariants using the \texttt{invariant}
@@ -5939,7 +5940,7 @@ of the form \texttt{(* comment *)}.
 I received considerable help and inspiration from various people
 while writing this book.
 
-First and foremost I would like to think my student Haobin Ni with
+First and foremost I would like to thank my student Haobin Ni with
 whom I've had numerous discussions about the design of Harmony.
 Haobin even contributed some code to the Harmony compiler.
 
@@ -5960,6 +5961,7 @@ early drafts of the book:
 Alex Chang,
 Anneke van Renesse,
 Brendon Nguyen,
+Hartek Sabharwal,
 Heather Zheng,
 Lorenzo Alvisi,
 Saleh Hassen,

@@ -1,36 +1,28 @@
-import RWlock;
+import RWlock
 
-const NREADERS = 3;
-const NWRITERS = 2;
+const NREADERS = 3
+const NWRITERS = 2
 
 def reader(self):
-    acquire_rlock();
-    @rcs: assert atLabel.wcs == dict{};
-    flags[self] = True;
+    acquire_rlock()
+    @rcs: assert atLabel.wcs == dict{}
+    flags[self] = True
     if choose({ False, True }):
         let blocked = True:
             while blocked:
                 if all(flags[i] for i in {1..NREADERS}):
-                    blocked = False;
-                ;
-            ;
-        ;
-    ;
-    release_rlock();
-;
+                    blocked = False
+    release_rlock()
+
 def writer():
-    acquire_wlock();
+    acquire_wlock()
     @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                  (atLabel.rcs == dict{})
-          ;
-    release_wlock();
-;
-rwlock = Lock();
-nreaders = 0;
-flags = dict{ False for i in {1..NREADERS} };
+    release_wlock()
+
+flags = dict{ False for i in {1..NREADERS} }
 for i in {1..NREADERS}:
-    spawn reader(i);
-;
+    spawn reader(i)
 for i in {1..NWRITERS}:
-    spawn writer();
-;
+    spawn writer()
+

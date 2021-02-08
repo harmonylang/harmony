@@ -1,24 +1,21 @@
-import RW;
+import RW
 
-const NREADERS = 3;
-const NWRITERS = 3;
+const NREADERS = 3
+const NWRITERS = 3
 
-def reader(self):
-    acquire_rlock();
-    @rcs: assert atLabel.wcs == dict{};
-    release_rlock();
-;
+def reader():
+    acquire_rlock()
+    @rcs: assert atLabel.wcs == dict{}
+    release_rlock()
+
 def writer():
-    acquire_wlock();
+    acquire_wlock()
     @wcs: assert (atLabel.wcs == dict{ nametag(): 1 }) and
                  (atLabel.rcs == dict{})
-          ;
-    release_wlock();
-;
+    release_wlock()
+
 for i in {1..NREADERS}:
-    spawn reader(i);
-;
+    spawn reader()
 for i in {1..NWRITERS}:
-    spawn writer();
-;
-acquire_wlock();
+    spawn writer()
+acquire_wlock()
