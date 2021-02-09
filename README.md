@@ -12,8 +12,9 @@ Running harmony:
           run "./harmony [args ...]" instead of just "harmony [args ...]"
 
     Windows:
-        - install gcc (http://mingw-w64.org/doku.php)
-		- make sure you can run gcc from a command prompt by add
+        - install gcc (http://mingw-w64.org/doku.php).  Make sure you
+          select the x86-64 architecture during installation!
+		- make sure you can run gcc from a command prompt by adding
 		  the mingw-w64/bin directory to the PATH environment variable
         - to run a harmony program, do the following:
             python3 harmony.py [args ...]
