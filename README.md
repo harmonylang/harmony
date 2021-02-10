@@ -18,7 +18,7 @@ Running harmony:
             - at the next window, make sure you copy the Destination folder;
               you'll need it later
             - after installation is complete, add the Destination folder
-              you copied in the previous step extended with \mingw\bin to
+              you copied in the previous step extended with \mingw64\bin to
               your Path environment variable
               (search "Edit environment variables" in the search bar.  You
                can add it either to the Path associated with your account
