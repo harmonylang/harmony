@@ -1983,6 +1983,15 @@ uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n
             return ctx_failure(ctx, "unary minus can only be applied to ints");
         }
         e >>= VALUE_BITS;
+        if (e == VALUE_MAX) {
+            return ((uint64_t) VALUE_MIN << VALUE_BITS) | VALUE_INT;
+        }
+        if (e == VALUE_MIN) {
+            return (VALUE_MAX << VALUE_BITS) | VALUE_INT;
+        }
+        if (-e <= VALUE_MIN || -e >= VALUE_MAX) {
+            return ctx_failure(ctx, "unary minus overflow (model too large)");
+        }
         return ((-e) << VALUE_BITS) | VALUE_INT;
     }
     else {
@@ -1993,7 +2002,11 @@ uint64_t f_minus(struct state *state, struct context *ctx, uint64_t *args, int n
             }
             e1 >>= VALUE_BITS;
             e2 >>= VALUE_BITS;
-            return ((e2 - e1) << VALUE_BITS) | VALUE_INT;
+            int64_t result = e2 - e1;
+            if (result <= VALUE_MIN || result >= VALUE_MAX) {
+                return ctx_failure(ctx, "minus overflow (model too large)");
+            }
+            return (result << VALUE_BITS) | VALUE_INT;
         }
 
         uint64_t e1 = args[0], e2 = args[1];
@@ -2076,26 +2089,24 @@ uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n){
 }
 
 uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n){
-    if ((args[0] & VALUE_MASK) == VALUE_INT) {
-        int64_t e1 = args[0];
+    int64_t e1 = args[0];
+    if ((e1 & VALUE_MASK) == VALUE_INT) {
+        e1 >>= VALUE_BITS;
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
                 return ctx_failure(ctx,
                     "+: applied to mix of integers and other values");
             }
-            int64_t sum = e1 + (e2 & ~VALUE_MASK);
-            if (e1 > 0 && e2 > 0 && sum <= 0) {
+            e2 >>= VALUE_BITS;
+            int64_t sum = e1 + e2;
+            if (sum <= VALUE_MIN || sum >= VALUE_MAX) {
                 return ctx_failure(ctx,
                     "+: integer overflow (model too large)");
             }
-            if (e1 < 0 && e2 < 0 && sum >= 0) {
-                return ctx_failure(ctx,
-                    "+: integer underflow (model too large)");
-            }
             e1 = sum;
         }
-        return e1;
+        return (e1 << VALUE_BITS) | VALUE_INT;
     }
 
     // get all the lists
@@ -2335,6 +2346,9 @@ uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, i
     e2 >>= VALUE_BITS;
     int64_t result = e2 << e1;
     if (((result << VALUE_BITS) >> VALUE_BITS) != result) {
+        return ctx_failure(ctx, "<<: overflow (model too large)");
+    }
+    if (result <= VALUE_MIN || result >= VALUE_MAX) {
         return ctx_failure(ctx, "<<: overflow (model too large)");
     }
     return (result << VALUE_BITS) | VALUE_INT;

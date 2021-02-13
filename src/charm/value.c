@@ -269,32 +269,33 @@ static char *value_json_bool(uint64_t v) {
 }
 
 static char *value_string_int(uint64_t v) {
+    int64_t w = ((int64_t) v) >> VALUE_BITS;
     char *r;
 
-    if ((v >> VALUE_BITS) == VALUE_MAX) {
+    if (w == VALUE_MAX) {
         alloc_printf(&r, "inf");
     }
-    else if ((v >> VALUE_BITS) == VALUE_MIN) {
+    else if (w == VALUE_MIN) {
         alloc_printf(&r, "-inf");
     }
     else {
-        alloc_printf(&r, "%"PRId64"", ((int64_t) v) >> VALUE_BITS);
+        alloc_printf(&r, "%"PRId64"", w);
     }
     return r;
 }
 
 static char *value_json_int(uint64_t v) {
+    int64_t w = ((int64_t) v) >> VALUE_BITS;
     char *r;
 
-    if ((v >> VALUE_BITS) == VALUE_MAX) {
+    if (w == VALUE_MAX) {
         alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"inf\" }");
     }
-    else if ((v >> VALUE_BITS) == VALUE_MIN) {
+    else if (w == VALUE_MIN) {
         alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"-inf\" }");
     }
     else {
-        alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }",
-                            ((int64_t) v) >> VALUE_BITS);
+        alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", w);
     }
     return r;
 }
