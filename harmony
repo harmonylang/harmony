@@ -711,7 +711,7 @@ struct node {
 };
 
 struct failure {
-    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION } type;
+    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT } type;
     struct node *node;      // failed state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
@@ -1818,14 +1818,21 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 }
 
 bool is_stuck(struct node *start, struct node *node, uint64_t ctx) {
+	if (node->component != start->component) {
+		return false;
+	}
+	if (node->visited) {
+		return true;
+	}
+	node->visited = true;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-        if (edge->ctx == ctx && edge->node != start) {
-            if (edge->node->component != start->component) {
-                return false;
-            }
-            if (!is_stuck(start, edge->node, edge->after)) {
-                return false;
-            }
+        if (edge->ctx == ctx) {
+			if (edge->node == node) {
+				return false;
+			}
+			if (!is_stuck(start, edge->node, edge->after)) {
+				return false;
+			}
         }
     }
     return true;
@@ -1835,11 +1842,22 @@ void detect_busywait(int sid){
     struct node *node = graph[sid];
 
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-        if (edge->node != node && !is_stuck(node, edge->node, edge->after)) {
-            return;
-        }
+		if (edge->node != node) {
+			for (int i = 0; i < graph_size; i++) {
+				graph[i]->visited = false;
+			}
+			node->visited = true;
+			if (is_stuck(node, edge->node, edge->after)) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BUSYWAIT;
+                f->ctx = node->before;
+                f->choice = node->choice;
+                f->node = node;
+                queue_enqueue(failures, f);
+				break;
+			}
+		}
     }
-    printf("STUCK\n");
 }
 
 int main(int argc, char **argv){
@@ -2029,6 +2047,9 @@ int main(int argc, char **argv){
         }
 
         if (false && nbad == 0) {
+            for (int i = 0; i < graph_size; i++) {
+				graph[i]->visited = false;
+			}
             for (int i = 0; i < ncomponents; i++) {
                 if (components[i].size > 1) {
                     detect_busywait(components[i].representative);
@@ -2072,6 +2093,10 @@ int main(int argc, char **argv){
         printf("Non-terminating state\n");
         fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
+    case FAIL_BUSYWAIT:
+        printf("Busy waiting\n");
+        fprintf(out, "  \"issue\": \"Busy waiting\",\n");
+		break;
     default:
         panic("main: bad fail type");
     }
