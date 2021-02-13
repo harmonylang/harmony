@@ -18,6 +18,8 @@ struct combined {           // combination of current state and current context
 
 struct component {
     bool good;          // terminating or out-going edge
+    int size;           // #states
+    int representative; // lowest numbered state in the component
 };
 
 struct edge {
@@ -25,6 +27,7 @@ struct edge {
     uint64_t ctx, choice;   // ctx that made the microstep, choice if any
     bool interrupt;         // set if state change is an interrupt
     struct node *node;      // resulting node (state)
+    uint64_t after;         // resulting context
     int weight;
 };
 
@@ -370,6 +373,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     fwd->node = next;
     fwd->weight = weight;
     fwd->next = node->fwd;
+    fwd->after = after;
     node->fwd = fwd;
 
     // Add a backward edge from next to node.
@@ -380,6 +384,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     bwd->node = node;
     bwd->weight = weight;
     bwd->next = next->bwd;
+    bwd->after = after;
     next->bwd = bwd;
 
     if (cc->failure != 0) {
@@ -1153,6 +1158,31 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     fprintf(out, " }");
 }
 
+bool is_stuck(struct node *start, struct node *node, uint64_t ctx) {
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+        if (edge->ctx == ctx && edge->node != start) {
+            if (edge->node->component != start->component) {
+                return false;
+            }
+            if (!is_stuck(start, edge->node, edge->after)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void detect_busywait(int sid){
+    struct node *node = graph[sid];
+
+    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+        if (edge->node != node && !is_stuck(node, edge->node, edge->after)) {
+            return;
+        }
+    }
+    printf("STUCK\n");
+}
+
 int main(int argc, char **argv){
     // printf("Charm v1\n");
 
@@ -1305,6 +1335,10 @@ int main(int argc, char **argv){
             struct node *node = graph[i];
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
+            if (comp->size == 0) {
+                comp->representative = i;
+            }
+            comp->size++;
             if (comp->good) {
                 continue;
             }
@@ -1332,6 +1366,14 @@ int main(int argc, char **argv){
                 f->choice = node->choice;
                 f->node = node;
                 queue_enqueue(failures, f);
+            }
+        }
+
+        if (false && nbad == 0) {
+            for (int i = 0; i < ncomponents; i++) {
+                if (components[i].size > 1) {
+                    detect_busywait(components[i].representative);
+                }
             }
         }
 
