@@ -2084,7 +2084,16 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
                 return ctx_failure(ctx,
                     "+: applied to mix of integers and other values");
             }
-            e1 += e2 & ~VALUE_MASK;
+            int64_t sum = e1 + (e2 & ~VALUE_MASK);
+            if (e1 > 0 && e2 > 0 && sum <= 0) {
+                return ctx_failure(ctx,
+                    "+: integer overflow (model too large)");
+            }
+            if (e1 < 0 && e2 < 0 && sum >= 0) {
+                return ctx_failure(ctx,
+                    "+: integer underflow (model too large)");
+            }
+            e1 = sum;
         }
         return e1;
     }
@@ -2145,8 +2154,14 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
     }
     int64_t base = e2 >> VALUE_BITS;
     int64_t exp = e1 >> VALUE_BITS;
+    if (exp == 0) {
+        return (1 << VALUE_BITS) | VALUE_INT;
+    }
+    if (exp < 0) {
+        return ctx_failure(ctx, "**: negative exponent");
+    }
 
-    int64_t result = 1;
+    int64_t result = 1, orig = base;
     for (;;) {
         if (exp & 1) {
             result *= base;
@@ -2156,6 +2171,10 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
             break;
         }
         base *= base;
+    }
+    if (result < orig) {
+        // TODO.  Improve overflow detection
+        return ctx_failure(ctx, "**: overflow (model too large)");
     }
 
     return (result << VALUE_BITS) | VALUE_INT;
@@ -2310,8 +2329,15 @@ uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, i
         return ctx_failure(ctx, "left argument to << not an integer");
     }
     e1 >>= VALUE_BITS;
+    if (e1 < 0) {
+        return ctx_failure(ctx, "<<: negative shift count");
+    }
     e2 >>= VALUE_BITS;
-    return ((e2 << e1) << VALUE_BITS) | VALUE_INT;
+    int64_t result = e2 << e1;
+    if (((result << VALUE_BITS) >> VALUE_BITS) != result) {
+        return ctx_failure(ctx, "<<: overflow (model too large)");
+    }
+    return (result << VALUE_BITS) | VALUE_INT;
 }
 
 uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, int n){
@@ -2324,6 +2350,9 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
     if ((e2 & VALUE_MASK) != VALUE_INT) {
         return ctx_failure(ctx, "left argument to >> not an integer");
     }
+    if (e1 < 0) {
+        return ctx_failure(ctx, ">>: negative shift count");
+    }
     e1 >>= VALUE_BITS;
     e2 >>= VALUE_BITS;
     return ((e2 >> e1) << VALUE_BITS) | VALUE_INT;
@@ -2332,6 +2361,7 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
 uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t result = 1;
     int list = -1;
+    bool haszero = false;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if ((e & VALUE_MASK) == VALUE_DICT) {
@@ -2345,11 +2375,27 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
                 return ctx_failure(ctx,
                     "* can only be applied to integers and at most one list");
             }
-            result *= e >> VALUE_BITS;
+            e >>= VALUE_BITS;
+            if (e == 0) {
+                result = 0;
+            }
+            else {
+                int64_t product = result * e;
+                if (product / result != e) {
+                    return ctx_failure(ctx, "*: overflow (model too large)");
+                }
+                result = product;
+            }
         }
     }
     if (list < 0) {
+        if (result != (result << VALUE_BITS) >> VALUE_BITS) {
+            return ctx_failure(ctx, "*: overflow (model too large)");
+        }
         return (result << VALUE_BITS) | VALUE_INT;
+    }
+    if (result == 0) {
+        return VALUE_DICT;
     }
     int size;
     uint64_t *vals = value_get(args[list], &size);
