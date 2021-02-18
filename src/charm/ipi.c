@@ -76,9 +76,8 @@ void ipi_add(ipi_t *x, ipi_t *y){
 // x -= y
 void ipi_sub(ipi_t *x, ipi_t *y){
     int carry = 0;
-    printf("Y"); ipi_dump(y); printf("\n");
     for (int i = 0; (i < y->size) || (carry > 0); i++) {
-        assert(i < x->size);
+		assert(i < x->size);
         sdigit2_t next = (sdigit2_t) x->digits[i] -
                             (carry + ((i < y->size) ? y->digits[i] : 0));
         if (next < 0) {
@@ -176,9 +175,11 @@ void ipi_div(ipi_t *z, ipi_t *rem, ipi_t *x, ipi_t *y){
         ipi_from_int(&q, 0);
         ipi_copy(&n, x, y->size - 1);
         ipi_div_short(&n, y->digits[y->size - 1], &remainder);
-        ipi_mul(&z, &n, &y);
+        ipi_mul(&z, &n, y);
+		ipi_copy(&n, x, 0);
+		ipi_sub(&n, x);
 
-        printf("AFTER: %s %u\n", ipi_to_string(&z, 10), remainder);
+        printf("AFTER: %s %u\n", ipi_to_string(&n, 10), remainder);
 
         assert(false);
     }
@@ -240,6 +241,10 @@ int main(int argc, char **argv){
     ipi_from_string(&y, argv[2], 10);
     printf("X"); ipi_dump(&x); printf("\n");
     printf("Y"); ipi_dump(&y); printf("\n");
+	ipi_sub(&x, &y);
+    printf("X"); ipi_dump(&x); printf("\n");
+	if (1) return 0;
+
     ipi_div(&z, &rem, &x, &y);
     printf("--> %s|%s\n", ipi_to_string(&z, 10), ipi_to_string(&rem, 10));
     return 0;
