@@ -1817,37 +1817,47 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     fprintf(out, " }");
 }
 
-bool is_stuck(struct node *start, struct node *node, uint64_t ctx) {
+enum busywait { BW_ESCAPE, BW_RETURN, BW_VISITED };
+enum busywait is_stuck(struct node *start, struct node *node, uint64_t ctx, bool change) {
 	if (node->component != start->component) {
-		return false;
+		return BW_ESCAPE;
 	}
+    if (node == start) {
+        return change ? BW_RETURN : BW_ESCAPE;
+    }
 	if (node->visited) {
-		return true;
+		return BW_VISITED;
 	}
+    change = change || (node->state->vars != start->state->vars);
 	node->visited = true;
+    enum busywait result = BW_ESCAPE;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
         if (edge->ctx == ctx) {
 			if (edge->node == node) {
-				return false;
+				return BW_ESCAPE;
 			}
-			if (!is_stuck(start, edge->node, edge->after)) {
-				return false;
-			}
+			enum busywait bw = is_stuck(start, edge->node, edge->after, change);
+            switch (bw) {
+            case BW_ESCAPE:
+                return BW_ESCAPE;
+            case BW_RETURN:
+                result = BW_RETURN;
+                break;
+            case BW_VISITED:
+                break;
+            default:
+                assert(false);
+            }
         }
     }
-    return true;
+    return result;
 }
 
-void detect_busywait(int sid){
-    struct node *node = graph[sid];
-
+void detect_busywait(struct node *node){
+    node->visited = true;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
 		if (edge->node != node) {
-			for (int i = 0; i < graph_size; i++) {
-				graph[i]->visited = false;
-			}
-			node->visited = true;
-			if (is_stuck(node, edge->node, edge->after)) {
+			if (is_stuck(node, edge->node, edge->after, false) == BW_RETURN) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BUSYWAIT;
                 f->ctx = node->before;
@@ -1858,6 +1868,7 @@ void detect_busywait(int sid){
 			}
 		}
     }
+    node->visited = false;
 }
 
 int main(int argc, char **argv){
@@ -2046,13 +2057,14 @@ int main(int argc, char **argv){
             }
         }
 
-        if (false && nbad == 0) {
+        if (nbad == 0) {
             for (int i = 0; i < graph_size; i++) {
 				graph[i]->visited = false;
 			}
-            for (int i = 0; i < ncomponents; i++) {
-                if (components[i].size > 1) {
-                    detect_busywait(components[i].representative);
+            for (int i = 0; i < graph_size; i++) {
+                struct node *node = graph[i];
+                if (components[node->component].size > 1) {
+                    detect_busywait(node);
                 }
             }
         }
