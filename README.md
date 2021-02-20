@@ -1,7 +1,7 @@
 Harmony is a programming language for testing and experimenting with
 concurrent code.
 
-Website: harmony.www.cs.cornell.edu
+Website: http://harmony.cs.cornell.edu
 
 Running harmony:
 
