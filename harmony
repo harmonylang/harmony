@@ -1885,22 +1885,23 @@ enum busywait is_stuck(struct node *start, struct node *node, uint64_t ctx, bool
 
 void detect_busywait(struct node *node){
     node->visited = true;
+	bool stuck = true;
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
 		if (edge->node != node) {
-			if (is_stuck(node, edge->node, edge->after, false) == BW_RETURN) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_BUSYWAIT;
-                // f->ctx = node->before;
-                // f->choice = node->choice;
-                // f->node = node;
-                f->node = edge->node;
-                f->ctx = edge->ctx;
-                f->choice = edge->choice;
-                queue_enqueue(failures, f);
+			if (is_stuck(node, edge->node, edge->after, false) != BW_RETURN) {
+				stuck = false;
 				break;
 			}
 		}
     }
+	if (stuck) {
+		struct failure *f = new_alloc(struct failure);
+		f->type = FAIL_BUSYWAIT;
+		f->ctx = node->before;
+		f->choice = node->choice;
+		f->node = node;
+		queue_enqueue(failures, f);
+	}
     node->visited = false;
 }
 
@@ -2251,6 +2252,28 @@ int main(int argc, char **argv){
     fprintf(out, "\n  }\n");
 
     fprintf(out, "}\n");
+	fclose(out);
+
+    out = fopen("charm.dump", "w");
+	for (int i = 0; i < graph_size; i++) {
+		struct node *node = graph[i];
+		assert(node->id == i);
+		fprintf(out, "\nNode %d:\n", node->id);
+		fprintf(out, "    component: %d\n", node->component);
+		if (node->parent != NULL) {
+			fprintf(out, "    parent: %d\n", node->parent->id);
+		}
+		fprintf(out, "    fwd:\n");
+		int eno = 0;
+		for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next, eno++) {
+			fprintf(out, "        %d:\n", eno);
+			struct context *ctx = value_get(edge->ctx, NULL);
+			fprintf(out, "            context: %s %s\n", value_string(ctx->name), value_string(ctx->arg));
+			fprintf(out, "            choice: %s\n", value_string(edge->choice));
+			fprintf(out, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+		}
+	}
+	fclose(out);
 
     return 0;
 }

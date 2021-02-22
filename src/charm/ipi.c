@@ -67,13 +67,26 @@ void ipi_from_int(ipi_t *ipi, int64_t x){
     ipi->size = k;
 }
 
+// compare x and y, non-destructively
+int ipi_cmp(ipi_t *x, ipi_t *y){
+    if (x->size != y->size) {
+        return x->size - y->size;
+    }
+    for (int i = x->size - 1; i >= 0; i--) {
+        if (x->digits[i] != y->digits[i]) {
+            return x->digits[i] < y->digits[i] ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
 // z = x + y
 void ipi_uadd(ipi_t *z, ipi_t *x, ipi_t *y){
     int carry = 0, max = x->size < y->size ? y->size : x->size;
     ipi_from_int(z, 0);
     for (int i = 0; (i < max) || (carry > 0); i++) {
-        z->digits = realloc(x->digits, (z->size + 1) * sizeof(udigit_t));
         z->size++;
+        z->digits = realloc(z->digits, z->size * sizeof(udigit_t));
         udigit2_t next = (i < x->size ? x->digits[i] : 0) +
                             (i < y->size ? y->digits[i] : 0) + carry;
         z->digits[i] = (udigit_t) next;
@@ -83,14 +96,14 @@ void ipi_uadd(ipi_t *z, ipi_t *x, ipi_t *y){
 
 // z = x - y (x >= y)
 void ipi_usub(ipi_t *z, ipi_t *x, ipi_t *y){
-    int carry = 0;
+    int carry = 0, max = x->size < y->size ? y->size : x->size;
     ipi_from_int(z, 0);
-    for (int i = 0; (i < y->size) || (carry > 0); i++) {
+    for (int i = 0; (i < max) || (carry > 0); i++) {
 		assert(i < x->size);
         sdigit2_t next = (sdigit2_t) x->digits[i] -
                             (carry + ((i < y->size) ? y->digits[i] : 0));
-        z->digits = realloc(x->digits, (z->size + 1) * sizeof(udigit_t));
         z->size++;
+        z->digits = realloc(z->digits, z->size * sizeof(udigit_t));
         if (next < 0) {
             carry = 1;
             z->digits[i] = ((udigit2_t) 1 << DIGIT_WIDTH) + next;
@@ -103,17 +116,41 @@ void ipi_usub(ipi_t *z, ipi_t *x, ipi_t *y){
     ipi_trim(z);
 }
 
-// compare x and y, non-destructively
-int ipi_cmp(ipi_t *x, ipi_t *y){
-    if (x->size != y->size) {
-        return x->size - y->size;
-    }
-    for (int i = x->size - 1; i >= 0; i--) {
-        if (x->digits[i] != y->digits[i]) {
-            return x->digits[i] < y->digits[i] ? -1 : 1;
-        }
-    }
-    return 0;
+void ipi_add(ipi_t *z, ipi_t *x, ipi_t *y){
+	printf("A %d %d\n", x->sign, y->sign);
+	if (x->sign == y->sign) {
+		ipi_uadd(z, x, y);
+		z->sign = x->sign;
+	}
+	else {
+		int cmp = ipi_cmp(x, y);
+		if (cmp < 0) {
+			ipi_usub(z, y, x);
+			z->sign = y->sign;
+		}
+		else {
+			ipi_usub(z, x, y);
+			z->sign = x->sign;
+		}
+	}
+}
+
+void ipi_sub(ipi_t *z, ipi_t *x, ipi_t *y){
+	if (x->sign != y->sign) {
+		ipi_uadd(z, x, y);
+		z->sign = x->sign;
+	}
+	else {
+		int cmp = ipi_cmp(x, y);
+		if (cmp < 0) {
+			ipi_usub(z, y, x);
+			z->sign = -x->sign;
+		}
+		else {
+			ipi_usub(z, x, y);
+			z->sign = -y->sign;
+		}
+	}
 }
 
 // x *= y
@@ -132,7 +169,7 @@ void ipi_mul_short(ipi_t *x, udigit_t y){
 }
 
 // z = x * y
-void ipi_mul(ipi_t *z, ipi_t *x, ipi_t *y){
+void ipi_umul(ipi_t *z, ipi_t *x, ipi_t *y){
     z->sign = x->sign * y->sign;
     z->size = x->size + y->size;
     z->digits = calloc(1, z->size);
@@ -145,6 +182,11 @@ void ipi_mul(ipi_t *z, ipi_t *x, ipi_t *y){
         }
     }
     ipi_trim(z);
+}
+
+void ipi_mul(ipi_t *z, ipi_t *x, ipi_t *y){
+	ipi_umul(z, x, y);
+	z->sign = x->sign * y->sign;
 }
 
 // x, rem = x / y, x % y
@@ -215,6 +257,7 @@ bool ipi_from_string(ipi_t *ipi, char *s, int base){
         ipi_t next, sum;
         ipi_from_int(&next, *s - '0');
         ipi_uadd(&sum, ipi, &next);
+		sum.sign = ipi->sign;
         ipi_release(&next);
         ipi_release(ipi);
         *ipi = sum;
@@ -236,17 +279,9 @@ char *ipi_to_string(ipi_t *ipi, int base){
     ipi_t x;
     ipi_copy(&x, ipi, 0);
 
-    int len;
-    if (x.size < 0) {
-        len = 2;
-        s = malloc(2);
-        strcpy(s, "-");
-    }
-    else {
-        len = 1;
-        s = malloc(1);
-        *s = '\0';
-    }
+    int len = 1;
+	s = malloc(1);
+	*s = '\0';
     udigit_t rem;
     while (x.size != 0) {
         ipi_div_short(&x, base, &rem);
@@ -255,6 +290,11 @@ char *ipi_to_string(ipi_t *ipi, int base){
         s[0] = '0' + rem;
         len++;
     }
+	if (x.sign < 0) {
+        s = realloc(s, len + 1);
+        memmove(&s[1], s, len);
+        s[0] = '-';
+	}
     ipi_release(&x);
     return s;
 }
@@ -267,8 +307,8 @@ int main(int argc, char **argv){
     ipi_from_string(&y, argv[2], 10);
     printf("X"); ipi_dump(&x); printf("\n");
     printf("Y"); ipi_dump(&y); printf("\n");
-	ipi_uadd(&z, &x, &y);
-    printf("Z"); ipi_dump(&z); printf("\n");
+	ipi_sub(&z, &x, &y);
+    printf("Z"); ipi_dump(&z); printf(": %s\n", ipi_to_string(&z, 10));
 	if (1) return 0;
 
     ipi_div(&z, &rem, &x, &y);
