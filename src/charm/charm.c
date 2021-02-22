@@ -28,7 +28,8 @@ struct edge {
     bool interrupt;         // set if state change is an interrupt
     struct node *node;      // resulting node (state)
     uint64_t after;         // resulting context
-    int weight;
+    int weight;             // 1 if context switch; 0 otherwise
+    struct access_info ai;  // to detect data races
 };
 
 struct node {
@@ -52,7 +53,7 @@ struct node {
 };
 
 struct failure {
-    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT } type;
+    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE } type;
     struct node *node;      // failed state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
@@ -60,11 +61,13 @@ struct failure {
 
 struct code *code;
 int code_len;
+bool has_synch_module = false;
 
 static struct node **graph;        // vector of all nodes
 static int graph_size;             // to create node identifiers
 static int graph_alloc;            // size allocated
 static struct queue *failures;     // queue of "struct failure"  (TODO: make part of struct node "issues")
+static struct queue *warnings;     // queue of "struct failure"  (TODO: make part of struct node "issues")
 static uint64_t *processes;        // list of contexts of processes
 static int nprocesses;             // the number of processes in the list
 static double lasttime;            // since last report printed
@@ -96,9 +99,11 @@ static void code_get(struct json_value *jv){
     c->oi = oi;
     c->env = (*oi->init)(jv->u.map);
     c->choose = strcmp(oi->name, "Choose") == 0;
-    c->breakable = strcmp(oi->name, "Load") == 0 ||
-        strcmp(oi->name, "Store") == 0 ||
-        strcmp(oi->name, "AtomicInc") == 0;
+    c->load = strcmp(oi->name, "Load") == 0;
+    c->store = strcmp(oi->name, "Store") == 0;
+    c->del = strcmp(oi->name, "Del") == 0;
+    c->breakable = c->load || c->store || c->del ||
+                        strcmp(oi->name, "AtomicInc") == 0;
 }
 
 bool invariant_check(struct state *state, struct context **pctx, int end){
@@ -114,7 +119,7 @@ bool invariant_check(struct state *state, struct context **pctx, int end){
             return false;
         }
         assert((*pctx)->pc != oldpc);
-        assert((*pctx)->phase != CTX_END);
+        assert(!(*pctx)->terminated);
     }
     assert((*pctx)->sp == 1);
     (*pctx)->sp = 0;
@@ -155,7 +160,7 @@ void check_invariants(struct node *node, struct context **pctx){
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         struct dict *visited, struct queue *todo, struct context **pinv_ctx,
-        bool infloop_detect){
+        bool infloop_detect, int multiplicity){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -163,7 +168,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
-    assert(cc->phase != CTX_END);
+    assert(!cc->terminated);
     assert(cc->failure == 0);
 
     if (false) {
@@ -177,7 +182,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         interrupt_invoke(&cc);
     }
     else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(node, ctx, choice, true, visited, todo, pinv_ctx, infloop_detect);
+        onestep(node, ctx, choice, true, visited, todo, pinv_ctx, infloop_detect, multiplicity);
     }
 
     // Copy the choice
@@ -185,6 +190,9 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
     bool choosing = false, infinite_loop = false;;
     struct dict *infloop = NULL;        // infinite loop detector
+    struct access_info ai;
+    memset(&ai, 0, sizeof(ai));
+    ai.multiplicity = multiplicity;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -210,14 +218,29 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             cc->pc++;
         }
         else {
-            if (code[pc].breakable) {
-                assert(cc->phase != CTX_END);
-                cc->phase = CTX_MIDDLE;
+            if (loopcnt == 0) {
+                if (code[pc].load) {
+                    ext_Load(code[pc].env, sc, &cc, &ai);
+                    ai.pc = pc;
+                }
+                else if (code[pc].store) {
+                    ext_Store(code[pc].env, sc, &cc, &ai);
+                    ai.pc = pc;
+                }
+                else if (code[pc].del) {
+                    ext_Del(code[pc].env, sc, &cc, &ai);
+                    ai.pc = pc;
+                }
+                else {
+                    (*oi->op)(code[pc].env, sc, &cc);
+                }
             }
-            (*oi->op)(code[pc].env, sc, &cc);
+            else {
+                (*oi->op)(code[pc].env, sc, &cc);
+            }
         }
 
-        if (cc->phase != CTX_END && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
+        if (!cc->terminated && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
@@ -238,14 +261,14 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             }
             else {
                 // start over, as twostep does not have loopcnt optimization
-                onestep(node, ctx, choice_copy, interrupt, visited, todo, pinv_ctx, true);
+                onestep(node, ctx, choice_copy, interrupt, visited, todo, pinv_ctx, true, multiplicity);
                 free(cc);
                 free(sc);
                 return;
             }
         }
 
-        if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
+        if (cc->terminated || cc->failure != 0 || cc->stopped) {
             break;
         }
         if (cc->pc == pc) {
@@ -283,8 +306,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             }
         }
 
-        if (cc->phase != CTX_START && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                code[cc->pc].breakable) {
+        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+                                    code[cc->pc].breakable) {
             break;
         }
     }
@@ -309,7 +332,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
     // If choosing, save in state
     if (choosing) {
-        assert(cc->phase != CTX_END);
+        assert(!cc->terminated);
         sc->choosing = after;
     }
 
@@ -317,7 +340,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     if (cc->stopped) {
         sc->stopbag = bag_add(sc->stopbag, after);
     }
-    else if (cc->phase != CTX_END) {
+    else if (!cc->terminated) {
         sc->ctxbag = bag_add(sc->ctxbag, after);
     }
 
@@ -374,6 +397,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     fwd->weight = weight;
     fwd->next = node->fwd;
     fwd->after = after;
+    fwd->ai = ai;
     node->fwd = fwd;
 
     // Add a backward edge from next to node.
@@ -385,6 +409,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     bwd->weight = weight;
     bwd->next = next->bwd;
     bwd->after = after;
+    bwd->ai = ai;
     next->bwd = bwd;
 
     if (cc->failure != 0) {
@@ -594,7 +619,7 @@ void print_context(FILE *file, uint64_t ctx, int tid, struct node *node){
         fprintf(file, "          \"readonly\": \"%d\",\n", c->readonly);
     }
 
-    if (c->phase == CTX_END) {
+    if (c->terminated) {
         fprintf(file, "          \"mode\": \"terminated\",\n");
     }
     else if (c->failure != 0) {
@@ -751,7 +776,7 @@ void diff_state(FILE *file, struct state *oldstate, struct state *newstate,
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
-    else if (newctx->phase == CTX_END) {
+    else if (newctx->terminated) {
         fprintf(file, "          \"mode\": \"terminated\",\n");
     }
 
@@ -810,7 +835,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
     // diff_dump(file, oldstate, sc, oldctx, cc, node->interrupt);
-    if (cc->phase == CTX_END || cc->failure != 0) {
+    if (cc->terminated || cc->failure != 0) {
         free(cc);
         return ctx;
     }
@@ -833,14 +858,10 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             cc->pc++;
         }
         else {
-            if (code[pc].breakable) {
-                assert(cc->phase != CTX_END);
-                cc->phase = CTX_MIDDLE;
-            }
             (*oi->op)(code[pc].env, sc, &cc);
         }
 
-        if (cc->phase != CTX_END && cc->failure == 0) {
+        if (!cc->terminated && cc->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
@@ -861,7 +882,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         }
 
         diff_dump(file, oldstate, sc, oldctx, cc, false, code[pc].choose, choice);
-        if (cc->phase == CTX_END || cc->failure != 0 || cc->stopped) {
+        if (cc->terminated || cc->failure != 0 || cc->stopped) {
             break;
         }
         if (cc->pc == pc) {
@@ -902,7 +923,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             }
         }
 
-        if (cc->phase != CTX_START && cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
                 code[cc->pc].breakable) {
             break;
         }
@@ -943,7 +964,7 @@ void path_dump(FILE *file, struct node *last, uint64_t ctx, uint64_t choice,
     assert(pid < nprocesses);
 
     struct context *context = value_get(ctx, NULL);
-    assert(context->phase != CTX_END);
+    assert(!context->terminated);
     char *name = value_string(context->name);
     char *arg = value_string(context->arg);
     // char *c = value_string(choice);
@@ -1201,9 +1222,12 @@ void detect_busywait(struct node *node){
 			if (is_stuck(node, edge->node, edge->after, false) == BW_RETURN) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BUSYWAIT;
-                f->ctx = node->before;
-                f->choice = node->choice;
-                f->node = node;
+                // f->ctx = node->before;
+                // f->choice = node->choice;
+                // f->node = node;
+                f->node = edge->node;
+                f->ctx = edge->ctx;
+                f->choice = edge->choice;
                 queue_enqueue(failures, f);
 				break;
 			}
@@ -1216,6 +1240,7 @@ int main(int argc, char **argv){
     // printf("Charm v1\n");
 
     failures = queue_init();
+    warnings = queue_init();
 
     // initialize modules
     ops_init();
@@ -1327,7 +1352,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false);
+                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false, 1);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -1344,9 +1369,51 @@ int main(int argc, char **argv){
                 }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx, false);
+                onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx,
+                                false, ctxs[i+1] >> VALUE_BITS);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
+                }
+            }
+
+            // Check for data race
+            if (has_synch_module) {
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                    if (edge->ai.indices != NULL) {
+                        if (edge->ai.multiplicity > 1 && !edge->ai.load) {
+                            struct failure *f = new_alloc(struct failure);
+                            f->type = FAIL_RACE;
+                            f->ctx = node->before;
+                            f->choice = node->choice;
+                            f->node = node;
+                            queue_enqueue(warnings, f);
+                        }
+                        else {
+                            for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
+                                if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
+                                    int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
+                                    if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
+                                                        min * sizeof(uint64_t)) == 0) {
+                                        if (false) {
+                                            printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
+                                                    edge->ai.pc, edge2->ai.pc);
+                                            for (int i = 0; i < min; i++) {
+                                                printf(" %s", value_string(edge->ai.indices[i]));
+                                            }
+                                            printf("\n");
+                                        }
+
+                                        struct failure *f = new_alloc(struct failure);
+                                        f->type = FAIL_RACE;
+                                        f->ctx = node->before;
+                                        f->choice = node->choice;
+                                        f->node = node;
+                                        queue_enqueue(warnings, f);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1417,7 +1484,7 @@ int main(int argc, char **argv){
     assert(out != NULL);
     fprintf(out, "{\n");
 
-    if (queue_empty(failures)) {
+    if (queue_empty(failures) && queue_empty(warnings)) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\"\n");
         fprintf(out, "}\n");
@@ -1430,6 +1497,15 @@ int main(int argc, char **argv){
 
         if (bad == NULL || f->node->len < bad->node->len) {
             bad = f;
+        }
+    }
+    if (bad == NULL) {
+        while (queue_dequeue(warnings, &next)) {
+            struct failure *f = next;
+
+            if (bad == NULL || f->node->len < bad->node->len) {
+                bad = f;
+            }
         }
     }
 
@@ -1447,9 +1523,13 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
         break;
     case FAIL_BUSYWAIT:
-        printf("Busy waiting\n");
-        fprintf(out, "  \"issue\": \"Busy waiting\",\n");
+        printf("Active busy waiting\n");
+        fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
 		break;
+    case FAIL_RACE:
+        printf("Data race\n");
+        fprintf(out, "  \"issue\": \"Data race\",\n");
+        break;
     default:
         panic("main: bad fail type");
     }

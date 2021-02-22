@@ -615,7 +615,8 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
     panic("op_Cut: not a set or dict");
 }
 
-void op_Del(const void *env, struct state *state, struct context **pctx){
+void ext_Del(const void *env, struct state *state, struct context **pctx,
+                                                        struct access_info *ai){
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
     uint64_t av = ctx_pop(pctx);
     assert((av & VALUE_MASK) == VALUE_ADDRESS);
@@ -624,9 +625,18 @@ void op_Del(const void *env, struct state *state, struct context **pctx){
     int size;
     uint64_t *indices = value_get(av, &size);
     size /= sizeof(uint64_t);
+    ai->indices = indices;
+    ai->n = size;
+    ai->load = false;
     state->vars = ind_remove(state->vars, indices, size);
 
     (*pctx)->pc++;
+}
+
+void op_Del(const void *env, struct state *state, struct context **pctx){
+    struct access_info ai;
+
+    ext_Del(env, state, pctx, &ai);
 }
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
@@ -771,7 +781,8 @@ void op_JumpCond(const void *env, struct state *state, struct context **pctx){
     }
 }
 
-void op_Load(const void *env, struct state *state, struct context **pctx){
+void ext_Load(const void *env, struct state *state, struct context **pctx,
+                                                        struct access_info *ai){
     const struct env_Load *el = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
@@ -785,6 +796,9 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         int size;
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
+        ai->indices = indices;
+        ai->n = size;
+        ai->load = true;
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
@@ -795,6 +809,9 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         ctx_push(pctx, v);
     }
     else {
+        ai->indices = el->indices;
+        ai->n = el->n;
+        ai->load = true;
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
             ctx_failure(*pctx, "Load: unknown variable %s", x);
@@ -804,6 +821,12 @@ void op_Load(const void *env, struct state *state, struct context **pctx){
         ctx_push(pctx, v);
     }
     (*pctx)->pc++;
+}
+
+void op_Load(const void *env, struct state *state, struct context **pctx){
+    struct access_info ai;
+
+    ext_Load(env, state, pctx, &ai);
 }
 
 void op_LoadVar(const void *env, struct state *state, struct context **pctx){
@@ -899,7 +922,7 @@ void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx)
 void op_Return(const void *env, struct state *state, struct context **pctx){
     if ((*pctx)->sp == 0) {     // __init__    TODO: no longer the case
         assert(false);
-        (*pctx)->phase = CTX_END;
+        (*pctx)->terminated = true;
         if (false) {
             printf("RETURN INIT\n");
         }
@@ -919,7 +942,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
         (void) ctx_pop(pctx);   // argument saved for stack trace
         if ((*pctx)->sp == 0) {     // __init__
-            (*pctx)->phase = CTX_END;
+            (*pctx)->terminated = true;
             if (false) {
                 printf("RETURN INIT\n");
             }
@@ -929,7 +952,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {
         case CALLTYPE_PROCESS:
-            (*pctx)->phase = CTX_END;
+            (*pctx)->terminated = true;
             break;
         case CALLTYPE_NORMAL:
             {
@@ -1136,7 +1159,8 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
     }
 }
 
-void op_Store(const void *env, struct state *state, struct context **pctx){
+void ext_Store(const void *env, struct state *state, struct context **pctx,
+                                                        struct access_info *ai){
     const struct env_Store *es = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
@@ -1160,6 +1184,9 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
         int size;
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
+        ai->indices = indices;
+        ai->n = size;
+        ai->load = false;
 
         if (false) {
             printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
@@ -1178,12 +1205,21 @@ void op_Store(const void *env, struct state *state, struct context **pctx){
         }
     }
     else {
+        ai->indices = es->indices;
+        ai->n = es->n;
+        ai->load = false;
         if (!ind_trystore(state->vars, es->indices, es->n, v, &state->vars)) {
             ctx_failure(*pctx, "Store: bad variable");
             return;
         }
     }
     (*pctx)->pc++;
+}
+
+void op_Store(const void *env, struct state *state, struct context **pctx){
+    struct access_info ai;
+
+    ext_Store(env, state, pctx, &ai);
 }
 
 void op_StoreVar(const void *env, struct state *state, struct context **pctx){
@@ -1452,6 +1488,11 @@ void *init_Store(struct dict *map){
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(index->u.map);
+    }
+    if (env->n == 1 && env->indices[0] == value_put_atom("synch", 5)) {
+        extern bool has_synch_module;
+
+        has_synch_module = true;
     }
     return env;
 }
