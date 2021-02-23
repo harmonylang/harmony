@@ -13,6 +13,7 @@ def server():
 
 spawn server()
 
+sequential done
 done = [False,] * NCLIENTS
 
 def client(client_queue):
