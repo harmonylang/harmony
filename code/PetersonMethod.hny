@@ -11,6 +11,8 @@ def P_mutex():
 
 #### The code above can go into its own Harmony module ####
 
+sequential mutex
+
 mutex = P_mutex()
 
 def thread(self):

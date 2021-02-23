@@ -1,5 +1,7 @@
 const N = 3
 
+sequential private
+
 shared = False
 private = [ True, ] * N
 

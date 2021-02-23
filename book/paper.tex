@@ -184,6 +184,12 @@ XX\=XXX\=XXX\kill
   description={(aka wait-free synchronization) is when access to a shared resource can be
       guaranteed in a bounded number of steps even if other threads are not making progress}
 }
+\newglossaryentry{sequential consistency}
+{
+  name=sequential consistency,
+  description={is a consistency model in which shared memory accesses are
+    executed in an order consistent with the program order}
+}
 \newglossaryentry{thread}
 {
   name=thread,
@@ -1136,17 +1142,23 @@ instructions.
 
 Harmony can report the following failure types:
 \begin{itemize}
-\item \texttt{Safety violation}: this means something went wrong with
+\item \texttt{Safety violation}: This means something went wrong with
 at least one of the executions of the program that it tried.  This
 can include a failing assertion, divide by zero, using an uninitialized
 or non-existent variable, dividing a set by an integer, and so on.
 % It also includes certain infinite loops.
 Harmony will print a trace of the shortest bad execution that it found.
-\item \texttt{Non-terminating States}: Harmony found one or more states
+\item \texttt{Non-terminating State}: Harmony found one or more states
 from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
 the shortest trace, but also the list of threads
 at that state, along with their program counters.
+\item \texttt{Active Busy Waiting}:  There are states in which
+some thread cannot make progress without the help of another thread but
+does not block;
+\item \texttt{Data Race}: There are states in which two or more threads
+concurrently access a shared variable, at least one of which is a store
+operation.
 % \item \texttt{Stopped States}: Similar to non-terminating states,
 % these are states in which some threads are left that cannot
 % terminate.  \autoref{ch:synch} will explain what it means for
@@ -1637,11 +1649,17 @@ we will find out, it is possible but not obvious.
 \label{fig:peterson}
 \end{figure}
 
+\glsadd{sequential consistency}%
 In 1981, Gary L.~Peterson came up with a beautiful solution to the mutual exclusion
 problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
 \autoref{fig:upflags} and \autoref{fig:upturn}, and is presented
 in \autoref{fig:peterson}.
+(The first line specifies that the \textit{flags} and \textit{turn}
+variables should have \emph{sequential consistency}---it prevents
+Harmony from complaining about data races involving these variables,
+explained in \autoref{ch:synch}.)
+
 A thread first indicates its interest in entering the critical section
 by setting its flag.
 It then politely gives way to the other thread should it also want to
@@ -1926,12 +1944,12 @@ predicate is not invariant, and therefore not an inductive invariant either.
 
 \section*{Exercises}
 \begin{problems}
-\item \autoref{fig:csonebit} presents another correct solution to the
+\item \autoref{fig:csonebit} presents another solution to the
 mutual exclusion problem.  It is similar to the one in
 \autoref{fig:upflags}, but has a thread \emph{back out and try again}
 if it finds that the other thread is either trying to enter the critical
-section or already has.  Compare this algorithm with Peterson's.  What are
-the advantages and disadvantages?
+section or already has.  Compare this algorithm with Peterson's.
+Why does Harmony complain about \emph{active busy waiting}?
 \item
 Can you find one or more inductive invariants for the algorithm in
 \autoref{fig:csonebit} to prove it correct?
@@ -5467,6 +5485,8 @@ Push $c$ & push constant $c$ onto the stack \\
 ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
 \hline
 Return & pop return address, push \texttt{result}, and restore program counter \\
+\hline
+Sequential & pop an address of a variable that has sequential consistency \\
 \hline
 SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
 \hline

@@ -1,3 +1,5 @@
+sequential flags, turn
+
 flags = [ False, False ]
 turn = choose({0, 1})
 
