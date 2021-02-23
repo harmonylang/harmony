@@ -1,7 +1,5 @@
 const N = 3
 
-sequential private
-
 shared = False
 private = [ True, ] * N
 
@@ -13,17 +11,18 @@ def tas(s, p):
         !s = True
 
 def thread(self):
-    while choose({ False, True }):
-        # Enter critical section
-        while private[self]:
-            tas(?shared, ?private[self])
+    let p = ?private[self]:
+        while choose({ False, True }):
+            # Enter critical section
+            while !p:
+                tas(?shared, p)
 
-        # Critical section
-        @cs: assert (not private[self]) and (atLabel(cs) == { (thread, self): 1 })
+            # Critical section
+            @cs: assert (not !p) and (atLabel(cs) == { (thread, self): 1 })
 
-        # Leave critical section
-        private[self] = True
-        shared = False
+            # Leave critical section
+            !p = True
+            shared = False
 
 for i in {0..N-1}:
     spawn thread(i)

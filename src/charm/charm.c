@@ -1488,27 +1488,29 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    FILE *df = fopen("charm.dump", "w");
-	for (int i = 0; i < graph_size; i++) {
-		struct node *node = graph[i];
-		assert(node->id == i);
-		fprintf(df, "\nNode %d:\n", node->id);
-		fprintf(df, "    component: %d\n", node->component);
-		if (node->parent != NULL) {
-			fprintf(df, "    parent: %d\n", node->parent->id);
-		}
-		fprintf(df, "    vars: %s\n", value_string(node->state->vars));
-		fprintf(df, "    fwd:\n");
-		int eno = 0;
-		for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next, eno++) {
-			fprintf(df, "        %d:\n", eno);
-			struct context *ctx = value_get(edge->ctx, NULL);
-			fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
-			fprintf(df, "            choice: %s\n", value_string(edge->choice));
-			fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
-		}
-	}
-	fclose(df);
+    if (false) {
+        FILE *df = fopen("charm.dump", "w");
+        for (int i = 0; i < graph_size; i++) {
+            struct node *node = graph[i];
+            assert(node->id == i);
+            fprintf(df, "\nNode %d:\n", node->id);
+            fprintf(df, "    component: %d\n", node->component);
+            if (node->parent != NULL) {
+                fprintf(df, "    parent: %d\n", node->parent->id);
+            }
+            fprintf(df, "    vars: %s\n", value_string(node->state->vars));
+            fprintf(df, "    fwd:\n");
+            int eno = 0;
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next, eno++) {
+                fprintf(df, "        %d:\n", eno);
+                struct context *ctx = value_get(edge->ctx, NULL);
+                fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
+                fprintf(df, "            choice: %s\n", value_string(edge->choice));
+                fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+            }
+        }
+        fclose(df);
+    }
 
     FILE *out = fopen("charm.json", "w");
     assert(out != NULL);

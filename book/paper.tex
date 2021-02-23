@@ -2178,6 +2178,12 @@ it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
 Variable \textit{shared} is initialized to \texttt{False} while
 \textit{private}[$i$] for each thread $i$ is initialized to \texttt{True}.
+Method \texttt{thread} demonstrates how a local variable can be declared
+in Harmony using the \textbf{let} statement---the syntax is similar to
+\textbf{for} statements.  \autoref{sec:vars} provides further information.
+In this case $p$ contains the address of the \textit{private} entry
+for the current thread.
+
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
@@ -5800,7 +5806,7 @@ many concurrency solutions in the literature are
 expressed in C or some other low-level language that does not support
 object-orientation, but instead use \texttt{malloc} and \texttt{free}.
 
-\section{Constants, Global and Local Variables}
+\section{Constants, Global and Local Variables}\label{sec:vars}
 
 Each (non-reserved) identifier in a Harmony program refers to either
 a constant, a global variable, or a local variable.
