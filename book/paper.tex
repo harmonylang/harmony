@@ -1158,10 +1158,10 @@ the shortest trace, but also the list of threads
 at that state, along with their program counters.
 \item \texttt{Active Busy Waiting}:  There are states in which
 some thread cannot make progress without the help of another thread but
-does not block (see \autoref{ch:condwait});
+does not block;
 \item \texttt{Data Race}: There are states in which two or more threads
 concurrently access a shared variable, at least one of which is a store
-operation (see \autoref{ch:synch}).
+operation.
 % \item \texttt{Stopped States}: Similar to non-terminating states,
 % these are states in which some threads are left that cannot
 % terminate.  \autoref{ch:synch} will explain what it means for
@@ -1170,9 +1170,15 @@ operation (see \autoref{ch:synch}).
 
 Harmony checks for these types of failure conditions in the given
 order: if there are multiple failure conditions, only the first is
-reported.
+reported.  \emph{Active busy waiting} (\autoref{ch:condwait}) is not
+technically an indication of a synchronization problem, but instead an
+indication of an inefficient solution to a synchronization problem---
+one that uses up significantly CPU cycles.
+A \emph{data race} (\autoref{ch:synch}) may not be a bug either---whether or
+not it is might depend on the semantics of the underlying memory
+operations and are therefore generally undesirable.
 
-In our case, Harmony reports a safety violation.
+Going back to our example, Harmony reports a safety violation.
 In particular, it reports that the assertion failed
 because \textit{count} has value 1 instead of 2.
 Next it reports an execution that failed this assertion.
