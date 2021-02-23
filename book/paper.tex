@@ -2120,7 +2120,7 @@ We saw in \autoref{ex:reorder} that a seemingly harmless reordering
 of instructions can break the code.
 The memory models of C and Java are not sequentially consistent, and
 they do not provide a \textbf{sequential} statement either, so one
-cannot implement Peterson's algorithm in those languages very easily.
+cannot implement Peterson's algorithm in those languages directly.
 
 \glsadd{interlock instruction}%
 For proper synchronization, multi-core processors provide so-called
@@ -2297,20 +2297,28 @@ states of the data structure.
 
 \index{data race}
 When there is a bug in a program because some code omitted obtaining
-a lock before accessing the data structure, that is known as a
+a lock before accessing a shared data structure, that is known as a
 \emph{data race}.
-In Harmony, a data race has a specific meaning: a state in which multiple
+More precisely, a data race happens when there is a state in which multiple
 threads are trying to access the same variable, and at least one of those
 accesses updates the variable.
-However, there are two exceptions.
+In many environments, including C and Java programs, the behavior of
+concurrent load and store operations have tricky or even undefined
+semantics.  One should therefore avoid data races, which is why Harmony
+reports them even though Harmony has sequentially consistent memory.
+
+Harmony does not report data races in two cases.
 First, using the \textbf{sequential} statement, you can specify that
 concurrent access to the specified variables is intended.
 Second, if the accesses are within an \textbf{atomic} statement, then they
 are not considered part of a data race.
-However, for the same reason that you should not use \textbf{atomic}
+For the same reason that you should not use \textbf{atomic}
 statements in your ordinary synchronization code, you should not use
 \textbf{sequential} statements either.  Neither is supported by regular
-programming languages.  But both can be very useful for testing.
+programming languages.  They exist in Harmony for the purpose of
+defining interlock instructions and for testing.
+The statements should only appear in modules that define synchronization
+primitives or in test programs.
 
 \index{binary semaphore}
 Locks are a special case of \emph{binary semaphores}.
