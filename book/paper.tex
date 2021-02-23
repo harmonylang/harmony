@@ -113,6 +113,12 @@ XX\=XXX\=XXX\kill
     atomically, as other threads can continue to execute and access shared
     variables}
 }
+\newglossaryentry{data race}
+{
+  name=data race,
+  description={is when there are two or more threads concurrently accessing a
+    shared variable, at least one of which is an update to the variable}
+}
 \newglossaryentry{deadlock}
 {
   name=deadlock,
@@ -2302,7 +2308,8 @@ That way, when a thread makes modifications to the data structure that take
 multiple steps, other threads will not see the intermediate inconsistent
 states of the data structure.
 
-\index{data race}
+\index{data race}%
+\glsadd{data race}%
 When there is a bug in a program because some code omitted obtaining
 a lock before accessing a shared data structure, that is known as a
 \emph{data race}.
