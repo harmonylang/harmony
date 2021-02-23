@@ -1,29 +1,28 @@
-const N = 3;
+const N = 3
+
+sequential flag
+
+flag = { i:0 for i in {1..N} }
 
 def lock(self):
-    flag[self] = 1;
-    await all(flag[i] in { 0, 1, 2 } for i in {1..N});
-    flag[self] = 3;
+    flag[self] = 1
+    await all(flag[i] in { 0, 1, 2 } for i in {1..N})
+    flag[self] = 3
     if any(flag[i] == 1 for i in {1..N}):
-        flag[self] = 2;
-        await any(flag[i] == 4 for i in {1..N});
-    ;
-    flag[self] = 4;
-    await all(flag[i] in { 0, 1 } for i in {1..self-1});
-;
+        flag[self] = 2
+        await any(flag[i] == 4 for i in {1..N})
+    flag[self] = 4
+    await all(flag[i] in { 0, 1 } for i in {1..self-1})
+
 def unlock(self):
-    await all(flag[i] in { 0, 1, 4 } for i in {self+1..N});
-    flag[self] = 0;
-;
-flag = dict{ 0 for i in {1..N} };
+    await all(flag[i] in { 0, 1, 4 } for i in {self+1..N})
+    flag[self] = 0
 
 def process(self):
     while choose({ False, True }):
-        lock(self);
-        @cs: assert atLabel.cs == dict{ nametag(): 1 };
-        unlock(self);
-    ;
-;
+        lock(self)
+        @cs: assert atLabel(cs) == { (process, self): 1 }
+        unlock(self)
+
 for i in {1..N}:
-    spawn process(i);
-;
+    spawn process(i)
