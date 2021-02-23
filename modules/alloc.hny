@@ -13,8 +13,8 @@ def malloc(v):
     else:
         result = flist
         flist = !result
-    synch.release(?lock)
     !result = v
+    synch.release(?lock)
 
 def free(r):
     synch.acquire(?lock)

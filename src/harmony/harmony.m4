@@ -250,6 +250,7 @@ def isreserved(s):
         "or",
         "pass",
         "print",
+        "sequential",
         "setintlevel",
         "spawn",
         "stop",
@@ -1122,6 +1123,23 @@ class StopOp(Op):
 
             # Save the context
             state.stop(lv, context)
+
+class SequentialOp(Op):
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "Sequential"
+
+    def jdump(self):
+        return '{ "op": "Sequential" }'
+
+    def explain(self):
+        return "sequential consistency for variable on top of stack"
+
+    def eval(self, state, context):
+        # TODO
+        context.pop()
 
 class ContinueOp(Op):
     def __repr__(self):
@@ -2134,6 +2152,10 @@ class AST:
 
     def getImports(self):
         return []
+
+class ConstantAST(AST):
+    def __init__(self, const):
+        self.const = const
 
 class ConstantAST(AST):
     def __init__(self, const):
@@ -3370,6 +3392,18 @@ class LabelStatAST(AST):
     def getImports(self):
         return self.ast.getImports();
 
+class SequentialAST(AST):
+    def __init__(self, vars):
+        self.vars = vars
+    
+    def __repr__(self):
+        return "Sequential(" + str(self.vars) + ")"
+
+    def compile(self, scope, code):
+        for lv in self.vars:
+            lv.ph1(scope, code)
+            code.append(SequentialOp())
+
 class ConstAST(AST):
     def __init__(self, const, expr):
         self.const = const
@@ -3668,6 +3702,20 @@ class StatementRule(Rule):
             return (GoAST(ctx, result), t)
         if lexeme == "pass":
             return (PassAST(), t[1:])
+        if lexeme == "sequential":
+            (tokens, t) = self.slice(t[1:], column)
+            (ast, tokens) = ExpressionRule().parse(tokens)
+            vars = [ast]
+            if tokens != []:
+                (lexeme, file, line, column) = tokens[0]
+                while lexeme == ',':
+                    (ast, tokens) = ExpressionRule().parse(tokens[1:])
+                    vars.append(ast)
+                    if tokens == []:
+                        break
+                    (lexeme, file, line, column) = tokens[0]
+                assert tokens == []
+            return (SequentialAST(vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
             mods = [tokens[0]]

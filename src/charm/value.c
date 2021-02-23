@@ -27,8 +27,13 @@ void *value_get(uint64_t v, int *psize){
 }
 
 void *value_copy(uint64_t v, int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        *psize = 0;
+        return NULL;
+    }
     int size;
-    void *p = dict_retrieve((void *) (v & ~VALUE_MASK), &size);
+    void *p = dict_retrieve((void *) v, &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {

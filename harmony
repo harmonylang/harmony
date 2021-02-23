@@ -381,8 +381,8 @@ def malloc(v):
     else:
         result = flist
         flist = !result
-    synch.release(?lock)
     !result = v
+    synch.release(?lock)
 
 def free(r):
     synch.acquire(?lock)
@@ -527,6 +527,7 @@ struct context {     // context value
 
 struct state {
     uint64_t vars;        // shared variables
+    uint64_t seqs;        // sequential variables
     uint64_t choosing;    // context that is choosing if non-zero
     uint64_t ctxbag;      // bag of running contexts
     uint64_t stopbag;     // bag of stopped contexts
@@ -1965,6 +1966,7 @@ int main(int argc, char **argv){
     ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
+    state->seqs = VALUE_SET;
     uint64_t ictx = value_put_context(init_ctx);
     state->ctxbag = dict_store(VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->stopbag = VALUE_DICT;
@@ -2052,39 +2054,37 @@ int main(int argc, char **argv){
             }
 
             // Check for data race
-            if (has_synch_module) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                    if (edge->ai.indices != NULL) {
-                        if (edge->ai.multiplicity > 1 && !edge->ai.load) {
-                            struct failure *f = new_alloc(struct failure);
-                            f->type = FAIL_RACE;
-                            f->ctx = node->before;
-                            f->choice = node->choice;
-                            f->node = node;
-                            queue_enqueue(warnings, f);
-                        }
-                        else {
-                            for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
-                                if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
-                                    int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
-                                    if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
-                                                        min * sizeof(uint64_t)) == 0) {
-                                        if (false) {
-                                            printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
-                                                    edge->ai.pc, edge2->ai.pc);
-                                            for (int i = 0; i < min; i++) {
-                                                printf(" %s", value_string(edge->ai.indices[i]));
-                                            }
-                                            printf("\n");
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                if (edge->ai.indices != NULL) {
+                    if (edge->ai.multiplicity > 1 && !edge->ai.load) {
+                        struct failure *f = new_alloc(struct failure);
+                        f->type = FAIL_RACE;
+                        f->ctx = node->before;
+                        f->choice = node->choice;
+                        f->node = node;
+                        queue_enqueue(warnings, f);
+                    }
+                    else {
+                        for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
+                            if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
+                                int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
+                                if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
+                                                    min * sizeof(uint64_t)) == 0) {
+                                    if (false) {
+                                        printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
+                                                edge->ai.pc, edge2->ai.pc);
+                                        for (int i = 0; i < min; i++) {
+                                            printf(" %s", value_string(edge->ai.indices[i]));
                                         }
-
-                                        struct failure *f = new_alloc(struct failure);
-                                        f->type = FAIL_RACE;
-                                        f->ctx = node->before;
-                                        f->choice = node->choice;
-                                        f->node = node;
-                                        queue_enqueue(warnings, f);
+                                        printf("\n");
                                     }
+
+                                    struct failure *f = new_alloc(struct failure);
+                                    f->type = FAIL_RACE;
+                                    f->ctx = node->before;
+                                    f->choice = node->choice;
+                                    f->node = node;
+                                    queue_enqueue(warnings, f);
                                 }
                             }
                         }
@@ -2892,7 +2892,7 @@ struct json_value *json_lookup_value(struct dict *map, char *key){
 #include "global.h"
 #endif
 
-#define MAX_ARITY   10
+#define MAX_ARITY   16
 
 struct val_info {
     int size, index;
@@ -2917,6 +2917,24 @@ struct var_tree {
 
 static struct dict *ops_map, *f_map;
 extern struct code *code;
+
+bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
+    assert((seqvars & VALUE_MASK) == VALUE_SET);
+    int size;
+    uint64_t *seqs = value_get(seqvars, &size);
+    size /= sizeof(uint64_t);
+
+    n *= sizeof(uint64_t);
+    for (int i = 0; i < size; i++) {
+        assert((seqs[i] & VALUE_MASK) == VALUE_ADDRESS);
+        int sn;
+        uint64_t *inds = value_get(seqs[i], &sn);
+        if (n >= sn && memcmp(indices, inds, sn) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 uint64_t ctx_failure(struct context *ctx, char *fmt, ...){
     char *r;
@@ -3857,6 +3875,38 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_Sequential(const void *env, struct state *state, struct context **pctx){
+    uint64_t addr = ctx_pop(pctx);
+    if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
+        ctx_failure(*pctx, "Sequential: not an address");
+        return;
+    }
+
+    /* Insert in state's set of sequential variables.
+     */
+    int size;
+    uint64_t *seqs = value_copy(state->seqs, &size);
+    size /= sizeof(uint64_t);
+    int i;
+    for (i = 0; i < size; i++) {
+        int k = value_cmp(seqs[i], addr);
+        if (k == 0) {
+            free(seqs);
+            (*pctx)->pc++;
+            return;
+        }
+        if (k > 0) {
+            break;
+        }
+    }
+    seqs = realloc(seqs, (size + 1) * sizeof(uint64_t));
+    memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(uint64_t));
+    seqs[i] = addr;
+    state->seqs = value_put_set(seqs, (size + 1) * sizeof(uint64_t));
+    free(seqs);
+    (*pctx)->pc++;
+}
+
 // sort two key/value pairs
 static int q_kv_cmp(const void *e1, const void *e2){
     const uint64_t *kv1 = (const uint64_t *) e1;
@@ -4064,7 +4114,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
         size /= sizeof(uint64_t);
         ai->indices = indices;
         ai->n = size;
-        ai->load = false;
+        ai->load = is_sequential(state->seqs, ai->indices, ai->n);
 
         if (false) {
             printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
@@ -4085,7 +4135,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
     else {
         ai->indices = es->indices;
         ai->n = es->n;
-        ai->load = false;
+        ai->load = is_sequential(state->seqs, ai->indices, ai->n);
         if (!ind_trystore(state->vars, es->indices, es->n, v, &state->vars)) {
             ctx_failure(*pctx, "Store: bad variable");
             return;
@@ -4158,6 +4208,7 @@ void *init_Pop(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
+void *init_Sequential(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
@@ -4366,11 +4417,6 @@ void *init_Store(struct dict *map){
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(index->u.map);
-    }
-    if (env->n == 1 && env->indices[0] == value_put_atom("synch", 5)) {
-        extern bool has_synch_module;
-
-        has_synch_module = true;
     }
     return env;
 }
@@ -5550,6 +5596,7 @@ struct op_info op_table[] = {
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
 	{ "Return", init_Return, op_Return },
+	{ "Sequential", init_Sequential, op_Sequential },
 	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
@@ -5758,8 +5805,13 @@ void *value_get(uint64_t v, int *psize){
 }
 
 void *value_copy(uint64_t v, int *psize){
+    v &= ~VALUE_MASK;
+    if (v == 0) {
+        *psize = 0;
+        return NULL;
+    }
     int size;
-    void *p = dict_retrieve((void *) (v & ~VALUE_MASK), &size);
+    void *p = dict_retrieve((void *) v, &size);
     void *r = malloc(size);
     memcpy(r, p, size);
     if (psize != NULL) {
@@ -7813,6 +7865,7 @@ def isreserved(s):
         "or",
         "pass",
         "print",
+        "sequential",
         "setintlevel",
         "spawn",
         "stop",
@@ -8685,6 +8738,23 @@ class StopOp(Op):
 
             # Save the context
             state.stop(lv, context)
+
+class SequentialOp(Op):
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "Sequential"
+
+    def jdump(self):
+        return '{ "op": "Sequential" }'
+
+    def explain(self):
+        return "sequential consistency for variable on top of stack"
+
+    def eval(self, state, context):
+        # TODO
+        context.pop()
 
 class ContinueOp(Op):
     def __repr__(self):
@@ -9697,6 +9767,10 @@ class AST:
 
     def getImports(self):
         return []
+
+class ConstantAST(AST):
+    def __init__(self, const):
+        self.const = const
 
 class ConstantAST(AST):
     def __init__(self, const):
@@ -10933,6 +11007,18 @@ class LabelStatAST(AST):
     def getImports(self):
         return self.ast.getImports();
 
+class SequentialAST(AST):
+    def __init__(self, vars):
+        self.vars = vars
+    
+    def __repr__(self):
+        return "Sequential(" + str(self.vars) + ")"
+
+    def compile(self, scope, code):
+        for lv in self.vars:
+            lv.ph1(scope, code)
+            code.append(SequentialOp())
+
 class ConstAST(AST):
     def __init__(self, const, expr):
         self.const = const
@@ -11231,6 +11317,20 @@ class StatementRule(Rule):
             return (GoAST(ctx, result), t)
         if lexeme == "pass":
             return (PassAST(), t[1:])
+        if lexeme == "sequential":
+            (tokens, t) = self.slice(t[1:], column)
+            (ast, tokens) = ExpressionRule().parse(tokens)
+            vars = [ast]
+            if tokens != []:
+                (lexeme, file, line, column) = tokens[0]
+                while lexeme == ',':
+                    (ast, tokens) = ExpressionRule().parse(tokens[1:])
+                    vars.append(ast)
+                    if tokens == []:
+                        break
+                    (lexeme, file, line, column) = tokens[0]
+                assert tokens == []
+            return (SequentialAST(vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
             mods = [tokens[0]]

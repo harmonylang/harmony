@@ -1,3 +1,5 @@
+sequential flags
+
 flags = [ False, False ]
 
 def thread(self):

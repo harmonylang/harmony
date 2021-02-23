@@ -1,5 +1,7 @@
 from synch import Lock, acquire, release
 
+sequential done
+
 count = 0
 countlock = Lock()
 done = [ False, False ]

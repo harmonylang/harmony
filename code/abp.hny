@@ -1,3 +1,5 @@
+sequential s_chan, r_chan
+
 s_chan = r_chan = ()
 s_seq = r_seq = 0
 

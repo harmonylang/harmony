@@ -14,7 +14,7 @@
 #include "global.h"
 #endif
 
-#define MAX_ARITY   10
+#define MAX_ARITY   16
 
 struct val_info {
     int size, index;
@@ -39,6 +39,24 @@ struct var_tree {
 
 static struct dict *ops_map, *f_map;
 extern struct code *code;
+
+bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
+    assert((seqvars & VALUE_MASK) == VALUE_SET);
+    int size;
+    uint64_t *seqs = value_get(seqvars, &size);
+    size /= sizeof(uint64_t);
+
+    n *= sizeof(uint64_t);
+    for (int i = 0; i < size; i++) {
+        assert((seqs[i] & VALUE_MASK) == VALUE_ADDRESS);
+        int sn;
+        uint64_t *inds = value_get(seqs[i], &sn);
+        if (n >= sn && memcmp(indices, inds, sn) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
 uint64_t ctx_failure(struct context *ctx, char *fmt, ...){
     char *r;
@@ -979,6 +997,38 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_Sequential(const void *env, struct state *state, struct context **pctx){
+    uint64_t addr = ctx_pop(pctx);
+    if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
+        ctx_failure(*pctx, "Sequential: not an address");
+        return;
+    }
+
+    /* Insert in state's set of sequential variables.
+     */
+    int size;
+    uint64_t *seqs = value_copy(state->seqs, &size);
+    size /= sizeof(uint64_t);
+    int i;
+    for (i = 0; i < size; i++) {
+        int k = value_cmp(seqs[i], addr);
+        if (k == 0) {
+            free(seqs);
+            (*pctx)->pc++;
+            return;
+        }
+        if (k > 0) {
+            break;
+        }
+    }
+    seqs = realloc(seqs, (size + 1) * sizeof(uint64_t));
+    memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(uint64_t));
+    seqs[i] = addr;
+    state->seqs = value_put_set(seqs, (size + 1) * sizeof(uint64_t));
+    free(seqs);
+    (*pctx)->pc++;
+}
+
 // sort two key/value pairs
 static int q_kv_cmp(const void *e1, const void *e2){
     const uint64_t *kv1 = (const uint64_t *) e1;
@@ -1186,7 +1236,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
         size /= sizeof(uint64_t);
         ai->indices = indices;
         ai->n = size;
-        ai->load = false;
+        ai->load = is_sequential(state->seqs, ai->indices, ai->n);
 
         if (false) {
             printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
@@ -1207,7 +1257,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
     else {
         ai->indices = es->indices;
         ai->n = es->n;
-        ai->load = false;
+        ai->load = is_sequential(state->seqs, ai->indices, ai->n);
         if (!ind_trystore(state->vars, es->indices, es->n, v, &state->vars)) {
             ctx_failure(*pctx, "Store: bad variable");
             return;
@@ -1280,6 +1330,7 @@ void *init_Pop(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
+void *init_Sequential(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
 void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
@@ -1488,11 +1539,6 @@ void *init_Store(struct dict *map){
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(index->u.map);
-    }
-    if (env->n == 1 && env->indices[0] == value_put_atom("synch", 5)) {
-        extern bool has_synch_module;
-
-        has_synch_module = true;
     }
     return env;
 }
@@ -2672,6 +2718,7 @@ struct op_info op_table[] = {
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
 	{ "Return", init_Return, op_Return },
+	{ "Sequential", init_Sequential, op_Sequential },
 	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },
 	{ "Split", init_Split, op_Split },
