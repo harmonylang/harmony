@@ -1385,37 +1385,39 @@ int main(int argc, char **argv){
             }
 
             // Check for data race
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (edge->ai.indices != NULL) {
-                    if (edge->ai.multiplicity > 1 && !edge->ai.load) {
-                        struct failure *f = new_alloc(struct failure);
-                        f->type = FAIL_RACE;
-                        f->ctx = node->before;
-                        f->choice = node->choice;
-                        f->node = node;
-                        queue_enqueue(warnings, f);
-                    }
-                    else {
-                        for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
-                            if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
-                                int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
-                                if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
-                                                    min * sizeof(uint64_t)) == 0) {
-                                    if (false) {
-                                        printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
-                                                edge->ai.pc, edge2->ai.pc);
-                                        for (int i = 0; i < min; i++) {
-                                            printf(" %s", value_string(edge->ai.indices[i]));
+            if (queue_empty(warnings)) {
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                    if (edge->ai.indices != NULL) {
+                        if (edge->ai.multiplicity > 1 && !edge->ai.load) {
+                            struct failure *f = new_alloc(struct failure);
+                            f->type = FAIL_RACE;
+                            f->ctx = node->before;
+                            f->choice = node->choice;
+                            f->node = node;
+                            queue_enqueue(warnings, f);
+                        }
+                        else {
+                            for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
+                                if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
+                                    int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
+                                    if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
+                                                        min * sizeof(uint64_t)) == 0) {
+                                        if (false) {
+                                            printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
+                                                    edge->ai.pc, edge2->ai.pc);
+                                            for (int i = 0; i < min; i++) {
+                                                printf(" %s", value_string(edge->ai.indices[i]));
+                                            }
+                                            printf("\n");
                                         }
-                                        printf("\n");
-                                    }
 
-                                    struct failure *f = new_alloc(struct failure);
-                                    f->type = FAIL_RACE;
-                                    f->ctx = node->before;
-                                    f->choice = node->choice;
-                                    f->node = node;
-                                    queue_enqueue(warnings, f);
+                                        struct failure *f = new_alloc(struct failure);
+                                        f->type = FAIL_RACE;
+                                        f->ctx = node->before;
+                                        f->choice = node->choice;
+                                        f->node = node;
+                                        queue_enqueue(warnings, f);
+                                    }
                                 }
                             }
                         }

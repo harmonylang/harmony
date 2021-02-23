@@ -1079,7 +1079,10 @@ As mentioned before, one register contains a dictionary with the local
 variables of the method that the thread is currently executing,
 while the other contains thread-local state.
 
+\index{sequential consistency}%
 All instructions are atomically executed.
+The Harmony memory model is \emph{sequentially consistent}: all
+accesses are in program order.
 Most instructions pop values from the stack or push values onto the stack.
 At first there is one thread, named \texttt{\_\_init\_\_},
 which initializes the state.
@@ -1155,15 +1158,19 @@ the shortest trace, but also the list of threads
 at that state, along with their program counters.
 \item \texttt{Active Busy Waiting}:  There are states in which
 some thread cannot make progress without the help of another thread but
-does not block;
+does not block (see \autoref{ch:condwait});
 \item \texttt{Data Race}: There are states in which two or more threads
 concurrently access a shared variable, at least one of which is a store
-operation.
+operation (see \autoref{ch:synch}).
 % \item \texttt{Stopped States}: Similar to non-terminating states,
 % these are states in which some threads are left that cannot
 % terminate.  \autoref{ch:synch} will explain what it means for
 % a thread to be stopped.
 \end{itemize}
+
+Harmony checks for these types of failure conditions in the given
+order: if there are multiple failure conditions, only the first is
+reported.
 
 In our case, Harmony reports a safety violation.
 In particular, it reports that the assertion failed
@@ -1968,7 +1975,8 @@ is an atomic action:
         X5: flagX = False                  Y5: flagY = False
 \end{verbatim}
 \end{code}
-\item A colleague of the author asked if the first two assignments in
+\item \label{ex:reorder}
+A colleague of the author asked if the first two assignments in
 Peterson's algorithm (setting \textit{flags}[\textit{self}])
 to \texttt{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
 After all, they are different variables assigned independent values---in a
@@ -2103,15 +2111,23 @@ if generalized to multiple threads.
 Worse, most modern processors make accessing shared memory locations
 non-atomic to allow for efficient caching, out-of-order execution,
 and other optimizations.
-So Peterson's algorithm would not even work on such processors.
-Instead, multi-core processors provide
-so-called \emph{interlock instructions}:
-\index{interlock instruction}%
-special machine instructions
-that can read memory and then write it in an indivisible step.
+And even compilers may re-order memory accesses when optimizing code.
+%
+Peterson's algorithm relies on a sequential consistent memory model,
+and hence the \textbf{sequential} statement: without it Harmony will
+complain about data races.
+We saw in \autoref{ex:reorder} that a seemingly harmless reordering
+of instructions can break the code.
+The memory models of C and Java are not sequentially consistent, and
+they do not provide a \textbf{sequential} statement either, so one
+cannot implement Peterson's algorithm in those languages very easily.
 
 \glsadd{interlock instruction}%
-
+For proper synchronization, multi-core processors provide so-called
+\emph{interlock instructions}: \index{interlock instruction}%
+special machine instructions
+that can read memory and then write it in an indivisible step.
+%
 While the HVM does not have any specific built-in interlock instructions,
 it does have support for executing multiple instructions atomically.
 This feature is available in the Harmony language in two ways.
@@ -2278,10 +2294,23 @@ critical section.
 That way, when a thread makes modifications to the data structure that take
 multiple steps, other threads will not see the intermediate inconsistent
 states of the data structure.
+
+\index{data race}
 When there is a bug in a program because some code omitted obtaining
 a lock before accessing the data structure, that is known as a
 \emph{data race}.
-\index{data race}
+In Harmony, a data race has a specific meaning: a state in which multiple
+threads are trying to access the same variable, and at least one of those
+accesses updates the variable.
+However, there are two exceptions.
+First, using the \textbf{sequential} statement, you can specify that
+concurrent access to the specified variables is intended.
+Second, if the accesses are within an \textbf{atomic} statement, then they
+are not considered part of a data race.
+However, for the same reason that you should not use \textbf{atomic}
+statements in your ordinary synchronization code, you should not use
+\textbf{sequential} statements either.  Neither is supported by regular
+programming languages.  But both can be very useful for testing.
 
 \index{binary semaphore}
 Locks are a special case of \emph{binary semaphores}.
@@ -2307,6 +2336,8 @@ binary semaphores and locks.
 The \texttt{synch} module includes a variety of other useful
 synchronization primitives, which will be discussed in later
 chapters.
+Also notice the use of the sequentially consistent \textit{done}
+variable for testing purposes.
 
 \glsadd{blocked thread}%
 
@@ -2680,10 +2711,16 @@ make progress until another thread enqueues an item.
 However, the thread is not considered \emph{blocked} because it is
 changing the shared state by repeatedly acquiring and releasing the
 lock.
+We distinguish \emph{passive busy waiting} and \emph{active busy waiting}.
+A process that is waiting for a condition without changing the state
+(like in a spinlock) is passively busy waiting.
+A process that is waiting for a condition while changing the state
+(such as repeatedly trying to dequeue an item, which requires
+acquiring a lock) is actively busy waiting.
+
 We would like to find a solution to \emph{conditional waiting}
 so that a thread blocks until the condition holds---or at least most
 of the time.
-
 Before we do so, we will give two classic examples of synchronization
 problems that involve conditional waiting: \emph{reader/writer locks}
 and \emph{bounded buffers}.

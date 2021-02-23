@@ -1,15 +1,16 @@
 import synch
 
 pool = []
+poolsize = 0
 flist = None;           # free list
 lock = synch.Lock()
 
 def malloc(v):
     synch.acquire(?lock)
     if flist == None:
-        let i = len(pool):
-            pool[i] = None
-            result = ?pool[i]
+        pool[poolsize] = None
+        result = ?pool[poolsize]
+        poolsize += 1
     else:
         result = flist
         flist = !result

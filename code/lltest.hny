@@ -7,14 +7,10 @@ def thread1():
     let x = contains(mylist, 1):
         assert x
 
-def thread2():
-    await contains(mylist, 1)
-
-def thread3(v):
+def thread2(v):
     insert(mylist, v)
     remove(mylist, v)
 
 spawn thread1()
-spawn thread2()
-spawn thread3(0)
-spawn thread3(2)
+spawn thread2(0)
+spawn thread2(2)
