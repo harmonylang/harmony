@@ -21,11 +21,6 @@ echo ==============
 ./harmony code/UpEnter.hny
 
 echo ==============
-echo UpEnter
-echo ==============
-./harmony code/UpEnter.hny
-
-echo ==============
 echo csbarebones
 echo ==============
 ./harmony code/csbarebones.hny
@@ -201,14 +196,19 @@ echo ==============
 ./harmony code/DinersCV.hny
 
 echo ==============
+echo DinersCV synchS
+echo ==============
+./harmony -msynch=synchS code/DinersCV.hny
+
+echo ==============
 echo DinersAvoid
 echo ==============
 ./harmony code/DinersAvoid.hny
 
 echo ==============
-echo bank
+echo DinersAvoid synchS
 echo ==============
-./harmony code/bank.hny
+./harmony -msynch=synchS code/DinersAvoid.hny
 
 echo ==============
 echo bank
@@ -226,9 +226,19 @@ echo ==============
 ./harmony code/qbarrier.hny
 
 echo ==============
+echo qbarrier synchS
+echo ==============
+./harmony -msynch=synchS code/qbarrier.hny
+
+echo ==============
 echo barriertest
 echo ==============
 ./harmony code/barriertest.hny
+
+echo ==============
+echo barriertest synchS
+echo ==============
+./harmony -msynch=synchS code/barriertest.hny
 
 echo ==============
 echo trap
@@ -259,6 +269,11 @@ echo ==============
 echo trap6
 echo ==============
 ./harmony code/trap6.hny
+
+echo ==============
+echo trap6 synchS
+echo ==============
+./harmony -msynch=synchS code/trap6.hny
 
 echo ==============
 echo hw
