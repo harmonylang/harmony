@@ -2100,6 +2100,18 @@ and include it using the Harmony \texttt{import} statement.
 \index{module}%
 This would make the code usable by multiple applications.
 
+Finally, methods can have local variables.
+Different from Python, Harmony local variables must be
+explicitly bound within a scope.
+You have already seen examples: the arguments to the method,
+the variable \textit{result}, and the bound variable (or
+variables) within a \texttt{for} statement.
+The \texttt{let} statement allows declaring additional
+local variables.  For example:
+\texttt{let} $x = 3$: $y$ $+$$=$ $x$ adds 3 to the global variable
+$y$.
+See \autoref{sec:vars} for more information.
+
 \chapter{Spinlock}
 \label{ch:spinlock}
 \index{spinlock}%
@@ -2178,11 +2190,6 @@ it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
 Variable \textit{shared} is initialized to \texttt{False} while
 \textit{private}[$i$] for each thread $i$ is initialized to \texttt{True}.
-Method \texttt{thread} demonstrates how a local variable can be declared
-in Harmony using the \textbf{let} statement---the syntax is similar to
-\textbf{for} statements.  \autoref{sec:vars} provides further information.
-In this case $p$ contains the address of the \textit{private} entry
-for the current thread.
 
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is \texttt{False}.

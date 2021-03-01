@@ -2489,6 +2489,12 @@ class ApplyAST(AST):
                 if t2 == "constant":
                     code.append(PushOp(v2))
                     return
+            if t == "global":
+                self.method.ph1(scope, code)
+                self.arg.compile(scope, code)
+                code.append(AddressOp())
+                code.append(LoadOp(None, self.token, None))
+                return
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(ApplyOp(self.token))
