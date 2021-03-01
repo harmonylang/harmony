@@ -1490,6 +1490,7 @@ int main(int argc, char **argv){
 
     if (false) {
         FILE *df = fopen("charm.dump", "w");
+        assert(df != NULL);
         for (int i = 0; i < graph_size; i++) {
             struct node *node = graph[i];
             assert(node->id == i);
