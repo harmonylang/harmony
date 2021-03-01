@@ -18,8 +18,9 @@ def get(q):
     let node = dummy->next:
         if node == None:
             result = None
+            release(?q->hdlock)
         else:
-            free(dummy)
             result = node->value
             q->head = node
-    release(?q->hdlock)
+            release(?q->hdlock)
+            free(dummy)
