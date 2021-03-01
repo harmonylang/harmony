@@ -2569,15 +2569,28 @@ Before they access the value of the head or tail of the queue they first obtain
 the lock.
 When they are done, they release the lock.
 
-\begin{comment}
-The implementation in \autoref{fig:queueMS}~\cite{MS98} is similar but uses
-separate locks for the head and tail, allowing a \texttt{put} and a \texttt{get} operation
+
+\autoref{fig:queueMS} shows another
+concurrent queue implementation~\cite{MS96}.
+It is well-known, but what is not often realized is that
+it requires sequentially consistent memory, which is not
+said explicitly in the paper.
+As a result, the algorithm is not guaranteed to work
+correctly with most modern programming languages and
+computer hardware.  But it is still useful to study it.
+The implementation uses separate
+locks for the head and the tail,
+allowing a \texttt{put} and a \texttt{get} operation
 to proceed concurrently.  To avoid contention between the head and the tail,
 the queue uses a dummy node at the head of the linked list.
 Except initially, the dummy node is the last node that was dequeued.
 Note that neither the \texttt{head} nor \texttt{tail} pointer are
 ever \texttt{None}.
-\end{comment}
+The problem is when the queue is empty and there are concurrent
+\texttt{get} and \texttt{put} operations.
+They obtain separate locks and then concurrently access the
+\texttt{next} field in the dummy node---a data race with
+undefined semantics in most environments.
 
 \begin{figure}
 \begin{code}
@@ -2595,7 +2608,6 @@ ever \texttt{None}.
 \label{fig:queue}
 \end{figure}
 
-\begin{comment}
 \begin{figure}
 \begin{code}
 \harmonysource{queueMS}
@@ -2603,7 +2615,6 @@ ever \texttt{None}.
 \caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items.}
 \label{fig:queueMS}
 \end{figure}
-\end{comment}
 
 \begin{figure}
 \begin{code}
