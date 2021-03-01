@@ -1,0 +1,271 @@
+make
+
+echo ==============
+echo prog1
+echo ==============
+./harmony code/prog1.hny
+
+echo ==============
+echo prog2
+echo ==============
+./harmony code/prog2.hny
+
+echo ==============
+echo Up
+echo ==============
+./harmony code/Up.hny
+
+echo ==============
+echo UpEnter
+echo ==============
+./harmony code/UpEnter.hny
+
+echo ==============
+echo UpEnter
+echo ==============
+./harmony code/UpEnter.hny
+
+echo ==============
+echo csbarebones
+echo ==============
+./harmony code/csbarebones.hny
+
+echo ==============
+echo cs
+echo ==============
+./harmony code/cs.hny
+
+echo ==============
+echo naiveLock
+echo ==============
+./harmony code/naiveLock.hny
+
+echo ==============
+echo naiveFlags
+echo ==============
+./harmony code/naiveFlags.hny
+
+echo ==============
+echo naiveTurn
+echo ==============
+./harmony code/naiveTurn.hny
+
+echo ==============
+echo Peterson
+echo ==============
+./harmony code/Peterson.hny
+
+echo ==============
+echo PetersonInductive
+echo ==============
+./harmony code/PetersonInductive.hny
+
+echo ==============
+echo csonebit
+echo ==============
+./harmony code/csonebit.hny
+
+echo ==============
+echo PetersonMethod
+echo ==============
+./harmony code/PetersonMethod.hny
+
+echo ==============
+echo spinlock
+echo ==============
+./harmony code/spinlock.hny
+
+echo ==============
+echo csTAS
+echo ==============
+./harmony code/csTAS.hny
+
+echo ==============
+echo UpLock
+echo ==============
+./harmony code/UpLock.hny
+
+echo ==============
+echo UpLock synchS
+echo ==============
+./harmony -msynch=synchS code/UpLock.hny
+
+echo ==============
+echo xy
+echo ==============
+./harmony code/xy.hny
+
+echo ==============
+echo atm
+echo ==============
+./harmony code/atm.hny
+
+echo ==============
+echo queuetest
+echo ==============
+./harmony code/queuetest.hny
+
+echo ==============
+echo queuetest synchS
+echo ==============
+./harmony -msynch=synchS code/queuetest.hny
+
+echo ==============
+echo queueMS.hny
+echo ==============
+./harmony -mqueue=queueMS code/queuetest.hny
+
+echo ==============
+echo queueMS.hny synchS
+echo ==============
+./harmony -mqueue=queueMS -msynch=synchS code/queuetest.hny
+
+echo ==============
+echo lltest
+echo ==============
+./harmony code/lltest.hny
+
+echo ==============
+echo lltest synchS
+echo ==============
+./harmony -msynch=synchS code/lltest.hny
+
+echo ==============
+echo RWtest
+echo ==============
+./harmony code/RWtest.hny
+
+echo ==============
+echo RWtest synchS
+echo ==============
+./harmony -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo RWsbs
+echo ==============
+./harmony -mRW=RWsbs code/RWtest.hny
+
+echo ==============
+echo RWsbs synchS
+echo ==============
+./harmony -mRW=RWsbs -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo RWfair
+echo ==============
+./harmony -mRW=RWfair code/RWtest.hny
+
+echo ==============
+echo RWfair synchS
+echo ==============
+./harmony -mRW=RWfair -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo BBhoaretest
+echo ==============
+./harmony code/BBhoaretest.hny
+
+echo ==============
+echo BBhoaretest synchS
+echo ==============
+./harmony -msynch=synchS code/BBhoaretest.hny
+
+echo ==============
+echo RWcv
+echo ==============
+./harmony -mRW=RWcv code/RWtest.hny
+
+echo ==============
+echo RWcv synchS
+echo ==============
+./harmony -mRW=RWcv -msynch=synchS code/RWtest.hny
+
+echo ==============
+echo qsorttest
+echo ==============
+./harmony code/qsorttest.hny
+
+echo ==============
+echo Diners
+echo ==============
+./harmony code/Diners.hny
+
+echo ==============
+echo Diners synchS
+echo ==============
+./harmony -msynch=synchS code/Diners.hny
+
+echo ==============
+echo DinersCV
+echo ==============
+./harmony code/DinersCV.hny
+
+echo ==============
+echo DinersAvoid
+echo ==============
+./harmony code/DinersAvoid.hny
+
+echo ==============
+echo bank
+echo ==============
+./harmony code/bank.hny
+
+echo ==============
+echo bank
+echo ==============
+./harmony code/bank.hny
+
+echo ==============
+echo counter
+echo ==============
+./harmony code/counter.hny
+
+echo ==============
+echo qbarrier
+echo ==============
+./harmony code/qbarrier.hny
+
+echo ==============
+echo barriertest
+echo ==============
+./harmony code/barriertest.hny
+
+echo ==============
+echo trap
+echo ==============
+./harmony code/trap.hny
+
+echo ==============
+echo trap2
+echo ==============
+./harmony code/trap2.hny
+
+echo ==============
+echo trap3
+echo ==============
+./harmony code/trap3.hny
+
+echo ==============
+echo trap4
+echo ==============
+./harmony code/trap4.hny
+
+echo ==============
+echo trap5
+echo ==============
+./harmony code/trap5.hny
+
+echo ==============
+echo trap6
+echo ==============
+./harmony code/trap6.hny
+
+echo ==============
+echo hw
+echo ==============
+./harmony code/hw.hny
+
+echo ==============
+echo abptest
+echo ==============
+./harmony code/abptest.hny
