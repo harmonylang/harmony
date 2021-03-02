@@ -85,6 +85,11 @@ $PYTHON - $@ <<'++++++'
     POSSIBILITY OF SUCH DAMAGE.
 """
 
+version = [
+1,1,4782
+
+]
+
 internal_modules = {
 #############################
 #     START OF MODULES      #
@@ -1830,7 +1835,10 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 
     // TODO.  Should cache the contents of the file
     FILE *fp = fopen(cfile, "r");
-    assert(fp != NULL);
+    if (fp == NULL) {
+        fprintf(stderr, "Can't open '%s'\n", cfile);
+        exit(1);
+    }
     char buf[1024];
     while (fgets(buf, 1024, fp) != NULL) {
         if (--lineno == 0) {
@@ -2160,6 +2168,7 @@ int main(int argc, char **argv){
 
     if (false) {
         FILE *df = fopen("charm.dump", "w");
+        assert(df != NULL);
         for (int i = 0; i < graph_size; i++) {
             struct node *node = graph[i];
             assert(node->id == i);
@@ -2183,7 +2192,10 @@ int main(int argc, char **argv){
     }
 
     FILE *out = fopen("charm.json", "w");
-    assert(out != NULL);
+    if (out == NULL) {
+        fprintf(stderr, "charm: can't create charm.json");
+        exit(1);
+    }
     fprintf(out, "{\n");
 
     if (queue_empty(failures) && queue_empty(warnings)) {
@@ -12976,7 +12988,8 @@ def main():
     testflag = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "Aabc:dfhjm:st", ["const=", "help", "module="])
+                        "Aabc:dfhjm:stv",
+                        ["const=", "help", "module=", "version"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -13006,6 +13019,9 @@ def main():
             testflag = True
         elif o in { "-h", "--help" }:
             usage()
+        elif o in { "-v", "--version" }:
+            print("Version", ".".join([str(v) for v in version]))
+            sys.exit(0)
         else:
             assert False, "unhandled option"
 

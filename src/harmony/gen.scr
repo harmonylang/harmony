@@ -1,2 +1,3 @@
 sh getmods.scr > modules
+python3 newversion.py > buildversion
 m4 -P harmony.m4

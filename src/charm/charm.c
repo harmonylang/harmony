@@ -1160,7 +1160,10 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 
     // TODO.  Should cache the contents of the file
     FILE *fp = fopen(cfile, "r");
-    assert(fp != NULL);
+    if (fp == NULL) {
+        fprintf(stderr, "Can't open '%s'\n", cfile);
+        exit(1);
+    }
     char buf[1024];
     while (fgets(buf, 1024, fp) != NULL) {
         if (--lineno == 0) {
@@ -1514,7 +1517,10 @@ int main(int argc, char **argv){
     }
 
     FILE *out = fopen("charm.json", "w");
-    assert(out != NULL);
+    if (out == NULL) {
+        fprintf(stderr, "charm: can't create charm.json");
+        exit(1);
+    }
     fprintf(out, "{\n");
 
     if (queue_empty(failures) && queue_empty(warnings)) {

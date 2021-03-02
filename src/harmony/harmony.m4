@@ -32,6 +32,10 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
+version = [
+m4_include(buildversion)
+]
+
 internal_modules = {
 #############################
 #     START OF MODULES      #
@@ -5352,7 +5356,8 @@ def main():
     testflag = False
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                        "Aabc:dfhjm:st", ["const=", "help", "module="])
+                        "Aabc:dfhjm:stv",
+                        ["const=", "help", "module=", "version"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -5382,6 +5387,9 @@ def main():
             testflag = True
         elif o in { "-h", "--help" }:
             usage()
+        elif o in { "-v", "--version" }:
+            print("Version", ".".join([str(v) for v in version]))
+            sys.exit(0)
         else:
             assert False, "unhandled option"
 
