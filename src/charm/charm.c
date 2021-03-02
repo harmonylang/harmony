@@ -1161,24 +1161,25 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     // TODO.  Should cache the contents of the file
     FILE *fp = fopen(cfile, "r");
     if (fp == NULL) {
-        fprintf(stderr, "Can't open '%s'\n", cfile);
-        exit(1);
+        fprintf(out, ", \"code\": \"can't open %s\"", cfile);
     }
-    char buf[1024];
-    while (fgets(buf, 1024, fp) != NULL) {
-        if (--lineno == 0) {
-            buf[1023] = 0;
-            int len = strlen(buf);
-            if (len > 0 && buf[len - 1] == '\n') {
-                buf[len - 1] = 0;
+    else {
+        char buf[1024];
+        while (fgets(buf, 1024, fp) != NULL) {
+            if (--lineno == 0) {
+                buf[1023] = 0;
+                int len = strlen(buf);
+                if (len > 0 && buf[len - 1] == '\n') {
+                    buf[len - 1] = 0;
+                }
+                char *enc = json_string_encode(buf);
+                fprintf(out, ", \"code\": \"%s\"", enc);
+                free(enc);
+                break;
             }
-            char *enc = json_string_encode(buf);
-            fprintf(out, ", \"code\": \"%s\"", enc);
-            free(enc);
-            break;
         }
+        fclose(fp);
     }
-    fclose(fp);
     fprintf(out, " }");
 }
 
