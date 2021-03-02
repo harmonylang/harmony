@@ -1159,6 +1159,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     cfile[file->u.atom.len] = 0;
 
     // TODO.  Should cache the contents of the file
+    // TODO.  What to do with "internal" modules?
     FILE *fp = fopen(cfile, "r");
     if (fp == NULL) {
         fprintf(out, ", \"code\": \"can't open %s\"", cfile);
