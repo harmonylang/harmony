@@ -5330,17 +5330,23 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("  }", file=f);
         print("}", file=f);
 
+config = {
+    "infile": "charm.c",
+    "outfile": "$$home$$/.charm.exe",
+    "compile": "gcc -O3 -std=c99 $$infile$$ -m64 -o $$outfile$$"
+}
+
 def usage():
     print("Usage: harmony [options] harmony-file ...")
     print("  options: ")
     print("    -a: list machine code")
-    print("    -b: blocking execution")
     print("    -c name=value: define a constant")
     print("    -d: htmldump full state into html file")
-    print("    -f: run with internal model checker")
+    print("    -f: run with internal model checker (not supported)")
     print("    -h: help")
     print("    -m module=version: select a module version")
     print("    -s: silent (do not print periodic status updates)")
+    print("    -v: print version number")
     exit(1)
 
 def main():
@@ -5396,6 +5402,15 @@ def main():
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
+        # see if there is a configuration file
+        global config
+        conffile = "%s/.harmony.json"%pathlib.Path.home()
+        if os.path.exists(conffile):
+            with open(conffile) as f:
+                config = json.load(f)
+        else:
+            config["outfile"] = "%s/.charm.exe"%pathlib.Path.home()
+            config["compile"] = "gcc -O3 -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"])
         if testflag:
             tmpfile = "harmony.json"
         else:
@@ -5403,8 +5418,7 @@ def main():
             os.close(fd)
         with open(tmpfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        charm = "%s/.charm.exe"%pathlib.Path.home()
-        path = pathlib.Path(charm)
+        path = pathlib.Path(config["outfile"])
         rebuild = testflag or not path.exists()
         if not rebuild:
             st = path.stat()
@@ -5412,25 +5426,25 @@ def main():
             if now - st.st_mtime > 15 * 60:
                 rebuild = True
         if rebuild:
-            with open("charm.c", "w") as fd:
+            with open(config["infile"], "w") as fd:
                 if not testflag:
                     print("#define NDEBUG", file=fd)
                 print("#define HARMONY_COMBINE", file=fd)
                 print(charm_src, file=fd)
             if testflag:
                 # if os.name == "nt":
-                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                #     r = os.system("cl %s /link /out:%s"%(config["infile"], config["outfile"]))
                 # else:
-                    r = os.system("gcc -g charm.c -m64 -o %s"%charm);
+                    r = os.system("gcc -g -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"]))
             else:
                 # if os.name == "nt":
-                #     r = os.system("cl charm.c /link /out:%s"%charm);
+                #     r = os.system("cl %s /link /out:%s"%(config["infile"], config["outfile"]))
                 # else:
-                    r = os.system("gcc -O3 charm.c -m64 -o %s"%charm);
+                    r = os.system(config["compile"]);
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("%s %s"%(charm, tmpfile));
+        r = os.system("%s %s"%(config["outfile"], tmpfile));
         if not testflag:
             os.remove(tmpfile)
         if r != 0:
