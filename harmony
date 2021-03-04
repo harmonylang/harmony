@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1394
+1,1, 1396
 
 ]
 
@@ -181,9 +181,6 @@ def BinSema(acquired):
 
 def Lock():
     result = BinSema(False)
-
-def acquired(binsema):
-    result = binsema->acquired
 
 def acquire(binsema):
     atomic:

@@ -1384,7 +1384,7 @@ a data structure, but as we have seen it too requires multiple instructions.
 A more involved one would be accessing a binary tree.
 Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
-(although not necessarily impossible) if during this time no other
+if during this time no other
 thread also tries to access the binary tree.
 Typically, you want some invariant property of the data structure to hold
 at the beginning and at the end of the critical section, but in the middle
@@ -6081,6 +6081,7 @@ Anneke van Renesse,
 Brendon Nguyen,
 Hartek Sabharwal,
 Heather Zheng,
+Jacob Brugh,
 Lorenzo Alvisi,
 Saleh Hassen,
 Sunwook Kim,

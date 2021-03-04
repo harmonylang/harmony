@@ -85,9 +85,6 @@ def BinSema(acquired):
 def Lock():
     result = BinSema(False)
 
-def acquired(binsema):
-    result = binsema->acquired
-
 def acquire(binsema):
     atomic:
         if binsema->acquired:
