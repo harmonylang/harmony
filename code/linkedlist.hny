@@ -14,7 +14,7 @@ def _find(lst, v):
                 before = after
                 after = before->next
                 acquire(?after->lock)
-    result = (before, after)
+            result = (before, after)
 
 def LinkedList():
     result = _node(-inf, _node(inf, None))
