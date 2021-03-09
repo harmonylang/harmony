@@ -138,7 +138,7 @@ def doImport(scope, code, module):
                     "<internal>/" + modname + ".hny", scope2, code)
             else:
                 print("Can't find module", modname, "imported from", namestack)
-                exit(1)
+                sys.exit(1)
         
         imported[lexeme] = scope2
 
@@ -154,8 +154,11 @@ def load_string(all, filename, scope, code):
     except IndexError:
         # best guess...
         print("Parsing", filename, "hit EOF")
-        print(traceback.format_exc())
-        exit(1)
+        sys.exit(1)
+
+    if rem != []:
+        print("Parsing: unexpected tokens remaining at end of program:", rem[0])
+        sys.exit(1)
 
     for mod in ast.getImports():
         doImport(scope, code, mod)
@@ -300,30 +303,29 @@ def lexer(s, file):
     result = []
     line = 1
     column = 1
+    cont = 1
+    s = s.replace('\\r', '')        # MS-DOS...
     while s != "":
-        if s[0] == "\r":     # msdos...
-            s = s[1:]
-            continue
-
         # see if it's a blank
         if s[0] in { " ", "\t" }:
             s = s[1:]
             column += 1
             continue
 
-        # ignore backslash at end of line
+        # backslash at end of line: glue on the next line
         if s[0] == "\\":
             if len(s) == 1:
                 break
-            if s[1] == "\n" or s[1] == "\r":
+            if s[1] == "\n":
                 s = s[2:]
-                line += 1
-                column = 1
+                column += 2
+                cont += 1
                 continue
 
         if s[0] == "\n":
             s = s[1:]
-            line += 1
+            line += cont
+            cont = 1
             column = 1
             continue
 
@@ -350,7 +352,8 @@ def lexer(s, file):
                     column += 2
                 elif s[0] == "\n":
                     s = s[1:]
-                    line += 1
+                    line += cont
+                    cont = 1
                     column = 1
                 else:
                     s = s[1:]
@@ -441,13 +444,15 @@ def lexer(s, file):
                     else:
                         str += s[0]
                         if s[0] == '\n':
-                            line += 1
+                            line += cont
+                            cont = 1
                         column += 1
                         s = s[1:]
                 else:
                     str += s[0]
                     if s[0] == '\n':
-                        line += 1
+                        line += cont
+                        cont = 1
                     column += 1
                     s = s[1:]
             result += [ (str, file, line, column) ]
@@ -2003,7 +2008,7 @@ class AST:
             code[ctx.pc].eval(state, ctx)
         if ctx.failure != None:
             print("constant evaluation failed: ", self, ctx.failure)
-            exit(1)
+            sys.exit(1)
         return ctx.pop()
 
     def compile(self, scope, code):
@@ -2022,7 +2027,7 @@ class AST:
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
         print("Cannot use in left-hand side expression:", self)
-        exit(1)
+        sys.exit(1)
 
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
         if iter == []:
@@ -2145,7 +2150,7 @@ class AST:
                         "<internal>/" + modname + ".hny", scope2, code)
                 else:
                     print("Can't find module", modname, "imported from", namestack)
-                    exit(1)
+                    sys.exit(1)
             
             imported[lexeme] = scope2
 
@@ -2535,7 +2540,7 @@ class Rule:
     def expect(self, rule, b, got, want):
         if not b:
             print("Parse error in %s."%rule, "Got", got, ":", want)
-            exit(1)
+            sys.exit(1)
 
     def forParse(self, t, closers):
         (bv, t) = BoundVarRule().parse(t)
@@ -2592,7 +2597,7 @@ class NaryRule(Rule):
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
                     print("expected an expression after n-ary comparison operation in", op)
-                    exit(1)
+                    sys.exit(1)
                 args.append(ast3)
                 if t == []:
                     break
@@ -2607,7 +2612,7 @@ class NaryRule(Rule):
             (ast2, t) = ExpressionRule().parse(t[1:])
         if ast2 == False:
             print("expected an expression after operation", op)
-            exit(1)
+            sys.exit(1)
         args.append(ast2)
         if t != []:
             (lexeme, file, line, column) = t[0]
@@ -2616,7 +2621,7 @@ class NaryRule(Rule):
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
                     print("expected an expression after else in", op)
-                    exit(1)
+                    sys.exit(1)
                 args.append(ast3)
                 if t != []:
                     (lexeme, file, line, column) = t[0]
@@ -2625,7 +2630,7 @@ class NaryRule(Rule):
                     (ast3, t) = ExpressionRule().parse(t[1:])
                     if ast3 == False:
                         print("expected an expression after n-ary operation in", op)
-                        exit(1)
+                        sys.exit(1)
                     args.append(ast3)
                     if t == []:
                         break
@@ -3452,7 +3457,7 @@ class ConstAST(AST):
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
             print(self.const, ": Parse error: expression not a constant", str(self.expr))
-            exit(1)
+            sys.exit(1)
         if isinstance(self.expr, LambdaAST):
             pc = self.expr.compile_body(scope, code)
             self.set(scope, self.const, PcValue(pc))
@@ -3502,7 +3507,7 @@ class StatListRule(Rule):
 
     def parse(self, t):
         if t == []:
-            assert False
+            print("Unexpected EOF")
             return (BlockAST([]), [])
 
         # find all the tokens that are indented more than self.indent
@@ -3518,8 +3523,12 @@ class StatListRule(Rule):
 
         b = []
         while slice != []:
-            (ast, slice) = LabelStatRule().parse(slice)
-            b.append(ast)
+            try:
+                (ast, slice) = LabelStatRule().parse(slice)
+                b.append(ast)
+            except IndexError:
+                print("Parsing: incomplete statement starting at ", slice[0])
+                sys.exit(1)
 
         return (BlockAST(b), t)
 
@@ -3582,7 +3591,7 @@ class StatementRule(Rule):
                 return (tokens, t[1:])
             if lexeme in [')', ']', '}']:
                 print("unmatched bracket:", t[0])
-                exit(1)
+                sys.exit(1)
             if lexeme in ['(', '[', '{']:
                 (more, t) = self.rec_slice(t)
                 tokens += more
@@ -3591,7 +3600,7 @@ class StatementRule(Rule):
             else:
                 t = t[1:]
         print("closing bracket missing:", first, tokens, t)
-        exit(1)
+        sys.exit(1)
 
     def slice(self, t, indent):
         if t == []:
@@ -4020,7 +4029,7 @@ class State:
             except KeyError:
                 print()
                 print("no index", indexes[0], "in variable", path)
-                exit(1)
+                sys.exit(1)
             indexes = indexes[1:]
         return v
 
@@ -4405,7 +4414,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
                 sc.code[cc.pc].eval(sc, cc)
             except Exception as e:
                 traceback.print_exc()
-                exit(1)
+                sys.exit(1)
                 cc.failure = "Python assertion failed"
 
         if cc.failure != None or cc.stopped:
@@ -4492,7 +4501,7 @@ def parseConstant(c, v):
     except IndexError:
         # best guess...
         print("Parsing constant", v, "hit end of string")
-        exit(1)
+        sys.exit(1)
     scope = Scope(None)
     code = []
     ast.compile(scope, code)
@@ -4510,7 +4519,7 @@ def doCompile(filenames, consts, mods):
             parseConstant(c[0:i], c[i+1:])
         except IndexError:
             print("Usage: -c C=V to define a constant")
-            exit(1)
+            sys.exit(1)
 
     global modules
     for m in mods:
@@ -4519,7 +4528,7 @@ def doCompile(filenames, consts, mods):
             modules[m[0:i]] = m[i+1:]
         except IndexError:
             print("Usage: -m module=version to specify a module version")
-            exit(1)
+            sys.exit(1)
 
     scope = Scope(None)
     code = [
@@ -4534,7 +4543,7 @@ def doCompile(filenames, consts, mods):
                     load(fd, fname, scope, code)
             else:
                 print("Can't open", fname, file=sys.stderr)
-                exit(1)
+                sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
