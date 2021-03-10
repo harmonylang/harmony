@@ -2466,7 +2466,6 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
 uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t result = 1;
     int list = -1;
-    bool haszero = false;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if ((e & VALUE_MASK) == VALUE_DICT) {

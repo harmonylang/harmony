@@ -664,8 +664,8 @@ void print_state(FILE *file, struct node *node){
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
     struct context *inv_ctx = new_alloc(struct context);
-    uint64_t inv_nv = value_put_atom("name", 4);
-    uint64_t inv_tv = value_put_atom("tag", 3);
+    // uint64_t inv_nv = value_put_atom("name", 4);
+    // uint64_t inv_tv = value_put_atom("tag", 3);
     inv_ctx->name = value_put_atom("__invariant__", 13);
     inv_ctx->arg = VALUE_DICT;
     inv_ctx->this = VALUE_DICT;
@@ -1328,8 +1328,8 @@ int main(int argc, char **argv){
 
     // Create a context for evaluating invariants
     struct context *inv_ctx = new_alloc(struct context);
-    uint64_t inv_nv = value_put_atom("name", 4);
-    uint64_t inv_tv = value_put_atom("tag", 3);
+    // uint64_t inv_nv = value_put_atom("name", 4);
+    // uint64_t inv_tv = value_put_atom("tag", 3);
     inv_ctx->name = value_put_atom("__invariant__", 13);
     inv_ctx->arg = VALUE_DICT;
     inv_ctx->this = VALUE_DICT;
