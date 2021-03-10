@@ -51,7 +51,7 @@ bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
         assert((seqs[i] & VALUE_MASK) == VALUE_ADDRESS);
         int sn;
         uint64_t *inds = value_get(seqs[i], &sn);
-        if (n >= sn && memcmp(indices, inds, sn) == 0) {
+        if (n >= sn && sn >= 0 && memcmp(indices, inds, sn) == 0) {
             return true;
         }
     }
