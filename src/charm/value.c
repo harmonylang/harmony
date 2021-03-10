@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <ctype.h>
 #include <assert.h>
 
 #ifndef HARMONY_COMBINE
@@ -317,7 +318,13 @@ static char *value_json_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
     char *s = dict_retrieve(p, &size), *r;
-    alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+    assert(size > 0);
+    if (size > 1 || (isprint(s[0]) && s[0] != '"' && s[0] != '\\')) {
+        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+    }
+    else {
+        alloc_printf(&r, "{ \"type\": \"char\", \"value\": \"%02x\" }", s[0]);
+    }
     return r;
 }
 
@@ -670,6 +677,26 @@ uint64_t value_atom(struct dict *map){
     return (uint64_t) p | VALUE_ATOM;
 }
 
+uint64_t value_char(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
+    char *copy = malloc(value->u.atom.len + 1);
+    memcpy(copy, value->u.atom.base, value->u.atom.len);
+    copy[value->u.atom.len] = 0;
+    unsigned long x;
+    sscanf(copy, "%lx", &x);
+    free(copy);
+    if (x == 0) {
+        printf("value_char: can't handle null characters yet\n");
+    }
+    else if (x != (x & 0x7F)) {
+        printf("value_char: can only handle ASCII characters right now\n");
+    }
+    char v = x & 0x7F;
+    void *p = dict_find(atom_map, &v, 1);
+    return (uint64_t) p | VALUE_ATOM;
+}
+
 uint64_t value_dict(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
@@ -744,6 +771,9 @@ uint64_t value_from_json(struct dict *map){
     }
     else if (atom_cmp(type->u.atom, "atom")) {
         return value_atom(map);
+    }
+    else if (atom_cmp(type->u.atom, "char")) {
+        return value_char(map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
         return value_dict(map);

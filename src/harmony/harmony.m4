@@ -147,7 +147,6 @@ def doImport(scope, code, module):
 def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
-    # assert False, (tokens1, tokens)
 
     try:
         (ast, rem) = StatListRule(-1).parse(tokens)
@@ -383,6 +382,7 @@ def lexer(s, file):
 
         # string
         if s[0] == '"' or s[0] == "'":
+            start_col = column
             if s.startswith('"""'):
                 term = '"""'
             elif s.startswith("'''"):
@@ -455,7 +455,7 @@ def lexer(s, file):
                         cont = 1
                     column += 1
                     s = s[1:]
-            result += [ (str, file, line, column) ]
+            result += [ (str, file, line, start_col) ]
             column += len(term)
             s = s[len(term):]
             continue
@@ -489,7 +489,7 @@ def jsonValue(v):
             return '{ "type": "atom", "value": "%s" }'%str(v)
         else:
             assert len(v) == 1, v
-            return '{ "type": "char", "value": "02X" "'%ord(v[0])
+            return '{ "type": "char", "value": "%02X" }'%ord(v[0])
     assert False, v
 
 def strVars(v):

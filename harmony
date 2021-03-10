@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1399
+1,1, 1400
 
 ]
 
@@ -5803,6 +5803,7 @@ void queue_cleanup(void){
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <ctype.h>
 #include <assert.h>
 
 #ifndef HARMONY_COMBINE
@@ -6115,7 +6116,13 @@ static char *value_json_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
     char *s = dict_retrieve(p, &size), *r;
-    alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+    assert(size > 0);
+    if (size > 1 || (isprint(s[0]) && s[0] != '"' && s[0] != '\\')) {
+        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+    }
+    else {
+        alloc_printf(&r, "{ \"type\": \"char\", \"value\": \"%02x\" }", s[0]);
+    }
     return r;
 }
 
@@ -6468,6 +6475,26 @@ uint64_t value_atom(struct dict *map){
     return (uint64_t) p | VALUE_ATOM;
 }
 
+uint64_t value_char(struct dict *map){
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
+    char *copy = malloc(value->u.atom.len + 1);
+    memcpy(copy, value->u.atom.base, value->u.atom.len);
+    copy[value->u.atom.len] = 0;
+    unsigned long x;
+    sscanf(copy, "%lx", &x);
+    free(copy);
+    if (x == 0) {
+        printf("value_char: can't handle null characters yet\n");
+    }
+    else if (x != (x & 0x7F)) {
+        printf("value_char: can only handle ASCII characters right now\n");
+    }
+    char v = x & 0x7F;
+    void *p = dict_find(atom_map, &v, 1);
+    return (uint64_t) p | VALUE_ATOM;
+}
+
 uint64_t value_dict(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
@@ -6542,6 +6569,9 @@ uint64_t value_from_json(struct dict *map){
     }
     else if (atom_cmp(type->u.atom, "atom")) {
         return value_atom(map);
+    }
+    else if (atom_cmp(type->u.atom, "char")) {
+        return value_char(map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
         return value_dict(map);
@@ -7778,7 +7808,6 @@ def doImport(scope, code, module):
 def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
-    # assert False, (tokens1, tokens)
 
     try:
         (ast, rem) = StatListRule(-1).parse(tokens)
@@ -8014,6 +8043,7 @@ def lexer(s, file):
 
         # string
         if s[0] == '"' or s[0] == "'":
+            start_col = column
             if s.startswith('"""'):
                 term = '"""'
             elif s.startswith("'''"):
@@ -8086,7 +8116,7 @@ def lexer(s, file):
                         cont = 1
                     column += 1
                     s = s[1:]
-            result += [ (str, file, line, column) ]
+            result += [ (str, file, line, start_col) ]
             column += len(term)
             s = s[len(term):]
             continue
@@ -8120,7 +8150,7 @@ def jsonValue(v):
             return '{ "type": "atom", "value": "%s" }'%str(v)
         else:
             assert len(v) == 1, v
-            return '{ "type": "char", "value": "02X" "'%ord(v[0])
+            return '{ "type": "char", "value": "%02X" }'%ord(v[0])
     assert False, v
 
 def strVars(v):
