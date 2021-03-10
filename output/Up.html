@@ -222,8 +222,8 @@ table td, table th {
             <a name='P5'>5</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='set program counter to 31' id='C5'>
-              Jump 31
+            <span title='set program counter to 32' id='C5'>
+              Jump 32
             </span>
           </td>
         </tr>
@@ -332,8 +332,8 @@ table td, table th {
             <a name='P16'>16</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant 1' id='C16'>
-              Push 1
+            <span title='push constant ?done' id='C16'>
+              Push ?done
             </span>
           </td>
         </tr>
@@ -342,8 +342,8 @@ table td, table th {
             <a name='P17'>17</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push the value of self' id='C17'>
-              LoadVar self
+            <span title='push constant 1' id='C17'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -352,8 +352,8 @@ table td, table th {
             <a name='P18'>18</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 2 values and push the result of applying -' id='C18'>
-              2-ary -
+            <span title='push the value of self' id='C18'>
+              LoadVar self
             </span>
           </td>
         </tr>
@@ -362,8 +362,8 @@ table td, table th {
             <a name='P19'>19</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push value of shared variable done' id='C19'>
-              Load done
+            <span title='pop 2 values and push the result of applying -' id='C19'>
+              2-ary -
             </span>
           </td>
         </tr>
@@ -372,8 +372,8 @@ table td, table th {
             <a name='P20'>20</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc or dictionary f and an index i and push f(i)' id='C20'>
-              Apply
+            <span title='combine the top two values on the stack into an address and push the result' id='C20'>
+              Address
             </span>
           </td>
         </tr>
@@ -382,8 +382,8 @@ table td, table th {
             <a name='P21'>21</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a value and jump to 16 if the value is False' id='C21'>
-              JumpCond False 16
+            <span title='pop an address and push the value at the address' id='C21'>
+              Load
             </span>
           </td>
         </tr>
@@ -391,9 +391,9 @@ table td, table th {
           <td align='right'>
             <a name='P22'>22</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C22'>
-              ReadonlyInc
+          <td style='background-color: white;'>
+            <span title='pop a value and jump to 16 if the value is False' id='C22'>
+              JumpCond False 16
             </span>
           </td>
         </tr>
@@ -402,8 +402,8 @@ table td, table th {
             <a name='P23'>23</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C23'>
-              AtomicInc
+            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C23'>
+              ReadonlyInc
             </span>
           </td>
         </tr>
@@ -412,8 +412,8 @@ table td, table th {
             <a name='P24'>24</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push value of shared variable count' id='C24'>
-              Load count
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C24'>
+              AtomicInc
             </span>
           </td>
         </tr>
@@ -422,8 +422,8 @@ table td, table th {
             <a name='P25'>25</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 2' id='C25'>
-              Push 2
+            <span title='push value of shared variable count' id='C25'>
+              Load count
             </span>
           </td>
         </tr>
@@ -432,8 +432,8 @@ table td, table th {
             <a name='P26'>26</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop 2 values and push the result of applying ==' id='C26'>
-              2-ary ==
+            <span title='push constant 2' id='C26'>
+              Push 2
             </span>
           </td>
         </tr>
@@ -442,8 +442,8 @@ table td, table th {
             <a name='P27'>27</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a condition and raise exception if condition is false' id='C27'>
-              Assert
+            <span title='pop 2 values and push the result of applying ==' id='C27'>
+              2-ary ==
             </span>
           </td>
         </tr>
@@ -452,8 +452,8 @@ table td, table th {
             <a name='P28'>28</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='decrement atomic counter of context' id='C28'>
-              AtomicDec
+            <span title='pop a condition and raise exception if condition is false' id='C28'>
+              Assert
             </span>
           </td>
         </tr>
@@ -462,8 +462,8 @@ table td, table th {
             <a name='P29'>29</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='decrement readonly counter of context' id='C29'>
-              ReadonlyDec
+            <span title='decrement atomic counter of context' id='C29'>
+              AtomicDec
             </span>
           </td>
         </tr>
@@ -472,8 +472,8 @@ table td, table th {
             <a name='P30'>30</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C30'>
-              Return
+            <span title='decrement readonly counter of context' id='C30'>
+              ReadonlyDec
             </span>
           </td>
         </tr>
@@ -481,9 +481,9 @@ table td, table th {
           <td align='right'>
             <a name='P31'>31</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
-            <span title='push constant ()' id='C31'>
-              Push ()
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C31'>
+              Return
             </span>
           </td>
         </tr>
@@ -492,8 +492,8 @@ table td, table th {
             <a name='P32'>32</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant 0' id='C32'>
-              Push 0
+            <span title='push constant ()' id='C32'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -502,8 +502,8 @@ table td, table th {
             <a name='P33'>33</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant PC(6)' id='C33'>
-              Push PC(6)
+            <span title='push constant 0' id='C33'>
+              Push 0
             </span>
           </td>
         </tr>
@@ -512,8 +512,8 @@ table td, table th {
             <a name='P34'>34</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C34'>
-              Spawn
+            <span title='push constant PC(6)' id='C34'>
+              Push PC(6)
             </span>
           </td>
         </tr>
@@ -521,9 +521,9 @@ table td, table th {
           <td align='right'>
             <a name='P35'>35</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C35'>
-              Push ()
+          <td style='background-color: white;'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C35'>
+              Spawn
             </span>
           </td>
         </tr>
@@ -532,8 +532,8 @@ table td, table th {
             <a name='P36'>36</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 1' id='C36'>
-              Push 1
+            <span title='push constant ()' id='C36'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -542,8 +542,8 @@ table td, table th {
             <a name='P37'>37</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(6)' id='C37'>
-              Push PC(6)
+            <span title='push constant 1' id='C37'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -552,8 +552,8 @@ table td, table th {
             <a name='P38'>38</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C38'>
-              Spawn
+            <span title='push constant PC(6)' id='C38'>
+              Push PC(6)
             </span>
           </td>
         </tr>
@@ -562,7 +562,17 @@ table td, table th {
             <a name='P39'>39</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C39'>
+            <span title='pop a pc, argument, and tag and spawn a new thread' id='C39'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P40'>
+          <td align='right'>
+            <a name='P40'>40</a>&nbsp;
+          </td>
+          <td style='background-color: #E6E6E6;'>
+            <span title='restore caller method state and push result' id='C40'>
               Return
             </span>
           </td>
@@ -702,54 +712,54 @@ var state =
           "pc": "4"
         },
         {
-          "npc": "31",
+          "npc": "32",
           "push": [ ],
           "pc": "5"
         },
         {
-          "npc": "32",
-          "push": [ { "type": "dict", "value": [] } ],
-          "pc": "31"
-        },
-        {
           "npc": "33",
-          "push": [ { "type": "int", "value": "0" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "32"
         },
         {
           "npc": "34",
-          "push": [ { "type": "pc", "value": "6" } ],
+          "push": [ { "type": "int", "value": "0" } ],
           "pc": "33"
         },
         {
           "npc": "35",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "pc", "value": "6" } ],
           "pc": "34"
         },
         {
           "npc": "36",
-          "push": [ { "type": "dict", "value": [] } ],
+          "pop": "3",
+          "push": [ ],
           "pc": "35"
         },
         {
           "npc": "37",
-          "push": [ { "type": "int", "value": "1" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "36"
         },
         {
           "npc": "38",
-          "push": [ { "type": "pc", "value": "6" } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "37"
         },
         {
           "npc": "39",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "pc", "value": "6" } ],
           "pc": "38"
         },
         {
-          "npc": "39",
+          "npc": "40",
+          "pop": "3",
+          "push": [ ],
+          "pc": "39"
+        },
+        {
+          "npc": "40",
           "fp": "0",
           "trace": [
 
@@ -758,7 +768,7 @@ var state =
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
-          "pc": "39"
+          "pc": "40"
         }
       ],
       "invfails": [
@@ -768,7 +778,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -824,10 +834,76 @@ var state =
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "6"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "40",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
         },
         {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "xpc": "6",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "6",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "tid": "1",
+      "name": "incrementer(0)",
+      "microsteps": [
+        {
           "npc": "8",
-          "push": [ { "type": "int", "value": "0" } ],
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "8",
+              "xpc": "6",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "int", "value": "0" } ],
           "pc": "7"
         },
         {
@@ -849,7 +925,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -891,7 +967,7 @@ var state =
       ]
     },
     {
-      "id": "5",
+      "id": "7",
       "tid": "2",
       "name": "incrementer(1)",
       "microsteps": [
@@ -911,10 +987,82 @@ var state =
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "6"
+        }
+      ],
+      "invfails": [
+      ],
+      "contexts": [
+        {
+          "tid": "0",
+          "name": "__init__()",
+          "entry": "0",
+          "pc": "40",
+          "fp": "0",
+          "trace": [
+
+          ],
+          "atomic": "1",
+          "mode": "terminated",
+          "this": { "type": "dict", "value": [] }
         },
         {
+          "tid": "1",
+          "name": "incrementer(0)",
+          "entry": "6",
+          "pc": "10",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "10",
+              "xpc": "6",
+              "method": "incrementer(0)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        },
+        {
+          "tid": "2",
+          "name": "incrementer(1)",
+          "entry": "6",
+          "pc": "7",
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "7",
+              "xpc": "6",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "mode": "runnable",
+          "this": { "type": "dict", "value": [] }
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "tid": "2",
+      "name": "incrementer(1)",
+      "microsteps": [
+        {
           "npc": "8",
-          "push": [ { "type": "int", "value": "0" } ],
+          "fp": "4",
+          "trace": [
+            {
+              "pc": "8",
+              "xpc": "6",
+              "method": "incrementer(1)",
+              "calltype": "process",
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+            }
+          ],
+          "this": { "type": "dict", "value": [] },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "int", "value": "0" } ],
           "pc": "7"
         },
         {
@@ -936,7 +1084,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -984,7 +1132,7 @@ var state =
       ]
     },
     {
-      "id": "14",
+      "id": "19",
       "tid": "2",
       "name": "incrementer(1)",
       "microsteps": [
@@ -1035,7 +1183,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1083,7 +1231,7 @@ var state =
       ]
     },
     {
-      "id": "16",
+      "id": "21",
       "tid": "2",
       "name": "incrementer(1)",
       "microsteps": [
@@ -1107,7 +1255,7 @@ var state =
         },
         {
           "npc": "17",
-          "push": [ { "type": "int", "value": "1" } ],
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" } ] } ],
           "pc": "16"
         },
         {
@@ -1117,9 +1265,20 @@ var state =
         },
         {
           "npc": "19",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "18"
+        },
+        {
+          "npc": "20",
           "pop": "2",
           "push": [ { "type": "int", "value": "0" } ],
-          "pc": "18"
+          "pc": "19"
+        },
+        {
+          "npc": "21",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" }, { "type": "int", "value": "0" } ] } ],
+          "pc": "20"
         }
       ],
       "invfails": [
@@ -1129,7 +1288,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1160,11 +1319,11 @@ var state =
           "tid": "2",
           "name": "incrementer(1)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(1)",
               "calltype": "process",
@@ -1177,7 +1336,7 @@ var state =
       ]
     },
     {
-      "id": "17",
+      "id": "22",
       "tid": "1",
       "name": "incrementer(0)",
       "microsteps": [
@@ -1227,7 +1386,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1258,11 +1417,11 @@ var state =
           "tid": "2",
           "name": "incrementer(1)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(1)",
               "calltype": "process",
@@ -1275,7 +1434,7 @@ var state =
       ]
     },
     {
-      "id": "24",
+      "id": "33",
       "tid": "1",
       "name": "incrementer(0)",
       "microsteps": [
@@ -1299,19 +1458,30 @@ var state =
         },
         {
           "npc": "17",
-          "push": [ { "type": "int", "value": "1" } ],
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" } ] } ],
           "pc": "16"
         },
         {
           "npc": "18",
-          "push": [ { "type": "int", "value": "0" } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "17"
         },
         {
           "npc": "19",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "18"
+        },
+        {
+          "npc": "20",
           "pop": "1",
           "push": [ ],
-          "pc": "18"
+          "pc": "19"
+        },
+        {
+          "npc": "21",
+          "pop": "2",
+          "push": [ { "type": "address", "value": [{ "type": "atom", "value": "done" }, { "type": "int", "value": "1" } ] } ],
+          "pc": "20"
         }
       ],
       "invfails": [
@@ -1321,7 +1491,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1334,11 +1504,11 @@ var state =
           "tid": "1",
           "name": "incrementer(0)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(0)",
               "calltype": "process",
@@ -1352,11 +1522,11 @@ var state =
           "tid": "2",
           "name": "incrementer(1)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(1)",
               "calltype": "process",
@@ -1369,16 +1539,16 @@ var state =
       ]
     },
     {
-      "id": "25",
+      "id": "34",
       "tid": "1",
       "name": "incrementer(0)",
       "microsteps": [
         {
-          "npc": "20",
+          "npc": "22",
           "fp": "4",
           "trace": [
             {
-              "pc": "20",
+              "pc": "22",
               "xpc": "6",
               "method": "incrementer(0)",
               "calltype": "process",
@@ -1387,26 +1557,20 @@ var state =
           ],
           "this": { "type": "dict", "value": [] },
           "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
-          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [{ "key": { "type": "int", "value": "0" }, "value": { "type": "bool", "value": "True" } }, { "key": { "type": "int", "value": "1" }, "value": { "type": "bool", "value": "True" } } ] } ],
-          "pc": "19"
-        },
-        {
-          "npc": "21",
-          "pop": "2",
-          "push": [ { "type": "bool", "value": "True" } ],
-          "pc": "20"
-        },
-        {
-          "npc": "22",
-          "pop": "1",
-          "push": [ ],
+          "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "21"
         },
         {
           "npc": "23",
-          "readonly": "1",
+          "pop": "1",
           "push": [ ],
           "pc": "22"
+        },
+        {
+          "npc": "24",
+          "readonly": "1",
+          "push": [ ],
+          "pc": "23"
         }
       ],
       "invfails": [
@@ -1416,7 +1580,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1429,11 +1593,11 @@ var state =
           "tid": "1",
           "name": "incrementer(0)",
           "entry": "6",
-          "pc": "23",
+          "pc": "24",
           "fp": "4",
           "trace": [
             {
-              "pc": "23",
+              "pc": "24",
               "xpc": "6",
               "method": "incrementer(0)",
               "calltype": "process",
@@ -1448,11 +1612,11 @@ var state =
           "tid": "2",
           "name": "incrementer(1)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(1)",
               "calltype": "process",
@@ -1465,16 +1629,16 @@ var state =
       ]
     },
     {
-      "id": "27",
+      "id": "36",
       "tid": "1",
       "name": "incrementer(0)",
       "microsteps": [
         {
-          "npc": "24",
+          "npc": "25",
           "fp": "4",
           "trace": [
             {
-              "pc": "24",
+              "pc": "25",
               "xpc": "6",
               "method": "incrementer(0)",
               "calltype": "process",
@@ -1486,31 +1650,31 @@ var state =
           "atomic": "1",
           "readonly": "1",
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
-          "pc": "23"
-        },
-        {
-          "npc": "25",
-          "push": [ { "type": "int", "value": "1" } ],
           "pc": "24"
         },
         {
           "npc": "26",
-          "push": [ { "type": "int", "value": "2" } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "25"
         },
         {
           "npc": "27",
-          "pop": "2",
-          "push": [ { "type": "bool", "value": "False" } ],
+          "push": [ { "type": "int", "value": "2" } ],
           "pc": "26"
         },
         {
-          "npc": "27",
+          "npc": "28",
+          "pop": "2",
+          "push": [ { "type": "bool", "value": "False" } ],
+          "pc": "27"
+        },
+        {
+          "npc": "28",
           "failure": "Harmony assertion failed",
           "mode": "failed",
           "pop": "1",
           "push": [ ],
-          "pc": "27"
+          "pc": "28"
         }
       ],
       "invfails": [
@@ -1520,7 +1684,7 @@ var state =
           "tid": "0",
           "name": "__init__()",
           "entry": "0",
-          "pc": "39",
+          "pc": "40",
           "fp": "0",
           "trace": [
 
@@ -1533,11 +1697,11 @@ var state =
           "tid": "1",
           "name": "incrementer(0)",
           "entry": "6",
-          "pc": "27",
+          "pc": "28",
           "fp": "4",
           "trace": [
             {
-              "pc": "27",
+              "pc": "28",
               "xpc": "6",
               "method": "incrementer(0)",
               "calltype": "process",
@@ -1554,11 +1718,11 @@ var state =
           "tid": "2",
           "name": "incrementer(1)",
           "entry": "6",
-          "pc": "19",
+          "pc": "21",
           "fp": "4",
           "trace": [
             {
-              "pc": "19",
+              "pc": "21",
               "xpc": "6",
               "method": "incrementer(1)",
               "calltype": "process",
@@ -1577,7 +1741,7 @@ var state =
     "Store count",
     "Push [False, False]",
     "Store done",
-    "Jump 31",
+    "Jump 32",
     "Frame incrementer self",
     "Load count",
     "Push 1",
@@ -1588,11 +1752,12 @@ var state =
     "Address",
     "Push True",
     "Store",
+    "Push ?done",
     "Push 1",
     "LoadVar self",
     "2-ary -",
-    "Load done",
-    "Apply",
+    "Address",
+    "Load",
     "JumpCond False 16",
     "ReadonlyInc",
     "AtomicInc",
@@ -1619,7 +1784,7 @@ var state =
     "pop a value and store it in shared variable count",
     "push constant [False, False]",
     "pop a value and store it in shared variable done",
-    "set program counter to 31",
+    "set program counter to 32",
     "start of method incrementer",
     "push value of shared variable count",
     "push constant 1",
@@ -1630,11 +1795,12 @@ var state =
     "combine the top two values on the stack into an address and push the result",
     "push constant True",
     "pop a value and an address and store the value at the address",
+    "push constant ?done",
     "push constant 1",
     "push the value of self",
     "pop 2 values and push the result of applying -",
-    "push value of shared variable done",
-    "pop a pc or dictionary f and an index i and push f(i)",
+    "combine the top two values on the stack into an address and push the result",
+    "pop an address and push the value at the address",
     "pop a value and jump to 16 if the value is False",
     "increment readonly counter of context; thread cannot mutate shared variables if > 0",
     "increment atomic counter of context; thread runs uninterrupted if larger than 0",
@@ -1659,12 +1825,12 @@ var state =
     "3": { "file": "code/Up.hny", "line": "2", "code": "done = [ False, False ]" },
     "11": { "file": "code/Up.hny", "line": "6", "code": "    done[self] = True" },
     "7": { "file": "code/Up.hny", "line": "5", "code": "    count = count + 1" },
-    "22": { "file": "code/Up.hny", "line": "8", "code": "    assert count == 2" },
+    "32": { "file": "code/Up.hny", "line": "10", "code": "spawn incrementer(0)" },
     "1": { "file": "code/Up.hny", "line": "1", "code": "count = 0" },
     "5": { "file": "code/Up.hny", "line": "4", "code": "def incrementer(self):" },
-    "35": { "file": "code/Up.hny", "line": "11", "code": "spawn incrementer(1)" },
-    "31": { "file": "code/Up.hny", "line": "10", "code": "spawn incrementer(0)" },
-    "16": { "file": "code/Up.hny", "line": "7", "code": "    await done[1 - self]" }
+    "36": { "file": "code/Up.hny", "line": "11", "code": "spawn incrementer(1)" },
+    "16": { "file": "code/Up.hny", "line": "7", "code": "    await done[1 - self]" },
+    "23": { "file": "code/Up.hny", "line": "8", "code": "    assert count == 2" }
   }
 }
 

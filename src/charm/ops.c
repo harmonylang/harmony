@@ -1130,6 +1130,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Split(const void *env, struct state *state, struct context **pctx){
+	// TODO.  Does not seem to be used???
     const struct env_Split *es = env;
 
     uint64_t v = ctx_pop(pctx);
@@ -1312,9 +1313,8 @@ void op_Trap(const void *env, struct state *state, struct context **pctx){
         ctx_failure(*pctx, "trap: not a method");
         return;
     }
-    int pc = (*pctx)->trap_pc >> VALUE_BITS;
-    assert(pc < code_len);
-    assert(strcmp(code[pc].oi->name, "Frame") == 0);
+    assert(((*pctx)->trap_pc >> VALUE_BITS) < code_len);
+    assert(strcmp(code[(*pctx)->trap_pc >> VALUE_BITS].oi->name, "Frame") == 0);
     (*pctx)->trap_arg = ctx_pop(pctx);
     (*pctx)->pc++;
 }
@@ -1877,7 +1877,7 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -1969,13 +1969,13 @@ uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n){
 	}
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
+        (void) value_get(e, &size);
         size /= sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
+        (void) value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
@@ -2225,7 +2225,7 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = n; --i >= 0;) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2559,7 +2559,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
 
         // Concatenate the sets
-        uint64_t *vals = malloc(total), *v;
+        uint64_t *vals = malloc(total);
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2599,7 +2599,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2664,7 +2664,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);

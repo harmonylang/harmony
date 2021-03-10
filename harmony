@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1400
+1,1, 1403
 
 ]
 
@@ -860,7 +860,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     // Copy the choice
     uint64_t choice_copy = choice;
 
-    bool choosing = false, infinite_loop = false;;
+    bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     struct access_info ai;
     memset(&ai, 0, sizeof(ai));
@@ -1336,8 +1336,8 @@ void print_state(FILE *file, struct node *node){
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
     struct context *inv_ctx = new_alloc(struct context);
-    uint64_t inv_nv = value_put_atom("name", 4);
-    uint64_t inv_tv = value_put_atom("tag", 3);
+    // uint64_t inv_nv = value_put_atom("name", 4);
+    // uint64_t inv_tv = value_put_atom("tag", 3);
     inv_ctx->name = value_put_atom("__invariant__", 13);
     inv_ctx->arg = VALUE_DICT;
     inv_ctx->this = VALUE_DICT;
@@ -1519,7 +1519,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         diff_dump(file, oldstate, sc, oldctx, cc, true, false, 0);
     }
 
-    bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
@@ -1590,7 +1589,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
                 choice = vals[0];
             }
             else {
-                choosing = true;
                 break;
             }
         }
@@ -1963,8 +1961,8 @@ int main(int argc, char **argv){
 
     // Create an initial state
     struct context *init_ctx = new_alloc(struct context);;
-    uint64_t nv = value_put_atom("name", 4);
-    uint64_t tv = value_put_atom("tag", 3);
+    // uint64_t nv = value_put_atom("name", 4);
+    // uint64_t tv = value_put_atom("tag", 3);
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
@@ -2000,8 +1998,8 @@ int main(int argc, char **argv){
 
     // Create a context for evaluating invariants
     struct context *inv_ctx = new_alloc(struct context);
-    uint64_t inv_nv = value_put_atom("name", 4);
-    uint64_t inv_tv = value_put_atom("tag", 3);
+    // uint64_t inv_nv = value_put_atom("name", 4);
+    // uint64_t inv_tv = value_put_atom("tag", 3);
     inv_ctx->name = value_put_atom("__invariant__", 13);
     inv_ctx->arg = VALUE_DICT;
     inv_ctx->this = VALUE_DICT;
@@ -4024,6 +4022,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Split(const void *env, struct state *state, struct context **pctx){
+	// TODO.  Does not seem to be used???
     const struct env_Split *es = env;
 
     uint64_t v = ctx_pop(pctx);
@@ -4206,9 +4205,8 @@ void op_Trap(const void *env, struct state *state, struct context **pctx){
         ctx_failure(*pctx, "trap: not a method");
         return;
     }
-    int pc = (*pctx)->trap_pc >> VALUE_BITS;
-    assert(pc < code_len);
-    assert(strcmp(code[pc].oi->name, "Frame") == 0);
+    assert(((*pctx)->trap_pc >> VALUE_BITS) < code_len);
+    assert(strcmp(code[(*pctx)->trap_pc >> VALUE_BITS].oi->name, "Frame") == 0);
     (*pctx)->trap_arg = ctx_pop(pctx);
     (*pctx)->pc++;
 }
@@ -4771,7 +4769,7 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -4863,13 +4861,13 @@ uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n){
 	}
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
+        (void) value_get(e, &size);
         size /= sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
+        (void) value_get(e, &size);
         size /= 2 * sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
@@ -5119,7 +5117,7 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = n; --i >= 0;) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -5360,7 +5358,6 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
 uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n){
     int64_t result = 1;
     int list = -1;
-    bool haszero = false;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
         if ((e & VALUE_MASK) == VALUE_DICT) {
@@ -5454,7 +5451,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
 
         // Concatenate the sets
-        uint64_t *vals = malloc(total), *v;
+        uint64_t *vals = malloc(total);
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -5494,7 +5491,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -5559,7 +5556,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total), *v;
+    uint64_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);

@@ -188,7 +188,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     // Copy the choice
     uint64_t choice_copy = choice;
 
-    bool choosing = false, infinite_loop = false;;
+    bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     struct access_info ai;
     memset(&ai, 0, sizeof(ai));
@@ -847,7 +847,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
         diff_dump(file, oldstate, sc, oldctx, cc, true, false, 0);
     }
 
-    bool choosing = false;
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
@@ -918,7 +917,6 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
                 choice = vals[0];
             }
             else {
-                choosing = true;
                 break;
             }
         }
@@ -1291,8 +1289,8 @@ int main(int argc, char **argv){
 
     // Create an initial state
     struct context *init_ctx = new_alloc(struct context);;
-    uint64_t nv = value_put_atom("name", 4);
-    uint64_t tv = value_put_atom("tag", 3);
+    // uint64_t nv = value_put_atom("name", 4);
+    // uint64_t tv = value_put_atom("tag", 3);
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
