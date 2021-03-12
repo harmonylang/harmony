@@ -1769,6 +1769,8 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
         // get all the sets
 		assert(n > 0);
         struct val_info *vi = malloc(n * sizeof(*vi));
+		vi[0].vals = value_get(args[0], &vi[0].size); 
+		vi[0].index = 0;
         int min_size = vi[0].size;              // minimum set size
         uint64_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
@@ -1814,7 +1816,7 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
                     }
                     vi[j].index++;
                 }
-                if (vi[j].index == vi[j].size) {
+                if (vi[j].index == size) {
                     done = true;
                     break;
                 }
@@ -1825,7 +1827,7 @@ uint64_t f_intersection(struct state *state, struct context *ctx, uint64_t *args
             if (old_max == max_val) {
                 *v++ = max_val;
                 for (int j = 0; j < n; j++) {
-                    assert(vi[j].index < vi[j].size);
+                    assert(vi[j].index < vi[j].size / sizeof(uint64_t));
                     vi[j].index++;
                     int k, size = vi[j].size / sizeof(uint64_t);
                     if ((k = vi[j].index) == size) {
