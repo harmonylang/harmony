@@ -3509,7 +3509,9 @@ class StatListRule(Rule):
             if t == []:
                 break
             (lexeme, file, line, column) = t[0]
-        assert slice != [], (t[:3], self.indent)
+        if slice == []:
+            print("Parse error: no statements in indented block:", t[0])
+            sys.exit(1)
 
         b = []
         while slice != []:

@@ -2,22 +2,26 @@ from alloc import malloc, free
 from synch import cas
 
 def Queue():
-    let node = malloc({.next: {.ptr: None, .count: 0}}):
-        result = { .head: { .ptr: node, .count: 0 }, .tail: { .ptr: node, .count: 0 } }
+    let node = malloc({.next: {.ptr: None, .cnt: 0}}):
+        result = {
+            .head: { .ptr: node, .cnt: 0 },
+            .tail: { .ptr: node, .cnt: 0 }
+        }
 
 def put(q, v):
-    let node = malloc({ .value: v, .next: { .ptr: None, .count: 0 } })
+    let node = malloc({ .value: v, .next: { .ptr: None, .cnt: 0 } })
     let tail, done = None, False:
         while not done:
             tail = q->tail
             let next = tail.ptr->next:
                 if tail == q->tail:
                     if next.ptr == None:
-                        if cas(?tail.ptr->next, next, { .ptr: node, .count: next.count + 1 }):
-                            done = True
+                        done = cas(?tail.ptr->next, next,
+                            { .ptr: node, .cnt: next.cnt + 1 })
                     else:
-                        cas(?q->tail, tail, { .ptr: next.ptr, .count: tail.count + 1 })
-        cas(?q->tail, tail, { .ptr: node, .count: tail.count + 1 })
+                        cas(?q->tail, tail,
+                            { .ptr: next.ptr, .cnt: tail.cnt + 1 })
+        cas(?q->tail, tail, { .ptr: node, .cnt: tail.cnt + 1 })
 
 def get(q):
     let done = False:
@@ -30,9 +34,11 @@ def get(q):
                             result = None
                             done = True
                         else:
-                            cas(?q->tail, tail, { .ptr: next.ptr, .count: tail.count + 1 })
+                            cas(?q->tail, tail,
+                                { .ptr: next.ptr, .cnt: tail.cnt + 1 })
                     else:
                         result = next.ptr->value
-                        if cas(?q->head, head, { .ptr: next.ptr, .count: head.count + 1 }):
-                            # free(head.ptr)
-                            done = True
+                        done = cas(?q->head, head,
+                                { .ptr: next.ptr, .cnt: head.cnt + 1 })
+                        # if done:
+                        #     free(head.ptr)
