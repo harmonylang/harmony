@@ -1,6 +1,6 @@
 import queue
 
-const NTHREADS = 3
+const NTHREADS = 4
 
 myq = queue.Queue()
 
