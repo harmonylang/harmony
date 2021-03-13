@@ -2805,25 +2805,6 @@ class TupleRule(Rule):
                 "expected %s"%self.closers)
         return (TupleAST(d, token), t)
 
-class ArrowExpressionRule(Rule):
-    def parse(self, t):
-        (ast, t) = BasicExpressionRule().parse(t)
-        if ast == False:
-            return (False, t)
-        if t == []:
-            return (ast, t)
-        (lexeme, file, line, column) = token = t[0]
-        while lexeme == "->":
-            (lexeme, file, line, column) = t[1]
-            self.expect("-> expression", isname(lexeme), t[1],
-                    "expected a name after ->")
-            ast = ApplyAST(PointerAST(ast, token), ConstantAST(t[1]), token)
-            t = t[2:]
-            if t == []:
-                break
-            (lexeme, file, line, column) = token = t[0]
-        return (ast, t)
-
 class BasicExpressionRule(Rule):
     def parse(self, t):
         (lexeme, file, line, column) = token = t[0]
@@ -2906,20 +2887,29 @@ class ExpressionRule(Rule):
                 return (PointerAST(ast, func), t)
             else:
                 return (NaryAST(func, [ast]), t)
-        (ast, t) = ArrowExpressionRule().parse(t)
-        args = []
+
+        # Example:
+        # a b c -> d e -> f
+        # (a b c -> d e) -> f
+        # ((a b c -> d) e) -> f
+        # (((a b c) -> d) e) -> f
+        # ((((a b) c) -> d) e) -> f
+        (ast, t) = BasicExpressionRule().parse(t)
         while t != []:
-            (arg, t) = ArrowExpressionRule().parse(t)
-            if arg == False:
-                break
-            args.append(arg)
-        if ast == None:
-            assert len(args) > 0, args
-            ast = PointerAST(args[0], func)
-            args = args[1:]
-        while args != []:
-            ast = ApplyAST(ast, args[0], func)
-            args = args[1:]
+            (lexeme, file, line, column) = t[0]
+            if lexeme == "->":
+                (lexeme, file, line, column) = t[1]
+                self.expect("-> expression", isname(lexeme), t[1],
+                        "expected a name after ->")
+                ast = ApplyAST(PointerAST(ast, t[1]), ConstantAST(t[1]), t[1])
+                t = t[2:]
+                if t == []:
+                    break
+            else:
+                (arg, t) = BasicExpressionRule().parse(t)
+                if arg == False:
+                    break
+                ast = ApplyAST(ast, arg, func)
         return (ast, t)
 
 class AssignmentAST(AST):
@@ -3709,8 +3699,8 @@ class StatementRule(Rule):
             return (MethodAST(name, bv, stat), t)
         if lexeme == "spawn":
             (tokens, t) = self.slice(t[1:], column)
-            (method, tokens) = ArrowExpressionRule().parse(tokens)
-            (arg, tokens) = ArrowExpressionRule().parse(tokens)
+            (method, tokens) = BasicExpressionRule().parse(tokens)
+            (arg, tokens) = BasicExpressionRule().parse(tokens)
             if tokens == []:
                 this = None
             else:
@@ -3721,14 +3711,14 @@ class StatementRule(Rule):
             return (SpawnAST(method, arg, this), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
-            (method, tokens) = ArrowExpressionRule().parse(tokens)
-            (arg, tokens) = ArrowExpressionRule().parse(tokens)
+            (method, tokens) = BasicExpressionRule().parse(tokens)
+            (arg, tokens) = BasicExpressionRule().parse(tokens)
             assert tokens == []
             return (TrapAST(method, arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
-            (ctx, tokens) = ArrowExpressionRule().parse(tokens)
-            (result, tokens) = ArrowExpressionRule().parse(tokens)
+            (ctx, tokens) = BasicExpressionRule().parse(tokens)
+            (result, tokens) = BasicExpressionRule().parse(tokens)
             assert tokens == []
             return (GoAST(ctx, result), t)
         if lexeme == "pass":

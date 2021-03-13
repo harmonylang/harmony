@@ -1,5 +1,16 @@
 import list
 
+def tas(lk):
+    atomic:
+        result = !lk
+        !lk = True
+
+def cas(p, old, new):
+    atomic:
+        result = !p == old
+        if result:
+            !p = new
+
 def BinSema(acquired):
     result = { .acquired: acquired, .suspended: [] }
 
