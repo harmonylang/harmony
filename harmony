@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1412
+1,1, 1414
 
 ]
 
@@ -12207,10 +12207,10 @@ def doCompile(filenames, consts, mods):
         usage()
     else:
         for fname in filenames:
-            if os.path.exists(fname):
+            try:
                 with open(fname) as fd:
                     load(fd, fname, scope, code)
-            else:
+            except IOError:
                 print("Can't open", fname, file=sys.stderr)
                 sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
