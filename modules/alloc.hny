@@ -1,24 +1,17 @@
 import synch
 
 pool = []
-poolsize = 0
-flist = None;           # free list
+next = 0
 lock = synch.Lock()
 
 def malloc(v):
     synch.acquire(?lock)
-    if flist == None:
-        pool[poolsize] = None
-        result = ?pool[poolsize]
-        poolsize += 1
-    else:
-        result = flist
-        flist = !result
-    !result = v
+    pool[next] = v
+    result = ?pool[next]
+    next += 1
     synch.release(?lock)
 
 def free(r):
     synch.acquire(?lock)
-    !r = flist
-    flist = r
+    del !r
     synch.release(?lock)

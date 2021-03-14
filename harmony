@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1417
+1,1, 1418
 
 ]
 
@@ -388,26 +388,19 @@ def issuperset(s, t):
     "alloc": """import synch
 
 pool = []
-poolsize = 0
-flist = None;           # free list
+next = 0
 lock = synch.Lock()
 
 def malloc(v):
     synch.acquire(?lock)
-    if flist == None:
-        pool[poolsize] = None
-        result = ?pool[poolsize]
-        poolsize += 1
-    else:
-        result = flist
-        flist = !result
-    !result = v
+    pool[next] = v
+    result = ?pool[next]
+    next += 1
     synch.release(?lock)
 
 def free(r):
     synch.acquire(?lock)
-    !r = flist
-    flist = r
+    del !r
     synch.release(?lock)
 """,
 
@@ -11377,7 +11370,9 @@ class StatementRule(Rule):
             (stat, t) = BlockRule(column).parse(t[1:])
             return (AtomicAST(stat), t)
         if lexeme == "del":
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (tokens, t) = self.slice(t[1:], column)
+            (ast, tokens) = ExpressionRule().parse(tokens)
+            assert tokens == []
             return (DelAST(ast), t)
         if lexeme == "def":
             name = t[1]

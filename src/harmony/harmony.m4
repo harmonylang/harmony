@@ -3690,7 +3690,9 @@ class StatementRule(Rule):
             (stat, t) = BlockRule(column).parse(t[1:])
             return (AtomicAST(stat), t)
         if lexeme == "del":
-            (ast, t) = ExpressionRule().parse(t[1:])
+            (tokens, t) = self.slice(t[1:], column)
+            (ast, tokens) = ExpressionRule().parse(tokens)
+            assert tokens == []
             return (DelAST(ast), t)
         if lexeme == "def":
             name = t[1]
