@@ -441,12 +441,14 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, uint6
     return false;
 }
 
-uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
+bool ind_remove(uint64_t dict, uint64_t *indices, int n,
+                                        uint64_t *result) {
     assert((dict & VALUE_MASK) == VALUE_DICT);
     assert(n > 0);
 
     if (n == 1) {
-        return dict_remove(dict, indices[0]);
+        *result = dict_remove(dict, indices[0]);
+        return true;
     }
     else {
         uint64_t *vals;
@@ -466,9 +468,13 @@ uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
             if (vals[i] == indices[0]) {
                 uint64_t d = vals[i+1];
                 assert((d & VALUE_MASK) == VALUE_DICT);
-                uint64_t nd = ind_remove(d, indices + 1, n - 1);
+                uint64_t nd;
+                if (!ind_remove(d, indices + 1, n - 1, &nd)) {
+                    return false;
+                }
                 if (d == nd) {
-                    return dict;
+                    *result = dict;
+                    return true;
                 }
                 int n = size * sizeof(uint64_t);
                 uint64_t *copy = malloc(n);
@@ -476,7 +482,8 @@ uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
                 copy[i + 1] = nd;
                 uint64_t v = value_put_dict(copy, n);
                 free(copy);
-                return v;
+                *result = v;
+                return true;
             }
             /* 
                 if (value_cmp(vals[i], key) > 0) {
@@ -484,9 +491,7 @@ uint64_t ind_remove(uint64_t dict, uint64_t *indices, int n){
                 }
             */
         }
-
-        panic("ind_remove");        // TODO.  Should this return orig dict?
-        return 0;
+        return false;
     }
 }
 
@@ -648,9 +653,14 @@ void ext_Del(const void *env, struct state *state, struct context **pctx,
         ai->n = size;
         ai->load = false;
     }
-    state->vars = ind_remove(state->vars, indices, size);
-
-    (*pctx)->pc++;
+    uint64_t nd;
+    if (!ind_remove(state->vars, indices, size, &nd)) {
+        ctx_failure(*pctx, "Del: no such variable");
+    }
+    else {
+        state->vars = nd;
+        (*pctx)->pc++;
+    }
 }
 
 void op_Del(const void *env, struct state *state, struct context **pctx){
