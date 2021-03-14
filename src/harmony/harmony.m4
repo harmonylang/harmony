@@ -3632,7 +3632,9 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = tokens[0]
             self.expect("constant definition", lexeme == "=", tokens[0], "expected '='")
             (ast, tokens) = TupleRule(set()).parse(tokens[1:])
-            assert tokens == [], tokens
+            if tokens != []:
+                print("constant definition: unexpected token:", tokens[0])
+                sys.exit(1)
             return (ConstAST(const, ast), t)
         if lexeme == "if":
             alts = []
@@ -3661,12 +3663,16 @@ class StatementRule(Rule):
         if lexeme == "await":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
-            assert tokens == []
+            if tokens != []:
+                print("await: unexpected token:", tokens[0])
+                sys.exit(1)
             return (AwaitAST(cond), t)
         if lexeme == "invariant":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
-            assert tokens == []
+            if tokens != []:
+                print("invariant: unexpected token:", tokens[0])
+                sys.exit(1)
             return (InvariantAST(cond, token), t)
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
@@ -3692,7 +3698,9 @@ class StatementRule(Rule):
         if lexeme == "del":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
-            assert tokens == []
+            if tokens != []:
+                print("del: unexpected token:", tokens[0])
+                sys.exit(1)
             return (DelAST(ast), t)
         if lexeme == "def":
             name = t[1]
@@ -3711,19 +3719,25 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = tokens[0]
                 assert lexeme == ","
                 (this, tokens) = NaryRule(set()).parse(tokens[1:])
-                assert tokens == []
+                if tokens != []:
+                    print("spawn: unexpected token:", tokens[0])
+                    sys.exit(1)
             return (SpawnAST(method, arg, this), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
             (method, tokens) = BasicExpressionRule().parse(tokens)
             (arg, tokens) = BasicExpressionRule().parse(tokens)
-            assert tokens == []
+            if tokens != []:
+                print("trap: unexpected token:", tokens[0])
+                sys.exit(1)
             return (TrapAST(method, arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
             (ctx, tokens) = BasicExpressionRule().parse(tokens)
             (result, tokens) = BasicExpressionRule().parse(tokens)
-            assert tokens == []
+            if tokens != []:
+                print("go: unexpected token:", tokens[0])
+                sys.exit(1)
             return (GoAST(ctx, result), t)
         if lexeme == "pass":
             return (PassAST(), t[1:])
@@ -3739,7 +3753,9 @@ class StatementRule(Rule):
                     if tokens == []:
                         break
                     (lexeme, file, line, column) = tokens[0]
-                assert tokens == []
+                if tokens != []:
+                    print("sequential: unexpected token:", tokens[0])
+                    sys.exit(1)
             return (SequentialAST(vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
@@ -3753,7 +3769,9 @@ class StatementRule(Rule):
                     if tokens == []:
                         break
                     (lexeme, file, line, column) = tokens[0]
-                assert tokens == []
+                if tokens != []:
+                    print("import: unexpected token:", tokens[0])
+                    sys.exit(1)
             return (ImportAST(mods), t)
         if lexeme == "from":
             (tokens, t) = self.slice(t[1:], column)
@@ -3775,7 +3793,9 @@ class StatementRule(Rule):
                     if tokens == []:
                         break;
                     (lexeme, file, line, column) = tokens[0]
-            assert tokens == [], tokens
+            if tokens != []:
+                print("from: unexpected token:", tokens[0])
+                sys.exit(1)
             return (FromAST(module, items), t)
         if lexeme == "assert":
             (tokens, t) = self.slice(t[1:], column)
@@ -3786,7 +3806,9 @@ class StatementRule(Rule):
                 (lexeme, file, line, column) = tokens[0]
                 assert lexeme == ","
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
-                assert tokens == []
+                if tokens != []:
+                    print("assert: unexpected token:", tokens[0])
+                    sys.exit(1)
             return (AssertAST(token, cond, expr), t)
         
         # If we get here, the next statement is either an expression
