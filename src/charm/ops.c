@@ -1130,7 +1130,6 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Split(const void *env, struct state *state, struct context **pctx){
-	// TODO.  Does not seem to be used???
     const struct env_Split *es = env;
 
     uint64_t v = ctx_pop(pctx);
@@ -1140,17 +1139,24 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
         return;
     }
     if (v == VALUE_DICT || v == VALUE_SET) {
-        assert(es->count == 0);
-        (*pctx)->pc++;
+        if (es->count != 0) {
+            ctx_failure(*pctx, "Split: empty set or tuple");
+        }
+        else {
+            (*pctx)->pc++;
+        }
         return;
     }
 
     int size;
     uint64_t *vals = value_get(v, &size);
 
-    // TODO.  Should items be pushed in this order???
     if (type == VALUE_DICT) {
         size /= 2 * sizeof(uint64_t);
+        if (size != es->count) {
+            ctx_failure(*pctx, "Split: list of wrong size");
+            return;
+        }
         for (int i = 0; i < size; i++) {
             ctx_push(pctx, vals[2*i + 1]);
         }
@@ -1159,6 +1165,10 @@ void op_Split(const void *env, struct state *state, struct context **pctx){
     }
     if (type == VALUE_SET) {
         size /= sizeof(uint64_t);
+        if (size != es->count) {
+            ctx_failure(*pctx, "Split: set of wrong size");
+            return;
+        }
         for (int i = 0; i < size; i++) {
             ctx_push(pctx, vals[i]);
         }
