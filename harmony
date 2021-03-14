@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1423
+1,1, 1424
 
 ]
 
@@ -3720,8 +3720,14 @@ void ext_Load(const void *env, struct state *state, struct context **pctx,
     uint64_t v;
     if (el == 0) {
         uint64_t av = ctx_pop(pctx);
-        assert((av & VALUE_MASK) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+            ctx_failure(*pctx, "Load: not an address");
+            return;
+        }
+        if (av == VALUE_ADDRESS) {
+            ctx_failure(*pctx, "Load: can't load from None");
+            return;
+        }
 
         int size;
         uint64_t *indices = value_get(av, &size);
