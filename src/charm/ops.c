@@ -642,8 +642,14 @@ void ext_Del(const void *env, struct state *state, struct context **pctx,
                                                         struct access_info *ai){
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
     uint64_t av = ctx_pop(pctx);
-    assert((av & VALUE_MASK) == VALUE_ADDRESS);
-    assert(av != VALUE_ADDRESS);
+    if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+        ctx_failure(*pctx, "Del: not an address");
+        return;
+    }
+    if (av == VALUE_ADDRESS) {
+        ctx_failure(*pctx, "Del: address is None");
+        return;
+    }
 
     int size;
     uint64_t *indices = value_get(av, &size);
@@ -1257,8 +1263,10 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
             ctx_failure(*pctx, "Store: not an address");
             return;
         }
-        assert((av & VALUE_MASK) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        if (av == VALUE_ADDRESS) {
+            ctx_failure(*pctx, "Store: address is None");
+            return;
+        }
 
         int size;
         uint64_t *indices = value_get(av, &size);
