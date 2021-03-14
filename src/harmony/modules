@@ -288,11 +288,8 @@ def remove(pb, elt):
 def issuperset(s, t):
     result = (s & t) == t
 """,
-    "alloc": """import synch
-
-pool = []
+    "alloc": """pool = []
 next = 0
-lock = synch.Lock()
 
 def malloc(v):
     atomic:
@@ -301,5 +298,8 @@ def malloc(v):
         next += 1
 
 def free(r):
-    del !r
+    atomic:
+        let poolcopy = pool:
+            del !r
+            assert poolcopy != pool
 """,
