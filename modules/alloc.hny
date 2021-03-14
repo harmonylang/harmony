@@ -5,13 +5,10 @@ next = 0
 lock = synch.Lock()
 
 def malloc(v):
-    synch.acquire(?lock)
-    pool[next] = v
-    result = ?pool[next]
-    next += 1
-    synch.release(?lock)
+    atomic:
+        pool[next] = v
+        result = ?pool[next]
+        next += 1
 
 def free(r):
-    synch.acquire(?lock)
     del !r
-    synch.release(?lock)
