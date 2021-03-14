@@ -5308,39 +5308,41 @@ Harmony currently supports the following statements:
 \texttt{\string\&}, \texttt{|}, \texttt{\string\^},
 \texttt{and}, and \texttt{or}\\
 \hline
-\texttt{pass} & do nothing\\
-\hline
-\texttt{del} \textit{lv} & delete\\
-\hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
+\hline
+\texttt{atomic: S} & \texttt{S} a list of statements\\
+\hline
+\texttt{await $b$} & $b$ is a boolean\\
 \hline
 \texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
 \hline
 \texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} a list of statements\\
 \hline
-\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
-\hline
-\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} a list of statements\\
-\hline
-\texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
-\hline
-\texttt{await $b$} & $b$ is a boolean\\
+\texttt{del} \textit{lv} & delete\\
 \hline
 \texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
-\texttt{atomic: S} & \texttt{S} a list of statements\\
-\hline
-\texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
-$e$ is an expression, $t$ is the initial thread-local state (an expression) \\
-\hline
-\texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
+\texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
 \texttt{go $c$ $e$} & $c$ is a context, $e$ is an expression \\
 \hline
+\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\hline
 \texttt{import m, ...} & \texttt{m} identifies a module \\
 \hline
-\texttt{from m import ...} & \texttt{m} identifies a module \\
+\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
+\hline
+\texttt{pass} & do nothing\\
+\hline
+\texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
+\hline
+\texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
+$e$ is an expression, $t$ is the initial thread-local state \\
+\hline
+\texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
+\hline
+\texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \end{tabular}
 
@@ -5489,6 +5491,8 @@ The \texttt{synch} module provides the following methods:
 \begin{tabular}{|l|l|}
 \hline
 \texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
+\hline
+\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
 \hline
 \texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
 \hline
