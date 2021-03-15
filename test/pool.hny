@@ -17,7 +17,7 @@ def enter(pool, level):
 
 def exit(pool, level):
     acquire(?pool->mutex)
-    notifyAll(?pool->condition[level])
+    notify(?pool->condition[level])
     pool->count[level] -= 1
     if pool->count[level] == 0:
         notifyAll(?pool->condition[1 - level])
