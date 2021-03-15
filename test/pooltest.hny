@@ -1,0 +1,23 @@
+import pool, list
+
+const NMIDDLE   = 3
+const NHIGH     = 3
+const NLANES    = 2
+
+schoolpool = pool.Pool(NLANES)
+inpool_ms = [0,] * NMIDDLE
+inpool_hs = [0,] * NHIGH
+inpool = [ inpool_ms, inpool_hs ]
+
+def student(level, id):
+    pool.enter(?schoolpool, level)
+    inpool[level][id] = 1
+    assert list.sum(inpool[level]) <= NLANES
+    assert list.sum(inpool[1 - level]) == 0
+    inpool[level][id] = 0
+    pool.exit(?schoolpool, level)
+
+for i in {1..NMIDDLE}:
+    spawn student(0, i)
+for i in {1..NHIGH}:
+    spawn student(1, i)

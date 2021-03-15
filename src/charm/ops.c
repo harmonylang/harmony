@@ -232,8 +232,8 @@ uint64_t dict_load(uint64_t dict, uint64_t key){
     }
     else {
         vals = value_get(dict & ~VALUE_MASK, &size);
-        assert(size % 2 == 0);
         size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
     }
 
     int i;
@@ -405,8 +405,8 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, uint6
         }
         else {
             vals = value_get(dict & ~VALUE_MASK, &size);
-            assert(size % 2 == 0);
             size /= sizeof(uint64_t);
+            assert(size % 2 == 0);
         }
 
         int i;
@@ -459,8 +459,8 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n,
         }
         else {
             vals = value_get(dict & ~VALUE_MASK, &size);
-            assert(size % 2 == 0);
             size /= sizeof(uint64_t);
+            assert(size % 2 == 0);
         }
 
         int i;
@@ -1216,8 +1216,10 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
             ctx_failure(*pctx, "Stop: not an address");
             return;
         }
-        assert((av & VALUE_MASK) == VALUE_ADDRESS);
-        assert(av != VALUE_ADDRESS);
+        if (av == VALUE_ADDRESS) {
+            ctx_failure(*pctx, "Stop: address is None");
+            return;
+        }
 
         int size;
         uint64_t *indices = value_get(av, &size);

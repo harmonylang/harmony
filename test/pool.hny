@@ -1,45 +1,24 @@
-import synch;
+from synch import *
 
-const NMIDDLE   = 2;
-const NHIGH     = 2;
-const NLANES    = 1;
+def Pool(nlanes):
+    result = {
+        .mutex: Lock(),
+        .condition: [ Condition(), Condition() ],
+        .count: [ 0, 0 ],
+        .nlanes: nlanes
+    }
 
-def p_enter(level):
-    lock(?mutex);
-        while (count[1 - level] > 0) or (count[level] == NLANES):
-            wait(?condition[level]);
-        ;
-        count[level] += 1;
-    unlock(?mutex);
-;
-def p_exit(level):
-    lock(?mutex);
-        notifyAll(?condition[level]);
-        count[level] -= 1;
-        if count[level] == 0:
-            notifyAll(?condition[1 - level]);
-        ;
-    unlock(?mutex);
-;
-mutex = Lock();
-condition = [ Condition(?mutex), Condition(?mutex) ];
-count = [ 0, 0 ];
+def enter(pool, level):
+    acquire(?pool->mutex)
+    while (pool->count[1 - level] > 0) or (pool->count[level] == pool->nlanes):
+        wait(?pool->condition[level], ?pool->mutex)
+    pool->count[level] += 1
+    release(?pool->mutex)
 
-inpool_ms = [0,] * NMIDDLE;
-inpool_hs = [0,] * NHIGH;
-inpool = [ inpool_ms, inpool_hs ];
-
-def student(level, id):
-    p_enter(level);
-    inpool[level][id] = 1;
-    assert sum(inpool[level]) <= NLANES;
-    assert sum(inpool[1 - level]) == 0;
-    inpool[level][id] = 0;
-    p_exit(level);
-;
-for i in {1..NMIDDLE}:
-    spawn student(0, i);
-;
-for i in {1..NHIGH}:
-    spawn student(1, i);
-;
+def exit(pool, level):
+    acquire(?pool->mutex)
+    notifyAll(?pool->condition[level])
+    pool->count[level] -= 1
+    if pool->count[level] == 0:
+        notifyAll(?pool->condition[1 - level])
+    release(?pool->mutex)
