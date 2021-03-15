@@ -7,8 +7,8 @@ def receiver(q):
     let done = False:
         while not done:
             let v = queue.get(q):
+                assert v in { None, 1, 2 }
                 done = v == None
-                assert done or (v in { 1, 2 })
 
 testq = queue.Queue()
 spawn sender(?testq, 1)
