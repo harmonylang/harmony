@@ -1,0 +1,30 @@
+from synch import BinSema, acquire, release
+
+def Pool(nlanes):
+    result = {
+        .mutex: BinSema(False), .condition: [BinSema(True),] * 2,
+        .waiting: [ 0, 0 ], .count: [ 0, 0 ], .nlanes: nlanes
+    }
+
+def release_one(pool):
+    if (pool->count[1] == 0) and (pool->count[0] < pool->nlanes) and (pool->waiting[0] > 0):
+        release(?pool->condition[0])
+    elif (pool->count[0] == 0) and (pool->count[1] < pool->nlanes) and (pool->waiting[1] > 0):
+        release(?pool->condition[1])
+    else:
+        release(?pool->mutex)
+
+def enter(pool, level):
+    acquire(?pool->mutex)
+    if (pool->count[1 - level] > 0) or (pool->count[level] == pool->nlanes):
+        pool->waiting[level] += 1
+        release(?pool->mutex)
+        acquire(?pool->condition[level])
+        pool->waiting[level] -= 1
+    pool->count[level] += 1
+    release_one(pool)
+
+def exit(pool, level):
+    acquire(?pool->mutex)
+    pool->count[level] -= 1
+    release_one(pool)
