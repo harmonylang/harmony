@@ -704,7 +704,7 @@ It then waits until the other thread is done.
 (\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}) and semantically the same.
 After that, method \texttt{incrementer}
 verifies that the value of \textit{count} equals~2.
-% Like Python, Harmony supports \texttt{assert} statements with two arguments:
+% Like Python, Harmony supports \textbf{assert} statements with two arguments:
 % the first is a Boolean condition, and the second is a value that is
 % reported if the condition fails, in this case
 % the value of \textit{count}.
@@ -2137,15 +2137,22 @@ Worse, most modern processors make accessing shared memory locations
 non-atomic to allow for efficient caching, out-of-order execution,
 and other optimizations.
 And even compilers may re-order memory accesses when optimizing code.
-%
+
 Peterson's algorithm relies on a sequential consistent memory model,
 and hence the \textbf{sequential} statement: without it Harmony will
 complain about data races.
-We saw in \autoref{ex:reorder} that a seemingly harmless reordering
-of instructions can break the code.
-The memory models of C and Java are not sequentially consistent, and
-they do not provide a \textbf{sequential} statement either, so one
-cannot implement Peterson's algorithm in those languages directly.
+More precisely, the \textbf{sequential} statement says that the
+program relies on memory load and store instructions operating on
+the indicated variables to be performed sequentially.
+The default memory models of C and Java are not sequentially
+consistent.
+The unfortunately named \texttt{volatile} keyword in Java has
+a similar function as Harmony's \texttt{sequential} keyword.
+Like many constructions in Java, its \texttt{volatile} keyword
+was borrowd from C and C++.
+However, in C and C++ they do \emph{not} provide sequential
+consistency, and one cannot implement Peterson's algorithm in
+C or C++ directly.
 
 \glsadd{interlock instruction}%
 For proper synchronization, multi-core processors provide so-called
@@ -2222,7 +2229,7 @@ section if \textit{private}[$i$] is \texttt{False}, and (ii) no other thread mod
 \textit{private}[$i$].
 
 Harmony can check these invariants as well.
-$\mathcal{I}_2(i)$ is checked by the \texttt{assert} statement.
+$\mathcal{I}_2(i)$ is checked by the \textbf{assert} statement.
 But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label \texttt{@cs} because the
@@ -2277,23 +2284,23 @@ It is important to appreciate the difference between an
 \textbf{atomic} statement) and a \emph{critical section}
 (protected by a lock of some sort).
 The former ensures that while the
-\texttt{atomic} statement is executing no other thread can execute.
+\textbf{atomic} statement is executing no other thread can execute.
 The latter allows multiple threads to run concurrently,
 just not within the critical section.
 The former is rarely available to a programmer (e.g., none of
 Python, C, or Java support it), while the latter
 is very common.
 
-In Harmony, \texttt{atomic} statements allow you to \emph{implement} your own
+In Harmony, \textbf{atomic} statements allow you to \emph{implement} your own
 interlock primitives such as test-and-set.  Other common examples
-include compare-and swap and fetch-and-add.  \texttt{atomic} statements
+include compare-and swap and fetch-and-add.  \textbf{atomic} statements
 are not intended to replace locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
-\texttt{atomic} statements but use the synchronization primitives that are available
+\textbf{atomic} statements but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
 use \textbf{atomic} by all means.
 You can also use \textbf{atomic} statements in your test code.
-In fact, as mentioned before, \texttt{assert} statements are executed atomically.
+In fact, as mentioned before, \textbf{assert} statements are executed atomically.
 
 \begin{figure}
 \begin{code}
@@ -2339,6 +2346,8 @@ First, using the \textbf{sequential} statement, you can specify that
 concurrent access to the specified variables is intended.
 Second, if the accesses are within an \textbf{atomic} statement, then they
 are not considered part of a data race.
+
+\begin{comment}
 For the same reason that you should not use \textbf{atomic}
 statements in your ordinary synchronization code, you should not use
 \textbf{sequential} statements either.  Neither is supported by regular
@@ -2346,6 +2355,7 @@ programming languages.  They exist in Harmony for the purpose of
 defining interlock instructions and for testing.
 The statements should only appear in modules that define synchronization
 primitives or in test programs.
+\end{comment}
 
 \index{binary semaphore}
 Locks are a special case of \emph{binary semaphores}.
