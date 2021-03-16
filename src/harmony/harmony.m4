@@ -3727,7 +3727,7 @@ class StatementRule(Rule):
             return (SpawnAST(func.method, func.arg, this), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
-            (func, tokens) = NaryRule({","}).parse(tokens)
+            (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
                 print("trap: expected method application", token)
                 sys.exit(1)
@@ -3737,7 +3737,7 @@ class StatementRule(Rule):
             return (TrapAST(func.method, func.arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
-            (func, tokens) = NaryRule({","}).parse(tokens)
+            (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
                 print("go: expected method application", token)
                 sys.exit(1)
