@@ -13,8 +13,9 @@ def acquire(binsema):
     await not tas(binsema)
 
 def release(binsema):
-    assert binsema
-    !binsema = False
+    atomic:
+        assert binsema
+        !binsema = False
 
 def held(binsema):
     result = !binsema
