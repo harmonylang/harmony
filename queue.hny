@@ -1,0 +1,72 @@
+from synch import Lock, acquire, release
+from alloc import malloc, free
+
+def Queue():
+  result = { .head: None, .tail: None, .lock: Lock() }
+
+  def put(q, v):
+    let node = malloc({ .value: v, .next: None }):
+      acquire(?q->lock)
+      if q->head == None:
+        q->head = q->tail = node
+      else:
+        q->tail->next = node
+        q->tail = node
+      release(?q->lock)
+
+  def get(q):
+    acquire(?q->lock)
+    let node = q->head:
+      if node == None:
+        result = None
+      else:
+        result = node->value
+        q->head = node->next
+        if q->head == None:
+          q->tail = None
+        free(node)        
+    release(?q->lock)
+
+  def qsize(q):
+    result = len(q)
+  
+  def contains(q, v):
+    for val in q:
+      if val == v:
+        result = True
+  
+  def insert(q, v):
+    let node = malloc({ .value: v, .next: q->head }):
+      acquire(?q->lock)
+      if q->head == None:
+        q->head = node
+        q->tail = None
+      else:
+        let temp = q->head:
+          q->head = node
+          q->head->next = temp
+      release(?q->lock)
+  
+  def remove(q, v):
+    acquire(?q->lock)
+    while head -> value == v:
+      head = head->next
+    let temp = q->head:
+      while temp->next != None:
+        if temp->next->value == v:
+          temp->next = temp->next->next
+        else:
+          temp = temp->next
+
+    release(?q->lock)
+
+
+    
+    
+
+
+
+    
+
+          
+
