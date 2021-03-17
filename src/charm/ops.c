@@ -292,7 +292,9 @@ uint64_t dict_remove(uint64_t dict, uint64_t key){
 }
 
 bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
+    if ((dict & VALUE_MASK) != VALUE_DICT) {
+        return false;
+    }
 
     uint64_t *vals;
     int size;
