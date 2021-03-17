@@ -471,7 +471,9 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n,
         for (i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
                 uint64_t d = vals[i+1];
-                assert((d & VALUE_MASK) == VALUE_DICT);
+                if ((d & VALUE_MASK) != VALUE_DICT) {
+                    return false;
+                }
                 uint64_t nd;
                 if (!ind_remove(d, indices + 1, n - 1, &nd)) {
                     return false;
