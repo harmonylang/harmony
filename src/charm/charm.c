@@ -239,6 +239,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
                 (*oi->op)(code[pc].env, sc, &cc);
             }
         }
+		assert(cc->pc >= 0);
+		assert(cc->pc < code_len);
 
         if (!cc->terminated && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
             if (infloop == NULL) {
@@ -275,6 +277,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             fprintf(stderr, ">>> %s\n", oi->name);
         }
         assert(cc->pc != pc);
+		assert(cc->pc >= 0);
+		assert(cc->pc < code_len);
 
         /* Peek at the next instruction.
          */

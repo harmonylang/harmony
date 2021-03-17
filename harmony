@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1444
+1,1, 1445
 
 ]
 
@@ -921,6 +921,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
                 (*oi->op)(code[pc].env, sc, &cc);
             }
         }
+		assert(cc->pc >= 0);
+		assert(cc->pc < code_len);
 
         if (!cc->terminated && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
             if (infloop == NULL) {
@@ -957,6 +959,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             fprintf(stderr, ">>> %s\n", oi->name);
         }
         assert(cc->pc != pc);
+		assert(cc->pc >= 0);
+		assert(cc->pc < code_len);
 
         /* Peek at the next instruction.
          */
@@ -5923,6 +5927,7 @@ uint64_t value_put_address(void *p, int size){
 }
 
 uint64_t value_put_context(struct context *ctx){
+	assert(ctx->pc >= 0);
     int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
     void *q = dict_find(context_map, ctx, size);
     return (uint64_t) q | VALUE_CONTEXT;
@@ -7889,6 +7894,11 @@ def load_string(all, filename, scope, code):
 
     # Compile again with the real values of the methods and label constants
     ast.compile(scope, code)
+
+    for (lexeme, file, line, column) in ast.getLabels():
+        (t, v) = scope.names[lexeme]
+        (pc, file, line, columv) = v
+        assert pc != tmp, "not all labels have been filled"
 
 def load(f, filename, scope, code):
     if filename in files:

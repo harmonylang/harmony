@@ -74,6 +74,7 @@ uint64_t value_put_address(void *p, int size){
 }
 
 uint64_t value_put_context(struct context *ctx){
+	assert(ctx->pc >= 0);
     int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
     void *q = dict_find(context_map, ctx, size);
     return (uint64_t) q | VALUE_CONTEXT;

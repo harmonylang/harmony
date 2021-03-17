@@ -11,7 +11,7 @@ def receiver(q):
         done = v == None
     
 testq = queue.Queue()
-spawn sender(?testq, 1)
-spawn sender(?testq, 2)
-spawn receiver(?testq)
-spawn receiver(?testq)
+sender(?testq, 1)
+# spawn sender(?testq, 2)
+# spawn receiver(?testq)
+# spawn receiver(?testq)

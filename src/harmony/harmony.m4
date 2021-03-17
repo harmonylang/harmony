@@ -178,6 +178,11 @@ def load_string(all, filename, scope, code):
     # Compile again with the real values of the methods and label constants
     ast.compile(scope, code)
 
+    for (lexeme, file, line, column) in ast.getLabels():
+        (t, v) = scope.names[lexeme]
+        (pc, file, line, columv) = v
+        assert pc != tmp, "not all labels have been filled"
+
 def load(f, filename, scope, code):
     if filename in files:
         return
