@@ -1491,7 +1491,7 @@ int main(int argc, char **argv){
 
     FILE *out = fopen("charm.json", "w");
     if (out == NULL) {
-        fprintf(stderr, "charm: can't create charm.json");
+        fprintf(stderr, "charm: can't create charm.json\n");
         exit(1);
     }
     fprintf(out, "{\n");

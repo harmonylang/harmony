@@ -5367,7 +5367,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("}", file=f);
 
 config = {
-    "infile": "charm.c",
+    "infile": "$$home$$/.charm.c",
     "outfile": "$$home$$/.charm.exe",
     "compile": "gcc -O3 -std=c99 $$infile$$ -m64 -o $$outfile$$"
 }
@@ -5445,6 +5445,7 @@ def main():
             with open(conffile) as f:
                 config = json.load(f)
         else:
+            config["infile"] = "%s/.charm.c"%pathlib.Path.home()
             config["outfile"] = "%s/.charm.exe"%pathlib.Path.home()
             config["compile"] = "gcc -O3 -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"])
         if testflag:
