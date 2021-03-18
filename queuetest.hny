@@ -1,17 +1,72 @@
 import queue
 
 def sender(q, v):
-  queue.put(q, v)
+    queue.put(q, v)
 
 def receiver(q):
-  let done = False:
-    while not done:
-      let v = queue.get(q):
-        assert v in { None, 1, 2 }
-        done = v == None
-    
+    let done = False:
+        while not done:
+            let v = queue.get(q):
+                assert v in { None, 1, 2 }
+                done = v == None
+
+def qsizeTest(q, size):
+    let s = queue.qsize(q):
+        assert s == size
+
+def containsTest(q, v, t):
+    let s = queue.contains(q, v):
+        assert s == t
+
+def testSize(q):
+    queue.put(q, 1)
+    qsizeTest(q, 1)
+    queue.put(q, 2)
+    qsizeTest(q, 2)
+    queue.get(q)
+    qsizeTest(q, 1)
+    queue.get(q)   
+
+def testContains(q):
+    containsTest(q, 1, False)
+    containsTest(q, 2, False)
+    queue.put(q, 1)
+    queue.put(q, 2)
+    containsTest(q, 1, True)
+    containsTest(q, 2, True)
+
+def testInsert(q):
+    queue.insert(q, 1)
+    let v = queue.get(q):
+        assert v == 1
+    queue.insert(q, 1)
+    queue.insert(q, 2)
+    let v = queue.get(q):
+        assert v == 2
+    let v = queue.get(q):
+        assert v == 1
+
+def testRemove(q):
+    queue.put(q, 1)
+    queue.put(q, 2)
+    queue.put(q, 3)
+    queue.remove(q, 2)
+    qsizeTest(q, 3)
+    let v = queue.get(q):
+        assert v == 1
+    let v = queue.get(q):
+        assert v == 3
+
 testq = queue.Queue()
-sender(?testq, 1)
-# spawn sender(?testq, 2)
-# spawn receiver(?testq)
-# spawn receiver(?testq)
+#sender(?testq, 1)
+#sender(?testq, 2)
+#let done = testSize(?testq):
+ #   assert done #await done
+#qsizeTest(?testq, 0)
+#testSize(?testq)
+testContains(?testq)
+#testInsert(?testq)
+testRemove(?testq)
+
+#let test = ({testSize(?testq), testContains(?testq)}):
+    #test(?testq)

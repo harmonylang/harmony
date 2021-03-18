@@ -2,71 +2,94 @@ from synch import Lock, acquire, release
 from alloc import malloc, free
 
 def Queue():
-  result = { .head: None, .tail: None, .lock: Lock() }
+    result = { .head: None, .tail: None, .lock: Lock(), .length: 0 }
 
-  def put(q, v):
+def put(q, v):
     let node = malloc({ .value: v, .next: None }):
-      acquire(?q->lock)
-      if q->head == None:
-        q->head = q->tail = node
-      else:
-        q->tail->next = node
-        q->tail = node
-      release(?q->lock)
-
-  def get(q):
+        acquire(?q->lock)
+        q->length += 1
+        if q->head == None:
+            q->head = q->tail = node
+        else:
+            q->tail->next = node
+            q->tail = node
+        release(?q->lock)
+    
+def get(q):
     acquire(?q->lock)
     let node = q->head:
-      if node == None:
-        result = None
-      else:
-        result = node->value
-        q->head = node->next
-        if q->head == None:
-          q->tail = None
-        free(node)        
-    release(?q->lock)
-
-  def qsize(q):
-    result = len(q)
-  
-  def contains(q, v):
-    for val in q:
-      if val == v:
-        result = True
-  
-  def insert(q, v):
-    let node = malloc({ .value: v, .next: q->head }):
-      acquire(?q->lock)
-      if q->head == None:
-        q->head = node
-        q->tail = None
-      else:
-        let temp = q->head:
-          q->head = node
-          q->head->next = temp
-      release(?q->lock)
-  
-  def remove(q, v):
-    acquire(?q->lock)
-    while head -> value == v:
-      head = head->next
-    let temp = q->head:
-      while temp->next != None:
-        if temp->next->value == v:
-          temp->next = temp->next->next
+        if node == None:
+            result = None
         else:
-          temp = temp->next
-
+            result = node->value
+            q->head = node->next
+            if q->head == None:
+                q->tail = None
+            free(node)
+            q->length -= 1
     release(?q->lock)
 
+def qsize(q):
+    acquire(?q->lock)
+    result = q->length
+    release(?q->lock)
 
-    
-    
+def containsHelper(node, v):
+    if node == None:
+        result = False
+    else:
+        if node->value == v:
+            result = True
+        else:
+            result = containsHelper(node->next, v)
 
+def contains(q, v):
+    acquire(?q->lock)
+    result = containsHelper(q->head, v)
+    release(?q->lock)
 
+def insert(q, v):
+    let node = malloc({ .value: v, .next: None }):
+        acquire(?q->lock)
+        if q->head == None:
+            q->head = q->tail = node
+        else:
+            let old = q->head:
+                q->head = node
+                q->head->next = old
+        q->length += 1
+        release(?q->lock)
 
-    
+def removeHelper(q, node, step, v):
+    if step == None:
+        result = None;
+    else:
+        if step->value == v:
+            let old = step:
+                if node == None:
+                    result = removeHelper(None, step->next, v)
+                else:
+                    node->next = removeHelper(q, node, step->next, v)
+                free(old)
+                q->length = q->length - 1
+        else:
+            removeHelper(q, step, step->next, v)
 
-          
-
+def remove(q, v):
+    acquire(?q->lock)
+    let last = None:
+        let node = q->head:
+            while node != None:
+                if !node->value == v:
+                    let old = node:
+                        if last != None:
+                            last->next = node->next
+                        else:
+                            q->head = node->next
+                        free(old)
+                        q->length -= 1
+                else:
+                    last = node
+                    node = last->next
+    #q->head = removeHelper(q, None, q->head, v)
+    release(?q->lock)

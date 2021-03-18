@@ -10,7 +10,7 @@ def thread(self):
     for r in {0..NROUNDS-1}:
         barrier.enter(?barr)
         round[self] = r
-        assert { x for x in round where x != None } == { r };
+        assert { x for x in round where x != None } == { r }
         round[self] = None
         barrier.exit(?barr)
 
