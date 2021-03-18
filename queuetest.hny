@@ -10,63 +10,72 @@ def receiver(q):
                 assert v in { None, 1, 2 }
                 done = v == None
 
-def qsizeTest(q, size):
-    let s = queue.qsize(q):
-        assert s == size
+def test1():
+    testq = queue.Queue()
+    spawn sender(?testq, 1)
+    spawn sender(?testq, 2)
+    spawn receiver(?testq)
+    spawn receiver(?testq)
 
-def containsTest(q, v, t):
-    let s = queue.contains(q, v):
-        assert s == t
+def test2():
+    testq = queue.Queue()
+    queue.insert(?testq, 1)
+    queue.insert(?testq, 2)
+    queue.insert(?testq, 17)
+    let q_bool = queue.contains(?testq, 17):
+        assert q_bool
+    let q_size = queue.qsize(?testq):
+        assert q_size == 3
 
-def testSize(q):
-    queue.put(q, 1)
-    qsizeTest(q, 1)
-    queue.put(q, 2)
-    qsizeTest(q, 2)
-    queue.get(q)
-    qsizeTest(q, 1)
-    queue.get(q)   
+def test3():
+    testq = queue.Queue()
+    queue.put(?testq, 1)
+    queue.put(?testq, 1)
+    queue.put(?testq, 3)
+    queue.put(?testq, 1)
+    queue.put(?testq, 10)
+    queue.remove(?testq, 10)
+    let q_bool = queue.contains(?testq, 10):
+        assert not q_bool
 
-def testContains(q):
-    containsTest(q, 1, False)
-    containsTest(q, 2, False)
-    queue.put(q, 1)
-    queue.put(q, 2)
-    containsTest(q, 1, True)
-    containsTest(q, 2, True)
+# def test4():
+#     testq = queue.Queue()
+#     queue.insert(?testq, 1)
+#     queue.insert(?testq, 1)
+#     queue.insert(?testq, 3)
+#     queue.insert(?testq, 1)
+#     queue.insert(?testq, 10)
+#     queue.remove(?testq, 1)
+#     let q_size = queue.qsize(?testq):
+#         assert q_size == 2
 
-def testInsert(q):
-    queue.insert(q, 1)
-    let v = queue.get(q):
-        assert v == 1
-    queue.insert(q, 1)
-    queue.insert(q, 2)
-    let v = queue.get(q):
-        assert v == 2
-    let v = queue.get(q):
-        assert v == 1
+let test = choose({test1, test2, test3}):
+    test()
+    
+# def test_qsize(q):
+#     let size = queue.qsize(q):
+#         assert size in {0, 1, 2}
+#     # let done = False:
+#     #     let q_size_before = q->size:
+#     #         queue.put(q, v)
+#     #         done = q->size == (q_size_before + 1)
+#     #         assert done
 
-def testRemove(q):
-    queue.put(q, 1)
-    queue.put(q, 2)
-    queue.put(q, 3)
-    queue.remove(q, 2)
-    qsizeTest(q, 3)
-    let v = queue.get(q):
-        assert v == 1
-    let v = queue.get(q):
-        assert v == 3
+# def test_contains(q, v, boolean):
+#     let is_true = queue.contains(q, v):
+#         assert is_true == boolean
 
-testq = queue.Queue()
-#sender(?testq, 1)
-#sender(?testq, 2)
-#let done = testSize(?testq):
- #   assert done #await done
-#qsizeTest(?testq, 0)
-#testSize(?testq)
-testContains(?testq)
-#testInsert(?testq)
-testRemove(?testq)
+# # def test_insert(q, v):
+# #     queue.insert(q, v)
+# #     let head_node = q->head:
+# #         assert head_node == v
 
-#let test = ({testSize(?testq), testContains(?testq)}):
-    #test(?testq)
+# testq = queue.Queue()
+# spawn sender(?testq, 1)
+# spawn sender(?testq, 2)
+# # spawn receiver(?testq)
+# # spawn receiver(?testq)
+
+# #spawn test_qsize(?testq)
+# spawn test_contains(?testq, 2, True)
+# #spawn test_insert(?testq, 10)

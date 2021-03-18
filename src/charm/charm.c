@@ -1090,10 +1090,10 @@ static int find_scc(void){
     return count;
 }
 
-static char *json_string_encode(char *s){
-    char *result = malloc(4 * strlen(s)), *p = result;
+static char *json_string_encode(char *s, int len){
+    char *result = malloc(4 * len), *p = result;
 
-    while (*s != 0) {
+    while (len > 0) {
         switch (*s) {
         case '\r':
             *p++ = '\\'; *p++ = 'r';
@@ -1117,6 +1117,7 @@ static char *json_string_encode(char *s){
             *p++ = *s;
         }
         s++;
+        len--;
     }
     *p++ = 0;
     return result;
@@ -1146,43 +1147,11 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
-    fprintf(out, "\"line\": \"%.*s\"", line->u.atom.len, line->u.atom.base);
+    fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
-    // parse the line number
-    char *cline = malloc(line->u.atom.len + 1);
-    strncpy(cline, line->u.atom.base, line->u.atom.len);
-    cline[line->u.atom.len] = 0;
-    int lineno = atoi(cline);
-    free(cline);
-
-    // copy the file name
-    char *cfile = malloc(file->u.atom.len + 1);
-    strncpy(cfile, file->u.atom.base, file->u.atom.len);
-    cfile[file->u.atom.len] = 0;
-
-    // TODO.  Should cache the contents of the file
-    // TODO.  What to do with "internal" modules?
-    FILE *fp = fopen(cfile, "r");
-    if (fp == NULL) {
-        fprintf(out, ", \"code\": \"can't open %s\"", cfile);
-    }
-    else {
-        char buf[1024];
-        while (fgets(buf, 1024, fp) != NULL) {
-            if (--lineno == 0) {
-                buf[1023] = 0;
-                int len = strlen(buf);
-                if (len > 0 && buf[len - 1] == '\n') {
-                    buf[len - 1] = 0;
-                }
-                char *enc = json_string_encode(buf);
-                fprintf(out, ", \"code\": \"%s\"", enc);
-                free(enc);
-                break;
-            }
-        }
-        fclose(fp);
-    }
+    struct json_value *code = dict_lookup(jv->u.map, "code", 4);
+    assert(code->type == JV_ATOM);
+    fprintf(out, "\"code\": \"%s\"", json_string_encode(code->u.atom.base, code->u.atom.len));
     fprintf(out, " }");
 }
 
