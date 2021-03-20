@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1452
+1,1, 1453
 
 ]
 
@@ -10711,7 +10711,28 @@ class AddressAST(AST):
     def isConstant(self, scope):
         return self.lv.isConstant(scope)
 
+    def check(self, lv, scope):
+        if isinstance(lv, NameAST):
+            (t, v) = scope.lookup(lv.name)
+            if t == "local":
+                print("can't take address of local variable", lv)
+                sys.exit(1)
+            if t == "constant":
+                print("can't take address of constant", lv)
+                sys.exit(1)
+            if t == "module":
+                print("can't take address of imported", lv)
+                sys.exit(1)
+        elif isinstance(lv, ApplyAST):
+            self.check(lv.method, scope)
+        elif isinstance(lv, PointerAST):
+            pass
+        else:
+            print("can't take address of", lv)
+            sys.exit(1)
+
     def gencode(self, scope, code):
+        self.check(self.lv, scope)
         self.lv.ph1(scope, code)
 
 class PassAST(AST):
