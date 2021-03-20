@@ -647,6 +647,12 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
 void ext_Del(const void *env, struct state *state, struct context **pctx,
                                                         struct access_info *ai){
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
+
+    if ((*pctx)->readonly > 0) {
+        ctx_failure(*pctx, "Can't update state in assert or invariant");
+        return;
+    }
+
     uint64_t av = ctx_pop(pctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         ctx_failure(*pctx, "Del: not an address");
@@ -1259,7 +1265,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     if ((*pctx)->readonly > 0) {
-        ctx_failure(*pctx, "Store: in read-only mode");
+        ctx_failure(*pctx, "Can't update state in assert or invariant (including acquiring locks)");
         return;
     }
 
