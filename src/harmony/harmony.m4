@@ -2212,6 +2212,9 @@ class NameAST(AST):
         if t == "local":
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue([lexeme]), file, line, column)))
+        elif t == "constant":
+            print("constant cannot be an lvalue:", self.name)
+            sys.exit(1)
         else:
             assert t in { "global", "module" }
             (lexeme, file, line, column) = self.name

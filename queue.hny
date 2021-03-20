@@ -26,3 +26,13 @@ def get(q):
                 q->tail = None
             free(node)
     release(?q->lock)
+
+def contains(q, v):
+    acquire(?q->lock)
+    result = False
+    let point = q->head:
+        while point != None:
+            if v == point->value:
+                result = True
+            point = point->next
+    release(?q->lock)
