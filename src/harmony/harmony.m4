@@ -4593,7 +4593,7 @@ def doCompile(filenames, consts, mods):
                 with open(fname) as fd:
                     load(fd, fname, scope, code)
             except IOError:
-                print("Can't open", fname, file=sys.stderr)
+                print("harmony: can't open", fname, file=sys.stderr)
                 sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
@@ -5420,10 +5420,11 @@ def main():
     charmflag = True
     fulldump = False
     testflag = False
+    charmoptions = []
     try:
         opts, args = getopt.getopt(sys.argv[1:],
                         "Aabc:dfhjm:stv",
-                        ["const=", "help", "module=", "version"])
+                        ["const=", "cf=", "help", "module=", "version"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -5431,6 +5432,8 @@ def main():
         if o == "-a":
             printCode = "verbose"
             charmflag = False
+        elif o == "--cf":
+            charmoptions += [a]
         elif o == "-A":
             printCode = "terse"
             charmflag = False
@@ -5505,7 +5508,7 @@ def main():
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("%s %s"%(config["outfile"], tmpfile));
+        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), tmpfile));
         if not testflag:
             os.remove(tmpfile)
         if r != 0:

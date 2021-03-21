@@ -160,7 +160,7 @@ void check_invariants(struct node *node, struct context **pctx){
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         struct dict *visited, struct queue *todo, struct context **pinv_ctx,
-        bool infloop_detect, int multiplicity){
+        bool infloop_detect, int multiplicity, double timeout){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
@@ -182,7 +182,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         interrupt_invoke(&cc);
     }
     else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(node, ctx, choice, true, visited, todo, pinv_ctx, infloop_detect, multiplicity);
+        onestep(node, ctx, choice, true, visited, todo, pinv_ctx, infloop_detect, multiplicity, timeout);
     }
 
     // Copy the choice
@@ -208,6 +208,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
                     free(p);
                 }
                 lasttime = now;
+                if (now > timeout) {
+                    fprintf(stderr, "charm: timeout exceeded\n");
+                    exit(1);
+                }
             }
             timecnt = 1;
         }
@@ -263,7 +267,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             }
             else {
                 // start over, as twostep does not have loopcnt optimization
-                onestep(node, ctx, choice_copy, interrupt, visited, todo, pinv_ctx, true, multiplicity);
+                onestep(node, ctx, choice_copy, interrupt, visited, todo, pinv_ctx, true, multiplicity, timeout);
                 free(cc);
                 free(sc);
                 return;
@@ -1219,8 +1223,42 @@ void detect_busywait(struct node *node){
 	}
 }
 
+void usage(char *prog){
+    fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
+    exit(1);
+}
+
 int main(int argc, char **argv){
-    // printf("Charm v1\n");
+    bool cflag = false;
+    int i, maxtime = 300000000 /* about 10 years */;
+    for (i = 1; i < argc; i++) {
+        if (*argv[i] != '-') {
+            break;
+        }
+        switch (argv[i][1]) {
+        case 'c':
+            cflag = true;
+            break;
+        case 't':
+            maxtime = atoi(&argv[i][2]);
+            if (maxtime <= 0) {
+                fprintf(stderr, "%s: negative timeout\n", argv[0]);
+                exit(1);
+            }
+            break;
+        default:
+            usage(argv[0]);
+        }
+    }
+    if (argc - i > 1) {
+        usage(argv[0]);
+    }
+    char *fname = i == argc ? "harmony.json" : argv[i];
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
+    double timeout = now + maxtime;
 
     failures = queue_init();
     warnings = queue_init();
@@ -1230,7 +1268,6 @@ int main(int argc, char **argv){
     value_init();
 
     // open the file
-    char *fname = argc == 1 ? "harmony.json" : argv[1];
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: can't open %s\n", argv[0], fname);
@@ -1336,7 +1373,7 @@ int main(int argc, char **argv){
                 if (false) {
                     printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
                 }
-                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false, 1);
+                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false, 1, timeout);
                 if (false) {
                     printf("NEXT CHOICE DONE\n");
                 }
@@ -1354,14 +1391,14 @@ int main(int argc, char **argv){
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
                 onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx,
-                                false, ctxs[i+1] >> VALUE_BITS);
+                                false, ctxs[i+1] >> VALUE_BITS, timeout);
                 if (false) {
                     printf("NEXT CONTEXT DONE\n");
                 }
             }
 
             // Check for data race
-            if (queue_empty(warnings)) {
+            if (queue_empty(warnings) && !cflag) {
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
                     if (edge->ai.indices != NULL) {
                         if (edge->ai.multiplicity > 1 && !edge->ai.load) {
@@ -1449,7 +1486,7 @@ int main(int argc, char **argv){
             }
         }
 
-        if (nbad == 0) {
+        if (nbad == 0 && !cflag) {
             for (int i = 0; i < graph_size; i++) {
 				graph[i]->visited = false;
 			}
