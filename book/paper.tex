@@ -3929,18 +3929,18 @@ by \texttt{unlock} followed by \texttt{lock}.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
-In \texttt{release\_rlock}, notice that \texttt{notify}(?\textit{w\_cond})
+In \texttt{read\_release}, notice that \texttt{notify}(?\textit{w\_cond})
 is invoked when there are no readers left, \emph{without} checking
 if there are writers waiting to enter.  This is
 ok, because calling \texttt{notify} is a no-op if no thread is
 waiting.
 
-\texttt{release\_wlock} executes \texttt{notifyAll}(?\textit{r\_cond})
+\texttt{write\_release} executes \texttt{notifyAll}(?\textit{r\_cond})
 as well as \texttt{notify}(?\textit{w\_cond)}.  Because we
 do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter,
 or, alternatively, up to one waiting writer can enter.  So
-\texttt{release\_wlock} wakes up all potential candidates.  There
+\texttt{write\_release} wakes up all potential candidates.  There
 are two things to note here.  First, unlike split binary semaphores
 or Hoare monitors, where multiple waiting readers would have to be
 signaled one at a time in a baton-passing fashion (see
@@ -6097,6 +6097,7 @@ Hartek Sabharwal,
 Heather Zheng,
 Jacob Brugh,
 Lorenzo Alvisi,
+Maria Martucci,
 Saleh Hassen,
 Sunwook Kim,
 Terryn Jung,
