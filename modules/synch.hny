@@ -32,7 +32,7 @@ def release(binsema):
 def held(binsema):
     result = !binsema
 
-def Condition(lk):
+def Condition():
     result = bag.empty()
 
 def wait(c, lk):

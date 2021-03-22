@@ -37,7 +37,7 @@ def release(binsema):
 def held(binsema):
     result = binsema->acquired
 
-def Condition(lk):
+def Condition():
     result = []
 
 def wait(c, lk):

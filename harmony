@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1456
+1,1, 1459
 
 ]
 
@@ -129,7 +129,7 @@ def release(binsema):
 def held(binsema):
     result = !binsema
 
-def Condition(lk):
+def Condition():
     result = bag.empty()
 
 def wait(c, lk):
@@ -219,7 +219,7 @@ def release(binsema):
 def held(binsema):
     result = binsema->acquired
 
-def Condition(lk):
+def Condition():
     result = []
 
 def wait(c, lk):

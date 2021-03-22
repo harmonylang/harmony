@@ -1,4 +1,4 @@
-def Condition(lk):
+def Condition():
     result = bag.empty()
 
 def wait(c, lk):
