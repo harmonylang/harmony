@@ -2049,22 +2049,10 @@ class AST:
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
             elif ctype == "list":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
-                # TODO.  Turn these four instructions into 1 instruction
                 code.append(IncVarOp(N))
-                if False:
-                    code.append(LoadVarOp(N))
-                    code.append(PushOp((1, file, line, column)))
-                    code.append(NaryOp(("+", file, line, column), 2))
-                    code.append(StoreVarOp(N))
             elif ctype == "bag":
                 code.append(NaryOp(("BagAdd", file, line, column), 2))
-                # TODO.  Ditto
                 code.append(IncVarOp(N))
-                if False:
-                    code.append(LoadVarOp(N))
-                    code.append(PushOp((1, file, line, column)))
-                    code.append(NaryOp(("+", file, line, column), 2))
-                    code.append(StoreVarOp(N))
             return
 
         (type, rest) = iter[0]
@@ -2633,7 +2621,7 @@ class NaryRule(Rule):
                 args.append(ast3)
                 if t != []:
                     (lexeme, file, line, column) = t[0]
-            elif (op[0] == lexeme) and (lexeme in { "+", "|", "&", "^", "and", "or" }):
+            elif (op[0] == lexeme) and (lexeme in { "+", "*", "|", "&", "^", "and", "or" }):
                 while lexeme == op[0]:
                     (ast3, t) = ExpressionRule().parse(t[1:])
                     if ast3 == False:

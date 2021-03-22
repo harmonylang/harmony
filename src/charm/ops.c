@@ -554,7 +554,11 @@ void op_Apply(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc = method >> VALUE_BITS;
         return;
     default:
-        ctx_failure(*pctx, "Can only apply to methods or dictionaries");
+        {
+            char *x = value_string(method);
+            ctx_failure(*pctx, "Can only apply to methods or dictionaries, not to: %s", x);
+            free(x);
+        }
     }
 }
 
@@ -870,7 +874,7 @@ void ext_Load(const void *env, struct state *state, struct context **pctx,
         }
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
-            ctx_failure(*pctx, "Load: unknown variable %s", x);
+            ctx_failure(*pctx, "Load: unknown variable %s", x+1);
             free(x);
             return;
         }
@@ -1242,7 +1246,9 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
         uint64_t v = value_put_context(*pctx);
 
         if (!ind_trystore(state->vars, indices, size, v, &state->vars)) {
-            ctx_failure(*pctx, "Store: bad address");
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "Stop: bad address: %s", x);
+            free(x);
             return;
         }
     }
@@ -1303,7 +1309,9 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
         }
 
         if (!ind_trystore(state->vars, indices, size, v, &state->vars)) {
-            ctx_failure(*pctx, "Store: bad address");
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "Store: bad address: %s", x);
+            free(x);
             return;
         }
     }
@@ -1340,7 +1348,9 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (!ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars)) {
-            ctx_failure(*pctx, "StoreVar: bad address");
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "StoreVar: bad address: %s", x);
+            free(x);
             return;
         }
         (*pctx)->pc++;
@@ -2255,7 +2265,7 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n)
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_DICT) {
-            ctx_failure(ctx, "+: applied to mix of dictionaries and other values");
+            ctx_failure(ctx, "+: applied to mix of value types");
             free(vi);
             return 0;
         }
@@ -2696,7 +2706,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n){
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_SET) {
-            return ctx_failure(ctx, "'^' applied to mix of sets and other types");
+            return ctx_failure(ctx, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
