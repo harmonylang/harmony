@@ -4,7 +4,7 @@ const N = 5
 
 mutex = synch.Lock()
 forks = [False,] * N
-conds = [synch.Condition(?mutex),] * N
+conds = [synch.Condition(),] * N
 
 def diner(which):
     let left, right = (which, (which + 1) % N):
