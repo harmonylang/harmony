@@ -5408,11 +5408,11 @@ def main():
     charmflag = True
     fulldump = False
     testflag = False
+    suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:],
-                        "Aabc:dfhjm:stv",
-                        ["const=", "cf=", "help", "module=", "version"])
+        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhjm:stv",
+                ["const=", "cf=", "help", "module=", "suppress", "version"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -5444,6 +5444,8 @@ def main():
             testflag = True
         elif o in { "-h", "--help" }:
             usage()
+        elif o == "--suppress":
+            suppressOutput = True
         elif o in { "-v", "--version" }:
             print("Version", ".".join([str(v) for v in version]))
             sys.exit(0)
@@ -5506,7 +5508,8 @@ def main():
         if not b.run():
             gh = GenHTML()
             gh.run()
-            print("open file://" + os.getcwd() + "/harmony.html for more information")
+            if not suppressOutput:
+                print("open file://" + os.getcwd() + "/harmony.html for more information")
         sys.exit(0);
 
     if printCode == None:
