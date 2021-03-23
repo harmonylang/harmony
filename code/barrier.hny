@@ -13,18 +13,18 @@ def enter(b):
     while b->entered == b->limit:   # wait for car to empty out
         wait(?b->empty, ?b->mutex)
     b->entered += 1
-    if b->entered == b->limit:      # car is empty and ready to go
-        b->left = 0
-        notifyAll(?b->full)
-    else:                                  # wait for car to fill up
+    if b->entered != b->limit:      # wait for car to fill up
         while b->entered < b->limit:
             wait(?b->full, ?b->mutex)
+    else:                             
+        b->left = 0      
+        notifyAll(?b->full)         # car is full and ready to go
     release(?b->mutex)
 
 def exit(b):
     acquire(?b->mutex)
     b->left += 1
-    if b->left == b->limit:         # car is empty
+    if b->left == b->limit:         # everybody left
         b->entered = 0
-        notifyAll(?b->empty)
+        notifyAll(?b->empty)        # let next group in
     release(?b->mutex)
