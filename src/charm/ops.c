@@ -83,11 +83,17 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt,
         return dict_store(vars, vt->u.name, arg);
     case VT_TUPLE:
         if ((arg & VALUE_MASK) != VALUE_DICT) {
-            return ctx_failure(ctx, "match: expected a tuple");
+            if (vt->u.tuple.n == 0) {
+                return ctx_failure(ctx, "match: expected ()");
+            }
+            else {
+                return ctx_failure(ctx, "match: expected a tuple");
+            }
         }
         if (arg == VALUE_DICT) {
             if (vt->u.tuple.n != 0) {
-                return ctx_failure(ctx, "match: expected a non-empty tuple");
+                return ctx_failure(ctx, "match: expected a %d-tuple",
+                                                vt->u.tuple.n);
             }
             return vars;
         }
