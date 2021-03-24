@@ -2204,7 +2204,6 @@ class NameAST(AST):
             print("constant cannot be an lvalue:", self.name)
             sys.exit(1)
         else:
-            assert t in { "global", "module" }
             (lexeme, file, line, column) = self.name
             code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
 
@@ -2923,7 +2922,12 @@ class AssignmentAST(AST):
         shared = lv.isShared(scope)
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
-            ld = LoadOp(lv.name, lv.name, scope.prefix) if shared else LoadVarOp(lv.name)
+            (t, v) = scope.find(lv.name)
+            if t == "module":
+                print("Cannot operate on module", lv.name)
+                sys.exit(1)
+            assert t in { "local", "global" }
+            ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
             lv.ph1(scope, code)
             code.append(DupOp())                  # duplicate the address
@@ -2964,8 +2968,12 @@ class AssignmentAST(AST):
         for lvs in reversed(self.lhslist):
             skip -= 1
             if isinstance(lvs, NameAST):
-                shared = lvs.isShared(scope)
-                st = StoreOp(lvs.name, lvs.name, scope.prefix) if shared else StoreVarOp(lvs.name)
+                (t, v) = scope.find(lvs.name)
+                if t == "module":
+                    print("Cannot assign to module", lvs.name)
+                    sys.exit(1)
+                assert t in { "local", "global" }
+                st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                 code.append(st)
             else:
                 lvs.ph2(scope, code, skip)
