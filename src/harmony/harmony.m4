@@ -3388,6 +3388,10 @@ class FromAST(AST):
                     scope.names[item] = (t, v)
         else:
             for (lexeme, file, line, column) in self.items:
+                if lexeme not in names:
+                    print("%s line %d: can't import %s from module %s"%(
+                        file, line, lexeme, self.module[0]))
+                    sys.exit(1)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
