@@ -2192,7 +2192,7 @@ class NameAST(AST):
 
     def isShared(self, scope):
         (t, v) = scope.find(self.name)
-        assert t in { "local", "global", "module" }
+        assert t in { "constant", "local", "global", "module" }
         return t != "local"
 
     def ph1(self, scope, code):
@@ -2519,6 +2519,14 @@ class ApplyAST(AST):
         return self.method.isShared(scope)
 
     def ph1(self, scope, code):
+        # See if it's of the form "module.constant":
+        if isinstance(self.method, NameAST):
+            (t, v) = scope.lookup(self.method.name)
+            if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
+                (t2, v2) = v.lookup(self.arg.const)
+                if t2 == "constant":
+                    print("Cannot assign to constant", self.method.name, self.arg.const)
+                    sys.exit(1)
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
         code.append(AddressOp())
@@ -2926,6 +2934,9 @@ class AssignmentAST(AST):
             if t == "module":
                 print("Cannot operate on module", lv.name)
                 sys.exit(1)
+            if t == "constant":
+                print("Cannot operate on constant", lv.name)
+                sys.exit(1)
             assert t in { "local", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
@@ -2972,7 +2983,10 @@ class AssignmentAST(AST):
                 if t == "module":
                     print("Cannot assign to module", lvs.name)
                     sys.exit(1)
-                assert t in { "local", "global" }
+                if t == "constant":
+                    print("Cannot assign to constant", lvs.name)
+                    sys.exit(1)
+                assert t in { "local", "global" }, (t, lvs.name)
                 st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                 code.append(st)
             else:
