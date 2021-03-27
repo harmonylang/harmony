@@ -1,0 +1,36 @@
+import queue
+
+const N = 3
+
+sequential putcount, getcount
+
+testq = queue.Queue()
+gotten = {}
+putcount = getcount = 0
+
+def putter(v):
+    queue.put(?testq, v)
+    atomic:
+        putcount += 1
+
+def getter():
+    let v = queue.get(?testq):
+        atomic:
+            assert v not in gotten
+            if v != None:
+                gotten |= {v}
+            getcount += 1
+
+def main():
+    await (getcount == N) and (putcount == N)
+    while gotten != {0..N-1}:
+        let v = queue.get(?testq):
+            assert v not in gotten
+            gotten |= {v}
+    let v = queue.get(?testq):
+        assert v == None
+
+for i in {0..N-1}:
+    spawn putter(i)
+    spawn getter()
+spawn main()
