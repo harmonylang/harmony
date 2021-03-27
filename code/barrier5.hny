@@ -1,0 +1,55 @@
+from synch import *
+import list
+
+const NTHREADS = 4
+
+def Barrier():
+    result = {
+            .mutex: Lock(),
+            .start: Condition(),
+            .finish: Condition(),
+            .bstate: 0
+        }
+
+def barrier_enter(b):
+    acquire(?b->mutex)
+    while b->bstate >= 2:
+        wait(?b->start, ?b->mutex)
+    b->bstate += 1
+    if b->bstate == 2:
+        notify(?b->finish)
+    release(?b->mutex)
+
+def barrier_exit(b):
+    acquire(?b->mutex)
+    while b->bstate < 2:
+        wait(?b->finish, ?b->mutex)
+    b->bstate = (b->bstate + 1) % 4
+    if b->bstate == 0:
+        notify(?b->start)
+        notify(?b->start)
+    release(?b->mutex)
+
+bar = Barrier()
+entered = [0,] * NTHREADS
+left = [0,] * NTHREADS
+done = [False,] * NTHREADS
+good = [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (3, 2), (4, 2), (4, 3), (4, 4)]
+
+def check():
+    result = (list.sum(entered), list.sum(left)) in good
+
+def process(self):
+    barrier_enter(?bar)
+    entered[self] = 1
+    assert check()
+    left[self] = 1
+    barrier_exit(?bar)
+    done[self] = True
+
+def main():
+    await all(done)
+
+for i in {0..NTHREADS-1}:
+    spawn process(i)
+spawn main()
