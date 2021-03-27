@@ -2,7 +2,7 @@ import queue
 
 const N = 3
 
-sequential getcount, gotten
+sequential gotten
 
 testq = queue.Queue()
 for i in {0..N-1}:

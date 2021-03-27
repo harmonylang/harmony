@@ -401,7 +401,7 @@ The approach is based on \emph{model checking}:
 \index{model checking}%
 instead of relying
 on luck, Harmony will run \emph{all possible executions} of a particular
-test program.  So even if a bug is unlikely to occur, if the test
+test program.  So, even if a bug is unlikely to occur, if the test
 \emph{can} expose the bug it \emph{will}.  Moreover, if the bug is
 found, the model checker precisely shows how to trigger the bug in
 the smallest number of steps.
@@ -417,7 +417,7 @@ care to wait for or run out of memory.
 In particular, the model needs to have a relatively small number of
 reachable states.
 
-So if model checking does not prove a program correct, why is it
+If model checking does not prove a program correct, why is it
 useful?
 To answer that question, let us consider a sorting algorithm.
 Suppose we create a test program, a model, that tries sorting
@@ -459,7 +459,7 @@ We will include examples
 of such invariants as they often provide excellent insight into
 why a particular algorithm works.
 
-So what is Harmony?
+So, what is Harmony?
 Harmony is a concurrent programming language.  It was designed to teach
 the basics of concurrent programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
@@ -517,6 +517,8 @@ data structures.
 \item \autoref{ch:condwait} talks about threads having to wait for
 certain conditions.  As examples, it presents the reader/writer lock
 problem and the bounded buffer problem.
+\item \autoref{ch:testing} discusses approaches to testing
+concurrent code in Harmony.
 \item \autoref{ch:sbs} presents \emph{Split Binary Semaphores}, a
 general technique for solving synchronization problems.
 \begin{comment}
@@ -643,7 +645,7 @@ $
 \begin{problems}
 \item See what happens if, instead of initializing \textit{result} to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in \autoref{ch:harmonymachine}.)
-\item Write a Harmony program that computes squares by repeated adding.  So the program
+\item Write a Harmony program that computes squares by repeated adding.  So, the program
 should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ times.
 \end{problems}
 
@@ -744,7 +746,7 @@ but suffice it to
 say that the machine has instructions that load values from memory and store
 values into memory.  Importantly, it does not have instructions to atomically
 increment or decrement values in shared memory locations.
-So to increment a value in memory,
+So, to increment a value in memory,
 the machine must do at least three machine instructions.  Conceptually:
 \begin{enumerate}
 \item load the value from the memory location;
@@ -935,7 +937,7 @@ Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
 is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same Harmony value as \texttt{\{ 0:a, 1:b, 2:c \}}.
-So if $x$ = \texttt{[False, True]},
+So, if $x$ = \texttt{[False, True]},
 then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.  The expression \texttt{[False]} just means
@@ -1804,12 +1806,12 @@ Also, in state $s$, $\mathit{turn} = 1$.  Now let
 thread~1 make a step.  Because $\mathit{turn} = 1$,
 thread~1 will stop waiting and also enter the critical
 section, entering a state that is not exclusive.
-So exclusivity is an invariant (holds over every reachable state, as demonstrated
+So, exclusivity is an invariant (holds over every reachable state, as demonstrated
 by Harmony),
 but not an inductive invariant.
 It will turn out that $s$ is not reachable.
 
-So we are looking for an inductive invariant that \emph{implies} exclusivity.
+We are looking for an inductive invariant that \emph{implies} exclusivity.
 In other words, the set of states where the inductive invariant holds
 must be a subset of the set of states where there is at most one thread in
 the critical section.
@@ -1841,7 +1843,7 @@ In the second case (thread $i$ is not executing in lines $8 \cdots 15$), the onl
 that would cause thread $i$ to execute in lines $8 \cdots 15$ would be the step in line 7.
 But in that case $\mathit{flags}[i]$ would end up being true, so
 $\mathcal{F}(i)$ continues to hold as well.
-So $\mathcal{F}(i)$ is an inductive invariant (for both threads~0 and~1).
+So, $\mathcal{F}(i)$ is an inductive invariant (for both threads~0 and~1).
 
 While $\mathcal{F}(i)$ does not imply mutual exclusion, it does imply the following useful
 invariant: $\mathtt{thread}(i)@cs \Rightarrow \mathit{flags}[i]$: when thread $i$ is
@@ -2213,7 +2215,7 @@ To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
 \texttt{tas} method is invoked in).
-So there are two cases:
+There are two cases:
 \begin{enumerate}
 \item \texttt{!}$s$ is \texttt{False} upon entry to \texttt{tas}.
 Then upon exit \texttt{!}$p$ == \texttt{False} and \texttt{!}$s$ == \texttt{True},
@@ -2269,10 +2271,10 @@ variable and a private variable for each thread.   The private
 variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective threads.
 A thread usually does not keep explicit track of whether it has a lock
-or not because it is usually implied by the control flow of the program---a
+or not, because it is usually implied by the control flow of the program---a
 thread implicitly \emph{knows} that when it is executing in a critical
 section it has the lock.
-So there is no need to keep \textit{private} as a shared
+There is no need to keep \textit{private} as a shared
 variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of \autoref{fig:uplock},
@@ -2556,7 +2558,9 @@ The \texttt{queue} module will have the following API:
 \item $r = \mathtt{get}(q)$: returns $r = \mathtt{None}$
 if $q$ is empty or $r = v$ if $v$ was at the head of the queue.
 \end{itemize}
-See \autoref{fig:queuetest} for a simple test program that uses the queue.
+
+\noindent
+See \autoref{fig:queuedemo} for a simple demonstration program that uses the queue.
 
 We will first implement the queue as a linked list.
 The implementation in \autoref{fig:queue}
@@ -2579,6 +2583,21 @@ Before they access the value of the head or tail of the queue they first obtain
 the lock.
 When they are done, they release the lock.
 
+An important thing to note in \autoref{fig:queuedemo}
+is Lines~7 and~8.
+It would be incorrect to replace these by:
+
+\begin{code}
+\textbf{assert} \texttt{queue.get}(\textit{q}) in \{ \textbf{None}, 1, 2 \}
+\end{code}
+
+The reason is that \texttt{queue.get()} changes the state by
+acquiring a lock, but the expressions in \textbf{assert}
+statements (or \textbf{invariant} statements)
+are not allowed to change the state.
+In general, when calling methods in \textbf{assert} or
+\textbf{invariant} statements, one has to be convinced that
+those methods cannot change the state in any way.
 
 \autoref{fig:queueMS} shows another
 concurrent queue implementation~\cite{MS96}.
@@ -2604,10 +2623,10 @@ undefined semantics in most environments.
 
 \begin{figure}
 \begin{code}
-\harmonysource{queuetest}
+\harmonysource{queuedemo}
 \end{code}
-\caption{\harmonylink{code/queuetest.hny} Test program for a concurrent queue.}
-\label{fig:queuetest}
+\caption{\harmonylink{code/queuedemo.hny} Using a concurrent queue.}
+\label{fig:queuedemo}
 \end{figure}
 
 \begin{figure}
@@ -2743,6 +2762,238 @@ lock per binary tree.
 \item Create a binary tree that uses, instead of a single lock per tree,
 a lock for each node in the tree.
 \end{problems}
+
+\chapter{Testing}
+\label{ch:testing}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuespec}
+\end{code}
+\caption{\harmonylink{code/queuespec.hny} Queue specification.}
+\label{fig:queuespec}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtestseq}
+\end{code}
+\caption{\harmonylink{code/qtestseq.hny} Sequential queue test.}
+\label{fig:qtestseq}
+\end{figure}
+
+Testing is a way to increase confidence in the correctness
+of an implementation.
+\autoref{fig:queuedemo} demonstrates how concurrent queues
+may be used, but it is not a very thorough test program
+for an implementation such as the one in \autoref{fig:queue}
+and does little to increase our confidence in its correctness.
+In this chapter, we will look at approaches to testing
+concurrent code.
+
+The first step in testing a concurrent data structure is
+whether it works in the absence of concurrency.
+The objective is to test if the queue \emph{implementation}
+in \autoref{fig:queue} meets the sequential
+queue \emph{specification}.
+In order to do so, we should formalize the sequential queue specification.
+A specification is just code.
+\autoref{fig:queuespec} shows a sequential specification of a
+queue in Harmony (exploiting some methods from the \texttt{list}
+module described in \autoref{ap:list}).
+To check if the queue implementation meets the specification,
+we need to see if any sequence of queue operations in the
+implementation matches a corresponding sequence in the
+specification.
+We say that the implementation and the specification should
+have the same \emph{behavior}.
+
+\autoref{fig:qtestseq} presents a test program that does
+exactly this, for sequences of up to \texttt{NOPS}
+queue operations.
+It maintains two queues:
+\begin{itemize}
+\item[] \textit{implq}: the queue of the implementation;
+\item[] \textit{specq}: the queue of the specification
+\end{itemize}
+For each operation, the code first decides whether to
+perform a \texttt{get} or \texttt{put} operation.
+In the case of a \texttt{put} operation, the code also
+decides which value to append to the queue.
+All operations are performed on both the implementation
+queue and the specification queue.
+In the case of \texttt{get}, the result of the operation
+is checked against that of the specification.
+
+As with any other test program,
+\autoref{fig:qtestseq} may not trigger extant bugs, but
+it nonetheless inspires reasonable confidence that the
+queue implementation is correct, at least sequentially.
+The higher \texttt{NOPS}, the higher the confidence.
+It is possible to write similar programs in other languages
+such as Python, but the \texttt{choose} expression in Harmony
+makes it relatively easy to explore all corner cases.
+
+For example, a common programming mistake is to forget to
+update the \texttt{tail} pointer in \texttt{get()} in case
+the queue becomes empty.  Normally, it is a surprisingly
+tricky bug to find.  You can comment out those lines
+in \autoref{fig:queue} and run the test program---it should
+easily find the bug and the output explains exactly how
+the bug can happen, adding confidence that the test program
+is reasonably thorough.
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtest1}
+\end{code}
+\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}.}
+\label{fig:qtest1}
+\end{figure}
+
+The test program also finds some common mistakes in using
+locks, such as forgetting to release a lock when the queue
+is empty, but it is not designed to find concurrency bugs
+in general.  If you remove all \texttt{acquire()} and
+\texttt{release()} calls from \autoref{fig:queue},
+the test program will not (and should not)
+find any errors.
+The next step is to test if the queue implementation
+meets the \emph{concurrent} queue specification or not.
+But we have not yet shown what the
+concurrent queue specification is.
+
+We briefly mentioned the notion of \emph{linearizability}
+in \autoref{ch:cds}.
+Basically, we want a concurrent queue to behave
+consistently with a sequential queue in that all
+\texttt{put}
+and \texttt{get} operations should appear to happen
+in a total order.
+Moreover, we want to make sure that if some
+\texttt{put} or \texttt{get} operation $o_1$ finished
+before another operation $o_2$ started, then $o_1$
+should appear to happen before $o_2$ in the total order.
+If these two conditions are met, then we say that
+the concurrent queue implementation is linearizable.
+
+In general, if a data structure is protected by
+a single lock and every operation on that data
+structure starts with acquiring the lock and ends
+with releasing the lock, it will automatically be
+linearizable.
+The queue implementation in \autoref{fig:queue} does
+not quite match this pattern, as the \texttt{put}
+operation allocates a new node before acquiring
+the lock.
+However, in this case that is not a problem, as
+the new node has no dependencies on the queue
+when it is allocated.
+
+While it is possible to check linearizability with
+model checking, Harmony does not (yet) have explicit
+support for this.  Instead, we will present a few test
+programs that try to identify incorrect behavior of
+the queue implementation in the presence of concurrency.
+
+\autoref{fig:qtest1} shows a program that
+checks concurrent \texttt{put} operations using
+\texttt{N} threads.  Thread \texttt{putter($v$)}
+adds $v$ to the queue.
+Thread \texttt{main()} waits until all \texttt{putter}
+threads have finished, and then dequeues \texttt{N}
+items, verifying that they form the set
+$\{ 0 .. \mathtt{N} - 1 \}$.
+Note that it is perfectly fine to use \textbf{sequential}
+and \textbf{atomic} statements in test code---one should
+only avoid those in production code.
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtest2}
+\end{code}
+\caption{\harmonylink{code/qtest2.hny} Concurrent \texttt{get()}.}
+\label{fig:qtest2}
+\end{figure}
+
+Similarly, \autoref{fig:qtest2} shows a program that
+checks concurrent \texttt{get} operations using
+\texttt{N} threads.
+The queue is initialized with the sequence
+$0 .. \mathtt{N} - 1$.
+Thread \texttt{getter($v$)} removes an entry from the
+queue and makes sure that no other thread got the
+same entry.
+Thread \texttt{main()} waits until all \texttt{getter}
+threads have finished and checks to make sure that
+the queue is empty.
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtest3}
+\end{code}
+\caption{\harmonylink{code/qtest3.hny} Mix of concurrent
+\texttt{get()} and \texttt{put()} operations.}
+\label{fig:qtest3}
+\end{figure}
+
+\autoref{fig:qtest3} checks a mixture of
+concurrent \texttt{get} and \texttt{put} operations.
+It starts \texttt{N} \texttt{getter} threads and
+\texttt{N} \texttt{putter} threads.
+Thread \texttt{main} waits until all have finished,
+and then checks to make sure that whatever is left
+on the queue was not also consumed by some
+\texttt{getter} thread.
+Finally, it makes sure that the queue is empty
+once all the values that were added
+to it by the \texttt{putter} threads have been consumed.
+
+A common mistake that people make is to use
+a globally shared variable in the implementation of
+a concurrent data structure.
+The \texttt{get()} method of the queue implementation
+uses a local variable \textit{node}, declared using
+a \textbf{let} statement, but it would be easy to
+mistakenly use a global variable \textit{node} instead.
+If there is only one queue, this is not an issue.
+So, it is important to test not just one queue at a
+time, but also multiple queues.
+\autoref{fig:qtest4} gives an example that
+tests the \texttt{get} method for use of global
+variables.  Even if the assertion does not fail,
+Harmony might find a data race if there are global
+variables shared between different queues.
+
+While having five different test programs is fine,
+it would be nice if we can combine them all in one
+test program.
+This has to be done with some care, as running the
+concurrent test programs simultaneously would
+lead to a state space explosion.
+Instead, we can leverage the \textbf{choose}
+expression.
+\autoref{fig:multitest} shows how one might go
+about this.
+Harmony will run all the tests, but the
+tests do not interfere with one another.
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtest4}
+\end{code}
+\caption{\harmonylink{code/qtest4.hny} Test with multiple queues.}
+\label{fig:qtest4}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{multitest}
+\end{code}
+\caption{\harmonylink{code/multitest.hny} Running a
+sequential test followed by several concurrent tests.}
+\label{fig:multitest}
+\end{figure}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}
@@ -3077,7 +3328,7 @@ of a flag per thread?
 \label{fig:dinerssema}
 \end{figure}
 
-So far we have looked at how to protect a single resource.
+So far, we have looked at how to protect a single resource.
 Some types of resources may have multiple units.
 If there are only $n$ units, no more than $n$ units can be used at a time;
 if all are in use and a thread comes along that needs one of the units,
@@ -3343,7 +3594,7 @@ For example, a bounded buffer has two waiting conditions:
 \item consumers waiting for the buffer to be non-empty;
 \item producers waiting for an empty slot in the buffer.
 \end{enumerate}
-So it will require 3 binary semaphores if the SBS technique is applied.
+So, it will require 3 binary semaphores if the SBS technique is applied.
 
 Think of each of these semaphores as a gate that a thread must go
 through in order to enter the critical section.  A gate is either open
@@ -3548,7 +3799,7 @@ A \emph{property}
 is a set of traces.
 If a program has a certain property, that means that the traces that that
 program allows are a subset of the traces in the property.
-So far we have pursued two properties: \emph{mutual exclusion}
+So far, we have pursued two properties: \emph{mutual exclusion}
 and \emph{progress}.  The former is an example of a
 \emph{safety property}---it prevents something ``bad'' from
 happening, like a reader and writer thread both acquiring a
@@ -3597,7 +3848,7 @@ second reader tries to enter and is able to.  The first reader leaves.
 We are now in a similar situation as the initial state with one reader
 in the critical section and the writer waiting, but it is not the same
 reader.  Unfortunately for the writer, this scenario can repeat itself
-indefinitely.  So even if neither reader was in the critical section
+indefinitely.  So, even if neither reader was in the critical section
 all of the time, and the second reader arrived well after the writer,
 the writer never had a chance.
 
@@ -3827,7 +4078,7 @@ enters through a waiting gate, it can assume that the condition associated
 with the waiting gate still holds because no other thread can run in between.
 Not so with Mesa monitors: by the time a thread that was notified enters
 through the main gate, other threads may have entered first and falsified
-the condition.  So in Mesa, threads always have to check the condition
+the condition.  So, in Mesa, threads always have to check the condition
 again after resuming from the \texttt{wait} operation.  This is accomplished
 by wrapping each \texttt{wait} operation in a \textbf{while} statement that
 loops until the condition of interest becomes valid.
@@ -3948,7 +4199,7 @@ signaled one at a time in a baton-passing fashion (see
 awakened in one fell swoop using \texttt{notifyAll}.  Second, both
 readers and writers are awakened---this is ok because both execute
 \texttt{wait} within a \textbf{while} loop, re-checking the condition
-that they are waiting for.  So if both type of threads are waiting,
+that they are waiting for.  So, if both type of threads are waiting,
 either all the readers get to enter next or one of the writers gets
 to enter next.  (If you want to prevent waking up both readers and
 a writer, then you can keep track of how many threads are waiting
@@ -3962,7 +4213,7 @@ Much of the complexity of programming with Mesa condition variables
 is in figuring out when to invoke \texttt{notify} and when to invoke
 \texttt{notifyAll}.  As a rule of thumb: be conservative---it is
 better to wake up too many threads than too few.
-So in case of doubt, use \texttt{notifyAll}.
+In case of doubt, use \texttt{notifyAll}.
 Waking up too
 many threads may lead to some inefficiency, but waking up too few
 may cause the application to get stuck.  Harmony can be particularly
@@ -4188,7 +4439,7 @@ There is, however, another approach, which is sometimes called deadlock
 \index{deadlock avoidance}%
 instead of deadlock \emph{prevention}.
 In the case of the Dining Philosophers, we want to avoid the situation where each
-diner picks up a fork.  So if we can prevent more than four diners from starting to
+diner picks up a fork.  If we can prevent more than four diners from starting to
 eat at the same time, then we can avoid the conditions for deadlock from ever
 happening.
 \autoref{fig:dinersavoid} demonstrates this concept.  It uses a
@@ -4605,7 +4856,7 @@ There is another important rule to keep in mind.  Just like locks should never b
 for long, interrupts should never be disabled for long.  With locks the issue is to
 maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
-handlers must run quickly and cannot wait for other events.  So it is ok to invoke
+handlers must run quickly and cannot wait for other events.  It is ok to invoke
 non-blocking synchronization calls such as \texttt{notify}, but calls such as
 \texttt{acquire} and \texttt{wait} should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
@@ -4637,7 +4888,7 @@ The method also needs to be interrupt-safe.
 \label{fig:hw}
 \end{figure}
 
-So far we have concentrated on critical sections to synchronize multiple
+So far, we have concentrated on critical sections to synchronize multiple
 threads.  Certainly, preventing multiple threads from accessing
 certain code at the same time simplifies how to think about synchronization.
 However, it can lead to starvation.  Even in the absence of starvation,
@@ -5792,7 +6043,7 @@ unexpected differences.  For example, consider the following code:
 
 In Python, lists are objects.  Thus $x$ and $y$ point to the same list,
 and the assertion would fail if executed by Python.
-In Harmony, lists are values.  So when $x$ is updated in Line~2, it does
+In Harmony, lists are values.  So, when $x$ is updated in Line~2, it does
 not affect the value of $y$.  The assertion succeeds.
 Harmony supports references to values (\autoref{ch:method}),
 allowing programs to implement shared objects.
@@ -5869,18 +6120,18 @@ can be modified, we discourage it for improved code readability.
 In Harmony, there is no syntactic difference between applying an argument to a function
 or an index to a dictionary.  Both use the syntax \textit{a b c ...}.
 We call this \emph{application}, and application is left-associative.
-So \textit{a b c} is interpreted as (\textit{a b}) $c$: $b$ is applied to $a$,
+So, \textit{a b c} is interpreted as (\textit{a b}) $c$: $b$ is applied to $a$,
 and then $c$ is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
 $a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
 
 There are three classes of precedence.
-Application has the highest precedence.  So \texttt{!}\textit{a b} is interpreted as
+Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
 \texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
 (\textit{a b}) \texttt{+} (\textit{c d}).
 Unary operators have the next highest precedence,
 and the remaining operators have the lowest precedence.
-So $-2 + 3$ evaluates to 1, not $-5$.
+For example, $-2 + 3$ evaluates to 1, not $-5$.
 
 Associative operators ($+$, $*$, $|$, $\string&$, $\string^$, \textbf{and}, \textbf{or})
 are interpreted as general $n$-ary operators, and you are allowed to write
@@ -5889,7 +6140,8 @@ arity larger than one, such as $a + b < c$.
 In such cases you have to add parentheses or brackets to indicate what
 the intended evaluation order is, such as $(a + b) < c$.
 
-In almost all expressions, subexpressions are evaluated left to right.  So $a[b] + c$
+In almost all expressions, subexpressions are evaluated left to right.
+So, $a[b] + c$
 first evaluates $a$, then $b$ (and then applies $b$ to $a$), and then $c$.  The one
 exception is the expression $a$ \textbf{if} $c$ \textbf{else} $b$, where $c$ is evaluated
 first.  In that expression, only $a$ or $b$ is evaluated depending on the value of $c$.
@@ -5913,7 +6165,7 @@ Harmony's tuples and, equivalently, lists, are just special cases of dictionarie
 They can be bracketed either by '(' and ')' or by '[' and ']', but
 the brackets are often optional.  Importantly, with a singleton list, the
 one element must be followed by a comma.
-So the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
+For example, the statement \texttt{$x$ = 1,;} assigns a singleton tuple (or list) to $x$.
 
 Because tuples and lists are dictionaries, the \texttt{del} statement is
 different from Python.  For example, if $x$ = [.a, .b, .c], then

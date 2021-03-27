@@ -56,6 +56,7 @@ CODE = \
     lockintf.tex \
     locksusp.tex \
     mesa.tex \
+    multitest.tex \
     naiveFlags.tex \
     naiveLock.tex \
     naiveTurn.tex \
@@ -65,7 +66,13 @@ CODE = \
     qbarrier.tex \
     queue.tex \
     queueMS.tex \
-    queuetest.tex \
+    queuedemo.tex \
+    queuespec.tex \
+    qtestseq.tex \
+    qtest1.tex \
+    qtest2.tex \
+    qtest3.tex \
+    qtest4.tex \
     qsort.tex \
     qsorttest.tex \
     spinlock.tex \
