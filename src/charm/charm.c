@@ -1570,8 +1570,10 @@ int main(int argc, char **argv){
     case FAIL_RACE:
         assert(bad->address != VALUE_ADDRESS);
         char *addr = value_string(bad->address);
-        printf("Data race (%s)\n", addr);
-        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", addr);
+        char *json = json_string_encode(addr, strlen(addr));
+        printf("Data race (%s)\n", json);
+        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
+        free(json);
         free(addr);
         break;
     default:

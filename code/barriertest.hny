@@ -4,6 +4,8 @@ const NROUNDS = 3
 const NTHREADS = 3
 
 barr = barrier.Barrier(NTHREADS)
+
+sequential round
 round = [None,] * NTHREADS
 
 def thread(self):

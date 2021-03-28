@@ -10,6 +10,11 @@ def tas(s, p):
         !p = !s
         !s = True
 
+def clear(s):
+    atomic:
+        assert !s
+        !s = False
+
 def thread(self):
     while choose({ False, True }):
         # Enter critical section
@@ -21,7 +26,7 @@ def thread(self):
 
         # Leave critical section
         private[self] = True
-        shared = False
+        clear(?shared)
 
 for i in {0..N-1}:
     spawn thread(i)

@@ -3,6 +3,7 @@ from synch import Queue, put, get
 const NTHREADS = 3
 const NROUNDS = 4
 
+sequential round
 round = [0,] * NTHREADS
 q = [Queue(),] * NTHREADS
 

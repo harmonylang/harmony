@@ -14,6 +14,11 @@ def barrier_enter(self):
 def barrier_exit(self):
     pass
 
+sequential round, done
+
+round = [None,] * NTHREADS
+done = [False,] * NTHREADS
+
 # check that all non-None values in round are the same
 def check():
     result = True
