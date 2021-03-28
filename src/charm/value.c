@@ -674,6 +674,7 @@ uint64_t value_pc(struct dict *map){
 uint64_t value_atom(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
+	assert(value->u.atom.len > 0);
     void *p = dict_find(atom_map, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }

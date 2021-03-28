@@ -1401,7 +1401,7 @@ int main(int argc, char **argv){
                                 f->ctx = node->before;
                                 f->choice = node->choice;
                                 f->node = node;
-                                f->address = value_put_address(ai->indices, ai->n);
+                                f->address = value_put_address(ai->indices, ai->n * sizeof(uint64_t));
                                 queue_enqueue(warnings, f);
                             }
                             else {
@@ -1418,7 +1418,7 @@ int main(int argc, char **argv){
                                                 f->ctx = node->before;
                                                 f->choice = node->choice;
                                                 f->node = node;
-                                                f->address = value_put_address(ai->indices, min);
+                                                f->address = value_put_address(ai->indices, min * sizeof(uint64_t));
                                                 queue_enqueue(warnings, f);
                                             }
                                         }

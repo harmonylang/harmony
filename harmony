@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1475
+1,1, 1476
 
 ]
 
@@ -2085,7 +2085,7 @@ int main(int argc, char **argv){
                                 f->ctx = node->before;
                                 f->choice = node->choice;
                                 f->node = node;
-                                f->address = value_put_address(ai->indices, ai->n);
+                                f->address = value_put_address(ai->indices, ai->n * sizeof(uint64_t));
                                 queue_enqueue(warnings, f);
                             }
                             else {
@@ -2102,7 +2102,7 @@ int main(int argc, char **argv){
                                                 f->ctx = node->before;
                                                 f->choice = node->choice;
                                                 f->node = node;
-                                                f->address = value_put_address(ai->indices, min);
+                                                f->address = value_put_address(ai->indices, min * sizeof(uint64_t));
                                                 queue_enqueue(warnings, f);
                                             }
                                         }
@@ -2253,11 +2253,10 @@ int main(int argc, char **argv){
 		break;
     case FAIL_RACE:
         assert(bad->address != VALUE_ADDRESS);
-        // char *addr = value_string(bad->address);
-        char *addr = "xxx";
+        char *addr = value_string(bad->address);
         printf("Data race (%s)\n", addr);
         fprintf(out, "  \"issue\": \"Data race (%s)\",\n", addr);
-        // free(addr);
+        free(addr);
         break;
     default:
         panic("main: bad fail type");
@@ -2391,6 +2390,8 @@ bool file_read(char *filename, /* OUT */ json_buf_t *buf){
 }
 #endif // notdef
 
+#include <assert.h>
+
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #endif
@@ -2479,6 +2480,7 @@ void dict_resize(struct dict *dict, int newsize) {
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
+	assert(keyn > 0);
 	int n = hash_func((const char*)key, keyn) % dict->length;
 	if (dict->table[n] == 0) {
 		double f = (double)dict->count / (double)dict->length;
@@ -6553,6 +6555,7 @@ uint64_t value_pc(struct dict *map){
 uint64_t value_atom(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
+	assert(value->u.atom.len > 0);
     void *p = dict_find(atom_map, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }

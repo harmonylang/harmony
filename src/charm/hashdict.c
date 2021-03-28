@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #endif
@@ -86,6 +88,7 @@ void dict_resize(struct dict *dict, int newsize) {
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
+	assert(keyn > 0);
 	int n = hash_func((const char*)key, keyn) % dict->length;
 	if (dict->table[n] == 0) {
 		double f = (double)dict->count / (double)dict->length;
