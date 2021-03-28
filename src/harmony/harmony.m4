@@ -2484,10 +2484,37 @@ class ApplyAST(AST):
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
-    def compile(self, scope, code):
-        # See if it's of the form "module.constant":
+    def varCompile(self, scope, code):
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
+            if t == "global":
+                self.method.ph1(scope, code)
+                self.arg.compile(scope, code)
+                code.append(AddressOp())
+                return True
+            else:
+                return False
+
+        if isinstance(self.method, PointerAST):
+            self.method.expr.compile(scope, code)
+            self.arg.compile(scope, code)
+            code.append(AddressOp())
+            return True
+
+        if isinstance(self.method, ApplyAST):
+            if self.method.varCompile(scope, code):
+                self.arg.compile(scope, code)
+                code.append(AddressOp())
+                return True;
+            else:
+                return False
+
+        return False
+
+    def compile(self, scope, code):
+        if isinstance(self.method, NameAST):
+            (t, v) = scope.lookup(self.method.name)
+            # See if it's of the form "module.constant":
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
@@ -2502,10 +2529,7 @@ class ApplyAST(AST):
                 return
 
         # Decrease chances of data race
-        if isinstance(self.method, PointerAST):
-            self.method.expr.compile(scope, code)
-            self.arg.compile(scope, code)
-            code.append(AddressOp())
+        if self.varCompile(scope, code):
             code.append(LoadOp(None, self.token, None))
             return
 

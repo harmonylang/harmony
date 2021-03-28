@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1476
+1,1, 1479
 
 ]
 
@@ -394,11 +394,12 @@ def malloc(v):
         result = ?pool[next]
         next += 1
 
+# Commented out code tests for bad frees, but can lead to data races
 def free(r):
     atomic:
-        let poolcopy = pool:
+#        let poolcopy = pool:
             del !r
-            assert poolcopy != pool, .bad_free
+#           assert poolcopy != pool, .bad_free
 
 def leak_check():
     assert pool == [], .alloc_leak
@@ -2254,8 +2255,10 @@ int main(int argc, char **argv){
     case FAIL_RACE:
         assert(bad->address != VALUE_ADDRESS);
         char *addr = value_string(bad->address);
-        printf("Data race (%s)\n", addr);
-        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", addr);
+        char *json = json_string_encode(addr, strlen(addr));
+        printf("Data race (%s)\n", json);
+        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
+        free(json);
         free(addr);
         break;
     default:
@@ -10230,10 +10233,37 @@ class ApplyAST(AST):
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
 
-    def compile(self, scope, code):
-        # See if it's of the form "module.constant":
+    def varCompile(self, scope, code):
         if isinstance(self.method, NameAST):
             (t, v) = scope.lookup(self.method.name)
+            if t == "global":
+                self.method.ph1(scope, code)
+                self.arg.compile(scope, code)
+                code.append(AddressOp())
+                return True
+            else:
+                return False
+
+        if isinstance(self.method, PointerAST):
+            self.method.expr.compile(scope, code)
+            self.arg.compile(scope, code)
+            code.append(AddressOp())
+            return True
+
+        if isinstance(self.method, ApplyAST):
+            if self.method.varCompile(scope, code):
+                self.arg.compile(scope, code)
+                code.append(AddressOp())
+                return True;
+            else:
+                return False
+
+        return False
+
+    def compile(self, scope, code):
+        if isinstance(self.method, NameAST):
+            (t, v) = scope.lookup(self.method.name)
+            # See if it's of the form "module.constant":
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
@@ -10248,10 +10278,7 @@ class ApplyAST(AST):
                 return
 
         # Decrease chances of data race
-        if isinstance(self.method, PointerAST):
-            self.method.expr.compile(scope, code)
-            self.arg.compile(scope, code)
-            code.append(AddressOp())
+        if self.varCompile(scope, code):
             code.append(LoadOp(None, self.token, None))
             return
 

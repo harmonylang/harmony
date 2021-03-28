@@ -5,6 +5,7 @@ const NROUNDS = 4
 
 sequential round
 round = [0,] * NTHREADS
+
 q = [Queue(),] * NTHREADS
 
 def thread(self):
