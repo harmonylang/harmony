@@ -96,24 +96,24 @@ echo ==============
 ./harmony code/atm.hny
 
 echo ==============
-echo queuetest
+echo queuedemo
 echo ==============
-./harmony code/queuetest.hny
+./harmony code/queuedemo.hny
 
 echo ==============
-echo queuetest synchS
+echo queuedemo synchS
 echo ==============
-./harmony -msynch=synchS code/queuetest.hny
+./harmony -msynch=synchS code/queuedemo.hny
 
 echo ==============
 echo queueMS.hny
 echo ==============
-./harmony -mqueue=queueMS code/queuetest.hny
+./harmony -mqueue=queueMS code/queuedemo.hny
 
 echo ==============
 echo queueMS.hny synchS
 echo ==============
-./harmony -mqueue=queueMS -msynch=synchS code/queuetest.hny
+./harmony -mqueue=queueMS -msynch=synchS code/queuedemo.hny
 
 echo ==============
 echo lltest

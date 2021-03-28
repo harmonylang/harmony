@@ -2279,6 +2279,7 @@ variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of \autoref{fig:uplock},
 but uses test-and-set to check and set the lock variable atomically.
+The lock is also cleared in an \textbf{atomic} block to prevent a data race.
 This approach is general for any number of threads.
 
 It is important to appreciate the difference between an

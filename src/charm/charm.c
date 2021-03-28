@@ -17,19 +17,19 @@ struct combined {           // combination of current state and current context
 };
 
 struct component {
-    bool good;          // terminating or out-going edge
-    int size;           // #states
-    int representative; // lowest numbered state in the component
+    bool good;              // terminating or out-going edge
+    int size;               // #states
+    int representative;     // lowest numbered state in the component
 };
 
 struct edge {
-    struct edge *next;      // linked list maintenance
-    uint64_t ctx, choice;   // ctx that made the microstep, choice if any
-    bool interrupt;         // set if state change is an interrupt
-    struct node *node;      // resulting node (state)
-    uint64_t after;         // resulting context
-    int weight;             // 1 if context switch; 0 otherwise
-    struct access_info ai;  // to detect data races
+    struct edge *next;       // linked list maintenance
+    uint64_t ctx, choice;    // ctx that made the microstep, choice if any
+    bool interrupt;          // set if state change is an interrupt
+    struct node *node;       // resulting node (state)
+    uint64_t after;          // resulting context
+    int weight;              // 1 if context switch; 0 otherwise
+    struct access_info *ai;  // to detect data races
 };
 
 struct node {
@@ -57,6 +57,7 @@ struct failure {
     struct node *node;      // failed state
     uint64_t ctx;           // context that failed (before it failed)
     uint64_t choice;        // choice if any
+    uint64_t address;       // in case of data race
 };
 
 struct code *code;
@@ -158,6 +159,16 @@ void check_invariants(struct node *node, struct context **pctx){
     }
 }
 
+// For tracking data races
+struct access_info *ai_alloc(int multiplicity, int atomic, int pc){
+    struct access_info *ai = calloc(1, sizeof(*ai));
+
+    ai->multiplicity = multiplicity;
+    ai->atomic = atomic;
+    ai->pc = pc;
+    return ai;
+}
+
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         struct dict *visited, struct queue *todo, struct context **pinv_ctx,
         bool infloop_detect, int multiplicity, double timeout){
@@ -190,9 +201,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
-    struct access_info ai;
-    memset(&ai, 0, sizeof(ai));
-    ai.multiplicity = multiplicity;
+    struct access_info *ai_list = NULL;
     for (int loopcnt = 0;; loopcnt++) {
         int pc = cc->pc;
 
@@ -222,22 +231,16 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             cc->pc++;
         }
         else {
-            if (loopcnt == 0) {
-                if (code[pc].load) {
-                    ext_Load(code[pc].env, sc, &cc, &ai);
-                    ai.pc = pc;
-                }
-                else if (code[pc].store) {
-                    ext_Store(code[pc].env, sc, &cc, &ai);
-                    ai.pc = pc;
-                }
-                else if (code[pc].del) {
-                    ext_Del(code[pc].env, sc, &cc, &ai);
-                    ai.pc = pc;
-                }
-                else {
-                    (*oi->op)(code[pc].env, sc, &cc);
-                }
+            if (code[pc].load || code[pc].store || code[pc].del) {
+                struct access_info *ai = ai_alloc(multiplicity, cc->atomic, pc);
+                if (code[pc].load)
+                    ext_Load(code[pc].env, sc, &cc, ai);
+                else if (code[pc].store)
+                    ext_Store(code[pc].env, sc, &cc, ai);
+                else
+                    ext_Del(code[pc].env, sc, &cc, ai);
+                ai->next = ai_list;
+                ai_list = ai;
             }
             else {
                 (*oi->op)(code[pc].env, sc, &cc);
@@ -405,7 +408,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     fwd->weight = weight;
     fwd->next = node->fwd;
     fwd->after = after;
-    fwd->ai = ai;
+    fwd->ai = ai_list;
     node->fwd = fwd;
 
     // Add a backward edge from next to node.
@@ -417,7 +420,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     bwd->weight = weight;
     bwd->next = next->bwd;
     bwd->after = after;
-    bwd->ai = ai;
+    bwd->ai = ai_list;
     next->bwd = bwd;
 
     if (cc->failure != 0) {
@@ -1370,13 +1373,8 @@ int main(int argc, char **argv){
             size /= sizeof(uint64_t);
             assert(size > 0);
             for (int i = 0; i < size; i++) {
-                if (false) {
-                    printf("NEXT CHOICE %d %d %"PRIx64"\n", i, size, vals[i]);
-                }
-                onestep(node, state->choosing, vals[i], false, visited, todo, &inv_ctx, false, 1, timeout);
-                if (false) {
-                    printf("NEXT CHOICE DONE\n");
-                }
+                onestep(node, state->choosing, vals[i], false, visited, todo,
+                                &inv_ctx, false, 1, timeout);
             }
         }
         else {
@@ -1385,51 +1383,45 @@ int main(int argc, char **argv){
             size /= sizeof(uint64_t);
             assert(size > 0);
             for (int i = 0; i < size; i += 2) {
-                if (false) {
-                    printf("NEXT CONTEXT %d %"PRIx64"\n", i, ctxs[i]);
-                }
                 assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                 assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
                 onestep(node, ctxs[i], 0, false, visited, todo, &inv_ctx,
                                 false, ctxs[i+1] >> VALUE_BITS, timeout);
-                if (false) {
-                    printf("NEXT CONTEXT DONE\n");
-                }
             }
 
             // Check for data race
             if (queue_empty(warnings) && !cflag) {
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                    if (edge->ai.indices != NULL) {
-                        if (edge->ai.multiplicity > 1 && !edge->ai.load) {
-                            struct failure *f = new_alloc(struct failure);
-                            f->type = FAIL_RACE;
-                            f->ctx = node->before;
-                            f->choice = node->choice;
-                            f->node = node;
-                            queue_enqueue(warnings, f);
-                        }
-                        else {
-                            for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
-                                if (edge2->ai.indices != NULL && !(edge->ai.load && edge2->ai.load)) {
-                                    int min = edge->ai.n < edge2->ai.n ? edge->ai.n : edge2->ai.n;
-                                    if (min > 0 && memcmp(edge->ai.indices, edge2->ai.indices,
-                                                        min * sizeof(uint64_t)) == 0) {
-                                        if (false) {
-                                            printf("Data race in node %d/%d (%d, %d):", node->id, node->parent->id,
-                                                    edge->ai.pc, edge2->ai.pc);
-                                            for (int i = 0; i < min; i++) {
-                                                printf(" %s", value_string(edge->ai.indices[i]));
+                    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
+                        if (ai->indices != NULL) {
+                            assert(ai->n > 0);
+                            if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
+                                struct failure *f = new_alloc(struct failure);
+                                f->type = FAIL_RACE;
+                                f->ctx = node->before;
+                                f->choice = node->choice;
+                                f->node = node;
+                                f->address = value_put_address(ai->indices, ai->n);
+                                queue_enqueue(warnings, f);
+                            }
+                            else {
+                                for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
+                                    for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
+                                        if (ai2->indices != NULL && !(ai->load && ai2->load) &&
+                                                                (ai->atomic == 0 || ai2->atomic == 0)) {
+                                            int min = ai->n < ai2->n ? ai->n : ai2->n;
+                                            assert(min > 0);
+                                            if (memcmp(ai->indices, ai2->indices,
+                                                                min * sizeof(uint64_t)) == 0) {
+                                                struct failure *f = new_alloc(struct failure);
+                                                f->type = FAIL_RACE;
+                                                f->ctx = node->before;
+                                                f->choice = node->choice;
+                                                f->node = node;
+                                                f->address = value_put_address(ai->indices, min);
+                                                queue_enqueue(warnings, f);
                                             }
-                                            printf("\n");
                                         }
-
-                                        struct failure *f = new_alloc(struct failure);
-                                        f->type = FAIL_RACE;
-                                        f->ctx = node->before;
-                                        f->choice = node->choice;
-                                        f->node = node;
-                                        queue_enqueue(warnings, f);
                                     }
                                 }
                             }
@@ -1576,8 +1568,11 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
 		break;
     case FAIL_RACE:
-        printf("Data race\n");
-        fprintf(out, "  \"issue\": \"Data race\",\n");
+        assert(bad->address != VALUE_ADDRESS);
+        char *addr = value_string(bad->address);
+        printf("Data race (%s)\n", addr);
+        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", addr);
+        free(addr);
         break;
     default:
         panic("main: bad fail type");

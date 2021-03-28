@@ -111,11 +111,13 @@ uint64_t bag_add(uint64_t bag, uint64_t v);
 void ctx_push(struct context **pctx, uint64_t v);
 
 struct access_info {
-    uint64_t *indices;      // address of load/store
-    int n;                  // length of address
-    bool load;              // store or del if false
-    int pc;                 // for debugging
-    int multiplicity;       // #identical contexts
+    struct access_info *next; // linked list maintenance
+    uint64_t *indices;        // address of load/store
+    int n;                    // length of address
+    bool load;                // store or del if false
+    int pc;                   // for debugging
+    int multiplicity;         // #identical contexts
+    int atomic;               // atomic counter
 };
 
 struct env_Cut {
