@@ -106,6 +106,51 @@ echo ==============
 ./harmony -msynch=synchS code/queuedemo.hny
 
 echo ==============
+echo qtestseq
+echo ==============
+./harmony code/qtestseq.hny
+
+echo ==============
+echo qtest1
+echo ==============
+./harmony code/qtest1.hny
+
+echo ==============
+echo qtest1 synchS
+echo ==============
+./harmony -msynch=synchS code/qtest1.hny
+
+echo ==============
+echo qtest2
+echo ==============
+./harmony code/qtest2.hny
+
+echo ==============
+echo qtest2 synchS
+echo ==============
+./harmony -msynch=synchS code/qtest2.hny
+
+echo ==============
+echo qtest3
+echo ==============
+./harmony code/qtest3.hny
+
+echo ==============
+echo qtest3 synchS
+echo ==============
+./harmony -msynch=synchS code/qtest3.hny
+
+echo ==============
+echo qtest4
+echo ==============
+./harmony code/qtest4.hny
+
+echo ==============
+echo qtest4 synchS
+echo ==============
+./harmony -msynch=synchS code/qtest4.hny
+
+echo ==============
 echo queueMS.hny
 echo ==============
 ./harmony -mqueue=queueMS code/queuedemo.hny
