@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1479
+1,1, 1480
 
 ]
 
@@ -397,9 +397,9 @@ def malloc(v):
 # Commented out code tests for bad frees, but can lead to data races
 def free(r):
     atomic:
-#        let poolcopy = pool:
+       # let poolcopy = pool:
             del !r
-#           assert poolcopy != pool, .bad_free
+       #    assert poolcopy != pool, .bad_free
 
 def leak_check():
     assert pool == [], .alloc_leak
