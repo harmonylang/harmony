@@ -3311,6 +3311,12 @@ class MethodAST(AST):
         code.append(ReturnOp())
         code[pc] = JumpOp(len(code))
 
+        # promote global variables
+        for name, (t, v) in ns.names.items():
+            if t == "global":
+                assert (name not in scope.names) or (scope.names[name] == (t, v))
+                scope.names[name] = (t, v)
+
     def getLabels(self):
         return { self.name }
 
@@ -4373,7 +4379,7 @@ class Scope:
                 return tv
             ancestor = ancestor.parent
         # print("Warning: unknown name:", name, " (assuming global variable)")
-        self.names[lexeme] = ("global", lexeme)
+        self.names[lexeme] = ("global", name)
         return ("global", lexeme)
 
     def find(self, name):
@@ -4381,7 +4387,7 @@ class Scope:
         tv = self.names.get(lexeme)
         if tv != None:
             return tv
-        self.names[lexeme] = ("global", lexeme)
+        self.names[lexeme] = ("global", name)
         # print("Warning: unknown name:", name, " (find)")
         return ("global", lexeme)
 
