@@ -3299,15 +3299,20 @@ class MethodAST(AST):
         scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
 
         ns = Scope(scope)
+        tmp = PcValue(-1)
+        for (lexeme, file, line, column) in self.stat.getLabels():
+            ns.names[lexeme] = ("constant", (tmp, file, line, column))
         self.assign(ns, self.args)
         ns.names["result"] = ("local", ("result", file, line, column))
+        before = len(code)
+        self.stat.compile(ns, code)
+        del code[before:]
         self.stat.compile(ns, code)
         code.append(ReturnOp())
-
         code[pc] = JumpOp(len(code))
 
     def getLabels(self):
-        return { self.name } | self.stat.getLabels()
+        return { self.name }
 
     def getImports(self):
         return self.stat.getImports()
@@ -3461,8 +3466,8 @@ class LabelStatAST(AST):
             self.ast.compile(scope, code)
         else:
             root = scope
-            while root.parent != None:
-                root = root.parent
+            # while root.parent != None:
+            #     root = root.parent
             for (lexeme, file, line, column) in self.labels:
                 root.names[lexeme] = \
                     ("constant", (PcValue(len(code)), file, line, column))
