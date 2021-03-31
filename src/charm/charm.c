@@ -978,7 +978,6 @@ void path_dump(FILE *file, struct node *last, uint64_t choice,
             break;
         }
     }
-    if (pid == nprocesses) { printf(">>>>>>>>>>> %llx\n", ctx); }
 
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
