@@ -3313,8 +3313,7 @@ class MethodAST(AST):
 
         # promote global variables
         for name, (t, v) in ns.names.items():
-            if t == "global":
-                assert (name not in scope.names) or (scope.names[name] == (t, v))
+            if t == "global" and name not in scope.names:
                 scope.names[name] = (t, v)
 
     def getLabels(self):
