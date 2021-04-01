@@ -53,6 +53,12 @@ XX\=XXX\=XXX\kill
   description={is a concurrency model where there are no shared variables, only
       threads with private variables that communicate through message passing}
 }
+\newglossaryentry{atomic instruction}
+{
+  name=atomic instruction,
+  description={a machine instruction that may involve  multiple memory load and/or store
+    operations and is executed atomically}
+}
 \newglossaryentry{atomicity}
 {
   name=atomicity,
@@ -136,12 +142,6 @@ XX\=XXX\=XXX\kill
   name=fairness,
   description={is when each thread eventually can access each resource it needs to access
     with high probability}
-}
-\newglossaryentry{interlock instruction}
-{
-  name=interlock instruction,
-  description={a machine instruction that involves multiple memory load and/or store
-    operations, executed atomically}
 }
 \newglossaryentry{invariant}
 {
@@ -2135,34 +2135,64 @@ not \emph{atomic}.  Thus multiple threads contending for the lock
 can all ``grab the lock'' at the same time.  While Peterson's
 algorithm gets around the problem, it is not efficient, especially
 if generalized to multiple threads.
-Worse, most modern processors make accessing shared memory locations
-non-atomic to allow for efficient caching, out-of-order execution,
-and other optimizations.
-And even compilers may re-order memory accesses when optimizing code.
+Worse, Peterson relies on load and store operations to be executed
+atomically, but this may not be the case.
+There are a variety of possible reasons for this.
 
-Peterson's algorithm relies on a sequential consistent memory model,
+\begin{itemize}
+\item Variables may have more bits than the processor's data bus.
+For example, variables may have 32 bits, but the data bus may only
+have 16 bits.  Thus to store or load a variable takes two 16-bit
+operations each.  Take, for example, a variable that has value
+0xFFFFFFFF, and consider a concurrent load and store operation on
+the variable.
+The store operation wants to clear the variable, but because it
+takes two store operations on the bus, the load operation may
+return either 0xFFFF0000 or 0x0000FFFF, a value that the variable
+never was supposed to have.
+This is the case even if the processor supports a 32-bit load or
+store machine instruction: on the data bus it is still two
+operations.
+\item Modern processors sometimes re-orders load and store operations
+(out-of-order execution) for improved performance.  On a sequential processor,
+the re-ordering is not a problem as the processor only re-orders
+operations on independent memory locations.  However, as \autoref{ex:reorder}
+showed, Peterson's algorithm breaks down if operations are re-ordered.
+Some memory caches can also cause non-atomic behavior of memory when shared
+among multiple cores.
+\item Even compilers, in their code generation, may make optimizations
+that can reorder operations, or even eliminate operations, on variables.
+For example, a compiler may decide that it is unnecessary to read the same
+variable more than once, because how could it possibly change if there
+are no store operations?
+\end{itemize}
+
+Peterson's algorithm relies on a \emph{sequential consistent memory model}
 and hence the \textbf{sequential} statement: without it Harmony will
 complain about data races.
 More precisely, the \textbf{sequential} statement says that the
 program relies on memory load and store instructions operating on
-the indicated variables to be performed sequentially.
+the indicated variables to be performed sequentially, and that this
+order should be consistent with the order of operations invoked on each
+thread.
 The default memory models of C and Java are not sequentially
 consistent.
 The unfortunately named \texttt{volatile} keyword in Java has
 a similar function as Harmony's \texttt{sequential} keyword.
 Like many constructions in Java, its \texttt{volatile} keyword
-was borrowdd from C and C++.
+was borrowed from C and C++.
 However, in C and C++ they do \emph{not} provide sequential
 consistency, and one cannot implement Peterson's algorithm in
 C or C++ directly.
 
-\glsadd{interlock instruction}%
+\glsadd{atomic instruction}%
 For proper synchronization, multi-core processors provide so-called
-\emph{interlock instructions}: \index{interlock instruction}%
+\emph{atomic instructions}: \index{atomic instruction}%
 special machine instructions
 that can read memory and then write it in an indivisible step.
 %
-While the HVM does not have any specific built-in interlock instructions,
+While the HVM does not have any specific built-in atomic instructions
+besides loading and storing variables,
 it does have support for executing multiple instructions atomically.
 This feature is available in the Harmony language in two ways.
 First, any Harmony statement can be made atomic by placing a label in front
@@ -2171,7 +2201,7 @@ through the \textbf{atomic}
 \index{atomic statement}%
 statement.
 We can use \textbf{atomic} statement blocks to implement a wide variety of
-interlock operations.
+atomic operations.
 For example, we could fix the program in \autoref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
 \begin{code}
@@ -2295,7 +2325,7 @@ Python, C, or Java support it), while the latter
 is very common.
 
 In Harmony, \textbf{atomic} statements allow you to \emph{implement} your own
-interlock primitives such as test-and-set.  Other common examples
+atomic primitives such as test-and-set.  Other common examples
 include compare-and swap and fetch-and-add.  \textbf{atomic} statements
 are not intended to replace locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
@@ -2355,7 +2385,7 @@ For the same reason that you should not use \textbf{atomic}
 statements in your ordinary synchronization code, you should not use
 \textbf{sequential} statements either.  Neither is supported by regular
 programming languages.  They exist in Harmony for the purpose of
-defining interlock instructions and for testing.
+defining atomic instructions and for testing.
 The statements should only appear in modules that define synchronization
 primitives or in test programs.
 \end{comment}
@@ -4909,7 +4939,7 @@ is not necessarily practical.
 There are two variables.  \textit{items} is an unbounded array with each
 entry initialized to \texttt{None}.  \textit{back} is an index into the
 array and points to the next slot where a new value is inserted.
-The code uses two interlock instructions:
+The code uses two atomic operations:
 \begin{itemize}
 \item \texttt{inc}($p$): atomically increments \texttt{!}$p$ and returns
 the old value;
@@ -4937,7 +4967,7 @@ Unfortunately, the solution is not practical for the following reasons:
 \item The \textit{items} array must be of infinite size if an unbounded number
 of items may be produced;
 \item Each slot in the array is only used once, which is inefficient;
-\item the \texttt{inc} and \texttt{exch} interlock instructions are not
+\item the \texttt{inc} and \texttt{exch} atomic operations are not
 universally available on existing processors.
 \end{itemize}
 However, in the literature you can find examples of practical
@@ -5678,7 +5708,7 @@ and condition variables.
 \hline
 \texttt{Condition()} & return a condition variable\\
 \hline
-\texttt{wait($c$, $m$)} & wait on condition variable pointed to be $c$ in monitor pointed to by $m$\\
+\texttt{wait($c$, $m$)} & wait on condition variable pointed to by $c$ in monitor pointed to by $m$\\
 \hline
 \texttt{signal($c$, $m$)} & signal a condition variable\\
 \hline
@@ -6348,9 +6378,11 @@ Anneke van Renesse,
 Brendon Nguyen,
 Hartek Sabharwal,
 Heather Zheng,
+Jack Rehmann,
 Jacob Brugh,
 Lorenzo Alvisi,
 Maria Martucci,
+Phillip O'Reggio,
 Saleh Hassen,
 Sunwook Kim,
 Terryn Jung,
