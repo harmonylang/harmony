@@ -309,9 +309,13 @@ def lexer(s, file):
     column = 1
     cont = 1
     s = s.replace('\\r', '')        # MS-DOS...
+    indentChars = set()
+    indent = True
     while s != "":
         # see if it's a blank
         if s[0] in { " ", "\t" }:
+            if indent:
+                indentChars.add(s[0])
             s = s[1:]
             column += 1
             continue
@@ -331,7 +335,10 @@ def lexer(s, file):
             line += cont
             cont = 1
             column = 1
+            indent = True
             continue
+
+        indent = False
 
         # skip over line comments
         if s.startswith("#"):
@@ -469,6 +476,11 @@ def lexer(s, file):
         result += [ (s[0], file, line, column) ]
         s = s[1:]
         column += 1
+
+    if len(indentChars) > 1:
+        print("WARNING: do not mix tabs in spaces for indentation")
+        print("It is likely to lead to incorrect parsing and code generation")
+
     return result
 
 def strValue(v):
