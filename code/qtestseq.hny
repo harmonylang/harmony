@@ -1,22 +1,18 @@
-import queue
-import list
+import queue, queuespec
 
 const NOPS = 5
 const VALUES = { 1..NOPS }
 
 implq = queue.Queue()
-specq = []
+specq = queuespec.Queue()
 
 for i in {1..NOPS}:
     let op = choose({ .get, .put }):
         if op == .put:
             let v = choose(VALUES):
                 queue.put(?implq, v)
-                specq = list.append(specq, v)
+                queuespec.put(?specq, v)
         else:
-            let v = queue.get(?implq):
-                if v == None:
-                    assert specq == []
-                else:
-                    assert v == list.head(specq)
-                    specq = list.tail(specq)
+            let v = queue.get(?implq)
+            let w = queuespec.get(?specq):
+                assert v == w
