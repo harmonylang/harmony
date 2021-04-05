@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1494
+1,1, 1495
 
 ]
 
@@ -1960,8 +1960,8 @@ int main(int argc, char **argv){
     warnings = queue_init();
 
     // initialize modules
-    ops_init();
     value_init();
+    ops_init();
 
     // open the file
     FILE *fp = fopen(fname, "r");
@@ -1994,13 +1994,14 @@ int main(int argc, char **argv){
     }
 
     // Create an initial state
+	uint64_t this = value_put_atom("this", 4);
     struct context *init_ctx = new_alloc(struct context);;
     // uint64_t nv = value_put_atom("name", 4);
     // uint64_t tv = value_put_atom("tag", 3);
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
-    init_ctx->vars = VALUE_DICT;
+    init_ctx->vars = dict_store(VALUE_DICT, this, VALUE_DICT);
     init_ctx->atomic = 1;
     ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&init_ctx, VALUE_DICT);
@@ -2970,7 +2971,7 @@ struct var_tree {
     } u;
 };
 
-static uint64_t this = 0;
+static uint64_t this;
 static struct dict *ops_map, *f_map;
 extern struct code *code;
 
@@ -3664,8 +3665,8 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     uint64_t thisval = dict_load(oldvars, this);
 
     // try to match against parameters
-    (*pctx)->vars = dict_store(VALUE_DICT, result,
-        dict_store(VALUE_DICT, this, thisval));
+    (*pctx)->vars = dict_store(dict_store(VALUE_DICT, this, thisval),
+				result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
@@ -5790,7 +5791,7 @@ void ops_init(){
         void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
-    this = value_put_atom("this", 6);
+    this = value_put_atom("this", 4);
 }
 
 #include <stdlib.h>

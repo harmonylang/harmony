@@ -37,7 +37,7 @@ struct var_tree {
     } u;
 };
 
-static uint64_t this = 0;
+static uint64_t this;
 static struct dict *ops_map, *f_map;
 extern struct code *code;
 
@@ -731,8 +731,8 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     uint64_t thisval = dict_load(oldvars, this);
 
     // try to match against parameters
-    (*pctx)->vars = dict_store(VALUE_DICT, result,
-        dict_store(VALUE_DICT, this, thisval));
+    (*pctx)->vars = dict_store(dict_store(VALUE_DICT, this, thisval),
+				result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
@@ -2857,5 +2857,5 @@ void ops_init(){
         void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
-    this = value_put_atom("this", 6);
+    this = value_put_atom("this", 4);
 }

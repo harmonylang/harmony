@@ -1275,8 +1275,8 @@ int main(int argc, char **argv){
     warnings = queue_init();
 
     // initialize modules
-    ops_init();
     value_init();
+    ops_init();
 
     // open the file
     FILE *fp = fopen(fname, "r");
@@ -1309,13 +1309,14 @@ int main(int argc, char **argv){
     }
 
     // Create an initial state
+	uint64_t this = value_put_atom("this", 4);
     struct context *init_ctx = new_alloc(struct context);;
     // uint64_t nv = value_put_atom("name", 4);
     // uint64_t tv = value_put_atom("tag", 3);
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
-    init_ctx->vars = VALUE_DICT;
+    init_ctx->vars = dict_store(VALUE_DICT, this, VALUE_DICT);
     init_ctx->atomic = 1;
     ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&init_ctx, VALUE_DICT);
