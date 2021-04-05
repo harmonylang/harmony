@@ -147,6 +147,9 @@ def doImport(scope, code, module):
 def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
+    if tokens == []:
+        print("Empty file:", filename)
+        sys.exit(1)
 
     try:
         (ast, rem) = StatListRule(-1).parse(tokens)
@@ -4607,6 +4610,9 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
+    if tokens == []:
+        print("Empty constant")
+        sys.exit(1)
     try:
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:

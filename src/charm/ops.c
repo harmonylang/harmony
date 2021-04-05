@@ -37,6 +37,7 @@ struct var_tree {
     } u;
 };
 
+static uint64_t this = 0;
 static struct dict *ops_map, *f_map;
 extern struct code *code;
 
@@ -727,15 +728,17 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     ctx_push(pctx, arg);
 
     uint64_t oldvars = (*pctx)->vars;
+    uint64_t thisval = dict_load(oldvars, this);
 
     // try to match against parameters
-    (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_DICT);
+    (*pctx)->vars = dict_store(VALUE_DICT, result,
+        dict_store(VALUE_DICT, this, thisval));
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
     }
  
-    ctx_push(pctx, oldvars);
+    ctx_push(pctx, dict_remove(oldvars, this));
     ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
 
     struct context *ctx = *pctx;
@@ -1002,8 +1005,10 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
-        (*pctx)->vars = ctx_pop(pctx);
-        assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+        uint64_t thisval = dict_load((*pctx)->vars, this);
+        uint64_t oldvars = ctx_pop(pctx);
+        assert((oldvars & VALUE_MASK) == VALUE_DICT);
+        (*pctx)->vars = dict_store(oldvars, this, thisval);
         (void) ctx_pop(pctx);   // argument saved for stack trace
         if ((*pctx)->sp == 0) {     // __init__
             (*pctx)->terminated = true;
@@ -1143,20 +1148,18 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     assert(pc < code_len);
     assert(strcmp(code[pc].oi->name, "Frame") == 0);
     uint64_t arg = ctx_pop(pctx);
-    uint64_t this = ctx_pop(pctx);
-    if (false) {
-        printf("SPAWN %"PRIx64" %"PRIx64" %"PRIx64"\n", pc, arg, this);
-    }
+    uint64_t thisval = ctx_pop(pctx);
 
     struct context *ctx = new_alloc(struct context);
 
     const struct env_Frame *ef = code[pc].env;
     ctx->name = ef->name;
     ctx->arg = arg;
-    ctx->this = this;
+    ctx->this = thisval;
     ctx->entry = (pc << VALUE_BITS) | VALUE_PC;
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
+    ctx->vars = dict_store(VALUE_DICT, this, thisval);
     ctx->interruptlevel = VALUE_FALSE;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&ctx, arg);
@@ -2854,4 +2857,5 @@ void ops_init(){
         void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
+    this = value_put_atom("this", 6);
 }
