@@ -2862,15 +2862,19 @@ the critical section and decremented after leaving it.
 Mutual exclusion holds if the counter never goes over 1.
 
 \emph{Test programs themselves should be tested}.
-Just because \emph{your} test program works with \emph{your} implementation
-does not mean your implementation is correct---it may be that both are
-broken.
+Just because a test program works with a particular implementation
+does not mean the implementation is correct---it may be that the implementation
+is incorrect but the test program does not have enough coverage to find any
+bugs in the implementation.
 In the case of testing mutual exclusion with atomic counters, you will want
 to see if you can use this method to find the problems in \autoref{fig:naivelock},
 \autoref{fig:naiveflags},
 and \autoref{fig:naiveturn}.
-You also want to check if an atomic counter solution works with
-\autoref{fig:peterson} and \autoref{fig:tas}.
+Conversely, a test program may be broken in that it finds bugs that do not exist.
+So, in this case,
+you also want to check if an atomic counter solution works with known
+correct solutions such as \autoref{fig:peterson} and \autoref{fig:tas}
+if possible.
 
 As with critical sections, when testing a concurrent data structure
 we need a specification for its correctness.
@@ -2889,7 +2893,7 @@ To check if the queue implementation meets the specification,
 we need to see if any sequence of queue operations in the
 implementation matches a corresponding sequence in the
 specification.
-We say that the implementation and the specification should
+We say that the implementation and the specification
 have the same \emph{behavior}.
 %
 \autoref{fig:qtestseq} presents a test program that does
@@ -2923,8 +2927,8 @@ update the \texttt{tail} pointer in \texttt{get()} in case
 the queue becomes empty.  Normally, it is a surprisingly
 tricky bug to find.  You can comment out those lines
 in \autoref{fig:queue} and run the test program---it should
-easily find the bug and the output explains exactly how
-the bug can happen, adding confidence that the test program
+easily find the bug and explain exactly how
+the bug manifests itself, adding confidence that the test program
 is reasonably thorough.
 
 The test program also finds some common mistakes in using
@@ -2969,13 +2973,14 @@ when it is allocated.
 Still, it would be useful to check in Harmony that
 \autoref{fig:queue} is linearizable.
 To do this, instead of applying the operations sequentially,
-we want tthe test program to invoke the operations concurrently,
+we want the test program to invoke the operations concurrently,
 consider all possible interleavings, and see if the result
 is consistent with an appropriate sequential execution of the
 operations.
 
-Harmony provides support, but requires that the programmer
-identify what are known as \emph{linearization points}
+Harmony provides support for testing linearizability,
+but requires that the programmer
+identifies what are known as \emph{linearization points}
 in the implementation that indicate exactly \emph{which} sequential
 execution the concurrent execution must align with.
 \autoref{fig:queuelin} is a copy of \autoref{fig:queue} extended with
@@ -2996,7 +3001,7 @@ can be accessed by any method in the thread.
 Given the linearization points, \autoref{fig:qtestconc} shows how
 linearizability can be tested.
 The test program is similar to the sequential test program
-(\autoref{fig:qtestseq} but starts a thread for each operation.
+(\autoref{fig:qtestseq}) but starts a thread for each operation.
 The operations are executed concurrently on the concurrent queue
 implementation of \autoref{fig:queuelin}, but they are executed sequentially
 on the sequential queue specification of \autoref{fig:queuespec}.
@@ -3005,20 +3010,9 @@ To that end, the test program maintains a global time variable
 the last concurrent queue operation matches \textit{qtime} before invoking
 the sequential operation in the specification.
 Afterward, it atomically increments the shared \textit{qtime} variable.
-
-\section*{Exercises}
-\begin{problems}
-\item Write a sequential specification for \autoref{fig:linkedlist}.
-(Hint: it implements a set of integers.)
-Write a Harmony program that checks if \autoref{fig:linkedlist} meets
-the sequential specification.
-\item Extend \autoref{fig:linkedlist} with linearization points and
-check if the implementation is linearizable.
-\item Check if the extended queue implementation of \autoref{ex:qremove}
-is linearizable.
-\end{problems}
-
-\begin{comment}
+This results in the operations being executed sequentially against the
+sequential specification in the same order of the linearization points
+of the concurrent specification.
 
 \begin{figure}
 \begin{code}
@@ -3028,11 +3022,11 @@ is linearizable.
 \label{fig:qtest1}
 \end{figure}
 
-While it is possible to check linearizability with
-model checking, Harmony does not (yet) have explicit
-support for this.  Instead, we will present a few test
+If you want a purely black box test for testing a queue implementation,
+then adding linearization points is not possible.
+We will present a few test
 programs that try to identify incorrect behavior of
-the queue implementation in the presence of concurrency.
+a black box queue implementation in the presence of concurrency.
 
 \autoref{fig:qtest1} shows a program that
 checks concurrent \texttt{put} operations using
@@ -3042,9 +3036,9 @@ Thread \texttt{main()} waits until all \texttt{putter}
 threads have finished, and then dequeues \texttt{N}
 items, verifying that they form the set
 $\{ 0 .. \mathtt{N} - 1 \}$.
-Note that it is perfectly fine to use \textbf{sequential}
-and \textbf{atomic} statements in test code---one should
-only avoid those in production code.
+% Note that it is perfectly fine to use \textbf{sequential}
+% and \textbf{atomic} statements in test code---one should
+% only avoid those in production code.
 
 \begin{figure}
 \begin{code}
@@ -3133,7 +3127,17 @@ sequential test followed by several concurrent tests.}
 \label{fig:multitest}
 \end{figure}
 
-\end{comment}
+\section*{Exercises}
+\begin{problems}
+\item Write a sequential specification for \autoref{fig:linkedlist}.
+(Hint: it implements a set of integers.)
+Write a Harmony program that checks if \autoref{fig:linkedlist} meets
+the sequential specification.
+\item Extend \autoref{fig:linkedlist} with linearization points and
+check if the implementation is linearizable.
+\item Check if the extended queue implementation of \autoref{ex:qremove}
+is linearizable.
+\end{problems}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}
