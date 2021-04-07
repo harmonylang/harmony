@@ -1,4 +1,4 @@
-import queue, queuespec
+import queuelin, queuespec
 
 const NOPS = 4
 const VALUES = { 1..NOPS }
@@ -6,22 +6,23 @@ const VALUES = { 1..NOPS }
 sequential qtime
 qtime = 0
 
-implq = queue.Queue()
+implq = queuelin.Queue()
 specq = queuespec.Queue()
 
 def thread():
     let op = choose({ .get, .put }):
         if op == .put:
             let v = choose(VALUES):
-                queue.put(?implq, v)
+                queuelin.put(?implq, v)
                 await qtime == this.qtime
                 queuespec.put(?specq, v)
         else:
-            let v = queue.get(?implq):
+            let v = queuelin.get(?implq):
                 await qtime == this.qtime
                 let w = queuespec.get(?specq):
                     assert v == w
-    qtime += 1
+    atomic:
+        qtime += 1
 
 for i in {1..NOPS}:
     spawn thread()

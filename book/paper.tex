@@ -983,7 +983,7 @@ and two private \emph{registers} that each contain a Harmony value.
 \index{thread-local}%
 One of the registers of a thread contains the local variables of the
 method that the thread is currently executing.  It is saved and restored by
-method invocations.  The other register is called \emph{this} and is
+method invocations.  The other register is called \textbf{this} and is
 used for so-called \emph{thread-local state}, which contains variables that
 can be used by all methods.
 The state of a thread is called a \emph{context} (aka \emph{continuation}):
@@ -1499,14 +1499,14 @@ specification.
 \harmonysource{naiveLock}
 \end{code}
 \caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock.}
-\label{fig:uplock}
+\label{fig:naivelock}
 \end{figure}
 
 \begin{figure}
 \begin{center}
 \includegraphics[width=0.8\textwidth]{figures/naiveLock.pdf}
 \end{center}
-\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:uplock}}.}
+\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:naivelock}}.}
 \label{fig:naiveLockhtml}
 \end{figure}
 
@@ -1515,14 +1515,14 @@ specification.
 \harmonysource{naiveFlags}
 \end{code}
 \caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion.}
-\label{fig:upflags}
+\label{fig:naiveflags}
 \end{figure}
 
 \begin{figure}
 \begin{center}
 \includegraphics[width=0.8\textwidth]{figures/naiveFlags.pdf}
 \end{center}
-\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:upflags}}.}
+\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:naiveflags}}.}
 \label{fig:naiveflagshtml}
 \end{figure}
 
@@ -1531,7 +1531,7 @@ specification.
 \harmonysource{naiveTurn}
 \end{code}
 \caption{\harmonylink{code/naiveTurn.hny} Na\"{\i}ve use of turn variable to solve mutual exclusion.}
-\label{fig:upturn}
+\label{fig:naiveturn}
 \end{figure}
 
 \glsadd{lock}%
@@ -1548,7 +1548,7 @@ lock first and release it upon exiting the critical section.
 % is more like a baton or token that only one thread can hold.
 
 Using a lock is a good thought, but how does one implement one?
-\autoref{fig:uplock} presents a mutual exclusion attempt based on a
+\autoref{fig:naivelock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
 Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
 To enter the critical section, a thread waits until \textit{lockTaken} is \texttt{False}
@@ -1579,7 +1579,7 @@ for both threads to believe the lock is available and to obtain the lock
 at the same time.
 
 Preventing multiple threads from updating the same variable,
-\autoref{fig:upflags} presents a solution based on each thread having
+\autoref{fig:naiveflags} presents a solution based on each thread having
 a flag indicating that it is trying to enter the critical section.
 A thread can write its own flag and read the flag of its peer.
 After setting its flag, the thread waits until the other thread
@@ -1675,7 +1675,7 @@ mutual exclusion and progress---as we will find out, it is possible but not obvi
 In 1981, Gary L.~Peterson came up with a beautiful solution to the mutual exclusion
 problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
-\autoref{fig:upflags} and \autoref{fig:upturn}, and is presented
+\autoref{fig:naiveflags} and \autoref{fig:naiveturn}, and is presented
 in \autoref{fig:peterson}.
 (The first line specifies that the \textit{flags} and \textit{turn}
 variables should have \emph{sequential consistency}---it prevents
@@ -1968,7 +1968,7 @@ predicate is not invariant, and therefore not an inductive invariant either.
 \begin{problems}
 \item \autoref{fig:csonebit} presents another solution to the
 mutual exclusion problem.  It is similar to the one in
-\autoref{fig:upflags}, but has a thread \emph{back out and try again}
+\autoref{fig:naiveflags}, but has a thread \emph{back out and try again}
 if it finds that the other thread is either trying to enter the critical
 section or already has.  Compare this algorithm with Peterson's.
 Why does Harmony complain about \emph{active busy waiting}?
@@ -2128,7 +2128,7 @@ See \autoref{sec:vars} for more information.
 \label{fig:tas}
 \end{figure}
 
-\autoref{fig:uplock} showed a faulty attempt at solving mutual
+\autoref{fig:naivelock} showed a faulty attempt at solving mutual
 exclusion using a lock.  The problem with the implementation of the
 lock is that checking the lock and setting it if it is available is
 not \emph{atomic}.  Thus multiple threads contending for the lock
@@ -2292,7 +2292,7 @@ write out the invariants that need to hold and check them using Harmony.
 \begin{code}
 \harmonysource{csTAS}
 \end{code}
-\caption{\harmonylink{code/csTAS.hny} Fixed version of \autoref{fig:uplock} using test-and-set.}
+\caption{\harmonylink{code/csTAS.hny} Fixed version of \autoref{fig:naivelock} using test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
@@ -2307,7 +2307,7 @@ section it has the lock.
 There is no need to keep \textit{private} as a shared
 variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of spinlock.
-The solution is similar to the na\"{i}ve solution of \autoref{fig:uplock},
+The solution is similar to the na\"{i}ve solution of \autoref{fig:naivelock},
 but uses test-and-set to check and set the lock variable atomically.
 The lock is also cleared in an \textbf{atomic} block to prevent a data race.
 This approach is general for any number of threads.
@@ -2775,10 +2775,12 @@ just before releasing the lock in \texttt{put} and \texttt{get}:
 \begin{code}
 \textbf{assert} \texttt{check()}
 \end{code}
-\item Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queue}
+\item \label{ex:qremove} Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queue}
 that removes all occurrences of $v$, if any, from queue $q$.
-\item The test program in \autoref{fig:queuedemo} is not very thorough.  Design
-and implement a better one.
+\item The test program in \autoref{fig:queuedemo} is a not thorough test program.
+Design and implement a test program for \autoref{fig:queuedemo}.
+Make sure you \emph{test} the test program by trying it out against some buggy
+queue implementations.
 \item Create a thread-safe sorted binary tree.  Implement a module
 \texttt{bintree} with methods
 \item Add methods to the data structure in \autoref{fig:linkedlist}
@@ -2799,9 +2801,17 @@ a lock for each node in the tree.
 
 \begin{figure}
 \begin{code}
+\harmonysource{cslock}
+\end{code}
+\caption{\harmonylink{code/cslock.hny} Critical section testing without labels.}
+\label{fig:cslock}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 \harmonysource{queuespec}
 \end{code}
-\caption{\harmonylink{code/queuespec.hny} Queue specification.}
+\caption{\harmonylink{code/queuespec.hny} Sequential queue specification.}
 \label{fig:queuespec}
 \end{figure}
 
@@ -2813,32 +2823,75 @@ a lock for each node in the tree.
 \label{fig:qtestseq}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{queuelin}
+\end{code}
+\caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points.}
+\label{fig:queuelin}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtestconc}
+\end{code}
+\caption{\harmonylink{code/qtestconc.hny} Concurrent queue test.}
+\label{fig:qtestconc}
+\end{figure}
+
 Testing is a way to increase confidence in the correctness
 of an implementation.
 \autoref{fig:queuedemo} demonstrates how concurrent queues
 may be used, but it is not a very thorough test program
 for an implementation such as the one in \autoref{fig:queue}
 and does little to increase our confidence in its correctness.
+To wit, if \texttt{get()} always returned 1, the program
+would find no problems.
 In this chapter, we will look at approaches to testing
 concurrent code.
 
-The first step in testing a concurrent data structure is
-whether it works in the absence of concurrency.
-The objective is to test if the queue \emph{implementation}
-in \autoref{fig:queue} meets the sequential
-queue \emph{specification}.
-In order to do so, we should formalize the sequential queue specification.
-A specification is just code.
+The framework in \autoref{fig:csbarebones} works well for thoroughly
+testing mutual exclusion and progress in critical sections, but depends
+on \texttt{atLabel}, an unusual operator specific to Harmony that is mostly
+useful for testing mutual exclusion.
+It turns out that we do not need labels to express this.
+\autoref{fig:cslock} tests mutual exclusion and progress for
+critical sections implemented using locks.
+The test uses a simple atomic counter that is incremented before entering
+the critical section and decremented after leaving it.
+Mutual exclusion holds if the counter never goes over 1.
+
+\emph{Test programs themselves should be tested}.
+Just because \emph{your} test program works with \emph{your} implementation
+does not mean your implementation is correct---it may be that both are
+broken.
+In the case of testing mutual exclusion with atomic counters, you will want
+to see if you can use this method to find the problems in \autoref{fig:naivelock},
+\autoref{fig:naiveflags},
+and \autoref{fig:naiveturn}.
+You also want to check if an atomic counter solution works with
+\autoref{fig:peterson} and \autoref{fig:tas}.
+
+As with critical sections, when testing a concurrent data structure
+we need a specification for its correctness.
+A good place to start is thinking about a \emph{sequential} specification
+for queues.
+A specification is simply a program, written at a high level of
+abstraction.
 \autoref{fig:queuespec} shows a sequential specification of a
 queue in Harmony (exploiting some methods from the \texttt{list}
 module described in \autoref{ap:list}).
+
+First we can check if the queue implementation
+in \autoref{fig:queue} meets the sequential
+queue specification in \autoref{fig:queuespec}.
 To check if the queue implementation meets the specification,
 we need to see if any sequence of queue operations in the
 implementation matches a corresponding sequence in the
 specification.
 We say that the implementation and the specification should
 have the same \emph{behavior}.
-
+%
 \autoref{fig:qtestseq} presents a test program that does
 exactly this, for sequences of up to \texttt{NOPS}
 queue operations.
@@ -2851,10 +2904,10 @@ For each operation, the code first decides whether to
 perform a \texttt{get} or \texttt{put} operation.
 In the case of a \texttt{put} operation, the code also
 decides which value to append to the queue.
-All operations are performed on both the implementation
-queue and the specification queue.
-In the case of \texttt{get}, the result of the operation
-is checked against that of the specification.
+All operations are performed on both the queue implementation
+and the queue specification.
+In the case of \texttt{get}, the results of the operation
+on both the implementation and specification are checked against one another.
 
 As with any other test program,
 \autoref{fig:qtestseq} may not trigger extant bugs, but
@@ -2864,7 +2917,7 @@ The higher \texttt{NOPS}, the higher the confidence.
 It is possible to write similar programs in other languages
 such as Python, but the \texttt{choose} expression in Harmony
 makes it relatively easy to explore all corner cases.
-
+%
 For example, a common programming mistake is to forget to
 update the \texttt{tail} pointer in \texttt{get()} in case
 the queue becomes empty.  Normally, it is a surprisingly
@@ -2873,14 +2926,6 @@ in \autoref{fig:queue} and run the test program---it should
 easily find the bug and the output explains exactly how
 the bug can happen, adding confidence that the test program
 is reasonably thorough.
-
-\begin{figure}
-\begin{code}
-\harmonysource{qtest1}
-\end{code}
-\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}.}
-\label{fig:qtest1}
-\end{figure}
 
 The test program also finds some common mistakes in using
 locks, such as forgetting to release a lock when the queue
@@ -2920,6 +2965,68 @@ the lock.
 However, in this case that is not a problem, as
 the new node has no dependencies on the queue
 when it is allocated.
+
+Still, it would be useful to check in Harmony that
+\autoref{fig:queue} is linearizable.
+To do this, instead of applying the operations sequentially,
+we want tthe test program to invoke the operations concurrently,
+consider all possible interleavings, and see if the result
+is consistent with an appropriate sequential execution of the
+operations.
+
+Harmony provides support, but requires that the programmer
+identify what are known as \emph{linearization points}
+in the implementation that indicate exactly \emph{which} sequential
+execution the concurrent execution must align with.
+\autoref{fig:queuelin} is a copy of \autoref{fig:queue} extended with
+linearization points.
+For each operation (\texttt{get} and \texttt{put}), the corresponding
+linearization point must occur somewhere between acquiring and releasing
+the lock.
+%
+Each linearization point execution is assigned a logical timestamp.
+Logical timestamps are numbered $0, 1, ...$
+To do so, we have added a counter (\texttt{time}) to the \texttt{Queue}.
+Method \texttt{\_linpoint} saves the current counter in
+\textbf{this}.\texttt{qtime} and increments the counter.
+The \textbf{this} dictionary maintains \emph{thread-local state} associated
+with the thread (\autoref{ch:harmonymachine})---it contains variables that
+can be accessed by any method in the thread.
+
+Given the linearization points, \autoref{fig:qtestconc} shows how
+linearizability can be tested.
+The test program is similar to the sequential test program
+(\autoref{fig:qtestseq} but starts a thread for each operation.
+The operations are executed concurrently on the concurrent queue
+implementation of \autoref{fig:queuelin}, but they are executed sequentially
+on the sequential queue specification of \autoref{fig:queuespec}.
+To that end, the test program maintains a global time variable
+\textit{qtime}, and each thread waits until the timestamp assigned to
+the last concurrent queue operation matches \textit{qtime} before invoking
+the sequential operation in the specification.
+Afterward, it atomically increments the shared \textit{qtime} variable.
+
+\section*{Exercises}
+\begin{problems}
+\item Write a sequential specification for \autoref{fig:linkedlist}.
+(Hint: it implements a set of integers.)
+Write a Harmony program that checks if \autoref{fig:linkedlist} meets
+the sequential specification.
+\item Extend \autoref{fig:linkedlist} with linearization points and
+check if the implementation is linearizable.
+\item Check if the extended queue implementation of \autoref{ex:qremove}
+is linearizable.
+\end{problems}
+
+\begin{comment}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtest1}
+\end{code}
+\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}.}
+\label{fig:qtest1}
+\end{figure}
 
 While it is possible to check linearizability with
 model checking, Harmony does not (yet) have explicit
@@ -3025,6 +3132,8 @@ tests do not interfere with one another.
 sequential test followed by several concurrent tests.}
 \label{fig:multitest}
 \end{figure}
+
+\end{comment}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}

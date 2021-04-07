@@ -93,6 +93,7 @@ def isreserved(s):
         "setintlevel",
         "spawn",
         "stop",
+        "this",
         "trap",
         "True",
         "where",
@@ -127,6 +128,7 @@ def lexer(s, file):
     line = 1
     column = 1
     nextconst = False;
+    importline = False
     while s != "":
         if column == 1:
             if line != 1: print("\\\\\n")
@@ -144,6 +146,7 @@ def lexer(s, file):
             line += 1
             column = 1
             nextconst = False
+            importline = False
             continue
 
         # skip over line comments
@@ -161,6 +164,7 @@ def lexer(s, file):
                 s = s[1:]
             print("}", end="")
             nextconst = False
+            importline = False
             continue
 
         # skip over nested comments
@@ -185,6 +189,7 @@ def lexer(s, file):
                     s = s[1:]
                     column += 1
             nextconst = False
+            importline = False
             continue
 
         # see if it's a multi-character token.  Match with the longest one
@@ -216,9 +221,10 @@ def lexer(s, file):
             found = s[:i].replace("_", "\\_")
             if isreserved(found):
                 print("\\texttt{\\textbf{%s}}"%found, end="")
-                nextconst = found in [ "def", "const", "import", "from" ]
+                nextconst = found in [ "def", "const" ]
+                importline = found in [ "import", "from" ]
             elif isletter(found[0]):
-                if nextconst:
+                if nextconst or importline:
                     constants.add(found)
                     print("%s"%found, end="")
                     nextconst = False
@@ -266,6 +272,7 @@ def lexer(s, file):
             str += '"'
             print("''''", end="")
             nextconst = False
+            importline = False
             result += [ (str, file, line, column) ]
             s = s[i:]
             column += i

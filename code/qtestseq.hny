@@ -1,6 +1,6 @@
 import queue, queuespec
 
-const NOPS = 5
+const NOPS = 4
 const VALUES = { 1..NOPS }
 
 implq = queue.Queue()

@@ -1,0 +1,21 @@
+import synch
+
+lock = synch.Lock()
+
+count = 0
+invariant 0 <= count <= 1
+
+def thread():
+    synch.acquire(?lock)
+
+    atomic: count += 1
+
+    # critical section is here
+    assert count == 1
+
+    atomic: count -= 1
+
+    synch.release(?lock)
+
+for i in {1..100}:
+    spawn thread()

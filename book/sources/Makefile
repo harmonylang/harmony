@@ -43,6 +43,7 @@ CODE = \
     barriertest.tex \
     counter.tex \
     cs.tex \
+    cslock.tex \
     csTAS.tex \
     csbarebones.tex \
     csonebit.tex \
@@ -65,10 +66,12 @@ CODE = \
     prog2.tex \
     qbarrier.tex \
     queue.tex \
-    queueMS.tex \
     queuedemo.tex \
+    queuelin.tex \
+    queueMS.tex \
     queuespec.tex \
     qtestseq.tex \
+    qtestconc.tex \
     qtest1.tex \
     qtest2.tex \
     qtest3.tex \

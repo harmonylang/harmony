@@ -4,7 +4,7 @@ from alloc import malloc, free
 def Queue():
     result = { .head: None, .tail: None, .lock: Lock(), .time: 0 }
 
-def linpoint(q):
+def _linpoint(q):
     atomic:
         this.qtime = q->time
         q->time += 1
@@ -17,7 +17,7 @@ def put(q, v):
         else:
             q->tail->next = node
             q->tail = node
-        linpoint(q)
+        _linpoint(q)
         release(?q->lock)
     
 def get(q):
@@ -31,5 +31,5 @@ def get(q):
             if q->head == None:
                q->tail = None
             free(node)
-    linpoint(q)
+    _linpoint(q)
     release(?q->lock)

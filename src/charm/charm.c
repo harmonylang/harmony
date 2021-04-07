@@ -382,8 +382,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             check_invariants(next, pinv_ctx);
         }
 
-        if (sc->ctxbag != VALUE_DICT && cc->failure == 0 &&
-                queue_empty(failures)) {
+        if (sc->ctxbag != VALUE_DICT && cc->failure == 0
+                            && queue_empty(failures)) {
             if (weight == 0) {
                 queue_prepend(todo, next);
             }
