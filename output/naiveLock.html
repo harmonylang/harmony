@@ -684,7 +684,7 @@ var state =
     {
       "id": "1",
       "tid": "0",
-      "xhash": "55cc002d2f27",
+      "xhash": "557687c8b5c7",
       "name": "__init__()",
       "microsteps": [
         {
@@ -697,11 +697,11 @@ var state =
               "xpc": "0",
               "method": "__init__()",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "dict", "value": [] }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "dict", "value": [] }, "this": { "type": "dict", "value": [] } },
           "atomic": "1",
           "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "0"
@@ -771,7 +771,7 @@ var state =
           "trace": [
 
           ],
-          "local": { },
+          "local": { "this": { "type": "dict", "value": [] } },
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
@@ -783,7 +783,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -797,7 +797,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d54a7",
+          "yhash": "557687c8e3f7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "4",
@@ -810,7 +810,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d54d7",
+          "yhash": "557687c8e427",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -826,7 +826,7 @@ var state =
     {
       "id": "2",
       "tid": "1",
-      "xhash": "55cc002d54a7",
+      "xhash": "557687c8e3f7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -838,11 +838,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
@@ -857,7 +857,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -871,7 +871,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d59f7",
+          "yhash": "557687c8e997",
           "name": "thread(0)",
           "entry": "4",
           "pc": "6",
@@ -882,7 +882,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "choosing",
@@ -890,7 +890,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d54d7",
+          "yhash": "557687c8e427",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -906,7 +906,7 @@ var state =
     {
       "id": "5",
       "tid": "1",
-      "xhash": "55cc002d59f7",
+      "xhash": "557687c8e997",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -919,11 +919,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
@@ -939,7 +939,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -953,7 +953,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d61d7",
+          "yhash": "557687c8f147",
           "name": "thread(0)",
           "entry": "4",
           "pc": "8",
@@ -964,7 +964,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -972,7 +972,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d54d7",
+          "yhash": "557687c8e427",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -988,7 +988,7 @@ var state =
     {
       "id": "6",
       "tid": "1",
-      "xhash": "55cc002d61d7",
+      "xhash": "557687c8f147",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1000,11 +1000,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "False" } ],
           "pc": "8"
         },
@@ -1025,7 +1025,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1039,7 +1039,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d64c7",
+          "yhash": "557687c8f437",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1050,7 +1050,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1058,7 +1058,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d54d7",
+          "yhash": "557687c8e427",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1074,7 +1074,7 @@ var state =
     {
       "id": "9",
       "tid": "2",
-      "xhash": "55cc002d54d7",
+      "xhash": "557687c8e427",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1086,11 +1086,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
@@ -1105,7 +1105,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1119,7 +1119,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d64c7",
+          "yhash": "557687c8f437",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1130,7 +1130,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1138,7 +1138,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d5d97",
+          "yhash": "557687c8ed47",
           "name": "thread(1)",
           "entry": "4",
           "pc": "6",
@@ -1149,7 +1149,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "choosing",
@@ -1160,7 +1160,7 @@ var state =
     {
       "id": "26",
       "tid": "2",
-      "xhash": "55cc002d5d97",
+      "xhash": "557687c8ed47",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1173,11 +1173,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
@@ -1193,7 +1193,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1207,7 +1207,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d64c7",
+          "yhash": "557687c8f437",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1218,7 +1218,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1226,7 +1226,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d7fc7",
+          "yhash": "557687c90ed7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "8",
@@ -1237,7 +1237,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1248,7 +1248,7 @@ var state =
     {
       "id": "28",
       "tid": "2",
-      "xhash": "55cc002d7fc7",
+      "xhash": "557687c90ed7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1260,11 +1260,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "False" } ],
           "pc": "8"
         },
@@ -1285,7 +1285,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1299,7 +1299,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d64c7",
+          "yhash": "557687c8f437",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1310,7 +1310,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1318,7 +1318,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d8277",
+          "yhash": "557687c911c7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "11",
@@ -1329,7 +1329,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1340,7 +1340,7 @@ var state =
     {
       "id": "42",
       "tid": "2",
-      "xhash": "55cc002d8277",
+      "xhash": "557687c911c7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1353,11 +1353,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
@@ -1367,7 +1367,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1381,7 +1381,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d64c7",
+          "yhash": "557687c8f437",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1392,7 +1392,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1400,7 +1400,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d87c7",
+          "yhash": "557687c91717",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1411,7 +1411,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1422,7 +1422,7 @@ var state =
     {
       "id": "43",
       "tid": "1",
-      "xhash": "55cc002d64c7",
+      "xhash": "557687c8f437",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1434,11 +1434,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
@@ -1448,7 +1448,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1462,7 +1462,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002d6aa7",
+          "yhash": "557687c8fa17",
           "name": "thread(0)",
           "entry": "4",
           "pc": "12",
@@ -1473,7 +1473,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1481,7 +1481,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d87c7",
+          "yhash": "557687c91717",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1492,7 +1492,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
@@ -1503,7 +1503,7 @@ var state =
     {
       "id": "48",
       "tid": "1",
-      "xhash": "55cc002d6aa7",
+      "xhash": "557687c8fa17",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1515,11 +1515,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } },
+          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
           "atomic": "1",
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "12"
@@ -1620,7 +1620,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55cc002d5647",
+          "yhash": "557687c8e597",
           "name": "__init__()",
           "entry": "0",
           "pc": "44",
@@ -1634,7 +1634,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55cc002de297",
+          "yhash": "557687c971a7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "28",
@@ -1645,7 +1645,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "failure": "Harmony assertion failed",
@@ -1656,7 +1656,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55cc002d87c7",
+          "yhash": "557687c91717",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1667,7 +1667,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" } }
+              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
             }
           ],
           "mode": "runnable",
