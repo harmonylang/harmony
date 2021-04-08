@@ -1680,7 +1680,7 @@ in \autoref{fig:peterson}.
 (The first line specifies that the \textit{flags} and \textit{turn}
 variables should have \emph{sequential consistency}---it prevents
 Harmony from complaining about data races involving these variables,
-explained in \autoref{ch:synch}.)
+explained in \autoref{ch:spinlock}.)
 
 A thread first indicates its interest in entering the critical section
 by setting its flag.
