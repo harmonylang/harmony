@@ -22,7 +22,7 @@ def transfer(a1, a2, amount):
 def thread():
     let a1 = choose({0..N_ACCOUNTS-1})
     let a2 = choose({0..N_ACCOUNTS-1} - { a1 }):
-        transfer(a1, a2, choose({0..MAX_BALANCE}))
+        transfer(a1, a2, choose({1..MAX_BALANCE}))
 
 for i in {1..N_THREADS}:
     spawn thread()

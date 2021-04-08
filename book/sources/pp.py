@@ -119,7 +119,7 @@ tokens = [ "==", "!=", "<=", ">=", "..", "->", "[]" ]
 def putchar(c):
     print(c, end="")
 
-constants = { "False", "True", "None", "inf",
+constants = { "False", "True", "None", "inf", "synch", "list", "bag", "alloc",
     "acquire", "release", "wait", "notify", "notifyAll", "signal",
     "P", "V", "malloc", "free" }
 
