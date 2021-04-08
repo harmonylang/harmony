@@ -512,7 +512,9 @@ void op_Address(const void *env, struct state *state, struct context **pctx){
     uint64_t index = ctx_pop(pctx);
     uint64_t av = ctx_pop(pctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-        ctx_failure(*pctx, "not an address");
+        char *p = value_string(av);
+        ctx_failure(*pctx, "%s: not an address", p);
+        free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
@@ -666,7 +668,9 @@ void ext_Del(const void *env, struct state *state, struct context **pctx,
 
     uint64_t av = ctx_pop(pctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-        ctx_failure(*pctx, "Del: not an address");
+        char *p = value_string(av);
+        ctx_failure(*pctx, "Del %s: not an address", p);
+        free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
@@ -850,7 +854,9 @@ void ext_Load(const void *env, struct state *state, struct context **pctx,
     if (el == 0) {
         uint64_t av = ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-            ctx_failure(*pctx, "Load: not an address");
+            char *p = value_string(av);
+            ctx_failure(*pctx, "Load %s: not an address", p);
+            free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
@@ -1051,7 +1057,9 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
 void op_Sequential(const void *env, struct state *state, struct context **pctx){
     uint64_t addr = ctx_pop(pctx);
     if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
-        ctx_failure(*pctx, "Sequential: not an address");
+        char *p = value_string(addr);
+        ctx_failure(*pctx, "Sequential %s: not an address", p);
+        free(p);
         return;
     }
 
@@ -1238,7 +1246,9 @@ void op_Stop(const void *env, struct state *state, struct context **pctx){
     if (es == 0) {
         uint64_t av = ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-            ctx_failure(*pctx, "Stop: not an address");
+            char *p = value_string(av);
+            ctx_failure(*pctx, "Stop %s: not an address", p);
+            free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
@@ -1289,7 +1299,9 @@ void ext_Store(const void *env, struct state *state, struct context **pctx,
     if (es == 0) {
         uint64_t av = ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-            ctx_failure(*pctx, "Store: not an address");
+            char *p = value_string(av);
+            ctx_failure(*pctx, "Store %s: not an address", p);
+            free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
