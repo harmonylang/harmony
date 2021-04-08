@@ -1,37 +1,44 @@
 from synch import *
 
-const NPAIRS = 2
+const NPAIRS = 3
 
-tables = { .black: 0, .green: 0 }
-mutex = Lock()
-seating = { .black: Condition(?mutex), .green: Condition(?mutex) }
-leaving = { .black: Condition(?mutex), .green: Condition(?mutex) }
+def Teahouse():
+    result = {
+        .mutex: Lock(),
+        .tables: { .black: 0, .green: 0 },
+        .seating: { .black: Condition(), .green: Condition() },
+        .drinking: { .black: Condition(), .green: Condition() }
+    }
 
-def seatYourself(pref):
-    acquire(?mutex)
-    while tables[pref] >= 2:
-        wait(?seating[pref], ?mutex)
-    tables[pref] += 1
-    notify(?leaving[pref])
-    release(?mutex)
+def seatYourself(th, pref):
+    acquire(?th->mutex)
+    while th->tables[pref] >= 2:
+        wait(?th->seating[pref], ?th->mutex)
+    th->tables[pref] += 1
+    notify(?th->drinking[pref])
+    release(?th->mutex)
 
-def leaveTeahouse(pref):
-    acquire(?mutex)
-    while tables[pref] < 2:
-        wait(?leaving[pref], ?mutex)
-    @drink: pass
-    tables[pref] = (tables[pref] + 1) % 4
-    if tables[pref] == 0:
-        notifyAll(?seating[pref])
-    release(?mutex)
+def drinkSomeTea(th, pref):
+    acquire(?th->mutex)
+    while th->tables[pref] < 2:
+        wait(?th->drinking[pref], ?th->mutex)
+    release(?th->mutex)
 
+def leave(th, pref):
+    acquire(?th->mutex)
+    th->tables[pref] = (th->tables[pref] + 1) % 4
+    if th->tables[pref] == 0:
+        notifyAll(?th->seating[pref])
+    release(?th->mutex)
 
-def drinkTea(pref):
-    seatYourself(pref)
-    pass
-    leaveTeahouse(pref)
+def student(th, pref):
+    seatYourself(th, pref)
+    drinkSomeTea(th, pref)
+    leave(th, pref)
+
+teahouse = Teahouse()
 
 for i in {1 .. NPAIRS}:
     let pref = choose({ .green, .black }):
-        spawn drinkTea(pref)
-        spawn drinkTea(pref)
+        spawn student(?teahouse, pref)
+        spawn student(?teahouse, pref)
