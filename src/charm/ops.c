@@ -924,7 +924,9 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     }
     else {
         if (!dict_tryload((*pctx)->vars, el->name, &v)) {
-            ctx_failure(*pctx, "Loadvar: unknown variable");
+            char *p = value_string(el->name);
+            ctx_failure(*pctx, "Loadvar: unknown variable %s", p + 1);
+            free(p);
             return;
         }
         ctx_push(pctx, v);

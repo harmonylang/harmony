@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1503
+1,1, 1506
 
 ]
 
@@ -328,8 +328,8 @@ def qsort(a):
         result = []
     else:
         let (pivot, rest) = head(a), tail(a)
-        let lower = [ v for v in rest such that v < pivot ]
-        let higher = [ v for v in rest such that v >= pivot ]:
+        let lower = [ v for v in rest where v < pivot ]
+        let higher = [ v for v in rest where v >= pivot ]:
             result = qsort(lower) + [pivot,] + qsort(higher)
 
 # like Python sorted()
@@ -3858,7 +3858,9 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
     }
     else {
         if (!dict_tryload((*pctx)->vars, el->name, &v)) {
-            ctx_failure(*pctx, "Loadvar: unknown variable");
+            char *p = value_string(el->name);
+            ctx_failure(*pctx, "Loadvar: unknown variable %s", p + 1);
+            free(p);
             return;
         }
         ctx_push(pctx, v);

@@ -47,8 +47,8 @@ def qsort(a):
         result = []
     else:
         let (pivot, rest) = head(a), tail(a)
-        let lower = [ v for v in rest such that v < pivot ]
-        let higher = [ v for v in rest such that v >= pivot ]:
+        let lower = [ v for v in rest where v < pivot ]
+        let higher = [ v for v in rest where v >= pivot ]:
             result = qsort(lower) + [pivot,] + qsort(higher)
 
 # like Python sorted()

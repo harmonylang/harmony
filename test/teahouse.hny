@@ -18,7 +18,7 @@ def seatYourself(th, pref):
     notify(?th->drinking[pref])
     release(?th->mutex)
 
-def drinkSomeTea(th, pref):
+def drinkTea(th, pref):
     acquire(?th->mutex)
     while th->tables[pref] < 2:
         wait(?th->drinking[pref], ?th->mutex)
@@ -33,7 +33,7 @@ def leave(th, pref):
 
 def student(th, pref):
     seatYourself(th, pref)
-    drinkSomeTea(th, pref)
+    drinkTea(th, pref)
     leave(th, pref)
 
 teahouse = Teahouse()
