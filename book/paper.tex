@@ -4834,22 +4834,26 @@ Notice there are two different waiting conditions:
 \item waiting for the car to fill up.
 \end{enumerate}
 
-\autoref{fig:genbarrier} shows the code.
+But this poses a complication.  Suppose, for example, that there are two
+seats in the car, and there is one person in the car.  Does that mean that
+the car is not yet full, or not yet empty?  We have to distinguish
+those situations.  To this end, it is useful to think of the car as going through
+$2 \cdot n$ stages:
+\begin{itemize}
+\item[] Stage 0: the car is empty;
+\item[] Stage $1 ... n-1$: the car is filling up;
+\item[] Stage $n$: the car is full;
+\item[] Stage $n+1 ... 2n - 1$: the car is emptying out.
+\end{itemize}
+
+\autoref{fig:genbarrier} shows code that implements barrier synchronization
+using these stages.
 Method~\texttt{enter}() has two \texttt{wait} loops, one for each
 waiting condition.
 This is sometimes called \emph{double turnstile}.
 Each loop uses a different condition variable.
 The first loop waits until the car has emptied out, while
 the second waits for the car to fill up.
-
-Notice how variables \textit{entered} and \textit{left}
-are maintained.  They are incremented one-by-one, but they
-are not decremented one-by-one.  Instead, the last thread to
-enter sets \textit{left} to zero (and notifies the threads
-that were waiting to for the car to fill up), while the last
-thread to exit sets \textit{entered} to zero (and notifies
-the threads that were waiting for the car to empty out).
-
 \autoref{fig:barriertest} is a test program.  The threads check
 that all threads within the barrier are in the same round.
 
