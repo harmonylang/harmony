@@ -42,6 +42,7 @@ struct node {
     // How to get here from parent node
     struct node *parent;    // shortest path to initial state
     int len;                // length of path to initial state
+    int steps;              // #microsteps from root
     uint64_t before;        // context before state change
     uint64_t after;         // context after state change (current context)
     uint64_t choice;        // choice made if any
@@ -208,7 +209,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     struct access_info *ai_list = NULL;
-    for (int loopcnt = 0;; loopcnt++) {
+    int loopcnt = 0;
+    for (;; loopcnt++) {
         int pc = cc->pc;
 
         if (timecnt-- == 0) {
@@ -376,6 +378,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->interrupt = interrupt;
         next->after = after;
         next->len = node->len + weight;
+        next->steps = node->steps + loopcnt;
         graph_add(next);
 
         if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
@@ -402,6 +405,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             next->after = after;
             next->choice = choice_copy;
             next->len = node->len + weight;
+            next->steps = node->steps + loopcnt;
         }
     }
 
@@ -1551,11 +1555,12 @@ int main(int argc, char **argv){
         exit(0);
     }
 
+    // Find shortest "bad" path
     struct failure *bad = NULL;
     while (queue_dequeue(failures, &next)) {
         struct failure *f = next;
 
-        if (bad == NULL || f->node->len < bad->node->len) {
+        if (bad == NULL || f->node->len <= bad->node->len) {
             bad = f;
         }
     }
@@ -1563,7 +1568,7 @@ int main(int argc, char **argv){
         while (queue_dequeue(warnings, &next)) {
             struct failure *f = next;
 
-            if (bad == NULL || f->node->len < bad->node->len) {
+            if (bad == NULL || f->node->len <= bad->node->len) {
                 bad = f;
             }
         }
