@@ -51,6 +51,8 @@ struct node {
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
+
+    bool processed;         // for debugging currently
 };
 
 struct failure {
@@ -77,6 +79,7 @@ static int enqueued;                // #states enqueued
 static int dequeued;                // #states dequeued
 static bool dumpfirst;              // for json dumping
 static struct access_info *ai_free; // free list of access_info structures
+static struct node *tochk;
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -177,7 +180,7 @@ struct access_info *ai_alloc(int multiplicity, int atomic, int pc){
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
-        struct dict *visited, struct queue *todo, struct context **pinv_ctx,
+        struct dict *visited, struct minheap *todo, struct context **pinv_ctx,
         bool infloop_detect, int multiplicity, double timeout){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -379,7 +382,10 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + loopcnt;
-        graph_add(next);
+        graph_add(next);                // sets next->id
+        if (next->id == 1383) {
+            tochk = next;
+        }
 
         if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
             check_invariants(next, pinv_ctx);
@@ -387,25 +393,23 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
 
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0
                             && queue_empty(failures)) {
-            if (weight == 0) {
-                queue_prepend(todo, next);
-            }
-            else {
-                queue_enqueue(todo, next);
-            }
+            minheap_insert(todo, next);
             enqueued++;
         }
     }
     else {
         free(sc);
 
-        if (next->len > node->len + weight) {
+        if (next->len > node->len + weight ||
+                (next->len == node->len + weight && next->steps > node->steps + loopcnt)) {
+            assert(!next->processed);
             next->parent = node;
             next->before = ctx;
             next->after = after;
             next->choice = choice_copy;
             next->len = node->len + weight;
             next->steps = node->steps + loopcnt;
+            minheap_decrease(todo, next);
         }
     }
 
@@ -1238,6 +1242,18 @@ void detect_busywait(struct node *node){
 	}
 }
 
+static int node_cmp(void *n1, void *n2){
+    struct node *node1 = n1, *node2 = n2;
+
+    if (node1->len != node2->len) {
+        return node1->len - node2->len;
+    }
+    if (node1->steps != node2->steps) {
+        return node1->steps - node2->steps;
+    }
+    return node1->id - node2->id;
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1346,8 +1362,8 @@ int main(int argc, char **argv){
     *p = node;
 
     // Put the initial state on the queue
-    struct queue *todo = queue_init();
-    queue_enqueue(todo, node);
+    struct minheap *todo = minheap_create(node_cmp);
+    minheap_insert(todo, node);
     enqueued++;
 
     // Create a context for evaluating invariants
@@ -1363,11 +1379,13 @@ int main(int argc, char **argv){
 
     void *next;
     int state_counter = 1;
-    while (queue_dequeue(todo, &next)) {
+    while (!minheap_empty(todo) && queue_empty(failures)) {
+        next = minheap_getmin(todo);
         state_counter++;
         dequeued++;
 
         node = next;
+        node->processed = true;
         state = node->state;
 
         if (state->choosing != 0) {
@@ -1560,7 +1578,7 @@ int main(int argc, char **argv){
     while (queue_dequeue(failures, &next)) {
         struct failure *f = next;
 
-        if (bad == NULL || f->node->len <= bad->node->len) {
+        if (bad == NULL || node_cmp(f->node, bad->node) < 0) {
             bad = f;
         }
     }
@@ -1568,7 +1586,7 @@ int main(int argc, char **argv){
         while (queue_dequeue(warnings, &next)) {
             struct failure *f = next;
 
-            if (bad == NULL || f->node->len <= bad->node->len) {
+            if (bad == NULL || node_cmp(f->node, bad->node) < 0) {
                 bad = f;
             }
         }

@@ -41,6 +41,7 @@ CODE = \
     barrier.tex \
     barrier1.tex \
     barriertest.tex \
+    clock.tex \
     counter.tex \
     cs.tex \
     cslock.tex \

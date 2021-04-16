@@ -2114,6 +2114,62 @@ local variables.  For example:
 $y$.
 See \autoref{sec:vars} for more information.
 
+\begin{figure}
+\begin{code}
+\harmonysource{clock}
+\end{code}
+\caption{\harmonylink{code/clock.hny} Harmony program that finds page replacement anomalies.}
+\label{fig:clock}
+\end{figure}
+
+If you are ready to learn about how locks are implemented in practice,
+you can now skip the rest of this chapter.  But if you would like to
+see a cool example of using the concepts introduced in this chapter,
+hang on for a sequential Harmony program that finds anomalies in page
+replacement algorithms.
+In 1969, B\'{e}l\'{a}ady et al. published a paper~\cite{Belady69}
+that showed that making a
+cache larger does not necessarily lead to a higher hit ratio.  He showed
+this for a scenario using a FIFO replacement policy when the cache is full. 
+The program in \autoref{fig:clock} will find exactly the same scenario
+if you define \texttt{FIFO} to be \textbf{True}.  Moreover, if you define
+\texttt{FIFO} to be \textbf{False}, it will find a scenario for the
+CLOCK replacement policy~\cite{clock}, often used in modern operating systems.
+
+In this program, \texttt{CLOCK} maintains the state of a cache
+(in practice, typically pages in memory).
+The set \texttt{recent} maintains whether an access to the cache
+for a particular reference was recent or not.
+(It is not used if \texttt{FIFO} is \textbf{True}.)
+The integer \texttt{misses} maintains the number of cache misses.
+Method \texttt{ref}(\textit{ck}, $x$) is invoked when $x$ is
+referenced and checked against the cache \textit{ck}.
+
+The program declares two caches: one with 3 entries (\textit{clock3})
+and one with 4 entries (\textit{clock4}).
+The interesting part is in the last block of code.
+It runs every sequence of references of up to 100 entries, using
+references in the range 1 through 5.
+Note that all the constants chosen in this program (3, 4, 5, 100)
+are the result of some experimentation---you can try other ones.
+To reduce the search space, the first four references are pinned
+to 1, 2, 3, and 4.
+Further reducing the search space, the program never repeats the
+same reference twice in a row (using the local variable \texttt{last}).
+
+The two things to note here is the use of the \textbf{choose}
+expression and the \textbf{assert} statement.  Using \texttt{choose}
+we are able to express searching through all possible strings of
+references without a complicated nested iteration.
+Using \texttt{assert} we are able to express the anomaly we are
+looking for.
+
+In case you want to check if you get the right results.  For \texttt{FIFO},
+the program finds (in a few minutes) the same anomaly that
+B\'{e}l\'{a}dy et al. found: 1 2 3 4 1 2 5 1 2 3 4 5.
+For the \texttt{CLOCK} algorithm the program actually finds a shorter
+reference string: 1 2 3 4 2 1 2 5 1 2.
+
 \chapter{Spinlock}
 \label{ch:spinlock}
 \index{spinlock}%

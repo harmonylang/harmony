@@ -1,15 +1,27 @@
+#ifndef HARMONY_COMBINE
 #include <stdio.h>
 #include <stdlib.h>
 #include "minheap.h"
+#endif
 
 #define parent(k)   (int) (((k) - 1) / 2)
 #define leftc(k)    (2 * (k) + 1)
+#define rightc(k)    (2 * (k) + 2)
 
 struct minheap {
     int (*cmp)(void *v1, void *v2);
     void **array;
     int alloc_size, size;
 };
+
+bool minheap_check(struct minheap *mh, void *key) {
+    for (int i = 0; i < mh->size; i++) {
+        if (mh->array[i] == key) {
+            return true;
+        }
+    }
+    return false;
+}
 
 struct minheap *minheap_create(int (*cmp)(void *, void *)) {
     struct minheap *mh = malloc(sizeof(struct minheap));
@@ -19,7 +31,7 @@ struct minheap *minheap_create(int (*cmp)(void *, void *)) {
     }
     mh->cmp = cmp;
     mh->size = 0;
-    mh->alloc_size = 64;
+    mh->alloc_size = 1024;
     mh->array = malloc(sizeof(void *) * mh->alloc_size);
     if (mh->array == NULL) {
         fprintf(stderr, "minheap_create: out of memory\n");
@@ -42,8 +54,10 @@ static void minheap_fixup(struct minheap *mh, int k) {
 }
 
 static void minheap_fixdown(struct minheap *mh, int k) {
-    while (leftc(k) < mh->size) {
-        int j = leftc(k);
+    int j;
+
+    while ((j = leftc(k)) < mh->size) {
+        assert(j > 0);
         if (j < mh->size - 1 && (*mh->cmp)(mh->array[j+1], mh->array[j]) < 0) {
             j++;
         }
@@ -64,6 +78,15 @@ void minheap_insert(struct minheap *mh, void *key) {
     minheap_fixup(mh, mh->size - 1);
 }
 
+void minheap_decrease(struct minheap *mh, void *key) {
+    for (int i = 0; i < mh->size; i++) {
+        if (mh->array[i] == key) {
+            minheap_fixup(mh, i);
+            break;
+        }
+    }
+}
+
 bool minheap_empty(struct minheap *mh) {
     return mh->size == 0;
 }
@@ -74,8 +97,7 @@ void *minheap_getmin(struct minheap *mh) {
         exit(1);
     }
     void *result = mh->array[0];
-    minheap_swap(mh, 0, mh->size - 1);
-    mh->size--;
+    mh->array[0] = mh->array[--mh->size];
     minheap_fixdown(mh, 0);
     return result;
 }
