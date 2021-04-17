@@ -60,7 +60,6 @@ m4_include(../charm/global.c)
 m4_include(../charm/hashdict.c)
 m4_include(../charm/json.c)
 m4_include(../charm/ops.c)
-m4_include(../charm/queue.c)
 m4_include(../charm/minheap.c)
 m4_include(../charm/value.c)
 """

@@ -69,8 +69,8 @@ bool has_synch_module = false;
 static struct node **graph;         // vector of all nodes
 static int graph_size;              // to create node identifiers
 static int graph_alloc;             // size allocated
-static struct queue *failures;      // queue of "struct failure"  (TODO: make part of struct node "issues")
-static struct queue *warnings;      // queue of "struct failure"  (TODO: make part of struct node "issues")
+static struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
+static struct minheap *warnings;    // queue of "struct failure"  (TODO: make part of struct node "issues")
 static uint64_t *processes;         // list of contexts of processes
 static int nprocesses;              // the number of processes in the list
 static double lasttime;             // since last report printed
@@ -158,7 +158,7 @@ void check_invariants(struct node *node, struct context **pctx){
             f->type = FAIL_INVARIANT;
             f->choice = node->choice;
             f->node = node;
-            queue_enqueue(failures, f);
+            minheap_insert(failures, f);
         }
     }
 }
@@ -392,7 +392,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         }
 
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0
-                            && queue_empty(failures)) {
+                            && minheap_empty(failures)) {
             minheap_insert(todo, next);
             enqueued++;
         }
@@ -442,7 +442,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->choice = choice_copy;
         f->node = next;
-        queue_enqueue(failures, f);
+        minheap_insert(failures, f);
     }
 
     free(cc);
@@ -1236,7 +1236,7 @@ void detect_busywait(struct node *node){
 			f->type = FAIL_BUSYWAIT;
 			f->choice = node->choice;
 			f->node = node;
-			queue_enqueue(failures, f);
+			minheap_insert(failures, f);
 			break;
 		}
 	}
@@ -1252,6 +1252,12 @@ static int node_cmp(void *n1, void *n2){
         return node1->steps - node2->steps;
     }
     return node1->id - node2->id;
+}
+
+static int fail_cmp(void *f1, void *f2){
+    struct failure *fail1 = f1, *fail2 = f2;
+
+    return node_cmp(fail1->node, fail2->node);
 }
 
 void usage(char *prog){
@@ -1291,8 +1297,8 @@ int main(int argc, char **argv){
     double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
     double timeout = now + maxtime;
 
-    failures = queue_init();
-    warnings = queue_init();
+    failures = minheap_create(fail_cmp);
+    warnings = minheap_create(fail_cmp);
 
     // initialize modules
     value_init();
@@ -1379,7 +1385,7 @@ int main(int argc, char **argv){
 
     void *next;
     int state_counter = 1;
-    while (!minheap_empty(todo) && queue_empty(failures)) {
+    while (!minheap_empty(todo) && minheap_empty(failures)) {
         next = minheap_getmin(todo);
         state_counter++;
         dequeued++;
@@ -1422,7 +1428,7 @@ int main(int argc, char **argv){
 
             // Check for data race
             // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y
-            if (queue_empty(warnings) && !cflag) {
+            if (minheap_empty(warnings) && !cflag) {
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
                     for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
                         if (ai->indices != NULL) {
@@ -1433,7 +1439,7 @@ int main(int argc, char **argv){
                                 f->choice = node->choice;
                                 f->node = node;
                                 f->address = value_put_address(ai->indices, ai->n * sizeof(uint64_t));
-                                queue_enqueue(warnings, f);
+                                minheap_insert(warnings, f);
                             }
                             else {
                                 for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
@@ -1449,7 +1455,7 @@ int main(int argc, char **argv){
                                                 f->choice = node->choice;
                                                 f->node = node;
                                                 f->address = value_put_address(ai->indices, min * sizeof(uint64_t));
-                                                queue_enqueue(warnings, f);
+                                                minheap_insert(warnings, f);
                                             }
                                         }
                                     }
@@ -1476,7 +1482,7 @@ int main(int argc, char **argv){
 
     printf("#states %d\n", graph_size);
 
-    if (queue_empty(failures)) {
+    if (minheap_empty(failures)) {
         // find the strongly connected components
         int ncomponents = find_scc();
 
@@ -1515,7 +1521,7 @@ int main(int argc, char **argv){
                 f->type = FAIL_TERMINATION;
                 f->choice = node->choice;
                 f->node = node;
-                queue_enqueue(failures, f);
+                minheap_insert(failures, f);
             }
         }
 
@@ -1566,7 +1572,7 @@ int main(int argc, char **argv){
     }
     fprintf(out, "{\n");
 
-    if (queue_empty(failures) && queue_empty(warnings)) {
+    if (minheap_empty(failures) && minheap_empty(warnings)) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\"\n");
         fprintf(out, "}\n");
@@ -1575,21 +1581,11 @@ int main(int argc, char **argv){
 
     // Find shortest "bad" path
     struct failure *bad = NULL;
-    while (queue_dequeue(failures, &next)) {
-        struct failure *f = next;
-
-        if (bad == NULL || node_cmp(f->node, bad->node) < 0) {
-            bad = f;
-        }
+    if (minheap_empty(failures)) {
+        bad = minheap_getmin(warnings);
     }
-    if (bad == NULL) {
-        while (queue_dequeue(warnings, &next)) {
-            struct failure *f = next;
-
-            if (bad == NULL || node_cmp(f->node, bad->node) < 0) {
-                bad = f;
-            }
-        }
+    else {
+        bad = minheap_getmin(failures);
     }
 
     switch (bad->type) {
