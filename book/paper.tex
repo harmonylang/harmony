@@ -3289,7 +3289,8 @@ At this point \textit{pool}[0] no longer exists, but then
 It was about to acquire the lock on \textit{pool}[0], but now that
 node no longer exists.
 
-To fix the code, we have to use hand-over-hand locking (\autoref{ch:cds}).
+To fix the code without changing the data structure, we can use
+hand-over-hand locking (\autoref{ch:cds}).
 \autoref{fig:queuefix} shows an implementation that uses the same
 data structure as \autoref{fig:queuebug} but uses hand-over-hand locking,
 both for \texttt{put}() and for \texttt{get}().  It passes all tests.

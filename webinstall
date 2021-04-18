@@ -12,6 +12,8 @@ mv harmony.html output/Up.html
 mv harmony.html output/naiveLock.html
 ./harmony code/naiveFlags.hny
 mv harmony.html output/naiveFlags.html
+./harmony -mqueue=queuebug code/qtest3.hny
+mv harmony.html output/queuebug.html
 cp output/*.html $dir/output
 
 cp harmony harmony.py $dir
