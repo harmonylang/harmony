@@ -3291,8 +3291,8 @@ node no longer exists.
 
 To fix the code without changing the data structure, we can use
 hand-over-hand locking (\autoref{ch:cds}).
-\autoref{fig:queuefix} shows an implementation that uses the same
-data structure as \autoref{fig:queuebug} but uses hand-over-hand locking,
+\autoref{fig:queuefix} shows an implementation
+that uses hand-over-hand locking
 both for \texttt{put}() and for \texttt{get}().  It passes all tests.
 
 \begin{figure}
