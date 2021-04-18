@@ -3212,8 +3212,8 @@ is linearizable.
 \begin{center}
 \includegraphics[width=\textwidth]{figures/queuebug1.pdf}
 \end{center}
-\caption{Harmony output of running \autoref{fig:qtest3} against
-\autoref{fig:queuebug}.}
+\caption{\harmonyref{queuebug.html}{Harmony output of running \autoref{fig:qtest3} against
+\autoref{fig:queuebug}}.}
 \label{fig:queuebug1}
 \end{figure}
 
@@ -3234,7 +3234,10 @@ the value from the removed node.
 
 Let us run the code through some of the test programs in the last
 chapter.  Harmony does not detect any issues with the sequential test
-in \autoref{fig:qtestseq}.  The concurrent \texttt{put} test of
+in \autoref{fig:qtestseq}.
+(Run this using the \texttt{-m} flag like this:
+\texttt{harmony -m queue=queuebug code/qtestseq.hny})
+The concurrent \texttt{put} test of
 \autoref{fig:qtest1} as well as the concurrent \texttt{get} test of
 \autoref{fig:qtest2} also find no problems.  However, when we run
 the new queue code through the test in \autoref{fig:qtest3}, Harmony
