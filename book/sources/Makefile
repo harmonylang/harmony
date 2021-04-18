@@ -67,7 +67,9 @@ CODE = \
     prog2.tex \
     qbarrier.tex \
     queue.tex \
+    queuebug.tex \
     queuedemo.tex \
+    queuefix.tex \
     queuelin.tex \
     queueMS.tex \
     queuespec.tex \

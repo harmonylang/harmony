@@ -516,6 +516,8 @@ that support locks and other synchronization primitives.
 data structures.
 \item \autoref{ch:testing} discusses approaches to testing
 concurrent code in Harmony.
+\item \autoref{ch:debugging} instead goes into how to find a bug
+in concurrent code using the Harmony output.
 \item \autoref{ch:condwait} talks about threads having to wait for
 certain conditions.  As examples, it presents the reader/writer lock
 problem and the bounded buffer problem.
@@ -3194,6 +3196,107 @@ check if the implementation is linearizable.
 \item Check if the extended queue implementation of \autoref{ex:qremove}
 is linearizable.
 \end{problems}
+
+\chapter{Debugging}
+\label{ch:debugging}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuebug}
+\end{code}
+\caption{\harmonylink{code/queuebug.hny} A buggy queue implementation.}
+\label{fig:queuebug}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/queuefix1.pdf}
+\end{center}
+\caption{Harmony output.}
+\label{fig:queuefix1}
+\end{figure}
+
+So you wrote a Harmony program and Harmony reports a bug.
+Often you may just be able to figure it out by staring at the code and
+going through some easy scenarios, but what if you don't?
+The output of Harmony can be helpful in that case.
+
+\autoref{fig:queuebug} contains an attempt at a queue implementation
+where the queue is implemented by a linked list, with the first node
+being a \texttt{dummy} node to prevent data races.  Each node in the
+list contains a lock.  The \texttt{put}() method walks the list until
+it gets to the last node, each time acquiring the lock to access the
+node's fields.  When \texttt{put}() gets to the last node in the list,
+it appends a new one.  The \texttt{get}() method locks the first (dummy)
+node, removes the second from the list and frees it.  The method returns
+the value from the removed node.
+
+Let us run the code through some of the test programs in the last
+chapter.  Harmony does not detect any issues with the sequential test
+in \autoref{fig:qtestseq}.  The concurrent \texttt{put} test of
+\autoref{fig:qtest1} as well as the concurrent \texttt{get} test of
+\autoref{fig:qtest2} also find no problems.  However, when we run
+the new queue code through the test in \autoref{fig:qtest3}, Harmony
+finds a problem.
+
+\autoref{fig:queuefix1} shows the Harmony output of running
+the test in \autoref{fig:qtest3} against the queue code
+in \autoref{fig:queuebug}.
+There is quite a bit of information in the Harmony output, and it's
+important to learn to navigate through it.
+Let's start with looking at the red text.  Harmony found a safety
+violation (something bad happened during one of the possible executions),
+and in particular \texttt{putter}(1) (thread T2) was trying to dereference
+\texttt{alloc}.\textit{pool}[0].\texttt{lock} in turn 5.
+
+The \texttt{alloc} module maintains a shared array \textit{pool} that
+it uses for dynamic allocation.  Apparently \texttt{putter}(1) tried to access
+\textit{pool}[0], but it does not exist, meaning that either it was not
+yet allocated, or it had been freed since it was allocated.
+When we look at the top half of the figure, we see that in fact
+\texttt{putter}(0) (T1) allocated \textit{pool}[0] in turn 2, while
+\texttt{getter}() (T4) released it in turn 4.
+
+So how did we get there?  We can start by single stepping through the
+actions of \texttt{putter}(0) by clicking on its first block.
+By hitting return repeatedly, we can go through the lines of code that
+it is executing.  Doing so, we can see that it allocates
+\textit{pool}[0] and uses that as the node to contain value 0 and add
+this node to the queue \textit{qtest}.  At the end of its turn,
+\texttt{putter}(0) has just finished \texttt{put}(0).  Looking at the
+state in the top right, everything looks good.  The first node
+(\textit{testq}) points to the allocated node with the value 0 in it,
+and its \texttt{next} pointer is \textbf{None}.  The locks on both nodes
+are released.  So far so good.
+
+Next \texttt{putter}(1) (thread T2) takes a turn.  It gets to line 10 in
+\autoref{fig:queuebug} where it's trying to acquire
+$q$$\rightarrow$\texttt{lock}.  If we look at the bottom right,
+we see that $q$ points to \textit{pool}[0], the node that has value 0
+in it.  Again, so far so good.
+
+But before \texttt{putter}(1) obtains
+the lock on \textit{pool}[0], \texttt{getter}() (thread T4) starts
+running.  \texttt{getter}() acquires the lock on \textit{qtest}, which
+still points to \textit{pool}[0].  \texttt{getter} then extracts the
+value from \textit{pool}[0] and then releases it.
+At this point \textit{pool}[0] no longer exists, but then
+\texttt{putter}(1) starts running again from where it left off.
+It was about to acquire the lock on \textit{pool}[0], but now that
+node no longer exists.
+
+To fix the code, we have to use hand-over-hand locking (\autoref{ch:cds}).
+\autoref{fig:queuefix} shows an implementation that uses the same
+data structure as \autoref{fig:queuebug} but uses hand-over-hand locking,
+both for \texttt{put}() and for \texttt{get}().  It passes all tests.
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuefix}
+\end{code}
+\caption{\harmonylink{code/queuefix.hny} Queue implementation with hand-over-hand locking.}
+\label{fig:queuefix}
+\end{figure}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}
