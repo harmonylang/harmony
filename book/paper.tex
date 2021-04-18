@@ -3210,10 +3210,11 @@ is linearizable.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{figures/queuefix1.pdf}
+\includegraphics[width=\textwidth]{figures/queuebug1.pdf}
 \end{center}
-\caption{Harmony output.}
-\label{fig:queuefix1}
+\caption{Harmony output of running \autoref{fig:qtest3} against
+\autoref{fig:queuebug}.}
+\label{fig:queuebug1}
 \end{figure}
 
 So you wrote a Harmony program and Harmony reports a bug.
@@ -3239,7 +3240,7 @@ in \autoref{fig:qtestseq}.  The concurrent \texttt{put} test of
 the new queue code through the test in \autoref{fig:qtest3}, Harmony
 finds a problem.
 
-\autoref{fig:queuefix1} shows the Harmony output of running
+\autoref{fig:queuebug1} shows the Harmony output of running
 the test in \autoref{fig:qtest3} against the queue code
 in \autoref{fig:queuebug}.
 There is quite a bit of information in the Harmony output, and it's
