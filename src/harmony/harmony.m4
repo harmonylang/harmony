@@ -177,6 +177,7 @@ def load_string(all, filename, scope, code):
         raise HarmonyCompilerError(
             error_name='ParseError',
             message=f"Empty file: {filename}",
+            filename=filename
         )
 
     try:
@@ -186,12 +187,14 @@ def load_string(all, filename, scope, code):
         raise HarmonyCompilerError(
             error_name='ParseError',
             message=f"Parsing {filename} hit EOF",
+            filename=filename
         )
 
     if rem != []:
         raise HarmonyCompilerError(
             error_name='ParseError',
             message=f"Parsing: unexpected tokens remaining at end of program: {rem[0]}",
+            filename=filename
         )
 
     for mod in ast.getImports():
@@ -3661,6 +3664,11 @@ class StatListRule(Rule):
             (lexeme, file, line, column) = t[0]
         if slice == []:
             raise HarmonyCompilerError(
+                filename=file,
+                error_name='EmptyStatementError',
+                token=lexeme,
+                line=line,
+                col=column,
                 message=f"Parse error: no statements in indented block: {t[0]}",
             )
 
@@ -3671,6 +3679,11 @@ class StatListRule(Rule):
                 b.append(ast)
             except IndexError:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='IncompleteStatementError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"Parsing: incomplete statement starting at {slice[0]}",
                 )
 
@@ -3735,6 +3748,11 @@ class StatementRule(Rule):
                 return (tokens, t[1:])
             if lexeme in [')', ']', '}']:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnmatchedBracketError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"unmatched bracket: {t[0]}",
                 )
             if lexeme in ['(', '[', '{']:
@@ -3745,6 +3763,11 @@ class StatementRule(Rule):
             else:
                 t = t[1:]
         raise HarmonyCompilerError(
+            filename=file,
+            error_name='MissingBracketError',
+            token=lexeme,
+            line=line,
+            col=column,
             message=f"closing bracket missing: {first} {tokens} {t}",
         )
 
@@ -3788,6 +3811,11 @@ class StatementRule(Rule):
             (ast, tokens) = TupleRule(set()).parse(tokens[1:])
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"constant definition: unexpected token: {tokens[0]}",
                 )
             return (ConstAST(const, ast), t)
@@ -3820,6 +3848,11 @@ class StatementRule(Rule):
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"await: unexpected token: {tokens[0]}",
                 )
             return (AwaitAST(cond), t)
@@ -3828,6 +3861,11 @@ class StatementRule(Rule):
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"invariant: unexpected token: {tokens[0]}",
                 )
             return (InvariantAST(cond, token), t)
@@ -3857,6 +3895,11 @@ class StatementRule(Rule):
             (ast, tokens) = ExpressionRule().parse(tokens)
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"del: unexpected token: {tokens[0]}",
                 )
             return (DelAST(ast), t)
@@ -3872,6 +3915,11 @@ class StatementRule(Rule):
             (func, tokens) = NaryRule({","}).parse(tokens)
             if not isinstance(func, ApplyAST):
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"spawn: expected method application {token}",
                 )
             if tokens == []:
@@ -3882,6 +3930,11 @@ class StatementRule(Rule):
                 (this, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
                     raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
                         message=f"spawn: unexpected token: {tokens[0]}",
                     )
             return (SpawnAST(func.method, func.arg, this), t)
@@ -3890,10 +3943,20 @@ class StatementRule(Rule):
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"trap: expected method application: {token}",
                 )
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"trap: unexpected token: {tokens[0]}",
                 )
             return (TrapAST(func.method, func.arg), t)
@@ -3902,10 +3965,20 @@ class StatementRule(Rule):
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"go: expected method application: {token}",
                 )
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"go: unexpected token: {tokens[0]}",
                 )
             return (GoAST(func.method, func.arg), t)
@@ -3925,6 +3998,11 @@ class StatementRule(Rule):
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
                     raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
                         message=f"sequential: unexpected token: {tokens[0]}",
                     )
             return (SequentialAST(vars), t)
@@ -3942,6 +4020,11 @@ class StatementRule(Rule):
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
                     raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
                         message=f"import: unexpected token: {tokens[0]}",
                     )
 
@@ -3968,6 +4051,11 @@ class StatementRule(Rule):
                     (lexeme, file, line, column) = tokens[0]
             if tokens != []:
                 raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
                     message=f"from: unexpected token: {tokens[0]}",
                 )
 
@@ -3983,6 +4071,11 @@ class StatementRule(Rule):
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
                     raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
                         message=f"assert: unexpected token: {tokens[0]}",
                     )
 
