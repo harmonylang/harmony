@@ -174,7 +174,7 @@ def load_string(all, filename, scope, code):
     tokens = lexer(all, filename)
     if tokens == []:
         raise HarmonyCompilerError(
-            error_name='ParseError',
+            error_name='UnexpectedEofError',
             message=f"Empty file: {filename}",
             filename=filename
         )
@@ -189,7 +189,7 @@ def load_string(all, filename, scope, code):
             line=line,
             col=column,
             token=lexeme,
-            error_name='ParseError',
+            error_name='UnexpectedEofError',
             message=f"Parsing {filename} hit EOF",
         )
 
@@ -200,7 +200,7 @@ def load_string(all, filename, scope, code):
             line=line,
             col=column,
             token=lexeme,
-            error_name='ParseError',
+            error_name='UnexpectedTokenError',
             message=f"Parsing: unexpected tokens remaining at end of program: {rem[0]}",
         )
 
@@ -2039,7 +2039,6 @@ class ApplyOp(Op):
 
 class AST:
     def __init__(self, token):
-        print('Tokens', self.__class__.__name__, token)
         self.ast_token = token
 
     def assign(self, scope, var):
@@ -2092,7 +2091,12 @@ class AST:
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
+        lexeme, file, line, column = self.ast_token
         raise HarmonyCompilerError(
+            token=lexeme,
+            filename=file,
+            line=line,
+            col=column,
             error_name='ExpressionError',
             message=f'Cannot use in left-hand side expression: {self}'
         )
@@ -2663,7 +2667,7 @@ class Rule:
                 filename=file,
                 line=line,
                 col=column,
-                error_name='RuleError',
+                error_name='ParseError',
                 message=f"Parse error in {rule}. Got {got}, but wanted {want}"
             )
 
@@ -2727,6 +2731,7 @@ class NaryRule(Rule):
                         line=line,
                         col=column,
                         token=lexeme,
+                        error_name='MissingExpressionError',
                         message=f"expected an expression after n-ary comparison operation in {op}"
                     )
                 args.append(ast3)
@@ -2745,7 +2750,7 @@ class NaryRule(Rule):
             lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
             raise HarmonyCompilerError(
                 filename=file,
-                error_name='EmptyStatementError',
+                error_name='MissingExpressionError',
                 token=lexeme,
                 line=line,
                 col=column,
@@ -2761,7 +2766,7 @@ class NaryRule(Rule):
                     lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='EmptyStatementError',
+                        error_name='MissingExpressionError',
                         token=lexeme,
                         line=line,
                         col=column,
@@ -2777,7 +2782,7 @@ class NaryRule(Rule):
                         lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
                         raise HarmonyCompilerError(
                             filename=file,
-                            error_name='EmptyStatementError',
+                            error_name='MissingExpressionError',
                             token=lexeme,
                             line=line,
                             col=column,
@@ -3739,7 +3744,7 @@ class ConstAST(AST):
                 token=lexeme,
                 line=line,
                 col=column,
-                error_name='ParseError',
+                error_name='InvalidConstantError',
                 message=f"{self.const}: Parse error: expression not a constant {self.expr}",
             )
         if isinstance(self.expr, LambdaAST):
@@ -4229,7 +4234,15 @@ class StatementRule(Rule):
                 expr = None
             else:
                 (lexeme, file, line, column) = tokens[0]
-                assert lexeme == ","
+                if lexeme != ",":
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"assert: unexpected token: {tokens[0]}",
+                    )
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
                     lexeme, file, line, column = tokens[0]
@@ -5813,7 +5826,7 @@ def usage():
     print("    -v: print version number")
     exit(1)
 
-def main():
+def main(arguments):
     global silent
 
     # Get options.  First set default values
@@ -5827,7 +5840,7 @@ def main():
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhjm:stv",
+        opts, args = getopt.getopt(arguments[1:], "Aabc:dfhjm:stv",
                 ["const=", "cf=", "help", "module=", "suppress", "version"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -5939,7 +5952,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        main(sys.argv)
     except HarmonyCompilerError as e:
         print(e.message)
         print(e)
