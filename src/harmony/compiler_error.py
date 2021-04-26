@@ -10,7 +10,7 @@ class HarmonyCompilerError(Exception):
             col: int = None,
             **kwargs
     ):
-        self.token = token,
+        self.token = token
         self.filename = filename
         self.error_name = error_name
         self.message = message
