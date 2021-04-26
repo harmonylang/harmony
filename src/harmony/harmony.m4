@@ -91,6 +91,8 @@ m4_include(brief.py)
 
 m4_include(genhtml.py)
 
+m4_include(compiler_error.py)
+
 def bag_add(bag, item):
     cnt = bag.get(item)
     if cnt == None:
