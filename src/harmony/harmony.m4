@@ -5681,4 +5681,8 @@ def main():
         dumpCode(printCode, code, scope)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except HarmonyCompilerError as e:
+        print(e.message)
+        exit(1)
