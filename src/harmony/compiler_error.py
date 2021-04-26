@@ -2,12 +2,18 @@
 class HarmonyCompilerError(Exception):
     def __init__(
             self,
+            filename: str = None,
+            token: str = None,
             error_name: str = 'Error',
-            line: int = 0,
-            col: int = 0,
+            message: str = 'An error occurred',
+            line: int = None,
+            col: int = None,
             **kwargs
     ):
+        self.token = token,
+        self.filename = filename
         self.error_name = error_name
+        self.message = message
         self.line = line
         self.col = col
         self.metadata = kwargs
@@ -15,7 +21,10 @@ class HarmonyCompilerError(Exception):
     def __repr__(self):
         return f"""\
 HarmonyCompilerError(
+    filename={repr(self.filename)},
+    token={repr(self.token)},
     error_name={repr(self.error_name)},
+    message={repr(self.message)},
     line={repr(self.line)},
     col={repr(self.col)},
     **{repr(self.metadata)})"""
@@ -23,7 +32,10 @@ HarmonyCompilerError(
     def __str__(self):
         return f"""\
 HarmonyCompilerError:
+    filename:  {self.filename}
+    token:     {self.token}
     errorName: {self.error_name}
+    message:   {self.message}
     line:      {self.line}
     column:    {self.col}
     metadata:  {self.metadata}

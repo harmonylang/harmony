@@ -93,6 +93,26 @@ m4_include(genhtml.py)
 
 m4_include(compiler_error.py)
 
+class HarmonyCompilerError(Exception):
+    def __init__(
+            self,
+            filename: str = None,
+            token: str = None,
+            error_name: str = 'Error',
+            message: str = 'An error occurred',
+            line: int = None,
+            col: int = None,
+            **kwargs
+    ):
+        self.token = token,
+        self.filename = filename
+        self.error_name = error_name
+        self.message = message
+        self.line = line
+        self.col = col
+        self.metadata = kwargs
+
+
 def bag_add(bag, item):
     cnt = bag.get(item)
     if cnt == None:
@@ -139,9 +159,13 @@ def doImport(scope, code, module):
                 load_string(internal_modules[lexeme],
                     "<internal>/" + modname + ".hny", scope2, code)
             else:
-                print("Can't find module", modname, "imported from", namestack)
-                sys.exit(1)
-        
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=modname,
+                    error_name='ImportError',
+                    message=f"Can't import module {modname} from {namestack}",
+                    line=line, col=column)
+
         imported[lexeme] = scope2
 
     scope.names[lexeme] = ("module", imported[lexeme])
@@ -150,19 +174,25 @@ def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
     if tokens == []:
-        print("Empty file:", filename)
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            error_name='ParseError',
+            message=f"Empty file: {filename}",
+        )
 
     try:
         (ast, rem) = StatListRule(-1).parse(tokens)
     except IndexError:
         # best guess...
-        print("Parsing", filename, "hit EOF")
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            error_name='ParseError',
+            message=f"Parsing {filename} hit EOF",
+        )
 
     if rem != []:
-        print("Parsing: unexpected tokens remaining at end of program:", rem[0])
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            error_name='ParseError',
+            message=f"Parsing: unexpected tokens remaining at end of program: {rem[0]}",
+        )
 
     for mod in ast.getImports():
         doImport(scope, code, mod)
@@ -2048,8 +2078,10 @@ class AST:
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
-        print("Cannot use in left-hand side expression:", self)
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            error_name='ExpressionError',
+            message=f'Cannot use in left-hand side expression: {self}'
+        )
 
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
         if iter == []:
@@ -2159,9 +2191,14 @@ class AST:
                     load_string(internal_modules[lexeme],
                         "<internal>/" + modname + ".hny", scope2, code)
                 else:
-                    print("Can't find module", modname, "imported from", namestack)
-                    sys.exit(1)
-            
+                    raise HarmonyCompilerError(
+                        error_name='ImportError',
+                        token=modname,
+                        filename=str(namestack),
+                        message=f"Can't find module {modname} imported from {namestack}",
+                        line=line, col=column
+                    )
+
             imported[lexeme] = scope2
 
         scope.names[lexeme] = ("module", imported[lexeme])
@@ -2218,8 +2255,9 @@ class NameAST(AST):
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         elif t == "constant":
-            print("constant cannot be an lvalue:", self.name)
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"constant cannot be an lvalue: {self.name}",
+            )
         else:
             (lexeme, file, line, column) = self.name
             code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
@@ -2566,8 +2604,9 @@ class ApplyAST(AST):
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
-                    print("Cannot assign to constant", self.method.name, self.arg.const)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"Cannot assign to constant {self.method.name} {self.arg.const}",
+                    )
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
         code.append(AddressOp())
@@ -2583,8 +2622,9 @@ class ApplyAST(AST):
 class Rule:
     def expect(self, rule, b, got, want):
         if not b:
-            print("Parse error in %s."%rule, "Got", got, ":", want)
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"Parse error in {rule}. Got {got}, but wanted {want}"
+            )
 
     def forParse(self, t, closers):
         (bv, t) = BoundVarRule().parse(t)
@@ -2640,8 +2680,9 @@ class NaryRule(Rule):
                 ops.append(t[0])
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
-                    print("expected an expression after n-ary comparison operation in", op)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"expected an expression after n-ary comparison operation in {op}"
+                    )
                 args.append(ast3)
                 if t == []:
                     break
@@ -2655,8 +2696,9 @@ class NaryRule(Rule):
         else:
             (ast2, t) = ExpressionRule().parse(t[1:])
         if ast2 == False:
-            print("expected an expression after operation", op)
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"expected an expression after operation {op}"
+            )
         args.append(ast2)
         if t != []:
             (lexeme, file, line, column) = t[0]
@@ -2664,8 +2706,9 @@ class NaryRule(Rule):
                 self.expect("n-ary operation", lexeme == "else", t[0], "expected 'else'")
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
-                    print("expected an expression after else in", op)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"expected an expression after else in {op}"
+                    )
                 args.append(ast3)
                 if t != []:
                     (lexeme, file, line, column) = t[0]
@@ -2673,8 +2716,9 @@ class NaryRule(Rule):
                 while lexeme == op[0]:
                     (ast3, t) = ExpressionRule().parse(t[1:])
                     if ast3 == False:
-                        print("expected an expression after n-ary operation in", op)
-                        sys.exit(1)
+                        raise HarmonyCompilerError(
+                            message=f"expected an expression after n-ary operation in {op}"
+                        )
                     args.append(ast3)
                     if t == []:
                         break
@@ -2973,11 +3017,13 @@ class AssignmentAST(AST):
             # handled separately for assembly code readability
             (t, v) = scope.find(lv.name)
             if t == "module":
-                print("Cannot operate on module", lv.name)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f'Cannot operate on module {lv.name}',
+                )
             if t == "constant":
-                print("Cannot operate on constant", lv.name)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f'Cannot operate on constant {lv.name}',
+                )
             assert t in { "local", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
@@ -3022,11 +3068,13 @@ class AssignmentAST(AST):
             if isinstance(lvs, NameAST):
                 (t, v) = scope.find(lvs.name)
                 if t == "module":
-                    print("Cannot assign to module", lvs.name)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f'Cannot assign to module {lvs.name}',
+                    )
                 if t == "constant":
-                    print("Cannot assign to constant", lvs.name)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f'Cannot assign to constant {lvs.name}',
+                    )
                 assert t in { "local", "global" }, (t, lvs.name)
                 st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                 code.append(st)
@@ -3083,21 +3131,25 @@ class AddressAST(AST):
         if isinstance(lv, NameAST):
             (t, v) = scope.lookup(lv.name)
             if t == "local":
-                print("can't take address of local variable", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"Can't take address of local variable {lv}",
+                )
             if t == "constant":
-                print("can't take address of constant", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"Can't take address of constant {lv}",
+                )
             if t == "module":
-                print("can't take address of imported", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"Can't take address of imported {lv}",
+                )
         elif isinstance(lv, ApplyAST):
             self.check(lv.method, scope)
         elif isinstance(lv, PointerAST):
             pass
         else:
-            print("can't take address of", lv)
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"Can't take address of {lv}",
+            )
 
     def gencode(self, scope, code):
         self.check(self.lv, scope)
@@ -3462,9 +3514,12 @@ class FromAST(AST):
         else:
             for (lexeme, file, line, column) in self.items:
                 if lexeme not in names:
-                    print("%s line %d: can't import %s from module %s"%(
-                        file, line, lexeme, self.module[0]))
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        token=lexeme,
+                        error_name='ImportError',
+                        message=f"{file} line {line}: can't import {lexeme} from {self.module[0]}",
+                        line=line, col=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
@@ -3540,8 +3595,9 @@ class ConstAST(AST):
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
-            print(self.const, ": Parse error: expression not a constant", str(self.expr))
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"{self.const}: Parse error: expression not a constant {self.expr}",
+            )
         if isinstance(self.expr, LambdaAST):
             pc = self.expr.compile_body(scope, code)
             self.set(scope, self.const, PcValue(pc))
@@ -3604,8 +3660,9 @@ class StatListRule(Rule):
                 break
             (lexeme, file, line, column) = t[0]
         if slice == []:
-            print("Parse error: no statements in indented block:", t[0])
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message=f"Parse error: no statements in indented block: {t[0]}",
+            )
 
         b = []
         while slice != []:
@@ -3613,8 +3670,9 @@ class StatListRule(Rule):
                 (ast, slice) = LabelStatRule().parse(slice)
                 b.append(ast)
             except IndexError:
-                print("Parsing: incomplete statement starting at ", slice[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"Parsing: incomplete statement starting at {slice[0]}",
+                )
 
         return (BlockAST(b), t)
 
@@ -3676,8 +3734,9 @@ class StatementRule(Rule):
             if lexeme == bracket:
                 return (tokens, t[1:])
             if lexeme in [')', ']', '}']:
-                print("unmatched bracket:", t[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"unmatched bracket: {t[0]}",
+                )
             if lexeme in ['(', '[', '{']:
                 (more, t) = self.rec_slice(t)
                 tokens += more
@@ -3685,8 +3744,9 @@ class StatementRule(Rule):
                     break
             else:
                 t = t[1:]
-        print("closing bracket missing:", first, tokens, t)
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            message=f"closing bracket missing: {first} {tokens} {t}",
+        )
 
     def slice(self, t, indent):
         if t == []:
@@ -3727,8 +3787,9 @@ class StatementRule(Rule):
             self.expect("constant definition", lexeme == "=", tokens[0], "expected '='")
             (ast, tokens) = TupleRule(set()).parse(tokens[1:])
             if tokens != []:
-                print("constant definition: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"constant definition: unexpected token: {tokens[0]}",
+                )
             return (ConstAST(const, ast), t)
         if lexeme == "if":
             alts = []
@@ -3758,15 +3819,17 @@ class StatementRule(Rule):
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
-                print("await: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"await: unexpected token: {tokens[0]}",
+                )
             return (AwaitAST(cond), t)
         if lexeme == "invariant":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
-                print("invariant: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"invariant: unexpected token: {tokens[0]}",
+                )
             return (InvariantAST(cond, token), t)
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
@@ -3793,8 +3856,9 @@ class StatementRule(Rule):
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
             if tokens != []:
-                print("del: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"del: unexpected token: {tokens[0]}",
+                )
             return (DelAST(ast), t)
         if lexeme == "def":
             name = t[1]
@@ -3807,8 +3871,9 @@ class StatementRule(Rule):
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule({","}).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("spawn: expected method application", token)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"spawn: expected method application {token}",
+                )
             if tokens == []:
                 this = None
             else:
@@ -3816,28 +3881,33 @@ class StatementRule(Rule):
                 assert lexeme == ","
                 (this, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
-                    print("spawn: unexpected token:", tokens[0])
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"spawn: unexpected token: {tokens[0]}",
+                    )
             return (SpawnAST(func.method, func.arg, this), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("trap: expected method application", token)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"trap: expected method application: {token}",
+                )
             if tokens != []:
-                print("trap: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"trap: unexpected token: {tokens[0]}",
+                )
             return (TrapAST(func.method, func.arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("go: expected method application", token)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"go: expected method application: {token}",
+                )
             if tokens != []:
-                print("go: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"go: unexpected token: {tokens[0]}",
+                )
             return (GoAST(func.method, func.arg), t)
         if lexeme == "pass":
             return (PassAST(), t[1:])
@@ -3854,8 +3924,9 @@ class StatementRule(Rule):
                         break
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
-                    print("sequential: unexpected token:", tokens[0])
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"sequential: unexpected token: {tokens[0]}",
+                    )
             return (SequentialAST(vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
@@ -3870,8 +3941,10 @@ class StatementRule(Rule):
                         break
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
-                    print("import: unexpected token:", tokens[0])
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"import: unexpected token: {tokens[0]}",
+                    )
+
             return (ImportAST(mods), t)
         if lexeme == "from":
             (tokens, t) = self.slice(t[1:], column)
@@ -3894,8 +3967,10 @@ class StatementRule(Rule):
                         break;
                     (lexeme, file, line, column) = tokens[0]
             if tokens != []:
-                print("from: unexpected token:", tokens[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    message=f"from: unexpected token: {tokens[0]}",
+                )
+
             return (FromAST(module, items), t)
         if lexeme == "assert":
             (tokens, t) = self.slice(t[1:], column)
@@ -3907,8 +3982,10 @@ class StatementRule(Rule):
                 assert lexeme == ","
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
-                    print("assert: unexpected token:", tokens[0])
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"assert: unexpected token: {tokens[0]}",
+                    )
+
             return (AssertAST(token, cond, expr), t)
         
         # If we get here, the next statement is either an expression
@@ -4613,14 +4690,16 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     if tokens == []:
-        print("Empty constant")
-        sys.exit(1)
+        HarmonyCompilerError(
+            message="Empty constant"
+        )
     try:
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:
         # best guess...
-        print("Parsing constant", v, "hit end of string")
-        sys.exit(1)
+        HarmonyCompilerError(
+            message=f"Parsing constant {v} hit end of string"
+        )
     scope = Scope(None)
     code = []
     ast.compile(scope, code)
