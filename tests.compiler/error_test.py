@@ -45,7 +45,6 @@ class CatchImportError(TestInstance):
         ]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'ImportError'
-
 class CatchInvalidConstantError(TestInstance):
     def content(self) -> List[str]:
         return [
@@ -162,6 +161,7 @@ def test_runner():
             print(f"Failed to validate instance {instance.__class__.__name__}, {e}")
             return
     print('All given tests pass! ✅ ')
+    print(f'Tested {len(test_classes)} error test instances')
 
 
 if __name__ == "__main__":
