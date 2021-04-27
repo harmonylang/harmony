@@ -66,6 +66,11 @@ echo ==============
 ./harmony code/PetersonMethod.hny
 
 echo ==============
+echo clock
+echo ==============
+./harmony code/clock.hny
+
+echo ==============
 echo spinlock
 echo ==============
 ./harmony code/spinlock.hny

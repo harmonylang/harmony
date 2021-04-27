@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1506
+1,1, 1517
 
 ]
 
@@ -482,12 +482,29 @@ struct json_value *json_lookup_value(struct dict *map, char *key);
 
 #endif /* JSON_H */
 
+#ifndef _MINHEAP_H
+#define _MINHEAP_H
+
+#include <stdbool.h>
+
+struct minheap *minheap_create();
+void *minheap_getmin(struct minheap *);
+void minheap_insert(struct minheap *, void *);
+void minheap_decrease(struct minheap *, void *);
+int  minheap_size(struct minheap *);
+bool minheap_empty(struct minheap *mh);
+void minheap_destroy(struct minheap *);
+bool minheap_check(struct minheap *hm, void *key);
+
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #include "json.h"
+#include "minheap.h"
 #endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
@@ -495,14 +512,6 @@ struct json_value *json_lookup_value(struct dict *map, char *key);
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
 #define CALLTYPE_INTERRUPT     3
-
-struct queue *queue_init(void);
-void queue_enqueue(struct queue *queue, void *item);
-void queue_prepend(struct queue *queue, void *item);
-bool queue_dequeue(struct queue *queue, void **item);
-bool queue_empty(struct queue *queue);
-void queue_release(struct queue *queue);
-void queue_cleanup(void);
 
 void *mcopy(void *p, unsigned int size);
 char *scopy(char *s);
@@ -727,6 +736,7 @@ struct node {
     // How to get here from parent node
     struct node *parent;    // shortest path to initial state
     int len;                // length of path to initial state
+    int steps;              // #microsteps from root
     uint64_t before;        // context before state change
     uint64_t after;         // context after state change (current context)
     uint64_t choice;        // choice made if any
@@ -735,6 +745,8 @@ struct node {
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
+
+    bool processed;         // for debugging currently
 };
 
 struct failure {
@@ -751,8 +763,8 @@ bool has_synch_module = false;
 static struct node **graph;         // vector of all nodes
 static int graph_size;              // to create node identifiers
 static int graph_alloc;             // size allocated
-static struct queue *failures;      // queue of "struct failure"  (TODO: make part of struct node "issues")
-static struct queue *warnings;      // queue of "struct failure"  (TODO: make part of struct node "issues")
+static struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
+static struct minheap *warnings;    // queue of "struct failure"  (TODO: make part of struct node "issues")
 static uint64_t *processes;         // list of contexts of processes
 static int nprocesses;              // the number of processes in the list
 static double lasttime;             // since last report printed
@@ -761,6 +773,7 @@ static int enqueued;                // #states enqueued
 static int dequeued;                // #states dequeued
 static bool dumpfirst;              // for json dumping
 static struct access_info *ai_free; // free list of access_info structures
+static struct node *tochk;
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -839,7 +852,7 @@ void check_invariants(struct node *node, struct context **pctx){
             f->type = FAIL_INVARIANT;
             f->choice = node->choice;
             f->node = node;
-            queue_enqueue(failures, f);
+            minheap_insert(failures, f);
         }
     }
 }
@@ -861,7 +874,7 @@ struct access_info *ai_alloc(int multiplicity, int atomic, int pc){
 }
 
 void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
-        struct dict *visited, struct queue *todo, struct context **pinv_ctx,
+        struct dict *visited, struct minheap *todo, struct context **pinv_ctx,
         bool infloop_detect, int multiplicity, double timeout){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -893,7 +906,8 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     struct access_info *ai_list = NULL;
-    for (int loopcnt = 0;; loopcnt++) {
+    int loopcnt = 0;
+    for (;; loopcnt++) {
         int pc = cc->pc;
 
         if (timecnt-- == 0) {
@@ -1061,32 +1075,35 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         next->interrupt = interrupt;
         next->after = after;
         next->len = node->len + weight;
-        graph_add(next);
+        next->steps = node->steps + loopcnt;
+        graph_add(next);                // sets next->id
+        if (next->id == 1383) {
+            tochk = next;
+        }
 
         if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
             check_invariants(next, pinv_ctx);
         }
 
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0
-                            && queue_empty(failures)) {
-            if (weight == 0) {
-                queue_prepend(todo, next);
-            }
-            else {
-                queue_enqueue(todo, next);
-            }
+                            && minheap_empty(failures)) {
+            minheap_insert(todo, next);
             enqueued++;
         }
     }
     else {
         free(sc);
 
-        if (next->len > node->len + weight) {
+        if (next->len > node->len + weight ||
+                (next->len == node->len + weight && next->steps > node->steps + loopcnt)) {
+            assert(!next->processed);
             next->parent = node;
             next->before = ctx;
             next->after = after;
             next->choice = choice_copy;
             next->len = node->len + weight;
+            next->steps = node->steps + loopcnt;
+            minheap_decrease(todo, next);
         }
     }
 
@@ -1119,7 +1136,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->choice = choice_copy;
         f->node = next;
-        queue_enqueue(failures, f);
+        minheap_insert(failures, f);
     }
 
     free(cc);
@@ -1913,10 +1930,28 @@ void detect_busywait(struct node *node){
 			f->type = FAIL_BUSYWAIT;
 			f->choice = node->choice;
 			f->node = node;
-			queue_enqueue(failures, f);
+			minheap_insert(failures, f);
 			break;
 		}
 	}
+}
+
+static int node_cmp(void *n1, void *n2){
+    struct node *node1 = n1, *node2 = n2;
+
+    if (node1->len != node2->len) {
+        return node1->len - node2->len;
+    }
+    if (node1->steps != node2->steps) {
+        return node1->steps - node2->steps;
+    }
+    return node1->id - node2->id;
+}
+
+static int fail_cmp(void *f1, void *f2){
+    struct failure *fail1 = f1, *fail2 = f2;
+
+    return node_cmp(fail1->node, fail2->node);
 }
 
 void usage(char *prog){
@@ -1956,8 +1991,8 @@ int main(int argc, char **argv){
     double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
     double timeout = now + maxtime;
 
-    failures = queue_init();
-    warnings = queue_init();
+    failures = minheap_create(fail_cmp);
+    warnings = minheap_create(fail_cmp);
 
     // initialize modules
     value_init();
@@ -2027,8 +2062,8 @@ int main(int argc, char **argv){
     *p = node;
 
     // Put the initial state on the queue
-    struct queue *todo = queue_init();
-    queue_enqueue(todo, node);
+    struct minheap *todo = minheap_create(node_cmp);
+    minheap_insert(todo, node);
     enqueued++;
 
     // Create a context for evaluating invariants
@@ -2044,11 +2079,13 @@ int main(int argc, char **argv){
 
     void *next;
     int state_counter = 1;
-    while (queue_dequeue(todo, &next)) {
+    while (!minheap_empty(todo) && minheap_empty(failures)) {
+        next = minheap_getmin(todo);
         state_counter++;
         dequeued++;
 
         node = next;
+        node->processed = true;
         state = node->state;
 
         if (state->choosing != 0) {
@@ -2085,7 +2122,7 @@ int main(int argc, char **argv){
 
             // Check for data race
             // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y
-            if (queue_empty(warnings) && !cflag) {
+            if (minheap_empty(warnings) && !cflag) {
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
                     for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
                         if (ai->indices != NULL) {
@@ -2096,7 +2133,7 @@ int main(int argc, char **argv){
                                 f->choice = node->choice;
                                 f->node = node;
                                 f->address = value_put_address(ai->indices, ai->n * sizeof(uint64_t));
-                                queue_enqueue(warnings, f);
+                                minheap_insert(warnings, f);
                             }
                             else {
                                 for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
@@ -2112,7 +2149,7 @@ int main(int argc, char **argv){
                                                 f->choice = node->choice;
                                                 f->node = node;
                                                 f->address = value_put_address(ai->indices, min * sizeof(uint64_t));
-                                                queue_enqueue(warnings, f);
+                                                minheap_insert(warnings, f);
                                             }
                                         }
                                     }
@@ -2139,7 +2176,7 @@ int main(int argc, char **argv){
 
     printf("#states %d\n", graph_size);
 
-    if (queue_empty(failures)) {
+    if (minheap_empty(failures)) {
         // find the strongly connected components
         int ncomponents = find_scc();
 
@@ -2178,7 +2215,7 @@ int main(int argc, char **argv){
                 f->type = FAIL_TERMINATION;
                 f->choice = node->choice;
                 f->node = node;
-                queue_enqueue(failures, f);
+                minheap_insert(failures, f);
             }
         }
 
@@ -2229,29 +2266,20 @@ int main(int argc, char **argv){
     }
     fprintf(out, "{\n");
 
-    if (queue_empty(failures) && queue_empty(warnings)) {
+    if (minheap_empty(failures) && minheap_empty(warnings)) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\"\n");
         fprintf(out, "}\n");
         exit(0);
     }
 
+    // Find shortest "bad" path
     struct failure *bad = NULL;
-    while (queue_dequeue(failures, &next)) {
-        struct failure *f = next;
-
-        if (bad == NULL || f->node->len < bad->node->len) {
-            bad = f;
-        }
+    if (minheap_empty(failures)) {
+        bad = minheap_getmin(warnings);
     }
-    if (bad == NULL) {
-        while (queue_dequeue(warnings, &next)) {
-            struct failure *f = next;
-
-            if (bad == NULL || f->node->len < bad->node->len) {
-                bad = f;
-            }
-        }
+    else {
+        bad = minheap_getmin(failures);
     }
 
     switch (bad->type) {
@@ -5808,115 +5836,117 @@ void ops_init(){
     this = value_put_atom("this", 4);
 }
 
-#include <stdlib.h>
-#include <assert.h>
-
 #ifndef HARMONY_COMBINE
-#include "global.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "minheap.h"
 #endif
 
-#define MAX_CACHE	5000
+#define parent(k)   (int) (((k) - 1) / 2)
+#define leftc(k)    (2 * (k) + 1)
+#define rightc(k)    (2 * (k) + 2)
 
-static struct q_elt *queue_cache;
-static unsigned int queue_csize;
-
-struct q_elt {
-	struct q_elt *next;
-	void *item;
+struct minheap {
+    int (*cmp)(void *v1, void *v2);
+    void **array;
+    int alloc_size, size;
 };
 
-struct queue {
-	struct q_elt *first, **last;
-};
-
-void queue_enqueue(struct queue *queue, void *item){
-	struct q_elt *qe;
-
-	if ((qe = queue_cache) == 0) {
-		assert(queue_csize == 0);
-		qe = new_alloc(struct q_elt);
-	}
-	else {
-		assert(queue_csize > 0);
-		queue_csize--;
-		queue_cache = qe->next;
-		qe->next = 0;
-	}
-
-	qe->item = item;
-	*queue->last = qe;
-	queue->last = &qe->next;
-}
-
-void queue_prepend(struct queue *queue, void *item){
-	struct q_elt *qe;
-
-	if ((qe = queue_cache) == 0) {
-		assert(queue_csize == 0);
-		qe = new_alloc(struct q_elt);
-	}
-	else {
-		assert(queue_csize > 0);
-		queue_csize--;
-		queue_cache = qe->next;
-	}
-
-	qe->item = item;
-    if ((qe->next = queue->first) == 0) {
-        queue->last = &qe->next;
+bool minheap_check(struct minheap *mh, void *key) {
+    for (int i = 0; i < mh->size; i++) {
+        if (mh->array[i] == key) {
+            return true;
+        }
     }
-    queue->first = qe;
+    return false;
 }
 
-bool queue_dequeue(struct queue *queue, void **item){
-	struct q_elt *qe;
-
-	if ((qe = queue->first) == 0) {
-		return false;
-	}
-	if ((queue->first = qe->next) == 0) {
-		queue->last = &queue->first;
-	}
-	*item = qe->item;
-
-	if (queue_csize >= MAX_CACHE) {
-		assert(queue_csize == MAX_CACHE);
-		free(qe);
-	}
-	else {
-		qe->next = queue_cache;
-		queue_cache = qe;
-		queue_csize++;
-	}
-	return true;
+struct minheap *minheap_create(int (*cmp)(void *, void *)) {
+    struct minheap *mh = malloc(sizeof(struct minheap));
+    if (mh == NULL) {
+        fprintf(stderr, "minheap_create: out of memory\n");
+        exit(1);
+    }
+    mh->cmp = cmp;
+    mh->size = 0;
+    mh->alloc_size = 1024;
+    mh->array = malloc(sizeof(void *) * mh->alloc_size);
+    if (mh->array == NULL) {
+        fprintf(stderr, "minheap_create: out of memory\n");
+        exit(1);
+    }
+    return mh;
 }
 
-bool queue_empty(struct queue *queue){
-    return queue->first == 0;
+static void minheap_swap(struct minheap *mh, int i, int j) {
+    void *tmp = mh->array[i];
+    mh->array[i] = mh->array[j];
+    mh->array[j] = tmp;
 }
 
-struct queue *queue_init(void){
-	struct queue *q = new_alloc(struct queue);
-
-	q->last = &q->first;
-	return q;
+static void minheap_fixup(struct minheap *mh, int k) {
+    while (k > 0 && (*mh->cmp)(mh->array[k], mh->array[parent(k)]) < 0) {
+        minheap_swap(mh, parent(k), k);
+        k = parent(k);
+    }
 }
 
-void queue_release(struct queue *queue){
-	assert(queue->last == &queue->first);
-	free(queue);
+static void minheap_fixdown(struct minheap *mh, int k) {
+    int j;
+
+    while ((j = leftc(k)) < mh->size) {
+        assert(j > 0);
+        if (j < mh->size - 1 && (*mh->cmp)(mh->array[j+1], mh->array[j]) < 0) {
+            j++;
+        }
+        if ((*mh->cmp)(mh->array[k], mh->array[j]) <= 0) {
+            break;
+        }
+        minheap_swap(mh, k, j);
+        k = j;
+    }
 }
 
-void queue_cleanup(void){
-	struct q_elt *qe;
+void minheap_insert(struct minheap *mh, void *key) {
+    if (mh->size == mh->alloc_size) {
+        mh->alloc_size *= 2;
+        mh->array = realloc(mh->array, sizeof(void *) * mh->alloc_size);
+    }
+    mh->array[mh->size++] = key;
+    minheap_fixup(mh, mh->size - 1);
+}
 
-	while ((qe = queue_cache) != 0) {
-		assert(queue_csize > 0);
-		queue_csize--;
-		queue_cache = qe->next;
-		free(qe);
-	}
-	assert(queue_csize == 0);
+void minheap_decrease(struct minheap *mh, void *key) {
+    for (int i = 0; i < mh->size; i++) {
+        if (mh->array[i] == key) {
+            minheap_fixup(mh, i);
+            break;
+        }
+    }
+}
+
+bool minheap_empty(struct minheap *mh) {
+    return mh->size == 0;
+}
+
+void *minheap_getmin(struct minheap *mh) {
+    if (minheap_empty(mh)) {
+        fprintf(stderr, "minheap_getmin: heap is empty\n");
+        exit(1);
+    }
+    void *result = mh->array[0];
+    mh->array[0] = mh->array[--mh->size];
+    minheap_fixdown(mh, 0);
+    return result;
+}
+
+int minheap_size(struct minheap *mh) {
+    return mh->size;
+}
+
+void minheap_destroy(struct minheap *mh) {
+    free(mh->array);
+    free(mh);
 }
 
 #define _GNU_SOURCE
@@ -6023,8 +6053,7 @@ int value_cmp_atom(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_pc(uint64_t v1, uint64_t v2){
-    panic("value_cmp_pc: not yet implemented");
-    return 0;
+    return v1 < v2 ? -1 : 1;
 }
 
 int value_cmp_dict(uint64_t v1, uint64_t v2){

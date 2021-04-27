@@ -102,8 +102,7 @@ int value_cmp_atom(uint64_t v1, uint64_t v2){
 }
 
 int value_cmp_pc(uint64_t v1, uint64_t v2){
-    panic("value_cmp_pc: not yet implemented");
-    return 0;
+    return v1 < v2 ? -1 : 1;
 }
 
 int value_cmp_dict(uint64_t v1, uint64_t v2){

@@ -41,6 +41,7 @@ CODE = \
     barrier.tex \
     barrier1.tex \
     barriertest.tex \
+    clock.tex \
     counter.tex \
     cs.tex \
     cslock.tex \
@@ -66,7 +67,9 @@ CODE = \
     prog2.tex \
     qbarrier.tex \
     queue.tex \
+    queuebug.tex \
     queuedemo.tex \
+    queuefix.tex \
     queuelin.tex \
     queueMS.tex \
     queuespec.tex \
