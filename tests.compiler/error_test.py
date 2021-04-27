@@ -19,7 +19,6 @@ class TestInstance:
     @abstractmethod
     def validate(self) -> Callable[[Any], bool]:
         pass
-
 class AddressFromValue(TestInstance):
     def content(self) -> List[str]:
         return ["const C=3\ns=?C",
@@ -29,7 +28,6 @@ class AddressFromValue(TestInstance):
                 "import synch\ng=?synch"]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'TakeAddressError'
-
 class CatchAssignmentErrors(TestInstance):
     def content(self) -> List[str]:
         return ["const C=3\nC=10",
@@ -38,7 +36,6 @@ class CatchAssignmentErrors(TestInstance):
                 "import bag\nbag+=method()"]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'AssignmentError'
-
 class CatchImportError(TestInstance):
     def content(self) -> List[str]:
         return [
@@ -59,7 +56,6 @@ class CatchInvalidConstantError(TestInstance):
         ]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'InvalidConstantError'
-
 class CatchUnexpectedEofError(TestInstance):
     def content(self) -> List[str]:
         return ["",
@@ -69,13 +65,11 @@ class CatchUnexpectedEofError(TestInstance):
                 "let k = 23:\n"]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'UnexpectedEofError'
-
 class CatchEmptyStatementError(TestInstance):
     def content(self) -> List[str]:
         return ["def function():\n    \nk = 32"]
     def validate(self) -> Callable[[Any], bool]:
         return lambda e: e.error_name == 'EmptyStatementError'
-
 class CatchMissingExpressionError(TestInstance):
     def content(self) -> List[str]:
         return ["e = 34 + const",

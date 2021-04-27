@@ -91,25 +91,6 @@ m4_include(brief.py)
 
 m4_include(genhtml.py)
 
-class HarmonyCompilerError(Exception):
-    def __init__(
-            self,
-            filename: str = None,
-            token: str = None,
-            error_name: str = 'Error',
-            message: str = 'An error occurred',
-            line: int = None,
-            col: int = None,
-            **kwargs
-    ):
-        self.token = token,
-        self.filename = filename
-        self.line = line
-        self.col = col
-        self.error_name = error_name
-        self.message = message
-        self.metadata = kwargs
-
 m4_include(compiler_error.py)
 
 def bag_add(bag, item):
