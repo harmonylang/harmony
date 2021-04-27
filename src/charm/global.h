@@ -4,6 +4,7 @@
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #include "json.h"
+#include "minheap.h"
 #endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
@@ -11,14 +12,6 @@
 #define CALLTYPE_PROCESS       1
 #define CALLTYPE_NORMAL        2
 #define CALLTYPE_INTERRUPT     3
-
-struct queue *queue_init(void);
-void queue_enqueue(struct queue *queue, void *item);
-void queue_prepend(struct queue *queue, void *item);
-bool queue_dequeue(struct queue *queue, void **item);
-bool queue_empty(struct queue *queue);
-void queue_release(struct queue *queue);
-void queue_cleanup(void);
 
 void *mcopy(void *p, unsigned int size);
 char *scopy(char *s);

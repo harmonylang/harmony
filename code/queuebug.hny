@@ -1,0 +1,26 @@
+from synch import Lock, acquire, release
+from alloc import malloc, free
+
+def Queue():
+    result = { .next: None, .value: None, .lock: Lock() }
+
+def put(q, v):
+    let node = malloc({ .next: None, .value: v, .lock: Lock() }):
+        while q != None:
+            acquire(?q->lock)
+            let n = q->next:
+                if n == None:
+                    q->next = node
+                release(?q->lock)
+                q = n
+
+def get(q):
+    acquire(?q->lock)
+    if q->next == None:
+        result = None
+    else:
+        let node = q->next:
+            q->next = node->next
+            result = node->value
+            free(node)
+    release(?q->lock)

@@ -516,6 +516,8 @@ that support locks and other synchronization primitives.
 data structures.
 \item \autoref{ch:testing} discusses approaches to testing
 concurrent code in Harmony.
+\item \autoref{ch:debugging} instead goes into how to find a bug
+in concurrent code using the Harmony output.
 \item \autoref{ch:condwait} talks about threads having to wait for
 certain conditions.  As examples, it presents the reader/writer lock
 problem and the bounded buffer problem.
@@ -2114,6 +2116,62 @@ local variables.  For example:
 $y$.
 See \autoref{sec:vars} for more information.
 
+\begin{figure}
+\begin{code}
+\harmonysource{clock}
+\end{code}
+\caption{\harmonylink{code/clock.hny} Harmony program that finds page replacement anomalies.}
+\label{fig:clock}
+\end{figure}
+
+If you are ready to learn about how locks are implemented in practice,
+you can now skip the rest of this chapter.  But if you would like to
+see a cool example of using the concepts introduced in this chapter,
+hang on for a sequential Harmony program that finds anomalies in page
+replacement algorithms.
+In 1969, B\'{e}l\'{a}ady et al. published a paper~\cite{Belady69}
+that showed that making a
+cache larger does not necessarily lead to a higher hit ratio.  He showed
+this for a scenario using a FIFO replacement policy when the cache is full. 
+The program in \autoref{fig:clock} will find exactly the same scenario
+if you define \texttt{FIFO} to be \textbf{True}.  Moreover, if you define
+\texttt{FIFO} to be \textbf{False}, it will find a scenario for the
+CLOCK replacement policy~\cite{clock}, often used in modern operating systems.
+
+In this program, \texttt{CLOCK} maintains the state of a cache
+(in practice, typically pages in memory).
+The set \texttt{recent} maintains whether an access to the cache
+for a particular reference was recent or not.
+(It is not used if \texttt{FIFO} is \textbf{True}.)
+The integer \texttt{misses} maintains the number of cache misses.
+Method \texttt{ref}(\textit{ck}, $x$) is invoked when $x$ is
+referenced and checked against the cache \textit{ck}.
+
+The program declares two caches: one with 3 entries (\textit{clock3})
+and one with 4 entries (\textit{clock4}).
+The interesting part is in the last block of code.
+It runs every sequence of references of up to 100 entries, using
+references in the range 1 through 5.
+Note that all the constants chosen in this program (3, 4, 5, 100)
+are the result of some experimentation---you can try other ones.
+To reduce the search space, the first four references are pinned
+to 1, 2, 3, and 4.
+Further reducing the search space, the program never repeats the
+same reference twice in a row (using the local variable \texttt{last}).
+
+The two things to note here is the use of the \textbf{choose}
+expression and the \textbf{assert} statement.  Using \texttt{choose}
+we are able to express searching through all possible strings of
+references without a complicated nested iteration.
+Using \texttt{assert} we are able to express the anomaly we are
+looking for.
+
+In case you want to check if you get the right results.  For \texttt{FIFO},
+the program finds (in a few minutes) the same anomaly that
+B\'{e}l\'{a}dy et al. found: 1 2 3 4 1 2 5 1 2 3 4 5.
+For the \texttt{CLOCK} algorithm the program actually finds a shorter
+reference string: 1 2 3 4 2 1 2 5 1 2.
+
 \chapter{Spinlock}
 \label{ch:spinlock}
 \index{spinlock}%
@@ -3138,6 +3196,112 @@ check if the implementation is linearizable.
 \item Check if the extended queue implementation of \autoref{ex:qremove}
 is linearizable.
 \end{problems}
+
+\chapter{Debugging}
+\label{ch:debugging}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuebug}
+\end{code}
+\caption{\harmonylink{code/queuebug.hny} A buggy queue implementation.}
+\label{fig:queuebug}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/queuebug1.pdf}
+\end{center}
+\caption{\harmonyref{queuebug.html}{Harmony output of running \autoref{fig:qtest3} against
+\autoref{fig:queuebug}}.}
+\label{fig:queuebug1}
+\end{figure}
+
+So you wrote a Harmony program and Harmony reports a bug.
+Often you may just be able to figure it out by staring at the code and
+going through some easy scenarios, but what if you don't?
+The output of Harmony can be helpful in that case.
+
+\autoref{fig:queuebug} contains an attempt at a queue implementation
+where the queue is implemented by a linked list, with the first node
+being a \texttt{dummy} node to prevent data races.  Each node in the
+list contains a lock.  The \texttt{put}() method walks the list until
+it gets to the last node, each time acquiring the lock to access the
+node's fields.  When \texttt{put}() gets to the last node in the list,
+it appends a new one.  The \texttt{get}() method locks the first (dummy)
+node, removes the second from the list and frees it.  The method returns
+the value from the removed node.
+
+Let us run the code through some of the test programs in the last
+chapter.  Harmony does not detect any issues with the sequential test
+in \autoref{fig:qtestseq}.
+(Run this using the \texttt{-m} flag like this:
+\texttt{harmony -m queue=queuebug code/qtestseq.hny})
+The concurrent \texttt{put} test of
+\autoref{fig:qtest1} as well as the concurrent \texttt{get} test of
+\autoref{fig:qtest2} also find no problems.  However, when we run
+the new queue code through the test in \autoref{fig:qtest3}, Harmony
+finds a problem.
+
+\autoref{fig:queuebug1} shows the Harmony output of running
+the test in \autoref{fig:qtest3} against the queue code
+in \autoref{fig:queuebug}.
+There is quite a bit of information in the Harmony output, and it's
+important to learn to navigate through it.
+Let's start with looking at the red text.  Harmony found a safety
+violation (something bad happened during one of the possible executions),
+and in particular \texttt{putter}(1) (thread T2) was trying to dereference
+\texttt{alloc}.\textit{pool}[0].\texttt{lock} in turn 5.
+
+The \texttt{alloc} module maintains a shared array \textit{pool} that
+it uses for dynamic allocation.  Apparently \texttt{putter}(1) tried to access
+\textit{pool}[0], but it does not exist, meaning that either it was not
+yet allocated, or it had been freed since it was allocated.
+When we look at the top half of the figure, we see that in fact
+\texttt{putter}(0) (T1) allocated \textit{pool}[0] in turn 2, while
+\texttt{getter}() (T4) released it in turn 4.
+
+So how did we get there?  We can start by single stepping through the
+actions of \texttt{putter}(0) by clicking on its first block.
+By hitting return repeatedly, we can go through the lines of code that
+it is executing.  Doing so, we can see that it allocates
+\textit{pool}[0] and uses that as the node to contain value 0 and add
+this node to the queue \textit{qtest}.  At the end of its turn,
+\texttt{putter}(0) has just finished \texttt{put}(0).  Looking at the
+state in the top right, everything looks good.  The first node
+(\textit{testq}) points to the allocated node with the value 0 in it,
+and its \texttt{next} pointer is \textbf{None}.  The locks on both nodes
+are released.  So far so good.
+
+Next \texttt{putter}(1) (thread T2) takes a turn.  It gets to line 10 in
+\autoref{fig:queuebug} where it's trying to acquire
+$q$$\rightarrow$\texttt{lock}.  If we look at the bottom right,
+we see that $q$ points to \textit{pool}[0], the node that has value 0
+in it.  Again, so far so good.
+
+But before \texttt{putter}(1) obtains
+the lock on \textit{pool}[0], \texttt{getter}() (thread T4) starts
+running.  \texttt{getter}() acquires the lock on \textit{qtest}, which
+still points to \textit{pool}[0].  \texttt{getter} then extracts the
+value from \textit{pool}[0] and then releases it.
+At this point \textit{pool}[0] no longer exists, but then
+\texttt{putter}(1) starts running again from where it left off.
+It was about to acquire the lock on \textit{pool}[0], but now that
+node no longer exists.
+
+To fix the code without changing the data structure, we can use
+hand-over-hand locking (\autoref{ch:cds}).
+\autoref{fig:queuefix} shows an implementation
+that uses hand-over-hand locking
+both for \texttt{put}() and for \texttt{get}().  It passes all tests.
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuefix}
+\end{code}
+\caption{\harmonylink{code/queuefix.hny} Queue implementation with hand-over-hand locking.}
+\label{fig:queuefix}
+\end{figure}
 
 \chapter{Conditional Waiting}
 \label{ch:condwait}
@@ -4834,22 +4998,26 @@ Notice there are two different waiting conditions:
 \item waiting for the car to fill up.
 \end{enumerate}
 
-\autoref{fig:genbarrier} shows the code.
+But this poses a complication.  Suppose, for example, that there are two
+seats in the car, and there is one person in the car.  Does that mean that
+the car is not yet full, or not yet empty?  We have to distinguish
+those situations.  To this end, it is useful to think of the car as going through
+$2 \cdot n$ stages:
+\begin{itemize}
+\item[] Stage 0: the car is empty;
+\item[] Stage $1 ... n-1$: the car is filling up;
+\item[] Stage $n$: the car is full;
+\item[] Stage $n+1 ... 2n - 1$: the car is emptying out.
+\end{itemize}
+
+\autoref{fig:genbarrier} shows code that implements barrier synchronization
+using these stages.
 Method~\texttt{enter}() has two \texttt{wait} loops, one for each
 waiting condition.
 This is sometimes called \emph{double turnstile}.
 Each loop uses a different condition variable.
 The first loop waits until the car has emptied out, while
 the second waits for the car to fill up.
-
-Notice how variables \textit{entered} and \textit{left}
-are maintained.  They are incremented one-by-one, but they
-are not decremented one-by-one.  Instead, the last thread to
-enter sets \textit{left} to zero (and notifies the threads
-that were waiting to for the car to fill up), while the last
-thread to exit sets \textit{entered} to zero (and notifies
-the threads that were waiting for the car to empty out).
-
 \autoref{fig:barriertest} is a test program.  The threads check
 that all threads within the barrier are in the same round.
 
