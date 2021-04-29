@@ -86,7 +86,7 @@ $PYTHON - $@ <<'++++++'
 """
 
 version = [
-1,1, 1517
+1,1, 1525
 
 ]
 
@@ -1984,7 +1984,15 @@ int main(int argc, char **argv){
     if (argc - i > 1) {
         usage(argv[0]);
     }
-    char *fname = i == argc ? "harmony.json" : argv[i];
+    char *fname = i == argc ? "harmony.hvm" : argv[i];
+
+    char *outfile, *dotloc = rindex(fname, '.');
+    if (dotloc == NULL) {
+        asprintf(&outfile, "%s.hco", fname);
+    }
+    else {
+        asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
+    }
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -2259,68 +2267,68 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    FILE *out = fopen("charm.json", "w");
+    FILE *out = fopen(outfile, "w");
     if (out == NULL) {
-        fprintf(stderr, "charm: can't create charm.json\n");
+        fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
     }
     fprintf(out, "{\n");
 
-    if (minheap_empty(failures) && minheap_empty(warnings)) {
+    bool no_issues = minheap_empty(failures) && minheap_empty(warnings);
+    if (no_issues) {
         printf("No issues\n");
-        fprintf(out, "  \"issue\": \"No issues\"\n");
-        fprintf(out, "}\n");
-        exit(0);
-    }
-
-    // Find shortest "bad" path
-    struct failure *bad = NULL;
-    if (minheap_empty(failures)) {
-        bad = minheap_getmin(warnings);
+        fprintf(out, "  \"issue\": \"No issues\",\n");
     }
     else {
-        bad = minheap_getmin(failures);
-    }
+        // Find shortest "bad" path
+        struct failure *bad = NULL;
+        if (minheap_empty(failures)) {
+            bad = minheap_getmin(warnings);
+        }
+        else {
+            bad = minheap_getmin(failures);
+        }
 
-    switch (bad->type) {
-    case FAIL_SAFETY:
-        printf("Safety Violation\n");
-        fprintf(out, "  \"issue\": \"Safety violation\",\n");
-        break;
-    case FAIL_INVARIANT:
-        printf("Invariant Violation\n");
-        fprintf(out, "  \"issue\": \"Invariant violation\",\n");
-        break;
-    case FAIL_TERMINATION:
-        printf("Non-terminating state\n");
-        fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
-        break;
-    case FAIL_BUSYWAIT:
-        printf("Active busy waiting\n");
-        fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
-		break;
-    case FAIL_RACE:
-        assert(bad->address != VALUE_ADDRESS);
-        char *addr = value_string(bad->address);
-        char *json = json_string_encode(addr, strlen(addr));
-        printf("Data race (%s)\n", json);
-        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
-        free(json);
-        free(addr);
-        break;
-    default:
-        panic("main: bad fail type");
-    }
+        switch (bad->type) {
+        case FAIL_SAFETY:
+            printf("Safety Violation\n");
+            fprintf(out, "  \"issue\": \"Safety violation\",\n");
+            break;
+        case FAIL_INVARIANT:
+            printf("Invariant Violation\n");
+            fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            break;
+        case FAIL_TERMINATION:
+            printf("Non-terminating state\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
+            break;
+        case FAIL_BUSYWAIT:
+            printf("Active busy waiting\n");
+            fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
+            break;
+        case FAIL_RACE:
+            assert(bad->address != VALUE_ADDRESS);
+            char *addr = value_string(bad->address);
+            char *json = json_string_encode(addr, strlen(addr));
+            printf("Data race (%s)\n", json);
+            fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
+            free(json);
+            free(addr);
+            break;
+        default:
+            panic("main: bad fail type");
+        }
 
-    fprintf(out, "  \"macrosteps\": [");
-    struct state oldstate;
-	memset(&oldstate, 0, sizeof(oldstate));
-    struct context *oldctx = calloc(1, sizeof(*oldctx));
-    dumpfirst = true;
-    path_dump(out, bad->node, bad->choice, &oldstate, &oldctx, false);
-    fprintf(out, "\n");
-    free(oldctx);
-    fprintf(out, "  ],\n");
+        fprintf(out, "  \"macrosteps\": [");
+        struct state oldstate;
+        memset(&oldstate, 0, sizeof(oldstate));
+        struct context *oldctx = calloc(1, sizeof(*oldctx));
+        dumpfirst = true;
+        path_dump(out, bad->node, bad->choice, &oldstate, &oldctx, false);
+        fprintf(out, "\n");
+        free(oldctx);
+        fprintf(out, "  ],\n");
+    }
 
     fprintf(out, "  \"code\": [\n");
     jc = dict_lookup(jv->u.map, "pretty", 6);
@@ -6896,8 +6904,8 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self):
-        with open("charm.json") as f:
+    def run(self, fname):
+        with open(fname) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
@@ -7665,6 +7673,17 @@ document.addEventListener('keydown', handleKeyPress);
                     q.put((nd[k], nl+1))
 
     def html_top(self, f):
+        if "macrosteps" not in self.top:
+            print("<table border='1'>", file=f)
+            print("  <thead>", file=f)
+            print("    <tr>", file=f)
+            print("      <th colspan='4' style='color:red;'>", file=f)
+            print("        Issue:", self.top["issue"], file=f)
+            print("      </th>", file=f)
+            print("    </tr>", file=f)
+            print("</table>", file=f)
+            return
+
         (width, height) = self.vardim(self.vardir)
         print("<table border='1'>", file=f)
         print("  <thead>", file=f)
@@ -7739,6 +7758,8 @@ document.addEventListener('keydown', handleKeyPress);
         print("</div>", file=f)
 
     def html_botright(self, f):
+        if self.nthreads == 0:
+            return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)
         print("    <tr>", file=f)
@@ -7816,7 +7837,7 @@ document.addEventListener('keydown', handleKeyPress);
         print("  " + str(path), end="", file=f)
         return index + 1
 
-    def html_script(self, f):
+    def html_script(self, f, hcofile):
         print("<script>", file=f)
         print("var nthreads = %d;"%self.nthreads, file=f)
         print("var nmegasteps = %d;"%self.nmegasteps, file=f)
@@ -7825,16 +7846,16 @@ document.addEventListener('keydown', handleKeyPress);
         print(file=f)
         print("];", file=f)
         print("var state =", file=f)
-        self.file_include("charm.json", f)
+        self.file_include(hcofile, f)
         print(";", file=f)
         print(self.js, file=f)
         # file_include("charm.js", f)
         print("</script>", file=f)
 
-    def html_body(self, f):
+    def html_body(self, f, hcofile):
         print("<body>", file=f)
         self.html_outer(f)
-        self.html_script(f)
+        self.html_script(f, hcofile)
         print("</body>", file=f)
 
     def html_head(self, f):
@@ -7845,10 +7866,10 @@ document.addEventListener('keydown', handleKeyPress);
         print("  </style>", file=f)
         print("</head>", file=f)
 
-    def html(self, f):
+    def html(self, f, hcofile):
         print("<html>", file=f)
         self.html_head(f)
-        self.html_body(f)
+        self.html_body(f, hcofile)
         print("</html>", file=f)
 
     def var_convert(self, v):
@@ -7879,31 +7900,32 @@ document.addEventListener('keydown', handleKeyPress);
                 d[k] = val
         self.dict_merge(vardir, d)
 
-    def run(self):
+    def run(self, stem):
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
-        with open("charm.json") as f:
+        with open(stem + ".hco") as f:
             self.top = json.load(f)
             assert isinstance(self.top, dict)
-            macrosteps = self.top["macrosteps"]
-            for mas in macrosteps:
-                tid = int(mas["tid"])
-                if tid >= self.nthreads:
-                    self.nthreads = tid + 1
-                if tid != lasttid:
-                    self.nmegasteps += 1
-                    lasttid = tid
-                self.nmicrosteps += len(mas["microsteps"])
-                for mis in mas["microsteps"]:
-                    if "shared" in mis:
-                        self.vars_add(self.vardir, mis["shared"])
-                for ctx in mas["contexts"]:
-                    tid = int(ctx["tid"])
+            if "macrosteps" in self.top:
+                macrosteps = self.top["macrosteps"]
+                for mas in macrosteps:
+                    tid = int(mas["tid"])
                     if tid >= self.nthreads:
                         self.nthreads = tid + 1
+                    if tid != lasttid:
+                        self.nmegasteps += 1
+                        lasttid = tid
+                    self.nmicrosteps += len(mas["microsteps"])
+                    for mis in mas["microsteps"]:
+                        if "shared" in mis:
+                            self.vars_add(self.vardir, mis["shared"])
+                    for ctx in mas["contexts"]:
+                        tid = int(ctx["tid"])
+                        if tid >= self.nthreads:
+                            self.nthreads = tid + 1
 
-        with open("harmony.html", "w") as out:
-            self.html(out)
+        with open(stem + ".htm", "w") as out:
+            self.html(out, stem + ".hco")
 
 
 def bag_add(bag, item):
@@ -12466,16 +12488,13 @@ def doCompile(filenames, consts, mods):
     code = [
         FrameOp(("__init__", None, None, None), [])
     ]
-    if filenames == []:
-        usage()
-    else:
-        for fname in filenames:
-            try:
-                with open(fname) as fd:
-                    load(fd, fname, scope, code)
-            except IOError:
-                print("harmony: can't open", fname, file=sys.stderr)
-                sys.exit(1)
+    for fname in filenames:
+        try:
+            with open(fname) as fd:
+                load(fd, fname, scope, code)
+        except IOError:
+            print("harmony: can't open", fname, file=sys.stderr)
+            sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
@@ -13345,6 +13364,17 @@ def main():
         else:
             assert False, "unhandled option"
 
+    if args == []:
+        usage()
+
+    dotloc = args[0].rfind(".")
+    if dotloc == 0:
+        usage()
+    if dotloc > 0:
+        stem = args[0][:dotloc]
+    else:
+        stem = args[0]
+
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
@@ -13358,12 +13388,8 @@ def main():
             config["infile"] = "%s/.charm.c"%pathlib.Path.home()
             config["outfile"] = "%s/.charm.exe"%pathlib.Path.home()
             config["compile"] = "gcc -O3 -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"])
-        if testflag:
-            tmpfile = "harmony.json"
-        else:
-            fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
-            os.close(fd)
-        with open(tmpfile, "w") as fd:
+        hvmfile = stem + ".hvm"
+        with open(hvmfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         path = pathlib.Path(config["outfile"])
         rebuild = testflag or not path.exists()
@@ -13391,18 +13417,19 @@ def main():
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), tmpfile));
+        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), hvmfile));
         if not testflag:
-            os.remove(tmpfile)
+            os.remove(hvmfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
         b = Brief()
-        if not b.run():
-            gh = GenHTML()
-            gh.run()
-            if not suppressOutput:
-                print("open file://" + os.getcwd() + "/harmony.html for more information")
+        b.run(stem + ".hco")
+        gh = GenHTML()
+        gh.run(stem)
+        if not suppressOutput:
+            p = pathlib.Path(stem + ".htm").resolve()
+            print("open file://" + str(p) + " for more information")
         sys.exit(0);
 
     if printCode == None:

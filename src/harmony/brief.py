@@ -115,8 +115,8 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self):
-        with open("charm.json") as f:
+    def run(self, fname):
+        with open(fname) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":

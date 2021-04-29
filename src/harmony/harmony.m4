@@ -4652,16 +4652,13 @@ def doCompile(filenames, consts, mods):
     code = [
         FrameOp(("__init__", None, None, None), [])
     ]
-    if filenames == []:
-        usage()
-    else:
-        for fname in filenames:
-            try:
-                with open(fname) as fd:
-                    load(fd, fname, scope, code)
-            except IOError:
-                print("harmony: can't open", fname, file=sys.stderr)
-                sys.exit(1)
+    for fname in filenames:
+        try:
+            with open(fname) as fd:
+                load(fd, fname, scope, code)
+        except IOError:
+            print("harmony: can't open", fname, file=sys.stderr)
+            sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
@@ -5531,6 +5528,17 @@ def main():
         else:
             assert False, "unhandled option"
 
+    if args == []:
+        usage()
+
+    dotloc = args[0].rfind(".")
+    if dotloc == 0:
+        usage()
+    if dotloc > 0:
+        stem = args[0][:dotloc]
+    else:
+        stem = args[0]
+
     (code, scope) = doCompile(args, consts, mods)
 
     if charmflag:
@@ -5544,12 +5552,8 @@ def main():
             config["infile"] = "%s/.charm.c"%pathlib.Path.home()
             config["outfile"] = "%s/.charm.exe"%pathlib.Path.home()
             config["compile"] = "gcc -O3 -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"])
-        if testflag:
-            tmpfile = "harmony.json"
-        else:
-            fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
-            os.close(fd)
-        with open(tmpfile, "w") as fd:
+        hvmfile = stem + ".hvm"
+        with open(hvmfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         path = pathlib.Path(config["outfile"])
         rebuild = testflag or not path.exists()
@@ -5577,18 +5581,19 @@ def main():
             if r != 0:
                 print("can't create charm model checker")
                 sys.exit(r);
-        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), tmpfile));
+        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), hvmfile));
         if not testflag:
-            os.remove(tmpfile)
+            os.remove(hvmfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
         b = Brief()
-        if not b.run():
-            gh = GenHTML()
-            gh.run()
-            if not suppressOutput:
-                print("open file://" + os.getcwd() + "/harmony.html for more information")
+        b.run(stem + ".hco")
+        gh = GenHTML()
+        gh.run(stem)
+        if not suppressOutput:
+            p = pathlib.Path(stem + ".htm").resolve()
+            print("open file://" + str(p) + " for more information")
         sys.exit(0);
 
     if printCode == None:

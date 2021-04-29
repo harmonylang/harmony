@@ -109,6 +109,17 @@ m4_include(charm.js)
                     q.put((nd[k], nl+1))
 
     def html_top(self, f):
+        if "macrosteps" not in self.top:
+            print("<table border='1'>", file=f)
+            print("  <thead>", file=f)
+            print("    <tr>", file=f)
+            print("      <th colspan='4' style='color:red;'>", file=f)
+            print("        Issue:", self.top["issue"], file=f)
+            print("      </th>", file=f)
+            print("    </tr>", file=f)
+            print("</table>", file=f)
+            return
+
         (width, height) = self.vardim(self.vardir)
         print("<table border='1'>", file=f)
         print("  <thead>", file=f)
@@ -183,6 +194,8 @@ m4_include(charm.js)
         print("</div>", file=f)
 
     def html_botright(self, f):
+        if self.nthreads == 0:
+            return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)
         print("    <tr>", file=f)
@@ -260,7 +273,7 @@ m4_include(charm.js)
         print("  " + str(path), end="", file=f)
         return index + 1
 
-    def html_script(self, f):
+    def html_script(self, f, hcofile):
         print("<script>", file=f)
         print("var nthreads = %d;"%self.nthreads, file=f)
         print("var nmegasteps = %d;"%self.nmegasteps, file=f)
@@ -269,16 +282,16 @@ m4_include(charm.js)
         print(file=f)
         print("];", file=f)
         print("var state =", file=f)
-        self.file_include("charm.json", f)
+        self.file_include(hcofile, f)
         print(";", file=f)
         print(self.js, file=f)
         # file_include("charm.js", f)
         print("</script>", file=f)
 
-    def html_body(self, f):
+    def html_body(self, f, hcofile):
         print("<body>", file=f)
         self.html_outer(f)
-        self.html_script(f)
+        self.html_script(f, hcofile)
         print("</body>", file=f)
 
     def html_head(self, f):
@@ -289,10 +302,10 @@ m4_include(charm.js)
         print("  </style>", file=f)
         print("</head>", file=f)
 
-    def html(self, f):
+    def html(self, f, hcofile):
         print("<html>", file=f)
         self.html_head(f)
-        self.html_body(f)
+        self.html_body(f, hcofile)
         print("</html>", file=f)
 
     def var_convert(self, v):
@@ -323,28 +336,29 @@ m4_include(charm.js)
                 d[k] = val
         self.dict_merge(vardir, d)
 
-    def run(self):
+    def run(self, stem):
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
-        with open("charm.json") as f:
+        with open(stem + ".hco") as f:
             self.top = json.load(f)
             assert isinstance(self.top, dict)
-            macrosteps = self.top["macrosteps"]
-            for mas in macrosteps:
-                tid = int(mas["tid"])
-                if tid >= self.nthreads:
-                    self.nthreads = tid + 1
-                if tid != lasttid:
-                    self.nmegasteps += 1
-                    lasttid = tid
-                self.nmicrosteps += len(mas["microsteps"])
-                for mis in mas["microsteps"]:
-                    if "shared" in mis:
-                        self.vars_add(self.vardir, mis["shared"])
-                for ctx in mas["contexts"]:
-                    tid = int(ctx["tid"])
+            if "macrosteps" in self.top:
+                macrosteps = self.top["macrosteps"]
+                for mas in macrosteps:
+                    tid = int(mas["tid"])
                     if tid >= self.nthreads:
                         self.nthreads = tid + 1
+                    if tid != lasttid:
+                        self.nmegasteps += 1
+                        lasttid = tid
+                    self.nmicrosteps += len(mas["microsteps"])
+                    for mis in mas["microsteps"]:
+                        if "shared" in mis:
+                            self.vars_add(self.vardir, mis["shared"])
+                    for ctx in mas["contexts"]:
+                        tid = int(ctx["tid"])
+                        if tid >= self.nthreads:
+                            self.nthreads = tid + 1
 
-        with open("harmony.html", "w") as out:
-            self.html(out)
+        with open(stem + ".htm", "w") as out:
+            self.html(out, stem + ".hco")
