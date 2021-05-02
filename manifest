@@ -95,6 +95,7 @@ code/trap6.hny
 code/triangle.hny
 code/xy.hny
 harmony
+harmony.bat
 harmony.py
 modules/alloc.hny
 modules/bag.hny
