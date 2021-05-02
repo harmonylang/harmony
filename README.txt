@@ -33,11 +33,6 @@ Some installation hints:
         - make sure you can run gcc from a cmd prompt (you can start
           'cmd' from the search bar)
 
-    Running command-line harmony under Windows
-        - currently there is no script
-        - instead, run
-                python3 harmony.py [args ...]
-
     Checking for upgrades and upgrading
         - run
             python3 install.py --version
