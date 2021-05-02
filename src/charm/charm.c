@@ -1292,7 +1292,7 @@ int main(int argc, char **argv){
     }
     char *fname = i == argc ? "harmony.hvm" : argv[i];
 
-    char *outfile, *dotloc = rindex(fname, '.');
+    char *outfile, *dotloc = strrchr(fname, '.');
     if (dotloc == NULL) {
         asprintf(&outfile, "%s.hco", fname);
     }
