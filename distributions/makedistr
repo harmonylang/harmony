@@ -1,7 +1,9 @@
 dir=harmony-1.2
-mkdir -p $dir
+rm -rf $dir
+mkdir $dir
 (cd ..; python3 src/archive/implode.py manifest) > $dir/archive.xml
 cp ../install.py $dir
-cp ../README.md $dir
+cp ../README.txt $dir
 rm -f $dir.zip
-zip -r $dir.zip $dir
+cd $dir
+zip -r ../$dir.zip *

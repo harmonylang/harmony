@@ -35,9 +35,9 @@ def install():
     fl = Path("harmony")
     fl.chmod(0o755)
     print("Compiling model checker...")
-    ec = os.system("cc -O3 -std=c99 -DNDEBUG charm.c -m64 -o charm.exe")
+    ec = os.system("gcc -O3 -std=c99 -DNDEBUG charm.c -m64 -o charm.exe")
     if ec != 0:
-        print("  Failed to compile the model checker")
+        print("  Failed to compile the model checker (using gcc)")
         print("  Please compile charm.c and put the result in charm.exe")
         print("  Use a 64-bit C compiler")
         print("  Use the following compilation flags: -std=c99 -DNDEBUG -m64")
