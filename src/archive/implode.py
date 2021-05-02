@@ -2,13 +2,12 @@ import sys
 import subprocess
 
 def contents(name):
-    with open(name) as fd:
+    with open(name, "rb") as fd:
         c = fd.read()
         for i in range(len(c)):
             # if i % 32 == 0:
             #     print("      ", end="")
-            x = ord(c[i])
-            print("%02x"%x, end="")
+            print("%02x"%c[i], end="")
             if i % 32 == 31:
                 print()
         print()

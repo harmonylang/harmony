@@ -9,14 +9,14 @@ def create(d):
     path = Path(d["name"])
     # print("Creating", str(path))
     Path(path.parent).mkdir(parents=True, exist_ok=True)
-    with open(d["name"], "w") as f:
+    with open(d["name"], "wb") as f:
         c = d["contents"].strip()
         i = 0
         while i < len(c):
             if c[i] in "0123456789ABCDEFabcdef":
                 assert c[i+1] in "0123456789ABCDEFabcdef"
                 k = c[i:i+2]
-                print(chr(int(k, base=16)), end="", file=f)
+                f.write(bytes([int(k, base=16)]))
                 i += 2
             else:
                 i += 1
