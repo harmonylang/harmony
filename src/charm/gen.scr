@@ -1,0 +1,3 @@
+echo '#define _GNU_SOURCE'
+echo '#define HARMONY_COMBINE'
+cat hashdict.h json.h minheap.h global.h charm.c global.c hashdict.c json.c ops.c minheap.c value.c

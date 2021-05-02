@@ -1,5 +1,5 @@
 all:
 	(cd src/harmony; sh gen.scr) > harmony.py
-	(cat src/harmony/harmony.preamble harmony.py; echo ++++++) > harmony
+	(cd src/charm; sh gen.scr) > charm.c
 	chmod +x harmony
-	rm -f $(HOME)/.charm.exe
+	rm -f charm.exe
