@@ -64,6 +64,18 @@ m4_include(brief.py)
 
 m4_include(genhtml.py)
 
+
+class CompilerException(Exception):
+    def __init__(self, message: str, line: int, column: int, lexeme: str, filename: str):
+        self.message = message
+        self.token = {
+            "line": line,
+            "column": column,
+            "lexeme": lexeme,
+            "filename": filename
+        }
+
+
 def bag_add(bag, item):
     cnt = bag.get(item)
     if cnt == None:
