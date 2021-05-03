@@ -1,7 +1,0 @@
-TOP=../..
-for mod in synch synchS list bag set alloc
-do
-    echo '    "'$mod'": ""' | tr '\n' '"'
-    cat $TOP/modules/$mod.hny
-    echo '""",'
-done

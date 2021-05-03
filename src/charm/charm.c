@@ -1167,7 +1167,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 
     struct json_value *file = dict_lookup(jv->u.map, "file", 4);
     assert(file->type == JV_ATOM);
-    fprintf(out, "\"file\": \"%.*s\", ", file->u.atom.len, file->u.atom.base);
+    fprintf(out, "\"file\": \"%s\", ", json_string_encode(file->u.atom.base, file->u.atom.len));
 
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
@@ -1283,6 +1283,9 @@ int main(int argc, char **argv){
                 exit(1);
             }
             break;
+        case 'x':
+            printf("Charm model checker working\n");
+            return 0;
         default:
             usage(argv[0]);
         }
@@ -1290,7 +1293,19 @@ int main(int argc, char **argv){
     if (argc - i > 1) {
         usage(argv[0]);
     }
-    char *fname = i == argc ? "harmony.json" : argv[i];
+    char *fname = i == argc ? "harmony.hvm" : argv[i];
+
+    char *outfile, *dotloc = strrchr(fname, '.');
+    int r;
+    if (dotloc == NULL) {
+        r = asprintf(&outfile, "%s.hco", fname);
+    }
+    else {
+        r = asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
+    }
+    if (r < 0) {       // mostly to suppress asprintf return value warning
+        outfile = "harmony.hco";
+    }
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -1565,68 +1580,68 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    FILE *out = fopen("charm.json", "w");
+    FILE *out = fopen(outfile, "w");
     if (out == NULL) {
-        fprintf(stderr, "charm: can't create charm.json\n");
+        fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
     }
     fprintf(out, "{\n");
 
-    if (minheap_empty(failures) && minheap_empty(warnings)) {
+    bool no_issues = minheap_empty(failures) && minheap_empty(warnings);
+    if (no_issues) {
         printf("No issues\n");
-        fprintf(out, "  \"issue\": \"No issues\"\n");
-        fprintf(out, "}\n");
-        exit(0);
-    }
-
-    // Find shortest "bad" path
-    struct failure *bad = NULL;
-    if (minheap_empty(failures)) {
-        bad = minheap_getmin(warnings);
+        fprintf(out, "  \"issue\": \"No issues\",\n");
     }
     else {
-        bad = minheap_getmin(failures);
-    }
+        // Find shortest "bad" path
+        struct failure *bad = NULL;
+        if (minheap_empty(failures)) {
+            bad = minheap_getmin(warnings);
+        }
+        else {
+            bad = minheap_getmin(failures);
+        }
 
-    switch (bad->type) {
-    case FAIL_SAFETY:
-        printf("Safety Violation\n");
-        fprintf(out, "  \"issue\": \"Safety violation\",\n");
-        break;
-    case FAIL_INVARIANT:
-        printf("Invariant Violation\n");
-        fprintf(out, "  \"issue\": \"Invariant violation\",\n");
-        break;
-    case FAIL_TERMINATION:
-        printf("Non-terminating state\n");
-        fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
-        break;
-    case FAIL_BUSYWAIT:
-        printf("Active busy waiting\n");
-        fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
-		break;
-    case FAIL_RACE:
-        assert(bad->address != VALUE_ADDRESS);
-        char *addr = value_string(bad->address);
-        char *json = json_string_encode(addr, strlen(addr));
-        printf("Data race (%s)\n", json);
-        fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
-        free(json);
-        free(addr);
-        break;
-    default:
-        panic("main: bad fail type");
-    }
+        switch (bad->type) {
+        case FAIL_SAFETY:
+            printf("Safety Violation\n");
+            fprintf(out, "  \"issue\": \"Safety violation\",\n");
+            break;
+        case FAIL_INVARIANT:
+            printf("Invariant Violation\n");
+            fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            break;
+        case FAIL_TERMINATION:
+            printf("Non-terminating state\n");
+            fprintf(out, "  \"issue\": \"Non-terminating state\",\n");
+            break;
+        case FAIL_BUSYWAIT:
+            printf("Active busy waiting\n");
+            fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
+            break;
+        case FAIL_RACE:
+            assert(bad->address != VALUE_ADDRESS);
+            char *addr = value_string(bad->address);
+            char *json = json_string_encode(addr, strlen(addr));
+            printf("Data race (%s)\n", json);
+            fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
+            free(json);
+            free(addr);
+            break;
+        default:
+            panic("main: bad fail type");
+        }
 
-    fprintf(out, "  \"macrosteps\": [");
-    struct state oldstate;
-	memset(&oldstate, 0, sizeof(oldstate));
-    struct context *oldctx = calloc(1, sizeof(*oldctx));
-    dumpfirst = true;
-    path_dump(out, bad->node, bad->choice, &oldstate, &oldctx, false);
-    fprintf(out, "\n");
-    free(oldctx);
-    fprintf(out, "  ],\n");
+        fprintf(out, "  \"macrosteps\": [");
+        struct state oldstate;
+        memset(&oldstate, 0, sizeof(oldstate));
+        struct context *oldctx = calloc(1, sizeof(*oldctx));
+        dumpfirst = true;
+        path_dump(out, bad->node, bad->choice, &oldstate, &oldctx, false);
+        fprintf(out, "\n");
+        free(oldctx);
+        fprintf(out, "  ],\n");
+    }
 
     fprintf(out, "  \"code\": [\n");
     jc = dict_lookup(jv->u.map, "pretty", 6);

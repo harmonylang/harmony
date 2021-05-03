@@ -1,5 +1,5 @@
 """
-	This is the Harmony compiler and model checker.
+	This is the Harmony compiler.
 
     Copyright (C) 2020, 2021  Robbert van Renesse
 
@@ -35,34 +35,6 @@
 version = [
 m4_include(buildversion)
 ]
-
-internal_modules = {
-#############################
-#     START OF MODULES      #
-#############################
-
-m4_include(modules)
-
-#############################
-#      END OF MODULES       #
-#############################
-}
-
-charm_src = r"""
-#define _GNU_SOURCE
-
-m4_include(../charm/hashdict.h)
-m4_include(../charm/json.h)
-m4_include(../charm/minheap.h)
-m4_include(../charm/global.h)
-m4_include(../charm/charm.c)
-m4_include(../charm/global.c)
-m4_include(../charm/hashdict.c)
-m4_include(../charm/json.c)
-m4_include(../charm/ops.c)
-m4_include(../charm/minheap.c)
-m4_include(../charm/value.c)
-"""
 
 import sys
 import os
@@ -126,7 +98,8 @@ def doImport(scope, code, module):
         scope2.labels = scope.labels
 
         found = False
-        for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+        install_path = os.path.dirname(os.path.realpath(__file__))
+        for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
             filename = dir + "/" + modname + ".hny"
             if os.path.exists(filename):
                 with open(filename) as f:
@@ -134,12 +107,8 @@ def doImport(scope, code, module):
                 found = True
                 break
         if not found:
-            if modname in internal_modules:
-                load_string(internal_modules[lexeme],
-                    "<internal>/" + modname + ".hny", scope2, code)
-            else:
-                print("Can't find module", modname, "imported from", namestack)
-                sys.exit(1)
+            print("Can't find module", modname, "imported from", namestack)
+            sys.exit(1)
         
         imported[lexeme] = scope2
 
@@ -2146,7 +2115,8 @@ class AST:
             scope2.labels = scope.labels
 
             found = False
-            for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+            install_path = os.path.dirname(os.path.realpath(__file__))
+            for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
                 filename = dir + "/" + modname + ".hny"
                 if os.path.exists(filename):
                     with open(filename) as f:
@@ -2154,12 +2124,8 @@ class AST:
                     found = True
                     break
             if not found:
-                if modname in internal_modules:
-                    load_string(internal_modules[lexeme],
-                        "<internal>/" + modname + ".hny", scope2, code)
-                else:
-                    print("Can't find module", modname, "imported from", namestack)
-                    sys.exit(1)
+                print("Can't find module", modname, "imported from", namestack)
+                sys.exit(1)
             
             imported[lexeme] = scope2
 
@@ -4652,16 +4618,13 @@ def doCompile(filenames, consts, mods):
     code = [
         FrameOp(("__init__", None, None, None), [])
     ]
-    if filenames == []:
-        usage()
-    else:
-        for fname in filenames:
-            try:
-                with open(fname) as fd:
-                    load(fd, fname, scope, code)
-            except IOError:
-                print("harmony: can't open", fname, file=sys.stderr)
-                sys.exit(1)
+    for fname in filenames:
+        try:
+            with open(fname) as fd:
+                load(fd, fname, scope, code)
+        except IOError:
+            print("harmony: can't open", fname, file=sys.stderr)
+            sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
     optimize(code)
     return (code, scope)
@@ -5452,15 +5415,13 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                 print(file=f)
             else:
                 print(",", file=f)
-            print("    \"%d\": { \"file\": \"%s\", \"line\": \"%d\", \"code\": %s }"%(pc, file, line, json.dumps(files[file][line-1])), file=f, end="")
+            print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
         print(file=f)
         print("  }", file=f);
         print("}", file=f);
 
 config = {
-    "infile": "$$home$$/.charm.c",
-    "outfile": "$$home$$/.charm.exe",
-    "compile": "gcc -O3 -std=c99 $$infile$$ -m64 -o $$outfile$$"
+    "compile": "gcc -O3 -std=c99 -DNDEBUG $$infile$$ -m64 -o $$outfile$$"
 }
 
 def usage():
@@ -5531,64 +5492,41 @@ def main():
         else:
             assert False, "unhandled option"
 
+    if args == []:
+        usage()
+
+    dotloc = args[0].rfind(".")
+    if dotloc == 0:
+        usage()
+    if dotloc > 0:
+        stem = args[0][:dotloc]
+    else:
+        stem = args[0]
+
     (code, scope) = doCompile(args, consts, mods)
+
+    install_path = os.path.dirname(os.path.realpath(__file__))
 
     if charmflag:
         # see if there is a configuration file
-        global config
-        conffile = "%s/.harmony.json"%pathlib.Path.home()
-        if os.path.exists(conffile):
-            with open(conffile) as f:
-                config = json.load(f)
-        else:
-            config["infile"] = "%s/.charm.c"%pathlib.Path.home()
-            config["outfile"] = "%s/.charm.exe"%pathlib.Path.home()
-            config["compile"] = "gcc -O3 -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"])
-        if testflag:
-            tmpfile = "harmony.json"
-        else:
-            fd, tmpfile = tempfile.mkstemp(".json", prefix="harmony", text=True)
-            os.close(fd)
-        with open(tmpfile, "w") as fd:
+        infile = "%s/charm.c"%install_path
+        outfile = "%s/charm.exe"%install_path
+        hvmfile = stem + ".hvm"
+        with open(hvmfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        path = pathlib.Path(config["outfile"])
-        rebuild = testflag or not path.exists()
-        if not rebuild:
-            st = path.stat()
-            now = time.time()
-            if now - st.st_mtime > 15 * 60:
-                rebuild = True
-        if rebuild:
-            with open(config["infile"], "w") as fd:
-                if not testflag:
-                    print("#define NDEBUG", file=fd)
-                print("#define HARMONY_COMBINE", file=fd)
-                print(charm_src, file=fd)
-            if testflag:
-                # if os.name == "nt":
-                #     r = os.system("cl %s /link /out:%s"%(config["infile"], config["outfile"]))
-                # else:
-                    r = os.system("gcc -g -std=c99 %s -m64 -o %s"%(config["infile"], config["outfile"]))
-            else:
-                # if os.name == "nt":
-                #     r = os.system("cl %s /link /out:%s"%(config["infile"], config["outfile"]))
-                # else:
-                    r = os.system(config["compile"]);
-            if r != 0:
-                print("can't create charm model checker")
-                sys.exit(r);
-        r = os.system("%s %s %s"%(config["outfile"], " ".join(charmoptions), tmpfile));
+        r = os.system("%s %s %s"%(outfile, " ".join(charmoptions), hvmfile));
         if not testflag:
-            os.remove(tmpfile)
+            os.remove(hvmfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
         b = Brief()
-        if not b.run():
-            gh = GenHTML()
-            gh.run()
-            if not suppressOutput:
-                print("open file://" + os.getcwd() + "/harmony.html for more information")
+        b.run(stem + ".hco")
+        gh = GenHTML()
+        gh.run(stem)
+        if not suppressOutput:
+            p = pathlib.Path(stem + ".htm").resolve()
+            print("open file://" + str(p) + " for more information")
         sys.exit(0);
 
     if printCode == None:
