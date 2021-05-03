@@ -98,7 +98,8 @@ def doImport(scope, code, module):
         scope2.labels = scope.labels
 
         found = False
-        for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+        install_path = os.path.dirname(os.path.realpath(__file__))
+        for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
             filename = dir + "/" + modname + ".hny"
             if os.path.exists(filename):
                 with open(filename) as f:
@@ -2114,7 +2115,8 @@ class AST:
             scope2.labels = scope.labels
 
             found = False
-            for dir in [ os.path.dirname(namestack[-1]), "modules", "." ]:
+            install_path = os.path.dirname(os.path.realpath(__file__))
+            for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
                 filename = dir + "/" + modname + ".hny"
                 if os.path.exists(filename):
                     with open(filename) as f:
