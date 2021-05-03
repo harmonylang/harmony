@@ -5876,7 +5876,8 @@ def main():
     except HarmonyCompilerError as e:
         if parse_code_only:
             with open(f"{stem}.parsed", "w") as f:
-                f.write(json.dumps(e.token | {"status": "error"}))
+                data = dict(e.token, status="error")
+                f.write(json.dumps(data))
         print(e.message)
         sys.exit(1)
     else:
