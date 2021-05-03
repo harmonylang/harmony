@@ -65,8 +65,9 @@ m4_include(brief.py)
 m4_include(genhtml.py)
 
 
-class CompilerException(Exception):
-    def __init__(self, message: str, line: int, column: int, lexeme: str, filename: str):
+class HarmonyCompilerError(Exception):
+    def __init__(self, error_name: str, message: str, filename: str, line: int = None, column: int = None, lexeme: str = None):
+        self.error_name = error_name
         self.message = message
         self.token = {
             "line": line,
@@ -119,9 +120,13 @@ def doImport(scope, code, module):
                 found = True
                 break
         if not found:
-            print("Can't find module", modname, "imported from", namestack)
-            sys.exit(1)
-        
+            raise HarmonyCompilerError(
+                filename=file,
+                token=modname,
+                error_name='ImportError',
+                message=f"Can't import module {modname} from {namestack}",
+                line=line, col=column
+            )
         imported[lexeme] = scope2
 
     scope.names[lexeme] = ("module", imported[lexeme])
@@ -130,19 +135,36 @@ def load_string(all, filename, scope, code):
     files[filename] = all.split("\n")
     tokens = lexer(all, filename)
     if tokens == []:
-        print("Empty file:", filename)
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            error_name='UnexpectedEofError',
+            message=f"Empty file: {filename}",
+            filename=filename
+        )
 
     try:
         (ast, rem) = StatListRule(-1).parse(tokens)
     except IndexError:
         # best guess...
-        print("Parsing", filename, "hit EOF")
-        sys.exit(1)
+        (lexeme, file, line, column) = tokens[-1]
+        raise HarmonyCompilerError(
+            filename=file,
+            line=line,
+            col=column,
+            token=lexeme,
+            error_name='UnexpectedEofError',
+            message=f"Parsing {filename} hit EOF",
+        )
 
     if rem != []:
-        print("Parsing: unexpected tokens remaining at end of program:", rem[0])
-        sys.exit(1)
+        (lexeme, file, line, column) = rem[0]
+        raise HarmonyCompilerError(
+            filename=file,
+            line=line,
+            col=column,
+            token=lexeme,
+            error_name='UnexpectedTokenError',
+            message=f"Parsing: unexpected tokens remaining at end of program: {rem[0]}",
+        )
 
     for mod in ast.getImports():
         doImport(scope, code, mod)
@@ -1978,6 +2000,9 @@ class ApplyOp(Op):
             context.pc = method.pc
 
 class AST:
+    def __init__(self, token):
+        self.ast_token = token
+
     def assign(self, scope, var):
         if isinstance(var, tuple):
             scope.checkUnused(var)
@@ -2028,8 +2053,15 @@ class AST:
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
-        print("Cannot use in left-hand side expression:", self)
-        sys.exit(1)
+        lexeme, file, line, column = self.ast_token
+        raise HarmonyCompilerError(
+            token=lexeme,
+            filename=file,
+            line=line,
+            col=column,
+            error_name='ExpressionError',
+            message=f'Cannot use in left-hand side expression: {self}'
+        )
 
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
         if iter == []:
@@ -2136,9 +2168,13 @@ class AST:
                     found = True
                     break
             if not found:
-                print("Can't find module", modname, "imported from", namestack)
-                sys.exit(1)
-            
+                raise HarmonyCompilerError(
+                    error_name='ImportError',
+                    token=modname,
+                    filename=str(namestack),
+                    line=line, col=column,
+                    message=f"Can't find module {modname} imported from {namestack}",
+                )
             imported[lexeme] = scope2
 
         scope.names[lexeme] = ("module", imported[lexeme])
@@ -2151,10 +2187,12 @@ class AST:
 
 class ConstantAST(AST):
     def __init__(self, const):
+        AST.__init__(self, const)
         self.const = const
 
 class ConstantAST(AST):
     def __init__(self, const):
+        AST.__init__(self, const)
         self.const = const
 
     def __repr__(self):
@@ -2168,6 +2206,7 @@ class ConstantAST(AST):
 
 class NameAST(AST):
     def __init__(self, name):
+        AST.__init__(self, name)
         self.name = name
 
     def __repr__(self):
@@ -2195,8 +2234,15 @@ class NameAST(AST):
             (lexeme, file, line, column) = v
             code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         elif t == "constant":
-            print("constant cannot be an lvalue:", self.name)
-            sys.exit(1)
+            (lexeme, file, line, column) = v
+            raise HarmonyCompilerError(
+                filename=file,
+                error_name='EmptyStatementError',
+                token=lexeme,
+                line=line,
+                col=column,
+                message=f"constant cannot be an lvalue: {self.name}",
+            )
         else:
             (lexeme, file, line, column) = self.name
             code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
@@ -2223,7 +2269,8 @@ class NameAST(AST):
             assert False, (t, v, self.name)
 
 class SetAST(AST):
-    def __init__(self, collection):
+    def __init__(self, token, collection):
+        AST.__init__(self, token)
         self.collection = collection
 
     def __repr__(self):
@@ -2239,7 +2286,8 @@ class SetAST(AST):
             code.append(NaryOp(("SetAdd", None, None, None), 2))
 
 class BagAST(AST):
-    def __init__(self, collection):
+    def __init__(self, token, collection):
+        AST.__init__(self, token)
         self.collection = collection
 
     def __repr__(self):
@@ -2256,6 +2304,7 @@ class BagAST(AST):
 
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):
+        AST.__init__(self, token)
         self.lhs = lhs
         self.rhs = rhs
         self.token = token
@@ -2274,6 +2323,7 @@ class RangeAST(AST):
 
 class TupleAST(AST):
     def __init__(self, list, token):
+        AST.__init__(self, token)
         self.list = list
         self.token = token
 
@@ -2306,7 +2356,8 @@ class TupleAST(AST):
             lv.ph2(scope, code, skip + n)
 
 class DictAST(AST):
-    def __init__(self, record):
+    def __init__(self, token, record):
+        AST.__init__(self, token)
         self.record = record
 
     def __repr__(self):
@@ -2325,6 +2376,7 @@ class DictAST(AST):
 
 class SetComprehensionAST(AST):
     def __init__(self, value, iter, token):
+        AST.__init__(self, token)
         self.value = value
         self.iter = iter
         self.token = token
@@ -2337,6 +2389,7 @@ class SetComprehensionAST(AST):
 
 class BagComprehensionAST(AST):
     def __init__(self, value, iter, token):
+        AST.__init__(self, token)
         self.value = value
         self.iter = iter
         self.token = token
@@ -2349,6 +2402,7 @@ class BagComprehensionAST(AST):
 
 class DictComprehensionAST(AST):
     def __init__(self, key, value, iter, token):
+        AST.__init__(self, token)
         self.key = key
         self.value = value
         self.iter = iter
@@ -2362,6 +2416,7 @@ class DictComprehensionAST(AST):
 
 class ListComprehensionAST(AST):
     def __init__(self, value, iter, token):
+        AST.__init__(self, token)
         self.value = value
         self.iter = iter
         self.token = token
@@ -2375,6 +2430,7 @@ class ListComprehensionAST(AST):
 # N-ary operator
 class NaryAST(AST):
     def __init__(self, op, args):
+        AST.__init__(self, op)
         self.op = op
         self.args = args
         assert all(isinstance(x, AST) for x in args), args
@@ -2434,7 +2490,8 @@ class NaryAST(AST):
             code.append(NaryOp(self.op, n))
 
 class CmpAST(AST):
-    def __init__(self, ops, args):
+    def __init__(self, token, ops, args):
+        AST.__init__(self, token)
         self.ops = ops
         self.args = args
         assert len(ops) == len(args) - 1
@@ -2471,6 +2528,7 @@ class CmpAST(AST):
 
 class ApplyAST(AST):
     def __init__(self, method, arg, token):
+        AST.__init__(self, token)
         self.method = method
         self.arg = arg
         self.token = token
@@ -2543,8 +2601,9 @@ class ApplyAST(AST):
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
-                    print("Cannot assign to constant", self.method.name, self.arg.const)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        message=f"Cannot assign to constant {self.method.name} {self.arg.const}",
+                    )
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
         code.append(AddressOp())
@@ -2560,8 +2619,15 @@ class ApplyAST(AST):
 class Rule:
     def expect(self, rule, b, got, want):
         if not b:
-            print("Parse error in %s."%rule, "Got", got, ":", want)
-            sys.exit(1)
+            lexeme, file, line, column = got
+            raise HarmonyCompilerError(
+                token=lexeme,
+                filename=file,
+                line=line,
+                col=column,
+                error_name='ParseError',
+                message=f"Parse error in {rule}. Got {got}, but wanted {want}"
+            )
 
     def forParse(self, t, closers):
         (bv, t) = BoundVarRule().parse(t)
@@ -2617,8 +2683,15 @@ class NaryRule(Rule):
                 ops.append(t[0])
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
-                    print("expected an expression after n-ary comparison operation in", op)
-                    sys.exit(1)
+                    lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        line=line,
+                        col=column,
+                        token=lexeme,
+                        error_name='MissingExpressionError',
+                        message=f"expected an expression after n-ary comparison operation in {op}"
+                    )
                 args.append(ast3)
                 if t == []:
                     break
@@ -2626,14 +2699,21 @@ class NaryRule(Rule):
             if t != []:
                 self.expect("n-ary operation", lexeme in self.closers,
                         t[0], "expected one of %s"%self.closers)
-            return (CmpAST(ops, args), t)
+            return (CmpAST(op, ops, args), t)
         if op[0] == "if":
             (ast2, t) = NaryRule({"else"}).parse(t[1:])
         else:
             (ast2, t) = ExpressionRule().parse(t[1:])
         if ast2 == False:
-            print("expected an expression after operation", op)
-            sys.exit(1)
+            lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
+            raise HarmonyCompilerError(
+                filename=file,
+                error_name='MissingExpressionError',
+                token=lexeme,
+                line=line,
+                col=column,
+                message=f"expected an expression after operation {op}"
+            )
         args.append(ast2)
         if t != []:
             (lexeme, file, line, column) = t[0]
@@ -2641,8 +2721,15 @@ class NaryRule(Rule):
                 self.expect("n-ary operation", lexeme == "else", t[0], "expected 'else'")
                 (ast3, t) = ExpressionRule().parse(t[1:])
                 if ast3 == False:
-                    print("expected an expression after else in", op)
-                    sys.exit(1)
+                    lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='MissingExpressionError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"expected an expression after else in {op}"
+                    )
                 args.append(ast3)
                 if t != []:
                     (lexeme, file, line, column) = t[0]
@@ -2650,8 +2737,15 @@ class NaryRule(Rule):
                 while lexeme == op[0]:
                     (ast3, t) = ExpressionRule().parse(t[1:])
                     if ast3 == False:
-                        print("expected an expression after n-ary operation in", op)
-                        sys.exit(1)
+                        lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
+                        raise HarmonyCompilerError(
+                            filename=file,
+                            error_name='MissingExpressionError',
+                            token=lexeme,
+                            line=line,
+                            col=column,
+                            message=f"expected an expression after n-ary operation in {op}"
+                        )
                     args.append(ast3)
                     if t == []:
                         break
@@ -2705,11 +2799,12 @@ class ListComprehensionRule(Rule):
 
 class SetRule(Rule):
     def parse(self, t):
+        first_token = t[0]
         (lexeme, file, line, column) = t[0]
         self.expect("set expression", lexeme == "{", t[0], "expected '{'")
         (lexeme, file, line, column) = t[1]
         if lexeme == "}":
-            return (SetAST([]), t[2:])
+            return (SetAST(first_token, []), t[2:])
         s = []
         while True:
             (next, t) = NaryRule({":", "for", "..", ",", "}"}).parse(t[1:])
@@ -2732,17 +2827,18 @@ class SetRule(Rule):
                 (ast, t) = NaryRule({"}"}).parse(t[1:])
                 return (RangeAST(next, ast, token), t[1:])
             if lexeme == "}":
-                return (SetAST(s), t[1:])
+                return (SetAST(first_token, s), t[1:])
             self.expect("set expression", lexeme == ",", t[0],
                     "expected a comma")
 
 class BagRule(Rule):
     def parse(self, t):
+        first_token = t[0]
         (lexeme, file, line, column) = t[0]
         self.expect("bag expression", lexeme == "bag{", t[0], "expected '{'")
         (lexeme, file, line, column) = t[1]
         if lexeme == "}":
-            return (BagAST([]), t[2:])
+            return (BagAST(first_token, []), t[2:])
         s = []
         while True:
             (next, t) = NaryRule({"for", "..", ",", "}"}).parse(t[1:])
@@ -2761,7 +2857,7 @@ class BagRule(Rule):
                 (ast, t) = NaryRule({"}"}).parse(t[1:])
                 return (RangeAST(next, ast, token), t[1:])
             if lexeme == "}":
-                return (BagAST(s), t[1:])
+                return (BagAST(first_token, s), t[1:])
             self.expect("bag expression", lexeme == ",", t[0],
                     "expected a comma")
 
@@ -2784,7 +2880,7 @@ class DictSuffixRule(Rule):
 
             d.append((key, value))
             if lexeme == "}":
-                return (DictAST(d), t[1:])
+                return (DictAST(t[0], d), t[1:])
 
             (key, t) = NaryRule({":"}).parse(t[1:])
             if key == False:
@@ -2862,11 +2958,12 @@ class BasicExpressionRule(Rule):
             return (ast, t[1:])
         if lexeme == "?":
             (ast, t) = ExpressionRule().parse(t[1:])
-            return (AddressAST(ast), t)
+            return (AddressAST(token, ast), t)
         return (False, t)
 
 class PointerAST(AST):
     def __init__(self, expr, token):
+        AST.__init__(self, token)
         self.expr = expr
         self.token = token
 
@@ -2898,10 +2995,10 @@ class ExpressionRule(Rule):
             return (LambdaAST(bv, ast, func), t[1:])
         if lexeme == "setintlevel":
             (ast, t) = ExpressionRule().parse(t[1:])
-            return (SetIntLevelAST(ast), t)
+            return (SetIntLevelAST(func, ast), t)
         if lexeme == "stop":
             (ast, t) = ExpressionRule().parse(t[1:])
-            return (StopAST(ast), t)
+            return (StopAST(func, ast), t)
         if isunaryop(lexeme):
             (ast, t) = ExpressionRule().parse(t[1:])
             if lexeme == "!":
@@ -2935,6 +3032,7 @@ class ExpressionRule(Rule):
 
 class AssignmentAST(AST):
     def __init__(self, lhslist, rv, op):
+        AST.__init__(self, op)
         self.lhslist = lhslist      # a, b = c, d = e = ...
         self.rv = rv                # rhs expression
         self.op = op                # ... op= ...
@@ -2949,12 +3047,25 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
             (t, v) = scope.find(lv.name)
+            lexeme, file, line, column = self.ast_token
             if t == "module":
-                print("Cannot operate on module", lv.name)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    error_name='AssignmentError',
+                    message=f'Cannot operate on module {lv.name}',
+                )
             if t == "constant":
-                print("Cannot operate on constant", lv.name)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    error_name='AssignmentError',
+                    message=f'Cannot operate on constant {lv.name}',
+                )
             assert t in { "local", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
@@ -2999,11 +3110,23 @@ class AssignmentAST(AST):
             if isinstance(lvs, NameAST):
                 (t, v) = scope.find(lvs.name)
                 if t == "module":
-                    print("Cannot assign to module", lvs.name)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        token=lexeme,
+                        filename=file,
+                        line=line,
+                        col=column,
+                        error_name='AssignmentError',
+                        message=f'Cannot assign to module {lvs.name}',
+                    )
                 if t == "constant":
-                    print("Cannot assign to constant", lvs.name)
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        token=lexeme,
+                        filename=file,
+                        line=line,
+                        col=column,
+                        error_name='AssignmentError',
+                        message=f'Cannot assign to constant {lvs.name}',
+                    )
                 assert t in { "local", "global" }, (t, lvs.name)
                 st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                 code.append(st)
@@ -3011,7 +3134,8 @@ class AssignmentAST(AST):
                 lvs.ph2(scope, code, skip)
 
 class DelAST(AST):
-    def __init__(self, lv):
+    def __init__(self, token, lv):
+        AST.__init__(self, token)
         self.lv = lv
 
     def __repr__(self):
@@ -3024,7 +3148,8 @@ class DelAST(AST):
         code.append(op)
 
 class SetIntLevelAST(AST):
-    def __init__(self, arg):
+    def __init__(self, token, arg):
+        AST.__init__(self, token)
         self.arg = arg
 
     def __repr__(self):
@@ -3035,7 +3160,8 @@ class SetIntLevelAST(AST):
         code.append(SetIntLevelOp())
 
 class StopAST(AST):
-    def __init__(self, lv):
+    def __init__(self, token, lv):
+        AST.__init__(self, token)
         self.lv = lv
 
     def __repr__(self):
@@ -3047,7 +3173,8 @@ class StopAST(AST):
         code.append(ContinueOp())
 
 class AddressAST(AST):
-    def __init__(self, lv):
+    def __init__(self, token, lv):
+        AST.__init__(self, token)
         self.lv = lv
 
     def __repr__(self):
@@ -3059,28 +3186,57 @@ class AddressAST(AST):
     def check(self, lv, scope):
         if isinstance(lv, NameAST):
             (t, v) = scope.lookup(lv.name)
+            lexeme, file, line, column = lv.name
             if t == "local":
-                print("can't take address of local variable", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    error_name='TakeAddressError',
+                    message=f"Can't take address of local variable {lv}",
+                )
             if t == "constant":
-                print("can't take address of constant", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    error_name='TakeAddressError',
+                    message=f"Can't take address of constant {lv}",
+                )
             if t == "module":
-                print("can't take address of imported", lv)
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    error_name='TakeAddressError',
+                    message=f"Can't take address of imported {lv}",
+                )
         elif isinstance(lv, ApplyAST):
             self.check(lv.method, scope)
         elif isinstance(lv, PointerAST):
             pass
         else:
-            print("can't take address of", lv)
-            sys.exit(1)
+            lexeme, file, line, column = lv.ast_token if isinstance(lv, AST) else (None, None, None, None)
+            raise HarmonyCompilerError(
+                filename=file,
+                token=lexeme,
+                line=line,
+                col=column,
+                error_name='TakeAddressError',
+                message=f"Can't take address of {lv}",
+            )
 
     def gencode(self, scope, code):
         self.check(self.lv, scope)
         self.lv.ph1(scope, code)
 
 class PassAST(AST):
+    def __init__(self, token):
+        AST.__init__(self, token)
+
     def __repr__(self):
         return "Pass"
 
@@ -3088,7 +3244,8 @@ class PassAST(AST):
         pass
 
 class BlockAST(AST):
-    def __init__(self, b):
+    def __init__(self, token, b):
+        AST.__init__(self, token)
         assert len(b) > 0
         self.b = b
 
@@ -3108,7 +3265,8 @@ class BlockAST(AST):
         return functools.reduce(lambda x,y: x+y, imports)
 
 class IfAST(AST):
-    def __init__(self, alts, stat):
+    def __init__(self, token, alts, stat):
+        AST.__init__(self, token)
         self.alts = alts        # alternatives
         self.stat = stat        # else statement
 
@@ -3146,7 +3304,8 @@ class IfAST(AST):
         return functools.reduce(lambda x,y: x+y, imports)
 
 class WhileAST(AST):
-    def __init__(self, cond, stat):
+    def __init__(self, token, cond, stat):
+        AST.__init__(self, token)
         self.cond = cond
         self.stat = stat
 
@@ -3171,7 +3330,8 @@ class WhileAST(AST):
         return self.stat.getImports()
 
 class AwaitAST(AST):
-    def __init__(self, cond):
+    def __init__(self, token, cond):
+        AST.__init__(self, token)
         self.cond = cond
 
     def __repr__(self):
@@ -3186,6 +3346,7 @@ class AwaitAST(AST):
 
 class InvariantAST(AST):
     def __init__(self, cond, token):
+        AST.__init__(self, token)
         self.cond = cond
         self.token = token
 
@@ -3200,7 +3361,8 @@ class InvariantAST(AST):
         code.append(ReturnOp())
 
 class LetAST(AST):
-    def __init__(self, vars, stat):
+    def __init__(self, token, vars, stat):
+        AST.__init__(self, token)
         self.vars = vars
         self.stat = stat
 
@@ -3222,6 +3384,7 @@ class LetAST(AST):
 
 class ForAST(AST):
     def __init__(self, iter, stat, token):
+        AST.__init__(self, token)
         self.value = stat
         self.iter = iter
         self.token = token
@@ -3239,7 +3402,8 @@ class ForAST(AST):
         return self.value.getImports()
 
 class AtomicAST(AST):
-    def __init__(self, stat):
+    def __init__(self, token, stat):
+        AST.__init__(self, token)
         self.stat = stat
 
     def __repr__(self):
@@ -3259,6 +3423,7 @@ class AtomicAST(AST):
 
 class AssertAST(AST):
     def __init__(self, token, cond, expr):
+        AST.__init__(self, token)
         self.token = token
         self.cond = cond
         self.expr = expr
@@ -3277,7 +3442,8 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp())
 
 class MethodAST(AST):
-    def __init__(self, name, args, stat):
+    def __init__(self, token, name, args, stat):
+        AST.__init__(self, token)
         self.name = name
         self.args = args
         self.stat = stat
@@ -3318,6 +3484,7 @@ class MethodAST(AST):
 
 class LambdaAST(AST):
     def __init__(self, args, stat, token):
+        AST.__init__(self, token)
         self.args = args
         self.stat = stat
         self.token = token
@@ -3350,7 +3517,8 @@ class LambdaAST(AST):
         code.append(PushOp((PcValue(pc), file, line, column)))
 
 class CallAST(AST):
-    def __init__(self, expr):
+    def __init__(self, token, expr):
+        AST.__init__(self, token)
         self.expr = expr
 
     def __repr__(self):
@@ -3362,7 +3530,8 @@ class CallAST(AST):
             code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, method, arg, this):
+    def __init__(self, token, method, arg, this):
+        AST.__init__(self, token)
         self.method = method
         self.arg = arg
         self.this = this
@@ -3380,7 +3549,8 @@ class SpawnAST(AST):
         code.append(SpawnOp())
 
 class TrapAST(AST):
-    def __init__(self, method, arg):
+    def __init__(self, token, method, arg):
+        AST.__init__(self, token)
         self.method = method
         self.arg = arg
 
@@ -3393,7 +3563,8 @@ class TrapAST(AST):
         code.append(TrapOp())
 
 class GoAST(AST):
-    def __init__(self, ctx, result):
+    def __init__(self, token, ctx, result):
+        AST.__init__(self, token)
         self.ctx = ctx
         self.result = result
 
@@ -3406,7 +3577,8 @@ class GoAST(AST):
         code.append(GoOp())
 
 class ImportAST(AST):
-    def __init__(self, modlist):
+    def __init__(self, token, modlist):
+        AST.__init__(self, token)
         self.modlist = modlist
 
     def __repr__(self):
@@ -3420,7 +3592,8 @@ class ImportAST(AST):
         return self.modlist
 
 class FromAST(AST):
-    def __init__(self, module, items):
+    def __init__(self, token, module, items):
+        AST.__init__(self, token)
         self.module = module
         self.items = items
 
@@ -3439,9 +3612,12 @@ class FromAST(AST):
         else:
             for (lexeme, file, line, column) in self.items:
                 if lexeme not in names:
-                    print("%s line %d: can't import %s from module %s"%(
-                        file, line, lexeme, self.module[0]))
-                    sys.exit(1)
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        token=lexeme,
+                        error_name='ImportError',
+                        message=f"{file} line {line}: can't import {lexeme} from {self.module[0]}",
+                        line=line, col=column)
                 (t, v) = names[lexeme]
                 assert t == "constant", (lexeme, t, v)
                 scope.names[lexeme] = (t, v)
@@ -3450,7 +3626,8 @@ class FromAST(AST):
         return [self.module]
 
 class LabelStatAST(AST):
-    def __init__(self, labels, ast, file, line):
+    def __init__(self, token, labels, ast, file, line):
+        AST.__init__(self, token)
         self.labels = labels
         self.ast = ast
         self.file = file
@@ -3481,7 +3658,8 @@ class LabelStatAST(AST):
         return self.ast.getImports();
 
 class SequentialAST(AST):
-    def __init__(self, vars):
+    def __init__(self, token, vars):
+        AST.__init__(self, token)
         self.vars = vars
     
     def __repr__(self):
@@ -3493,7 +3671,8 @@ class SequentialAST(AST):
             code.append(SequentialOp())
 
 class ConstAST(AST):
-    def __init__(self, const, expr):
+    def __init__(self, token, const, expr):
+        AST.__init__(self, token)
         self.const = const
         self.expr = expr
 
@@ -3517,8 +3696,15 @@ class ConstAST(AST):
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
-            print(self.const, ": Parse error: expression not a constant", str(self.expr))
-            sys.exit(1)
+            lexeme, file, line, column = self.expr.ast_token if isinstance(self.expr, AST) else self.ast_token
+            raise HarmonyCompilerError(
+                filename=file,
+                token=lexeme,
+                line=line,
+                col=column,
+                error_name='InvalidConstantError',
+                message=f"{self.const}: Parse error: expression not a constant {self.expr}",
+            )
         if isinstance(self.expr, LambdaAST):
             pc = self.expr.compile_body(scope, code)
             self.set(scope, self.const, PcValue(pc))
@@ -3545,6 +3731,7 @@ class AssignmentRule(Rule):
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
     def parse(self, t):
+        token = t[0]
         (lexeme, thefile, theline, column) = t[0]
         labels = []
         while True:
@@ -3560,7 +3747,7 @@ class LabelStatRule(Rule):
             t = t[3:]
 
         (ast, t) = StatementRule().parse(t)
-        return (LabelStatAST(labels, ast, thefile, theline), t)
+        return (LabelStatAST(token, labels, ast, thefile, theline), t)
 
 class StatListRule(Rule):
     def __init__(self, indent):
@@ -3568,11 +3755,14 @@ class StatListRule(Rule):
 
     def parse(self, t):
         if t == []:
-            print("Unexpected EOF")
-            return (BlockAST([]), [])
+            raise HarmonyCompilerError(
+                error_name='UnexpectedEofError',
+                message='Unexpected EOF',
+            )
 
         # find all the tokens that are indented more than self.indent
         slice = []
+        first_token = t[0]
         (lexeme, file, line, column) = t[0]
         while column > self.indent:
             slice.append(t[0])
@@ -3581,8 +3771,14 @@ class StatListRule(Rule):
                 break
             (lexeme, file, line, column) = t[0]
         if slice == []:
-            print("Parse error: no statements in indented block:", t[0])
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                filename=file,
+                error_name='EmptyStatementError',
+                token=lexeme,
+                line=line,
+                col=column,
+                message=f"Parse error: no statements in indented block: {t[0]}",
+            )
 
         b = []
         while slice != []:
@@ -3590,10 +3786,17 @@ class StatListRule(Rule):
                 (ast, slice) = LabelStatRule().parse(slice)
                 b.append(ast)
             except IndexError:
-                print("Parsing: incomplete statement starting at ", slice[0])
-                sys.exit(1)
+                lexeme, file, line, column = slice[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='IncompleteStatementError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"Parsing: incomplete statement starting at {slice[0]}",
+                )
 
-        return (BlockAST(b), t)
+        return (BlockAST(first_token, b), t)
 
 class BlockRule(Rule):
     def __init__(self, indent):
@@ -3653,8 +3856,14 @@ class StatementRule(Rule):
             if lexeme == bracket:
                 return (tokens, t[1:])
             if lexeme in [')', ']', '}']:
-                print("unmatched bracket:", t[0])
-                sys.exit(1)
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnmatchedBracketError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"unmatched bracket: {t[0]}",
+                )
             if lexeme in ['(', '[', '{']:
                 (more, t) = self.rec_slice(t)
                 tokens += more
@@ -3662,8 +3871,14 @@ class StatementRule(Rule):
                     break
             else:
                 t = t[1:]
-        print("closing bracket missing:", first, tokens, t)
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            filename=file,
+            error_name='MissingBracketError',
+            token=lexeme,
+            line=line,
+            col=column,
+            message=f"closing bracket missing: {first} {tokens} {t}",
+        )
 
     def slice(self, t, indent):
         if t == []:
@@ -3696,7 +3911,7 @@ class StatementRule(Rule):
         token = t[0]
         (lexeme, file, line, column) = token
         if lexeme == ";":
-            return (PassAST(), t[1:])
+            return (PassAST(token), t[1:])
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -3704,9 +3919,16 @@ class StatementRule(Rule):
             self.expect("constant definition", lexeme == "=", tokens[0], "expected '='")
             (ast, tokens) = TupleRule(set()).parse(tokens[1:])
             if tokens != []:
-                print("constant definition: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (ConstAST(const, ast), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"constant definition: unexpected token: {tokens[0]}",
+                )
+            return (ConstAST(token, const, ast), t)
         if lexeme == "if":
             alts = []
             while True:
@@ -3726,24 +3948,38 @@ class StatementRule(Rule):
                 (stat, t) = BlockRule(column).parse(t[1:])
             else:
                 stat = None
-            return (IfAST(alts, stat), t)
+            return (IfAST(token, alts, stat), t)
         if lexeme == "while":
             (cond, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (WhileAST(cond, stat), t)
+            return (WhileAST(token, cond, stat), t)
         if lexeme == "await":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
-                print("await: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (AwaitAST(cond), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"await: unexpected token: {tokens[0]}",
+                )
+            return (AwaitAST(token, cond), t)
         if lexeme == "invariant":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
-                print("invariant: unexpected token:", tokens[0])
-                sys.exit(1)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"invariant: unexpected token: {tokens[0]}",
+                )
             return (InvariantAST(cond, token), t)
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
@@ -3762,30 +3998,45 @@ class StatementRule(Rule):
                     break
                 self.expect("let statement", lexeme == "let", t[0], "expected 'let' or ':'")
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (LetAST(vars, stat), t)
+            return (LetAST(token, vars, stat), t)
         if lexeme == "atomic":
             (stat, t) = BlockRule(column).parse(t[1:])
-            return (AtomicAST(stat), t)
+            return (AtomicAST(token, stat), t)
         if lexeme == "del":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
             if tokens != []:
-                print("del: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (DelAST(ast), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"del: unexpected token: {tokens[0]}",
+                )
+            return (DelAST(token, ast), t)
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, nextColumn) = name
             self.expect("method definition", isname(lexeme), name, "expected name")
             (bv, t) = BoundVarRule().parse(t[2:])
             (stat, t) = BlockRule(column).parse(t)
-            return (MethodAST(name, bv, stat), t)
+            return (MethodAST(token, name, bv, stat), t)
         if lexeme == "spawn":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule({","}).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("spawn: expected method application", token)
-                sys.exit(1)
+                token = func.ast_token if isinstance(func, AST) else tokens[0] if tokens else token
+                lexeme, file, line, column = token
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"spawn: expected method application {token}",
+                )
             if tokens == []:
                 this = None
             else:
@@ -3793,31 +4044,68 @@ class StatementRule(Rule):
                 assert lexeme == ","
                 (this, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
-                    print("spawn: unexpected token:", tokens[0])
-                    sys.exit(1)
-            return (SpawnAST(func.method, func.arg, this), t)
+                    lexeme, file, line, column = tokens[0]
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"spawn: unexpected token: {tokens[0]}",
+                    )
+            return (SpawnAST(token, func.method, func.arg, this), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("trap: expected method application", token)
-                sys.exit(1)
+                token = func.ast_token if isinstance(func, AST) else tokens[0] if tokens else token
+                lexeme, file, line, column = token
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"trap: expected method application: {token}",
+                )
             if tokens != []:
-                print("trap: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (TrapAST(func.method, func.arg), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"trap: unexpected token: {tokens[0]}",
+                )
+            return (TrapAST(token, func.method, func.arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
             if not isinstance(func, ApplyAST):
-                print("go: expected method application", token)
-                sys.exit(1)
+                token = func.ast_token if isinstance(func, AST) else tokens[0] if tokens else token
+                lexeme, file, line, column = token
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"go: expected method application: {token}",
+                )
             if tokens != []:
-                print("go: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (GoAST(func.method, func.arg), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"go: unexpected token: {tokens[0]}",
+                )
+            return (GoAST(token, func.method, func.arg), t)
         if lexeme == "pass":
-            return (PassAST(), t[1:])
+            return (PassAST(token), t[1:])
         if lexeme == "sequential":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
@@ -3831,9 +4119,16 @@ class StatementRule(Rule):
                         break
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
-                    print("sequential: unexpected token:", tokens[0])
-                    sys.exit(1)
-            return (SequentialAST(vars), t)
+                    lexeme, file, line, column = tokens[0]
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"sequential: unexpected token: {tokens[0]}",
+                    )
+            return (SequentialAST(token, vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
             mods = [tokens[0]]
@@ -3847,9 +4142,17 @@ class StatementRule(Rule):
                         break
                     (lexeme, file, line, column) = tokens[0]
                 if tokens != []:
-                    print("import: unexpected token:", tokens[0])
-                    sys.exit(1)
-            return (ImportAST(mods), t)
+                    lexeme, file, line, column = tokens[0]
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"import: unexpected token: {tokens[0]}",
+                    )
+
+            return (ImportAST(token, mods), t)
         if lexeme == "from":
             (tokens, t) = self.slice(t[1:], column)
             (lexeme, file, line, column) = module = tokens[0]
@@ -3859,7 +4162,7 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = tokens[2]
             if lexeme == '*':
                 assert len(tokens) == 3, tokens
-                return (FromAST(module, []), t)
+                return (FromAST(token, module, []), t)
             items = [tokens[2]]
             tokens = tokens[3:]
             if tokens != []:
@@ -3871,9 +4174,17 @@ class StatementRule(Rule):
                         break;
                     (lexeme, file, line, column) = tokens[0]
             if tokens != []:
-                print("from: unexpected token:", tokens[0])
-                sys.exit(1)
-            return (FromAST(module, items), t)
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    error_name='UnexpectedTokenError',
+                    token=lexeme,
+                    line=line,
+                    col=column,
+                    message=f"from: unexpected token: {tokens[0]}",
+                )
+
+            return (FromAST(token, module, items), t)
         if lexeme == "assert":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)
@@ -3881,11 +4192,27 @@ class StatementRule(Rule):
                 expr = None
             else:
                 (lexeme, file, line, column) = tokens[0]
-                assert lexeme == ","
+                if lexeme != ",":
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"assert: unexpected token: {tokens[0]}",
+                    )
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
-                    print("assert: unexpected token:", tokens[0])
-                    sys.exit(1)
+                    lexeme, file, line, column = tokens[0]
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        error_name='UnexpectedTokenError',
+                        token=lexeme,
+                        line=line,
+                        col=column,
+                        message=f"assert: unexpected token: {tokens[0]}",
+                    )
+
             return (AssertAST(token, cond, expr), t)
         
         # If we get here, the next statement is either an expression
@@ -3913,7 +4240,7 @@ class StatementRule(Rule):
             assignop = tokens[0]
             tokens = tokens[1:]
         if len(exprs) == 1:
-            return (CallAST(exprs[0]), t)
+            return (CallAST(token, exprs[0]), t)
         else:
             return (AssignmentAST(exprs[:-1], exprs[-1], assignop), t)
 
@@ -4590,14 +4917,17 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     if tokens == []:
-        print("Empty constant")
-        sys.exit(1)
+        HarmonyCompilerError(
+            message="Empty constant"
+        )
     try:
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:
         # best guess...
-        print("Parsing constant", v, "hit end of string")
-        sys.exit(1)
+        HarmonyCompilerError(
+            message=f"Parsing constant {v} hit end of string"
+        )
+    print(tokens)
     scope = Scope(None)
     code = []
     ast.compile(scope, code)
@@ -5449,7 +5779,7 @@ def usage():
     print("    -v: print version number")
     exit(1)
 
-def main():
+def main(arguments):
     global silent
 
     # Get options.  First set default values
@@ -5463,7 +5793,7 @@ def main():
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhjm:stv",
+        opts, args = getopt.getopt(arguments[1:], "Aabc:dfhjm:stv",
                 ["const=", "cf=", "help", "module=", "suppress", "version"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -5551,4 +5881,9 @@ def main():
         dumpCode(printCode, code, scope)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main(sys.argv)
+    except HarmonyCompilerError as e:
+        print(e.message)
+        print(e)
+        exit(1)
