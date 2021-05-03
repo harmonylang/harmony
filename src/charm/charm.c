@@ -1283,6 +1283,9 @@ int main(int argc, char **argv){
                 exit(1);
             }
             break;
+        case 'x':
+            printf("Charm model checker working\n");
+            return 0;
         default:
             usage(argv[0]);
         }
