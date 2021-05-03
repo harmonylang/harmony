@@ -66,7 +66,7 @@ m4_include(genhtml.py)
 
 
 class HarmonyCompilerError(Exception):
-    def __init__(self, error_name: str, message: str, filename: str,
+    def __init__(self, error_name: str, message: str, filename: str = None,
                  line: int = None, column: int = None, lexeme: str = None):
         self.message = message
         self.token = {
@@ -2611,8 +2611,14 @@ class ApplyAST(AST):
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
+                    lexeme, file, line, column = self.ast_token
                     raise HarmonyCompilerError(
                         message=f"Cannot assign to constant {self.method.name} {self.arg.const}",
+                        lexeme=lexeme,
+                        filename=file,
+                        line=line,
+                        column=column,
+                        error_name='AssignConstantError'
                     )
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
@@ -4928,14 +4934,16 @@ def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     if tokens == []:
         HarmonyCompilerError(
-            message="Empty constant"
+            message="Empty constant",
+            error_name="FlagError"
         )
     try:
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:
         # best guess...
         HarmonyCompilerError(
-            message=f"Parsing constant {v} hit end of string"
+            message=f"Parsing constant {v} hit end of string",
+            error_name="FlagError"
         )
     print(tokens)
     scope = Scope(None)
@@ -4954,8 +4962,10 @@ def doCompile(filenames, consts, mods):
             i = c.index("=")
             parseConstant(c[0:i], c[i+1:])
         except IndexError:
-            print("Usage: -c C=V to define a constant")
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message="Usage: -c C=V to define a constant",
+                error_name="FlagError"
+            )
 
     global modules
     for m in mods:
@@ -4963,8 +4973,10 @@ def doCompile(filenames, consts, mods):
             i = m.index("=")
             modules[m[0:i]] = m[i+1:]
         except IndexError:
-            print("Usage: -m module=version to specify a module version")
-            sys.exit(1)
+            raise HarmonyCompilerError(
+                message="Usage: -m module=version to specify a module version",
+                error_name="FlagError"
+            )
 
     scope = Scope(None)
     code = [
@@ -5790,7 +5802,7 @@ def usage():
     print("    -v: print version number")
     exit(1)
 
-def main(arguments):
+def main():
     global silent
 
     # Get options.  First set default values
@@ -5805,7 +5817,7 @@ def main(arguments):
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(arguments[1:], "Aabc:dfhjm:stvp",
+        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhjm:stvp",
                 ["const=", "cf=", "help", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -5907,9 +5919,4 @@ def main(arguments):
         dumpCode(printCode, code, scope)
 
 if __name__ == "__main__":
-    try:
-        main(sys.argv)
-    except HarmonyCompilerError as e:
-        print(e.message)
-        print(e)
-        exit(1)
+    main()
