@@ -5415,7 +5415,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                 print(file=f)
             else:
                 print(",", file=f)
-            print("    \"%d\": { \"file\": \"%s\", \"line\": \"%d\", \"code\": %s }"%(pc, json.stringify(file), line, json.dumps(files[file][line-1])), file=f, end="")
+            print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
         print(file=f)
         print("  }", file=f);
         print("}", file=f);

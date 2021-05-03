@@ -1167,7 +1167,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
 
     struct json_value *file = dict_lookup(jv->u.map, "file", 4);
     assert(file->type == JV_ATOM);
-    fprintf(out, "\"file\": \"%.*s\", ", file->u.atom.len, file->u.atom.base);
+    fprintf(out, "\"file\": \"%s\", ", json_string_encode(file->u.atom.base, file->u.atom.len));
 
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
