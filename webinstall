@@ -3,17 +3,26 @@ mkdir -p $dir/code
 mkdir -p $dir/modules
 mkdir -p $dir/python
 mkdir -p $dir/output
+mkdir -p $dir/distributions
+
+cd distributions
+sh makedistr
+cd ..
+
+python3 src/archive/implode.py manifest > archive.xml
+cp archive.xml $dir
+python3 src/archive/implode.py /dev/null > $dir/version.xml
 
 mkdir -p output
 make
 ./harmony code/Up.hny
-mv harmony.html output/Up.html
+mv code/Up.htm output/Up.html
 ./harmony code/naiveLock.hny
-mv harmony.html output/naiveLock.html
+mv code/naiveLock.htm output/naiveLock.html
 ./harmony code/naiveFlags.hny
-mv harmony.html output/naiveFlags.html
+mv code/naiveFlags.htm output/naiveFlags.html
 ./harmony -mqueue=queuebug code/qtest3.hny
-mv harmony.html output/queuebug.html
+mv code/qtest3.htm output/queuebug.html
 cp output/*.html $dir/output
 
 cp harmony harmony.py $dir
