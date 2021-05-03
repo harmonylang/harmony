@@ -35,7 +35,7 @@ Some installation hints:
 
     Checking for upgrades and upgrading
         - run
-            python3 install.py --version
+            python3 install.py --check
           to see if you have the most up-to-date version
         - run
             python3 install.py --update

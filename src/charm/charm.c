@@ -1296,11 +1296,15 @@ int main(int argc, char **argv){
     char *fname = i == argc ? "harmony.hvm" : argv[i];
 
     char *outfile, *dotloc = strrchr(fname, '.');
+    int r;
     if (dotloc == NULL) {
-        asprintf(&outfile, "%s.hco", fname);
+        r = asprintf(&outfile, "%s.hco", fname);
     }
     else {
-        asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
+        r = asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
+    }
+    if (r < 0) {       // mostly to suppress asprintf return value warning
+        outfile = "harmony.hco";
     }
 
     struct timeval tv;
