@@ -66,15 +66,18 @@ m4_include(genhtml.py)
 
 
 class HarmonyCompilerError(Exception):
-    def __init__(self, error_name: str, message: str, filename: str = None,
-                 line: int = None, column: int = None, lexeme: str = None):
+    """
+    Error encountered during the compilation of a Harmony program.
+    """
+    def __init__(self, message: str, filename: str = None, line: int = None,
+                 column: int = None, lexeme: str = None, is_eof_error = False):
         self.message = message
         self.token = {
-            "error_name": error_name,
             "line": line,
             "column": column,
             "lexeme": lexeme,
-            "filename": filename
+            "filename": filename,
+            "is_eof_error": is_eof_error
         }
 
 
@@ -124,7 +127,6 @@ def doImport(scope, code, module):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=modname,
-                error_name='ImportError',
                 message=f"Can't import module {modname} from {namestack}",
                 line=line,
                 column=column
@@ -138,9 +140,9 @@ def load_string(all, filename, scope, code):
     tokens = lexer(all, filename)
     if tokens == []:
         raise HarmonyCompilerError(
-            error_name='UnexpectedEofError',
             message=f"Empty file: {filename}",
-            filename=filename
+            filename=filename,
+            is_eof_error=True
         )
 
     try:
@@ -153,8 +155,8 @@ def load_string(all, filename, scope, code):
             line=line,
             column=column,
             lexeme=lexeme,
-            error_name='UnexpectedEofError',
             message=f"Parsing {filename} hit EOF",
+            is_eof_error=True
         )
 
     if rem != []:
@@ -164,7 +166,6 @@ def load_string(all, filename, scope, code):
             line=line,
             column=column,
             lexeme=lexeme,
-            error_name='UnexpectedTokenError',
             message=f"Parsing: unexpected tokens remaining at end of program: {rem[0]}",
         )
 
@@ -2039,7 +2040,6 @@ class AST:
         if ctx.failure != None:
             lexeme, file, line, column = self.ast_token
             raise HarmonyCompilerError(
-                error_name='ConstantEvaluationError',
                 message=f'constant evaluation failed: {self} {ctx.failure}',
                 lexeme=lexeme,
                 filename=file,
@@ -2069,7 +2069,6 @@ class AST:
             filename=file,
             line=line,
             column=column,
-            error_name='ExpressionError',
             message=f'Cannot use in left-hand side expression: {self}'
         )
 
@@ -2179,7 +2178,6 @@ class AST:
                     break
             if not found:
                 raise HarmonyCompilerError(
-                    error_name='ImportError',
                     lexeme=modname,
                     filename=str(namestack),
                     line=line, column=column,
@@ -2247,7 +2245,6 @@ class NameAST(AST):
             (lexeme, file, line, column) = v
             raise HarmonyCompilerError(
                 filename=file,
-                error_name='EmptyStatementError',
                 lexeme=lexeme,
                 line=line,
                 column=column,
@@ -2617,8 +2614,7 @@ class ApplyAST(AST):
                         lexeme=lexeme,
                         filename=file,
                         line=line,
-                        column=column,
-                        error_name='AssignToConstantError'
+                        column=column
                     )
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
@@ -2641,7 +2637,6 @@ class Rule:
                 filename=file,
                 line=line,
                 column=column,
-                error_name='ParseError',
                 message=f"Parse error in {rule}. Got {got}, but wanted {want}"
             )
 
@@ -2705,7 +2700,6 @@ class NaryRule(Rule):
                         line=line,
                         column=column,
                         lexeme=lexeme,
-                        error_name='MissingExpressionError',
                         message=f"expected an expression after n-ary comparison operation in {op}"
                     )
                 args.append(ast3)
@@ -2724,7 +2718,6 @@ class NaryRule(Rule):
             lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
             raise HarmonyCompilerError(
                 filename=file,
-                error_name='MissingExpressionError',
                 lexeme=lexeme,
                 line=line,
                 column=column,
@@ -2740,7 +2733,6 @@ class NaryRule(Rule):
                     lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='MissingExpressionError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -2756,7 +2748,6 @@ class NaryRule(Rule):
                         lexeme, file, line, column = t[0] if t else (lexeme, file, line, column)
                         raise HarmonyCompilerError(
                             filename=file,
-                            error_name='MissingExpressionError',
                             lexeme=lexeme,
                             line=line,
                             column=column,
@@ -3070,7 +3061,6 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    error_name='AssignmentError',
                     message=f'Cannot operate on module {lv.name}',
                 )
             if t == "constant":
@@ -3079,7 +3069,6 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    error_name='AssignmentError',
                     message=f'Cannot operate on constant {lv.name}',
                 )
             assert t in { "local", "global" }
@@ -3131,7 +3120,6 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        error_name='AssignmentError',
                         message=f'Cannot assign to module {lvs.name}',
                     )
                 if t == "constant":
@@ -3140,7 +3128,6 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        error_name='AssignmentError',
                         message=f'Cannot assign to constant {lvs.name}',
                     )
                 assert t in { "local", "global" }, (t, lvs.name)
@@ -3209,7 +3196,6 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    error_name='TakeAddressError',
                     message=f"Can't take address of local variable {lv}",
                 )
             if t == "constant":
@@ -3218,7 +3204,6 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    error_name='TakeAddressError',
                     message=f"Can't take address of constant {lv}",
                 )
             if t == "module":
@@ -3227,7 +3212,6 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    error_name='TakeAddressError',
                     message=f"Can't take address of imported {lv}",
                 )
         elif isinstance(lv, ApplyAST):
@@ -3241,7 +3225,6 @@ class AddressAST(AST):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                error_name='TakeAddressError',
                 message=f"Can't take address of {lv}",
             )
 
@@ -3631,7 +3614,6 @@ class FromAST(AST):
                     raise HarmonyCompilerError(
                         filename=file,
                         lexeme=lexeme,
-                        error_name='ImportError',
                         message=f"{file} line {line}: can't import {lexeme} from {self.module[0]}",
                         line=line, column=column)
                 (t, v) = names[lexeme]
@@ -3718,7 +3700,6 @@ class ConstAST(AST):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                error_name='InvalidConstantError',
                 message=f"{self.const}: Parse error: expression not a constant {self.expr}",
             )
         if isinstance(self.expr, LambdaAST):
@@ -3772,8 +3753,8 @@ class StatListRule(Rule):
     def parse(self, t):
         if t == []:
             raise HarmonyCompilerError(
-                error_name='UnexpectedEofError',
                 message='Unexpected EOF',
+                is_eof_error=True
             )
 
         # find all the tokens that are indented more than self.indent
@@ -3789,7 +3770,6 @@ class StatListRule(Rule):
         if slice == []:
             raise HarmonyCompilerError(
                 filename=file,
-                error_name='EmptyStatementError',
                 lexeme=lexeme,
                 line=line,
                 column=column,
@@ -3805,7 +3785,6 @@ class StatListRule(Rule):
                 lexeme, file, line, column = slice[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='IncompleteStatementError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -3874,7 +3853,6 @@ class StatementRule(Rule):
             if lexeme in [')', ']', '}']:
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnmatchedBracketError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -3889,7 +3867,6 @@ class StatementRule(Rule):
                 t = t[1:]
         raise HarmonyCompilerError(
             filename=file,
-            error_name='MissingBracketError',
             lexeme=lexeme,
             line=line,
             column=column,
@@ -3938,7 +3915,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -3976,7 +3952,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -3990,7 +3965,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4025,7 +3999,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4047,7 +4020,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = token
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4063,7 +4035,6 @@ class StatementRule(Rule):
                     lexeme, file, line, column = tokens[0]
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='UnexpectedTokenError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -4078,7 +4049,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = token
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4088,7 +4058,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4103,7 +4072,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = token
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4113,7 +4081,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4138,7 +4105,6 @@ class StatementRule(Rule):
                     lexeme, file, line, column = tokens[0]
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='UnexpectedTokenError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -4161,7 +4127,6 @@ class StatementRule(Rule):
                     lexeme, file, line, column = tokens[0]
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='UnexpectedTokenError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -4193,7 +4158,6 @@ class StatementRule(Rule):
                 lexeme, file, line, column = tokens[0]
                 raise HarmonyCompilerError(
                     filename=file,
-                    error_name='UnexpectedTokenError',
                     lexeme=lexeme,
                     line=line,
                     column=column,
@@ -4211,7 +4175,6 @@ class StatementRule(Rule):
                 if lexeme != ",":
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='UnexpectedTokenError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -4222,7 +4185,6 @@ class StatementRule(Rule):
                     lexeme, file, line, column = tokens[0]
                     raise HarmonyCompilerError(
                         filename=file,
-                        error_name='UnexpectedTokenError',
                         lexeme=lexeme,
                         line=line,
                         column=column,
@@ -4934,16 +4896,14 @@ def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     if tokens == []:
         raise HarmonyCompilerError(
-            message="Empty constant",
-            error_name="FlagError"
+            message="Empty constant"
         )
     try:
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:
         # best guess...
         raise HarmonyCompilerError(
-            message=f"Parsing constant {v} hit end of string",
-            error_name="FlagError"
+            message=f"Parsing constant {v} hit end of string"
         )
     scope = Scope(None)
     code = []
@@ -4962,8 +4922,7 @@ def doCompile(filenames, consts, mods):
             parseConstant(c[0:i], c[i+1:])
         except (IndexError, ValueError):
             raise HarmonyCompilerError(
-                message="Usage: -c C=V to define a constant",
-                error_name="FlagError"
+                message="Usage: -c C=V to define a constant"
             )
 
     global modules
@@ -4973,8 +4932,7 @@ def doCompile(filenames, consts, mods):
             modules[m[0:i]] = m[i+1:]
         except (IndexError, ValueError):
             raise HarmonyCompilerError(
-                message="Usage: -m module=version to specify a module version",
-                error_name="FlagError"
+                message="Usage: -m module=version to specify a module version"
             )
 
     scope = Scope(None)
