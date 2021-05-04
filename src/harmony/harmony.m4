@@ -31,6 +31,7 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE.
 """
+from typing import Any
 
 version = [
 m4_include(buildversion)
@@ -70,12 +71,12 @@ class HarmonyCompilerError(Exception):
     Error encountered during the compilation of a Harmony program.
     """
     def __init__(self, message: str, filename: str = None, line: int = None,
-                 column: int = None, lexeme: str = None, is_eof_error = False):
+                 column: int = None, lexeme: Any = None, is_eof_error = False):
         self.message = message
         self.token = {
             "line": line,
             "column": column,
-            "lexeme": lexeme,
+            "lexeme": str(lexeme),
             "filename": filename,
             "is_eof_error": is_eof_error
         }
@@ -2004,7 +2005,15 @@ class ApplyOp(Op):
 
 class AST:
     def __init__(self, token):
-        assert isinstance(token, tuple) and len(token) == 4
+        # Check that token is of the form (lexeme, file, line, column)
+        assert isinstance(token, tuple), token
+        assert len(token) == 4, len(token)
+        lexeme, file, line, column = token
+        # No check b/c lexeme could be one of many types, e.g. int, str, bool, etc
+        # assert isinstance(lexeme, str), lexeme
+        assert isinstance(file, str), file
+        assert isinstance(line, int), line
+        assert isinstance(column, int), line
         self.ast_token = token
 
     def assign(self, scope, var):
