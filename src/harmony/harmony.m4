@@ -2050,7 +2050,7 @@ class AST:
         if ctx.failure != None:
             lexeme, file, line, column = self.ast_token
             raise HarmonyCompilerError(
-                message=f'constant evaluation failed: {self} {ctx.failure}',
+                message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
                 filename=file,
                 line=line,
@@ -2079,7 +2079,7 @@ class AST:
             filename=file,
             line=line,
             column=column,
-            message=f'Cannot use in left-hand side expression: {self}'
+            message='Cannot use in left-hand side expression: %s' % self
         )
 
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
@@ -3071,7 +3071,7 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message=f'Cannot operate on module {lv.name}',
+                    message='Cannot operate on module %s' % lv.name,
                 )
             if t == "constant":
                 raise HarmonyCompilerError(
@@ -3079,7 +3079,7 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message=f'Cannot operate on constant {lv.name}',
+                    message='Cannot operate on constant %s' % lv.name,
                 )
             assert t in { "local", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
@@ -3130,7 +3130,7 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        message=f'Cannot assign to module {lvs.name}',
+                        message='Cannot assign to module %s' % lvs.name,
                     )
                 if t == "constant":
                     raise HarmonyCompilerError(
@@ -3138,7 +3138,7 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        message=f'Cannot assign to constant {lvs.name}',
+                        message='Cannot assign to constant %s' % lvs.name,
                     )
                 assert t in { "local", "global" }, (t, lvs.name)
                 st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
