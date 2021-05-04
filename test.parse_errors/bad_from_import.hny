@@ -1,0 +1,1 @@
+from synch import hand_sanitizer

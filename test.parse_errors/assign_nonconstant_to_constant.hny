@@ -1,0 +1,3 @@
+import synch
+
+const s = synch
