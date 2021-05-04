@@ -142,7 +142,7 @@ def load_string(all, filename, scope, code):
     tokens = lexer(all, filename)
     if tokens == []:
         raise HarmonyCompilerError(
-            message="Empty file: %s" % filename,
+            message="Empty file: %s" % str(filename),
             filename=filename,
             is_eof_error=True
         )
@@ -157,7 +157,7 @@ def load_string(all, filename, scope, code):
             line=line,
             column=column,
             lexeme=lexeme,
-            message="Parsing %s hit EOF" % filename,
+            message="Parsing %s hit EOF" % str(filename),
             is_eof_error=True
         )
 
@@ -168,7 +168,7 @@ def load_string(all, filename, scope, code):
             line=line,
             column=column,
             lexeme=lexeme,
-            message="Parsing: unexpected tokens remaining at end of program: %s" % rem[0],
+            message="Parsing: unexpected tokens remaining at end of program: %s" % str(rem[0]),
         )
 
     for mod in ast.getImports():
@@ -2079,7 +2079,7 @@ class AST:
             filename=file,
             line=line,
             column=column,
-            message='Cannot use in left-hand side expression: %s' % self
+            message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
@@ -2258,7 +2258,7 @@ class NameAST(AST):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                message="constant cannot be an lvalue: %s" % self.name,
+                message="constant cannot be an lvalue: %s" % str(self.name),
             )
         else:
             (lexeme, file, line, column) = self.name
@@ -2710,7 +2710,7 @@ class NaryRule(Rule):
                         line=line,
                         column=column,
                         lexeme=lexeme,
-                        message="expected an expression after n-ary comparison operation in %s" % op
+                        message="expected an expression after n-ary comparison operation in %s" % str(op)
                     )
                 args.append(ast3)
                 if t == []:
@@ -2731,7 +2731,7 @@ class NaryRule(Rule):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                message="expected an expression after operation %s" % op
+                message="expected an expression after operation %s" % str(op)
             )
         args.append(ast2)
         if t != []:
@@ -2746,7 +2746,7 @@ class NaryRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="expected an expression after else in %s" % op
+                        message="expected an expression after else in %s" % str(op)
                     )
                 args.append(ast3)
                 if t != []:
@@ -2761,7 +2761,7 @@ class NaryRule(Rule):
                             lexeme=lexeme,
                             line=line,
                             column=column,
-                            message="expected an expression after n-ary operation in %s" % op
+                            message="expected an expression after n-ary operation in %s" % str(op)
                         )
                     args.append(ast3)
                     if t == []:
@@ -3071,7 +3071,7 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message='Cannot operate on module %s' % lv.name,
+                    message='Cannot operate on module %s' % str(lv.name),
                 )
             if t == "constant":
                 raise HarmonyCompilerError(
@@ -3079,7 +3079,7 @@ class AssignmentAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message='Cannot operate on constant %s' % lv.name,
+                    message='Cannot operate on constant %s' % str(lv.name),
                 )
             assert t in { "local", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
@@ -3130,7 +3130,7 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        message='Cannot assign to module %s' % lvs.name,
+                        message='Cannot assign to module %s' % str(lvs.name),
                     )
                 if t == "constant":
                     raise HarmonyCompilerError(
@@ -3138,7 +3138,7 @@ class AssignmentAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        message='Cannot assign to constant %s' % lvs.name,
+                        message='Cannot assign to constant %s' % str(lvs.name),
                     )
                 assert t in { "local", "global" }, (t, lvs.name)
                 st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
@@ -3206,7 +3206,7 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="Can't take address of local variable %s" % lv,
+                    message="Can't take address of local variable %s" % str(lv),
                 )
             if t == "constant":
                 raise HarmonyCompilerError(
@@ -3214,7 +3214,7 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="Can't take address of constant %s" % lv,
+                    message="Can't take address of constant %s" % str(lv),
                 )
             if t == "module":
                 raise HarmonyCompilerError(
@@ -3222,7 +3222,7 @@ class AddressAST(AST):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="Can't take address of imported %s" % lv,
+                    message="Can't take address of imported %s" % str(lv),
                 )
         elif isinstance(lv, ApplyAST):
             self.check(lv.method, scope)
@@ -3235,7 +3235,7 @@ class AddressAST(AST):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                message="Can't take address of %s" % lv,
+                message="Can't take address of %s" % str(lv),
             )
 
     def gencode(self, scope, code):
@@ -3783,7 +3783,7 @@ class StatListRule(Rule):
                 lexeme=lexeme,
                 line=line,
                 column=column,
-                message="Parse error: no statements in indented block: %s" % t[0],
+                message="Parse error: no statements in indented block: %s" % str(t[0]),
             )
 
         b = []
@@ -3798,7 +3798,7 @@ class StatListRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="Parsing: incomplete statement starting at %s" % slice[0],
+                    message="Parsing: incomplete statement starting at %s" % str(slice[0]),
                 )
 
         return (BlockAST(first_token, b), t)
@@ -3866,7 +3866,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="unmatched bracket: %s" % t[0],
+                    message="unmatched bracket: %s" % str(t[0]),
                 )
             if lexeme in ['(', '[', '{']:
                 (more, t) = self.rec_slice(t)
@@ -3928,7 +3928,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="constant definition: unexpected token: %s" % tokens[0],
+                    message="constant definition: unexpected token: %s" % str(tokens[0]),
                 )
             return (ConstAST(token, const, ast), t)
         if lexeme == "if":
@@ -3965,7 +3965,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="await: unexpected token: %s" % tokens[0],
+                    message="await: unexpected token: %s" % str(tokens[0]),
                 )
             return (AwaitAST(token, cond), t)
         if lexeme == "invariant":
@@ -3978,7 +3978,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="invariant: unexpected token: %s" % tokens[0],
+                    message="invariant: unexpected token: %s" % str(tokens[0]),
                 )
             return (InvariantAST(cond, token), t)
         if lexeme == "for":
@@ -4012,7 +4012,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="del: unexpected token: %s" % tokens[0],
+                    message="del: unexpected token: %s" % str(tokens[0]),
                 )
             return (DelAST(token, ast), t)
         if lexeme == "def":
@@ -4033,7 +4033,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="spawn: expected method application %s" % token,
+                    message="spawn: expected method application %s" % str(token),
                 )
             if tokens == []:
                 this = None
@@ -4048,7 +4048,7 @@ class StatementRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="spawn: unexpected token: %s" % tokens[0],
+                        message="spawn: unexpected token: %s" % str(tokens[0]),
                     )
             return (SpawnAST(token, func.method, func.arg, this), t)
         if lexeme == "trap":
@@ -4062,7 +4062,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="trap: expected method application: %s" % token,
+                    message="trap: expected method application: %s" % str(token),
                 )
             if tokens != []:
                 lexeme, file, line, column = tokens[0]
@@ -4071,7 +4071,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="trap: unexpected token: %s" % tokens[0],
+                    message="trap: unexpected token: %s" % str(tokens[0]),
                 )
             return (TrapAST(token, func.method, func.arg), t)
         if lexeme == "go":
@@ -4085,7 +4085,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="go: expected method application: %s" % token,
+                    message="go: expected method application: %s" % str(token),
                 )
             if tokens != []:
                 lexeme, file, line, column = tokens[0]
@@ -4094,7 +4094,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="go: unexpected token: %s" % tokens[0],
+                    message="go: unexpected token: %s" % str(tokens[0]),
                 )
             return (GoAST(token, func.method, func.arg), t)
         if lexeme == "pass":
@@ -4118,7 +4118,7 @@ class StatementRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="sequential: unexpected token: %s" % tokens[0],
+                        message="sequential: unexpected token: %s" % str(tokens[0]),
                     )
             return (SequentialAST(token, vars), t)
         if lexeme == "import":
@@ -4140,7 +4140,7 @@ class StatementRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="import: unexpected token: %s" % tokens[0],
+                        message="import: unexpected token: %s" % str(tokens[0]),
                     )
 
             return (ImportAST(token, mods), t)
@@ -4171,7 +4171,7 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="from: unexpected token: %s" % tokens[0],
+                    message="from: unexpected token: %s" % str(tokens[0]),
                 )
 
             return (FromAST(token, module, items), t)
@@ -4188,7 +4188,7 @@ class StatementRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="assert: unexpected token: %s" % tokens[0],
+                        message="assert: unexpected token: %s" % str(tokens[0]),
                     )
                 (expr, tokens) = NaryRule(set()).parse(tokens[1:])
                 if tokens != []:
@@ -4198,7 +4198,7 @@ class StatementRule(Rule):
                         lexeme=lexeme,
                         line=line,
                         column=column,
-                        message="assert: unexpected token: %s" % tokens[0],
+                        message="assert: unexpected token: %s" % str(tokens[0]),
                     )
 
             return (AssertAST(token, cond, expr), t)
@@ -4913,7 +4913,7 @@ def parseConstant(c, v):
     except IndexError:
         # best guess...
         raise HarmonyCompilerError(
-            message="Parsing constant %s hit end of string" % v
+            message="Parsing constant %s hit end of string" % str(v)
         )
     scope = Scope(None)
     code = []
