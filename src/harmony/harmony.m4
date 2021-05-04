@@ -5838,18 +5838,20 @@ def main():
     else:
         stem = args[0]
 
+    hvmfile = stem + ".hvm"
+
     try:
         code, scope = doCompile(args, consts, mods)
     except HarmonyCompilerError as e:
         if parse_code_only:
-            with open(stem + ".parsed", "w") as f:
+            with open(hvmfile, "w") as f:
                 data = dict(e.token, status="error")
                 f.write(json.dumps(data))
         print(e.message)
         sys.exit(1)
 
     if parse_code_only:
-        with open(stem + ".parsed", "w") as f:
+        with open(hvmfile, "w") as f:
             f.write(json.dumps({"status": "ok"}))
         return
 
@@ -5859,7 +5861,6 @@ def main():
         # see if there is a configuration file
         infile = "%s/charm.c"%install_path
         outfile = "%s/charm.exe"%install_path
-        hvmfile = stem + ".hvm"
         with open(hvmfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         r = os.system("%s %s %s"%(outfile, " ".join(charmoptions), hvmfile));
