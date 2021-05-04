@@ -380,7 +380,7 @@ def lexer(s, file):
                     column += 1
             continue
 
-        # see if it's a multi-character lexeme.  Match with the longest one
+        # see if it's a multi-character token.  Match with the longest one
         found = ""
         for t in tokens:
             if s.startswith(t) and len(t) > len(found):
@@ -481,7 +481,7 @@ def lexer(s, file):
             s = s[len(term):]
             continue
 
-        # everything else is a single character lexeme
+        # everything else is a single character token
         result += [ (s[0], file, line, column) ]
         s = s[1:]
         column += 1
@@ -1990,7 +1990,7 @@ class ApplyOp(Op):
                     context.push("normal")
             context.pc += 1
         else:
-            # TODO.  Need a lexeme to have location
+            # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
                 context.failure = "pc = " + str(context.pc) + \
                     ": Error: must be either a method or a dictionary"
@@ -2618,7 +2618,7 @@ class ApplyAST(AST):
                         filename=file,
                         line=line,
                         column=column,
-                        error_name='AssignConstantError'
+                        error_name='AssignToConstantError'
                     )
         self.method.ph1(scope, code)
         self.arg.compile(scope, code)
@@ -5328,7 +5328,7 @@ def htmlpath(n, color, f):
         print("<th>Shared Variable</th>", file=f)
     else:
         print("<th colspan='%d'>Shared Variables</th>"%width, file=f)
-    print("<column style='width:15%'>", file=f)
+    print("<col style='width:15%'>", file=f)
     print("<tr><th rowspan=%d>Process</th><th rowspan=%d>Steps</th><th rowspan=%d></th>"%(height, height, height), file=f)
     varhdr(d, "", height, f)
     print("</tr><tr><td></td></tr>", file=f)
@@ -5493,8 +5493,8 @@ def htmlrow(ctx, bag, node, code, scope, f, verbose):
 
 def htmlstate(f):
     print("<table border='1' width='90%'>", file=f)
-    print("<column style='width:20%'>", file=f)
-    print("<column style='width:80%'>", file=f)
+    print("<col style='width:20%'>", file=f)
+    print("<col style='width:80%'>", file=f)
 
     print("<tr><td>state id</td><td>%d</td></tr>"%n.uid, file=f)
     # if s.failure != None:
@@ -5627,8 +5627,8 @@ table td, table th {
         """, file=f)
 
         print("<table>", file=f)
-        print("<column style='width:50%'>", file=f)
-        print("<column style='width:50%'>", file=f)
+        print("<col style='width:50%'>", file=f)
+        print("<col style='width:50%'>", file=f)
 
         if node != None:
             print("<tr><td colspan='2'>", file=f)
@@ -5871,7 +5871,7 @@ def main():
         stem = args[0]
 
     try:
-        (code, scope) = doCompile(args, consts, mods)
+        code, scope = doCompile(args, consts, mods)
     except HarmonyCompilerError as e:
         if parse_code_only:
             with open(f"{stem}.parsed", "w") as f:
