@@ -5847,11 +5847,11 @@ def main():
                 f.write(json.dumps(data))
         print(e.message)
         sys.exit(1)
-    else:
-        if parse_code_only:
-            with open(f"{stem}.parsed", "w") as f:
-                f.write(json.dumps({"status": "ok"}))
-            sys.exit(0)
+
+    if parse_code_only:
+        with open(f"{stem}.parsed", "w") as f:
+            f.write(json.dumps({"status": "ok"}))
+        sys.exit(0)
 
     install_path = os.path.dirname(os.path.realpath(__file__))
 
