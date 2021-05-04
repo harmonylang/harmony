@@ -4933,7 +4933,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
 def parseConstant(c, v):
     tokens = lexer(v, "<constant argument>")
     if tokens == []:
-        HarmonyCompilerError(
+        raise HarmonyCompilerError(
             message="Empty constant",
             error_name="FlagError"
         )
@@ -4941,7 +4941,7 @@ def parseConstant(c, v):
         (ast, rem) = ExpressionRule().parse(tokens)
     except IndexError:
         # best guess...
-        HarmonyCompilerError(
+        raise HarmonyCompilerError(
             message=f"Parsing constant {v} hit end of string",
             error_name="FlagError"
         )
