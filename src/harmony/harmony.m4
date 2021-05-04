@@ -4971,7 +4971,7 @@ def doCompile(filenames, consts, mods):
         try:
             i = m.index("=")
             modules[m[0:i]] = m[i+1:]
-        except IndexError:
+        except (IndexError, ValueError):
             raise HarmonyCompilerError(
                 message="Usage: -m module=version to specify a module version",
                 error_name="FlagError"
