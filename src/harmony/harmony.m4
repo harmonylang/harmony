@@ -4945,7 +4945,6 @@ def parseConstant(c, v):
             message=f"Parsing constant {v} hit end of string",
             error_name="FlagError"
         )
-    print(tokens)
     scope = Scope(None)
     code = []
     ast.compile(scope, code)
