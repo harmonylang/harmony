@@ -4960,7 +4960,7 @@ def doCompile(filenames, consts, mods):
         try:
             i = c.index("=")
             parseConstant(c[0:i], c[i+1:])
-        except IndexError:
+        except (IndexError, ValueError):
             raise HarmonyCompilerError(
                 message="Usage: -c C=V to define a constant",
                 error_name="FlagError"
