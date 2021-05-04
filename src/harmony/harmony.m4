@@ -31,8 +31,6 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE.
 """
-from typing import Any
-
 version = [
 m4_include(buildversion)
 ]
@@ -50,6 +48,8 @@ import html
 import queue
 import functools
 import json
+
+from typing import Any
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
