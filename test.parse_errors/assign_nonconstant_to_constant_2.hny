@@ -1,0 +1,5 @@
+
+def make():
+    result = {.test: 1}
+
+const s = make()
