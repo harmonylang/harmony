@@ -37,7 +37,6 @@ struct var_tree {
     } u;
 };
 
-static uint64_t this;
 static struct dict *ops_map, *f_map;
 extern struct code *code;
 
@@ -637,7 +636,8 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_set(&vals[1], size - sizeof(uint64_t)));
-        ctx->vars = dict_store(ctx->vars, ec->var, vals[0]);
+        // ctx->vars = dict_store(ctx->vars, ec->var, vals[0]);
+        var_match(*pctx, ec->var, vals[0]);
         (*pctx)->pc++;
         return;
     }
@@ -650,7 +650,8 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_dict(&vals[2], size - 2 * sizeof(uint64_t)));
-        ctx->vars = dict_store(ctx->vars, ec->var, vals[1]);
+        // ctx->vars = dict_store(ctx->vars, ec->var, vals[1]);
+        var_match(*pctx, ec->var, vals[1]);
         (*pctx)->pc++;
         return;
     }
@@ -732,17 +733,15 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     ctx_push(pctx, arg);
 
     uint64_t oldvars = (*pctx)->vars;
-    uint64_t thisval = dict_load(oldvars, this);
 
     // try to match against parameters
-    (*pctx)->vars = dict_store(dict_store(VALUE_DICT, this, thisval),
-				result, VALUE_DICT);
+    (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
     }
  
-    ctx_push(pctx, dict_remove(oldvars, this));
+    ctx_push(pctx, oldvars);
     ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
 
     struct context *ctx = *pctx;
@@ -1013,10 +1012,9 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
-        uint64_t thisval = dict_load((*pctx)->vars, this);
         uint64_t oldvars = ctx_pop(pctx);
         assert((oldvars & VALUE_MASK) == VALUE_DICT);
-        (*pctx)->vars = dict_store(oldvars, this, thisval);
+        (*pctx)->vars = oldvars;
         (void) ctx_pop(pctx);   // argument saved for stack trace
         if ((*pctx)->sp == 0) {     // __init__
             (*pctx)->terminated = true;
@@ -1169,7 +1167,6 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     ctx->entry = (pc << VALUE_BITS) | VALUE_PC;
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
-    ctx->vars = dict_store(VALUE_DICT, this, thisval);
     ctx->interruptlevel = VALUE_FALSE;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&ctx, arg);
@@ -1427,7 +1424,8 @@ void *init_Cut(struct dict *map){
     env->set = value_put_atom(set->u.atom.base, set->u.atom.len);
     struct json_value *var = dict_lookup(map, "var", 3);
     assert(var->type == JV_ATOM);
-    env->var = value_put_atom(var->u.atom.base, var->u.atom.len);
+    int index = 0;
+    env->var = var_parse(var->u.atom.base, var->u.atom.len, &index);
     return env;
 }
 
@@ -2871,5 +2869,4 @@ void ops_init(){
         void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
-    this = value_put_atom("this", 4);
 }

@@ -1,61 +1,52 @@
-import synch;
+import synch
 
-const N = 4;
-const F = 1;
-const NROUNDS = 2;
+const N = 4
+const F = 1
+const NROUNDS = 2
 
-network = {};
-decisions = {};
-done = [False,] * N;
+sequential network
+
+network = {}
+decisions = {}
+done = [False,] * N
 
 def broadcast(msg):
     atomic:
-        network |= {msg};
-    ;
-;
+        network |= {msg}
+
 def process(self, proposal):
     let est = proposal:
         for round in {0..NROUNDS-1}:
             # Broadcast estimate
-            broadcast(self, round, est);
+            broadcast(self, round, est)
 
             # Handle received messages
             let received = {(self, round, est)}:
                 # Receive messages until there are enough
                 while len(received) < (N - F):
                     let eligible = { (p,r,e) for (p,r,e) in (network - received)
-                                            such that r == round }:
+                                            where r == round }:
                         if len(eligible) > 0:
-                            received |= {choose(eligible)};
-                        ;
-                    ;
-                ;
+                            received |= {choose(eligible)}
 
                 # Update estimate
                 let ests = { e for (p,r,e) in received }
                 let cnts = { (len({(p,x) for (p,r,x) in received
-                                    such that x == e}), e) for e in ests }
+                                    where x == e}), e) for e in ests }
                 let (n, best) = max(cnts):
-                    est = best;
+                    est = best
                     # if n >= (N - F):
                     #     atomic:
-                    #         decisions |= { best };
-                    #     ;
-                    # ;
-                ;
-            ;
-        ;
-    ;
-    # done[self] = True;
-;
+                    #         decisions |= { best }
+    
+    # done[self] = True
+
 def main():
-    await all(done);
-    assert len(decisions) <= 1;
-;
+    await all(done)
+    assert len(decisions) <= 1
 
 let nzeroes = choose({0..N/2}):
     for i in {0..N-1}:
-        spawn process(i, 0 if i < nzeroes else 1);
-    ;
-;
-# spawn main();
+        spawn process(i, 0 if i < nzeroes else 1)
+
+# spawn main()

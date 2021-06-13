@@ -765,13 +765,13 @@ class CutOp(Op):
         self.v = v
 
     def __repr__(self):
-        return "Cut(" + self.s[0] + ", " + self.v[0] + ")"
+        return "Cut(" + str(self.s[0]) + ", " + self.convert(self.v) + ")"
 
     def jdump(self):
-        return '{ "op": "Cut", "set": \"%s\", "var": \"%s\" }'%(self.s[0], self.v[0])
+        return '{ "op": "Cut", "set": \"%s\", "var": \"%s\" }'%(self.s[0], self.convert(self.v))
 
     def explain(self):
-        return "remove smallest element from %s and assign to %s"%(self.s[0], self.v[0])
+        return "remove smallest element from %s and assign to %s"%(self.s[0], self.convert(self.v))
 
     def eval(self, state, context):
         v = self.load(context, self.s)
