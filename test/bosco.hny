@@ -4,7 +4,7 @@ const N = 4
 const F = 1
 const NROUNDS = 2
 
-sequential network
+sequential network, done
 
 network = {}
 decisions = {}
@@ -35,11 +35,11 @@ def process(self, proposal):
                                     where x == e}), e) for e in ests }
                 let (n, best) = max(cnts):
                     est = best
-                    # if n >= (N - F):
-                    #     atomic:
-                    #         decisions |= { best }
+                    if n >= (N - F):
+                        atomic:
+                            decisions |= { best }
     
-    # done[self] = True
+    done[self] = True
 
 def main():
     await all(done)
@@ -49,4 +49,4 @@ let nzeroes = choose({0..N/2}):
     for i in {0..N-1}:
         spawn process(i, 0 if i < nzeroes else 1)
 
-# spawn main()
+spawn main()
