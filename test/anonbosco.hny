@@ -2,13 +2,12 @@ import synch, bag, list
 
 const F = 1
 const N = (3 * F) + 1
-const NROUNDS = 2
+const NROUNDS = 5
 
-sequential network, done
+sequential network
 
 network = bag.empty()
 decisions = {}
-done = 0
 
 def broadcast(msg):
     atomic:
@@ -43,16 +42,8 @@ def process(proposal):
                 if count[est] == (N - F):
                     atomic:
                         decisions |= { est }
-    atomic:
-        done += 1
-    
-
-def main():
-    await done == N
-    assert len(decisions) <= 1
+                        assert len(decisions) <= 1
 
 let nzeroes = choose({0..N/2}):
     for i in {0..N-1}:
         spawn process(0 if i < nzeroes else 1)
-
-spawn main()
