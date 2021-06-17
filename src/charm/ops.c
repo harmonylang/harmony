@@ -703,8 +703,28 @@ void op_Del(const void *env, struct state *state, struct context **pctx){
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
     const struct env_DelVar *ed = env;
-    (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
-    (*pctx)->pc++;
+
+    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    if (ed == NULL) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+		if (!ind_remove((*pctx)->vars, indices, size, &(*pctx)->vars)) {
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "DelVar: bad address: %s", x);
+            free(x);
+			return;
+		}
+    }
+	else {
+		(*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
+	}
+	(*pctx)->pc++;
 }
 
 void op_Dup(const void *env, struct state *state, struct context **pctx){
@@ -1430,11 +1450,16 @@ void *init_Cut(struct dict *map){
 }
 
 void *init_DelVar(struct dict *map){
-    struct env_DelVar *env = new_alloc(struct env_DelVar);
     struct json_value *name = dict_lookup(map, "value", 5);
-    assert(name->type == JV_ATOM);
-    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
-    return env;
+	if (name == NULL) {
+		return NULL;
+	}
+	else {
+		struct env_DelVar *env = new_alloc(struct env_DelVar);
+		assert(name->type == JV_ATOM);
+		env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
+		return env;
+	}
 }
 
 void *init_Frame(struct dict *map){
