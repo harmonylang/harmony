@@ -5864,11 +5864,11 @@ def main():
         with open(hvmfile, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         r = os.system("%s %s %s"%(outfile, " ".join(charmoptions), hvmfile));
-        if not testflag:
-            os.remove(hvmfile)
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
+        if not testflag:
+            os.remove(hvmfile)
         b = Brief()
         b.run(stem + ".hco")
         gh = GenHTML()

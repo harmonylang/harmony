@@ -13,25 +13,48 @@ def fromList(a):
             result[a[i]] = 1
 
 def count(bg, elt):
+    assert 0 not in bg
     if elt in keys(bg):
         result = bg[elt]
     else:
         result = 0
 
+def size(bg):
+    assert 0 not in bg
+    result = 0
+    for c in bg:
+        result += c
+
 def bchoose(bg):
-    # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bg[k] for k in keys(bg) }
+    assert 0 not in bg
     result = choose(keys(bg))
 
 def add(pb, elt):
+    assert 0 not in !pb
     if elt in keys(!pb):
         (!pb)[elt] += 1
     else:
         (!pb)[elt] = 1
 
+def f_add(bg, elt):
+    assert 0 not in bg
+    result = bg
+    if elt in keys(result):
+        result[elt] += 1
+    else:
+        result[elt] = 1
+
 def remove(pb, elt):
+    assert 0 not in !pb
     if (elt in keys(!pb)) and ((!pb)[elt] > 0):
         (!pb)[elt] -= 1
-    
     if (!pb)[elt] <= 0:
         del (!pb)[elt]
+
+def f_remove(bg, elt):
+    assert 0 not in bg
+    result = bg
+    if (elt in keys(result)) and (result[elt] > 0):
+        result[elt] -= 1
+    if result[elt] <= 0:
+        del result[elt]
