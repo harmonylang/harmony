@@ -1,0 +1,81 @@
+import synch, bag, list
+
+const F = 1
+const N = (2 * F) + 1
+const NROUNDS = 3
+
+sequential network
+
+network = bag.empty()
+decisions = {}
+
+def broadcast(msg):
+    atomic:
+        bag.add(?network, msg)
+
+def process(proposal):
+    let est = proposal:
+        for round in {0..NROUNDS-1}:
+            # Broadcast estimate in phase 0
+            broadcast(round, 0, est)
+
+            # Wait until there are enough messages in the current round and phase
+            let receiving = True
+            let count = [0, 0]:
+                while receiving:
+                    count = [0, 0]
+                    atomic:
+                        for msg in keys(network):
+                            let (r, p, e) = msg:
+                                if (r == round) and (p == 0):
+                                    count[e] = network[msg]
+                        receiving = list.sum(count) < (N - F)
+
+                # choose the quorum to receive from
+                while list.sum(count) > (N - F):
+                    let choices = { i for i in [0, 1] where count[i] > 0 }:
+                        count[choose(choices)] -= 1
+
+                # see if unanimous
+                if count[0] == (N - F):
+                    est = 0
+                elif count[1] == (N - F):
+                    est = 1
+                else:
+                    est = None
+
+            # Broadcast estimate in phase 1
+            broadcast(round, 1, est)
+
+            # Wait until there are enough messages in the current round and phase
+            let receiving = True
+            let count = [0, 0]:
+                while receiving:
+                    count = [0, 0]
+                    atomic:
+                        for msg in keys(network):
+                            let (r, p, e) = msg:
+                                if (r == round) and (p == 1):
+                                    count[e] = network[msg]
+                        receiving = list.sum(count) < (N - F)
+
+                # choose the quorum to receive from
+                while list.sum(count) > (N - F):
+                    let choices = { i for i in keys(count) where count[i] > 0 }:
+                        count[choose(choices)] -= 1
+
+                assert (count[0] == 0) or (count[1] == 0)
+                if count[0] > 0:
+                    est = 0
+                elif count[1] > 0:
+                    est = 1
+                else:
+                    est = choose({0, 1})
+                if count[est] == (N - F):
+                    atomic:
+                        decisions |= { est }
+                        assert len(decisions) <= 1
+
+let nzeroes = choose({0..N/2}):
+    for i in {0..N-1}:
+        spawn process(0 if i < nzeroes else 1)
