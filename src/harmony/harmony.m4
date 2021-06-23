@@ -61,11 +61,12 @@ node_uid = 1            # unique node identifier
 silent = False          # not printing periodic status updates
 lasttime = 0            # last time status update was printed
 imported = {}           # imported modules
+labelcnt = 0            # counts labels L1, L2, ...
+labelid = 0
 
 m4_include(brief.py)
 
 m4_include(genhtml.py)
-
 
 class HarmonyCompilerError(Exception):
     """
@@ -170,30 +171,16 @@ def load_string(all, filename, scope, code):
             lexeme=lexeme,
             message="Parsing: unexpected tokens remaining at end of program: %s" % str(rem[0]),
         )
-
     for mod in ast.getImports():
         doImport(scope, code, mod)
 
     # method names and label names get a temporary value
     # they are filled in with their actual values after compilation
     # TODO.  Look for duplicates?
-    tmp = PcValue(-1)
-    for (lexeme, file, line, column) in ast.getLabels():
-        scope.names[lexeme] = ("constant", (tmp, file, line, column))
+    for ((lexeme, file, line, column), lb) in ast.getLabels():
+        scope.names[lexeme] = ("constant", (lb, file, line, column))
 
-    # Compile the first time, only to figure out the values of
-    # method and label constants
-    before = len(code)
     ast.compile(scope, code)
-    del code[before:]
-
-    # Compile again with the real values of the methods and label constants
-    ast.compile(scope, code)
-
-    for (lexeme, file, line, column) in ast.getLabels():
-        (t, v) = scope.names[lexeme]
-        (pc, file, line, columv) = v
-        assert pc != tmp, ("not all labels have been filled", lexeme, v)
 
 def load(f, filename, scope, code):
     if filename in files:
@@ -540,12 +527,18 @@ def keyValue(v):
     assert isinstance(v, Value), v
     return v.key()
 
+def substValue(v, map):
+    return v.substitute(map) if isinstance(v, Value) else v
+
 class Value:
     def __str__(self):
         return self.__repr__()
 
     def jdump(self):
         assert False
+
+    def substitute(self, map):
+        assert False, self
 
 class PcValue(Value):
     def __init__(self, pc):
@@ -565,6 +558,36 @@ class PcValue(Value):
 
     def jdump(self):
         return '{ "type": "pc", "value": "%d" }'%self.pc
+
+# This is a substitute for PCValues used before values are assigned to labels
+class LabelValue(Value):
+    def __init__(self, module, label):
+        global labelid
+        self.id = labelid
+        labelid += 1
+        self.module = module
+        self.label = label
+
+    def __repr__(self):
+        if self.module == None:
+            return "LABEL(" + str(self.id) + ", " + self.label + ")"
+        else:
+            return "LABEL(" + self.module + ":" + self.label + ")"
+
+    def __hash__(self):
+        return self.id
+
+    def __eq__(self, other):
+        return isinstance(other, LabelValue) and other.id == self.id
+
+    def key(self):
+        assert False
+
+    def jdump(self):
+        assert False
+
+    def substitute(self, map):
+        return map[self]
 
 class DictValue(Value):
     def __init__(self, d):
@@ -618,6 +641,10 @@ class DictValue(Value):
         return (5, [ (keyValue(v), keyValue(self.d[v]))
                         for v in sorted(self.d.keys(), key=keyValue)])
 
+    def substitute(self, map):
+        return DictValue({ substValue(k, map): substValue(v, map)
+                            for (k, v) in self.d.items() })
+
 # TODO.  Is there a better way than making this global?
 novalue = DictValue({})
 
@@ -656,6 +683,9 @@ class SetValue(Value):
     def key(self):
         return (6, [keyValue(v) for v in sorted(self.s, key=keyValue)])
 
+    def substitute(self, map):
+        return SetValue({ substValue(v, map) for v in self.s })
+
 class AddressValue(Value):
     def __init__(self, indexes):
         self.indexes = indexes
@@ -692,6 +722,9 @@ class AddressValue(Value):
 
     def key(self):
         return (7, self.indexes)
+
+    def substitute(self, map):
+        return AddressValue([ substValue(v, map) for v in self.indexes ])
 
 class Op:
     def jdump(self):
@@ -739,6 +772,9 @@ class Op:
             assert isinstance(var, list)
             d = { i:self.load(context, var[i]) for i in range(len(var)) }
             return DictValue(d)
+
+    def substitute(self, map):
+        pass
 
 class SetIntLevelOp(Op):
     def __repr__(self):
@@ -954,6 +990,11 @@ class PushOp(Op):
         (lexeme, file, line, column) = self.constant
         context.push(lexeme)
         context.pc += 1
+
+    def substitute(self, map):
+        (lexeme, file, line, column) = self.constant
+        if isinstance(lexeme, Value):
+            self.constant = (lexeme.substitute(map), file, line, column)
 
 class LoadOp(Op):
     def __init__(self, name, token, prefix):
@@ -1524,24 +1565,28 @@ class ReadonlyDecOp(Op):
         context.pc += 1
 
 class InvariantOp(Op):
-    def __init__(self, cnt, token):
-        assert cnt > 0
-        self.cnt = cnt
+    def __init__(self, end, token):
+        self.end = end
         self.token = token
 
     def __repr__(self):
-        return "Invariant " + str(self.cnt)
+        return "Invariant " + str(self.end)
 
     def jdump(self):
-        return '{ "op": "Invariant", "cnt": "%d" }'%self.cnt
+        return '{ "op": "Invariant", "end": "%d" }'%self.end
 
     def explain(self):
-        return "test invariant in next " + str(self.cnt) + " instructions"
+        return "test invariant"
 
     def eval(self, state, context):
         assert self.cnt > 0
         state.invariants |= {context.pc}
         context.pc += (self.cnt + 1)
+
+    def substitute(self, map):
+        if isinstance(self.end, LabelValue):
+            assert isinstance(map[self.end], PcValue)
+            self.end = map[self.end].pc
 
 class JumpOp(Op):
     def __init__(self, pc):
@@ -1559,6 +1604,11 @@ class JumpOp(Op):
     def eval(self, state, context):
         assert self.pc != context.pc
         context.pc = self.pc
+
+    def substitute(self, map):
+        if isinstance(self.pc, LabelValue):
+            assert isinstance(map[self.pc], PcValue)
+            self.pc = map[self.pc].pc
 
 class JumpCondOp(Op):
     def __init__(self, cond, pc):
@@ -1582,6 +1632,11 @@ class JumpCondOp(Op):
             context.pc = self.pc
         else:
             context.pc += 1
+
+    def substitute(self, map):
+        if isinstance(self.pc, LabelValue):
+            assert isinstance(map[self.pc], PcValue)
+            self.pc = map[self.pc].pc
 
 class NaryOp(Op):
     def __init__(self, op, n):
@@ -2004,6 +2059,33 @@ class ApplyOp(Op):
             assert method.pc != context.pc
             context.pc = method.pc
 
+class Labeled_Op:
+    def __init__(self, op, labels):
+        self.op = op
+        self.labels = labels
+
+class Code:
+    def __init__(self):
+        self.labeled_ops = []
+        self.endlabels = set()
+
+    def append(self, op, labels=set()):
+        self.labeled_ops.append(Labeled_Op(op, labels | self.endlabels))
+        self.endlabels = set()
+
+    def nextLabel(self, endlabel):
+        self.endlabels.add(endlabel)
+
+    def link(self):
+        map = {}
+        for pc in range(len(self.labeled_ops)):
+            lop = self.labeled_ops[pc]
+            for label in lop.labels:
+                assert label not in map, label
+                map[label] = PcValue(pc)
+        for lop in self.labeled_ops:
+            lop.op.substitute(map)
+
 class AST:
     def __init__(self, token):
         # Check that token is of the form (lexeme, file, line, column)
@@ -2110,7 +2192,7 @@ class AST:
             (var, expr) = rest
 
             self.assign(scope, var)
-            uid = len(code)
+            uid = len(code.labeled_ops)
             (lexeme, file, line, column) = self.token
 
             # Evaluate the set and store in a temporary variable
@@ -2123,15 +2205,18 @@ class AST:
             #       var := oneof X
             #       X := X - var
             #       push value
-            pc = len(code)
+            global labelcnt
+            startlabel = LabelValue(None, "$%d_start"%labelcnt)
+            endlabel = LabelValue(None, "$%d_end"%labelcnt)
+            labelcnt += 1
+            code.nextLabel(startlabel)
             code.append(LoadVarOp(S))
             code.append(NaryOp(("IsEmpty", file, line, column), 1))
-            tst = len(code)
-            code.append(None)       # going to plug in a Jump op here
+            code.append(JumpCondOp(True, endlabel))
             code.append(CutOp(S, var))  
-            self.rec_comprehension(scope, code, iter[1:], pc, N, vars + [var], ctype)
-            code.append(JumpOp(pc))
-            code[tst] = JumpCondOp(True, len(code))
+            self.rec_comprehension(scope, code, iter[1:], startlabel, N, vars + [var], ctype)
+            code.append(JumpOp(startlabel))
+            code.nextLabel(endlabel)
             self.delete(scope, code, var)
             code.append(DelVarOp(S))
 
@@ -2145,7 +2230,7 @@ class AST:
 
     def comprehension(self, scope, code, ctype):
         # Keep track of the size
-        uid = len(code)
+        uid = len(code.labeled_ops)
         (lexeme, file, line, column) = self.token
         N = ("$n"+str(uid), file, line, column)
         if ctype == "set":
@@ -2462,41 +2547,47 @@ class NaryAST(AST):
         return all(x.isConstant(scope) for x in self.args)
 
     def gencode(self, scope, code):
+        global labelcnt
         (op, file, line, column) = self.op
         n = len(self.args)
         if op == "and" or op == "or":
             self.args[0].compile(scope, code)
-            pcs = []
+            lastlabel = LabelValue(None, "$%d_last"%labelcnt)
+            endlabel = LabelValue(None, "$%d_end"%labelcnt)
+            labelcnt += 1
             for i in range(1, n):
-                pcs.append(len(code))
-                code.append(None)
+                code.append(JumpCondOp(op == "or", lastlabel))
                 self.args[i].compile(scope, code)
-            code.append(JumpOp(len(code) + 2))
-            for pc in pcs:
-                code[pc] = JumpCondOp(op == "or", len(code))
+            code.append(JumpOp(endlabel))
+            code.nextLabel(lastlabel)
             code.append(PushOp((op == "or", file, line, column)))
+            code.nextLabel(endlabel)
         elif op == "=>":
             assert n == 2, n
             self.args[0].compile(scope, code)
-            pc = len(code)
-            code.append(None)
+            truelabel = LabelValue(None, "$%d_true"%labelcnt)
+            endlabel = LabelValue(None, "$%d_end"%labelcnt)
+            labelcnt += 1
+            code.append(JumpCondOp(False, truelabel))
             self.args[1].compile(scope, code)
-            code.append(JumpOp(len(code) + 2))
-            code[pc] = JumpCondOp(False, len(code))
+            code.append(JumpOp(endlabel))
+            code.nextLabel(truelabel)
             code.append(PushOp((True, file, line, column)))
+            code.nextLabel(endlabel)
         elif op == "if":
             assert n == 3, n
             negate = isinstance(self.args[1], NaryAST) and self.args[1].op[0] == "not"
             cond = self.args[1].args[0] if negate else self.args[1]
             cond.compile(scope, code)
-            pc1 = len(code)
-            code.append(None)
-            self.args[0].compile(scope, code)
-            pc2 = len(code)
-            code.append(None)
-            self.args[2].compile(scope, code)
-            code[pc1] = JumpCondOp(negate, pc2 + 1)
-            code[pc2] = JumpOp(len(code))
+            elselabel = LabelValue(None, "$%d_else"%labelcnt)
+            endlabel = LabelValue(None, "$%d_end"%labelcnt)
+            labelcnt += 1
+            code.append(JumpCondOp(negate, elselabel))
+            self.args[0].compile(scope, code)       # "if" expr
+            code.append(JumpOp(endlabel))
+            code.nextLabel(elselabel)
+            self.args[2].compile(scope, code)       # "else" expr
+            code.nextLabel(endlabel)
         elif op == "choose":
             assert n == 1
             self.args[0].compile(scope, code)
@@ -2523,23 +2614,21 @@ class CmpAST(AST):
     def gencode(self, scope, code):
         n = len(self.args)
         self.args[0].compile(scope, code)
-        pcs = []
         (lexeme, file, line, column) = self.ops[0]
-        T = ("__cmp__"+str(len(code)), file, line, column)
+        T = ("__cmp__"+str(len(code.labeled_ops)), file, line, column)
+        endlabel = LabelValue(None, "cmp")
         for i in range(1, n-1):
             self.args[i].compile(scope, code)
             code.append(DupOp())
             code.append(StoreVarOp(T))
             code.append(NaryOp(self.ops[i-1], 2))
             code.append(DupOp())
-            pcs.append(len(code))
-            code.append(None)
+            code.append(JumpCondOp(False, endlabel))
             code.append(PopOp())
             code.append(LoadVarOp(T))
         self.args[n-1].compile(scope, code)
         code.append(NaryOp(self.ops[n-2], 2))
-        for pc in pcs:
-            code[pc] = JumpCondOp(False, len(code))
+        code.nextLabel(endlabel)
         if n > 2:
             code.append(DelVarOp(T))
 
@@ -3283,22 +3372,25 @@ class IfAST(AST):
         return "If(" + str(self.alts) + ", " + str(self.what) + ")"
 
     def compile(self, scope, code):
-        jumps = []
+        global labelcnt
+        label = labelcnt
+        labelcnt += 1
+        sublabel = 0
+        endlabel = LabelValue(None, "$%d_end"%label)
         for alt in self.alts:
             (rest, stat) = alt
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
-            pc = len(code)
-            code.append(None)
+            iflabel = LabelValue(None, "$%d_%d"%(label, sublabel))
+            code.append(JumpCondOp(negate, iflabel))
+            sublabel += 1
             stat.compile(scope, code)
-            jumps += [len(code)]
-            code.append(None)
-            code[pc] = JumpCondOp(negate, len(code))
+            code.append(JumpOp(endlabel))
+            code.nextLabel(iflabel)
         if self.stat != None:
             self.stat.compile(scope, code)
-        for pc in jumps:
-            code[pc] = JumpOp(len(code))
+        code.nextLabel(endlabel)
 
     def getLabels(self):
         labels = [ x.getLabels() for (c, x) in self.alts ]
@@ -3324,13 +3416,16 @@ class WhileAST(AST):
     def compile(self, scope, code):
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
-        pc1 = len(code)
+        global labelcnt
+        startlabel = LabelValue(None, "$%d_start"%labelcnt)
+        endlabel = LabelValue(None, "$%d_end"%labelcnt)
+        labelcnt += 1
+        code.nextLabel(startlabel)
         cond.compile(scope, code)
-        pc2 = len(code)
-        code.append(None)
+        code.append(JumpCondOp(negate, endlabel))
         self.stat.compile(scope, code)
-        code.append(JumpOp(pc1))
-        code[pc2] = JumpCondOp(negate, len(code))
+        code.append(JumpOp(startlabel))
+        code.nextLabel(endlabel)
 
     def getLabels(self):
         return self.stat.getLabels()
@@ -3349,9 +3444,12 @@ class AwaitAST(AST):
     def compile(self, scope, code):
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
-        pc1 = len(code)
+        global labelcnt
+        label = LabelValue(None, "$%d"%labelcnt)
+        labelcnt += 1
+        code.nextLabel(label)
         cond.compile(scope, code)
-        code.append(JumpCondOp(negate, pc1))
+        code.append(JumpCondOp(negate, label))
 
 class InvariantAST(AST):
     def __init__(self, cond, token):
@@ -3363,10 +3461,12 @@ class InvariantAST(AST):
         return "Invariant(" + str(self.cond) + ")"
 
     def compile(self, scope, code):
-        pc = len(code)
-        code.append(None)
+        global labelcnt
+        label = LabelValue(None, "$%d"%labelcnt)
+        labelcnt += 1
+        code.append(InvariantOp(label, self.token))
         self.cond.compile(scope, code)
-        code[pc] = InvariantOp(len(code) - pc, self.token);
+        code.nextLabel(label)
         code.append(ReturnOp())
 
 class LetAST(AST):
@@ -3388,6 +3488,7 @@ class LetAST(AST):
         self.stat.compile(scope, code)
 
         # Restore the old variable state
+        # TODO.  This should be done asap, not at the end
         for (var, expr) in self.vars:
             self.delete(scope, code, var)
 
@@ -3456,29 +3557,30 @@ class MethodAST(AST):
         self.name = name
         self.args = args
         self.stat = stat
+        (lexeme, file, line, column) = name
+        self.label = LabelValue(None, lexeme)
 
     def __repr__(self):
         return "Method(" + str(self.name) + ", " + str(self.args) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        pc = len(code)
-        code.append(None)       # going to plug in a Jump op here
-        code.append(FrameOp(self.name, self.args))
+        global labelcnt
+        endlabel = LabelValue(None, "$%d"%labelcnt)
+        labelcnt += 1
         (lexeme, file, line, column) = self.name
-        scope.names[lexeme] = ("constant", (PcValue(pc + 1), file, line, column))
+        code.append(JumpOp(endlabel))
+        code.nextLabel(self.label)
+        code.append(FrameOp(self.name, self.args))
+        # scope.names[lexeme] = ("constant", (self.label, file, line, column))
 
         ns = Scope(scope)
-        tmp = PcValue(-1)
-        for (lexeme, file, line, column) in self.stat.getLabels():
-            ns.names[lexeme] = ("constant", (tmp, file, line, column))
+        for ((lexeme, file, line, column), lb) in self.stat.getLabels():
+            ns.names[lexeme] = ("constant", (lb, file, line, column))
         self.assign(ns, self.args)
         ns.names["result"] = ("local", ("result", file, line, column))
-        before = len(code)
-        self.stat.compile(ns, code)
-        del code[before:]
         self.stat.compile(ns, code)
         code.append(ReturnOp())
-        code[pc] = JumpOp(len(code))
+        code.nextLabel(endlabel)
 
         # promote global variables
         for name, (t, v) in ns.names.items():
@@ -3486,7 +3588,7 @@ class MethodAST(AST):
                 scope.names[name] = (t, v)
 
     def getLabels(self):
-        return { self.name }
+        return { (self.name, self.label) }
 
     def getImports(self):
         return self.stat.getImports()
@@ -3505,8 +3607,10 @@ class LambdaAST(AST):
         return True
 
     def compile_body(self, scope, code):
-        pc = len(code)
-        code.append(None)       # going to plug in a Jump op here
+        startlabel = LabelValue(None, "lambda")
+        endlabel = LabelValue(None, "lambda")
+        code.append(JumpOp(endlabel))
+        code.nextLabel(startlabel)
         code.append(FrameOp(self.token, self.args))
 
         (lexeme, file, line, column) = self.token
@@ -3517,13 +3621,13 @@ class LambdaAST(AST):
         self.stat.compile(ns, code)
         code.append(StoreVarOp(R))
         code.append(ReturnOp())
-        code[pc] = JumpOp(len(code))
-        return pc + 1
+        code.nextLabel(endlabel)
+        return startlabel
 
     def compile(self, scope, code):
-        pc = self.compile_body(scope, code)
+        startlabel = self.compile_body(scope, code)
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((PcValue(pc), file, line, column)))
+        code.append(PushOp((startlabel, file, line, column)))
 
 class CallAST(AST):
     def __init__(self, token, expr):
@@ -3549,10 +3653,12 @@ class SpawnAST(AST):
         return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", "  + str(self.this) + ")"
 
     def compile(self, scope, code):
+        # TODO: get rid of "this"
         if self.this == None:
             code.append(PushOp((novalue, None, None, None)))
         else:
             self.this.compile(scope, code)
+        # TODO: method should be compiled first
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(SpawnOp())
@@ -3636,7 +3742,7 @@ class FromAST(AST):
 class LabelStatAST(AST):
     def __init__(self, token, labels, ast, file, line):
         AST.__init__(self, token)
-        self.labels = labels
+        self.labels = { lb:LabelValue(None, "label") for lb in labels }
         self.ast = ast
         self.file = file
         self.line = line
@@ -3644,23 +3750,24 @@ class LabelStatAST(AST):
     def __repr__(self):
         return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
 
+    # TODO.  Update label stuff
     def compile(self, scope, code):
-        scope.location(len(code), self.file, self.line, self.labels)
-        if self.labels == []:
+        if self.labels == {}:
             self.ast.compile(scope, code)
         else:
+            scope.location(len(code.labeled_ops), self.file, self.line, self.labels)
             root = scope
             # while root.parent != None:
             #     root = root.parent
-            for (lexeme, file, line, column) in self.labels:
-                root.names[lexeme] = \
-                    ("constant", (PcValue(len(code)), file, line, column))
+            for ((lexeme, file, line, column), label) in self.labels.items():
+                code.nextLabel(label)
+                # root.names[lexeme] = ("constant", (label, file, line, column))
             code.append(AtomicIncOp())
             self.ast.compile(scope, code)
             code.append(AtomicDecOp())
 
     def getLabels(self):
-        return set(self.labels) | self.ast.getLabels();
+        return set(self.labels.items()) | self.ast.getLabels();
 
     def getImports(self):
         return self.ast.getImports();
@@ -4708,20 +4815,20 @@ class Scope:
             self.parent.location(pc, file, line, labels)
 
 def optjump(code, pc):
-    while pc < len(code):
-        op = code[pc]
+    while pc < len(code.labeled_ops):
+        op = code.labeled_ops[pc].op
         if not isinstance(op, JumpOp):
             break
         pc = op.pc
     return pc
 
 def optimize(code):
-    for i in range(len(code)):
-        op = code[i]
+    for i in range(len(code.labeled_ops)):
+        op = code.labeled_ops[i].op
         if isinstance(op, JumpOp):
-            code[i] = JumpOp(optjump(code, op.pc))
+            code.labeled_ops[i].op = JumpOp(optjump(code, op.pc))
         elif isinstance(op, JumpCondOp):
-            code[i] = JumpCondOp(op.cond, optjump(code, op.pc))
+            code.labeled_ops[i].op = JumpCondOp(op.cond, optjump(code, op.pc))
 
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
@@ -4916,13 +5023,13 @@ def parseConstant(c, v):
             message="Parsing constant %s hit end of string" % str(v)
         )
     scope = Scope(None)
-    code = []
+    code = Code()
     ast.compile(scope, code)
     state = State(code, scope.labels)
     ctx = ContextValue(("__arg__", None, None, None), 0, novalue, novalue)
     ctx.atomic = 1
-    while ctx.pc != len(code):
-        code[ctx.pc].eval(state, ctx)
+    while ctx.pc != len(code.labeled_ops):
+        code.labeled_ops[ctx.pc].op.eval(state, ctx)
     constants[c] = ctx.pop()
 
 def doCompile(filenames, consts, mods):
@@ -4946,9 +5053,8 @@ def doCompile(filenames, consts, mods):
             )
 
     scope = Scope(None)
-    code = [
-        FrameOp(("__init__", None, None, None), [])
-    ]
+    code = Code()
+    code.append(FrameOp(("__init__", None, None, None), []))
     for fname in filenames:
         try:
             with open(fname) as fd:
@@ -4957,6 +5063,7 @@ def doCompile(filenames, consts, mods):
             print("harmony: can't open", fname, file=sys.stderr)
             sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
+    code.link()
     optimize(code)
     return (code, scope)
 
@@ -5523,6 +5630,7 @@ def htmlnode(n, code, scope, f, verbose):
     print("</div>", file=f);
 
 def htmlcode(code, scope, f):
+    assert False
     print("<div id='table-wrapper'>", file=f)
     print("<div id='table-scroll'>", file=f)
     print("<table border='1'>", file=f)
@@ -5707,10 +5815,10 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "labels": {', file=f);
         for (k, v) in scope.labels.items():
             print('    "%s": "%d",'%(k, v), file=f)
-        print('    "__end__": "%d"'%len(code), file=f)
+        print('    "__end__": "%d"'%len(code.labeled_ops), file=f)
         print('  },', file=f);
         print('  "code": [', file=f);
-    for pc in range(len(code)):
+    for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
             if scope.locations.get(pc) != None:
                 (file, line) = scope.locations[pc]
@@ -5721,22 +5829,27 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     else:
                         print(file, ":", line, file=f)
                 lastloc = (file, line)
-            print("  ", pc, code[pc], file=f)
+            # for label in code.labeled_ops[pc].labels:
+            #     if label.module == None:
+            #         print("%s:"%label.label)
+            #     else:
+            #         print("%s.%s"%(label.module, label.label))
+            print("  ", pc, code.labeled_ops[pc].op, file=f)
         elif printCode == "json":
-            if pc < len(code) - 1:
-                print("    %s,"%code[pc].jdump(), file=f)
+            if pc < len(code.labeled_ops) - 1:
+                print("    %s,"%code.labeled_ops[pc].op.jdump(), file=f)
             else:
-                print("    %s"%code[pc].jdump(), file=f)
+                print("    %s"%code.labeled_ops[pc].op.jdump(), file=f)
         else:
-            print(code[pc], file=f)
+            print(code.labeled_ops[pc].op, file=f)
     if printCode == "json":
         print("  ],", file=f);
         print('  "pretty": [', file=f)
-        for pc in range(len(code)):
-            if pc < len(code) - 1:
-                print('    ["%s","%s"],'%(code[pc], code[pc].explain()), file=f)
+        for pc in range(len(code.labeled_ops)):
+            if pc < len(code.labeled_ops) - 1:
+                print('    ["%s","%s"],'%(code.labeled_ops[pc].op, code.labeled_ops[pc].op.explain()), file=f)
             else:
-                print('    ["%s","%s"]'%(code[pc], code[pc].explain()), file=f)
+                print('    ["%s","%s"]'%(code.labeled_ops[pc].op, code.labeled_ops[pc].op.explain()), file=f)
         print("  ],", file=f);
         print("  \"locations\": {", file=f, end="");
         firstTime = True

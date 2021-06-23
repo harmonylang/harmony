@@ -4,14 +4,21 @@ const F = 1
 const N = (3 * F) + 1
 const NROUNDS = 3
 
-sequential network
-
 network = bag.empty()
 decisions = {}
 
 def broadcast(msg):
     atomic:
         bag.add(?network, msg)
+
+def receive(round):
+    let receiving = True:
+        while receiving:
+            result = [0, 0]
+            atomic:
+                for r, e in keys(network) where r == round:
+                    result[e] = network[r, e]
+                receiving = list.sum(result) < (N - F)
 
 def process(proposal):
     let est = proposal:
@@ -20,17 +27,7 @@ def process(proposal):
             broadcast(round, est)
 
             # Wait until there are enough messages in the current round
-            let receiving = True
-            let count = [0, 0]:
-                while receiving:
-                    count = [0, 0]
-                    atomic:
-                        for msg in keys(network):
-                            let (r, e) = msg:
-                                if r == round:
-                                    count[e] = network[msg]
-                        receiving = list.sum(count) < (N - F)
-
+            let count = receive(round):
                 # choose the quorum to receive from
                 while list.sum(count) > (N - F):
                     let choices = { i for i in [0, 1] where count[i] > 0 }:

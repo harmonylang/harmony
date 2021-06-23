@@ -132,7 +132,7 @@ struct env_IncVar {
 };
 
 struct env_Invariant {
-    int cnt;
+    int end;
 };
 
 struct env_Jump {

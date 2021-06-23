@@ -147,8 +147,8 @@ void check_invariants(struct node *node, struct context **pctx){
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
         (*pctx)->pc = vals[i] >> VALUE_BITS;
         assert(strcmp(code[(*pctx)->pc].oi->name, "Invariant") == 0);
-        int cnt = invariant_cnt(code[(*pctx)->pc].env);
-        bool b = invariant_check(state, pctx, (*pctx)->pc + cnt);
+        int end = invariant_cnt(code[(*pctx)->pc].env);
+        bool b = invariant_check(state, pctx, end);
         if ((*pctx)->failure != 0) {
             printf("Invariant failed: %s\n", value_string((*pctx)->failure));
             b = false;
@@ -708,8 +708,8 @@ void print_state(FILE *file, struct node *node){
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
         inv_ctx->pc = vals[i] >> VALUE_BITS;
         assert(strcmp(code[inv_ctx->pc].oi->name, "Invariant") == 0);
-        int cnt = invariant_cnt(code[inv_ctx->pc].env);
-        bool b = invariant_check(state, &inv_ctx, inv_ctx->pc + cnt);
+        int end = invariant_cnt(code[inv_ctx->pc].env);
+        bool b = invariant_check(state, &inv_ctx, end);
         if (inv_ctx->failure != 0) {
             b = false;
         }

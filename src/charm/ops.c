@@ -829,13 +829,13 @@ void op_Invariant(const void *env, struct state *state, struct context **pctx){
     vals = realloc(vals, size + sizeof(uint64_t));
     * (uint64_t *) ((char *) vals + size) = ((*pctx)->pc << VALUE_BITS) | VALUE_PC;
     state->invariants = value_put_set(vals, size + sizeof(uint64_t));
-    (*pctx)->pc += ei->cnt + 1;
+    (*pctx)->pc = ei->end + 1;
 }
 
 int invariant_cnt(const void *env){
     const struct env_Invariant *ei = env;
 
-    return ei->cnt;
+    return ei->end;
 }
 
 void op_Jump(const void *env, struct state *state, struct context **pctx){
@@ -1555,12 +1555,12 @@ void *init_Nary(struct dict *map){
 void *init_Invariant(struct dict *map){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
-    struct json_value *cnt = dict_lookup(map, "cnt", 3);
-    assert(cnt->type == JV_ATOM);
-    char *copy = malloc(cnt->u.atom.len + 1);
-    memcpy(copy, cnt->u.atom.base, cnt->u.atom.len);
-    copy[cnt->u.atom.len] = 0;
-    env->cnt = atoi(copy);
+    struct json_value *end = dict_lookup(map, "end", 3);
+    assert(end->type == JV_ATOM);
+    char *copy = malloc(end->u.atom.len + 1);
+    memcpy(copy, end->u.atom.base, end->u.atom.len);
+    copy[end->u.atom.len] = 0;
+    env->end = atoi(copy);
     free(copy);
     return env;
 }
