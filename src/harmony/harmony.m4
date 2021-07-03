@@ -560,6 +560,7 @@ class PcValue(Value):
         return '{ "type": "pc", "value": "%d" }'%self.pc
 
 # This is a substitute for PCValues used before values are assigned to labels
+# TODO.  Get rid of all but id
 class LabelValue(Value):
     def __init__(self, module, label):
         global labelid
@@ -581,7 +582,7 @@ class LabelValue(Value):
         return isinstance(other, LabelValue) and other.id == self.id
 
     def key(self):
-        assert False
+        return (100, self.id)
 
     def jdump(self):
         assert False
@@ -727,6 +728,12 @@ class AddressValue(Value):
         return AddressValue([ substValue(v, map) for v in self.indexes ])
 
 class Op:
+    def define(self):   # set of local variables updated by this op
+        return set()
+
+    def use(self):      # set of local variables used by this op
+        return set()
+
     def jdump(self):
         return '{ "op": "XXX %s" }'%str(self)
 
@@ -747,6 +754,18 @@ class Op:
                     result += ", "
                 result += self.convert(v)
             return "(" + result + ")"
+
+    # Return the set of local variables in x
+    # TODO.  Use reduce()
+    def lvars(self, x):
+        if isinstance(x, tuple):
+            return { x[0] }
+        else:
+            assert isinstance(x, list)
+            result = set();
+            for v in x:
+                result |= self.lvars(v)
+            return result
 
     def store(self, context, var, val):
         if isinstance(var, tuple):
@@ -802,6 +821,9 @@ class CutOp(Op):
 
     def __repr__(self):
         return "Cut(" + str(self.s[0]) + ", " + self.convert(self.v) + ")"
+
+    def define(self):
+        return self.lvars(self.v)
 
     def jdump(self):
         return '{ "op": "Cut", "set": \"%s\", "var": \"%s\" }'%(self.s[0], self.convert(self.v))
@@ -923,14 +945,23 @@ class GoOp(Op):
             context.pc += 1
 
 class LoadVarOp(Op):
-    def __init__(self, v):
+    def __init__(self, v, lvar=None):
         self.v = v
+        self.lvar = lvar        # name of local var if v == None
 
     def __repr__(self):
         if self.v == None:
-            return "LoadVar"
+            return "LoadVar [%s]"%self.lvar
         else:
             return "LoadVar " + self.convert(self.v)
+
+    def define(self):
+        return set()
+
+    def use(self):
+        if self.v == None:
+            return { self.lvar }
+        return self.lvars(self.v)
 
     def jdump(self):
         if self.v == None:
@@ -1251,14 +1282,27 @@ class AddressOp(Op):
         context.pc += 1
 
 class StoreVarOp(Op):
-    def __init__(self, v):
+    def __init__(self, v, lvar=None):
         self.v = v
+        self.lvar = lvar        # name of local var if v == None
 
     def __repr__(self):
         if self.v == None:
-            return "StoreVar"
+            return "StoreVar [%s]"%self.lvar
         else:
             return "StoreVar " + self.convert(self.v)
+
+    # In case of StoreVar(x[?]), x does not get defined, only used
+    def define(self):
+        if self.v == None:
+            return set()
+        return self.lvars(self.v)
+
+    # if v == None, only part of self.lvar is updated--the rest is used
+    def use(self):
+        if self.v == None:
+            return { self.lvar }
+        return set()
 
     def jdump(self):
         if self.v == None:
@@ -1291,15 +1335,28 @@ class StoreVarOp(Op):
                 context.failure = "Error: " + str(self.v) + " -- not a dictionary"
 
 class DelVarOp(Op):
-    def __init__(self, v):
+    def __init__(self, v, lvar=None):
         self.v = v
+        self.lvar = lvar
 
     def __repr__(self):
         if self.v == None:
-            return "DelVar"
+            return "DelVar [%s]"%self.lvar
         else:
             (lexeme, file, line, column) = self.v
             return "DelVar " + str(lexeme)
+
+    # if v == None, self.lvar is used but not defined
+    def define(self):
+        if self.v == None:
+            return set()
+        return self.lvars(self.v)
+
+    # if v == None, only part of self.lvar is deleted--the rest is used
+    def use(self):
+        if self.v == None:
+            return { self.lvar }
+        return set()
 
     def jdump(self):
         if self.v == None:
@@ -1403,6 +1460,9 @@ class FrameOp(Op):
         (lexeme, file, line, column) = self.name
         return "Frame " + str(lexeme) + " " + self.convert(self.args)
 
+    def define(self):
+        return self.lvars(self.args) | { "result" }
+
     def jdump(self):
         (lexeme, file, line, column) = self.name
         return '{ "op": "Frame", "name": "%s", "args": "%s" }'%(lexeme, self.convert(self.args))
@@ -1426,6 +1486,9 @@ class ReturnOp(Op):
 
     def jdump(self):
         return '{ "op": "Return" }'
+
+    def use(self):
+        return { "result" }
 
     def explain(self):
         return "restore caller method state and push result"
@@ -2063,6 +2126,8 @@ class Labeled_Op:
     def __init__(self, op, labels):
         self.op = op
         self.labels = labels
+        self.live_in = set()
+        self.live_out = set()
 
 class Code:
     def __init__(self):
@@ -2075,6 +2140,98 @@ class Code:
 
     def nextLabel(self, endlabel):
         self.endlabels.add(endlabel)
+
+    def delete(self, var):
+        if isinstance(var, tuple):
+            self.append(DelVarOp(var))  # remove variable
+        else:
+            assert isinstance(var, list)
+            assert len(var) > 0
+            for v in var:
+                self.delete(v)
+
+    # This method inserts DelVar operations as soon as a variable is no
+    # longer live
+    def liveness(self):
+        # First figure out what the labels point to and initialize
+        # the nodes
+        map = {}
+        for pc in range(len(self.labeled_ops)):
+            lop = self.labeled_ops[pc]
+            lop.pred = set()
+            lop.live_in = set()
+            lop.live_out = set()
+            for label in lop.labels:
+                assert label not in map, label
+                map[label] = pc
+        # Compute the predecessors of each node
+        for pc in range(len(self.labeled_ops)):
+            lop = self.labeled_ops[pc]
+            if isinstance(lop.op, JumpOp):
+                assert isinstance(lop.op.pc, LabelValue)
+                succ = self.labeled_ops[map[lop.op.pc]]
+                succ.pred |= {pc}
+            elif isinstance(lop.op, JumpCondOp):
+                assert pc < len(self.labeled_ops) - 1
+                assert isinstance(lop.op.pc, LabelValue)
+                succ = self.labeled_ops[map[lop.op.pc]]
+                succ.pred |= {pc}
+                self.labeled_ops[pc + 1].pred |= {pc}
+            elif pc < len(self.labeled_ops) - 1 and not isinstance(lop.op, ReturnOp):
+                self.labeled_ops[pc + 1].pred |= {pc}
+        # Live variable analysis
+        change = True
+        while change:
+            change = False
+            for pc in range(len(self.labeled_ops)):
+                lop = self.labeled_ops[pc]
+                if pc == len(self.labeled_ops) - 1:
+                    live_out = set()
+                elif isinstance(lop.op, JumpOp):
+                    assert isinstance(lop.op.pc, LabelValue)
+                    succ = self.labeled_ops[map[lop.op.pc]]
+                    live_out = succ.live_in
+                else:
+                    live_out = self.labeled_ops[pc + 1].live_in
+                    if isinstance(lop.op, JumpCondOp):
+                        assert isinstance(lop.op.pc, LabelValue)
+                        succ = self.labeled_ops[map[lop.op.pc]]
+                        live_out = live_out | succ.live_in
+                live_in = lop.op.use() | (live_out - lop.op.define())
+                if not change and (live_in != lop.live_in or live_out != lop.live_out):
+                    change = True
+                lop.live_in = live_in
+                lop.live_out = live_out
+        # Create new code with DelVars inserted
+        newcode = Code()
+        for lop in self.labeled_ops:
+            # print(lop.op, lop.live_in, lop.live_out)
+
+            # If a variable is live on output of any predecessor but not
+            # live on input, delete it first
+            lop.pre_del = set()
+            for pred in lop.pred:
+                plop = self.labeled_ops[pred]
+                live_out = plop.live_out
+                # if not isinstance(plop.op, DelVarOp):
+                live_out |= plop.op.define()
+                lop.pre_del |= live_out - lop.live_in
+
+            labels = lop.labels
+            for d in lop.pre_del:
+                newcode.append(DelVarOp((d, None, None, None)), labels)
+                labels = set()
+            newcode.append(lop.op, labels)
+
+            # If a variable is defined or live on input but not live on output,
+            # immediately delete afterward
+            # TODO.  Can optimize StoreVar by replacing it with Pop
+            # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
+            lop.post_del = lop.live_in - lop.live_out
+            for d in lop.post_del:
+                newcode.append(DelVarOp((d, None, None, None)))
+
+        return newcode
 
     def link(self):
         map = {}
@@ -2149,9 +2306,9 @@ class AST:
         else:
             self.gencode(scope, code)
 
-    # Return if this lvalue refers to a local or a shared variable
-    def isShared(self, scope):
-        return True
+    # Return local var name if local access
+    def localVar(self, scope):
+        assert False, self
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
@@ -2217,8 +2374,8 @@ class AST:
             self.rec_comprehension(scope, code, iter[1:], startlabel, N, vars + [var], ctype)
             code.append(JumpOp(startlabel))
             code.nextLabel(endlabel)
-            self.delete(scope, code, var)
-            code.append(DelVarOp(S))
+            # self.delete(scope, code, var)
+            # code.append(DelVarOp(S))
 
         else:
             assert type == "where"
@@ -2242,8 +2399,8 @@ class AST:
             code.append(StoreVarOp(N))
             code.append(PushOp((novalue, file, line, column)))
         self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
-        if ctype == { "bag", "list" }:
-            code.append(DelVarOp(N))
+        # if ctype == { "bag", "list" }:
+        #     code.append(DelVarOp(N))
 
     def doImport(self, scope, code, module):
         (lexeme, file, line, column) = module
@@ -2293,11 +2450,6 @@ class ConstantAST(AST):
         AST.__init__(self, const)
         self.const = const
 
-class ConstantAST(AST):
-    def __init__(self, const):
-        AST.__init__(self, const)
-        self.const = const
-
     def __repr__(self):
         return "ConstantAST" + str(self.const)
 
@@ -2326,10 +2478,10 @@ class NameAST(AST):
             assert t in { "global", "module" }
             code.append(LoadOp(self.name, self.name, scope.prefix))
 
-    def isShared(self, scope):
+    def localVar(self, scope):
         (t, v) = scope.find(self.name)
         assert t in { "constant", "local", "global", "module" }
-        return t != "local"
+        return self.name[0] if t == "local" else None
 
     def ph1(self, scope, code):
         (t, v) = scope.lookup(self.name)
@@ -2355,7 +2507,7 @@ class NameAST(AST):
             code.append(MoveOp(2))
         (t, v) = scope.lookup(self.name)
         if t == "local":
-            code.append(StoreVarOp(None))
+            code.append(StoreVarOp(None, self.name[0]))
         else:
             assert t == "global", (t, v)
             code.append(StoreOp(None, self.name, None))
@@ -2386,23 +2538,6 @@ class SetAST(AST):
         for e in self.collection:
             e.compile(scope, code)
             code.append(NaryOp(("SetAdd", None, None, None), 2))
-
-class BagAST(AST):
-    def __init__(self, token, collection):
-        AST.__init__(self, token)
-        self.collection = collection
-
-    def __repr__(self):
-        return "Bag(" + str(self.collection) + ")"
-
-    def isConstant(self, scope):
-        return all(x.isConstant(scope) for x in self.collection)
-
-    def gencode(self, scope, code):
-        code.append(PushOp((novalue, None, None, None)))
-        for e in self.collection:
-            e.compile(scope, code)
-            code.append(NaryOp(("BagAdd", None, None, None), 2))
 
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):
@@ -2443,8 +2578,15 @@ class TupleAST(AST):
             v.compile(scope, code)
             code.append(NaryOp(("DictAdd", file, line, column), 3))
 
-    def isShared(self, scope):
-        assert False
+    def localVar(self, scope):
+        lexeme, file, line, column = self.token
+        raise HarmonyCompilerError(
+            message="Cannot index into tuple in assignment",
+            lexeme=lexeme,
+            filename=file,
+            line=line,
+            column=column
+        )
 
     def ph1(self, scope, code):
         for lv in self.list:
@@ -2488,19 +2630,6 @@ class SetComprehensionAST(AST):
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "set")
-
-class BagComprehensionAST(AST):
-    def __init__(self, value, iter, token):
-        AST.__init__(self, token)
-        self.value = value
-        self.iter = iter
-        self.token = token
-
-    def __repr__(self):
-        return "BagComprehension(" + str(self.var) + ")"
-
-    def compile(self, scope, code):
-        self.comprehension(scope, code, "bag")
 
 class DictComprehensionAST(AST):
     def __init__(self, key, value, iter, token):
@@ -2697,8 +2826,8 @@ class ApplyAST(AST):
         self.method.compile(scope, code)
         code.append(ApplyOp(self.token))
 
-    def isShared(self, scope):
-        return self.method.isShared(scope)
+    def localVar(self, scope):
+        return self.method.localVar(scope)
 
     def ph1(self, scope, code):
         # See if it's of the form "module.constant":
@@ -2723,8 +2852,8 @@ class ApplyAST(AST):
         if skip > 0:
             code.append(MoveOp(skip + 2))
             code.append(MoveOp(2))
-        shared = self.method.isShared(scope)
-        st = StoreOp(None, self.token, None) if shared else StoreVarOp(None)
+        lvar = self.method.localVar(scope)
+        st = StoreOp(None, self.token, None) if lvar == None else StoreVarOp(None, lvar)
         code.append(st)
 
 class Rule:
@@ -2874,15 +3003,6 @@ class SetComprehensionRule(Rule):
         (lst, t) = self.iterParse(t[1:], {"}"})
         return (SetComprehensionAST(self.value, lst, token), t[1:])
 
-class BagComprehensionRule(Rule):
-    def __init__(self, value):
-        self.value = value
-
-    def parse(self, t):
-        token = t[0]
-        (lst, t) = self.iterParse(t[1:], {"}"})
-        return (BagComprehensionAST(self.value, lst, token), t[1:])
-
 class DictComprehensionRule(Rule):
     def __init__(self, key, value):
         self.key = key
@@ -2935,36 +3055,6 @@ class SetRule(Rule):
             if lexeme == "}":
                 return (SetAST(first_token, s), t[1:])
             self.expect("set expression", lexeme == ",", t[0],
-                    "expected a comma")
-
-class BagRule(Rule):
-    def parse(self, t):
-        first_token = t[0]
-        (lexeme, file, line, column) = t[0]
-        self.expect("bag expression", lexeme == "bag{", t[0], "expected '{'")
-        (lexeme, file, line, column) = t[1]
-        if lexeme == "}":
-            return (BagAST(first_token, []), t[2:])
-        s = []
-        while True:
-            (next, t) = NaryRule({"for", "..", ",", "}"}).parse(t[1:])
-            if next == False:
-                return (next, t)
-            s.append(next)
-            (lexeme, file, line, column) = t[0]
-            if lexeme == "for":
-                self.expect("bag comprehension", len(s) == 1, t[0],
-                    "can have only one expression")
-                return BagComprehensionRule(s[0]).parse(t)
-            if lexeme == "..":
-                self.expect("range", len(s) == 1, t[0],
-                    "can have only two expressions")
-                token = t[0]
-                (ast, t) = NaryRule({"}"}).parse(t[1:])
-                return (RangeAST(next, ast, token), t[1:])
-            if lexeme == "}":
-                return (BagAST(first_token, s), t[1:])
-            self.expect("bag expression", lexeme == ",", t[0],
                     "expected a comma")
 
 class DictSuffixRule(Rule):
@@ -3056,8 +3146,6 @@ class BasicExpressionRule(Rule):
             return (NameAST(t[0]), t[1:])
         if lexeme == "{":
             return SetRule().parse(t)
-        # if lexeme == "bag{":
-        #     return BagRule().parse(t)
         if lexeme == "(" or lexeme == "[":
             closer = ")" if lexeme == "(" else "]"
             (ast, t) = TupleRule({closer}).parse(t[1:])
@@ -3079,6 +3167,9 @@ class PointerAST(AST):
     def compile(self, scope, code):
         self.expr.compile(scope, code)
         code.append(LoadOp(None, self.token, None))
+
+    def localVar(self, scope):
+        return None
 
     def ph1(self, scope, code):
         self.expr.compile(scope, code)
@@ -3144,12 +3235,12 @@ class AssignmentAST(AST):
         self.op = op                # ... op= ...
 
     def __repr__(self):
-        return "Assign(" + str(self.lhslist) + ", " + str(self.rv) + \
+        return "Assignment(" + str(self.lhslist) + ", " + str(self.rv) + \
                             ", " + str(self.op) + ")"
 
     # handle an "x op= y" assignment
     def opassign(self, lv, scope, code):
-        shared = lv.isShared(scope)
+        lvar = lv.localVar(scope)
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
             (t, v) = scope.find(lv.name)
@@ -3175,15 +3266,15 @@ class AssignmentAST(AST):
         else:
             lv.ph1(scope, code)
             code.append(DupOp())                  # duplicate the address
-            ld = LoadOp(None, self.op, None) if shared else LoadVarOp(None)
+            ld = LoadOp(None, self.op, None) if lvar == None else LoadVarOp(None, lvar)
         code.append(ld)                       # load the value
         self.rv.compile(scope, code)          # compile the rhs
         (lexeme, file, line, column) = self.op
         code.append(NaryOp((lexeme[:-1], file, line, column), 2))
         if isinstance(lv, NameAST):
-            st = StoreOp(lv.name, lv.name, scope.prefix) if shared else StoreVarOp(lv.name)
+            st = StoreOp(lv.name, lv.name, scope.prefix) if lvar == None else StoreVarOp(lv.name, lvar)
         else:
-            st = StoreOp(None, self.op, None) if shared else StoreVarOp(None)
+            st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
         code.append(st)
 
     def compile(self, scope, code):
@@ -3244,9 +3335,12 @@ class DelAST(AST):
         return "Del(" + str(self.lv) + ")"
 
     def compile(self, scope, code):
-        self.lv.ph1(scope, code)
-        shared = self.lv.isShared(scope)
-        op = DelOp(None) if shared else DelVarOp(None)
+        lvar = self.lv.localVar(scope)
+        if isinstance(self.lv, NameAST):
+            op = DelOp(self.lv.name) if lvar == None else DelVarOp(self.lv.name)
+        else:
+            self.lv.ph1(scope, code)
+            op = DelOp(None) if lvar == None else DelVarOp(None, lvar)
         code.append(op)
 
 class SetIntLevelAST(AST):
@@ -3489,8 +3583,8 @@ class LetAST(AST):
 
         # Restore the old variable state
         # TODO.  This should be done asap, not at the end
-        for (var, expr) in self.vars:
-            self.delete(scope, code, var)
+        # for (var, expr) in self.vars:
+        #     self.delete(scope, code, var)
 
 class ForAST(AST):
     def __init__(self, iter, stat, token):
@@ -5063,9 +5157,13 @@ def doCompile(filenames, consts, mods):
             print("harmony: can't open", fname, file=sys.stderr)
             sys.exit(1)
     code.append(ReturnOp())     # to terminate "__init__" process
-    code.link()
-    optimize(code)
-    return (code, scope)
+
+    # Analyze liveness of variables
+    newcode = code.liveness()
+
+    newcode.link()
+    optimize(newcode)
+    return (newcode, scope)
 
 def kosaraju1(nodes, stack):
     seen = set()
@@ -5960,7 +6058,7 @@ def main():
             with open(hvmfile, "w") as f:
                 data = dict(e.token, status="error")
                 f.write(json.dumps(data))
-        print(e.message)
+        print(e.message, e.token)
         sys.exit(1)
 
     if parse_code_only:
