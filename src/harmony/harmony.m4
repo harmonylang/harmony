@@ -114,7 +114,6 @@ def doImport(scope, code, module):
         # create a new scope
         scope2 = Scope(None)
         scope2.prefix = [lexeme]
-        scope2.locations = scope.locations
         scope2.labels = scope.labels
 
         found = False
@@ -2429,7 +2428,6 @@ class AST:
             # create a new scope
             scope2 = Scope(None)
             scope2.prefix = [lexeme]
-            scope2.locations = scope.locations
             scope2.labels = scope.labels
 
             found = False
@@ -4867,14 +4865,12 @@ class Scope:
     def __init__(self, parent):
         self.parent = parent               # parent scope
         self.names = { "this": ("local", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
-        self.locations = {} if parent == None else parent.locations
         self.labels = {} if parent == None else parent.labels
         self.prefix = [] if parent == None else parent.prefix
 
     def copy(self):
         c = Scope(self.parent)
         c.names = self.names.copy()
-        c.locations = self.locations.copy()
         c.labels = self.labels.copy()
         c.prefix = self.prefix.copy()
         return c
@@ -4912,14 +4908,6 @@ class Scope:
         self.names[lexeme] = ("global", name)
         # print("Warning: unknown name:", name, " (find)")
         return ("global", lexeme)
-
-    def location(self, pc, file, line, labels):
-        if self.parent == None:
-            self.locations[pc] = (file, line)
-            for (label, file, line, column) in labels:
-                self.labels[label] = pc
-        else:
-            self.parent.location(pc, file, line, labels)
 
 def optjump(code, pc):
     while pc < len(code.labeled_ops):
@@ -5931,14 +5919,14 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "code": [', file=f);
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
-            if scope.locations.get(pc) != None:
-                (file, line) = scope.locations[pc]
-                if (file, line) != lastloc:
-                    lines = files.get(file)
-                    if lines != None and line <= len(lines):
-                        print("%s:%d"%(file, line), lines[line - 1], file=f)
-                    else:
-                        print(file, ":", line, file=f)
+            lop = code.labeled_ops[pc]
+            file, line = lop.file, lop.line
+            if file != None and (file, line) != lastloc:
+                lines = files.get(file)
+                if lines != None and line <= len(lines):
+                    print("%s:%d"%(file, line), lines[line - 1], file=f)
+                else:
+                    print(file, ":", line, file=f)
                 lastloc = (file, line)
             # for label in code.labeled_ops[pc].labels:
             #     if label.module == None:
