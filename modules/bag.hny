@@ -25,6 +25,13 @@ def size(bg):
     for c in bg:
         result += c
 
+def bmin(bg):
+    assert 0 not in bg
+    result = min(keys(bg))
+
+def bmax(bg):
+    result = max(keys(bg))
+
 def bchoose(bg):
     assert 0 not in bg
     result = choose(keys(bg))
@@ -58,3 +65,14 @@ def f_remove(bg, elt):
         result[elt] -= 1
     if result[elt] <= 0:
         del result[elt]
+
+# Return set of all subbags of bg of size n
+def combinations(bg, k):
+    if k == 0:
+        result = { empty() }
+    elif k == size(bg):
+        result = { bg }
+    else:
+        let hd = bmin(bg) let tl = f_remove(bg, hd):
+            result = { f_add(x, hd) for x in combinations(tl, k - 1) }
+                        | combinations(tl, k)

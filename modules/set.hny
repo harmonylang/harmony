@@ -3,3 +3,14 @@ def issubset(s, t):
 
 def issuperset(s, t):
     result = (s & t) == t
+
+# Return all subsets of s of length k
+def combinations(s, k):
+    if k == 0:
+        result = { {} }
+    elif k == len(s):
+        result = { s }
+    else:
+        let hd = min(s) let tl = s - {hd}:
+            result = { ({hd} | x) for x in combinations(tl, k - 1) }
+                        | combinations(tl, k)
