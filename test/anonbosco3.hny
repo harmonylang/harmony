@@ -2,7 +2,7 @@ import synch, bag, list
 
 const F = 1
 const N = (3 * F) + 1
-const NROUNDS = 2
+const NROUNDS = 3
 
 sequential network
 
