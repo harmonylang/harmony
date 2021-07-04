@@ -13,29 +13,26 @@ def broadcast(msg):
     atomic:
         bag.add(?network, msg)
 
+# Wait for k messages in the given round
+def receive(round, k):
+    result = {}
+    while bag.size(result) < k:
+        atomic:
+            result = { (r,e):network[r, e]
+                for r, e in keys(network) where r == round }
+    result = choose(bag.combinations(result, k))
+
 def process(proposal):
     let est = proposal:
         for round in {0..NROUNDS-1}:
             # Broadcast estimate
             broadcast(round, est)
 
-            # Wait until there are enough messages in the current round
-            let received = [0, 0]:
-                while list.sum(received) < (N - F):
-                    let count = [0, 0]:
-                        atomic:
-                            for msg in keys(network):
-                                let (r, e) = msg:
-                                    if r == round:
-                                        count[e] = network[msg]
-                        if count != received:
-                            let cands = { i for i in {0, 1} where count[i] > received[i] }:
-                                received[choose(cands)] += 1
-
-                # Update estimate
-                assert(received[0] != received[1])
-                est = 0 if received[0] < received[1] else 1
-                if received[est] == (N - F):
+            let select = receive(round, N - F)
+            let count = [ bag.count(select, (round, i)) for i in { 0..1 } ]:
+                assert(count[0] != count[1])
+                est = 0 if count[0] < count[1] else 1
+                if count[est] == (N - F):
                     atomic:
                         decisions |= { est }
                         assert len(decisions) <= 1
