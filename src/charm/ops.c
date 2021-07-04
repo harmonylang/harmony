@@ -603,7 +603,9 @@ void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     assert(ctx->atomic > 0);
-    ctx->atomic--;
+    if (--ctx->atomic == 0) {
+        ctx->atomicFlag = false;
+    }
     ctx->pc++;
 }
 
@@ -1422,7 +1424,6 @@ void *init_Apply(struct dict *map){ return NULL; }
 void *init_Assert(struct dict *map){ return NULL; }
 void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
-void *init_AtomicInc(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
 void *init_Continue(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
@@ -1446,6 +1447,25 @@ void *init_Cut(struct dict *map){
     assert(var->type == JV_ATOM);
     int index = 0;
     env->var = var_parse(var->u.atom.base, var->u.atom.len, &index);
+    return env;
+}
+
+void *init_AtomicInc(struct dict *map){
+    struct env_AtomicInc *env = new_alloc(struct env_AtomicInc);
+    struct json_value *lazy = dict_lookup(map, "lazy", 4);
+    if (lazy == NULL) {
+        env->lazy = false;
+    }
+    else {
+		assert(lazy->type == JV_ATOM);
+        if (lazy->u.atom.len == 0) {
+            env->lazy = false;
+        }
+        else {
+            char *p = lazy->u.atom.base;
+            env->lazy = *p == 't' || *p == 'T';
+        }
+    }
     return env;
 }
 

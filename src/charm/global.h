@@ -39,8 +39,9 @@ struct context {     // context value
     uint64_t failure;     // atom value describing failure, or 0 if no failure
     int pc;               // program counter
     int fp;               // frame pointer
-    int atomic;           // atomic counter
     int readonly;         // readonly counter
+    int atomic;           // atomic counter
+    bool atomicFlag;      // to implement lazy atomicity
     bool interruptlevel;  // interrupt level
     bool stopped;         // context is stopped
     bool terminated;      // context has terminated
@@ -125,6 +126,10 @@ struct env_DelVar {
 struct env_Frame {
     uint64_t name;
     struct var_tree *args;
+};
+
+struct env_AtomicInc {
+    bool lazy;
 };
 
 struct env_IncVar {

@@ -1569,11 +1569,14 @@ class TrapOp(Op):
         context.pc += 1
 
 class AtomicIncOp(Op):
+    def __init__(self, lazy):
+        self.lazy = lazy
+
     def __repr__(self):
-        return "AtomicInc"
+        return "AtomicInc(%s)"%self.lazy
 
     def jdump(self):
-        return '{ "op": "AtomicInc" }'
+        return '{ "op": "AtomicInc", "lazy": "%s" }'%str(self.lazy)
 
     def explain(self):
         return "increment atomic counter of context; thread runs uninterrupted if larger than 0"
@@ -3625,7 +3628,7 @@ class AtomicAST(AST):
         return "Atomic(" + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        code.append(AtomicIncOp())
+        code.append(AtomicIncOp(True))
         self.stat.compile(scope, code)
         code.append(AtomicDecOp())
 
@@ -3648,7 +3651,7 @@ class AssertAST(AST):
 
     def compile(self, scope, code):
         code.append(ReadonlyIncOp())
-        code.append(AtomicIncOp())
+        code.append(AtomicIncOp(True))
         self.cond.compile(scope, code)
         if self.expr != None:
             self.expr.compile(scope, code)
@@ -3867,7 +3870,7 @@ class LabelStatAST(AST):
             for ((lexeme, file, line, column), label) in self.labels.items():
                 code.nextLabel(label)
                 # root.names[lexeme] = ("constant", (label, file, line, column))
-            code.append(AtomicIncOp())
+            code.append(AtomicIncOp(False))
             self.ast.compile(scope, code)
             code.append(AtomicDecOp())
 

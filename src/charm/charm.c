@@ -107,8 +107,13 @@ static void code_get(struct json_value *jv){
     c->load = strcmp(oi->name, "Load") == 0;
     c->store = strcmp(oi->name, "Store") == 0;
     c->del = strcmp(oi->name, "Del") == 0;
-    c->breakable = c->load || c->store || c->del ||
-                        strcmp(oi->name, "AtomicInc") == 0;
+    c->breakable = c->load || c->store || c->del;
+    if (!c->breakable && strcmp(oi->name, "AtomicInc") == 0) {
+        const struct env_AtomicInc *ea = c->env;
+        if (!ea->lazy) {
+            c->breakable = true;
+        }
+    }
 }
 
 bool invariant_check(struct state *state, struct context **pctx, int end){
@@ -328,8 +333,11 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
                                     code[cc->pc].breakable) {
+            if (!cc->atomicFlag && cc->atomic > 0) {
+                cc->atomicFlag = true;
+            }
             break;
         }
     }
@@ -946,8 +954,11 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                code[cc->pc].breakable) {
+        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
+                                    code[cc->pc].breakable) {
+            if (!cc->atomicFlag && cc->atomic > 0) {
+                cc->atomicFlag = true;
+            }
             break;
         }
     }
@@ -1359,6 +1370,7 @@ int main(int argc, char **argv){
     init_ctx->this = VALUE_DICT;
     init_ctx->vars = dict_store(VALUE_DICT, this, VALUE_DICT);
     init_ctx->atomic = 1;
+    init_ctx->atomicFlag = true;
     ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
