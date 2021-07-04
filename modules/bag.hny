@@ -66,13 +66,17 @@ def f_remove(bg, elt):
     if result[elt] <= 0:
         del result[elt]
 
-# Return set of all subbags of bg of size n
+# Return set of all subbags of bg of size k
 def combinations(bg, k):
     if k == 0:
         result = { empty() }
-    elif k == size(bg):
-        result = { bg }
     else:
-        let hd = bmin(bg) let tl = f_remove(bg, hd):
-            result = { f_add(x, hd) for x in combinations(tl, k - 1) }
-                        | combinations(tl, k)
+        let n = size(bg):
+            if k > n:
+                result = {}
+            elif k == n:
+                result = { bg }
+            else:
+                let hd = bmin(bg) let tl = f_remove(bg, hd):
+                    result = { f_add(x, hd) for x in combinations(tl, k - 1) }
+                                | combinations(tl, k)

@@ -2123,8 +2123,10 @@ class ApplyOp(Op):
             context.pc = method.pc
 
 class Labeled_Op:
-    def __init__(self, op, labels):
+    def __init__(self, op, file, line, labels):
         self.op = op
+        self.file = file
+        self.line = line
         self.labels = labels
         self.live_in = set()
         self.live_out = set()
@@ -2133,9 +2135,19 @@ class Code:
     def __init__(self):
         self.labeled_ops = []
         self.endlabels = set()
+        self.curFile = None
+        self.curLine = 0
 
-    def append(self, op, labels=set()):
-        self.labeled_ops.append(Labeled_Op(op, labels | self.endlabels))
+    def location(self, file, line):
+        self.curFile = file
+        self.curLine = line
+
+    def append(self, op, file=None, line=0, labels=set()):
+        if file == None:
+            file = self.curFile
+        if line == 0:
+            line = self.curLine
+        self.labeled_ops.append(Labeled_Op(op, file, line, labels | self.endlabels))
         self.endlabels = set()
 
     def nextLabel(self, endlabel):
@@ -2206,6 +2218,7 @@ class Code:
         newcode = Code()
         for lop in self.labeled_ops:
             # print(lop.op, lop.live_in, lop.live_out)
+            file, line = lop.file, lop.line
 
             # If a variable is live on output of any predecessor but not
             # live on input, delete it first
@@ -2219,9 +2232,9 @@ class Code:
 
             labels = lop.labels
             for d in lop.pre_del:
-                newcode.append(DelVarOp((d, None, None, None)), labels)
+                newcode.append(DelVarOp((d, None, None, None)), file, line, labels)
                 labels = set()
-            newcode.append(lop.op, labels)
+            newcode.append(lop.op, file, line, labels)
 
             # If a variable is defined or live on input but not live on output,
             # immediately delete afterward
@@ -2229,7 +2242,7 @@ class Code:
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
             for d in lop.post_del:
-                newcode.append(DelVarOp((d, None, None, None)))
+                newcode.append(DelVarOp((d, None, None, None)), file, line)
 
         return newcode
 
@@ -3846,10 +3859,10 @@ class LabelStatAST(AST):
 
     # TODO.  Update label stuff
     def compile(self, scope, code):
+        code.location(self.file, self.line)
         if self.labels == {}:
             self.ast.compile(scope, code)
         else:
-            scope.location(len(code.labeled_ops), self.file, self.line, self.labels)
             root = scope
             # while root.parent != None:
             #     root = root.parent
@@ -5951,13 +5964,16 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("  ],", file=f);
         print("  \"locations\": {", file=f, end="");
         firstTime = True
-        for pc, (file, line) in scope.locations.items():
-            if firstTime:
-                firstTime = False
-                print(file=f)
-            else:
-                print(",", file=f)
-            print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
+        for pc in range(len(code.labeled_ops)):
+            lop = code.labeled_ops[pc]
+            file, line = lop.file, lop.line
+            if file != None:
+                if firstTime:
+                    firstTime = False
+                    print(file=f)
+                else:
+                    print(",", file=f)
+                print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
         print(file=f)
         print("  }", file=f);
         print("}", file=f);
@@ -6078,8 +6094,9 @@ def main():
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
-        if not testflag:
-            os.remove(hvmfile)
+        # TODO
+        # if not testflag:
+        #    os.remove(hvmfile)
         b = Brief()
         b.run(stem + ".hco")
         gh = GenHTML()
