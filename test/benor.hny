@@ -4,12 +4,24 @@ const F = 1
 const N = (2 * F) + 1
 const NROUNDS = 3
 
+sequential network
+
 network = bag.empty()
 decisions = {}
 
 def broadcast(msg):
     atomic:
         bag.add(?network, msg)
+
+# Wait for k messages in the given round and phase
+def receive(round, phase, k):
+    let msgs = bag.empty():
+        while bag.size(msgs) < k:
+            atomic:
+                msgs = { (r,p,e):network[r,p,e]
+                    for r,p,e in keys(network)
+                        where (r == round) and (p == phase) }
+        result = choose(bag.combinations(msgs, k))
 
 def process(proposal):
     let est = proposal:
@@ -18,22 +30,8 @@ def process(proposal):
             broadcast(round, 0, est)
 
             # Wait until there are enough messages in the current round and phase
-            let receiving = True
-            let count = [0, 0]:
-                while receiving:
-                    count = [0, 0]
-                    atomic:
-                        for msg in keys(network):
-                            let (r, p, e) = msg:
-                                if (r == round) and (p == 0):
-                                    count[e] = network[msg]
-                        receiving = list.sum(count) < (N - F)
-
-                # choose the quorum to receive from
-                while list.sum(count) > (N - F):
-                    let choices = { i for i in [0, 1] where count[i] > 0 }:
-                        count[choose(choices)] -= 1
-
+            let select = receive(round, 0, N-F)
+            let count = [ bag.count(select, (round, 0, i)) for i in { 0..1 } ]:
                 # see if unanimous
                 if count[0] == (N - F):
                     est = 0
@@ -46,22 +44,8 @@ def process(proposal):
             broadcast(round, 1, est)
 
             # Wait until there are enough messages in the current round and phase
-            let receiving = True
-            let count = [0, 0]:
-                while receiving:
-                    count = [0, 0]
-                    atomic:
-                        for msg in keys(network):
-                            let (r, p, e) = msg:
-                                if (r == round) and (p == 1):
-                                    count[e] = network[msg]
-                        receiving = list.sum(count) < (N - F)
-
-                # choose the quorum to receive from
-                while list.sum(count) > (N - F):
-                    let choices = { i for i in keys(count) where count[i] > 0 }:
-                        count[choose(choices)] -= 1
-
+            let select = receive(round, 1, N-F)
+            let count = [ bag.count(select, (round, 1, i)) for i in { 0..1 } ]:
                 assert (count[0] == 0) or (count[1] == 0)
                 if count[0] > 0:
                     est = 0
