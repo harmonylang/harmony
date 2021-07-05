@@ -1,0 +1,86 @@
+import synch, bag, list
+
+const F = 1
+const NACCEPTORS = (2 * F) + 1
+const NLEADERS = F + 1
+const NROUNDS = 1
+
+network = bag.empty()
+decisions = {}
+
+def broadcast(msg):
+    atomic:
+        bag.add(?network, msg)
+
+def acceptor_receive(received):
+    let msgs = bag.empty():
+        while bag.size(msgs) == 0:
+            atomic:
+                msgs = { (b,p,t,e):network[b,p,t,e]
+                    for b,p,t,e in keys(network)
+                        where ((b,p) not in received) and (t == .a) }
+        result = choose(keys(msgs))
+
+# Wait for k messages in the given ballot and phase
+def leader_receive(ballot, phase, k):
+    let msgs = bag.empty():
+        while bag.size(msgs) < k:
+            atomic:
+                msgs = { (b,p,t,e):network[b,p,t,e]
+                    for b,p,t,e in keys(network)
+                        where (b,p,t) == (ballot, phase, .b) }
+        result = choose(bag.combinations(msgs, k))
+
+def leader(ballot, proposal):
+    let est = proposal:
+        for round in {0..NROUNDS-1}:
+            # Broadcast ballot in phase 1a message
+            broadcast(ballot, 1, .a, None)
+
+            # Wait until there are enough messages in the current ballot and phase
+            let select = leader_receive(ballot, 1, NACCEPTORS-F)
+            let count = [ bag.count(select, (round, 0, i)) for i in { 0..1 } ]:
+                # see if unanimous
+                if count[0] == (NACCEPTORS - F):
+                    est = 0
+                elif count[1] == (NACCEPTORS - F):
+                    est = 1
+                else:
+                    est = None
+
+            # Broadcast estimate in phase 2
+            broadcast(ballot, 2, .a, est)
+
+            # Wait until there are enough messages in the current round and phase
+            let select = leader_receive(ballot, 2, NACCEPTORS-F)
+            let count = [ bag.count(select, (round, 1, i)) for i in { 0..1 } ]:
+                assert (count[0] == 0) or (count[1] == 0)
+                if count[0] > 0:
+                    est = 0
+                elif count[1] > 0:
+                    est = 1
+                else:
+                    est = choose({0, 1})
+                if count[est] == (NACCEPTORS - F):
+                    atomic:
+                        decisions |= { est }
+                        assert len(decisions) <= 1
+
+            ballot += NLEADERS
+
+def acceptor():
+    let ballot = 0 let last_accepted = None let received = {}:
+        while len(received) < (NROUNDS * NLEADERS * 2):
+            let (b,p,t,e) = acceptor_receive(received):
+                received |= { (b, p) }
+                if b >= ballot:
+                    ballot = b
+                    if p == 2:
+                        last_accepted = (ballot, e)
+                broadcast(b, p, .b, last_accepted)
+
+let nzeroes = choose({0..NLEADERS/2}):
+    for i in {0..NLEADERS-1}:
+        spawn leader(i+1, 0 if i < nzeroes else 1)
+for i in {0..NACCEPTORS-1}:
+    spawn acceptor()

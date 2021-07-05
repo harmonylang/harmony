@@ -2282,6 +2282,7 @@ class AST:
                 self.assign(scope, v)
 
     def delete(self, scope, code, var):
+        assert False
         if isinstance(var, tuple):
             code.append(DelVarOp(var))  # remove variable
             (lexeme, file, line, column) = var
@@ -2361,9 +2362,11 @@ class AST:
         assert type == "for" or type == "where", type
 
         if type == "for":
-            (var, expr) = rest
+            (var, var2, expr) = rest
 
             self.assign(scope, var)
+            if var2 != None:
+                self.assign(scope, var2)
             uid = len(code.labeled_ops)
             (lexeme, file, line, column) = self.token
 
@@ -2389,8 +2392,6 @@ class AST:
             self.rec_comprehension(scope, code, iter[1:], startlabel, N, vars + [var], ctype)
             code.append(JumpOp(startlabel))
             code.nextLabel(endlabel)
-            # self.delete(scope, code, var)
-            # code.append(DelVarOp(S))
 
         else:
             assert type == "where"
@@ -2879,15 +2880,20 @@ class Rule:
                 filename=file,
                 line=line,
                 column=column,
-                message="Parse error in %s. Got %s, but wanted %s" % (rule, got, want)
+                message="Parse error in %s. Got %s, but %s" % (rule, got, want)
             )
 
     def forParse(self, t, closers):
         (bv, t) = BoundVarRule().parse(t)
         (lexeme, file, line, column) = token = t[0]
+        if lexeme == ":":
+            (bv2, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, column) = token = t[0]
+        else:
+            bv2 = None
         self.expect("for expression", lexeme == "in", t[0], "expected 'in'")
         (expr, t) = NaryRule(closers | { "where", "for" }).parse(t[1:])
-        return ((bv, expr), t)
+        return ((bv, bv2, expr), t)
 
     def whereParse(self, t, closers):
         return NaryRule(closers | { "for", "where" }).parse(t)

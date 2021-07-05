@@ -4,8 +4,6 @@ const F = 1
 const N = (2 * F) + 1
 const NROUNDS = 3
 
-sequential network
-
 network = bag.empty()
 decisions = {}
 

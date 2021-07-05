@@ -2,9 +2,7 @@ import synch, bag, list
 
 const F = 1
 const N = (3 * F) + 1
-const NROUNDS = 4
-
-sequential network
+const NROUNDS = 3
 
 network = bag.empty()
 decisions = {}
@@ -15,7 +13,7 @@ def broadcast(msg):
 
 # Wait for k messages in the given round
 def receive(round, k):
-    let msgs = {}:
+    let msgs = bag.empty():
         while bag.size(msgs) < k:
             atomic:
                 msgs = { (r,e):network[r, e]
