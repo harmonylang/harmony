@@ -3,7 +3,7 @@ import synch, bag, list
 const F = 1
 const NACCEPTORS = (2 * F) + 1
 const NLEADERS = F + 1
-const NROUNDS = 1
+const NBALLOTS = 3
 
 network = bag.empty()
 decisions = {}
@@ -33,35 +33,24 @@ def leader_receive(ballot, phase, k):
 
 def leader(ballot, proposal):
     let est = proposal:
-        for round in {0..NROUNDS-1}:
+        while ballot <= NBALLOTS:
             # Broadcast ballot in phase 1a message
             broadcast(ballot, 1, .a, None)
 
             # Wait until there are enough messages in the current ballot and phase
             let select = leader_receive(ballot, 1, NACCEPTORS-F)
-            let count = [ bag.count(select, (round, 0, i)) for i in { 0..1 } ]:
-                # see if unanimous
-                if count[0] == (NACCEPTORS - F):
-                    est = 0
-                elif count[1] == (NACCEPTORS - F):
-                    est = 1
+            let accepted = { e for (b,p,t,e) in keys(select) where e != None }:
+                if accepted == {}:
+                    est = proposal
                 else:
-                    est = None
+                    _, est = max(accepted)
 
             # Broadcast estimate in phase 2
             broadcast(ballot, 2, .a, est)
 
             # Wait until there are enough messages in the current round and phase
-            let select = leader_receive(ballot, 2, NACCEPTORS-F)
-            let count = [ bag.count(select, (round, 1, i)) for i in { 0..1 } ]:
-                assert (count[0] == 0) or (count[1] == 0)
-                if count[0] > 0:
-                    est = 0
-                elif count[1] > 0:
-                    est = 1
-                else:
-                    est = choose({0, 1})
-                if count[est] == (NACCEPTORS - F):
+            let select = leader_receive(ballot, 2, NACCEPTORS-F):
+                if bag.count(select, (ballot, 2, .b, (ballot, est))) == (NACCEPTORS - F):
                     atomic:
                         decisions |= { est }
                         assert len(decisions) <= 1
@@ -70,7 +59,7 @@ def leader(ballot, proposal):
 
 def acceptor():
     let ballot = 0 let last_accepted = None let received = {}:
-        while len(received) < (NROUNDS * NLEADERS * 2):
+        while len(received) < (NBALLOTS * 2):
             let (b,p,t,e) = acceptor_receive(received):
                 received |= { (b, p) }
                 if b >= ballot:
