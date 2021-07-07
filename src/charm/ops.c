@@ -634,6 +634,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
 
     uint64_t v = dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
+        if (ec->key != NULL) {
+            ctx_failure(ctx, "Can't cut set in key/value pairs");
+            return;
+        }
         assert(v != VALUE_SET);
         void *p = (void *) (v & ~VALUE_MASK);
 
@@ -642,8 +646,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_set(&vals[1], size - sizeof(uint64_t)));
-        // ctx->vars = dict_store(ctx->vars, ec->var, vals[0]);
-        var_match(*pctx, ec->var, vals[0]);
+        var_match(*pctx, ec->value, vals[0]);
         (*pctx)->pc++;
         return;
     }
@@ -656,8 +659,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_dict(&vals[2], size - 2 * sizeof(uint64_t)));
-        // ctx->vars = dict_store(ctx->vars, ec->var, vals[1]);
-        var_match(*pctx, ec->var, vals[1]);
+        var_match(*pctx, ec->value, vals[1]);
+        if (ec->key != NULL) {
+            var_match(*pctx, ec->key, vals[0]);
+        }
         (*pctx)->pc++;
         return;
     }
@@ -1447,10 +1452,19 @@ void *init_Cut(struct dict *map){
     struct json_value *set = dict_lookup(map, "set", 3);
     assert(set->type == JV_ATOM);
     env->set = value_put_atom(set->u.atom.base, set->u.atom.len);
-    struct json_value *var = dict_lookup(map, "var", 3);
-    assert(var->type == JV_ATOM);
+
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
     int index = 0;
-    env->var = var_parse(var->u.atom.base, var->u.atom.len, &index);
+    env->value = var_parse(value->u.atom.base, value->u.atom.len, &index);
+
+    struct json_value *key = dict_lookup(map, "key", 3);
+    if (key != NULL) {
+        assert(key->type == JV_ATOM);
+        index = 0;
+        env->key = var_parse(key->u.atom.base, key->u.atom.len, &index);
+    }
+
     return env;
 }
 

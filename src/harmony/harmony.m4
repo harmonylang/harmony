@@ -814,45 +814,58 @@ class SetIntLevelOp(Op):
 
 # Splits a non-empty set or dict in its minimum element and its remainder
 class CutOp(Op):
-    def __init__(self, s, v):
+    def __init__(self, s, value, key):
         self.s = s
-        self.v = v
+        self.value = value
+        self.key = key
 
     def __repr__(self):
-        return "Cut(" + str(self.s[0]) + ", " + self.convert(self.v) + ")"
+        if self.key == None:
+            return "Cut(" + str(self.s[0]) + ", " + self.convert(self.value) + ")"
+        else:
+            return "Cut(" + str(self.s[0]) + ", " + self.convert(self.key) + ", " + self.convert(self.value) + ")"
 
     def define(self):
-        return self.lvars(self.v)
+        if self.key == None:
+            return self.lvars(self.value)
+        else:
+            return self.lvars(self.value) | self.lvars(self.key)
 
     def jdump(self):
-        return '{ "op": "Cut", "set": \"%s\", "var": \"%s\" }'%(self.s[0], self.convert(self.v))
+        if self.key == None:
+            return '{ "op": "Cut", "set": "%s", "value": "%s" }'%(self.s[0], self.convert(self.value))
+        else:
+            return '{ "op": "Cut", "set": "%s", "key": "%s", "value": "%s" }'%(self.s[0], self.convert(self.key), self.convert(self.value))
 
     def explain(self):
-        return "remove smallest element from %s and assign to %s"%(self.s[0], self.convert(self.v))
+        if self.key == None:
+            return "remove smallest element from %s and assign to %s"%(self.s[0], self.convert(self.value))
+        else:
+            return "remove smallest element from %s and assign to %s:%s"%(self.s[0], self.convert(self.key), self.convert(self.value))
 
     def eval(self, state, context):
-        v = self.load(context, self.s)
-        if isinstance(v, DictValue):
-            if v.d == {}:
+        key = self.load(context, self.s)
+        if isinstance(key, DictValue):
+            if key.d == {}:
                 context.failure = "pc = " + str(context.pc) + \
                     ": Error: expected non-empty dict value"
             else:
-                select = min(v.d.keys(), key=keyValue)
-                self.store(context, self.v, v.d[select])
-                copy = v.d.copy()
+                select = min(key.d.keys(), key=keyValue)
+                self.store(context, self.key, key.d[select])
+                copy = key.d.copy()
                 del copy[select]
                 self.store(context, self.s, DictValue(copy))
                 context.pc += 1
         else:
-            if not isinstance(v, SetValue):
+            if not isinstance(key, SetValue):
                 context.failure = "pc = " + str(context.pc) + \
-                    ": Error: expected set value, got " + str(v)
-            elif v.s == set():
+                    ": Error: expected set value, got " + str(key)
+            elif key.s == set():
                 context.failure = "pc = " + str(context.pc) + \
                     ": Error: expected non-empty set value"
             else:
-                lst = sorted(v.s, key=keyValue)
-                self.store(context, self.v, lst[0])
+                lst = sorted(key.s, key=keyValue)
+                self.store(context, self.key, lst[0])
                 self.store(context, self.s, SetValue(set(lst[1:])))
                 context.pc += 1
 
@@ -2337,15 +2350,12 @@ class AST:
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
-    # TODO.  Can probably get rid of vars.  Was only needed for Delete
-    # TODO.  Implement Cut2
-    def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
+    def rec_comprehension(self, scope, code, iter, pc, N, ctype):
         if iter == []:
             (lexeme, file, line, column) = self.token
             if ctype == "list":
                 code.append(LoadVarOp(N))
             elif ctype == "dict":
-                # code.append(LoadVarOp(vars[0] if len(vars) == 1 else vars))
                 self.key.compile(scope, code)
             self.value.compile(scope, code)
             if ctype == "set":
@@ -2390,8 +2400,8 @@ class AST:
             code.append(LoadVarOp(S))
             code.append(NaryOp(("IsEmpty", file, line, column), 1))
             code.append(JumpCondOp(True, endlabel))
-            code.append(CutOp(S, var))  
-            self.rec_comprehension(scope, code, iter[1:], startlabel, N, vars + [var], ctype)
+            code.append(CutOp(S, var, var2))  
+            self.rec_comprehension(scope, code, iter[1:], startlabel, N, ctype)
             code.append(JumpOp(startlabel))
             code.nextLabel(endlabel)
 
@@ -2401,7 +2411,7 @@ class AST:
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
             code.append(JumpCondOp(negate, pc))
-            self.rec_comprehension(scope, code, iter[1:], pc, N, vars, ctype)
+            self.rec_comprehension(scope, code, iter[1:], pc, N, ctype)
 
     def comprehension(self, scope, code, ctype):
         # Keep track of the size
@@ -2416,7 +2426,7 @@ class AST:
             code.append(PushOp((0, file, line, column)))
             code.append(StoreVarOp(N))
             code.append(PushOp((novalue, file, line, column)))
-        self.rec_comprehension(scope, code, self.iter, None, N, [], ctype)
+        self.rec_comprehension(scope, code, self.iter, None, N, ctype)
         # if ctype == { "bag", "list" }:
         #     code.append(DelVarOp(N))
 
@@ -2899,7 +2909,10 @@ class Rule:
             bv2 = None
         self.expect("for expression", lexeme == "in", t[0], "expected 'in'")
         (expr, t) = NaryRule(closers | { "where", "for" }).parse(t[1:])
-        return ((bv, bv2, expr), t)
+        if bv2 == None:
+            return ((bv, None, expr), t)
+        else:
+            return ((bv2, bv, expr), t)
 
     def whereParse(self, t, closers):
         return NaryRule(closers | { "for", "where" }).parse(t)

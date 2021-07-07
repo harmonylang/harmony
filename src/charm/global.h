@@ -116,7 +116,7 @@ struct access_info {
 
 struct env_Cut {
     uint64_t set;
-    struct var_tree *var;
+    struct var_tree *key, *value;
 };
 
 struct env_DelVar {
