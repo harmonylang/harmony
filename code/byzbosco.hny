@@ -8,8 +8,7 @@ network = bag.empty()
 decisions = {}
 
 def broadcast(msg):
-    atomic:
-        bag.add(?network, msg)
+    atomic: network = bag.f_add(network, msg)
 
 def receive(round, k):
     let msgs = { (r,e):c for (r,e):c in network where r == round }:
@@ -20,7 +19,7 @@ def process(proposal):
     for round in {0..NROUNDS-1}:
         select quorum in receive(round, N - F):
             let count = [ bag.count(quorum, (round, i)) for i in { 0..1 } ]:
-                assert(count[0] != count[1])
+                assert count[0] != count[1]
                 proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):
                     decisions |= { proposal }
