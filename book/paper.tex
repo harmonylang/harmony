@@ -6194,7 +6194,7 @@ pushing the current program counter and setting the program counter to
 $m$.  $m$ is supposed to leave the result on the stack.
 \item The \texttt{Frame} instruction pushes the value of the thread
 register (\emph{i.e.}, the values of the thread variables) onto the
-stack.  It initializes the \texttt{result} variable to the empty dictionary.
+stack.  It initializes the \texttt{result} variable to \texttt{None}.
 The \texttt{Return} instruction restores the thread register by popping
 its value of the stack.
 \item All method calls have exactly one argument, although it sometimes
@@ -6416,7 +6416,7 @@ Local variables all declared.  They can be declared in
 \texttt{def} statements (i.e., arguments),
 \texttt{let} statements, and in \texttt{for} loops.
 Also, each method has an implicitly declared
-\textit{result} variable.
+\textit{result} variable, which is initialized to \texttt{None}.
 Local variables are tightly scoped and cannot be shared
 between threads.
 While in theory one method can be declared within another,
