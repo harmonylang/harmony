@@ -2337,6 +2337,8 @@ class AST:
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
+    # TODO.  Can probably get rid of vars.  Was only needed for Delete
+    # TODO.  Implement Cut2
     def rec_comprehension(self, scope, code, iter, pc, N, vars, ctype):
         if iter == []:
             (lexeme, file, line, column) = self.token

@@ -38,6 +38,7 @@ struct var_tree {
 };
 
 static struct dict *ops_map, *f_map;
+static uint64_t underscore;
 extern struct code *code;
 
 bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
@@ -80,6 +81,9 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt,
                             uint64_t arg, uint64_t vars){
     switch (vt->type) {
     case VT_NAME:
+        if (vt->u.name == underscore) {
+            return vars;
+        }
         return dict_store(vars, vt->u.name, arg);
     case VT_TUPLE:
         if ((arg & VALUE_MASK) != VALUE_DICT) {
@@ -2905,6 +2909,7 @@ struct op_info *ops_get(char *opname, int size){
 void ops_init(){
     ops_map = dict_new(0);
     f_map = dict_new(0);
+	underscore = value_put_atom("_", 1);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
