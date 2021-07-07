@@ -3659,7 +3659,25 @@ class SelectAST(AST):
         return "Select(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        assert False
+        self.assign(scope, `self.bv)
+        looplabel = LabelValue(None, "select loop")
+        startlabel = LabelValue(None, "select start")
+        (lexeme, file, line, column) = self.ast_token
+        code.nextLabel(looplabel)
+        code.append(AtomicIncOp(True))
+        self.expr.compile(scope, code)
+        code.append(DupOp())
+        code.append(PushOp((SetValue(set()), file, line, column)))
+        code.append(NaryOp(("==", file, line, column), 2))
+        code.append(JumpCondOp(False, startlabel))
+        code.append(PopOp())
+        code.append(AtomicDecOp())
+        code.append(JumpOp(looplabel))
+        code.nextLabel(startlabel)
+        code.append(ChooseOp())
+        code.append(StoreVarOp(self.bv))
+        self.stat.compile(scope, code)
+        code.append(AtomicDecOp())
 
     def getLabels(self):
         return self.stat.getLabels()

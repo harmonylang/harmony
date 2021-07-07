@@ -26,10 +26,11 @@ def process(proposal):
             # Broadcast estimate
             broadcast(round, est)
 
-            let select = receive(round, N - F)
-            let count = [ bag.count(select, (round, i)) for i in { 0..1 } ]:
-                assert(count[0] != count[1])
-                est = 0 if count[0] < count[1] else 1
+            let quorum = receive(round, N - F)
+            let count = [ bag.count(quorum, (round, i)) for i in { 0..1 } ]:
+                assert (count[0] + count[1]) == (N - F)
+                assert count[0] != count[1]
+                est = 0 if count[0] > count[1] else 1
                 if count[est] == (N - F):
                     atomic:
                         decisions |= { est }

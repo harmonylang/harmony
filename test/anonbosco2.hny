@@ -21,7 +21,7 @@ def process(proposal):
         select quorum in receive(round, N - F):
             let count = [ bag.count(quorum, (round, i)) for i in { 0..1 } ]:
                 assert(count[0] != count[1])
-                proposal = 0 if count[0] < count[1] else 1
+                proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):
                     decisions |= { proposal }
                     assert len(decisions) <= 1
