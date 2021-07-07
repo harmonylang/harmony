@@ -2502,7 +2502,8 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t == "local":
             (lexeme, file, line, column) = v
-            code.append(PushOp((AddressValue([lexeme]), file, line, column)))
+            if lexeme != "_":
+                code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         elif t == "constant":
             (lexeme, file, line, column) = v
             raise HarmonyCompilerError(
@@ -2522,7 +2523,10 @@ class NameAST(AST):
             code.append(MoveOp(2))
         (t, v) = scope.lookup(self.name)
         if t == "local":
-            code.append(StoreVarOp(None, self.name[0]))
+            if self.name[0] == "_":
+                code.append(PopOp());
+            else:
+                code.append(StoreVarOp(None, self.name[0]))
         else:
             assert t == "global", (t, v)
             code.append(StoreOp(None, self.name, None))
@@ -3341,8 +3345,11 @@ class AssignmentAST(AST):
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
                 assert t in { "local", "global" }, (t, lvs.name)
-                st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
-                code.append(st)
+                if v[0] == "_":
+                    code.append(PopOp());
+                else:
+                    st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
+                    code.append(st)
             else:
                 lvs.ph2(scope, code, skip)
 
@@ -4893,6 +4900,8 @@ class Scope:
 
     def lookup(self, name):
         (lexeme, file, line, column) = name
+        if lexeme == "_":
+            return ("local", name)
         tv = self.names.get(lexeme)
         if tv != None:
             return tv
@@ -4907,7 +4916,7 @@ class Scope:
             ancestor = ancestor.parent
         # print("Warning: unknown name:", name, " (assuming global variable)")
         self.names[lexeme] = ("global", name)
-        return ("global", lexeme)
+        return ("global", name)
 
     def find(self, name):
         (lexeme, file, line, column) = name

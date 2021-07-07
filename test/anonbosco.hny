@@ -1,4 +1,4 @@
-import synch, bag, list
+import bag
 
 const F = 1
 const N = (3 * F) + 1

@@ -1,72 +1,67 @@
-import synch, bag, list
+import bag
 
 const F = 1
 const NACCEPTORS = (2 * F) + 1
 const NLEADERS = F + 1
-const NBALLOTS = 3
+const NBALLOTS = 2
 
 network = bag.empty()
 decisions = {}
 
-def broadcast(msg):
-    atomic:
-        bag.add(?network, msg)
-
-def acceptor_receive(received):
-    let msgs = bag.empty():
-        while bag.size(msgs) == 0:
-            atomic:
-                msgs = { (b,p,t,e):network[b,p,t,e]
-                    for b,p,t,e in keys(network)
-                        where ((b,p) not in received) and (t == .a) }
-        result = choose(keys(msgs))
-
-# Wait for k messages in the given ballot and phase
-def leader_receive(ballot, phase, k):
-    let msgs = bag.empty():
-        while bag.size(msgs) < k:
-            atomic:
-                msgs = { (b,p,t,e):network[b,p,t,e]
-                    for b,p,t,e in keys(network)
-                        where (b,p,t) == (ballot, phase, .b) }
-        result = choose(bag.combinations(msgs, k))
-
 def leader(ballot, proposal):
-    let est = proposal:
-        while ballot <= NBALLOTS:
-            # Broadcast ballot in phase 1a message
-            broadcast(ballot, 1, .a, None)
+    atomic:
+        bag.add(?network, (ballot, 1, .a, None))
+    while ballot <= NBALLOTS:
+        # Wait for Phase 1 messages
+        let done = False:
+            while not done:
+                atomic:
+                    let msgs = { (b,p,t,e):network[b,p,t,e]
+                            for b,p,t,e in keys(network)
+                                where (b,p,t) == (ballot, 1, .b) }:
+                        if bag.size(msgs) >= (NACCEPTORS - F):
+                            let select = choose(bag.combinations(msgs, NACCEPTORS - F))
+                            let accepted = { e for (b,p,t,e) in keys(select) where e != None }:
+                                if accepted != {}:
+                                    _, proposal = max(accepted)
 
-            # Wait until there are enough messages in the current ballot and phase
-            let select = leader_receive(ballot, 1, NACCEPTORS-F)
-            let accepted = { e for (b,p,t,e) in keys(select) where e != None }:
-                if accepted == {}:
-                    est = proposal
-                else:
-                    _, est = max(accepted)
+                            # Broadcast phase 2a message
+                            bag.add(?network, (ballot, 2, .a, proposal))
+                            done = True
 
-            # Broadcast estimate in phase 2
-            broadcast(ballot, 2, .a, est)
-
-            # Wait until there are enough messages in the current round and phase
-            let select = leader_receive(ballot, 2, NACCEPTORS-F):
-                if bag.count(select, (ballot, 2, .b, (ballot, est))) == (NACCEPTORS - F):
-                    atomic:
-                        decisions |= { est }
-                        assert len(decisions) <= 1
-
-            ballot += NLEADERS
+        # Wait for Phase 2 messages
+        let done = False:
+            while not done:
+                atomic:
+                    let msgs = { (b,p,t,e):network[b,p,t,e]
+                            for b,p,t,e in keys(network)
+                                where (b,p,t) == (ballot, 2, .b) }:
+                        if bag.size(msgs) >= (NACCEPTORS - F):
+                            let select = choose(bag.combinations(msgs, NACCEPTORS - F)):
+                                if bag.count(select, (ballot, 2, .b, (ballot, proposal))) == (NACCEPTORS - F):
+                                    decisions |= { proposal }
+                                    assert len(decisions) <= 1
+                            # Broadcast ballot in phase 1a message
+                            ballot += NLEADERS
+                            if ballot <= NBALLOTS:
+                                bag.add(?network, (ballot, 1, .a, None))
+                            done = True
 
 def acceptor():
     let ballot = 0 let last_accepted = None let received = {}:
         while len(received) < (NBALLOTS * 2):
-            let (b,p,t,e) = acceptor_receive(received):
-                received |= { (b, p) }
-                if b >= ballot:
-                    ballot = b
-                    if p == 2:
-                        last_accepted = (ballot, e)
-                broadcast(b, p, .b, last_accepted)
+            atomic:
+                let msgs = { (b,p,t,e):network[b,p,t,e]
+                        for b,p,t,e in keys(network)
+                        where ((b,p) not in received) and (t == .a) }:
+                    if bag.size(msgs) > 0:
+                        let (b,p,t,e) = choose(keys(msgs)):
+                            received |= { (b, p) }
+                            if b >= ballot:
+                                ballot = b
+                                if p == 2:
+                                    last_accepted = (ballot, e)
+                            bag.add(?network, (b, p, .b, last_accepted))
 
 let nzeroes = choose({0..NLEADERS/2}):
     for i in {0..NLEADERS-1}:
