@@ -259,6 +259,7 @@ def isreserved(s):
         "or",
         "pass",
         "print",
+        "select",
         "sequential",
         "setintlevel",
         "spawn",
@@ -2684,7 +2685,7 @@ class ListComprehensionAST(AST):
         self.token = token
 
     def __repr__(self):
-        return "ListComprehension(" + str(self.var) + ")"
+        return "ListComprehension(" + str(self.value) + ")"
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "list")
@@ -3505,7 +3506,7 @@ class IfAST(AST):
         self.stat = stat        # else statement
 
     def __repr__(self):
-        return "If(" + str(self.alts) + ", " + str(self.what) + ")"
+        return "If(" + str(self.alts) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         global labelcnt
@@ -3646,6 +3647,25 @@ class ForAST(AST):
 
     def getImports(self):
         return self.value.getImports()
+
+class SelectAST(AST):
+    def __init__(self, token, bv, expr, stat):
+        AST.__init__(self, token)
+        self.bv = bv
+        self.expr = expr
+        self.stat = stat
+
+    def __repr__(self):
+        return "Select(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        assert False
+
+    def getLabels(self):
+        return self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
 
 class AtomicAST(AST):
     def __init__(self, token, stat):
@@ -4228,6 +4248,13 @@ class StatementRule(Rule):
             (lst, t) = self.iterParse(t[1:], {":"})
             (stat, t) = StatListRule(column).parse(t[1:])
             return (ForAST(lst, stat, token), t)
+        if lexeme == "select":
+            (bv, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, nextColumn) = t[0]
+            self.expect("select statement", lexeme == "in", t[0], "expected 'in'")
+            (expr, t) = NaryRule({":"}).parse(t[1:])
+            (stat, t) = StatListRule(column).parse(t[1:])
+            return (SelectAST(token, bv, expr, stat), t)
         if lexeme == "let":
             vars = []
             while True:

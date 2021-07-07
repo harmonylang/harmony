@@ -1,4 +1,4 @@
-import synch, bag, list
+import bag
 
 const F = 1
 const N = (3 * F) + 1
@@ -11,35 +11,21 @@ def broadcast(msg):
     atomic:
         bag.add(?network, msg)
 
-def receive(round):
-    let receiving = True:
-        while receiving:
-            result = [0, 0]
-            atomic:
-                for r, e in keys(network) where r == round:
-                    result[e] = network[r, e]
-                receiving = list.sum(result) < (N - F)
+def receive(round, k):
+    let msgs = { (r,e):c for (r,e):c in network where r == round }:
+        result = bag.combinations(msgs, k)
 
 def process(proposal):
-    let est = proposal:
-        for round in {0..NROUNDS-1}:
-            # Broadcast estimate
-            broadcast(round, est)
-
-            # Wait until there are enough messages in the current round
-            let count = receive(round):
-                # choose the quorum to receive from
-                while list.sum(count) > (N - F):
-                    let choices = { i for i in [0, 1] where count[i] > 0 }:
-                        count[choose(choices)] -= 1
-
-                # Update estimate
+    broadcast(0, proposal)
+    for round in {0..NROUNDS-1}:
+        select quorum in receive(round, N - F):
+            let count = [ bag.count(quorum, (round, i)) for i in { 0..1 } ]:
                 assert(count[0] != count[1])
-                est = 0 if count[0] < count[1] else 1
-                if count[est] == (N - F):
-                    atomic:
-                        decisions |= { est }
-                        assert len(decisions) <= 1
+                proposal = 0 if count[0] < count[1] else 1
+                if count[proposal] == (N - F):
+                    decisions |= { proposal }
+                    assert len(decisions) <= 1
+                broadcast(round + 1, proposal)
 
 let nzeroes = choose({0..N/2}):
     for i in {0..N-1}:

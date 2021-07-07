@@ -765,8 +765,10 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
 
     uint64_t oldvars = (*pctx)->vars;
 
+    // Set result to None
+    (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_ADDRESS);
+
     // try to match against parameters
-    (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
