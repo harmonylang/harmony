@@ -38,7 +38,7 @@ struct var_tree {
 };
 
 static struct dict *ops_map, *f_map;
-static uint64_t underscore;
+static uint64_t underscore, this_atom;
 extern struct code *code;
 
 bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
@@ -949,19 +949,24 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
         size /= sizeof(uint64_t);
 
         if (!ind_tryload((*pctx)->vars, indices, size, &v)) {
-            ctx_failure(*pctx, "Loadvar: unknown address");
+            ctx_failure(*pctx, "LoadVar: unknown address");
             return;
         }
         ctx_push(pctx, v);
     }
     else {
-        if (!dict_tryload((*pctx)->vars, el->name, &v)) {
+        if (el->name == this_atom) {
+            ctx_push(pctx, (*pctx)->this);
+        }
+        else if (dict_tryload((*pctx)->vars, el->name, &v)) {
+            ctx_push(pctx, v);
+        }
+        else {
             char *p = value_string(el->name);
-            ctx_failure(*pctx, "Loadvar: unknown variable %s", p + 1);
+            ctx_failure(*pctx, "LoadVar: unknown variable %s", p + 1);
             free(p);
             return;
         }
-        ctx_push(pctx, v);
     }
     (*pctx)->pc++;
 }
@@ -1400,7 +1405,15 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        if (!ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars)) {
+        bool result;
+        if (indices[0] == this_atom) {
+            result = ind_trystore((*pctx)->this, &indices[1], size - 1, v, &(*pctx)->this);
+        }
+
+        else {
+            result = ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars);
+        }
+        if (!result) {
             char *x = indices_string(indices, size);
             ctx_failure(*pctx, "StoreVar: bad address: %s", x);
             free(x);
@@ -2926,6 +2939,7 @@ void ops_init(){
     ops_map = dict_new(0);
     f_map = dict_new(0);
 	underscore = value_put_atom("_", 1);
+	this_atom = value_put_atom("this", 4);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dict_insert(ops_map, oi->name, strlen(oi->name));

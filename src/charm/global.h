@@ -33,7 +33,7 @@ struct context {     // context value
     uint64_t entry;       // entry point of main method
     uint64_t arg;         // argument provided to spawn
     uint64_t this;        // thread-local state
-    uint64_t vars;        // local variables
+    uint64_t vars;        // method-local variables
     uint64_t trap_pc;     // trap program counter
     uint64_t trap_arg;    // trap argument
     uint64_t failure;     // atom value describing failure, or 0 if no failure
@@ -46,7 +46,7 @@ struct context {     // context value
     bool stopped;         // context is stopped
     bool terminated;      // context has terminated
     int sp;               // stack size
-    uint64_t stack[0];
+    uint64_t stack[0];    // growing stack
 };
 
 struct state {

@@ -1368,7 +1368,7 @@ int main(int argc, char **argv){
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
-    init_ctx->vars = dict_store(VALUE_DICT, this, VALUE_DICT);
+    init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
     ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
