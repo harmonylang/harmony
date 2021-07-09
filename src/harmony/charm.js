@@ -274,7 +274,7 @@ function handleKeyPress(e) {
         var cloc = getCode(microsteps[currentTime].pc);
         while (++currentTime < totalTime) {
           var nloc = getCode(microsteps[currentTime].pc);
-          if (nloc != cloc) {
+          if (nloc.file != cloc.file || nloc.line != cloc.line || nloc.code != cloc.code) {
             break;
           }
         }
