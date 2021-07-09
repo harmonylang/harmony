@@ -967,6 +967,10 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
 
         bool result;
         if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "LoadVar: 'this' is not a dictionary");
+                return;
+            }
             result = ind_tryload((*pctx)->this, &indices[1], size - 1, &v);
         }
         else {
@@ -1433,6 +1437,10 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
 
         bool result;
         if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "StoreVar: 'this' is not a dictionary");
+                return;
+            }
             result = ind_trystore((*pctx)->this, &indices[1], size - 1, v, &(*pctx)->this);
         }
 
