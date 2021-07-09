@@ -5,6 +5,7 @@ const N = (3 * F) + 1
 const NROUNDS = 3
 
 network = bag.empty()
+proposals = [ choose({0, 1}) for i in { 1 .. N } ]
 decisions = {}
 
 def broadcast(msg):
@@ -22,9 +23,10 @@ def process(proposal):
                 assert count[0] != count[1]
                 proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):
+                    assert proposal in proposals    # validity
                     decisions |= { proposal }
-                    assert len(decisions) <= 1
+                    assert len(decisions) <= 1      # agreement
                 broadcast(round + 1, proposal)
 
-for i in {1..N}:
-    spawn process(choose({0, 1}))
+for i in {0..N-1}:
+    spawn process(proposals[i])

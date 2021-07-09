@@ -8,63 +8,45 @@ const NBALLOTS = 2
 network = bag.empty()
 decisions = {}
 
+def send(m):
+    atomic: bag.add(?network, m)
+
+def receive(ballot, phase):
+    let msgs = { (b,p,t,e):c for (b,p,t,e):c in network
+                        where (b,p,t) == (ballot, phase, .B) }:
+        result = bag.combinations(msgs, NACCEPTORS - F)
+
 def leader(ballot, proposal):
-    atomic:
-        bag.add(?network, (ballot, 1, .a, None))
+    send(ballot, 1, .A, None)
+
     while ballot <= NBALLOTS:
-        # Wait for Phase 1 messages
-        let done = False:
-            while not done:
-                atomic:
-                    let msgs = { (b,p,t,e):network[b,p,t,e]
-                            for b,p,t,e in keys(network)
-                                where (b,p,t) == (ballot, 1, .b) }:
-                        if bag.size(msgs) >= (NACCEPTORS - F):
-                            let select = choose(bag.combinations(msgs, NACCEPTORS - F))
-                            let accepted = { e for (b,p,t,e) in keys(select) where e != None }:
-                                if accepted != {}:
-                                    _, proposal = max(accepted)
-
-                            # Broadcast phase 2a message
-                            bag.add(?network, (ballot, 2, .a, proposal))
-                            done = True
-
-        # Wait for Phase 2 messages
-        let done = False:
-            while not done:
-                atomic:
-                    let msgs = { (b,p,t,e):network[b,p,t,e]
-                            for b,p,t,e in keys(network)
-                                where (b,p,t) == (ballot, 2, .b) }:
-                        if bag.size(msgs) >= (NACCEPTORS - F):
-                            let select = choose(bag.combinations(msgs, NACCEPTORS - F)):
-                                if bag.count(select, (ballot, 2, .b, (ballot, proposal))) == (NACCEPTORS - F):
-                                    decisions |= { proposal }
-                                    assert len(decisions) <= 1
-                            # Broadcast ballot in phase 1a message
-                            ballot += NLEADERS
-                            if ballot <= NBALLOTS:
-                                bag.add(?network, (ballot, 1, .a, None))
-                            done = True
+        select quorum in receive(ballot, 1):
+            let accepted = { e for (b,p,t,e) in keys(quorum) where e != None }:
+                if accepted != {}:
+                    _, proposal = max(accepted)
+            send(ballot, 2, .A, proposal)
+        select quorum in receive(ballot, 2):
+            if bag.count(quorum, (ballot, 2, .B, (ballot, proposal))) == (NACCEPTORS - F):
+                decisions |= { proposal }
+                assert len(decisions) <= 1
+            ballot += NLEADERS
+            if ballot <= NBALLOTS:
+                send(ballot, 1, .A, None)
 
 def acceptor():
     let ballot = 0 let last_accepted = None let received = {}:
         while len(received) < (NBALLOTS * 2):
-            atomic:
-                let msgs = { (b,p,t,e):network[b,p,t,e]
-                        for b,p,t,e in keys(network)
-                        where ((b,p) not in received) and (t == .a) }:
-                    if bag.size(msgs) > 0:
-                        let (b,p,t,e) = choose(keys(msgs)):
-                            received |= { (b, p) }
-                            if b >= ballot:
-                                ballot = b
-                                if p == 2:
-                                    last_accepted = (ballot, e)
-                            bag.add(?network, (b, p, .b, last_accepted))
+            select b,p,t,e in { (b,p,t,e) for b,p,t,e:c in network
+                        where ((b,p) not in received) and (t == .A) }:
+                received |= { (b, p) }
+                if b >= ballot:
+                    ballot = b
+                    if p == 2:
+                        last_accepted = (ballot, e)
+                send(b, p, .B, last_accepted)
 
 let nzeroes = choose({0..NLEADERS/2}):
-    for i in {0..NLEADERS-1}:
-        spawn leader(i+1, 0 if i < nzeroes else 1)
-for i in {0..NACCEPTORS-1}:
+    for i in {1..NLEADERS}:
+        spawn leader(i, i <= nzeroes)
+for i in {1..NACCEPTORS}:
     spawn acceptor()
