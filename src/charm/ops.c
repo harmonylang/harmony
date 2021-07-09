@@ -725,7 +725,18 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-		if (!ind_remove((*pctx)->vars, indices, size, &(*pctx)->vars)) {
+        bool result;
+        if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "DelVar: 'this' is not a dictionary");
+                return;
+            }
+		    result = ind_remove((*pctx)->this, &indices[1], size - 1, &(*pctx)->this);
+        }
+        else {
+		    result = ind_remove((*pctx)->vars, indices, size, &(*pctx)->vars);
+        }
+        if (!result) {
             char *x = indices_string(indices, size);
             ctx_failure(*pctx, "DelVar: bad address: %s", x);
             free(x);
@@ -733,7 +744,13 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx){
 		}
     }
 	else {
-		(*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
+        if (ed->name == this_atom) {
+            ctx_failure(*pctx, "DelVar: can't del 'this'");
+            return;
+        }
+        else {
+            (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
+        }
 	}
 	(*pctx)->pc++;
 }
@@ -948,8 +965,17 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        if (!ind_tryload((*pctx)->vars, indices, size, &v)) {
-            ctx_failure(*pctx, "LoadVar: unknown address");
+        bool result;
+        if (indices[0] == this_atom) {
+            result = ind_tryload((*pctx)->this, &indices[1], size - 1, &v);
+        }
+        else {
+            result = ind_tryload((*pctx)->vars, indices, size, &v);
+        }
+        if (!result) {
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "LoadVar: bad address: %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);
@@ -1422,9 +1448,15 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc++;
     }
     else {
-        var_match(*pctx, es->args, v);
-        if ((*pctx)->failure == 0) {
+        if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
+            (*pctx)->this = v;
             (*pctx)->pc++;
+        }
+        else {
+            var_match(*pctx, es->args, v);
+            if ((*pctx)->failure == 0) {
+                (*pctx)->pc++;
+            }
         }
     }
 }

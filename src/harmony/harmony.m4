@@ -2170,6 +2170,7 @@ class Code:
         self.endlabels.add(endlabel)
 
     def delete(self, var):
+        assert False        # TODO: I think this code is obsolete
         if isinstance(var, tuple):
             self.append(DelVarOp(var))  # remove variable
         else:
@@ -2241,13 +2242,11 @@ class Code:
             lop.pre_del = set()
             for pred in lop.pred:
                 plop = self.labeled_ops[pred]
-                live_out = plop.live_out
-                # if not isinstance(plop.op, DelVarOp):
-                live_out |= plop.op.define()
+                live_out = plop.live_out | plop.op.define()
                 lop.pre_del |= live_out - lop.live_in
 
             labels = lop.labels
-            for d in lop.pre_del:
+            for d in lop.pre_del - { 'this' }:
                 newcode.append(DelVarOp((d, None, None, None)), file, line, labels)
                 labels = set()
             newcode.append(lop.op, file, line, labels)
@@ -2257,7 +2256,7 @@ class Code:
             # TODO.  Can optimize StoreVar by replacing it with Pop
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
-            for d in lop.post_del:
+            for d in lop.post_del - { 'this' }:
                 newcode.append(DelVarOp((d, None, None, None)), file, line)
 
         return newcode
@@ -2296,7 +2295,7 @@ class AST:
                 self.assign(scope, v)
 
     def delete(self, scope, code, var):
-        assert False
+        assert False        # TODO: I think this is obsolete
         if isinstance(var, tuple):
             code.append(DelVarOp(var))  # remove variable
             (lexeme, file, line, column) = var
