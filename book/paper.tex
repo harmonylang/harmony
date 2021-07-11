@@ -5893,7 +5893,7 @@ Harmony currently supports the following statements:
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
+\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set or dictionary,
                             \texttt{S} a list of statements\\
 \hline
 \texttt{from m import ...} & \texttt{m} identifies a module \\
@@ -5907,6 +5907,9 @@ Harmony currently supports the following statements:
 \texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
 \hline
 \texttt{pass} & do nothing\\
+\hline
+\texttt{select $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
+                            \texttt{S} a list of statements\\
 \hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
