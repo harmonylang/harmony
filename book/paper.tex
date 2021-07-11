@@ -5630,7 +5630,7 @@ If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
 
-Dictionaries support comprehension.  The  basic form is:
+Dictionaries support comprehension.  The basic form is:
 \texttt{\{ f($k$):g($k$) for $k$ in $s$ \}}.
 
 There are various special cases of dictionaries,
@@ -5965,9 +5965,11 @@ multisets:
 \hline
 \texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
 \hline
-\texttt{add}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
+\texttt{add}($b$, $e$) & add one copy of $e$ to bag $b$ \\
 \hline
-\texttt{remove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
+\texttt{remove}($b$, $e$) & remove one copy of $e$ from bag $b$ \\
+\hline
+\texttt{combinations}($b$, $k$) & return set of all \emph{subbags} of size $k$ \\
 \hline
 \end{tabular}
 
@@ -6047,6 +6049,12 @@ implements the following methods:
 \texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
 \hline
 \texttt{issuperset($s$, $t$)} & returns whether $s$ is a superset of $t$ \\
+\hline
+\texttt{add}($s$, $e$) & returns $s \cup \{ e \}$ \\
+\hline
+\texttt{remove}($s$, $e$) & returns $s - \{ e \}$ \\
+\hline
+\texttt{combinations}($b$, $k$) & returns set of all subsets of size $k$ \\
 \hline
 \end{tabular}
 
@@ -6551,6 +6559,11 @@ For example:
 \texttt{for} $i$ in \{ 1..10 \}
 \texttt{for} $j$ in \{ 1..10 \}
 \texttt{where} $i < j$: ...
+\end{code}
+
+In case of dictionaries, you can access both keys and values:
+\begin{code}
+\texttt{for} $k:v$ in \{ .a: 1, .b: 2 \}: ...
 \end{code}
 
 Harmony also supports set, list, and dictionary comprehensions.
