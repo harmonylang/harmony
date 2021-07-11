@@ -89,6 +89,7 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "select",
         "sequential",
         "setintlevel",
         "spawn",

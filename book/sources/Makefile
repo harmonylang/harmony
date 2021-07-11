@@ -41,6 +41,7 @@ CODE = \
     barrier.tex \
     barrier1.tex \
     barriertest.tex \
+    bosco.tex \
     clock.tex \
     counter.tex \
     cs.tex \
@@ -63,6 +64,7 @@ CODE = \
     naiveLock.tex \
     naiveTurn.tex \
     oo.tex \
+    paxos.tex \
     prog1.tex \
     prog2.tex \
     qbarrier.tex \
