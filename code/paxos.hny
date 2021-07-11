@@ -9,7 +9,7 @@ network = bag.empty()
 decisions = {}
 
 def send(m):
-    atomic: bag.add(?network, m)
+    atomic: network = bag.add(network, m)
 
 def receive(ballot, phase):
     let msgs = { (b,p,t,e):c for (b,p,t,e):c in network

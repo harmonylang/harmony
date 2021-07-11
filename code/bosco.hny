@@ -9,7 +9,7 @@ proposals = [ choose({0, 1}) for i in { 1 .. N } ]
 decisions = {}
 
 def broadcast(msg):
-    atomic: network = bag.f_add(network, msg)
+    atomic: network = bag.add(network, msg)
 
 def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:

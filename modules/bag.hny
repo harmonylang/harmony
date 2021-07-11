@@ -36,14 +36,7 @@ def bchoose(bg):
     assert 0 not in bg
     result = choose(keys(bg))
 
-def add(pb, elt):
-    assert 0 not in !pb
-    if elt in keys(!pb):
-        (!pb)[elt] += 1
-    else:
-        (!pb)[elt] = 1
-
-def f_add(bg, elt):
+def add(bg, elt):
     assert 0 not in bg
     result = bg
     if elt in keys(result):
@@ -51,14 +44,7 @@ def f_add(bg, elt):
     else:
         result[elt] = 1
 
-def remove(pb, elt):
-    assert 0 not in !pb
-    if (elt in keys(!pb)) and ((!pb)[elt] > 0):
-        (!pb)[elt] -= 1
-    if (!pb)[elt] <= 0:
-        del (!pb)[elt]
-
-def f_remove(bg, elt):
+def remove(bg, elt):
     assert 0 not in bg
     result = bg
     if (elt in keys(result)) and (result[elt] > 0):
@@ -77,6 +63,6 @@ def combinations(bg, k):
             elif k == n:
                 result = { bg }
             else:
-                let hd = bmin(bg) let tl = f_remove(bg, hd):
-                    result = { f_add(x, hd) for x in combinations(tl, k - 1) }
+                let hd = bmin(bg) let tl = remove(bg, hd):
+                    result = { add(x, hd) for x in combinations(tl, k - 1) }
                                 | combinations(tl, k)

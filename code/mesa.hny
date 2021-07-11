@@ -5,7 +5,7 @@ def wait(c, lk):
     let blocked, cnt, ctx = True, 0, get_context():
         atomic:
             cnt = bag.count(!c, ctx)
-            bag.add(c, ctx)
+            !c = bag.add(!c, ctx)
             !lk = False
         while blocked:
             atomic:
@@ -16,7 +16,7 @@ def wait(c, lk):
 def notify(c):
     atomic:
         if !c != bag.empty():
-            bag.remove(c, bag.bchoose(!c))
+            !c = bag.remove(!c, bag.bchoose(!c))
         
 def notifyAll(c):
     !c = bag.empty()
