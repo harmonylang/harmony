@@ -15,7 +15,7 @@ def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:
         result = bag.combinations(msgs, k)
 
-def process(proposal):
+def processor(proposal):
     broadcast(0, proposal)
     for round in {0..NROUNDS-1}:
         select quorum in receive(round, N - F):
@@ -29,4 +29,4 @@ def process(proposal):
                 broadcast(round + 1, proposal)
 
 for i in {0..N-1}:
-    spawn process(proposals[i])
+    spawn processor(proposals[i])

@@ -734,7 +734,8 @@ What would the value of \textit{count} be at the end of that execution?
 \item Before you run the program, what do you think will happen?  Is the
 program correct in that \textit{count} will always end up being 2?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
-underlying machine architecture are atomic (indivisible)---in fact they are.)
+underlying virtual machine architecture are atomic (indivisible)---in fact
+they are.)
 \end{itemize}
 \end{quote}
 
@@ -879,6 +880,12 @@ which in turn is executed by the Harmony virtual machine (HVM).
 \index{virtual machine}%
 \index{Harmony Virtual Machine}%
 \index{HVM}%
+The Harmony compiler places the bytecode for file $x$.\texttt{htm} in
+file $x$.\texttt{hvm}.
+The model checker, called \emph{Charm}, places its output in a file
+called $x$.\texttt{hco} and a stylized version of the same output
+in an HTML file called $x$.\texttt{htm}.
+
 To understand the problem of concurrent computing, it
 is important to have a basic understanding of machine instructions,
 and in our case those of the HVM.
@@ -5410,9 +5417,104 @@ for each client, or solve the problem using a single pair of channels.
 \begin{code}
 \harmonysource{bosco}
 \end{code}
-\caption{\harmonylink{code/bosco.hny} A simple fault-tolerant consensus protocol.}
+\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol.}
 \label{fig:bosco}
 \end{figure}
+
+Distributed consensus is the problem of having a collection of processors agree
+on a single value over a network.  This often has to be done in adverse circumstances,
+for example in the face of processor failures.
+In Harmony, processors can be modeled by threads and there are a variety of ways in
+which one can model a network using shared variables.
+In this chapter, we will present a simple consensus algorithm that can tolerate
+fewer than $1/3^{rd}$ of processors failing by crashing.
+
+More precisely, we will
+define a constant \texttt{F} that contains the maximum number of failures, and
+assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
+Each processor \emph{proposes} a value, which we assume here is from the
+set \{ 0, 1 \}.
+By the definition of consensus, we want the following two propertiew:
+\begin{enumerate}
+\item Validity: a processor can only decide a value that has been proposed;
+\item Agreement: if two processors decide, they decide the same value.
+\end{enumerate}
+The consensus problem is surprisingly tricky to solve in the face of processor
+failures.
+
+We will model the network as a bag (aka multiset) of messages.  The bag itself is
+modeled in Harmony as a dictionary that maps unique elements in the bag to their
+multiplicity.  So, for example, $\{ .\texttt{a}:1, .\texttt{b}:2 \}$ is the bag that consists of
+one $.\texttt{a}$ and two copies of $.\texttt{b}$.
+The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy functions on bags.
+In this particular algorithm, all messages are broadcast to all processors, so they do
+not require a destination address.
+
+\autoref{fig:bosco} presents our algorithm.  Besides the network variable, we will use a
+shared list of proposals and a shared set of decisions.  The invariants we want to maintain
+on those variables is that $\textit{decisions} \subseteq \textit{proposals}$
+and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions} is
+$\emptyset$, the invariants clearly hold initially.
+
+The $N$ processors after go through a sequence of \emph{rounds} in which they wait for
+$\texttt{N} - \texttt{F}$ messages, update their state based on the messages, and
+broadcast a new messages containing their new state.
+The reason that a processor waits for $\texttt{N} - \texttt{F}$ rather than \texttt{N}
+messages is because of failures: up to $\texttt{F}$ processors may never send a message
+and so it would be unwise to wait for all $\texttt{N}$.  You might be tempted to use
+a timer and time out on waiting for a particular processor.  But how would you initialize
+that timer?  While we will assume that the network is reliable, there is no guarantee
+on that messages arrive within a particular time.
+We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
+A quorum must suffice for the algorithm to make progress.
+
+The state of a processor consists
+of its current round number and proposal.  Therefore, messages consist of a tuple containing
+a round number and a proposal. To start things, each processor first
+broadcasts its initial round number (0) and proposal.
+The number of rounds that are necessary to achieve consensus is not bounded.  But
+Harmony can only check finite models, so there is a constant \texttt{NROUNDS} that
+limits the number of rounds.  It may be that no decisions are made, but that does not
+violate either Validity or Agreement.  We only check that \emph{if} decisions are
+made, they satisfy Validity and Agreement.
+
+\index{select statement}%
+In Line~21, a processor waits for $\texttt{N} - \texttt{F}$ messages using
+the Harmony \textbf{select} statement.
+This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
+where $s$ is a set and $v$ is variable that is bound to an element of $s$.
+The important properties of a \textbf{select} statement are as follows:
+\begin{itemize}
+\item it waits until $s$ is non-empty;
+\item it is executed atomically;
+\item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
+\end{itemize}
+
+Since Harmony has to check all possible executions of the protocol, the
+\texttt{receive}(\textit{round}, $k$) method returns all \emph{subbags} of messages
+for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method uses a
+dictionary comprehension to filter out all messages for the given \textit{round}
+and then uses the \texttt{bag.combinations} method to find all combinations of size $k$.
+The \textbf{select} statement waits until there is at least one such combination and
+then chooses an element that is bound to the \textit{quorum} variable.
+The body of the \textbf{select} statement is then executed atomically.
+This is usually how distributed algorithms are modeled, because they can only interact
+through the network.  There is no need to interleave the different processes other
+than when messages are delivered.  By executing the body atomically, a lot of
+unnecessary interleavings are avoided and this reduces the state space that must
+be explored by the model checker significantly.
+
+The body of the \textbf{select} statement contains the core of the algorithm.
+Note that $\texttt{N} - \texttt{F} = 2\texttt{F} + 1$, so that the number of
+messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
+must exist a majority of zeroes or ones.  Variable \textit{count}[0] stores the number
+of zeroes and \texttt{count}[1] stores the number of ones received in the round.
+The rules of the algorithm are simple:
+\begin{itemize}
+\item update \textit{proposal} to be the majority value;
+\item if the quorum was unanimous, decide the value.
+\end{itemize}
+After that, proceed with the next round.
 
 \chapter{Paxos}
 \label{ch:paxos}
