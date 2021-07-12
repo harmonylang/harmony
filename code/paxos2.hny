@@ -1,3 +1,10 @@
+import bag
+
+const F = 1
+const NACCEPTORS = (2 * F) + 1
+const NLEADERS = F + 1
+const NBALLOTS = 2
+
 def leader(ballot, proposal):
     send(ballot, 1, .A, None)
 

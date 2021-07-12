@@ -5565,10 +5565,41 @@ Different leaders are in charge of different ballot numbers.
 Leaders broadcast ``Type A''
 messages to the acceptors, which respond point-to-point with ``Type B'' messages.
 
-\autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for this Paxos protocol.
-A leader first broadcasts a ``p1a'' message (Phase 1, Type A) to the acceptors
-containing only the ballot number and then waits for $\texttt{N} - \texttt{F}$ ``p1b''
-responses from the acceptors.
+\autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for
+this Paxos protocol.  Paxos is perhaps best understood starting
+with the second phase.  At the end of the first phase the leader
+broadcasts a \texttt{2.A} message (Phase 2, Type A) to the acceptors
+containing the ballot number and a proposal and then waits for
+$\texttt{N} - \texttt{F}$ matching \texttt{2.B} responses from the
+acceptors.  If each response contains the ballot number and the
+proposal, then the proposal is deemed decided.  But one or more of
+the responses can contain a higher ballot number, in which case the
+leader has to try again with an even higher ballot number.
+
+It is not possible that an acceptor responds with a smaller ballot
+number.  This is because acceptors maintain two state variables.
+One is \textit{ballot}, the highest ballot number they have seen.
+Second is a variable called \textit{last\_accepted} that, if not
+\texttt{None}, contains the last proposal the acceptor has
+\emph{accepted} and the corresponding ballot number.  The acceptor
+also contains a set \emph{received} that contains (ballot, phase)
+tuples identifiying all rounds that the ballot has already participated
+in.  An acceptor waits for a message for a round that is not in
+\emph{received}.  If its ballot number is higher than what it has
+seen before, the acceptor moves into that ballot.  If the phase is
+2, then the acceptor accepts the proposal and remembers when it did
+so by saving the (ballot, proposal) tuple in \textit{last\_accepted}.
+In all cases, the acceptor responds with the current values of
+\textit{ballot} and \textit{last\_accepted}.
+
+In its first phase, a leader of a ballot must come up with a proposal that
+cannot conflict with a proposal of an earlier ballot that may already
+have been decided.  To this end, the leader broadcasts a \texttt{2.A}
+message to the acceptors and awaits their \textit{last\_accepted}
+values.  If all acceptors respond with \texttt{None}, then the leader
+is free to choose its own proposal.  Otherwise the leader updates
+its proposal with the one corresponding to the highest ballot number.
+The leader then moves on to the second round.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
@@ -5993,6 +6024,8 @@ the expression \texttt{($!a$).v}.
 
 A context value captures the state of a thread.
 A context is itself composed over various Harmony values.
+
+\begin{comment}
 Some of these values can be extracted.  In particular, if $c$
 is a context, then:
 
@@ -6027,12 +6060,17 @@ The possible modes of a context are as follows:
 \hline
 \end{tabular}
 \end{center}
+\end{comment}
 
 A thread can call \texttt{get\_context()} to retrieve its current
-context.  Also, the function \texttt{contexts()} returns a
+context.
+
+\begin{comment}
+Also, the function \texttt{contexts()} returns a
 bag of all contexts (including terminated ones).
 Both these functions should only be called in \texttt{atomic} mode
 and used for checking invariants.
+\end{comment}
 
 \chapter{List of Statements}
 
