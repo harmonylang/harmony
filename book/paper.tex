@@ -15,7 +15,7 @@
 \usepackage{etoolbox}
 % \usepackage{bold-extra}
 \usepackage{xcolor}
-\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=violet]{hyperref}
 \def\itemautorefname{Exercise}%
 \def\chapterautorefname{Chapter}%
 \def\figureautorefname{Figure}%
@@ -5434,10 +5434,10 @@ define a constant \texttt{F} that contains the maximum number of failures, and
 assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here is from the
 set \{ 0, 1 \}.
-By the definition of consensus, we want the following two propertiew:
+By the definition of consensus, we want the following two properties:
 \begin{enumerate}
-\item Validity: a processor can only decide a value that has been proposed;
-\item Agreement: if two processors decide, they decide the same value.
+\item \emph{Validity}: a processor can only decide a value that has been proposed;
+\item \emph{Agreement}: if two processors decide, they decide the same value.
 \end{enumerate}
 The consensus problem is surprisingly tricky to solve in the face of processor
 failures.
@@ -5450,21 +5450,21 @@ The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy functions
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
 
-\autoref{fig:bosco} presents our algorithm.  Besides the network variable, we will use a
+\autoref{fig:bosco} presents our algorithm.  Besides the network variable, it uses a
 shared list of proposals and a shared set of decisions.  The invariants we want to maintain
 on those variables is that $\textit{decisions} \subseteq \textit{proposals}$
 and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions} is
 $\emptyset$, the invariants clearly hold initially.
 
-The $N$ processors after go through a sequence of \emph{rounds} in which they wait for
+The $N$ processors go through a sequence of \emph{rounds} in which they wait for
 $\texttt{N} - \texttt{F}$ messages, update their state based on the messages, and
-broadcast a new messages containing their new state.
+broadcast messages containing their new state.
 The reason that a processor waits for $\texttt{N} - \texttt{F}$ rather than \texttt{N}
 messages is because of failures: up to $\texttt{F}$ processors may never send a message
 and so it would be unwise to wait for all $\texttt{N}$.  You might be tempted to use
 a timer and time out on waiting for a particular processor.  But how would you initialize
 that timer?  While we will assume that the network is reliable, there is no guarantee
-on that messages arrive within a particular time.
+that messages arrive within a particular time.
 We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
@@ -5483,7 +5483,7 @@ In Line~21, a processor waits for $\texttt{N} - \texttt{F}$ messages using
 the Harmony \textbf{select} statement.
 This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
 where $s$ is a set and $v$ is variable that is bound to an element of $s$.
-The important properties of a \textbf{select} statement are as follows:
+The important properties of this \textbf{select} statement are as follows:
 \begin{itemize}
 \item it waits until $s$ is non-empty;
 \item it is executed atomically;
@@ -5496,7 +5496,7 @@ for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method us
 dictionary comprehension to filter out all messages for the given \textit{round}
 and then uses the \texttt{bag.combinations} method to find all combinations of size $k$.
 The \textbf{select} statement waits until there is at least one such combination and
-then chooses an element that is bound to the \textit{quorum} variable.
+then chooses an element, which is bound to the \textit{quorum} variable.
 The body of the \textbf{select} statement is then executed atomically.
 This is usually how distributed algorithms are modeled, because they can only interact
 through the network.  There is no need to interleave the different processes other
@@ -5512,20 +5512,59 @@ of zeroes and \texttt{count}[1] stores the number of ones received in the round.
 The rules of the algorithm are simple:
 \begin{itemize}
 \item update \textit{proposal} to be the majority value;
-\item if the quorum was unanimous, decide the value.
+\item if the quorum is unanimous, decide the value.
 \end{itemize}
 After that, proceed with the next round.
+
+One may wonder how failures can occur in this model.  They are not explicitly modeled, but
+Harmony tries every possible execution, including executions in which some processors make
+no execution steps unless there are no other processors that can run.  The way this algorithm
+works, this includes executions in which $\texttt{N} - \texttt{F}$ processors terminate
+before the remaining $\texttt{F}$ processors start executing.  To the first set of processors,
+this is indistinguishable from executions in which the last set of processors have failed.
 
 \chapter{Paxos}
 \label{ch:paxos}
 
 \begin{figure}
 \begin{code}
-\harmonysource{paxos}
+\harmonysource{paxos1}
 \end{code}
-\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol.}
-\label{fig:paxos}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 1.}
+\label{fig:paxos1}
 \end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{paxos2}
+\end{code}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 2.}
+\label{fig:paxos2}
+\end{figure}
+
+Paxos~\cite{Paxos} is the most well-known family of consensus protocols for
+environments in which few or no assumptions are made about timing.
+In this chapter we present a basic version of a Paxos protocol, one that is
+\emph{single-decree} (only tries to make a single decision).
+It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
+In order to tolerate \texttt{F} crash failures, you need at least $\texttt{F}+1$ leaders
+and $2\texttt{F} + 1$ acceptors, but leaders and acceptors can be colocated, so
+in total only $2\texttt{F} + 1$ independently failing processors are needed.
+Here we provide only a rudimentary introduction to Paxos; for more detailed
+information refer to~\cite{Paxos}.
+
+As in the consensus protocol of \autoref{ch:consensus}, Paxos uses rounds of messaging.
+However, Paxos uses two kinds of rounds: ``Phase 1'' and ``Phase 2'' rounds.
+The communication pattern is also different.  Rounds are identified by a so-called
+\emph{ballot number} combined with the phase number.
+Different leaders are in charge of different ballot numbers.
+Leaders broadcast ``Type A''
+messages to the acceptors, which respond point-to-point with ``Type B'' messages.
+
+\autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for this Paxos protocol.
+A leader first broadcasts a ``p1a'' message (Phase 1, Type A) to the acceptors
+containing only the ballot number and then waits for $\texttt{N} - \texttt{F}$ ``p1b''
+responses from the acceptors.
 
 \bibliographystyle{alpha}
 \bibliography{paper}

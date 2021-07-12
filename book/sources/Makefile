@@ -65,6 +65,8 @@ CODE = \
     naiveTurn.tex \
     oo.tex \
     paxos.tex \
+    paxos1.tex \
+    paxos2.tex \
     prog1.tex \
     prog2.tex \
     qbarrier.tex \
