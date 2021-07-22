@@ -5615,12 +5615,30 @@ In all cases, the acceptor responds with the current values of
 In its first phase, a leader of a ballot must come up with a proposal that
 cannot conflict with a proposal of an earlier ballot that may already
 have been decided.  To this end, the leader broadcasts a \texttt{2.A}
-message to the acceptors and awaits $\mathit{N} - \mathit{F}$ of their
+message to the acceptors and awaits $\mathtt{N} - \mathtt{F}$ of their
 \textit{last\_accepted}
 values.  If all those acceptors responded with \texttt{None}, then the leader
 is free to choose its own proposal.  Otherwise the leader updates
 its proposal with the one corresponding to the highest ballot number.
 The leader then moves on to the second round.
+
+In the initialization, the \texttt{proposals} variable is initialized
+to either $[\mathtt{False}, \mathtt{False}]$ or
+to $[\mathtt{True}, \mathtt{False}]$ (in case $\texttt{NBALLOTS} = 2$).
+The other combinations of \texttt{True} and \texttt{False} are symmetric,
+so there is no need to run the model checker through those scenarios as
+well, halving the running time.
+
+\section*{Exercises}
+\begin{problems}
+\item Perhaps the trickiest detail of the algorithm is that, in Line~14
+of \autoref{fig:paxos2}, the leader selects the proposal with the highest
+ballot number it receives.  Change the \texttt{max} operator in that statement
+with \texttt{choose} and see if it finds a problem.  First try with
+$\texttt{NBALLOTS} = 2$ and then with $\texttt{NBALLOTS} = 3$.
+(Warning, the latter may take a long time.)  If it finds a problem,
+analyze the output and see what went wrong.
+\end{problems}
 
 \bibliographystyle{alpha}
 \bibliography{paper}
