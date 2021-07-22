@@ -5633,7 +5633,7 @@ well, halving the running time.
 \begin{problems}
 \item Perhaps the trickiest detail of the algorithm is that, in Line~14
 of \autoref{fig:paxos2}, the leader selects the proposal with the highest
-ballot number it receives.  Change the \texttt{max} operator in that statement
+ballot number it receives.  Replace the \texttt{max} operator in that statement
 with \texttt{choose} and see if it finds a problem.  First try with
 $\texttt{NBALLOTS} = 2$ and then with $\texttt{NBALLOTS} = 3$.
 (Warning, the latter may take a long time.)  If it finds a problem,
