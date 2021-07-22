@@ -6032,10 +6032,10 @@ You can create lambda functions similarly to Python.  For example:
 
 In Harmony, each shared variable has an address, which is essentially
 a list of Harmony values.
-For example, the address of variable \texttt{d.v[3]} consists of the
+For example, the address of variable $d.\mathtt{v}[3]$ consists of the
 list \texttt{.d}, \texttt{.v}, and 3.  The only way to construct an
-address in Harmony is using the \texttt{?} operator.
-\texttt{?d.v[3]} returns the address of variable \texttt{d.v[3]}.
+address in Harmony is using the $?$ operator.
+$?d.\mathtt{v}[3]$ returns the address of variable $d.\mathtt{v}[3]$.
 An address can be dereferenced to return the value of the variable.
 If $a$ is an address, then $!a$ returns the value.
 Like C, Harmony supports the shorthand \texttt{$a$->v} for 
