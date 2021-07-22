@@ -5436,15 +5436,16 @@ fewer than $1/3^{rd}$ of processors failing by crashing.
 More precisely, we will
 define a constant \texttt{F} that contains the maximum number of failures, and
 assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
-Each processor \emph{proposes} a value, which we assume here is from the
+Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
-By the definition of consensus, we want the following two properties:
+By the usual definition of consensus, we want the following two properties:
 \begin{enumerate}
 \item \emph{Validity}: a processor can only decide a value that has been proposed;
-\item \emph{Agreement}: if two processors decide, they decide the same value.
+\item \emph{Agreement}: if two processors decide, then they decide the same value.
 \end{enumerate}
 The consensus problem is surprisingly tricky to solve in the face of processor
-failures.
+failures and without making assumptions about how long it takes to send
+and receive a message.
 
 We will model the network as a bag (aka multiset) of messages.  The bag itself is
 modeled in Harmony as a dictionary that maps unique elements in the bag to their
@@ -5460,7 +5461,7 @@ on those variables is that $\textit{decisions} \subseteq \textit{proposals}$
 and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions} is
 $\emptyset$, the invariants clearly hold initially.
 
-The $N$ processors go through a sequence of \emph{rounds} in which they wait for
+The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
 $\texttt{N} - \texttt{F}$ messages, update their state based on the messages, and
 broadcast messages containing their new state.
 The reason that a processor waits for $\texttt{N} - \texttt{F}$ rather than \texttt{N}
@@ -5473,7 +5474,7 @@ We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
 The state of a processor consists
-of its current round number and proposal.  Therefore, messages consist of a tuple containing
+of its current round number and proposal.  Therefore, messages contain
 a round number and a proposal. To start things, each processor first
 broadcasts its initial round number (0) and proposal.
 The number of rounds that are necessary to achieve consensus is not bounded.  But
@@ -5487,7 +5488,7 @@ In Line~21, a processor waits for $\texttt{N} - \texttt{F}$ messages using
 the Harmony \textbf{select} statement.
 This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
 where $s$ is a set and $v$ is variable that is bound to an element of $s$.
-The important properties of this \textbf{select} statement are as follows:
+The properties of the \textbf{select} statement are as follows:
 \begin{itemize}
 \item it waits until $s$ is non-empty;
 \item it is executed atomically;
@@ -5526,6 +5527,20 @@ no execution steps unless there are no other processors that can run.  The way t
 works, this includes executions in which $\texttt{N} - \texttt{F}$ processors terminate
 before the remaining $\texttt{F}$ processors start executing.  To the first set of processors,
 this is indistinguishable from executions in which the last set of processors have failed.
+
+\section*{Exercises}
+\begin{problems}
+\item While Harmony checks that the Validity and Agreement properties
+are not violated, it does not check that the algorithm ever decides.
+Indeed, in unlucky executions the algorithm may never decide.  But
+how would you check that there exist execution in which the algorithm
+does decide?
+\item The algorithm as given works in the face of crash failures.
+A more challenging class to tolerate are \emph{arbitrary failures} in
+which up to \texttt{F} processors may send arbitrary messages, including
+conflicting messages to different peers (equivocation).
+The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
+\end{problems}
 
 \chapter{Paxos}
 \label{ch:paxos}
@@ -5574,7 +5589,8 @@ $\texttt{N} - \texttt{F}$ matching \texttt{2.B} responses from the
 acceptors.  If each response contains the ballot number and the
 proposal, then the proposal is deemed decided.  But one or more of
 the responses can contain a higher ballot number, in which case the
-leader has to try again with an even higher ballot number.
+leader has to try again with an even higher ballot number.  This is
+where the first phase comes in.
 
 It is not possible that an acceptor responds with a smaller ballot
 number.  This is because acceptors maintain two state variables.
@@ -5595,8 +5611,9 @@ In all cases, the acceptor responds with the current values of
 In its first phase, a leader of a ballot must come up with a proposal that
 cannot conflict with a proposal of an earlier ballot that may already
 have been decided.  To this end, the leader broadcasts a \texttt{2.A}
-message to the acceptors and awaits their \textit{last\_accepted}
-values.  If all acceptors respond with \texttt{None}, then the leader
+message to the acceptors and awaits $\mathit{N} - \mathit{F}$ of their
+\textit{last\_accepted}
+values.  If all those acceptors responded with \texttt{None}, then the leader
 is free to choose its own proposal.  Otherwise the leader updates
 its proposal with the one corresponding to the highest ballot number.
 The leader then moves on to the second round.
