@@ -5533,13 +5533,17 @@ this is indistinguishable from executions in which the last set of processors ha
 \item While Harmony checks that the Validity and Agreement properties
 are not violated, it does not check that the algorithm ever decides.
 Indeed, in unlucky executions the algorithm may never decide.  But
-how would you check that there exist execution in which the algorithm
+how would you check that there exist executions in which the algorithm
 does decide?
 \item The algorithm as given works in the face of crash failures.
 A more challenging class to tolerate are \emph{arbitrary failures} in
 which up to \texttt{F} processors may send arbitrary messages, including
 conflicting messages to different peers (equivocation).
 The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
+\item In 1983 Michael Ben-Or presented a randomized algorithm that can
+tolerate crash failures with
+just $\mathtt{N} = 2\mathtt{F} - 1$ processors~\cite{BenOr83}.
+Implement this algorithm.
 \end{problems}
 
 \chapter{Paxos}
