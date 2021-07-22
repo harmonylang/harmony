@@ -6601,8 +6601,9 @@ some important differences that we will describe in this chapter.
 
 \section{Harmony is not object-oriented}
 
-Python is object-oriented, but Harmony is not.  This can lead to some
-unexpected differences.  For example, consider the following code:
+Python is object-oriented, but Harmony is not.  For Python programmers,
+this can lead to some unexpected differences.
+For example, consider the following code:
 
 \begin{code}
 \harmonysource{oo}
@@ -6647,11 +6648,12 @@ x = y = Lock();
 
 In Python, this creates two variables $x$ and $y$ referring to the same lock.
 In Harmony, the two variables will be two different locks.  If you want two
-variables referring to the same lock in Harmony, you would write:
+variables referring to the same lock in Harmony, you might write:
 
 \begin{code}
 \begin{verbatim}
-x = y = malloc(Lock());
+lock = Lock()
+x = y = ?lock
 \end{verbatim}
 \end{code}
 
@@ -6675,7 +6677,7 @@ Also, each method has an implicitly declared
 Local variables are tightly scoped and cannot be shared
 between threads.
 While in theory one method can be declared within another,
-they cannot share variables either.
+they cannot share local variables either.
 All other variables are global and must be initialized
 before any threads are spawned.
 
@@ -6692,7 +6694,7 @@ and then $c$ is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
 $a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
 
-There are three classes of precedence.
+There are three levels of precedence.
 Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
 \texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
 (\textit{a b}) \texttt{+} (\textit{c d}).
@@ -6751,9 +6753,9 @@ The following are the same in Python and Harmony:
 \item \texttt{$x$, $y$ = 1, (2, 3)}: assigns 1 to $x$ and (2, 3) to $y$;
 \item \texttt{$x$, ($y$, $z$) = 1, (2, 3)}: assigns 1 to $x$, 2 to $y$, and
 3 to $z$;
-\item \texttt{$x$, ($y$, $z$) = 1, 2;} generates an runtime error because 2 cannot
+\item \texttt{$x$, ($y$, $z$) = 1, 2}: generates an runtime error because 2 cannot
 be matched with ($y$, $z$);
-\item \texttt{$x[0]$, $x[1]$ = $x[1]$, $x[0]$;} swaps the first two elements of list $x$.
+\item \texttt{$x[0]$, $x[1]$ = $x[1]$, $x[0]$}: swaps the first two elements of list $x$.
 \end{itemize}
 
 As in Python, pattern matching can also be used in \texttt{for} statements.
@@ -6777,8 +6779,8 @@ you may want to declare as follows: \texttt{def} g($a,$).
 Calling g(1,) assigns 1 to $a$, while calling g(1, 2) would result in a
 runtime error as (1, 2) cannot be matched with ($a$,).
 
-Pattern matching can also be used in \texttt{const} and \texttt{let}
-statements.
+Pattern matching can also be used in \texttt{const}, \texttt{let},
+and \texttt{select} statements.
 
 \section{For Loops and Comprehensions}
 
@@ -6808,7 +6810,8 @@ For example:
 \texttt{where} $i < j$: ...
 \end{code}
 
-In case of dictionaries, you can access both keys and values:
+In case of dictionaries, you can access both keys and values (not
+supported in Python):
 \begin{code}
 \texttt{for} $k:v$ in \{ .a: 1, .b: 2 \}: ...
 \end{code}
@@ -6900,6 +6903,13 @@ First and foremost I would like to thank my student Haobin Ni with
 whom I've had numerous discussions about the design of Harmony.
 Haobin even contributed some code to the Harmony compiler.
 
+Kevin Sun and Anthony Yang built a beautiful VSCode extension for Harmony
+called HarmonyLang and proceeded to build an animator for Harmony
+executions and two cloud-based Harmony offerings, which you can can learn
+about at \url{http://harmony.cs.cornell.edu}.  They also developed much of
+that web site.  Later they were joined by Shi Chong Zhao, who also
+made significant contributions.
+
 Most of what I know about concurrent programming I learned from
 my colleague Fred Schneider.  He suggested I write this book after
 demonstrating Harmony to him.
@@ -6937,7 +6947,7 @@ and
 Zoltan Csaki.
 
 Finally, I would like to thank my family who had to suffer as I obsessed
-over writing the code and the book during the turbulent months of
+over writing the code and the book, at home, during the turbulent months of
 May and June 2020.
 
 % I wrote the Harmony compiler and this book
