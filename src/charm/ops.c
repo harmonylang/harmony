@@ -614,9 +614,13 @@ void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
+    const struct env_AtomicInc *ea = env;
     struct context *ctx = *pctx;
 
     ctx->atomic++;
+    if (!ea->lazy) {
+        ctx->atomicFlag = true;
+    }
     ctx->pc++;
 }
 

@@ -338,9 +338,7 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             if (!cc->atomicFlag && cc->atomic > 0) {
                 cc->atomicFlag = true;
             }
-            else {
-                break;
-            }
+            break;
         }
     }
     
@@ -961,9 +959,7 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             if (!cc->atomicFlag && cc->atomic > 0) {
                 cc->atomicFlag = true;
             }
-            else {
-                break;
-            }
+            break;
         }
     }
 
