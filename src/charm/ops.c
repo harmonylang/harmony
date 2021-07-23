@@ -538,8 +538,8 @@ void op_Address(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Apply(const void *env, struct state *state, struct context **pctx){
-    uint64_t method = ctx_pop(pctx);
     uint64_t e = ctx_pop(pctx);
+    uint64_t method = ctx_pop(pctx);
 
     uint64_t type = method & VALUE_MASK;
     switch (type) {

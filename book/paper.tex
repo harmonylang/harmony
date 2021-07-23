@@ -4789,7 +4789,7 @@ scenario.}
 \begin{problems}
 \item The solution in \autoref{fig:dinerscv} can be simplified by, instead
 of having a condition variable per fork, having a condition variable per
-diner.  It is the same number of condition variables, but you will not
+diner.  It uses the same number of condition variables, but you will not
 need to have \textbf{if} statements nested inside the \textbf{while} loop
 waiting for the forks.  See if you can figure it out.
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
@@ -6122,8 +6122,8 @@ Harmony currently supports the following statements:
 \hline
 \textit{lv} \texttt{[op]=} $e$ & \texttt{op} is one of \texttt{+}, \texttt{-},
 \texttt{*}, \texttt{/}, \texttt{//}, \texttt{\%},
-\texttt{\string\&}, \texttt{|}, \texttt{\string\^},
-\texttt{and}, and \texttt{or}\\
+\texttt{\&}, \texttt{|}, \texttt{\^},
+\texttt{and}, \texttt{or}\\
 \hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
@@ -6133,22 +6133,21 @@ Harmony currently supports the following statements:
 \hline
 \texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
 \hline
-\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} a list of statements\\
+\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} is a list of statements\\
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set or dictionary,
-                            \texttt{S} a list of statements\\
+\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set or dictionary \\
 \hline
 \texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
 \texttt{go $c$ $e$} & $c$ is a context, $e$ is an expression \\
 \hline
-\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} is a list of statements\\
 \hline
 \texttt{import m, ...} & \texttt{m} identifies a module \\
 \hline
-\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
+\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
@@ -6158,7 +6157,7 @@ Harmony currently supports the following statements:
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
 \texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
-$e$ is an expression, $t$ is the initial thread-local state \\
+$e$ is an expression, $t$ is the thread-local state \\
 \hline
 \texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
 \hline

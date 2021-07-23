@@ -36,7 +36,7 @@ def leader(ballot, proposal):
                 send(ballot, 1, .A, None)
 
 def acceptor():
-    let ballot = 0 let last_accepted = None let received = {}:
+    let ballot, last_accepted, received = 0, None, {}:
         while len(received) < (NBALLOTS * 2):
             select b,p,e in { (b,p,e) for b,p,t,e:_ in network
                         where ((b,p) not in received) and (t == .A) }:

@@ -2097,8 +2097,8 @@ class ApplyOp(Op):
         return "pop a pc or dictionary f and an index i and push f(i)"
 
     def eval(self, state, context):
-        method = context.pop()
         e = context.pop()
+        method = context.pop()
         if isinstance(method, DictValue):
             try:
                 context.push(method.d[e])
@@ -2851,10 +2851,8 @@ class ApplyAST(AST):
             code.append(LoadOp(None, self.token, None))
             return
 
-        # TODO: is there an issue below with evaluation order
-        #       not being the same as program order?
-        self.arg.compile(scope, code)
         self.method.compile(scope, code)
+        self.arg.compile(scope, code)
         code.append(ApplyOp(self.token))
 
     def localVar(self, scope):
