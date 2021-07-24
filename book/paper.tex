@@ -6794,8 +6794,11 @@ and tuples).  The details are a little different from Python:
 dictionary, but in the order of the keys.  In the case of lists, this
 works much the same as in Python, but in the case of general dictionaries,
 Python iterates over the keys rather than the values;
-\item If you want to iterate over the keys of a dictionary $d$, use
-\texttt{for} $k$ \texttt{in} \texttt{keys} $d$;
+\item If you want to iterate over the keys of a dictionary $d$, use either
+\begin{itemize}
+\item \texttt{for} $k$ \texttt{in} \texttt{keys} $d$; or
+\item \texttt{for} $k:\_$ \texttt{in} $d$
+\end{itemize}
 \item The \texttt{list} module (\autoref{ap:list}) provides methods \texttt{values}(),
 \texttt{items}(), \texttt{enumerate}(), and \texttt{reversed}() for
 other types of iteration supported by Python.
