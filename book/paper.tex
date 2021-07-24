@@ -5436,7 +5436,7 @@ own identifier and the identifier of its successor.  We assume that
 each processor can reliably send messages to its successor.
 
 The protocol that we present elects as leader the processor with the
-highest identifier and works in two phases: in the first
+highest identifier~\cite{CR79} and works in two phases: in the first
 phase, each processor sends its identifier to its successor.  When
 a processor receives an identifier that is larger than its own
 identifier, it forward that to its successor as well.  If a processor
@@ -5460,7 +5460,7 @@ Messages are tuples with three fields:
 The \texttt{receive}(\textit{self}) method looks for all messages
 destined for the processor with identifier \textit{self}.
 
-Method \texttt{processor}{\textit{self}, \textit{succ}) is the
+Method \texttt{processor}(\textit{self}, \textit{succ}) is the
 code for a processor with identifier \textit{self} and successor
 \textit{succ}.
 It starts simply by sending its own identifier to its successor.
