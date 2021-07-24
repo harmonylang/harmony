@@ -26,6 +26,7 @@ mv code/qtest3.htm output/queuebug.html
 cp output/*.html $dir/output
 
 cp harmony harmony.py $dir
+(cd book; make all)
 cp book/paper.pdf $dir/book.pdf
 cp HarmonyOnWindows.pdf $dir
 

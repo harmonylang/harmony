@@ -5432,8 +5432,10 @@ Leader election is the problem of electing a unique leader in a network
 of processors.  Typically the processors have only limited information.
 In the version that we present, each processor has a unique identifier.  The
 processors are organized in a ring, but each processor only knows its
-own identifier and the identifier of its successor.  We assume that
-each processor can reliably send messages to its successor.
+own identifier and the identifier of its successor.  Having already
+looked into the problem of how to make the network reliable,
+we assume here that each processor can reliably send messages to its
+successor.
 
 The protocol that we present elects as leader the processor with the
 highest identifier~\cite{CR79} and works in two phases: in the first
@@ -5512,7 +5514,9 @@ not share memory, it is not necessary to check those interleavings.
 \end{figure}
 
 Distributed consensus is the problem of having a collection of processors agree
-on a single value over a network.  This often has to be done in adverse circumstances,
+on a single value over a network.
+Without failures, this can be solved using leader election: first elect a leader, then have that leader decide a value.
+But consensus often has to be done in adverse circumstances,
 for example in the face of processor failures.
 In Harmony, processors can be modeled by threads and there are a variety of ways in
 which one can model a network using shared variables.
