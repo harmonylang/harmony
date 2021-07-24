@@ -1,0 +1,42 @@
+const NIDS, NPROCS = 5, 4
+
+sequential found_leader
+found_leader = False
+
+ids, procs, leader = { 1 .. NIDS }, [], 0
+for i in { 0 .. NPROCS - 1 }:
+    let next = choose(ids):
+        ids -= { next }; procs += [ next, ]
+        if next > leader: leader = next
+
+network = {}
+
+def send(m):
+    atomic: network |= { m }
+
+def receive(self, received):
+    result = { (id,found) for (dst, id, found) in network
+        where (dst == self) and ((id, found) not in received) }
+
+def process(self, succ):
+    send(succ, self, False)
+    let working, received = True, {}:
+        while working:
+            select (id, found) in receive(self, received):
+                received = (id, found)
+                if id == self:
+                    assert (self == leader) and not found_leader
+                    send(succ, id, True)
+                    found_leader, working = True, False
+                elif id > self:
+                    assert self != leader
+                    send(succ, id, found)
+                    if found:
+                        working = False
+
+def monitor():
+    await found_leader
+
+for i in { 0 .. NPROCS - 1 }:
+    spawn process(procs[i], procs[(i + 1) % NPROCS])
+spawn monitor()

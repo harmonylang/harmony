@@ -54,6 +54,7 @@ CODE = \
     gpu.tex \
     hoare.tex \
     hw.tex \
+    leader.tex \
     linkedlist.tex \
     lltest.tex \
     lockintf.tex \

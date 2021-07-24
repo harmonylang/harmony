@@ -557,6 +557,9 @@ steps.
 \item \autoref{ch:abp} presents a problem and a solution to the distributed
 systems problem of having two threads communicate reliably over an unreliable
 network.
+\item \autoref{ch:leader} presents a protocol for electing a leader on
+a ring of processors, where each processor is uniquely identified and 
+only knows its successor on the ring.
 \item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
 algorithm (aka protocol) expressed in Harmony.
 \item \autoref{ch:paxos} shows how one can specify and check the well-known
@@ -5413,6 +5416,17 @@ request.
 Each client is uniquely identified.  You may either use separate channel pairs
 for each client, or solve the problem using a single pair of channels.
 \end{problems}
+
+\chapter{Leader Election}
+\label{ch:leader}
+
+\begin{figure}
+\begin{code}
+\harmonysource{leader}
+\end{code}
+\caption{\harmonylink{code/leader.hny} A leader election protocol on a ring.}
+\label{fig:leader}
+\end{figure}
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
