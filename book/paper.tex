@@ -5428,6 +5428,78 @@ for each client, or solve the problem using a single pair of channels.
 \label{fig:leader}
 \end{figure}
 
+Leader election is the problem of electing a unique leader in a network
+of processors.  Typically the processors have only limited information.
+In the version that we present, each processor has a unique identifier.  The
+processors are organized in a ring, but each processor only knows its
+own identifier and the identifier of its successor.  We assume that
+each processor can reliably send messages to its successor.
+
+The protocol that we present elects as leader the processor with the
+highest identifier and works in two phases: in the first
+phase, each processor sends its identifier to its successor.  When
+a processor receives an identifier that is larger than its own
+identifier, it forward that to its successor as well.  If a processor
+receives its own identifier, it knows that it is the leader.  That
+processor then starts the second phase by sending a message around the
+ring notifying the other processors of the leader's identifier.
+
+\autoref{fig:leader} describes the protocol and its test cases in Harmony.
+To test the protocol, the code first generates an identifier for each
+processor, chosen non-deterministically from a set of \texttt{NIDS}
+identifiers.  It also keeps track in the variable \textit{leader} of
+what the highest identifier is so it can later be checked.
+
+The network is modeled simply as a set of messages.
+The \texttt{send} method atomically adds a message to this set.
+Messages are tuples with three fields:
+(\textit{dst}, \textit{id}, \textit{found}).
+\textit{dst} is the identifier of the destination processor;
+\textit{id} is the identifier that is being forwarded; and
+\textit{found} is a boolean indicating the second phase of the protocol.
+The \texttt{receive}(\textit{self}) method looks for all messages
+destined for the processor with identifier \textit{self}.
+
+Method \texttt{processor}{\textit{self}, \textit{succ}) is the
+code for a processor with identifier \textit{self} and successor
+\textit{succ}.
+It starts simply by sending its own identifier to its successor.
+The processor then loops until it discovers the identifier of the
+leader in the second phase of the protocol.
+A processor waits for a message using the Harmony \textbf{select} statement.
+This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
+where $s$ is a set and $v$ is variable that is bound to an element of $s$.
+The properties of the \textbf{select} statement are as follows:
+\begin{itemize}
+\item it waits until $s$ is non-empty;
+\item it is executed atomically;
+\item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
+\end{itemize}
+\index{select statement}%
+
+If a processor receives its own identifier, it knows its the leader.
+The Harmony code checks this using an assertion.
+In real code the processor could not do this as it does not know
+the identifier of the leader, but assertions are only there to check
+correctness.
+The processor then sends a message to its successor that the leader
+has been found.
+If the processor receives an identifier higher than its own, the
+processor knows that it cannot be the leader.
+In that case, it simply forwards the message.
+A processor stops when it receives a message that indicates that
+the leader has been identified.
+
+Note that there is a lot of non-determinism in the specification, leading
+to a lot of executions that must be checked.
+First, every possible permutation of identifiers for the processors
+is tried.  When there are multiple messages to receive by a processor,
+every possible order is tried (including receiving the same message
+multiple times).  Fortunately, the \texttt{select} statement is executed
+atomically, otherwise the body of the statement could lead to additional
+thread interleavings.  Because in practice the different processors do
+not share memory, it is not necessary to check those interleavings.
+
 \chapter{Distributed Consensus}
 \label{ch:consensus}
 
@@ -5497,18 +5569,8 @@ limits the number of rounds.  It may be that no decisions are made, but that doe
 violate either Validity or Agreement.  We only check that \emph{if} decisions are
 made, they satisfy Validity and Agreement.
 
-\index{select statement}%
 In Line~21, a processor waits for $\texttt{N} - \texttt{F}$ messages using
 the Harmony \textbf{select} statement.
-This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
-where $s$ is a set and $v$ is variable that is bound to an element of $s$.
-The properties of the \textbf{select} statement are as follows:
-\begin{itemize}
-\item it waits until $s$ is non-empty;
-\item it is executed atomically;
-\item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
-\end{itemize}
-
 Since Harmony has to check all possible executions of the protocol, the
 \texttt{receive}(\textit{round}, $k$) method returns all \emph{subbags} of messages
 for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method uses a
