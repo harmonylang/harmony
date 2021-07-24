@@ -2313,8 +2313,8 @@ class AST:
         state = State(code, scope.labels)
         ctx = ContextValue(("__eval__", None, None, None), 0, novalue, novalue)
         ctx.atomic = 1
-        while ctx.pc != len(code) and ctx.failure == None:
-            code[ctx.pc].eval(state, ctx)
+        while ctx.pc != len(code.labeled_ops) and ctx.failure == None:
+            code.labeled_ops[ctx.pc].op.eval(state, ctx)
         if ctx.failure != None:
             lexeme, file, line, column = self.ast_token
             raise HarmonyCompilerError(
@@ -2328,7 +2328,7 @@ class AST:
 
     def compile(self, scope, code):
         if self.isConstant(scope):
-            code2 = []
+            code2 = Code()
             self.gencode(scope, code2)
             v = self.eval(scope, code2)
             code.append(PushOp((v, None, None, None)))
@@ -3994,13 +3994,13 @@ class ConstAST(AST):
             pc = self.expr.compile_body(scope, code)
             self.set(scope, self.const, PcValue(pc))
         else:
-            code2 = []
+            code2 = Code()
             self.expr.compile(scope, code2)
             state = State(code2, scope.labels)
             ctx = ContextValue(("__const__", None, None, None), 0, novalue, novalue)
             ctx.atomic = 1
-            while ctx.pc != len(code2):
-                code2[ctx.pc].eval(state, ctx)
+            while ctx.pc != len(code2.labeled_ops):
+                code2.labeled_ops[ctx.pc].op.eval(state, ctx)
             v = ctx.pop()
             self.set(scope, self.const, v)
 

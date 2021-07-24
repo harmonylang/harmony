@@ -5851,7 +5851,7 @@ powerful and can include joining multiple sets (using nested for
 loops) and filtering (using the \texttt{where} keyword).
 
 For example:
-\texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ such that $(x * y) == 4$ \}}
+\texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ where $(x * y) == 4$ \}}
 returns a set that is constructed by summing pairs of elements from $s$
 that, when multiplied, have the value 4.
 
@@ -6113,7 +6113,7 @@ and used for checking invariants.
 
 \chapter{List of Statements}
 
-Harmony currently supports the following statements:
+Harmony currently supports the following statements (below, \texttt{S} is a list of statements):
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -6133,11 +6133,11 @@ Harmony currently supports the following statements:
 \hline
 \texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
 \hline
-\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} is a list of statements\\
+\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable\\
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set or dictionary \\
+\texttt{for $a[:b]$ in $e$ [where $c$]: S} & $a$ and $b$ are bounded variables, $e$ is a set or dictionary \\
 \hline
 \texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
@@ -6164,6 +6164,78 @@ $e$ is an expression, $t$ is the thread-local state \\
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \end{tabular}
+
+\section{Assignment}
+
+The statement $x = 3$ changes the state by assigning~3 to
+variable $x$ (assuming~$x$ was not already~3).
+$x$ may be a local variable or a shared variable.
+The statement $x = y = 3$ first updates~$y$, then~$x$.
+The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = 3$ first computes
+the address of $x[\mathtt{f}()]$, then computes the address of
+$y[\mathtt{g}()]$, but first assigns to $y[\mathtt{g}()]$ and then
+to $x[\mathtt{f}()]$.
+The statement $a,b = c$ assumes that $c$ is a tuple with two values.
+It first evaluates the addresses of $a$ and $b$ and first assigns to
+the latter and then the former.
+If $c$ is not a tuple with two values, then Harmony will report an error.
+
+The statement $x~+$$= 3$ loads $x$, adds 3, and then stores the
+results in $x$.  In this case, it is equivalent to $x = x + 3$.
+However, in general this is not so.  For example, $x[\mathtt{f}()]~+$$= 3$
+only evaluates $\mathtt{f}()$ once.  Unlike Python, however,
+$x~+$$= [3]$ is equivalent to $x = x + [3]$ in Harmony.
+(In Python, the following two compound statements lead to different results
+for $y$: $x = y = []; x~+$$= [1]$ and $x = y = []; x = x + [1]$.)
+
+\section{\textbf{assert}}
+
+The statement \textbf{assert $b$} evaluates $b$ and reports an error
+if $b$ is false.  It should be considered a no-op---it is part of the
+\emph{specification}, not part of the \emph{implementation} of the algorithm.
+In particular, it specifies an invariant: whenever the program counter is
+at the location where the \textbf{assert} statement is, then $b$ is
+always true.
+
+If $b$ is an expression, then it is evaluated atomically.
+Moreover, the expression is not allowed to change the state.
+If it does change the state, Harmony will report an error as well.
+
+As in Python, you can specify an additional expression:
+\textbf{assert $b$, $e$}.  The value of $e$ will be reported as part
+of the error should $b$ evaluate to false.
+
+\section{\textbf{atomic}}
+
+The statement \textbf{atomic $S_1, S_2, ...$} evaluates statements
+$S_1, S_2, ...$ atomically in that no other threads can run while
+this atomic block is executing.  Typically an atomic block runs
+to completion before any other thread can run.  The only exception
+to this is if the atomic block executes a \textbf{stop} expression.
+In this case, another thread can run.  When the original thread
+is resumed (using a \textbf{go} statement), it is once again
+atomically executing.
+
+The \textbf{atomic} statement is useful for implementing synchronization
+primitives such as test-and-set.  It is also useful for testing.
+It is not a replacement for lock/unlock, and should not generally be used
+for synchronization otherwise.  Lock/unlock does allow other
+threads to run concurrently---just not in the same critical section.
+
+\section{\textbf{await}}
+
+The statement \textbf{await $b$} is equivalent to \textbf{while !$b$: pass}.
+It is intended to improve readability of your code.
+
+\section{\textbf{const}}
+
+The expression \textbf{const} \texttt{N = 3} introduces a new constant
+\texttt{N} with the value 3.  Evaluating \texttt{N} does not lead to
+loading from a memory location.  The assignment can be overridden with
+the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
+with 4 assigned to \texttt{N} instead of 3.
+Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
+assigns 3 to \texttt{N} and 4 to \texttt{M}.
 
 \chapter{List of Modules}
 \label{ap:module}
