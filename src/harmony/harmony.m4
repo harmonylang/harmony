@@ -3855,7 +3855,7 @@ class GoAST(AST):
         self.result = result
 
     def __repr__(self):
-        return "Spawn(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
+        return "Go(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
 
     def compile(self, scope, code):
         self.result.compile(scope, code)

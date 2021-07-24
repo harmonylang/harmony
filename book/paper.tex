@@ -6249,6 +6249,8 @@ the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
 with 4 assigned to \texttt{N} instead of 3.
 Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
 assigns 3 to \texttt{N} and 4 to \texttt{M}.
+Harmony also has limited support for \emph{constant folding}.  For example,
+\textbf{const} \texttt{N = 3 + 4} assigns value 7 to constant \texttt{N}.
 
 \section{\textbf{def}}
 
@@ -6313,29 +6315,184 @@ For example,
 S_1; S_2; ...$ only evaluates statements $S_1, S_2, ...$ for even $x$,
 that is, 2, 4, 6, 8, and 10.
 
+Harmony does not support \textbf{break} or \textbf{continue} statements.
+
 \section{\textbf{from ... import}}
+
+The statement \textbf{from} \texttt{x} \textbf{import} \texttt{a, b, ...}
+imports module \texttt{x} and makes its constants $a, b, ...$ also constants
+in the current module.  If a module is imported more than once, its code
+is only included the first time.  The constants will typically be the
+names of methods (program counter constants) within the module.
+
+You can import all constants from a module \texttt{m}
+(including program counter constants) using the statement
+\textbf{from} \texttt{m} \textbf{import} \texttt{*}.
+This, however, excludes constants that start with the character \_: those
+are considered \emph{private} to the module.
 
 \section{\textbf{go}}
 
-\section{\textbf{if ... elif ... else}}
+The statement \textbf{go} $c e$ starts a thread with context $c$ that
+has executed a \textbf{stop} expression.  The \textbf{stop} expression
+returns value $e$.
+The same context can be started multiple times, allowing threads to
+\emph{fork}.
+
+\section{\textbf{if ... [elif ...]* [else]}}
+
+Harmony supports \textbf{if} statements.
+In its most basic form, \textbf{if} $c: S_1; S_2; ...$ evaluates $c$
+and executes statements $S_1, S_2, ...$ if and only if boolean expression
+$c$ evaluated to true.
+Harmony checks that $c$ is either \texttt{False} or \texttt{True}---if neither
+is the case, Harmony reports an error.
+The statement \textbf{if} $c: S_1, S_2, ...$ \textbf{else}:
+$T_1; T_2; ...$ is similar, but executes statements $T_1, T_2, ...$
+if and only if $c$ evaluated to false.
+You can think of \textbf{elif} $c:$ as shorthand for
+\textbf{else}: \textbf{if} $c:$.
 
 \section{\textbf{import}}
 
+The statement \textbf{import} $\mathtt{m}_1, \mathtt{m}_2, ...$ imports modules
+$\mathtt{m}_1, \mathtt{m}_2, ...$ in that order.
+If a module is imported more than once,
+its code is only included the first time.
+The constants (including method constants) and shared variables declared 
+in that module can subsequently be referenced by prepending ``\texttt{m}.''.
+For example, method \texttt{f()} in imported module \texttt{m} is invoked
+by calling \texttt{m.f()}.  If you would prefer to invoke it simply as
+\texttt{f()}, then you have to import using the statement
+\textbf{from} \texttt{m} \textbf{import} \texttt{f}.
+
 \section{\textbf{invariant}}
+
+The statement \textbf{invariant} $c$ declares that boolean expression $c$
+is an invariant.  $c$ is only allowed to read shared variables and
+is evaluated atomically after every state change.
+If it evaluated to \texttt{False} Harmony reports and error.  Harmony
+also reports an error if the expression evaluates to a value other
+than \texttt{False} or \texttt{True}.
 
 \section{\textbf{let}}
 
+You can introduce new local variables in a method using the
+\texttt{let} expression.
+The statement \textbf{let} $a = b: S_1; S_2, ...$ evaluates $b$, assigns
+the result to local variable $a$, and evaluates statements
+$S_1, S_2, ...$.  \textbf{let} supports pattern matching, so you can
+write \texttt{let} $x, (y, z) = b: S_1; S_2, ...$.  This will only work
+if $b$ is a tuple with two elements, the second of which also being a
+tuple with two elements---if not, Harmony will report an error.
+The variables may be updates in statements $S_1, S_2, ...$.
+
+\textbf{let} statements may be nested, such as
+\textbf{let} $a_1 = b_1$ \textbf{let} $a_2 = b_2: S_1; S_2; ...$.
+Doing so can improve readability by reducing indentation
+compared to writing them as separate statements.
+Compare the following two examples:
+
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $a = y$: \\
+\>\>\textbf{let} $b = z$: \\
+\>\>\>...
+\end{tabbing}
+\end{code}
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $a = y$ \\
+\>\textbf{let} $b = z$: \\
+\>\>...
+\end{tabbing}
+\end{code}
+
 \section{\textbf{pass}}
+
+The \textbf{pass} statement does nothing.
 
 \section{\textbf{select ... in}}
 
+The statement \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$
+requires that $y$ evaluates to a set value.
+The statement does the following three things atomically:
+\begin{itemize}
+\item it waits until $y$ is non-empty;
+\item it selects one element of $y$ non-deterministically (using
+a \texttt{choose} expression);
+\item it executes statements $S_1, S_2, ...$ with the selected element
+assigned to local variable $x$.
+\end{itemize}
+$x$ may be a pattern, like in \texttt{let}, \texttt{for}, and \texttt{def}
+statements.
+Harmony reports an error if $y$ evaluates to a value that is not a set.
+If \textit{waiting} is an unused local variable,
+then \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$ is equivalent to
+
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $\mathit{waiting} = \mathtt{True}:$ \\
+\>\>\textbf{while} \textit{waiting}: \\
+\>\>\>\textbf{atomic}: \\
+\>\>\>\>\textbf{if} $y$ != \{\}:\\
+\>\>\>\>\>\textbf{let} $x = \mathbf{choose}(y)$:\\
+\>\>\>\>\>\>$S_1$ \\
+\>\>\>\>\>\>$S_2$ \\
+\>\>\>\>\>\>$...$ \\
+\>\>\>\>\>$\mathit{waiting} = \mathtt{False}$
+\end{tabbing}
+\end{code}
+
+The statement is particularly useful in programming network protocols
+when having to wait for one or more messages and executing a set
+of actions atomically after the desired messages have arrived.
+
 \section{\textbf{sequential}}
+
+In Harmony, shared variable \texttt{Load} and \texttt{Store} operations
+are atomic and have \emph{sequential consistency}.
+However, Harmony does check for \emph{data races}.  A data race occurs
+when two or more threads simultaneously access the same shared variable,
+with at least one of the accesses being a \texttt{Store} operation
+\emph{outside of an atomic block}.
+If so, Harmony will report an error.  This error can be suppressed by
+declaring the shared variable as sequential.  In particular, the statement
+\texttt{sequential} $x, y, ...$ specifies that the algorithm assumes
+that the given variables have sequential consistency.
+
+Note that few modern processors support sequentially consistent memory
+by default, as doing so would lead to high overhead.
 
 \section{\textbf{spawn}}
 
+The statement \texttt{spawn} $m$ $a$ starts a new thread that executes
+method $m$ with argument $a$. $m$ must be a program counter constant,
+and $a$ is typically a tuple containing
+zero or more parameters to be passed to the method.
+
+The default thread-local state of the thread, called \textit{self},
+is the empty dictionary by default.  It can be specified by adding
+a parameter: \texttt{spawn} $m$ $a, e$ specifies that $e$ should be
+the initial value of the thread-local state.
+
 \section{\textbf{trap}}
 
+The statement \textbf{trap} $m$ $a$ specifies that the current thread
+should execute method $m$ with argument $a$ and some future, unspecified,
+time.  It models a timer interrupt or any kind of asynchronous event to
+be handled by the thread.  Such interrupts can be disabled by setting
+the interrupt level of the thread to \texttt{True} using the
+\textbf{setintlevel} operator.
+
 \section{\textbf{while}}
+
+The statement \textbf{while} $c: S_1; S_2; ...$ executes statements
+$S_1, S_2, ...$ repeatedly as long as $c$ evaluates to \texttt{True}.
+Harmony does not support \textbf{break} or \textbf{continue} statements.
 
 \chapter{List of Modules}
 \label{ap:module}
