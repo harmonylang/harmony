@@ -5645,7 +5645,7 @@ analyze the output and see what went wrong.
 
 \appendix
 
-\chapter{Value Types}
+\chapter{Value Types and Operators}
 \label{ap:values}
 
 \autoref{ch:harmonymachine} provides an introduction to Harmony values.
@@ -6118,6 +6118,8 @@ Harmony currently supports the following statements (below, \texttt{S} is a list
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
+$e$ & $e$ is an expression\\
+\hline
 \textit{lv} = [lv =]... $e$ & \textit{lv} is an lvalue and $e$ is an expression\\
 \hline
 \textit{lv} \texttt{[op]=} $e$ & \texttt{op} is one of \texttt{+}, \texttt{-},
@@ -6147,6 +6149,8 @@ Harmony currently supports the following statements (below, \texttt{S} is a list
 \hline
 \texttt{import m, ...} & \texttt{m} identifies a module \\
 \hline
+\texttt{invariant e} & \texttt{e} is an invariant\\
+\hline
 \texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
@@ -6165,20 +6169,29 @@ $e$ is an expression, $t$ is the thread-local state \\
 \hline
 \end{tabular}
 
+\section{Single expression evaluation}
+
+Any expression by itself can be used as a statement.  The most common
+form of this is a function application, for example: \texttt{f}().
+This statement evaluates \texttt{f}() but ignores its result.
+It is equivalent to the assignment statement $\_ = \mathtt{f}()$.
+
 \section{Assignment}
 
 The statement $x = 3$ changes the state by assigning~3 to
 variable $x$ (assuming~$x$ was not already~3).
 $x$ may be a local variable or a shared variable.
 The statement $x = y = 3$ first updates~$y$, then~$x$.
-The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = 3$ first computes
+The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = \mathtt{h}()$ first computes
 the address of $x[\mathtt{f}()]$, then computes the address of
-$y[\mathtt{g}()]$, but first assigns to $y[\mathtt{g}()]$ and then
-to $x[\mathtt{f}()]$.
+$y[\mathtt{g}()]$, then evaluates $\mathtt{h}()$, then assigns the resulting value to $y[\mathtt{g}()]$ (using its previously computed address), and finally assigns the same value to $x[\mathtt{f}()]$ (again using its previously computed address).
 The statement $a,b = c$ assumes that $c$ is a tuple with two values.
 It first evaluates the addresses of $a$ and $b$ and first assigns to
 the latter and then the former.
 If $c$ is not a tuple with two values, then Harmony will report an error.
+
+Assigning to $\_$ evaluates the righthand side expression but is otherwise
+a no-op.
 
 The statement $x~+$$= 3$ loads $x$, adds 3, and then stores the
 results in $x$.  In this case, it is equivalent to $x = x + 3$.
@@ -6207,7 +6220,7 @@ of the error should $b$ evaluate to false.
 
 \section{\textbf{atomic}}
 
-The statement \textbf{atomic $S_1, S_2, ...$} evaluates statements
+The statement \textbf{atomic $S_1; S_2; ...$} evaluates statements
 $S_1, S_2, ...$ atomically in that no other threads can run while
 this atomic block is executing.  Typically an atomic block runs
 to completion before any other thread can run.  The only exception
@@ -6236,6 +6249,93 @@ the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
 with 4 assigned to \texttt{N} instead of 3.
 Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
 assigns 3 to \texttt{N} and 4 to \texttt{M}.
+
+\section{\textbf{def}}
+
+The statement \textbf{def} \texttt{m} $a: S_1; S_2: ...$
+defines a new program counter constant \texttt{m} referring to
+a method that takes an argument $a$ and executes the statements
+$S_1, S_2, ...$.  The argument $a$ can be a tuple pattern similar
+to those used in \texttt{let} and \texttt{for} statements.
+Examples include $()$, $(x,)$, $(x, y)$, and $(x, (y, z))$.
+The given local variable names variable names are assigned
+upon application.
+It is allowed, but discouraged, to updates those local variables
+in statements $S_1, S_2, ...$.
+Each method has a predefined local variable
+\textit{result}, initialized to \texttt{None},
+that is returned by the method.  Harmony does
+not support a \texttt{return} statement that \emph{breaks out}
+of the code before executing the last statement.
+
+\section{\textbf{del}}
+
+The statement \textbf{del} $x$ removes variable $x$ from the
+state.  $x$ can be either a local or a shared variable.  For
+example, the statement \textbf{del} $x.\texttt{age}$ removes
+the \texttt{.age} field from dictionary $x$.
+Harmony automatically removes top-level local variables that
+are no longer in use
+from the state in order to attempt to reduce the number of states
+that are evaluated during model checking.
+
+Because Harmony lists are dictionaries, deleting from lists is different
+from Python:
+$x = [\mathtt{.a}, \mathtt{.b}]; \mathbf{del}~x[0]$ results in $x$ having value
+$\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
+
+\section{\textbf{for ... in [...where]}}
+
+The statement \textbf{for} $x$ \textbf{in} $y: S_1; S_2; ...$
+iterates over $y$ and executes for each element the statements
+$S_1, S_2, ...$.
+which must be a set or a dictionary.  $y$ is evaluated only once at
+the beginning of the evaluation of this statement.  In case of a set,
+the result is sorted (using Harmony's global order on all values).
+For each element, the statements $S_1, S_2, ...$ are executed with
+local variable $y$ having the value of the element.
+$x$ can be a pattern such as $(a)$ or $(a, (b, c))$.
+If the pattern cannot be matched, Harmony detects and error.
+It is allowed, but discouraged, to assign different values to $x$
+within statements $S_1, S2, ...$.
+
+The statement also supports nesting and filtering.
+Nesting is of the form
+\textbf{for} $x_1$ \textbf{in} $y_1$ \textbf{for} $x_2$ \textbf{in} $y_2$:
+$S_1; S_2; ...$,
+which is equivalent to the statement
+\textbf{for} $x_1$ \textbf{in} $y_1$: \textbf{for} $x_2$ \textbf{in} $y_2$:
+$S_1; S_2; ...$.
+Filtering is of the form
+\textbf{for} $x$ \textbf{in} $y$ \textbf{where} $z: S_1; S_2; ...$.
+For example,
+\textbf{for} $x$ \textbf{in} \{ 1 .. 10 \} \textbf{where} $(x \% 2) == 0:
+S_1; S_2; ...$ only evaluates statements $S_1, S_2, ...$ for even $x$,
+that is, 2, 4, 6, 8, and 10.
+
+\section{\textbf{from ... import}}
+
+\section{\textbf{go}}
+
+\section{\textbf{if ... elif ... else}}
+
+\section{\textbf{import}}
+
+\section{\textbf{invariant}}
+
+\section{\textbf{let}}
+
+\section{\textbf{pass}}
+
+\section{\textbf{select ... in}}
+
+\section{\textbf{sequential}}
+
+\section{\textbf{spawn}}
+
+\section{\textbf{trap}}
+
+\section{\textbf{while}}
 
 \chapter{List of Modules}
 \label{ap:module}
