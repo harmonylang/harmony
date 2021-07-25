@@ -478,8 +478,9 @@ with the concepts of CPU, memory, register, stack, and machine
 instructions.
 
 Harmony is heavily influenced by Leslie Lamport's work on
-TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09}, as well as
-Gerard Holzmann's work on Promela and SPIN~\cite{SPIN}.
+TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09},
+Gerard Holzmann's work on Promela and SPIN~\cite{SPIN},
+and University of Washington's DSLabs system~\cite{MWA19}.
 Harmony is designed to have a lower learning curve than those
 systems, but is not as powerful.  When you finish this book
 and want to learn more, we strongly encourage checking
@@ -5506,6 +5507,8 @@ not share memory, it is not necessary to check those interleavings.
 \section*{Exercises}
 \begin{problems}
 \item Check if the code finds a unique leader if identifiers are not unique.
+\item Messages are added atomically to the network.  Is this necessary?
+What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 \end{problems}
 
 \chapter{Distributed Consensus}
@@ -6283,9 +6286,9 @@ The statement $x~+$$= 3$ loads $x$, adds 3, and then stores the
 results in $x$.  In this case, it is equivalent to $x = x + 3$.
 However, in general this is not so.  For example, $x[\mathtt{f}()]~+$$= 3$
 only evaluates $\mathtt{f}()$ once.  Unlike Python, however,
-$x~+$$= [3]$ is equivalent to $x = x + [3]$ in Harmony.
+$x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
 (In Python, the following two compound statements lead to different results
-for $y$: $x = y = []; x~+$$= [1]$ and $x = y = []; x = x + [1]$.)
+for $y$: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
 
 \section{\textbf{assert}}
 
@@ -6335,7 +6338,7 @@ the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
 with 4 assigned to \texttt{N} instead of 3.
 Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
 assigns 3 to \texttt{N} and 4 to \texttt{M}.
-Harmony also has limited support for \emph{constant folding}.  For example,
+Harmony has limited support for \emph{constant folding}.  For example,
 \textbf{const} \texttt{N = 3 + 4} assigns value 7 to constant \texttt{N}.
 
 \section{\textbf{def}}
@@ -6377,15 +6380,22 @@ $\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
 The statement \textbf{for} $x$ \textbf{in} $y: S_1; S_2; ...$
 iterates over $y$ and executes for each element the statements
 $S_1, S_2, ...$.
-which must be a set or a dictionary.  $y$ is evaluated only once at
+$y$ must be a set or a dictionary.  $y$ is evaluated only once at
 the beginning of the evaluation of this statement.  In case of a set,
 the result is sorted (using Harmony's global order on all values).
+In case of a dictionary, the statement iterates over the values of
+the dictionary in the order of the keys.  This makes iterating over
+lists intuitive and identical to Python.
 For each element, the statements $S_1, S_2, ...$ are executed with
 local variable $y$ having the value of the element.
 $x$ can be a pattern such as $(a)$ or $(a, (b, c))$.
 If the pattern cannot be matched, Harmony detects and error.
 It is allowed, but discouraged, to assign different values to $x$
 within statements $S_1, S2, ...$.
+
+If $y$ is a dictionary, Harmony also supports the form
+\textbf{for} $k:v$ \textbf{in} $y: S_1; S_2; ...$.  This works similar,
+except that $k$ is bound to the key and $v$ is bound to the value.
 
 The statement also supports nesting and filtering.
 Nesting is of the form
@@ -6414,12 +6424,12 @@ names of methods (program counter constants) within the module.
 You can import all constants from a module \texttt{m}
 (including program counter constants) using the statement
 \textbf{from} \texttt{m} \textbf{import} \texttt{*}.
-This, however, excludes constants that start with the character \_: those
-are considered \emph{private} to the module.
+This, however, excludes constants whose names start with the character
+\texttt{\_}: those are considered \emph{private} to the module.
 
 \section{\textbf{go}}
 
-The statement \textbf{go} $c e$ starts a thread with context $c$ that
+The statement \textbf{go} $c$ $e$ starts a thread with context $c$ that
 has executed a \textbf{stop} expression.  The \textbf{stop} expression
 returns value $e$.
 The same context can be started multiple times, allowing threads to
@@ -6457,7 +6467,7 @@ by calling \texttt{m.f()}.  If you would prefer to invoke it simply as
 The statement \textbf{invariant} $c$ declares that boolean expression $c$
 is an invariant.  $c$ is only allowed to read shared variables and
 is evaluated atomically after every state change.
-If it evaluated to \texttt{False} Harmony reports and error.  Harmony
+If it ever evaluates to \texttt{False} Harmony reports and error.  Harmony
 also reports an error if the expression evaluates to a value other
 than \texttt{False} or \texttt{True}.
 
@@ -7056,7 +7066,7 @@ Harmony:
 
 \begin{code}
 \begin{verbatim}
-x = y = Lock();
+x = y = Lock()
 \end{verbatim}
 \end{code}
 
@@ -7079,15 +7089,17 @@ object-orientation, but instead use \texttt{malloc} and \texttt{free}.
 \section{Constants, Global and Local Variables}\label{sec:vars}
 
 Each (non-reserved) identifier in a Harmony program refers to either
-a constant, a global variable, or a local variable.
+a constant, a global shared variable, a local variable, or a module.
 Constants are declared using \texttt{const} statements.
 Those constants are computed at compile-time.
 
 Local variables all declared.  They can be declared in
 \texttt{def} statements (i.e., arguments),
-\texttt{let} statements, and in \texttt{for} loops.
+\texttt{let} statements, \texttt{for} loops, and \texttt{select} statements.
 Also, each method has an implicitly declared
 \textit{result} variable, which is initialized to \texttt{None}.
+Each thread has a variable called \textit{this} that contains
+the thread-local state.
 Local variables are tightly scoped and cannot be shared
 between threads.
 While in theory one method can be declared within another,
@@ -7196,6 +7208,7 @@ runtime error as (1, 2) cannot be matched with ($a$,).
 Pattern matching can also be used in \texttt{const}, \texttt{let},
 and \texttt{select} statements.
 
+\begin{comment}
 \section{For Loops and Comprehensions}
 
 While Harmony does not support general iterators such as Python does,
@@ -7237,6 +7250,7 @@ Harmony also supports set, list, and dictionary comprehensions.
 \index{comprehensions}%
 Comprehensions are similar to Python, except that filtering uses
 the keyword \texttt{where} instead of \texttt{if}.
+\end{comment}
 
 \section{Dynamic Allocation}
 
