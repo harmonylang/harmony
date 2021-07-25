@@ -5428,21 +5428,22 @@ for each client, or solve the problem using a single pair of channels.
 \label{fig:leader}
 \end{figure}
 
-Leader election is the problem of electing a unique leader in a network
-of processors.  Typically the processors have only limited information.
-In the version that we present, each processor has a unique identifier.  The
-processors are organized in a ring, but each processor only knows its
-own identifier and the identifier of its successor.  Having already
-looked into the problem of how to make the network reliable,
-we assume here that each processor can reliably send messages to its
-successor.
+Leader election is the problem of electing a unique leader in a
+network of processors.  Typically this is challenging because the
+processors have only limited information.  In the version that we
+present, each processor has a unique identifier.  The processors
+are organized in a ring, but each processor only knows its own
+identifier and the identifier of its successor on the ring.  Having
+already looked into the problem of how to make the network reliable,
+we assume here that each processor can reliably send messages to
+its successor.
 
 The protocol that we present elects as leader the processor with the
 highest identifier~\cite{CR79} and works in two phases: in the first
 phase, each processor sends its identifier to its successor.  When
 a processor receives an identifier that is larger than its own
 identifier, it forward that to its successor as well.  If a processor
-receives its own identifier, it knows that it is the leader.  That
+receives its own identifier, it discovers that it is the leader.  That
 processor then starts the second phase by sending a message around the
 ring notifying the other processors of the leader's identifier.
 
@@ -5501,6 +5502,11 @@ multiple times).  Fortunately, the \texttt{select} statement is executed
 atomically, otherwise the body of the statement could lead to additional
 thread interleavings.  Because in practice the different processors do
 not share memory, it is not necessary to check those interleavings.
+
+\section*{Exercises}
+\begin{problems}
+\item Check if the code finds a unique leader if identifiers are not unique.
+\end{problems}
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
@@ -5620,7 +5626,7 @@ A more challenging class to tolerate are \emph{arbitrary failures} in
 which up to \texttt{F} processors may send arbitrary messages, including
 conflicting messages to different peers (equivocation).
 The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
-\item In 1983 Michael Ben-Or presented a randomized algorithm that can
+\item In 1983, Michael Ben-Or presented a randomized algorithm that can
 tolerate crash failures with
 just $\mathtt{N} = 2\mathtt{F} - 1$ processors~\cite{BenOr83}.
 Implement this algorithm.

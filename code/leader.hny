@@ -1,5 +1,5 @@
-const NIDS = 5
-const NPROCS = 4
+const NIDS = 6
+const NPROCS = 5
 
 ids, procs, leader = { 1 .. NIDS }, [], 0
 for i in { 0 .. NPROCS - 1 }:
