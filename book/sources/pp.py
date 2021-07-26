@@ -68,6 +68,7 @@ def isreserved(s):
         "elif",
         "else",
         "end",
+        "eternal",
         "from",
         "False",
         "for",

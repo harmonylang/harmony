@@ -1,0 +1,84 @@
+const NBANKS = 3
+const NCOORDS = 2
+const MAX_BALANCE = 2
+
+balances = [ choose({ 0 .. MAX_BALANCE }) for i in { 0 .. NBANKS - 1 } ]
+
+network = {}
+
+def send(m):
+    atomic: network |= { m }
+
+def bank(self, balance):
+    let status = .idle:
+        while True:
+            select req in { req for req in network where req.dst == (.bank, self) }:
+                if status != .idle:
+                    send({ .dst: req.src, .src: (.bank, self), .response: .no })
+                elif req.request == .withdraw:
+                    if (status != .idle) or (req.amount > balance):
+                        send({ .dst: req.src, .src: (.bank, self), .response: .no })
+                    else:
+                        status = (.busy, req.src, balance)
+                        balance -= req.amount
+                        send({ .dst: req.src, .src: (.bank, self), .response: .yes })
+                elif req.request == .deposit:
+                    if status != .idle:
+                        send({ .dst: req.src, .src: (.bank, self), .response: .no })
+                    else:
+                        status = (.busy, req.src, balance)
+                        balance += req.amount
+                        send({ .dst: req.src, .src: (.bank, self), .response: .yes })
+                elif req.request == .commit:
+                    assert status != .idle
+                    assert status[1] == req.src
+                    status = .idle
+                else:
+                    assert req.request == .abort
+                    if (status != .idle) and (status[1] == req.src):
+                        balance = status[2]
+                        status = .idle
+
+def coordinator(self):
+    let src, dst = choose({ 0 .. NBANKS - 1 }), choose({ 0 .. NBANKS - 1 }):
+        send({
+            .dst: (.bank, src),
+            .src: (.coord, self),
+            .request: .withdraw,
+            .amount: 1 })
+        send({
+            .dst: (.bank, dst),
+            .src: (.coord, self),
+            .request: .deposit,
+            .amount: 1 })
+        select m in { m for m in network where m.dst == (.coord, self) }:
+            if m.response == .ok:
+                select m2 in { m2 for m2 in network where (m2.src != m.src) and (m2.dst == (.coord, self)) }:
+                    if m2.response == ok:
+                        send({
+                            .dst: (.bank, src),
+                            .src: (.coord, self),
+                            .request: .commit })
+                        send({
+                            .dst: (.bank, dst),
+                            .src: (.coord, self),
+                            .request: .commit })
+                    else:
+                        send({
+                            .dst: m.src,
+                            .src: (.coord, self),
+                            .request: .abort })
+            else:
+                send({
+                    .dst: (.bank, src),
+                    .src: (.coord, self),
+                    .request: .abort })
+                send({
+                    .dst: (.bank, dst),
+                    .src: (.coord, self),
+                    .request: .abort })
+
+for i in { 0 .. NBANKS - 1 }:
+    spawn eternal bank(i, balances[i])
+for i in { 1 .. NCOORDS }:
+    spawn coordinator(i)

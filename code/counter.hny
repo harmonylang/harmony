@@ -6,12 +6,12 @@ server_queue = synch.Queue()
 
 def server():
     let counter = 0:
-        while counter < NCLIENTS:
+        while True:
             let q = synch.get(?server_queue):   # await request
                 synch.put(q, counter)           # send response
                 counter += 1
 
-spawn server()
+spawn eternal server()
 
 sequential done
 done = [False,] * NCLIENTS

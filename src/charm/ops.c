@@ -1217,6 +1217,10 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
 
 void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
+    const struct env_Spawn *se = env;
+
+    uint64_t thisval = ctx_pop(pctx);
+    uint64_t arg = ctx_pop(pctx);
 
     uint64_t pc = ctx_pop(pctx);
     if ((pc & VALUE_MASK) != VALUE_PC) {
@@ -1227,8 +1231,6 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 
     assert(pc < code_len);
     assert(strcmp(code[pc].oi->name, "Frame") == 0);
-    uint64_t arg = ctx_pop(pctx);
-    uint64_t thisval = ctx_pop(pctx);
 
     struct context *ctx = new_alloc(struct context);
 
@@ -1240,6 +1242,7 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = VALUE_FALSE;
+    ctx->eternal = se->eternal;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&ctx, arg);
     uint64_t v = value_put_context(ctx);
@@ -1503,7 +1506,6 @@ void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
 void *init_Sequential(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
-void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
 
 void *init_Cut(struct dict *map){
@@ -1698,6 +1700,25 @@ void *init_Push(struct dict *map){
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
     env->value = value_from_json(jv->u.map);
+    return env;
+}
+
+void *init_Spawn(struct dict *map){
+    struct env_Spawn *env = new_alloc(struct env_Spawn);
+    struct json_value *eternal = dict_lookup(map, "eternal", 7);
+    if (eternal == NULL) {
+        env->eternal = false;
+    }
+    else {
+		assert(eternal->type == JV_ATOM);
+        if (eternal->u.atom.len == 0) {
+            env->eternal = false;
+        }
+        else {
+            char *p = eternal->u.atom.base;
+            env->eternal = *p == 't' || *p == 'T';
+        }
+    }
     return env;
 }
 

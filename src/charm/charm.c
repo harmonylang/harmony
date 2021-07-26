@@ -1271,6 +1271,24 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
+bool all_eternal(uint64_t ctxbag){
+    int size;
+    uint64_t *vals = value_get(ctxbag, &size);
+    size /= sizeof(uint64_t);
+    bool all = true;
+    for (int i = 0; i < size; i += 2) {
+        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(vals[i], NULL);
+        assert(ctx != NULL);
+        if (!ctx->eternal) {
+            all = false;
+            break;
+        }
+    }
+    return all;
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1526,7 +1544,8 @@ int main(int argc, char **argv){
             if (comp->good) {
                 continue;
             }
-            if (node->state->ctxbag == VALUE_DICT && node->state->stopbag == VALUE_DICT) {
+            // TODO.  In case of ctxbag, all contexts should probably be blocked
+            if (all_eternal(node->state->ctxbag) && all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }

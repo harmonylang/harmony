@@ -21,4 +21,4 @@ def receive(ballot, phase):
 for i in {0..NLEADERS - 1}:
     spawn leader(i + 1, proposals[i])
 for i in {1..NACCEPTORS}:
-    spawn acceptor()
+    spawn eternal acceptor()

@@ -45,6 +45,7 @@ struct context {     // context value
     bool interruptlevel;  // interrupt level
     bool stopped;         // context is stopped
     bool terminated;      // context has terminated
+    bool eternal;         // context runs indefinitely
     int sp;               // stack size
     uint64_t stack[0];    // growing stack
 };
@@ -169,6 +170,10 @@ struct env_Nary {
 
 struct env_Push {
     uint64_t value;
+};
+
+struct env_Spawn {
+    bool eternal;
 };
 
 struct env_Split {

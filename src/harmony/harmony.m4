@@ -235,6 +235,7 @@ def isreserved(s):
         "elif",
         "else",
         "end",
+        "eternal",
         "except",
         "False",
         # "fun",
@@ -1538,23 +1539,26 @@ class ReturnOp(Op):
             assert False, calltype
 
 class SpawnOp(Op):
+    def __init__(self, eternal):
+        self.eternal = eternal
+
     def __repr__(self):
         return "Spawn"
 
     def jdump(self):
-        return '{ "op": "Spawn" }'
+        return '{ "op": "Spawn", "eternal": "%s" }'%("True" if self.eternal else "False")
 
     def explain(self):
-        return "pop a pc, argument, and tag and spawn a new thread"
+        return "pop thread-local state, argument, and pc and spawn a new thread"
 
     def eval(self, state, context):
         if context.readonly > 0:
             context.failure = "Error: no spawn allowed in assert"
             return
+        this = context.pop()
+        arg = context.pop()
         method = context.pop()
         assert isinstance(method, PcValue)
-        arg = context.pop()
-        this = context.pop()
         frame = state.code[method.pc]
         assert isinstance(frame, FrameOp)
         ctx = ContextValue(frame.name, method.pc, arg, this)
@@ -3814,25 +3818,24 @@ class CallAST(AST):
             code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, token, method, arg, this):
+    def __init__(self, token, method, arg, this, eternal):
         AST.__init__(self, token)
         self.method = method
         self.arg = arg
         self.this = this
+        self.eternal = eternal
 
     def __repr__(self):
-        return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", "  + str(self.this) + ")"
+        return "Spawn(" + str(self.method) + ", " + str(self.arg) + ", "  + str(self.this) + ", " + str(self.eternal) + ")"
 
     def compile(self, scope, code):
-        # TODO: get rid of "this"
+        self.method.compile(scope, code)
+        self.arg.compile(scope, code)
         if self.this == None:
             code.append(PushOp((novalue, None, None, None)))
         else:
             self.this.compile(scope, code)
-        # TODO: method should be compiled first
-        self.arg.compile(scope, code)
-        self.method.compile(scope, code)
-        code.append(SpawnOp())
+        code.append(SpawnOp(self.eternal))
 
 class TrapAST(AST):
     def __init__(self, token, method, arg):
@@ -4309,6 +4312,12 @@ class StatementRule(Rule):
             return (MethodAST(token, name, bv, stat), t)
         if lexeme == "spawn":
             (tokens, t) = self.slice(t[1:], column)
+            (lexeme, file, line, col) = tokens[0]
+            if lexeme == "eternal":
+                tokens = tokens[1:]
+                eternal = True
+            else:
+                eternal = False
             (func, tokens) = NaryRule({","}).parse(tokens)
             if not isinstance(func, ApplyAST):
                 token = func.ast_token if isinstance(func, AST) else tokens[0] if tokens else token
@@ -4335,7 +4344,7 @@ class StatementRule(Rule):
                         column=column,
                         message="spawn: unexpected token: %s" % str(tokens[0]),
                     )
-            return (SpawnAST(token, func.method, func.arg, this), t)
+            return (SpawnAST(token, func.method, func.arg, this, eternal), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)

@@ -4890,6 +4890,8 @@ Each client would acquire the lock, get the value of the counter
 and increment it, and release the lock.
 Instead, in the actor approach the counter is managed by a
 separate server thread.
+The server never terminates, so it is spawned with the keyword
+\textbf{eternal} to suppress non-terminating state warnings.
 Each client sends a request to the server, consisting in this case
 of simply the queue to which the server must send the response.
 The server maintains a local, zero-initialized counter variable.
@@ -6249,7 +6251,7 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
-\texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
+\texttt{spawn [eternal] m $e$ [, $t$]} & \texttt{m} is a method,
 $e$ is an expression, $t$ is the thread-local state \\
 \hline
 \texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
@@ -6575,6 +6577,10 @@ is the empty dictionary by default.  It can be specified by adding
 a parameter: \texttt{spawn} $m$ $a, e$ specifies that $e$ should be
 the initial value of the thread-local state.
 
+Harmony normally checks that all threads eventually terminate.
+If a thread may never terminate, you should spawn it with
+\texttt{spawn eternal} $m$ $a$ to suppress those checks.
+
 \section{\textbf{trap}}
 
 The statement \textbf{trap} $m$ $a$ specifies that the current thread
@@ -6833,7 +6839,7 @@ Sequential & pop an address of a variable that has sequential consistency \\
 \hline
 SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
 \hline
-Spawn & pop initial thread-local state, argument, and method and spawn a new context \\
+Spawn [eternal] & pop initial thread-local state, argument, and method and spawn a new context \\
 \hline
 Split & pop tuple and push its elements \\
 \hline
