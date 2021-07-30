@@ -1,0 +1,31 @@
+network = {}
+
+def send(m):
+    atomic: network |= { m }
+
+def bank(self, balance):
+    let status = .idle let received = {}:
+        while True:
+            select req in { req for req in network - received where req.dst == self }:
+                received |= { req }
+                if req.request == .withdraw:
+                    if (status != .idle) or (req.amount > balance):
+                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
+                    else:
+                        status = (.busy, req.src, balance)
+                        balance -= req.amount
+                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
+                elif req.request == .deposit:
+                    if status != .idle:
+                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
+                    else:
+                        status = (.busy, req.src, balance)
+                        balance += req.amount
+                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
+                elif req.request == .commit:
+                    assert (status != .idle) and (status[1] == req.src)
+                    status = .idle
+                else:
+                    assert req.request == .abort
+                    assert (status != .idle) and (status[1] == req.src)
+                    balance, status = status[2], .idle

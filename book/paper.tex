@@ -561,6 +561,8 @@ network.
 \item \autoref{ch:leader} presents a protocol for electing a leader on
 a ring of processors, where each processor is uniquely identified and 
 only knows its successor on the ring.
+\item \autoref{ch:2pc} describes the two-phase commit protocol used to implement
+atomic database transactions.
 \item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
 algorithm (aka protocol) expressed in Harmony.
 \item \autoref{ch:paxos} shows how one can specify and check the well-known
@@ -5512,6 +5514,25 @@ not share memory, it is not necessary to check those interleavings.
 \item Messages are added atomically to the network.  Is this necessary?
 What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 \end{problems}
+
+\chapter{Two Phase Commit}
+\label{ch:2pc}
+
+\begin{figure}
+\begin{code}
+\harmonysource{2pc1}
+\end{code}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for banks.}
+\label{fig:2pc1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{2pc2}
+\end{code}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for transaction coordinators.}
+\label{fig:2pc2}
+\end{figure}
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
