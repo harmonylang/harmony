@@ -5621,8 +5621,19 @@ $\{ \mathtt{.dst}, \mathtt{.src}, \mathtt{.request}, \mathtt{.amount} \}$:
 \noindent
 A bank waits for a message destined to itself that it has not yet received.
 In case of a withdrawal when the bank is idle and there are sufficient
-funds, the bank changes its status to \texttt{.busy} and keeps track of
-who to coordinator is 
+funds, the bank saves the current balance in \textit{status} to indicate
+an ongoing transaction and what its original balance was.
+The bank then responds with an \texttt{.yes} message to the coordinator,
+including the new balance.
+Otherwise, the bank responds with a \texttt{.no} message.
+Deposits are similar, except that it is not necessary to check for
+sufficient funds.
+In case of a \texttt{.commit} message, the bank changes its status
+to (), indicating that there is no ongoing transaction.  In case of
+a \texttt{.abort} message, the bank restores \textit{balance} first.
+
+\autoref{fig:2pc2} contains the code for transfers and inquiries, as well
+as tests.
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
