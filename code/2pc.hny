@@ -9,30 +9,30 @@ def send(m):
     atomic: network |= { m }
 
 def bank(self, balance):
-    let status = .idle let received = {}:
+    let status, received = (), {}:
         while True:
             select req in { req for req in network - received where req.dst == self }:
                 received |= { req }
                 if req.request == .withdraw:
-                    if (status != .idle) or (req.amount > balance):
+                    if (status != ()) or (req.amount > balance):
                         send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
                     else:
-                        status = (.busy, req.src, balance)
+                        status = balance
                         balance -= req.amount
                         send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
                 elif req.request == .deposit:
-                    if status != .idle:
+                    if status != ():
                         send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
                     else:
-                        status = (.busy, req.src, balance)
+                        status = balance
                         balance += req.amount
                         send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
                 elif req.request == .commit:
-                    assert (status != .idle) and (status[1] == req.src)
-                    status = .idle
+                    assert status != ()
+                    status = ()
                 else:
-                    assert (status != .idle) and (status[1] == req.src) and (req.request == .abort)
-                    balance, status = status[2], .idle
+                    assert (status != ()) and (req.request == .abort)
+                    balance, status = status, ()
 
 import list
 

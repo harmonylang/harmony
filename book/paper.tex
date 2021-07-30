@@ -5536,16 +5536,16 @@ What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 
 Modern databases support multiple clients concurrently accessing the data
 stored in them.  Making matters more complicated, they store data on disk, but
-we will ignore this in this book.
+we will ignore that in this book.
 The complication we address here is that databases may be \emph{sharded},
-where different parts of the data are stored on different servers with
-different disks.  The different servers may even be under different
+where different parts of the data are stored on different servers.
+The different servers may even be under different
 authoritive domains, such as multiple banks maintaining the accounts of their
 clients.
 
-In database terminology, a \emph{transaction} is an operation on the database.
-The operation can be quite complex.  A transaction should be executed with at
-least the following two properties:
+In database terminology, a \emph{transaction} is an operation on a database.
+The operation can be quite complex, and the execution of a transaction
+should have at least the following two properties:
 \begin{itemize}
 \item \emph{all-or-nothing}: a transaction should either complete, or it should
 be a no-op.  It should never partially execute and then give up because of
@@ -5559,10 +5559,10 @@ in execution.
 \end{itemize}
 
 We will use as an example a distributed database that maintains accounts.
-For simplicity we will assume a collection of banks, each maintaining a
+For simplicity we will model this as a collection of banks, each maintaining a
 single account.  There are two kinds of transactions: \emph{transfer}
 (similar to \autoref{ex:bank}) and \emph{inquiry}.  In this example, a transfer
-is a transaction that moves some balance between two accounts.
+is a transaction that moves some funds between two accounts.
 An inquiry is a transaction over all accounts and checks that the sum of the
 balances across the accounts remains the same.
 
@@ -5583,15 +5583,48 @@ used to implement transactions across multiple database servers---banks
 in this case.
 Each transaction has a \emph{coordinator} that sends a \texttt{PREPARE}
 message to each of the servers involved in the transaction, asking them
-to prepare to commit to a transaction.  A server can either respond with
+to prepare to commit to their part in a particular transaction.
+A server can either respond with
 \texttt{YES} if it is ready to commit and will avoid doing anything
 that might jeopardize this (like committing a conflicting transaction),
 or \texttt{NO} if it does not want to participate in the transaction.
 If all servers respond with \texttt{YES}, then the coordinator can
 decide to \emph{commit} the transaction.  Otherwise the coordinator
 must decide to \emph{abort} the transaction.  In the second phase, the
-servers that responded with \texttt{YES} (if any) must be notified in
-either case to inform them of the decision.
+servers that responded with \texttt{YES} (if any) must be notified
+to inform them of the coordinator's decision.
+
+Different transactions can have different coordinators.  In our
+implementation, each bank and each coordinator is a thread.
+\autoref{fig:2pc1} shows the code for a bank.
+The state of a bank consists of the following local variables:
+\begin{itemize}
+\item \textit{self}: the bank's identifier;
+\item \textit{balance}: the current balance in the account;
+\item \textit{status}: either \texttt{.idle} or
+$(\mathtt{.busy}, \mathit{coordinator}, \mathit{oldbalance})$,
+where \textit{coordinator} is the identifier of the coordinator
+of a transaction and \textit{oldbalance} is the balance
+just before the transaction started;
+\item \textit{received}: the set of messages received and handled so far.
+\end{itemize}
+
+\noindent
+Messages sent to a bank have the following dictionary format:
+$\{ \mathtt{.dst}, \mathtt{.src}, \mathtt{.request}, \mathtt{.amount} \}$:
+\begin{itemize}
+\item \texttt{.dst}: identifier of the bank;
+\item \texttt{.src}: identifier of the coordinator that sent the message;
+\item \texttt{.request}: request type, which is either
+\texttt{.withdraw}, \texttt{.deposit}, \texttt{.commit}, or \texttt{.abort};
+\item \texttt{.amount}: amount to withdraw or deposit.
+\end{itemize}
+
+\noindent
+A bank waits for a message destined to itself that it has not yet received.
+In case of a withdrawal when the bank is idle and there are sufficient
+funds, the bank changes its status to \texttt{.busy} and keeps track of
+who to coordinator is 
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
