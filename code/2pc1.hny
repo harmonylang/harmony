@@ -10,18 +10,18 @@ def bank(self, balance):
                 received |= { req }
                 if req.request == .withdraw:
                     if (status != ()) or (req.amount > balance):
-                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
+                        send({ .dst: req.src, .src: self, .response: .no })
                     else:
                         status = balance
                         balance -= req.amount
-                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
+                        send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
                 elif req.request == .deposit:
                     if status != ():
-                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
+                        send({ .dst: req.src, .src: self, .response: .no })
                     else:
                         status = balance
                         balance += req.amount
-                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
+                        send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
                 elif req.request == .commit:
                     assert status != ()
                     status = ()

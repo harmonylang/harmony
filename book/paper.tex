@@ -5601,10 +5601,8 @@ The state of a bank consists of the following local variables:
 \begin{itemize}
 \item \textit{self}: the bank's identifier;
 \item \textit{balance}: the current balance in the account;
-\item \textit{status}: either \texttt{.idle} or
-$(\mathtt{.busy}, \mathit{coordinator}, \mathit{oldbalance})$,
-where \textit{coordinator} is the identifier of the coordinator
-of a transaction and \textit{oldbalance} is the balance
+\item \textit{status}: either contains () if the bank is not involved in an
+ongoing transaction or contains the balance
 just before the transaction started;
 \item \textit{received}: the set of messages received and handled so far.
 \end{itemize}
