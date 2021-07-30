@@ -1,8 +1,12 @@
+import list
+
 const NBANKS = 3
 const NCOORDS = 2
 const MAX_BALANCE = 2
+const MAX_TRANSFER = 2
 
 balances = [ choose({ 0 .. MAX_BALANCE }) for i in { 0 .. NBANKS - 1 } ]
+total = list.sum(balances)
 
 network = {}
 
@@ -10,75 +14,70 @@ def send(m):
     atomic: network |= { m }
 
 def bank(self, balance):
-    let status = .idle:
+    let status = .idle let received = {}:
         while True:
-            select req in { req for req in network where req.dst == (.bank, self) }:
-                if status != .idle:
-                    send({ .dst: req.src, .src: (.bank, self), .response: .no })
-                elif req.request == .withdraw:
+            select req in { req for req in network - received where req.dst == self }:
+                received |= { req }
+                if req.request == .withdraw:
                     if (status != .idle) or (req.amount > balance):
-                        send({ .dst: req.src, .src: (.bank, self), .response: .no })
+                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
                     else:
                         status = (.busy, req.src, balance)
                         balance -= req.amount
-                        send({ .dst: req.src, .src: (.bank, self), .response: .yes })
+                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
                 elif req.request == .deposit:
                     if status != .idle:
-                        send({ .dst: req.src, .src: (.bank, self), .response: .no })
+                        send({ .dst: req.src, .src: self, .response: .no, .balance: balance })
                     else:
                         status = (.busy, req.src, balance)
                         balance += req.amount
-                        send({ .dst: req.src, .src: (.bank, self), .response: .yes })
+                        send({ .dst: req.src, .src: self, .response: .yes, .balance: balance })
                 elif req.request == .commit:
                     assert status != .idle
                     assert status[1] == req.src
                     status = .idle
                 else:
+                    assert status != .idle
+                    assert status[1] == req.src
                     assert req.request == .abort
-                    if (status != .idle) and (status[1] == req.src):
-                        balance = status[2]
-                        status = .idle
+                    balance = status[2]
+                    status = .idle
 
-def coordinator(self):
-    let src, dst = choose({ 0 .. NBANKS - 1 }), choose({ 0 .. NBANKS - 1 }):
-        send({
-            .dst: (.bank, src),
-            .src: (.coord, self),
-            .request: .withdraw,
-            .amount: 1 })
-        send({
-            .dst: (.bank, dst),
-            .src: (.coord, self),
-            .request: .deposit,
-            .amount: 1 })
-        select m in { m for m in network where m.dst == (.coord, self) }:
-            if m.response == .ok:
-                select m2 in { m2 for m2 in network where (m2.src != m.src) and (m2.dst == (.coord, self)) }:
-                    if m2.response == ok:
-                        send({
-                            .dst: (.bank, src),
-                            .src: (.coord, self),
-                            .request: .commit })
-                        send({
-                            .dst: (.bank, dst),
-                            .src: (.coord, self),
-                            .request: .commit })
-                    else:
-                        send({
-                            .dst: m.src,
-                            .src: (.coord, self),
-                            .request: .abort })
+def receive(self, sources):
+    let forme = { m for m in network where m.dst == self }:
+        if { m.src for m in forme } == sources:
+            result = { forme }
+        else:
+            result = {}
+
+def check(self):
+    let allbanks = { (.bank, i) for i in { 0 .. NBANKS - 1 } }:
+        for bank in allbanks:
+            send({ .dst: bank, .src: self, .request: .withdraw, .amount: 0 })
+        select msgs in receive(self, allbanks):
+            if all(m.response == .yes for m in msgs):
+                assert list.sum(m.balance for m in msgs) == total
+            for m in msgs where m.response == .yes:
+                send({ .dst: m.src, .src: self, .request: .abort })
+
+def transfer(self):
+    let src = choose({ (.bank, i) for i in { 0 .. NBANKS - 1 }})
+    let dst = choose({ (.bank, i) for i in { 0 .. NBANKS - 1 }} - { src })
+    let amount = choose({1 .. MAX_TRANSFER }):
+        send({ .dst: src, .src: self, .request: .withdraw, .amount: amount })
+        send({ .dst: dst, .src: self, .request: .deposit, .amount: amount })
+        select msgs in receive(self, { src, dst }):
+            if all(m.response == .yes for m in msgs):
+                for m in msgs where m.response == .yes:
+                    send({ .dst: m.src, .src: self, .request: .commit })
             else:
-                send({
-                    .dst: (.bank, src),
-                    .src: (.coord, self),
-                    .request: .abort })
-                send({
-                    .dst: (.bank, dst),
-                    .src: (.coord, self),
-                    .request: .abort })
+                for m in msgs where m.response == .yes:
+                    send({ .dst: m.src, .src: self, .request: .abort })
 
 for i in { 0 .. NBANKS - 1 }:
-    spawn eternal bank(i, balances[i])
+    spawn eternal bank((.bank, i), balances[i])
 for i in { 1 .. NCOORDS }:
-    spawn coordinator(i)
+    if choose({ .transfer, .check }) == .transfer:
+        spawn transfer((.coord, i))
+    else:
+        spawn check((.coord, i))
