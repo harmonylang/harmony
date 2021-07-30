@@ -5534,6 +5534,65 @@ What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 \label{fig:2pc2}
 \end{figure}
 
+Modern databases support multiple clients concurrently accessing the data
+stored in them.  Making matters more complicated, they store data on disk, but
+we will ignore this in this book.
+The complication we address here is that databases may be \emph{sharded},
+where different parts of the data are stored on different servers with
+different disks.  The different servers may even be under different
+authoritive domains, such as multiple banks maintaining the accounts of their
+clients.
+
+In database terminology, a \emph{transaction} is an operation on the database.
+The operation can be quite complex.  A transaction should be executed with at
+least the following two properties:
+\begin{itemize}
+\item \emph{all-or-nothing}: a transaction should either complete, or it should
+be a no-op.  It should never partially execute and then give up because of
+some kind of error or something.  Database
+people call this \emph{atomicity}, but it is not the same kind of atomicity that
+we have been discussing in this book.
+\item \emph{serialized}: any two concurrent transactions should appear to
+execute in some order.  Database people call this \emph{isolation}: one transaction
+should not be able to witness the intermediate state of another transaction
+in execution.
+\end{itemize}
+
+We will use as an example a distributed database that maintains accounts.
+For simplicity we will assume a collection of banks, each maintaining a
+single account.  There are two kinds of transactions: \emph{transfer}
+(similar to \autoref{ex:bank}) and \emph{inquiry}.  In this example, a transfer
+is a transaction that moves some balance between two accounts.
+An inquiry is a transaction over all accounts and checks that the sum of the
+balances across the accounts remains the same.
+
+Executing such transactions must be done with care.  Consider what
+would happen if transactions are not all-or-nothing or are not
+serialized.  A transfer consists of two operations: withdrawing
+funds from one account and depositing the same amount of funds in
+the other.  These two operations can be done concurrently, but if
+the withdrawal fails (for example, because there are not sufficient
+funds in the source account) then the whole transaction should fail
+and become a no-op.  Even if this is not the case, a concurrent
+inquiry transaction may accidentally witness a state in which either
+the withdrawal or the deposit happened, but not both.  And matters
+get more complicated with multiple concurrent transfers.
+
+The Two-Phase Commit protocol~\cite{Gray78} is a protocol that can be
+used to implement transactions across multiple database servers---banks
+in this case.
+Each transaction has a \emph{coordinator} that sends a \texttt{PREPARE}
+message to each of the servers involved in the transaction, asking them
+to prepare to commit to a transaction.  A server can either respond with
+\texttt{YES} if it is ready to commit and will avoid doing anything
+that might jeopardize this (like committing a conflicting transaction),
+or \texttt{NO} if it does not want to participate in the transaction.
+If all servers respond with \texttt{YES}, then the coordinator can
+decide to \emph{commit} the transaction.  Otherwise the coordinator
+must decide to \emph{abort} the transaction.  In the second phase, the
+servers that responded with \texttt{YES} (if any) must be notified in
+either case to inform them of the decision.
+
 \chapter{Distributed Consensus}
 \label{ch:consensus}
 
