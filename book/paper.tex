@@ -561,8 +561,7 @@ network.
 \item \autoref{ch:leader} presents a protocol for electing a leader on
 a ring of processors, where each processor is uniquely identified and 
 only knows its successor on the ring.
-\item \autoref{ch:2pc} describes the two-phase commit protocol used to implement
-atomic database transactions.
+\item \autoref{ch:2pc} describes atomic database transactions and the two-phase commit protocol used to implement them.
 \item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
 algorithm (aka protocol) expressed in Harmony.
 \item \autoref{ch:paxos} shows how one can specify and check the well-known
@@ -5515,7 +5514,7 @@ not share memory, it is not necessary to check those interleavings.
 What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 \end{problems}
 
-\chapter{Two Phase Commit}
+\chapter{Transactions and Two Phase Commit}
 \label{ch:2pc}
 
 \begin{figure}
@@ -5534,9 +5533,10 @@ What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
 \label{fig:2pc2}
 \end{figure}
 
-Modern databases support multiple clients concurrently accessing the data
-stored in them.  Making matters more complicated, they store data on disk, but
-we will ignore that in this book.
+Modern databases support multiple clients concurrently accessing the data.
+They store data on disk, but we will ignore that in this book.
+(If you want to model a disk, this is probably best done as a separate
+thread.)
 The complication we address here is that databases may be \emph{sharded},
 where different parts of the data are stored on different servers.
 The different servers may even be under different
@@ -5561,9 +5561,9 @@ in execution.
 We will use as an example a distributed database that maintains accounts.
 For simplicity we will model this as a collection of banks, each maintaining a
 single account.  There are two kinds of transactions: \emph{transfer}
-(similar to \autoref{ex:bank}) and \emph{inquiry}.  In this example, a transfer
+(similar to \autoref{ex:bank}) and \emph{check}.  In this example, a transfer
 is a transaction that moves some funds between two accounts.
-An inquiry is a transaction over all accounts and checks that the sum of the
+A check is a transaction over all accounts and checks that the sum of the
 balances across the accounts remains the same.
 
 Executing such transactions must be done with care.  Consider what
@@ -5574,7 +5574,7 @@ the other.  These two operations can be done concurrently, but if
 the withdrawal fails (for example, because there are not sufficient
 funds in the source account) then the whole transaction should fail
 and become a no-op.  Even if this is not the case, a concurrent
-inquiry transaction may accidentally witness a state in which either
+check transaction may accidentally witness a state in which either
 the withdrawal or the deposit happened, but not both.  And matters
 get more complicated with multiple concurrent transfers.
 
@@ -5587,7 +5587,7 @@ to prepare to commit to their part in a particular transaction.
 A server can either respond with
 \texttt{YES} if it is ready to commit and will avoid doing anything
 that might jeopardize this (like committing a conflicting transaction),
-or \texttt{NO} if it does not want to participate in the transaction.
+or with \texttt{NO} if it does not want to participate in the transaction.
 If all servers respond with \texttt{YES}, then the coordinator can
 decide to \emph{commit} the transaction.  Otherwise the coordinator
 must decide to \emph{abort} the transaction.  In the second phase, the
@@ -5623,7 +5623,7 @@ A bank waits for a message destined to itself that it has not yet received.
 In case of a withdrawal when the bank is idle and there are sufficient
 funds, the bank saves the current balance in \textit{status} to indicate
 an ongoing transaction and what its original balance was.
-The bank then responds with an \texttt{.yes} message to the coordinator,
+The bank then responds with a \texttt{.yes} message to the coordinator,
 including the new balance.
 Otherwise, the bank responds with a \texttt{.no} message.
 Deposits are similar, except that it is not necessary to check for
@@ -5634,6 +5634,62 @@ a \texttt{.abort} message, the bank restores \textit{balance} first.
 
 \autoref{fig:2pc2} contains the code for transfers and inquiries, as well
 as tests.
+The \texttt{receive()} method is used by coordinators in a \textbf{select}
+statement to wait for a response from each bank involved in a transaction.
+Argument \texttt{self} is the
+identifier of the coordinator and \texttt{sources} is the set of banks.
+It returns the empty set if there not yet responses from all banks.
+Otherwise it returns a singleton set containing the set of responses,
+one for each source.
+
+The \texttt{transfer}() method contains the code for the transfer
+transaction.  Argument \textit{self} is the identifier of the coordinator,
+\textit{b1} is the source bank, \textit{b2} is the destination bank,
+and \textit{amt} is the amount to transfer.
+The coordinator sends a \texttt{PREPARE} message containing a
+\texttt{.withdraw} request to \textit{b1} and a \texttt{PREPARE}
+message containing a \texttt{.deposit} request to \textit{b2}.
+It then waits for responses from each.  If both responses are
+\texttt{.yes}, then it commits the transaction, otherwise it aborts
+the transaction.
+
+The \texttt{check}() method checks if the sum of the balances equals
+\textit{total}, the sum of the initial balances.
+The code is similar to \textit{transfer}, except that it always
+aborts the transaction---there is no need to ever commit it.
+As a code-saving hack: the balance inquiry is done by withdrawing \$0.
+
+As for testing, the initial balances are picked arbitrarily between
+0 and \texttt{MAX\_BALANCE} (and Harmony as always will try every
+possible set of choices).
+Each coordinator chooses whether to do a transfer or a check.  In
+case of a transfer, it also chooses the source bank and the destination
+bank.
+
+While the protocol perhaps seems simple enough, there are a lot of
+\textbf{if} statements in the code, making it hard to reason about
+correctness.
+Model checking is useful to see if there are corner
+cases where the code does not work.
+While confidence increases by
+increasing the number of banks or the number of coordinators, doing so
+quickly increases the number of possible states so that model checking
+may become infeasible.
+
+\section*{Exercises}
+\begin{problems}
+\item In \autoref{ex:bank} the code ran into a deadlock.  Can the code
+in this chapter run into a deadlock?  Explain.
+\item Transactions can fail for two reasons: a transfer transaction can
+fail because of insufficient funds, but in general transaction can fail
+if there is a conflict with another transaction.  The latter can be
+fixed by retrying the transaction until it commits.  Implement this.
+\item One way to reduce the number of conflicts between transactions
+is to distinguish read and write operations.  Two read operations
+(in our case, operations that withdraw \$0) do not conflict,
+so a bank could have multiple ongoing read operations
+for different transactions.  Implement this.
+\end{problems}
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}
