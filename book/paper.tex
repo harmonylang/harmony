@@ -5689,8 +5689,9 @@ is to distinguish read and write operations.  Two read operations
 (in our case, operations that withdraw \$0) do not conflict,
 so a bank could have multiple ongoing read operations
 for different transactions.  Implement this.
-\item Two-phase commit can tolerate banks failing.  If a bank does not
-respond, the coordinator can abort the transaction.  Implement this.
+\item Two-phase commit can tolerate servers failing.  If a server does not
+respond within some reasonable amount of time, the coordinator can abort
+the transaction.  Implement this.
 \end{problems}
 
 \chapter{Distributed Consensus}
