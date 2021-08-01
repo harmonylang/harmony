@@ -29,7 +29,8 @@ def read(uid):
         let (t, v) = max(m.value for m in keys msgs):
             send({ .type: .write, .src: (uid, 2), .value: (t, v) })
             result = v
-    select msgs in receive(uid, 2): pass
+    select msgs in receive(uid, 2):
+        pass
 
 def write(uid, v):
     send({ .type: .read, .src: (uid, 1) })
@@ -37,17 +38,5 @@ def write(uid, v):
         let (t, _) = max(m.value for m in keys msgs)
         let nt = (t[0] + 1, uid):
             send({ .type: .write, .src: (uid, 2), .value: (nt, v) })
-    select msgs in receive(uid, 2): pass
-
-def reader():
-    let first = read((.reader, 1))
-    let second = read((.reader, 2)):
-        assert (first == .token) => (second == .token)
-
-def writer():
-    write((.writer, 1), .token)
-
-for i in { 1 .. NSERVERS }:
-    spawn eternal server()
-spawn reader()
-spawn writer()
+    select msgs in receive(uid, 2):
+        pass

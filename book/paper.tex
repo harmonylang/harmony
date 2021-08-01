@@ -562,6 +562,8 @@ network.
 a ring of processors, where each processor is uniquely identified and 
 only knows its successor on the ring.
 \item \autoref{ch:2pc} describes atomic database transactions and the two-phase commit protocol used to implement them.
+\item \autoref{ch:abd} presents a protocol for a fault-tolerant
+replicated object that supports only read and write operations.
 \item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
 algorithm (aka protocol) expressed in Harmony.
 \item \autoref{ch:paxos} shows how one can specify and check the well-known
@@ -5694,15 +5696,23 @@ respond within some reasonable amount of time, the coordinator can abort
 the transaction.  Implement this.
 \end{problems}
 
-\chapter{Distributed Atomic Read/Write Register}
+\chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}
 
 \begin{figure}
 \begin{code}
-\harmonysource{abd}
+\harmonysource{abd1}
 \end{code}
-\caption{\harmonylink{code/abd.hny} An implementation of a distributed atomic read/write register.}
-\label{fig:abd}
+\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register.}
+\label{fig:abd1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{abd2}
+\end{code}
+\caption{\harmonylink{code/abd.hny} Testing the code in \autoref{fig:abd1}.}
+\label{fig:abd2}
 \end{figure}
 
 \chapter{Distributed Consensus}
