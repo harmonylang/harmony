@@ -8,7 +8,7 @@ def reader():
 def writer():
     abd.write((.writer, 1), .token)
 
-for i in { 1 .. abd.NSERVERS }:
+for i in { 1 .. abd.N }:
     spawn eternal abd.server()
 spawn reader()
 spawn writer()

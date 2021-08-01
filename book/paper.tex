@@ -3054,6 +3054,7 @@ consider all possible interleavings, and see if the result
 is consistent with an appropriate sequential execution of the
 operations.
 
+\index{logical timestamp}%
 Harmony provides support for testing linearizability,
 but requires that the programmer
 identifies what are known as \emph{linearization points}
@@ -5714,6 +5715,46 @@ the transaction.  Implement this.
 \caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}.}
 \label{fig:abdtest}
 \end{figure}
+
+A \emph{register} is an object that you can read or write.  In a distributed
+system, it can be useful to have shared registers.  A simple shared register
+would be maintained by a server, and clients can read or write the
+shared register by exchanging messages with the server.
+We call two operations such that one does not finish before the other starts
+\emph{concurrent}.
+Since messages are delivered one at a time to the server,
+concurrent operations on the shared register appear atomic.
+In particular, we have the following three desirable properties:
+\begin{enumerate}
+\item All write operations are ordered;
+\item A read operation returns either the last value written or the value of
+a concurrent write operation.
+\item If read operation $r_1$ finishes before read operation $r_2$ starts,
+then $r_2$ cannot return a value that is older than the value returned
+by $r_1$.
+\end{enumerate}
+
+\index{single point of failure}%
+Unfortunately, however, the server is a \emph{single point of failure}:
+if it fails, all its clients suffer.
+We would therefore like to find a solution that can survive the crash
+of a server.
+In this chapter, we will \emph{replicate} the object: maintain multiple
+copies.
+One could, for example, imaging that clients write to all copies and read
+from any single one.
+While this solves the single-point-of-failure problem, we lose all the
+nice properties above.  For one, it is not guaranteed that all servers
+see all write operations in the same order.
+
+\index{logical timestamp}%
+We present a protocol here that is based on the work by
+Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
+In order to tolerate \texttt{N} failures,
+it uses $\mathtt{N} = 2\mathtt{F} + 1$ servers.
+Each server maintains not only the value of the object, but also a
+\emph{logical timestamp} (see also \autoref{ch:testing}).
+All write operation will be ordered by a unique timestamp.
 
 \chapter{Distributed Consensus}
 \label{ch:consensus}

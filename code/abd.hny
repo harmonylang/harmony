@@ -1,7 +1,7 @@
 import bag
 
 const F = 1
-const NSERVERS = (2 * F) + 1
+const N = (2 * F) + 1
 
 network = bag.empty()
 
@@ -21,7 +21,7 @@ def server():
 def receive(uid):
     let msgs = { m:c for m:c in network
                     where (m.type == .response) and (m.dst == uid) }:
-        result = bag.combinations(msgs, NSERVERS - F)
+        result = bag.combinations(msgs, N - F)
 
 def read(uid):
     send({ .type: .read, .src: (uid, 1) })
