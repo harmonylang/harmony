@@ -2,8 +2,6 @@ import bag
 
 const F = 1
 const NSERVERS = (2 * F) + 1
-const NWRITERS = 1
-const NREADERS = 2
 
 network = bag.empty()
 
@@ -27,23 +25,27 @@ def receive(self, phase):
 def read(self):
     send({ .type: .read, .src: (self, 1) })
     select msgs in receive(self, 1):
-        result = max(m.value for m in keys msgs)
-        send({ .type: .write, .src: (self, 2), .value: result })
-    select msgs in receive(self, 2):
-        pass
+        let (t, v) = max(m.value for m in keys msgs):
+            send({ .type: .write, .src: (self, 2), .value: (t, v) })
+            result = v
+    select msgs in receive(self, 2): pass
 
 def write(self, v):
     send({ .type: .read, .src: (self, 1) })
     select msgs in receive(self, 1):
-        result = max(m.value for m in keys msgs)
-        let t = (result[0][0] + 1, self):
-            send({ .type: .write, .src: (self, 2), .value: (t, v) })
-    select msgs in receive(self, 2):
-        pass
+        let (t, _) = max(m.value for m in keys msgs)
+        let nt = (t[0] + 1, self):
+            send({ .type: .write, .src: (self, 2), .value: (nt, v) })
+    select msgs in receive(self, 2): pass
 
-for i in { 1 .. NSERVERS }:
-    spawn eternal server()
-for i in { 1 .. NWRITERS }:
-    spawn write((.writer, i), (.writer, i))
-for i in { 1 .. NREADERS }:
-    spawn read((.reader, i))
+def reader():
+    let first = read((.reader, 1))
+    let second = read((.reader, 2)):
+        assert (first == 1) => (second == 1)
+
+def writer():
+    write((.writer, 1), 1)
+
+for i in { 1 .. NSERVERS }: spawn eternal server()
+spawn reader()
+spawn writer()

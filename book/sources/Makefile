@@ -33,6 +33,7 @@ CODE = \
     Up.tex \
     UpEnter.tex \
     UpLock.tex \
+    abd.tex \
     abp.tex \
     abptest.tex \
     actor.tex \
