@@ -34,8 +34,7 @@ CODE = \
     UpEnter.tex \
     UpLock.tex \
     abd.tex \
-    abd1.tex \
-    abd2.tex \
+    abdtest.tex \
     abp.tex \
     abptest.tex \
     actor.tex \
