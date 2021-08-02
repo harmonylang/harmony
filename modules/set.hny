@@ -15,7 +15,7 @@ def combinations(s, k):
     if k == 0:
         result = { {} }
     else:
-        let n = size(bg):
+        let n = len(s):
             if k > n:
                 result = {}
             elif k == n:

@@ -18,9 +18,9 @@ def server():
                     t, v = m.value
                 send({ .type: .response, .dst: m.src, .value: (t, v) })
 
-def receive(uid):
+def receive(uid, phase):
     let msgs = { m:c for m:c in network
-                    where (m.type == .response) and (m.dst == uid) }:
+                where (m.type == .response) and (m.dst == (uid, phase)) }:
         result = bag.combinations(msgs, N - F)
 
 def read(uid):
