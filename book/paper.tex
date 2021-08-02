@@ -5718,8 +5718,8 @@ the transaction.  Implement this.
 
 A \emph{register} is an object that you can read or write.  In a distributed
 system, it can be useful to have registers that are shared.
-A simple shared register
-would be maintained by a server, and clients can read or write the
+A simple shared register implementation
+would have its value maintained by a server, and clients can read or write the
 shared register by exchanging messages with the server.
 We call two operations such that one does not finish before the other starts
 \emph{concurrent}.
@@ -5742,11 +5742,11 @@ We would therefore like to find a solution that can survive the crash
 of a server.
 In this chapter, we will \emph{replicate} the object: maintain multiple
 copies.
-One could, for example, imaging that clients write to all copies and read
+One could, for example, imagine that clients write to all copies and read
 from any single one.
 While this solves the single-point-of-failure problem, we lose all the
 nice properties above.  For one, it is not guaranteed that all servers
-see all write operations in the same order.
+receive and process all write operations in the same order.
 
 \index{logical timestamp}%
 We present a protocol preserving these properties that is based on the
@@ -5767,7 +5767,7 @@ $\texttt{F} + 1$ servers).  Note that because we are assuming that no
 more than \texttt{F} servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
 
-In the first phase, an operation asks each server for its current
+In the first phase, a client asks each server for its current
 timestamp and value.  After receiving $\mathtt{N} - \mathtt{F}$ responses,
 the client determines the response with the highest timestamp.
 In case of a write operation, the client then computes a new unique
@@ -5775,8 +5775,9 @@ timestamp that is strictly higher than the highest it has seen.
 To make this work, timestamps are actually lexicographically ordered
 tuples consisting of an integer and the unique identifier of the
 client that writes the value.  So if $(t, c)$ is the highest timestamp
-observed, and client $c'$ needs to create a new timestamp, it can select
-$(t + 1, c')$.  After all $(t + 1, c') > (t, u)$ and no other client
+observed by client $c'$, and $c'$  needs to create a new timestamp,
+it can select $(t + 1, c')$.
+After all $(t + 1, c') > (t, u)$ and no other client
 will create the same timestamp.
 
 Suppose client $c'$ is trying to write a value $v$.
@@ -5788,7 +5789,7 @@ the server responds to the client.
 Upon $c'$ receiving a response from $\mathtt{N} - \mathtt{F}$ servers,
 the write operation completes.
 In case of a read operation, client $c'$ simply \emph{writes back} the
-highest timestamp it saw along with its corresponding value.
+highest timestamp it saw in the first phase along with its corresponding value.
 
 \autoref{fig:abd} contains the code for a server, as well as the code
 for read and write operations.
@@ -5805,14 +5806,14 @@ multiplicity.  So, for example, $\{ .\texttt{a}:1, .\texttt{b}:2 \}$ is the bag 
 one $.\texttt{a}$ and two copies of $.\texttt{b}$.
 The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy functions on bags.
 
-In case of a server, its timestamp $t$ is initialized to
-$(0, \mathtt{None})$, and its value to \texttt{None}.
+A server initializes its timestamp $t$ to
+$(0, \mathtt{None})$ and its value to \texttt{None}.
 Each server also keeps track of all the requests its already received
 so it doesn't handle the same request twice.
 The rest of the code is fairly straightforward.
 
 Read and write operations are both invoked with a unique identifier
-\textit{uid}.  Both start with broadcasting a \texttt{.read}
+\textit{uid}.  Both start by broadcasting a \texttt{.read}
 request to all servers and then waiting for a response from
 $\mathtt{N} - \mathtt{F}$ servers.
 The \texttt{receive()} function uses the \texttt{bag.combinations} method
@@ -5849,9 +5850,9 @@ which one can model a network using shared variables.
 In this chapter, we will present a simple consensus algorithm that can tolerate
 fewer than $1/3^{rd}$ of processors failing by crashing.
 
-More precisely, we will
-define a constant \texttt{F} that contains the maximum number of failures, and
-assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
+More precisely,
+constant \texttt{F} contains the maximum number of failures, and
+we will assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
 By the usual definition of consensus, we want the following two properties:
