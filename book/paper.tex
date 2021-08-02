@@ -5829,6 +5829,13 @@ This illustrates the importance of the second phase of the \texttt{read}
 operation.  You can comment out Lines~32 and~33 in \autoref{fig:abd} and
 see what goes wrong.
 
+One may wonder how failures can occur in this model.  They are not
+explicitly modeled, but Harmony tries every possible execution.
+This includes executions in which the clients terminate before
+$\texttt{F}$ of the servers start executing.  To the clients, this
+is indistinguishable from executions in which those
+servers have failed.
+
 \chapter{Distributed Consensus}
 \label{ch:consensus}
 
@@ -5922,13 +5929,6 @@ The rules of the algorithm are simple:
 \item if the quorum is unanimous, decide the value.
 \end{itemize}
 After that, proceed with the next round.
-
-One may wonder how failures can occur in this model.  They are not explicitly modeled, but
-Harmony tries every possible execution, including executions in which some processors make
-no execution steps unless there are no other processors that can run.  The way this algorithm
-works, this includes executions in which $\texttt{N} - \texttt{F}$ processors terminate
-before the remaining $\texttt{F}$ processors start executing.  To the first set of processors,
-this is indistinguishable from executions in which the last set of processors have failed.
 
 \section*{Exercises}
 \begin{problems}
