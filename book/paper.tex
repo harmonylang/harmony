@@ -5930,6 +5930,36 @@ The rules of the algorithm are simple:
 \end{itemize}
 After that, proceed with the next round.
 
+\begin{figure}
+\begin{code}
+\harmonysource{bosco2}
+\end{code}
+\caption{\harmonylink{code/bosco2.hny} Reducing the state space.}
+\label{fig:bosco2}
+\end{figure}
+
+While one can run this code within little time for $\mathtt{F} = 1$, for
+$\mathtt{F} = 2$ the state space to explore is already quite large.
+One way to reduce the state space to explore is the following realization:
+each processor only considers messages for the round that it is in.
+If a message is for an old round, the processor will ignore it;
+if a message is for a future round, the processor will buffer it.
+So one can simplify the model and have each processor wait
+for \emph{all} \texttt{N} messages in a round
+instead of $\mathtt{N} - \mathtt{F}$.
+It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
+out of those \texttt{N} messages, but executions in which some processors
+are left behind in all rounds are no longer considered.
+It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
+processors only choose each other messages and essentially ignore the
+messages of the remaining \texttt{F} processors, so the resulting model
+is just as good.
+
+\autoref{fig:bosco2} shows the code for this model.  Running this with
+$\mathtt{F} = 2$ does not take very long and this approach is a good
+blueprint for testing other round-based protocols (of which there are
+many).
+
 \section*{Exercises}
 \begin{problems}
 \item While Harmony checks that the Validity and Agreement properties

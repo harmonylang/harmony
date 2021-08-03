@@ -47,6 +47,7 @@ CODE = \
     barrier1.tex \
     barriertest.tex \
     bosco.tex \
+    bosco2.tex \
     clock.tex \
     counter.tex \
     cs.tex \
