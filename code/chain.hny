@@ -1,44 +1,36 @@
-const NSERVERS = 2
-const NOPS = 2
+const NSERVERS = 3
+const NOPS = 6
 
 network = {}
-
-decisions = {}
+final = None
 
 def send(m):
     atomic: network |= { m }
 
-# messages are in one of the following two forms:
-#   (id, .rip)
-#   (id, (index, value))
-# this method looks for either a .rip message or the right index from the
-# current predecessor
 def receive(predecessor, index):
     result = { x for (id, x) in network where (id == predecessor)
-                        and ((x == .rip) or (x[0] == index)) }
+                        and ((x == .crash) or (x[0] == index)) }
 
 def server(self, immortal):
-    let history = []
-    let predecessors = { 0 .. self - 1 }:
+    let history, predecessors = [], { 0 .. self - 1 }:
         while choose({ immortal, True }) and (len(history) < NOPS):
             if predecessors == {}:
                 send(self, (len(history), self))
                 history += [self,]
             else:
                 select x in receive(max(predecessors), len(history)):
-                    if x == .rip:
+                    if x == .crash:
                         predecessors -= { max(predecessors) }
                     else:
                         send(self, x)
                         history += [x[1],]
-    send(self, .rip)
-
-def checker():
-    await { i for (i, x) in network where x == .rip } == { 0 .. NSERVERS - 1 }
-    if len(network) == (NSERVERS * (NOPS + 1)):
-        assert False, network
+        if len(history) == NOPS:
+            atomic:
+                assert (final == None) or (final == history)
+                final = history
+        else:
+            send(self, .crash)
 
 let survivor = choose({ 0 .. NSERVERS - 1 }):
     for i in { 0 .. NSERVERS - 1 }:
         spawn server(i, i == survivor)
-spawn checker()
