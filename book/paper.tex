@@ -238,6 +238,11 @@ XX\=XXX\=XXX\kill
   description={is a lock on a resource that can be held by multiple threads if they all 
     only read the resource}
 }
+\newglossaryentry{replication}
+{
+  name=replication,
+  description={maintains multiple copies of some resource to improve availability in the face of failures}
+}
 \newglossaryentry{semaphore}
 {
   name=semaphore,
@@ -279,6 +284,11 @@ XX\=XXX\=XXX\kill
   name=state,
   description={an assignment of values to variables.  In a Harmony virtual machine, this includes
       the contents of its shared memory and the set of contexts}
+}
+\newglossaryentry{state machine replication}
+{
+  name=state machine replication,
+  description={is a replication technique in which a collection of deterministic state machines process the same inputs in the same order}
 }
 \newglossaryentry{step}
 {
@@ -562,6 +572,8 @@ network.
 a ring of processors, where each processor is uniquely identified and 
 only knows its successor on the ring.
 \item \autoref{ch:2pc} describes atomic database transactions and the two-phase commit protocol used to implement them.
+\item \autoref{ch:chain} describes \emph{state machine replication} and
+the \emph{chain replication} protocol to support replication.
 \item \autoref{ch:abd} presents a protocol for a fault-tolerant
 replicated object that supports only read and write operations.
 \item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
@@ -5696,6 +5708,72 @@ for different transactions.  Implement this.
 respond within some reasonable amount of time, the coordinator can abort
 the transaction.  Implement this.
 \end{problems}
+
+\chapter{Chain Replication}
+\label{ch:chain}
+
+\begin{figure}
+\begin{code}
+\harmonysource{chain}
+\end{code}
+\caption{\harmonylink{code/chain.hny} Chain Replication.}
+\label{fig:chain}
+\end{figure}
+
+\glsadd{replication}%
+\index{replication}%
+As you have probably experienced, computers can crash.
+If you are running a web service, you may not be able to afford
+a long outage.  If you are running software that flies a plane,
+then an outage for any length of time could lead to a disaster.
+To deal with service outages caused by computers crashing, you may want
+to \emph{replicate} the service onto multiple computers.  As long as
+one of the computers survives, the service remains available.
+
+\glsadd{state machine replication}%
+\index{state machine replication}%
+Besides availability, it is usually important that the replicated
+services acts as if it were a single one.  This requires that the
+replicas of the service must coordinate their actions.
+One general approach is the
+\emph{Replicated State Machine Approach}~\cite{Lam78,S90}.
+In this approach, you model your service as a deterministic state
+machine.  The replicas each run a copy of the state machine, started
+in the same state.  As long as the replicas handle the same inputs
+in the same order, determinism guarantees that they produce the same
+outputs in the same order.
+The trick then is to ensure that all replicas handle the
+same requests in the same order and to do so in a way that continues
+to work even if some subset of replicas crash.
+
+\emph{Chain Replication}~\cite{vRS04} is a protocol to do just this.
+In Chain Replication, the replicas are organized in a linear chain.
+Each replica monitors its direct predecessor in the chain.  If it has
+no predecessors, we call it the \emph{head}.  The head may change over
+time, as a head may crash and replaced by another.
+We model the state machine as a \emph{history}: a sequence of operations.
+Only the head is allowed to introduce new updates.
+When it does so, it advertises the new update along with the position
+in the history.  When the direct successor receives the next update
+it is expecting, it appends the update to its history and likely
+advertises the new update.  When the update is applied to the history
+of the \emph{tail} replica (the replica that has no live successors),
+then the update is considered final.
+
+So, when a replica fails, its successors should find out about it.
+In practice, one server can detect the failure of another server by
+pinging it.  If a server does not receive a response to its ping within
+some maximum amount of time, then the server considers its peer crashed.
+Note that this, in general is not a safe thing to do---the network or
+the peer may be temporarily slow but the peer is not necessarily crashed
+when the timer expires.
+Nonetheless, we will assume here that failure detection does not make
+mistakes and that eventually every failure is detected.
+This is sometimes called the \emph{Fail-Stop} failure model~\cite{SS83},
+which is distinct from the often more realistic \emph{Crash} failure model
+where processes can crash but accurate detection is not available.
+
+\autoref{fig:chain} shows an implemenation of chain replication.
 
 \chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}

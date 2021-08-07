@@ -1,5 +1,5 @@
-const NSERVERS = 3
-const NOPS = 6
+const NSERVERS = 4
+const NOPS = 5
 
 network = {}
 final = None
