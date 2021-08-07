@@ -1,4 +1,4 @@
-const NSERVERS = 4
+const NREPLICAS = 4
 const NOPS = 5
 
 network = {}
@@ -8,22 +8,22 @@ def send(m):
     atomic: network |= { m }
 
 def receive(predecessor, index):
-    result = { x for (id, x) in network where (id == predecessor)
-                        and ((x == .crash) or (x[0] == index)) }
+    result = { payload for (id, payload) in network where (id == predecessor)
+                        and ((payload == .crash) or (payload[0] == index)) }
 
-def server(self, immortal):
+def replica(self, immortal):
     let history, predecessors = [], { 0 .. self - 1 }:
         while choose({ immortal, True }) and (len(history) < NOPS):
             if predecessors == {}:
                 send(self, (len(history), self))
                 history += [self,]
             else:
-                select x in receive(max(predecessors), len(history)):
-                    if x == .crash:
+                select payload in receive(max(predecessors), len(history)):
+                    if payload == .crash:
                         predecessors -= { max(predecessors) }
                     else:
-                        send(self, x)
-                        history += [x[1],]
+                        send(self, payload)
+                        history += [payload[1],]
         if len(history) == NOPS:
             atomic:
                 assert (final == None) or (final == history)
@@ -31,6 +31,6 @@ def server(self, immortal):
         else:
             send(self, .crash)
 
-let survivor = choose({ 0 .. NSERVERS - 1 }):
-    for i in { 0 .. NSERVERS - 1 }:
-        spawn server(i, i == survivor)
+let survivor = choose({ 0 .. NREPLICAS - 1 }):
+    for i in { 0 .. NREPLICAS - 1 }:
+        spawn replica(i, i == survivor)
