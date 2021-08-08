@@ -5734,8 +5734,9 @@ one of the computers survives, the service remains available.
 
 \glsadd{state machine replication}%
 \index{state machine replication}%
+\index{determinism}%
 Besides availability, it is usually important that the replicated
-services acts as if it were a single one.  This requires that the
+service acts as if it were a single one.  This requires that the
 replicas of the service coordinate their actions.
 The \emph{Replicated State Machine Approach}~\cite{Lam78,S90} is a
 general approach to do just this.
@@ -5746,54 +5747,59 @@ in the same order, determinism guarantees that they produce the same
 outputs in the same order.
 The trick then is to ensure that all replicas handle the
 same requests in the same order and to do so in a way that continues
-to work even if some subset of replicas crash.
+to work even if some strict subset of replicas crash.
 
 \emph{Chain Replication}~\cite{vRS04} is such a replication protocol.
 In Chain Replication, the replicas are organized in a linear chain.
-Each replica monitors its direct predecessor in the chain.  If it has
+Each replica monitors its direct predecessor in the chain.  If a replica has
 no predecessors, we call it the \emph{head}.  The head may change over
-time, as a head may crash and replaced by another.
+time, as a head may crash and replaced by another, but at any point in
+time there is only one head
+(and only one \emph{tail}, possibly the same replica).
 We model the state machine as a \emph{history}: a sequence of operations.
 Only the head is allowed to introduce new updates.
 When it does so, it advertises the new update along with its position
 in the history.  When the direct successor receives the next update
 it is expecting, it appends the update to its history and likewise
 advertises the new update.  When the update is applied to the history
-of the \emph{tail} replica (the replica that has no live successors),
+of the tail replica (the replica that has no live successors),
 then the update is considered final.
 
 So, when a replica fails, its successors should find out about it.
 In practice, one server can detect the failure of another server by
 pinging it.  If a server does not receive a response to its ping within
 some maximum amount of time, then the server considers its peer crashed.
-Note that this, in general is not a safe thing to do---the network or
+Note that this, in general, is not a safe thing to do---the network or
 the peer may be temporarily slow but the peer is not necessarily crashed
 when the timer expires.
 Nonetheless, we will assume here that failure detection does not make
-mistakes and that eventually every failure is detected.
-This is sometimes called the \emph{Fail-Stop} failure model~\cite{SS83},
+mistakes and that eventually every failure is eventually detected.
+This is called the \emph{Fail-Stop} failure model~\cite{SS83},
 which is distinct from the often more realistic \emph{Crash} failure model
 where processes can crash but accurate detection is not available.
 We will consider that failure model in the upcoming chapters.
 
 \autoref{fig:chain} shows an implemenation of chain replication.
 The code starts \texttt{NREPLICAS} \texttt{replica} threads numbered
-0 through $\mathtt{NREPLICAS} - 1$.  At least one of the replicas 
+0 through $\mathtt{NREPLICAS} - 1$, with initially 0 being the head
+and $\mathtt{NREPLICAS} - 1$ being the tail.  At least one of the replicas 
 must be immortal---the code selects one of them although none of the
 replicas is required to fail during execution.
-In practice, of course, a replica does not know whether it is immortal
-or not---it should just assume so.  The immortality is only used for
-modeling the system.
+Of course, a replica does not know whether it is immortal
+or not in practice---it should just assume so.
+The immortality of one of the replicas is only used for modeling the system.
 
 Each replica maintains its history and a set of its predecessors.
 It then loops until either it fails or it has applied all
 \texttt{NOPS} operations to its history.
 $\mathbf{choose}(\{ \mathit{immortal}, \textbf{True} \})$ can only
-evaluate to \textbf{False} in case $\textit{immortal}$ is false.
+evaluate to \textbf{False} in case $\textit{immortal}$ is false; otherwise
+it will always evaluate to \textbf{True}.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.
 Because failure detection is accurate, at most one replica can think
-it is the head at any time.  Moreover, when it has
+it is the head at any time (and, if so, it is in fact the head).
+Moreover, when it has
 detected all its predecessors having failed, eventually some replica
 thinks it is the head.
 
@@ -5803,7 +5809,8 @@ the message and \textit{payload} has information about the state of
 the replica.  The payload can take one of two forms.  The first is
 \texttt{.crash}, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
-this message on the network.  The other form of payload is a tuple
+a \texttt{.crash} message on the network.
+The other form of payload is a tuple
 $(\mathit{index}, \mathit{operation})$, which means that the source
 placed the given operation at the given index in its history.
 
@@ -5813,13 +5820,16 @@ In practice this would be some operation that the head would have received
 from a client.  Clients send their operations to the head, which adds them
 to its history in the order received.
 We are not modeling clients of the service.
-Instead, in the model, we add \textit{self} to the history until the
-history have \texttt{NOPS} operations on it or until the head crashes,
-whichever comes first.  The head also broadcasts this update, which
-is intended for its successor.  Because of failures, it may be that
-more than one replica is a successor of the head at different times.
+Instead, in the model, the head adds its identifier \textit{self} to the
+history until the
+history has \texttt{NOPS} operations on it or until the head crashes,
+whichever comes first.  The head also broadcasts each update, which
+are intended for its successor.  Because of failures, it may be that
+at different times a replica has different successors, hence the
+broadcast.
 
-Otherwise, the replica awaits a message from its direct predecessor.
+Otherwise, the replica does not believe it is the head and
+awaits a message from its direct predecessor.
 If the payload is \texttt{.crash}, then the replica removes this
 predecessor from its set of predecessors.  For example, if there
 are initially three replicas numbered 0, 1, and 2, and replica~1
