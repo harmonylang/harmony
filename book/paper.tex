@@ -702,9 +702,9 @@ threads
 \index{thread}%
 running in parallel while sharing variables.
 \autoref{fig:progs} shows two programs.  Program (a) is sequential.
-It sets \textit{shared} to \texttt{True}, asserts that
-\textit{shared} = \texttt{True}, and finally sets
-\textit{shared} to \texttt{False}.
+It sets \textit{shared} to \textbf{True}, asserts that
+\textit{shared} = \textbf{True}, and finally sets
+\textit{shared} to \textbf{False}.
 If you run the program through Harmony, it will not find any problems
 because there is only one execution possible and 1) in that execution
 the assertion does not fail and 2) the execution terminates.
@@ -726,7 +726,7 @@ The first runs \texttt{incrementer(0)}; the second runs
 \texttt{incrementer(1)}.
 
 Method \texttt{incrementer} takes a parameter called \textit{self}.
-It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
+It increments \textit{count} and sets \textit{done}[\textit{self}] to \textbf{True}.
 It then waits until the other thread is done.
 (\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}) and semantically the same.
 After that, method \texttt{incrementer}
@@ -799,8 +799,8 @@ a possible interleaving of \texttt{incrementer(0)} and \texttt{incrementer(1)}:
 stores $1$ into \textit{count};
 \item \texttt{incrementer(0)} adds 1 to the value that it loaded (0), and
 stores $1$ into \textit{count};
-\item \texttt{incrementer(0)} sets \textit{done}[0] to \texttt{True};
-\item \texttt{incrementer(1)} sets \textit{done}[1] to \texttt{True}.
+\item \texttt{incrementer(0)} sets \textit{done}[0] to \textbf{True};
+\item \texttt{incrementer(1)} sets \textit{done}[1] to \textbf{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \textit{count} ends up
@@ -917,7 +917,7 @@ and in our case those of the HVM.
 
 Harmony programs, and indeed the HVM,  manipulate Harmony values.
 Harmony values are recursively defined:
-they include booleans (\texttt{False} and \texttt{True}),
+they include booleans (\textbf{False} and \textbf{True}),
 integers (but not floating point numbers),
 strings (enclosed by double quotes),
 sets of Harmony values,
@@ -970,10 +970,10 @@ Again, square brackets and parentheses work the same in Harmony, so
 is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same Harmony value as \texttt{\{ 0:a, 1:b, 2:c \}}.
 So, if $x$ = \texttt{[False, True]},
-then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
+then $x$[0] = \textbf{False} and $x$[1] = \textbf{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.  The expression \texttt{[False]} just means
-\texttt{False}.
+\textbf{False}.
 
 Harmony is not an object-oriented language, so objects don't have
 built-in methods.  However, Harmony does have some powerful operators to
@@ -1263,12 +1263,12 @@ executes instructions 6 through 9, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
 \item Thread \texttt{incrementer(1)} (with identifier T2)
 executes instructions 6 through 18, storing 1 into
-\textit{count} and storing \texttt{True} into \textit{done}[1];
+\textit{count} and storing \textbf{True} into \textit{done}[1];
 \item Thread \texttt{incrementer(0)}
 continues execution, executing instructions 10 through 28
 storing value 1 into \textit{count} (instruction 10),
-storing \texttt{True} into \textit{done}[0] (instructions 11 through 15)
-finding that \textit{done}[1] is \texttt{True} (instructions 16 through 21),
+storing \textbf{True} into \textit{done}[0] (instructions 11 through 15)
+finding that \textit{done}[1] is \textbf{True} (instructions 16 through 21),
 and finally detecting that the assertion is violated
 (instructions 22 through 28).
 \end{enumerate}
@@ -1582,24 +1582,24 @@ lock first and release it upon exiting the critical section.
 Using a lock is a good thought, but how does one implement one?
 \autoref{fig:naivelock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
-Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
-To enter the critical section, a thread waits until \textit{lockTaken} is \texttt{False}
-and then sets it to \texttt{True} to indicate that the lock has been taken.
+Initially the lock is not owned, indicated by \textit{lockTaken} being \textbf{False}.
+To enter the critical section, a thread waits until \textit{lockTaken} is \textbf{False}
+and then sets it to \textbf{True} to indicate that the lock has been taken.
 The thread then executes the critical section.  Finally the thread
-releases the lock by setting \textit{lockTaken} back to \texttt{False}.
+releases the lock by setting \textit{lockTaken} back to \textbf{False}.
 
 Unfortunately, if we run the program through Harmony,
 we find that the assertion still fails.
 \autoref{fig:naiveLockhtml} shows the Harmony output.
 Thread~0 finds that the lock is available, but just before it stores
-\texttt{True} in \textit{lockTaken} in instruction~9, thread~1 gets
+\textbf{True} in \textit{lockTaken} in instruction~9, thread~1 gets
 to run.
 (Recall that you can hover your mouse over a machine instruction in order
 to see what it does.)
-Because \textit{lockTaken} is still \texttt{False}, it too
-believes it can acquire the lock, and stores \texttt{True} in
+Because \textit{lockTaken} is still \textbf{False}, it too
+believes it can acquire the lock, and stores \textbf{True} in
 \textit{lockTaken} and moves on to the critical section.
-Finally, thread~0 moves on, also stores \texttt{True}
+Finally, thread~0 moves on, also stores \textbf{True}
 into \textit{lockTaken} and also moves
 into the critical section.  Thread~0 is the one that detects the
 problem.
@@ -1621,21 +1621,21 @@ solution does prevent both threads being in the critical section at
 the same time.
 
 To see why, first note the following invariant: if thread $i$ is in the
-critical section, then \textit{flags}[$i$] == \texttt{True}.
+critical section, then \textit{flags}[$i$] == \textbf{True}.
 Without loss of generality,
 suppose that thread~0 sets \textit{flags}[0] at time $t_0$.
 Thread 0 can only reach the critical section if at some time $t_1$,
-$t_1 > t_0$, it finds that \textit{flags}[1] == \texttt{False}.
-Because of the invariant, \textit{flags}[1] == \texttt{False} implies that
+$t_1 > t_0$, it finds that \textit{flags}[1] == \textbf{False}.
+Because of the invariant, \textit{flags}[1] == \textbf{False} implies that
 thread~1 is not in the critical section at time $t_1$.
 Let $t_2$ be the time at which thread~0 sets \textit{flags}[0]
-to \texttt{False}.  Thread~0 is in the critical section sometime
+to \textbf{False}.  Thread~0 is in the critical section sometime
 between $t_1$ and $t_2$.
 It is easy to see that thread~1 cannot enter the critical section
-between $t_1$ and $t_2$, because \textit{flags}[1] == \texttt{False} at
+between $t_1$ and $t_2$, because \textit{flags}[1] == \textbf{False} at
 time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
-it would first have to set \textit{flags}[1] to \texttt{True} and
-then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
+it would first have to set \textit{flags}[1] to \textbf{True} and
+then wait until \textit{flags}[0] == \textbf{False}.  But that does not happen
 until time $t_2$.
 
 However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
@@ -1721,7 +1721,7 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
 The thread continues to be polite, waiting
 until either the other thread is nowhere near the critical section
-($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
+($\mathit{flag}[1 - \mathit{self}] == \mathbf{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
 Running the algorithm with Harmony shows that it satisfies both mutual
 exclusion and progress.
@@ -1934,7 +1934,7 @@ Therefore we only need to consider a step by thread~1.
 From $\mathcal{G}$ we know that one of the following three cases must hold before
 thread~1 takes a step:
 \begin{enumerate}
-\item \textit{flags}[1] = \texttt{False};
+\item \textit{flags}[1] = \textbf{False};
 \item \textit{turn} = 0;
 \item thread~1 is at label \texttt{@gate}.
 \end{enumerate}
@@ -1943,8 +1943,8 @@ Let us consider each of these cases.
 We have to show that if thread~1 takes a step, then one of those
 cases must hold after the step.
 In the first case, if thread~1 takes a step, there are two possibilities:
-either $flags[1]$ will still be \texttt{False} (in which case the first case
-continues to hold), or $flags[1]$ will be \texttt{True}
+either $flags[1]$ will still be \textbf{False} (in which case the first case
+continues to hold), or $flags[1]$ will be \textbf{True}
 and thread~1 will be at label \texttt{@gate} (in which case the third case
 will hold).
 We know that thread~1 never sets \textit{turn} to 1, so
@@ -1964,7 +1964,7 @@ section and $\mathcal{G}(0)$ continues to hold;
 Then again $\mathcal{G}(0)$ continues to hold.
 \item Thread~0 takes a step and ends up in the critical section.
 Because thread~0 entered the critical section, we know that
-\textit{flags}[1] = \texttt{False} or \textit{turn} == 0 because
+\textit{flags}[1] = \textbf{False} or \textit{turn} == 0 because
 of the \texttt{await} condition.
 And hence $\mathcal{G}(0)$ continues to hold in that case as well.
 \end{enumerate}
@@ -2025,7 +2025,7 @@ is an atomic action:
 \item \label{ex:reorder}
 A colleague of the author asked if the first two assignments in
 Peterson's algorithm (setting \textit{flags}[\textit{self}])
-to \texttt{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
+to \textbf{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
 See if you can figure out for yourself if the two assignments can be
@@ -2306,7 +2306,7 @@ Here $s$ points to a shared Boolean variable and $p$
 to a private Boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
-and then sets the shared variable to \texttt{True} (``set'').
+and then sets the shared variable to \textbf{True} (``set'').
 
 \autoref{fig:tas} goes on to implement mutual exclusion for
 a set of \texttt{N} threads.
@@ -2315,14 +2315,14 @@ The approach is called \emph{spinlock},
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
-Variable \textit{shared} is initialized to \texttt{False} while
-\textit{private}[$i$] for each thread $i$ is initialized to \texttt{True}.
+Variable \textit{shared} is initialized to \textbf{False} while
+\textit{private}[$i$] for each thread $i$ is initialized to \textbf{True}.
 
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
-one of these variables is \texttt{False}.
+one of these variables is \textbf{False}.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
 lines $18 \cdots 22$ (which includes the critical section),
-then \textit{private}[$i$] == \texttt{False}.
+then \textit{private}[$i$] == \textbf{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
@@ -2330,22 +2330,22 @@ For those who read through the previous chapter:
 $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
+\texttt{!}$p$ == \textbf{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
 \texttt{tas} method is invoked in).
 There are two cases:
 \begin{enumerate}
-\item \texttt{!}$s$ is \texttt{False} upon entry to \texttt{tas}.
-Then upon exit \texttt{!}$p$ == \texttt{False} and \texttt{!}$s$ == \texttt{True},
+\item \texttt{!}$s$ is \textbf{False} upon entry to \texttt{tas}.
+Then upon exit \texttt{!}$p$ == \textbf{False} and \texttt{!}$s$ == \textbf{True},
 maintaining the invariant.
-\item \texttt{!}$s$ is \texttt{True} upon entry to \texttt{tas}.
+\item \texttt{!}$s$ is \textbf{True} upon entry to \texttt{tas}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
 because we can assume, by the induction hypothesis, that $\textit{private}[i]$ is
-\texttt{True} just before exiting the critical section.
+\textbf{True} just before exiting the critical section.
 Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread $i$ only proceeds to the critical
-section if \textit{private}[$i$] is \texttt{False}, and (ii) no other thread modifies
+section if \textit{private}[$i$] is \textbf{False}, and (ii) no other thread modifies
 \textit{private}[$i$].
 
 Harmony can check these invariants as well.
@@ -2358,7 +2358,7 @@ like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 Harmony supports checking such invariants using the \texttt{invariant}
 keyword.
-The expression counts the number of \texttt{False} values and checks that
+The expression counts the number of \textbf{False} values and checks that
 the result is less than or equal to 1.
 Harmony checks the expression in every reachable state.
 
@@ -2624,7 +2624,7 @@ should return a pair that sums to 100.  Add the necessary synchronization code.
 \item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
 interface for both the \texttt{synch} and \texttt{synchS} modules.
 This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
-returns \texttt{True} if the binary semaphore was available (and now acquired) or \texttt{False}
+returns \textbf{True} if the binary semaphore was available (and now acquired) or \textbf{False}
 if the binary semaphore was already acquired.
 Hint: you do not have to change the existing code.
 \item People who use an ATM often first check their balance and then withdraw
@@ -4578,8 +4578,8 @@ have the following API:
 \end{enumerate}
 \noindent
 \texttt{tryAcquire} should not wait.
-Instead it should return \texttt{True} if the lock was successfully
-acquired and \texttt{False} if the lock was not available.
+Instead it should return \textbf{True} if the lock was successfully
+acquired and \textbf{False} if the lock was not available.
 % \item Implement semaphores using Mesa condition variables.
 \item Write a new version of the GPU allocator in \autoref{ex:gpu}
 using Mesa condition variables.
@@ -5150,11 +5150,11 @@ it is being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
-of a thread to \texttt{True} using the \textbf{setintlevel} interface.
+of a thread to \textbf{True} using the \textbf{setintlevel} interface.
 \autoref{fig:trap4} illustrates how this is done.
 Note that it is not necessary to change the interrupt level during servicing an
-interrupt, because it is automatically set to \texttt{True} upon entry to the interrupt
-handler and restored to \texttt{False} upon exit.
+interrupt, because it is automatically set to \textbf{True} upon entry to the interrupt
+handler and restored to \textbf{False} upon exit.
 It is important that the \textit{main}() code re-enables interrupts after incrementing
 \textit{count}.  What would happen if \textit{main}() left interrupts disabled?
 
@@ -5214,7 +5214,7 @@ in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
 Implement a new method \texttt{i\_put}(\textit{item}) that does not
-block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
+block.  Instead, it should return \textbf{False} if the buffer is full and \textbf{True}
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
 \end{problems}
@@ -5417,7 +5417,7 @@ a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
 Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
-\textit{reliable} == \texttt{True}.  It causes the last acknowledgment to be sent
+\textit{reliable} == \textbf{True}.  It causes the last acknowledgment to be sent
 reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
 once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
@@ -5716,7 +5716,7 @@ the transaction.  Implement this.
 \begin{code}
 \harmonysource{chain}
 \end{code}
-\caption{\harmonylink{code/chain.hny} Chain Replication.}
+\caption{\harmonylink{code/chain.hny} Checking the correctness of Chain Replication.}
 \label{fig:chain}
 \end{figure}
 
@@ -5734,10 +5734,10 @@ one of the computers survives, the service remains available.
 \index{state machine replication}%
 Besides availability, it is usually important that the replicated
 services acts as if it were a single one.  This requires that the
-replicas of the service must coordinate their actions.
-One general approach is the
-\emph{Replicated State Machine Approach}~\cite{Lam78,S90}.
-In this approach, you model your service as a deterministic state
+replicas of the service coordinate their actions.
+The \emph{Replicated State Machine Approach}~\cite{Lam78,S90} is a
+general approach to do just this.
+First, you model your service as a deterministic state
 machine.  The replicas each run a copy of the state machine, started
 in the same state.  As long as the replicas handle the same inputs
 in the same order, determinism guarantees that they produce the same
@@ -5746,16 +5746,16 @@ The trick then is to ensure that all replicas handle the
 same requests in the same order and to do so in a way that continues
 to work even if some subset of replicas crash.
 
-\emph{Chain Replication}~\cite{vRS04} is a protocol to do just this.
+\emph{Chain Replication}~\cite{vRS04} is such a replication protocol.
 In Chain Replication, the replicas are organized in a linear chain.
 Each replica monitors its direct predecessor in the chain.  If it has
 no predecessors, we call it the \emph{head}.  The head may change over
 time, as a head may crash and replaced by another.
 We model the state machine as a \emph{history}: a sequence of operations.
 Only the head is allowed to introduce new updates.
-When it does so, it advertises the new update along with the position
+When it does so, it advertises the new update along with its position
 in the history.  When the direct successor receives the next update
-it is expecting, it appends the update to its history and likely
+it is expecting, it appends the update to its history and likewise
 advertises the new update.  When the update is applied to the history
 of the \emph{tail} replica (the replica that has no live successors),
 then the update is considered final.
@@ -5772,22 +5772,27 @@ mistakes and that eventually every failure is detected.
 This is sometimes called the \emph{Fail-Stop} failure model~\cite{SS83},
 which is distinct from the often more realistic \emph{Crash} failure model
 where processes can crash but accurate detection is not available.
+We will consider that failure model in the upcoming chapters.
 
 \autoref{fig:chain} shows an implemenation of chain replication.
 The code starts \texttt{NREPLICAS} \texttt{replica} threads numbered
 0 through $\mathtt{NREPLICAS} - 1$.  At least one of the replicas 
 must be immortal---the code selects one of them although none of the
 replicas is required to fail during execution.
+In practice, of course, a replica does not know whether it is immortal
+or not---it should just assume so.  The immortality is only used for
+modeling the system.
+
 Each replica maintains its history and a set of its predecessors.
 It then loops until either it fails or it has applied all
 \texttt{NOPS} operations to its history.
-$\mathbf{choose}(\{ \mathit{immortal}, \texttt{True} \})$ can only
-evalute to \texttt{False} in case $\textit{immortal}$ is false.
+$\mathbf{choose}(\{ \mathit{immortal}, \textbf{True} \})$ can only
+evaluate to \textbf{False} in case $\textit{immortal}$ is false.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.
 Because failure detection is accurate, at most one replica can think
-it is the head at any time.  Moreover, eventually, when it has
-detected all its predecessors having failed, always some replica
+it is the head at any time.  Moreover, when it has
+detected all its predecessors having failed, eventually some replica
 thinks it is the head.
 
 Messages have the format $(\mathit{source}, \mathit{payload})$,
@@ -5796,9 +5801,36 @@ the message and \textit{payload} has information about the state of
 the replica.  The payload can take one of two forms.  The first is
 \texttt{.crash}, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
-this message on the network.  The other form is a tuple
+this message on the network.  The other form of payload is a tuple
 $(\mathit{index}, \mathit{operation})$, which means that the source
 placed the given operation at the given index in its history.
+
+If a replica thinks it is the head, it adds an operation to its
+history.
+In practice this would be some operation that the head would have received
+from a client.  Clients send their operations to the head, which adds them
+to its history in the order received.
+We are not modeling clients of the service.
+Instead, in the model, we add \textit{self} to the history until the
+history have \texttt{NOPS} operations on it or until the head crashes,
+whichever comes first.  The head also broadcasts this update, which
+is intended for its successor.  Because of failures, it may be that
+more than one replica is a successor of the head at different times.
+
+Otherwise, the replica awaits a message from its direct predecessor.
+If the payload is \texttt{.crash}, then the replica removes this
+predecessor from its set of predecessors.  For example, if there
+are initially three replicas numbered 0, 1, and 2, and replica~1
+crashes, then replica~2 removes~1 from its set of predecessors, making
+replica~0 its direct (and only) predecessor.  If, instead, the payload
+is a tuple, then it must be the case that it contains the next operation
+to add to its history.  The replica adds the operation to its history
+and broadcasts the update, again intended for its successor.
+
+When the replica successfully adds all \texttt{NOPS} updates to its
+history without crashing, the code makes sure that any other such replica
+ends in the same state.  Variable \textit{final} is used to check the
+different histories against one another.
 
 \chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}
@@ -6158,9 +6190,9 @@ its proposal with the one corresponding to the highest ballot number.
 The leader then moves on to the second round.
 
 In the initialization, the \texttt{proposals} variable is initialized
-to either $[\mathtt{False}, \mathtt{False}]$ or
-to $[\mathtt{True}, \mathtt{False}]$ (in case $\texttt{NBALLOTS} = 2$).
-The other combinations of \texttt{True} and \texttt{False} are symmetric,
+to either $[\mathbf{False}, \mathbf{False}]$ or
+to $[\mathbf{True}, \mathbf{False}]$ (in case $\texttt{NBALLOTS} = 2$).
+The other combinations of \textbf{True} and \textbf{False} are symmetric,
 so there is no need to run the model checker through those scenarios as
 well, halving the running time.
 
@@ -6189,7 +6221,7 @@ Below is a complete list of Harmony value types with examples:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-Boolean & \texttt{False}, \texttt{True} \\
+Boolean & \textbf{False}, \textbf{True} \\
 \hline
 Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
@@ -6222,7 +6254,7 @@ times it occurs in the bag.
 
 All Harmony values are ordered with respect to one another.  First they
 are ordered by type according to the table above.
-So, for example, \texttt{\texttt{True} < 0 < .xyz < \{ 0 \})}.
+So, for example, \texttt{\textbf{True} < 0 < .xyz < \{ 0 \})}.
 Within types, the following rules apply:
 
 \begin{itemize}
@@ -6256,9 +6288,9 @@ Generic operators on Harmony values include:
 
 \section{Boolean}
 
-The Boolean type has only two possible values: \texttt{False} and
-\texttt{True}.  Unlike in Python, in Harmony booleans are distinct
-from integers, and in particular $\mathtt{False} < 0$.  In statements
+The Boolean type has only two possible values: \textbf{False} and
+\textbf{True}.  Unlike in Python, in Harmony booleans are distinct
+from integers, and in particular $\mathbf{False} < 0$.  In statements
 and expressions where booleans are expected, it is not possible to
 substibute values of other types.
 
@@ -6370,9 +6402,9 @@ Native operations on sets include:
 \hline
 \texttt{max $s$} & maximum element \\
 \hline
-\texttt{any $s$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $s$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $s$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $s$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \end{tabular}
 \end{center}
@@ -6428,9 +6460,9 @@ Operations on dictionaries include the following:
 \hline
 \texttt{max $d$} & the maximum value in $d$ \\
 \hline
-\texttt{any $d$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $d$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $d$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $d$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \texttt{$d$ \& $d$ \& ...} & dictionary intersection \\
 \hline
@@ -6492,9 +6524,9 @@ Native operations on lists or tuples include the following:
 \hline
 \texttt{max $t$} & the maximum value in $t$ \\
 \hline
-\texttt{any $t$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $t$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $t$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $t$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \texttt{$t$ \& $t$ \& ...} & pairwise list minimum \\
 \hline
@@ -6887,7 +6919,7 @@ Harmony supports \textbf{if} statements.
 In its most basic form, \textbf{if} $c: S_1; S_2; ...$ evaluates $c$
 and executes statements $S_1, S_2, ...$ if and only if boolean expression
 $c$ evaluated to true.
-Harmony checks that $c$ is either \texttt{False} or \texttt{True}---if neither
+Harmony checks that $c$ is either \textbf{False} or \textbf{True}---if neither
 is the case, Harmony reports an error.
 The statement \textbf{if} $c: S_1, S_2, ...$ \textbf{else}:
 $T_1; T_2; ...$ is similar, but executes statements $T_1, T_2, ...$
@@ -6913,9 +6945,9 @@ by calling \texttt{m.f()}.  If you would prefer to invoke it simply as
 The statement \textbf{invariant} $c$ declares that boolean expression $c$
 is an invariant.  $c$ is only allowed to read shared variables and
 is evaluated atomically after every state change.
-If it ever evaluates to \texttt{False} Harmony reports and error.  Harmony
+If it ever evaluates to \textbf{False} Harmony reports and error.  Harmony
 also reports an error if the expression evaluates to a value other
-than \texttt{False} or \texttt{True}.
+than \textbf{False} or \textbf{True}.
 
 \section{\textbf{let}}
 
@@ -6977,7 +7009,7 @@ then \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$ is equivalent to
 \begin{code}
 \begin{tabbing}
 XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
-\>\textbf{let} $\mathit{waiting} = \mathtt{True}:$ \\
+\>\textbf{let} $\mathit{waiting} = \mathbf{True}:$ \\
 \>\>\textbf{while} \textit{waiting}: \\
 \>\>\>\textbf{atomic}: \\
 \>\>\>\>\textbf{if} $y$ != \{\}:\\
@@ -6985,7 +7017,7 @@ XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
 \>\>\>\>\>\>$S_1$ \\
 \>\>\>\>\>\>$S_2$ \\
 \>\>\>\>\>\>$...$ \\
-\>\>\>\>\>$\mathit{waiting} = \mathtt{False}$
+\>\>\>\>\>$\mathit{waiting} = \mathbf{False}$
 \end{tabbing}
 \end{code}
 
@@ -7031,13 +7063,13 @@ The statement \textbf{trap} $m$ $a$ specifies that the current thread
 should execute method $m$ with argument $a$ and some future, unspecified,
 time.  It models a timer interrupt or any kind of asynchronous event to
 be handled by the thread.  Such interrupts can be disabled by setting
-the interrupt level of the thread to \texttt{True} using the
+the interrupt level of the thread to \textbf{True} using the
 \textbf{setintlevel} operator.
 
 \section{\textbf{while}}
 
 The statement \textbf{while} $c: S_1; S_2; ...$ executes statements
-$S_1, S_2, ...$ repeatedly as long as $c$ evaluates to \texttt{True}.
+$S_1, S_2, ...$ repeatedly as long as $c$ evaluates to \textbf{True}.
 Harmony does not support \textbf{break} or \textbf{continue} statements.
 
 \chapter{List of Modules}
@@ -7198,7 +7230,7 @@ The \texttt{synch} module provides the following methods:
 \hline
 \texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
 \hline
-\texttt{Lock}() & return a binary semaphore initialized to \texttt{False} \\
+\texttt{Lock}() & return a binary semaphore initialized to \textbf{False} \\
 \hline
 \texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
 \hline
@@ -7236,7 +7268,7 @@ Address & compute address from two components \\
 \hline
 Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
 \hline
-Assert, Assert2 & pop $b$ and check that it is \texttt{True}.  Assert2 also pops value to print \\
+Assert, Assert2 & pop $b$ and check that it is \textbf{True}.  Assert2 also pops value to print \\
 \hline
 AtomicInc/Dec & increment/decrement the atomic counter of this context \\
 \hline
@@ -7593,7 +7625,7 @@ first.  In that expression, only $a$ or $b$ is evaluated depending on the value 
 In the expression $a$ \textbf{and} $b$ \textbf{and} $...$, evaluation is left
 to right but stops once one of the subexpressions evaluates to \textbf{False}.
 Similarly for \textbf{or}, where evaluation stops once one of the subexpressions
-evaluates to \texttt{True}.
+evaluates to \textbf{True}.
 A sequence of comparison operations, such as $a < b < c$, is evaluated left to right
 but stops as soon as one of the comparisons fails.
 
