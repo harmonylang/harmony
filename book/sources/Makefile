@@ -71,6 +71,7 @@ CODE = \
     naiveFlags.tex \
     naiveLock.tex \
     naiveTurn.tex \
+    needhamschroeder.tex \
     oo.tex \
     paxos.tex \
     paxos1.tex \

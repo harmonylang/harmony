@@ -1,0 +1,42 @@
+network = {}
+
+def send(m):
+    atomic: network |= { m }
+
+def alice():
+    let dst = choose({ .bob, .carter }):
+        send({ .dst: dst,
+            .contents: { .type: 1, .nonce: .nonceA, .initiator: .alice } })
+        select m in { m for m in network where (m.dst == .alice)
+                    and (m.contents.type == 2) and (m.contents.nonce == .nonceA) }:
+            send({ .dst: dst, .contents: { .type: 3, .nonce: m.contents.nonce2 } })
+
+def bob():
+    select m in { m for m in network where (m.dst == .bob)
+                    and (m.contents.type == 1) }:
+        send({ .dst: m.contents.initiator,
+            .contents: { .type: 2, .nonce: m.contents.nonce, .nonce2: .nonceB } })
+    select m in { m for m in network where (m.dst == .bob)
+                    and (m.contents.type == 3) and (m.contents.nonce == .nonceB) }:
+        pass
+
+def carter():
+    let received, nonces, msgs = {}, { .nonceC }, {}:
+        while True:
+            select m in { m for m in network - received where m.dst == .carter }:
+                received |= { m }
+                nonces |= { m.contents.nonce }
+                if m.contents.type == 2:
+                    nonces |= { m.contents.nonce2 }
+                assert .nonceB not in nonces
+                for dst in { .alice, .bob } for n in nonces:
+                    msgs |= {{ .dst: dst, .contents: { .type: 1, .nonce: n, .initiator: ini }}
+                                        for ini in { .alice, .bob }}
+                    msgs |= {{ .dst: dst, .contents: { .type: 2, .nonce: n, .nonce2: n2 }}
+                                        for n2 in nonces }
+                    msgs |= {{ .dst: dst, .contents: { .type: 3, .nonce: n }}}
+                send(choose(msgs - network))
+
+spawn alice()
+spawn bob()
+spawn eternal carter()

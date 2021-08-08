@@ -1,4 +1,4 @@
-const NIDS = 5
+const NIDS = 5      # number of identifiers
 
 network = {}        # the network is a set of messages
 leader = 0          # used for checking correctness
