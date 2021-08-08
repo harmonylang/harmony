@@ -6243,13 +6243,13 @@ analyze the output and see what went wrong.
 The Needham-Schroeder protocol~\cite{NS78} is a security protocol in which two parties
 authenticate one another by exchanging large and recently created random numbers
 called \emph{nonces} that nobody else should be able to read.
-The version we describe here uses \emph{public key cryptography}~\cite{pkc}: with public key
+The version we describe here uses \emph{public key cryptography}~\cite{DH76}: with public key
 cryptography it is possible to create a message for a particular destination that
 only that destination can read.  We denote with $\langle m \rangle_p$ a message
-$m$ encrypted for $p$ so that only $p$ can decrypt the message and see that it contains $m$..
+$m$ encrypted for $p$ so that only $p$ can decrypt the message and see that it contains $m$.
 
-The original protocol goes something like this.  Suppose Alice wants to communicate
-with Bob.  The three steps are as follows:
+Suppose Alice wants to communicate with Bob.  The three critical steps in the
+Needham-Schroeder protocol are as follows:
 
 \begin{enumerate}
 \item Alice creates a new nonce $N_A$ and sends $\langle 1, A, N_A \rangle_\mathtt{Bob}$
@@ -6260,16 +6260,49 @@ $\langle 2, N_A, N_B \rangle_\mathtt{Alice}$ to Alice;
 \end{enumerate}
 
 When Bob receives $N_B$ in the last step, it decides that it is Alice that is
-trying to communicate at this time.  Since it created $N_B$ recently and sent it
+trying to communicate at this time.  Since Bob created $N_B$ recently and sent it
 encrypted to Alice, Bob does not have to worry that the message was an old message
-that was replayed.  Also, if Alice is honest, only Alice can have seen the message.
+that was replayed.  Also, if Alice is honest, only Alice can have seen the message
+containing $N_B$.
 
 \autoref{fig:ns} shows the protocol implemented in Harmony.
 A message $\langle m \rangle_p$ is encoded in Harmony as a dictionary
-$\{ \mathtt{.dst}: p, \mathtt{.contents}: m \}$.
+$\{ \mathtt{.dst}: p, \mathtt{.contents}: m \}$.  The code for Alice and Bob
+simply follows the steps listed above.
 
 Unfortunately, the protocol turns out to be incorrect, but it took 17 years before
-somebody noticed~\cite{Lowe95}.  Model checking easily finds the bug~\cite{Lowe96}.
+somebody noticed~\cite{Lowe95}.  Model checking can be used to find the bug~\cite{Lowe96}.
+To demonstate the bug, we need a third party, which we will call Carter.
+We want to make sure that Carter cannot impersonate Alice or Bob.
+However, it is possible that Alice tries to set up an authenticated connection to Carter
+using the Needham-Schroeder protocol.  That in itself is not a problem.
+
+The code in \autoref{fig:ns} has Alice try to set up a connection to either Bob
+or Carter.  Bob only accepts connections with Alice.  Carter, when receiving a message
+that it can decrypt, will try to find an attack by sending every possible message to
+every possible destination.  In particular, it keeps track of every nonce that it has
+seen and will try to construct messages with them to send to Alice and Bob.
+If, at some point, Carter finds the nonce that Bob generates for Alice, then Carter
+can impersonate Alice by sending a type~3 message containing that nonce to Bob.
+
+Running the code in \autoref{fig:ns} quickly finds a viable attack.  The attack goes
+like this:
+
+\begin{enumerate}
+\item Alice creates a new nonce $N_A$ and sends $\langle 1, A, N_A \rangle_\mathtt{Carter}$
+to Carter;
+\item Upon receipt, Carter sends $\langle 1, A, N_A \rangle_\mathtt{Bob}$ to Bob;
+\item Upon receipt, Bob creates a new nonce $N_B$ and sends
+$\langle 2, N_A, N_B \rangle_\mathtt{Alice}$ to Alice;
+\item Alice thinks the message came from Carter (because it contains $N_A$, which
+Alice sent to Carter) and
+sends $\langle 3, N_B \rangle_\mathtt{Carter}$ to Carter.
+\item Carter learns $N_B$, which it was not supposed to.
+\end{enumerate}
+
+Carter can use $N_B$ to send $\langle 3, N_B \rangle_\mathtt{Bob}$ to Bob.
+Bob now thinks it is talking to Alice, even though Alice never tried to
+communicate with Bob.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
