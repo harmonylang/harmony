@@ -24,7 +24,7 @@ def replica(self, immortal):
                     else:
                         send(self, payload)
                         history += [payload[1],]
-        if len(history) == NOPS:    # Successful completion
+        if len(history) == NOPS:    # successful completion
             atomic:
                 assert (final == None) or (final == history)
                 final = history
