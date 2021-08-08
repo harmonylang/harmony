@@ -5467,12 +5467,9 @@ processor then starts the second phase by sending a message around the
 ring notifying the other processors of the leader's identifier.
 
 \autoref{fig:leader} describes the protocol and its test cases in Harmony.
-To test the protocol, the code first generates an identifier for each
-processor, chosen non-deterministically from a set of \texttt{NIDS}
-identifiers.  It also keeps track in the variable \textit{leader} of
-what the highest identifier is so it can later be checked.
-
-The network is modeled simply as a set of messages.
+In Harmony, processors can be modeled by threads and there are a variety of ways in
+which one can model a network using shared variables.
+Here, we model the network as a set of messages.
 The \texttt{send} method atomically adds a message to this set.
 Messages are tuples with three fields:
 (\textit{dst}, \textit{id}, \textit{found}).
@@ -5481,6 +5478,11 @@ Messages are tuples with three fields:
 \textit{found} is a boolean indicating the second phase of the protocol.
 The \texttt{receive}(\textit{self}) method looks for all messages
 destined for the processor with identifier \textit{self}.
+
+To test the protocol, the code first generates an identifier for each
+processor, chosen non-deterministically from a set of \texttt{NIDS}
+identifiers.  It also keeps track in the variable \textit{leader} of
+what the highest identifier is so it can later be checked.
 
 Method \texttt{processor}(\textit{self}, \textit{succ}) is the
 code for a processor with identifier \textit{self} and successor
@@ -5875,8 +5877,12 @@ Unfortunately, however, the server is a \emph{single point of failure}:
 if it fails, all its clients suffer.
 We would therefore like to find a solution that can survive the crash
 of a server.
-In this chapter, we will \emph{replicate} the object: maintain multiple
-copies.
+While we could use Chain Replication to replicate the register, in
+this chapter we will use a solution that does not assume that
+crashes can be accurately detected.
+
+We will again replicate the register object: maintain multiple copies,
+but we will not use the replicated state machine approach.
 One could, for example, imagine that clients write to all copies and read
 from any single one.
 While this solves the single-point-of-failure problem, we lose all the
@@ -5984,11 +5990,11 @@ servers have failed.
 
 Distributed consensus is the problem of having a collection of processors agree
 on a single value over a network.
+For example, in state machine replication, the state machines have to agree
+on which operation to apply next.
 Without failures, this can be solved using leader election: first elect a leader, then have that leader decide a value.
 But consensus often has to be done in adverse circumstances,
 for example in the face of processor failures.
-In Harmony, processors can be modeled by threads and there are a variety of ways in
-which one can model a network using shared variables.
 In this chapter, we will present a simple consensus algorithm that can tolerate
 fewer than $1/3^{rd}$ of processors failing by crashing.
 
@@ -6144,12 +6150,15 @@ Here we provide only a rudimentary introduction to Paxos; for more detailed
 information refer to~\cite{Paxos}.
 
 As in the consensus protocol of \autoref{ch:consensus}, Paxos uses rounds of messaging.
-However, Paxos uses two kinds of rounds: ``Phase 1'' and ``Phase 2'' rounds.
-The communication pattern is also different.  Rounds are identified by a so-called
+The communication pattern, however, is different.
+Similar to the atomic read/write register protocol in \autoref{ch:abd},
+Paxos uses two kinds of rounds: ``Phase 1'' and ``Phase 2'' rounds.
+Rounds are identified by a so-called
 \emph{ballot number} combined with the phase number.
 Different leaders are in charge of different ballot numbers.
 Leaders broadcast ``Type A''
-messages to the acceptors, which respond point-to-point with ``Type B'' messages.
+messages to the acceptors, which respond point-to-point with ``Type B''
+messages.
 
 \autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for
 this Paxos protocol.  Paxos is perhaps best understood starting
