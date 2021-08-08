@@ -13,8 +13,8 @@ def alice():
 
 def bob():
     select m in { m for m in network where (m.dst == .bob)
-                    and (m.contents.type == 1) }:
-        send({ .dst: m.contents.initiator,
+                    and (m.contents.type == 1) and (m.contents.initiator == .alice) }:
+        send({ .dst: .alice,
             .contents: { .type: 2, .nonce: m.contents.nonce, .nonce2: .nonceB } })
     select m in { m for m in network where (m.dst == .bob)
                     and (m.contents.type == 3) and (m.contents.nonce == .nonceB) }:
