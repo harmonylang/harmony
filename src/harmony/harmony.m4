@@ -3516,7 +3516,8 @@ class IfAST(AST):
         sublabel = 0
         endlabel = LabelValue(None, "$%d_end"%label)
         for alt in self.alts:
-            (rest, stat) = alt
+            (rest, stat, thefile, theline) = alt
+            code.location(thefile, theline)
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
@@ -3531,13 +3532,13 @@ class IfAST(AST):
         code.nextLabel(endlabel)
 
     def getLabels(self):
-        labels = [ x.getLabels() for (c, x) in self.alts ]
+        labels = [ x.getLabels() for (c, x, _, _) in self.alts ]
         if self.stat != None:
             labels += [ self.stat.getLabels() ]
         return functools.reduce(lambda x,y: x|y, labels)
 
     def getImports(self):
-        imports = [ x.getImports() for (c, x) in self.alts ]
+        imports = [ x.getImports() for (c, x, _, _) in self.alts ]
         if self.stat != None:
             imports += [ self.stat.getImports() ]
         return functools.reduce(lambda x,y: x+y, imports)
@@ -4217,7 +4218,7 @@ class StatementRule(Rule):
             while True:
                 (cond, t) = NaryRule({":"}).parse(t[1:])
                 (stat, t) = StatListRule(column).parse(t[1:])
-                alts += [(cond, stat)]
+                alts += [(cond, stat, file, line)]
                 if t == []:
                     nextColumn = column
                     break
