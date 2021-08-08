@@ -1,15 +1,7 @@
 const NIDS = 5
-const NPROCS = 4
 
-ids, procs, leader = { 1 .. NIDS }, [], 0
-for i in { 0 .. NPROCS - 1 }:
-    let next = choose(ids):
-        ids -= { next }
-        procs += [ next, ]
-        if next > leader:
-            leader = next
-
-network = {}
+network = {}        # the network is a set of messages
+leader = 0          # used for checking correctness
 
 def send(m):
     atomic: network |= { m }
@@ -31,5 +23,12 @@ def processor(self, succ):
                 if found:
                     working = False
 
-for i in { 0 .. NPROCS - 1 }:
-    spawn processor(procs[i], procs[(i + 1) % NPROCS])
+let ids, nprocs, procs = { 1 .. NIDS }, choose({ 1 .. NIDS }), []:
+    for i in { 0 .. nprocs - 1 }:
+        let next = choose(ids):
+            ids -= { next }
+            procs += [ next, ]
+            if next > leader:
+                leader = next
+    for i in { 0 .. nprocs - 1 }:
+        spawn processor(procs[i], procs[(i + 1) % nprocs])

@@ -5479,7 +5479,8 @@ Messages are tuples with three fields:
 The \texttt{receive}(\textit{self}) method looks for all messages
 destined for the processor with identifier \textit{self}.
 
-To test the protocol, the code first generates an identifier for each
+To test the protocol, the code first chooses the number of processors
+and generates an identifier for each
 processor, chosen non-deterministically from a set of \texttt{NIDS}
 identifiers.  It also keeps track in the variable \textit{leader} of
 what the highest identifier is so it can later be checked.
