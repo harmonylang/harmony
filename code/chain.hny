@@ -1,5 +1,5 @@
-const NREPLICAS = 4
-const NOPS = 5
+const NREPLICAS = 4     # number of replicas
+const NOPS = 5          # number of operations
 
 network = {}            # the network is a set of messages
 final = None            # this is used to check correctness
