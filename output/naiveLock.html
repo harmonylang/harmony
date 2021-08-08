@@ -522,8 +522,8 @@ table td, table th {
             <a name='P37'>37</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C37'>
-              Push ()
+            <span title='push constant PC(4)' id='C37'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -542,8 +542,8 @@ table td, table th {
             <a name='P39'>39</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(4)' id='C39'>
-              Push PC(4)
+            <span title='push constant ()' id='C39'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -552,7 +552,7 @@ table td, table th {
             <a name='P40'>40</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C40'>
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C40'>
               Spawn
             </span>
           </td>
@@ -562,8 +562,8 @@ table td, table th {
             <a name='P41'>41</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C41'>
-              Push ()
+            <span title='push constant PC(4)' id='C41'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -582,8 +582,8 @@ table td, table th {
             <a name='P43'>43</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(4)' id='C43'>
-              Push PC(4)
+            <span title='push constant ()' id='C43'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -592,7 +592,7 @@ table td, table th {
             <a name='P44'>44</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C44'>
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C44'>
               Spawn
             </span>
           </td>
@@ -704,7 +704,7 @@ var state =
     {
       "id": "1",
       "tid": "0",
-      "xhash": "55d296ccadd7",
+      "xhash": "556fc0f75f37",
       "name": "__init__()",
       "microsteps": [
         {
@@ -745,7 +745,7 @@ var state =
         },
         {
           "npc": "38",
-          "push": [ { "type": "dict", "value": [] } ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "37"
         },
         {
@@ -755,7 +755,7 @@ var state =
         },
         {
           "npc": "40",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "39"
         },
         {
@@ -766,7 +766,7 @@ var state =
         },
         {
           "npc": "42",
-          "push": [ { "type": "dict", "value": [] } ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "41"
         },
         {
@@ -776,7 +776,7 @@ var state =
         },
         {
           "npc": "44",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "43"
         },
         {
@@ -803,7 +803,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -817,7 +817,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296ccf317",
+          "yhash": "556fc0f7a497",
           "name": "thread(0)",
           "entry": "4",
           "pc": "4",
@@ -830,7 +830,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296ccf347",
+          "yhash": "556fc0f7a4c7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -846,7 +846,7 @@ var state =
     {
       "id": "2",
       "tid": "1",
-      "xhash": "55d296ccf317",
+      "xhash": "556fc0f7a497",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -877,7 +877,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -891,7 +891,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296ccf7f7",
+          "yhash": "556fc0f7aa87",
           "name": "thread(0)",
           "entry": "4",
           "pc": "6",
@@ -910,7 +910,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296ccf347",
+          "yhash": "556fc0f7a4c7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -926,7 +926,7 @@ var state =
     {
       "id": "5",
       "tid": "1",
-      "xhash": "55d296ccf7f7",
+      "xhash": "556fc0f7aa87",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -959,7 +959,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -973,7 +973,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296ccffb7",
+          "yhash": "556fc0f7b247",
           "name": "thread(0)",
           "entry": "4",
           "pc": "8",
@@ -992,7 +992,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296ccf347",
+          "yhash": "556fc0f7a4c7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1008,7 +1008,7 @@ var state =
     {
       "id": "8",
       "tid": "1",
-      "xhash": "55d296ccffb7",
+      "xhash": "556fc0f7b247",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1045,7 +1045,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1059,7 +1059,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd0747",
+          "yhash": "556fc0f7b8e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1078,7 +1078,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296ccf347",
+          "yhash": "556fc0f7a4c7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1094,7 +1094,7 @@ var state =
     {
       "id": "15",
       "tid": "2",
-      "xhash": "55d296ccf347",
+      "xhash": "556fc0f7a4c7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1125,7 +1125,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1139,7 +1139,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd0747",
+          "yhash": "556fc0f7b8e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1158,7 +1158,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296ccfb97",
+          "yhash": "556fc0f7ae27",
           "name": "thread(1)",
           "entry": "4",
           "pc": "6",
@@ -1180,7 +1180,7 @@ var state =
     {
       "id": "27",
       "tid": "2",
-      "xhash": "55d296ccfb97",
+      "xhash": "556fc0f7ae27",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1213,7 +1213,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1227,7 +1227,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd0747",
+          "yhash": "556fc0f7b8e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1246,7 +1246,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296cd04b7",
+          "yhash": "556fc0f7b6e7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "8",
@@ -1268,7 +1268,7 @@ var state =
     {
       "id": "36",
       "tid": "2",
-      "xhash": "55d296cd04b7",
+      "xhash": "556fc0f7b6e7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1305,7 +1305,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1319,7 +1319,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd0747",
+          "yhash": "556fc0f7b8e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1338,7 +1338,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296cd0ff7",
+          "yhash": "556fc0f7c197",
           "name": "thread(1)",
           "entry": "4",
           "pc": "11",
@@ -1360,7 +1360,7 @@ var state =
     {
       "id": "42",
       "tid": "2",
-      "xhash": "55d296cd0ff7",
+      "xhash": "556fc0f7c197",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1387,7 +1387,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1401,7 +1401,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd0747",
+          "yhash": "556fc0f7b8e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1420,7 +1420,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296cd1e57",
+          "yhash": "556fc0f7d267",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1442,7 +1442,7 @@ var state =
     {
       "id": "43",
       "tid": "1",
-      "xhash": "55d296cd0747",
+      "xhash": "556fc0f7b8e7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1468,7 +1468,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1482,7 +1482,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd17a7",
+          "yhash": "556fc0f7c947",
           "name": "thread(0)",
           "entry": "4",
           "pc": "12",
@@ -1501,7 +1501,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296cd1e57",
+          "yhash": "556fc0f7d267",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1523,7 +1523,7 @@ var state =
     {
       "id": "47",
       "tid": "1",
-      "xhash": "55d296cd17a7",
+      "xhash": "556fc0f7c947",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1640,7 +1640,7 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55d296ccf4b7",
+          "yhash": "556fc0f7a6c7",
           "name": "__init__()",
           "entry": "0",
           "pc": "45",
@@ -1654,7 +1654,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55d296cd7a97",
+          "yhash": "556fc0f82d47",
           "name": "thread(0)",
           "entry": "4",
           "pc": "28",
@@ -1676,7 +1676,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55d296cd1e57",
+          "yhash": "556fc0f7d267",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1734,13 +1734,13 @@ var state =
     "Jump 5",
     "DelVar self",
     "Return",
-    "Push ()",
+    "Push PC(4)",
     "Push 0",
-    "Push PC(4)",
-    "Spawn",
     "Push ()",
-    "Push 1",
+    "Spawn",
     "Push PC(4)",
+    "Push 1",
+    "Push ()",
     "Spawn",
     "Return",
     "DelVar result"
@@ -1783,14 +1783,14 @@ var state =
     "set program counter to 5",
     "delete method variable self",
     "restore caller method state and push result",
-    "push constant ()",
+    "push constant PC(4)",
     "push constant 0",
-    "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new thread",
     "push constant ()",
-    "push constant 1",
+    "pop thread-local state, argument, and pc and spawn a new thread",
     "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new thread",
+    "push constant 1",
+    "push constant ()",
+    "pop thread-local state, argument, and pc and spawn a new thread",
     "restore caller method state and push result",
     "delete method variable result"
   ],
