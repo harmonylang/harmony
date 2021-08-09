@@ -6027,6 +6027,10 @@ and receive a message.
 
 \autoref{fig:bosco} presents our algorithm.  Besides the network variable, it uses a
 shared list of proposals and a shared set of decisions.
+To reduce the state space to explore, not all permutations of zeroes and ones are
+explored.  With 5 processors ($\mathtt{F} = 2)$, say, we only explore the cases where
+no processors propose 1, where exactly one processors proposes 1, and where 2 processors
+proposes 1.
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
 The invariants we want to maintain
@@ -6056,7 +6060,7 @@ limits the number of rounds.  It may be that no decisions are made, but that doe
 violate either Validity or Agreement.  We only check that \emph{if} decisions are
 made, they satisfy Validity and Agreement.
 
-In Line~21, a processor waits for $\texttt{N} - \texttt{F}$ messages using
+In Line~22, a processor waits for $\texttt{N} - \texttt{F}$ messages using
 the Harmony \textbf{select} statement.
 Since Harmony has to check all possible executions of the protocol, the
 \texttt{receive}(\textit{round}, $k$) method returns all \emph{subbags} of messages
@@ -6092,8 +6096,8 @@ After that, proceed with the next round.
 \label{fig:bosco2}
 \end{figure}
 
-While one can run this code within little time for $\mathtt{F} = 1$, for
-$\mathtt{F} = 2$ the state space to explore is already quite large.
+While one can run this code within little time for $\mathtt{F} = 2$, for
+$\mathtt{F} = 3$ the state space to explore is already quite large.
 One way to reduce the state space to explore is the following realization:
 each processor only considers messages for the round that it is in.
 If a message is for an old round, the processor will ignore it;
@@ -6110,7 +6114,7 @@ messages of the remaining \texttt{F} processors, so the resulting model
 is just as good.
 
 \autoref{fig:bosco2} shows the code for this model.  Running this with
-$\mathtt{F} = 2$ does not take very long and this approach is a good
+$\mathtt{F} = 3$ does not take very long and this approach is a good
 blueprint for testing other round-based protocols (of which there are
 many).
 

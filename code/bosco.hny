@@ -1,11 +1,12 @@
 import bag
 
-const F = 1
+const F = 2
 const N = (3 * F) + 1
 const NROUNDS = 3
 
 network = bag.empty()
-proposals = [ choose({0, 1}) for i in { 1 .. N } ]
+let n_zeroes = choose({ 0 .. N / 2 }):
+    proposals = [ 0 if i < n_zeroes else 1 for i in { 1 .. N } ]
 decisions = {}
 
 def broadcast(msg):
