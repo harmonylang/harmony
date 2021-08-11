@@ -80,6 +80,7 @@ static int dequeued;                // #states dequeued
 static bool dumpfirst;              // for json dumping
 static struct access_info *ai_free; // free list of access_info structures
 static struct node *tochk;
+static struct dict *code_map;       // maps pc to file:line
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -1171,6 +1172,14 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
         notfirst = true;
         fprintf(out, "\n");
     }
+
+    // Get program counter
+    char *pcc = malloc(key_size + 1);
+    memcpy(pcc, key, key_size);
+    pcc[key_size] = 0;
+    int pc = atoi(pcc);
+    free(pcc);
+
     fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
 
     struct json_value *jv = value;
@@ -1183,6 +1192,9 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
+
+    void **p = dict_insert(code_map, &pc, sizeof(pc));
+    asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);
@@ -1292,8 +1304,14 @@ bool all_eternal(uint64_t ctxbag){
 void possibly_check(int pc){
     extern struct dict *possibly_cnt;
 
-    void *p = dict_lookup(possibly_cnt, &pc, sizeof(pc));
-    printf("POSSIBLY %d: %d\n", pc, (int) (uint64_t) p);
+    void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
+    char *loc = dict_lookup(code_map, &pc, sizeof(pc));
+    if (loc == NULL) {
+        printf("POSSIBLY %d: %d\n", pc, (int) (uint64_t) cnt);
+    }
+    else {
+        printf("POSSIBLY %s: %d\n", loc, (int) (uint64_t) cnt);
+    }
 }
 
 void usage(char *prog){
@@ -1302,6 +1320,8 @@ void usage(char *prog){
 }
 
 int main(int argc, char **argv){
+    code_map = dict_new(0);
+
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     for (i = 1; i < argc; i++) {
@@ -1618,12 +1638,6 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    for (int i = 0; i < code_len; i++) {
-        if (strcmp(code[i].oi->name, "Possibly") == 0) {
-            possibly_check(i);
-        }
-    }
-
     FILE *out = fopen(outfile, "w");
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);
@@ -1727,6 +1741,12 @@ int main(int argc, char **argv){
 
     fprintf(out, "}\n");
 	fclose(out);
+
+    for (int i = 0; i < code_len; i++) {
+        if (strcmp(code[i].oi->name, "Possibly") == 0) {
+            possibly_check(i);
+        }
+    }
 
     return 0;
 }
