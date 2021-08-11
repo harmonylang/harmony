@@ -168,6 +168,10 @@ struct env_Nary {
     struct f_info *fi;
 };
 
+struct env_Possibly {
+    int index;
+};
+
 struct env_Push {
     uint64_t value;
 };

@@ -1514,7 +1514,6 @@ void *init_Del(struct dict *map){ return NULL; }
 void *init_Dup(struct dict *map){ return NULL; }
 void *init_Go(struct dict *map){ return NULL; }
 void *init_Pop(struct dict *map){ return NULL; }
-void *init_Possibly(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
@@ -1706,6 +1705,19 @@ void *init_JumpCond(struct dict *map){
     assert(cond->type == JV_MAP);
     env->cond = value_from_json(cond->u.map);
 
+    return env;
+}
+
+void *init_Possibly(struct dict *map){
+    struct env_Possibly *env = new_alloc(struct env_Possibly);
+
+    struct json_value *index = dict_lookup(map, "index", 5);
+    assert(index->type == JV_ATOM);
+    char *copy = malloc(index->u.atom.len + 1);
+    memcpy(copy, index->u.atom.base, index->u.atom.len);
+    copy[index->u.atom.len] = 0;
+    env->index = atoi(copy);
+    free(copy);
     return env;
 }
 
