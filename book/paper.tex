@@ -5673,6 +5673,15 @@ It then waits for responses from each.  If both responses are
 \texttt{.yes}, then it commits the transaction, otherwise it aborts
 the transaction.
 
+Note the use of the \textbf{possibly} statement in this code.
+It is similar to \textbf{assert}, but where \texttt{assert} checks that
+the predicate holds in \emph{all} executions, \texttt{possibly} checks
+that the predicate holds in at least one execution.
+The purpose here is to check that the code doesn't simply always abort---there
+are executions where the code commits.
+In practice, hopefully \emph{most} executions commit, but this is not something
+the Harmony model checker can check.
+
 The \texttt{check}() method checks if the sum of the balances equals
 \textit{total}, the sum of the initial balances.
 The code is similar to \textit{transfer}, except that it always
@@ -6839,6 +6848,8 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
+\texttt{possibly $b$ [, $b$, ...]} & each $b$ is a boolean \\
+\hline
 \texttt{select $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
@@ -7104,6 +7115,12 @@ XXX\=XXX\=XXX\=XXX\kill
 \section{\textbf{pass}}
 
 The \textbf{pass} statement does nothing.
+
+\section{\textbf{possibly}}
+
+The statement \textbf{possibly $b_1, b_2, ...$} evaluates each predicate $b_i$
+and checks if it holds in at least one execution.
+At completion, Harmony reports which of the predicates never held.
 
 \section{\textbf{select ... in}}
 
