@@ -7119,7 +7119,7 @@ The \textbf{pass} statement does nothing.
 \section{\textbf{possibly}}
 
 The statement \textbf{possibly $b_1, b_2, ...$} evaluates each predicate $b_i$
-and checks if it holds in at least one execution.
+atomically and checks if it holds in at least one execution.
 At completion, Harmony reports which of the predicates never held.
 
 \section{\textbf{select ... in}}
