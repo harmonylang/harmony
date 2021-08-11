@@ -1306,12 +1306,14 @@ void possibly_check(int pc){
     const struct env_Possibly *ep = code[pc].env;
 
     void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
-    char *loc = dict_lookup(code_map, &pc, sizeof(pc));
-    if (loc == NULL) {
-        printf("POSSIBLY %d/%d: %d\n", pc, ep->index, (int) (uint64_t) cnt);
-    }
-    else {
-        printf("POSSIBLY %s/%d: %d\n", loc, ep->index, (int) (uint64_t) cnt);
+    if (cnt == 0) {
+        char *loc = dict_lookup(code_map, &pc, sizeof(pc));
+        if (loc == NULL) {
+            printf("POSSIBLY %d/%d\n", pc, ep->index);
+        }
+        else {
+            printf("POSSIBLY %s/%d\n", loc, ep->index);
+        }
     }
 }
 
