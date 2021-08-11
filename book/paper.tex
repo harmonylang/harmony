@@ -6248,7 +6248,7 @@ The Needham-Schroeder protocol~\cite{NS78} is a security protocol in which two p
 authenticate one another by exchanging large and recently created random numbers
 called \emph{nonces} that nobody else should be able to read.
 The nonces should only be used once for an instantiation of the protocol between
-honest participants.
+honest participants (i.e., participants that follow the protocol).
 The version we describe here uses \emph{public key cryptography}~\cite{DH76}: with public key
 cryptography it is possible to create a message for a particular destination that
 only that destination can read.  We denote with $\langle m \rangle_p$ a message

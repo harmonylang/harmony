@@ -1289,6 +1289,13 @@ bool all_eternal(uint64_t ctxbag){
     return all;
 }
 
+void possibly_check(int pc){
+    extern struct dict *possibly_cnt;
+
+    void *p = dict_lookup(possibly_cnt, &pc, sizeof(pc));
+    printf("POSSIBLY %d: %d\n", pc, (int) (uint64_t) p);
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1609,6 +1616,12 @@ int main(int argc, char **argv){
             }
         }
         fclose(df);
+    }
+
+    for (int i = 0; i < code_len; i++) {
+        if (strcmp(code[i].oi->name, "Possibly") == 0) {
+            possibly_check(i);
+        }
     }
 
     FILE *out = fopen(outfile, "w");

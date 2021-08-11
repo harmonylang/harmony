@@ -90,6 +90,7 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "possibly",
         "select",
         "sequential",
         "setintlevel",

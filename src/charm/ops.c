@@ -40,6 +40,7 @@ struct var_tree {
 static struct dict *ops_map, *f_map;
 static uint64_t underscore, this_atom;
 extern struct code *code;
+struct dict *possibly_cnt;
 
 bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
     assert((seqvars & VALUE_MASK) == VALUE_SET);
@@ -601,6 +602,18 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx){
     else {
         (*pctx)->pc++;
     }
+}
+
+void op_Possibly(const void *env, struct state *state, struct context **pctx){
+    uint64_t v = ctx_pop(pctx);
+    if ((v & VALUE_MASK) != VALUE_BOOL) {
+        ctx_failure(*pctx, "possibly can only be applied to bool values");
+    }
+    if (v == VALUE_TRUE) {
+        void **p = dict_insert(possibly_cnt, &(*pctx)->pc, sizeof((*pctx)->pc));
+        (* (uint64_t *) p)++;
+    }
+    (*pctx)->pc++;
 }
 
 void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
@@ -1501,6 +1514,7 @@ void *init_Del(struct dict *map){ return NULL; }
 void *init_Dup(struct dict *map){ return NULL; }
 void *init_Go(struct dict *map){ return NULL; }
 void *init_Pop(struct dict *map){ return NULL; }
+void *init_Possibly(struct dict *map){ return NULL; }
 void *init_ReadonlyDec(struct dict *map){ return NULL; }
 void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
@@ -2941,6 +2955,7 @@ struct op_info op_table[] = {
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
+	{ "Possibly", init_Possibly, op_Possibly },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
@@ -3003,6 +3018,7 @@ struct op_info *ops_get(char *opname, int size){
 void ops_init(){
     ops_map = dict_new(0);
     f_map = dict_new(0);
+    possibly_cnt = dict_new(0);
 	underscore = value_put_atom("_", 1);
 	this_atom = value_put_atom("this", 4);
 

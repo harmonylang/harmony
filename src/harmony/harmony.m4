@@ -259,6 +259,7 @@ def isreserved(s):
         "not",
         "or",
         "pass",
+        "possibly",
         "print",
         "select",
         "sequential",
@@ -1447,6 +1448,20 @@ class AssertOp(Op):
                 context.failure += ": " + strValue(expr)
             return
         context.pc += 1
+
+class PossiblyOp(Op):
+    def __init__(self, token, index):
+        self.token = token
+        self.index = index
+
+    def __repr__(self):
+        return "Possibly %d"%self.index
+
+    def jdump(self):
+        return '{ "op": "Possibly", "index": "%d" }'%self.index
+
+    def explain(self):
+        return "pop a condition and check"
 
 class PopOp(Op):
     def __init__(self):
@@ -3727,6 +3742,24 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
+class PossiblyAST(AST):
+    def __init__(self, token, condlist):
+        AST.__init__(self, token)
+        self.token = token
+        self.condlist = condlist
+
+    def __repr__(self):
+        return "Possibly()"
+
+    def compile(self, scope, code):
+        for i, cond in enumerate(self.condlist):
+            code.append(ReadonlyIncOp())
+            code.append(AtomicIncOp(True))
+            cond.compile(scope, code)
+            code.append(PossiblyOp(self.token, i))
+            code.append(AtomicDecOp())
+            code.append(ReadonlyDecOp())
+
 class MethodAST(AST):
     def __init__(self, token, name, args, stat):
         AST.__init__(self, token)
@@ -4495,8 +4528,24 @@ class StatementRule(Rule):
                         column=column,
                         message="assert: unexpected token: %s" % str(tokens[0]),
                     )
-
             return (AssertAST(token, cond, expr), t)
+        if lexeme == "possibly":
+            (tokens, t) = self.slice(t[1:], column)
+            (cond, tokens) = NaryRule({","}).parse(tokens)
+            condlist = [ cond ]
+            while tokens != []:
+                (lexeme, file, line, column) = tokens[0]
+                if lexeme != ",":
+                    raise HarmonyCompilerError(
+                        filename=file,
+                        lexeme=lexeme,
+                        line=line,
+                        column=column,
+                        message="possibly: unexpected token: %s" % str(tokens[0]),
+                    )
+                (cond, tokens) = NaryRule(set()).parse(tokens[1:])
+                condlist.append(cond)
+            return (PossiblyAST(token, condlist), t)
         
         # If we get here, the next statement is either an expression
         # or an assignment.  The assignment grammar is either
