@@ -1194,7 +1194,7 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
     void **p = dict_insert(code_map, &pc, sizeof(pc));
-    asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
+    int r = asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);
