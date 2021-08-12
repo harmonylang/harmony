@@ -824,8 +824,9 @@ We could change the specification by changing the assertion as follows:
 \textbf{assert} (\textit{count} == 1) or (\textit{count} == 2)
 \end{code}
 
-This would fix the issue, but more likely it is the program that must
-be fixed, not the specification.
+This would fix the issue,\footnote{Actually, Harmony still complains, this time
+about a \emph{data race}, about which you will learn in \autoref{ch:harmonymachine}.}
+but more likely it is the program that must be fixed, not the specification.
 
 The exercises below have you try the same thing in Python.  As you will
 see, the bug is not easily triggered when you run a Python version of
