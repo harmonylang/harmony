@@ -5677,10 +5677,10 @@ Note the use of the \textbf{possibly} statement in this code.
 It is similar to \textbf{assert}, but where \texttt{assert} checks that
 the predicate holds in \emph{all} executions, \texttt{possibly} checks
 that the predicate holds in at least one execution.
-The purpose here is to check that the code doesn't simply always abort---there
-are executions where the code commits.
-In practice, hopefully \emph{most} executions commit, but this is not something
-the Harmony model checker can check.
+The purpose is to check that the code doesn't simply always abort---there
+exist executions where the code commits.
+In practice, hopefully \emph{most} executions commit, but Harmony is not
+capable of probabilistic reasoning.
 
 The \texttt{check}() method checks if the sum of the balances equals
 \textit{total}, the sum of the initial balances.
@@ -6096,6 +6096,11 @@ The rules of the algorithm are simple:
 \item if the quorum is unanimous, decide the value.
 \end{itemize}
 After that, proceed with the next round.
+
+The \texttt{possibly} statement checks if there exist executions where 0 is
+decided and if there exist executions where 1 is decided.  Doing so is useful
+because the assertions would certainly not fail if no decision is ever made.
+Also, it is nice to know that both 0 and 1 can be decided.
 
 \begin{figure}
 \begin{code}
@@ -7452,7 +7457,7 @@ $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements
 \hline
 Pop & pop a value of the stack and discard it \\
 \hline
-Probably $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{probably} statement \\
+Possibly $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{possibly} statement \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
 \hline
