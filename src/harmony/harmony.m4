@@ -3752,13 +3752,13 @@ class PossiblyAST(AST):
         return "Possibly()"
 
     def compile(self, scope, code):
+        code.append(ReadonlyIncOp())
+        code.append(AtomicIncOp(True))
         for i, cond in enumerate(self.condlist):
-            code.append(ReadonlyIncOp())
-            code.append(AtomicIncOp(True))
             cond.compile(scope, code)
             code.append(PossiblyOp(self.token, i))
-            code.append(AtomicDecOp())
-            code.append(ReadonlyDecOp())
+        code.append(AtomicDecOp())
+        code.append(ReadonlyDecOp())
 
 class MethodAST(AST):
     def __init__(self, token, name, args, stat):

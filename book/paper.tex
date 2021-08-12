@@ -6284,11 +6284,20 @@ When Bob receives $\langle 3, N_B \rangle_\mathtt{Bob}$, Bob decides that it is 
 that is trying to communicate at this time.  Since Bob created $N_B$ recently and sent it
 encrypted to Alice, Bob does not have to worry that the type 3 message was an old message
 that was replayed by some adversary.
-Also, if Alice is honest, only Alice can have seen the message containing $N_B$.
+Also, if Alice is honest, it seems only Alice can have seen the message containing $N_B$.
 
-Thus, the intended security property of this protocol is that if Alice and Bob are both
-honest, only Alice and Bob learn $N_A$ and $N_B$ and only if they are trying to communicate
-with one another.
+Thus, the intended security properties of this protocol are symmetric.
+Assuming Alice and Bob are both honest:
+\begin{itemize}
+\item if Alice finishes the protocol with Bob and received $B_N$ from Bob, then
+nobody but Alice and Bob can learn $N_B$.
+\item if Bob finishes the protocol with Alice and received $A_N$ from Alice, then
+nobody but Bob and Alice can learn $N_A$.
+\end{itemize}
+
+After the protocol, Alice can include $N_A$ in messages to Bob and Bob can
+include $N_B$ in messages to Alice to authenticate the sources of those messages
+to one another.
 
 \autoref{fig:ns} shows the protocol implemented in Harmony.
 A message $\langle m \rangle_p$ is encoded in Harmony as a dictionary
@@ -6297,18 +6306,21 @@ simply follows the steps listed above.
 
 Unfortunately, the protocol turns out to be incorrect, but it took 17 years before
 somebody noticed~\cite{Lowe95}.  Model checking can be used to find the bug~\cite{Lowe96}.
-To demonstate the bug, we need a third party, which we will call Corey.
+To demonstate the bug, we need to model the environment.
+In particular, we introduce a third party, which we will call Corey.
 We want to make sure that Corey cannot impersonate Alice or Bob.
 However, it is possible that Alice tries to set up an authenticated connection to Corey
-using the Needham-Schroeder protocol.  That in itself is not a problem.
+using the Needham-Schroeder protocol.  That in itself should not be a problem if the
+protocol were correct.
 
-The code in \autoref{fig:ns} has Alice try to set up a connection to either Bob
+The code in \autoref{fig:ns} has Alice either not do anything, or has Alice try to set
+up a connection to either Bob
 or Corey.  Bob only accepts connections with Alice.  Corey, when receiving a message
 that it can decrypt, will try to find an attack by sending every possible message to
 every possible destination.  In particular, it keeps track of every nonce that it has
 seen and will try to construct messages with them to send to Alice and Bob.
-If, at some point, Corey finds the nonce that Bob generates for Alice, then Corey
-can impersonate Alice by sending a type~3 message containing that nonce to Bob.
+If Bob finishes the protocol, it checks to see if Alice actually tried to connect
+to Bob.  If not, the assertion fails and an attack is found.
 
 Running the code in \autoref{fig:ns} quickly finds a viable attack.  The attack goes
 like this:
@@ -6317,21 +6329,22 @@ like this:
 \item Alice creates a new nonce $N_A$ and sends $\langle 1, A, N_A \rangle_\mathtt{Corey}$
 to Corey;
 \item Upon receipt, Corey sends $\langle 1, A, N_A \rangle_\mathtt{Bob}$ to Bob;
-\item Upon receipt, Bob, as usual, creates a new nonce $N_B$ and sends
+\item Upon receipt, Bob, believing it is engaging in the protocol with Alice,
+creates a new nonce $N_B$ and sends
 $\langle 2, N_A, N_B \rangle_\mathtt{Alice}$ to Alice;
 \item Alice thinks the message came from Corey (because it contains $N_A$, which
 Alice created for Corey and sent to Corey) and
 sends $\langle 3, N_B \rangle_\mathtt{Corey}$ to Corey.
-\item Corey learns $N_B$, which it was not supposed to as Bob is only willing to
-talk to Alice and created $N_B$ explicitly for Alice.
-\end{enumerate}
-
-Corey can use $N_B$ to send $\langle 3, N_B \rangle_\mathtt{Bob}$ to Bob.
-This is identical to the situation in which Alice tried to set up a connection to Bob,
+\item Corey learns $N_B$ and sends $\langle 3, N_B \rangle_\mathtt{Bob}$ to Bob.
+\item Bob receiving $\langle 3, N_B \rangle_\mathtt{Bob}$ is identical to the
+situation in which Alice tried to set up a connection to Bob,
 so Bob now thinks it is talking to Alice, even though Alice never tried to
-communicate with Bob.  The security property is violated because Corey discovers $N_B$
-even though Alice and Bob are both honest and are not trying to communicate with one
-another.  As a result, Carter has successfully impersonated Alice to Bob.
+communicate with Bob.
+\end{enumerate}
+The security property is violated.  In particular, Bob, duped by Corey, finished
+the protocol with Alice and received $A_N$, and even though Bob and Alice
+are both honest, Corey has a copy of $A_N$.  So Corey is now able to impersonate
+Alice to Bob (but not vice versa because Alice did not try to authenticate Bob).
 
 \bibliographystyle{alpha}
 \bibliography{paper}
@@ -7118,8 +7131,8 @@ The \textbf{pass} statement does nothing.
 
 \section{\textbf{possibly}}
 
-The statement \textbf{possibly $b_1, b_2, ...$} evaluates each predicate $b_i$
-atomically and checks if it holds in at least one execution.
+The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
+predicates $b_i$.
 At completion, Harmony reports which of the predicates never held.
 
 \section{\textbf{select ... in}}
@@ -7438,6 +7451,8 @@ Move $i$ & move stack element at offset $i$ to top of the stack \\
 $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
 \hline
 Pop & pop a value of the stack and discard it \\
+\hline
+Probably $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{probably} statement \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
 \hline
@@ -7959,7 +7974,8 @@ made significant contributions.
 
 Most of what I know about concurrent programming I learned from
 my colleague Fred Schneider.  He suggested I write this book after
-demonstrating Harmony to him.
+demonstrating Harmony to him.  Being a foremost security expert, he also
+assisted significantly with the chapter on the Needham-Schroeder protocol.
 
 Leslie Lamport introduced me to using model checking to test properties
 of a concurrent system.  My experimentation with using TLC on Peterson's
