@@ -1309,10 +1309,10 @@ void possibly_check(int pc){
     if (cnt == 0) {
         char *loc = dict_lookup(code_map, &pc, sizeof(pc));
         if (loc == NULL) {
-            printf("POSSIBLY %d/%d\n", pc, ep->index);
+            printf("invalidated possibly pc=%d/%d\n", pc, ep->index);
         }
         else {
-            printf("POSSIBLY %s/%d\n", loc, ep->index);
+            printf("invalidated possibly %s/%d\n", loc, ep->index);
         }
     }
 }
@@ -1745,9 +1745,11 @@ int main(int argc, char **argv){
     fprintf(out, "}\n");
 	fclose(out);
 
-    for (int i = 0; i < code_len; i++) {
-        if (strcmp(code[i].oi->name, "Possibly") == 0) {
-            possibly_check(i);
+    if (no_issues) {
+        for (int i = 0; i < code_len; i++) {
+            if (strcmp(code[i].oi->name, "Possibly") == 0) {
+                possibly_check(i);
+            }
         }
     }
 
