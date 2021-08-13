@@ -1679,6 +1679,7 @@ int main(int argc, char **argv){
         case FAIL_BUSYWAIT:
             printf("Active busy waiting\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
+            no_issues = true;       // to report possibly stuff
             break;
         case FAIL_RACE:
             assert(bad->address != VALUE_ADDRESS);
@@ -1688,6 +1689,7 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
+            no_issues = true;       // to report possibly stuff
             break;
         default:
             panic("main: bad fail type");
