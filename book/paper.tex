@@ -405,9 +405,10 @@ because it is hard to reproduce.
 \glsadd{model checking}%
 
 This book is intended to help people with understanding and
-developing concurrent code.  In particular, it uses a new tool
+developing concurrent code, which includes programs for distributed
+systems.  In particular, it uses a new tool
 called Harmony that helps with \emph{testing} concurrent code.
-The approach is based on \emph{model checking}:
+The approach is based on \emph{model checking}~\cite{CES86}:
 \index{model checking}%
 instead of relying
 on luck, Harmony will run \emph{all possible executions} of a particular
@@ -471,12 +472,14 @@ why a particular algorithm works.
 
 So, what is Harmony?
 Harmony is a concurrent programming language.  It was designed to teach
-the basics of concurrent programming, but it is also useful for
+the basics of concurrent and distributed programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
 algorithms.  Harmony programs are not intended to be ``run'' like programs
 in most other programming languages---instead Harmony programs are
 model checked to test that the program has certain desirable
 properties and does not suffer from bugs.
+Interestingly, Harmony does not have input/output statements, so there is
+no ``Hello World'' program.
 
 The syntax and semantics of Harmony is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
@@ -583,6 +586,10 @@ Paxos consensus protocol.
 \item \autoref{ch:ns} demonstrates finding a bug in the original Needham-Schroeder
 authentication protocol.
 \end{itemize}
+
+The appendices contain various details about Harmony itself, including
+an appendix that explains how Harmony works (\autoref{app:howitworks}) and
+an appendix on installing and running Harmony (\autoref{app:install}).
 
 \chapter{Introduction to Harmony}
 \label{ch:harmonyintro}
@@ -7580,9 +7587,10 @@ atoms to arbitrary values.  The atoms correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
-\chapter{The Harmony Virtual Machine}
+\chapter{The Harmony Virtual Machine}\label{app:hvm}
 
-The Harmony Virtual Machine (HVM) has the following state:
+The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
+has the following state:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -7953,6 +7961,272 @@ longer in use must be explicitly released using \texttt{free}.
 Harmony supports the same commenting conventions as Python.
 In addition, Harmony supports nested multi-line comments
 of the form \texttt{(* comment *)}.
+
+\chapter{How Harmony Works}\label{app:howitworks}
+
+This appendix gives a very brief overview of how Harmony works.
+In a nutshell, Harmony goes through the following three phases:
+
+\begin{enumerate}
+\item The Harmony \emph{compiler} turns your Harmony program into
+bytecode.  A recursive descent parser and code generator written in
+Python (see \texttt{harmony.py}) turns an \texttt{x.hny} program
+into \texttt{x.hvm}, a JSON file containing the corresponding
+bytecode.
+\item The Harmony \emph{model checker} evaluates the state space
+that the program (now in bytecode) can generate.  The model checker
+is written in C as it needs to be highly efficient (see \texttt{charm.c}).
+The model checker starts from the initial state, and then, iteratively,
+checks for each state that it has found what next steps are possible and
+generates the next states using the Harmony virtual machine
+(\autoref{app:hvm}).  If the model is finite, eventually the model
+checker will generate a graph with all possible states.
+If there is a problematic path in this graph (see below), then it will
+report the shortest such path in the \texttt{x.hco} output file in JSON
+format.
+\item The \texttt{x.hco} output file is translated twice by
+\texttt{harmony.py}.  There is a so-called \emph{brief output} that
+is written to standard output.  The more comprehensive output is placed
+in the \texttt{x.htm} HTML output file, allowing you to navigate the
+problematic path and all the details of each of the states on the path.
+\end{enumerate}
+
+\section{Compiler}
+
+The Harmony compiler, in order to stay true to the Harmony source program,
+does not do much in the way of optimizations.  The main optimizations that
+it does are:
+
+\begin{itemize}
+\item Constant folding: (simple) expressions consisting only of constants
+are evaluated by the compiler rather than by the model checker;
+\item Jump threading: Harmony eliminates jump to jump instructions;
+\item Dead variable elimination: Harmony removes method variables that
+are no longer in use from the state in order to reduce the state space
+to be explored.
+\end{itemize}
+
+\section{Model Checker}
+
+The Harmony model checker, called \emph{Charm}, takes the output from
+the compiler and explores the entire state space in breadth-first order.
+Even Harmony does not really support input, there are three sources of
+non-determinism that make this exploration non-trivial:
+
+\begin{itemize}
+\item \textbf{choose} \emph{expressions}: Harmony's ability to let the program
+choose a value from a set;
+\item \emph{thread interleaving}: different threads run pseudo-concurrently
+with their instructions interleaved in arbitrary ways;
+\item \emph{interrupts}: Harmony programs can set interrupts that can go
+off at arbitrary times.
+\end{itemize}
+
+Charm has some tricks to significantly reduce the state space to explore.
+\begin{itemize}
+\item A thread can have local state (program counter, stack,
+method variables, and thread-local state variables).
+That state is called the \emph{context} of the thread.
+The context of a thread cannot be accessed by other
+threads, nor by \textbf{invariant} statements.
+So the model checker only interleaves threads at \textbf{Load} and
+\textbf{Store} instructions where a thread interacts with global
+variables.
+\item Threads are anonymous, and therefore two or more threads can
+have the same context.  The state of the model checker therefore maintains
+a \emph{bag} (multiset) of contexts rather are than a \emph{set} of contexts.
+Thus even if there are hundreds of threads, there may be only tens of
+possible context states.
+\end{itemize}
+
+That said, \emph{state space explosion} is still a possibility, and
+Harmony programmers should keep this in mind when writing and testing
+their programs.  Do not be too ambitious: start with small tests and
+gradually build them up as necessary.
+
+The model checker stops either when it finds a failing execution or when
+it has explored the entire state space, whichever comes first.  An execution
+can fail for a variety of reasons:
+
+\begin{itemize}
+\item An invariant failing: Harmony evaluates all invariants in all states
+that if finds---if one fails, Harmony stops further exploration;
+\item An assertion failing;
+\item A \emph{silly} error: this includes reading variables that have not
+been assigned, trying to add a set to an integer, taking the length of
+something that is not a set of a dictionary, and so on;
+\item An infinite loop: a thread goes into an infinite loop without
+accessing shared variables.
+\end{itemize}
+
+\section{Model Checker Output Analysis}
+
+The output of the model checker is a graph that is typically very large.
+If some execution failed, then Harmony will simply report the path of
+that failing execution.  But otherwise there may be the following
+outcomes:
+
+\begin{itemize}
+\item No issues: no failing executions and each program can terminate;
+\item Non-terminating states: some executions lead to some form of deadlock
+or other issue that causes some (non-eternal) threads not to be able to
+terminate;
+\item Race conditions: there are executions in which two threads access
+the same shared state variable, with at least one of those accesses being a
+\textbf{Store} operation;
+\item Busy waiting: executions in which threads are actively waiting for
+some condition, usually by releasing and reacquiring locks.
+\end{itemize}
+
+\noindent
+In order to diagnose these outcomes, Harmony must analyze the graph.
+
+The first thing that Harmony does is to locate non-terminating
+states, if any.  To do this, Harmony first determines the \emph{strongly
+connected components} of the graph using Kosaraju's algorithm.
+A component (subgraph) of a graph is strongly connected if each
+vertex (state) in the component can be reached from each other vertex.
+The components then form a Directed Acyclic Graph (DAG).
+The DAG is easier to analyze than the original graph.
+One can easily determine the sink components
+(the components with no outgoing edges).  If such a component
+has non-eternal threads in it, then each state in that component
+is a non-terminating state.
+
+To find race conditions, the model checker looks in the graph for
+states in which there are multiple threads that can make a step.
+If there is a step in which multiple threads access the same shared
+variable, at least one of those accesses is a store operation, and
+at least one of those threads is not in atomic mode, then Harmony
+reports the shortest path to such a state.
+
+To show how Harmony detects busy waiting, we will first show how
+Harmony determines if a thread is blocked or not.  A thread is considered
+blocked if it cannot terminate without the help of another thread.
+For example, a thread waiting for a lock is blocked and cannot terminate
+until another thread releases the lock.  Determining whether a thread
+is blocked in a particular state can be done within the confines of the
+connected component: the analyzer tries all possible executions of the
+thread.  If it cannot ``escape'' the connected component by doing so, it
+is considered blocked.
+A thread is considered \emph{busy waiting} if it is blocked, but it is
+also changing the shared state while doing so.  A thread that is waiting
+on a spinlock only observes the state.
+
+Finally, in the output, each thread has a unique identifier:
+\texttt{T0} is the initialization thread; \texttt{T}$n$ is the $n^{th}$
+spawned thread that executes.  This seems to contradict the fact that
+Harmony threads are anonymous.  The output analyzer assigns these
+identifiers \emph{a posteriori} to the threads in the state graph
+by keeping track, along the reported execution path, what state each
+thread is in.  So by examining the initial context of the thread that
+is running from some particular state, it can determine if that context
+corresponds to the current context of some thread that ran previously
+or if the context belongs to a new thread that has not run before.
+
+\chapter{Installing and Running Harmony}\label{app:install}
+
+There are currently three options for using Harmony:
+
+\begin{enumerate}
+\item You can download and install a command-line version of Harmony on your
+computer;
+\item You can download and install \emph{HarmonyLang}, a VSCode plug-in for Harmony;
+\item You can run Harmony programs in the cloud using \emph{Harmony IDE}.
+\end{enumerate}
+
+Below you can find more information on each of these options.
+
+\section{Command-Line}
+
+You can get the latest released developer version of Harmony by
+downloading from \url{harmony.cs.cornell.edu}.  It includes the latest
+bug fixes and features at any time.  Harmony is developed and maintained
+by the author on both MacOSX and Linux, and so these are the preferred
+platforms at this time.  A Windows version is also available, but may not
+be the latest version and is currently not as well supported.
+
+When you download the \texttt{.zip} file, you will get the following
+files:
+
+\begin{itemize}
+\item \texttt{README.txt}: installation documentation;
+\item \texttt{archive.xml}: portable compressed archive of the code base;
+\item \texttt{install.py}: Python3 program to install and update the code base.
+\end{itemize}
+
+First place this directory (folder) where you would like it---the
+\texttt{Downloads} folder is at best a good temporary place.  You can put
+the directory in your home directory, for example.
+
+Installation requires Python3 and a 64-bit C compiler.  The developer uses
+recent versions of \texttt{gcc} and \texttt{clang} for development.
+Run \texttt{python3 install.py} to install the code base.
+It extracts files from archive.xml and installs them in the current
+directory.
+It will try to compile the model checker using \texttt{gcc}.
+If that fails under Windows, it will install an executable that
+is pre-compiled on a Windows 10 machine.  If these options do not work,
+you can compile the file \texttt{charm.c} by hand using a 64-bit C
+compile and place the output in \texttt{charm.exe}.
+
+After installation, there is a \texttt{harmony} file for use under
+MacOSX and Linux, and a \texttt{harmony.bat} file for use under Windows.
+You should be able to run \texttt{harmony --help} in any of these
+environments.
+
+If you would like to run \texttt{harmony} from any directory, you have to
+add the current directory to your search path.  Under MacOSX and Linux,
+you will have to set the \texttt{PATH} environment variable.
+See \url{http://www.linux-migration.org/ch02s06.html} for more information.
+Under Windows, search "Edit environment variables" in the search bar.
+You can add the directory either to the \texttt{Path} associated with
+your account or to the system \texttt{Path}.
+If you do not install \texttt{harmony} in your search path, you may have
+to run \texttt{./harmony} in the installation directory instead of
+just \texttt{harmony}.
+
+The installation directory will have the following subdirectories:
+
+\begin{itemize}
+\item \texttt{code}: contains all the code examples from this book;
+\item \texttt{modules}: contains the Harmony modules;
+\item \texttt{python}: contains the Python examples from the book.
+\end{itemize}
+
+For example, you can try \texttt{harmony code/Diners.hny} to run the
+Dining Philosophers code.
+Harmony currently produces three output files:
+\begin{itemize}
+\item \texttt{code/Diners.hvm}: the bytecode in JSON format;
+\item \texttt{code/Diners.hco}: the output of the model checker in JSON format;
+\item \texttt{code/Diners.htm}: the model checker output converted to HTML format.
+\end{itemize}
+
+You are probably only interested to see the last one, which you should be
+able to view in any web browser of your choice, including Safari, Chrome, Edge, or Firefox.
+
+\section{HarmonyLang for VSCode}
+
+The VSCode plug-in, developed by Kevin Sun and Anthony Yang,
+is available from the VSCode market place: \url{https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang}.
+This page comes with installation documentation.  VSCode also sports a
+wonderful animator for Harmony output.
+
+HarmonyLang is regularly updated to include the latest Harmony distribution.
+
+\section{Harmony IDE for the cloud}
+
+\texttt{Harmony IDE} is an Integrated Development Environment for Harmony,
+also developed by Kevin Sun and Anthony Yang,
+that runs in the cloud.  An important advantage of using \texttt{Harmony IDE}
+is that you do not have to install anything.  You can even run in on your
+smartphone.  However, since Harmony programs can use significant compute
+resources, \texttt{Harmony IDE} must put a limit on the amount of compute
+resources you can use.  So while \texttt{Harmony IDE} is currently a great
+way to try out Harmony, if you become a serious user of Harmony you
+will probably want to install either the command-line version or
+\texttt{HarmonyLang}.
 
 \cleardoublepage
 \phantomsection
