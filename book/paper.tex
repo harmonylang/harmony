@@ -8059,6 +8059,11 @@ something that is not a set of a dictionary, and so on;
 accessing shared variables.
 \end{itemize}
 
+The model checker also counts the number of times each \textbf{Possibly}
+instruction is invoked with the value \textbf{True}.  It reports those
+\textbf{Possibly} instructions that either have never been reached or
+never have been executed with the value \textbf{True}.
+
 \section{Model Checker Output Analysis}
 
 The output of the model checker is a graph that is typically very large.
