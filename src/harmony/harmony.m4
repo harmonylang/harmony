@@ -4543,7 +4543,7 @@ class StatementRule(Rule):
                         column=column,
                         message="possibly: unexpected token: %s" % str(tokens[0]),
                     )
-                (cond, tokens) = NaryRule(set()).parse(tokens[1:])
+                (cond, tokens) = NaryRule({","}).parse(tokens[1:])
                 condlist.append(cond)
             return (PossiblyAST(token, condlist), t)
         
