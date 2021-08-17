@@ -6359,7 +6359,9 @@ Alice to Bob (but not vice versa because Alice did not try to authenticate Bob).
 
 \appendix
 
-\chapter{Value Types and Operators}
+\chapter{Harmony Language Details}
+
+\section{Value Types and Operators}
 \label{ap:values}
 
 \autoref{ch:harmonymachine} provides an introduction to Harmony values.
@@ -6433,7 +6435,7 @@ Generic operators on Harmony values include:
 \end{tabular}
 \end{center}
 
-\section{Boolean}
+\subsection*{Boolean}
 
 The Boolean type has only two possible values: \textbf{False} and
 \textbf{True}.  Unlike in Python, in Harmony booleans are distinct
@@ -6460,7 +6462,7 @@ Operations on booleans include:
 \end{tabular}
 \end{center}
 
-\section{Integer}
+\subsection*{Integer}
 
 The integer type supports any whole number, as well as $-\mathtt{inf}$
 and $\mathtt{inf}$.  In the Python-based model checker, integers are
@@ -6506,7 +6508,7 @@ Operations on integers include:
 \end{tabular}
 \end{center}
 
-\section{Atom}
+\subsection*{Atom}
 
 Atoms are essentially names and consist of one or more unicode characters.
 If they do not contain special characters and do not start with a digit,
@@ -6520,7 +6522,7 @@ There are no special operations on atoms.
 (In the future, operators may be introduced that convert between strings
 and atoms.)
 
-\section{Set}
+\subsection*{Set}
 
 In Harmony you can create a set of any collection of Harmony values.
 Its syntax is \texttt{\{ $v_0, v_1, ...$ \}}.
@@ -6569,7 +6571,7 @@ For example:
 returns a set that is constructed by summing pairs of elements from $s$
 that, when multiplied, have the value 4.
 
-\section{Dictionary}
+\subsection*{Dictionary}
 
 A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
@@ -6635,7 +6637,7 @@ dictionary intersection retains the minimum value while dictionary
 union retains the maximum value.  Unlike Python, Harmony
 dictionary intersection and union are commutative and associative.
 
-\section{List or Tuple}
+\subsection*{List or Tuple}
 
 In Harmony, there is no distinction between a list or a tuple.
 Both are a special case of dictionary.  In particular, a list of
@@ -6689,7 +6691,7 @@ can write:
 
 \texttt{any($(x \% 2) == 0$ for $x$ in $t$)}.
 
-\section{String}
+\subsection*{String}
 
 In Harmony, a string is a list of single-character atoms.
 The Python string notations mostly work in Harmony as well.
@@ -6720,7 +6722,7 @@ Native operations on strings include the following:
 \end{tabular}
 \end{center}
 
-\section{Bag or Multiset}
+\subsection*{Bag or Multiset}
 
 A bag is represented by a dictionary that maps each element to its
 multiplicity, for example: \{ 10:2, 12:1 \}.
@@ -6740,7 +6742,7 @@ Native operations on bags include the following:
 \end{tabular}
 \end{center}
 
-\section{Program Counter}
+\subsection*{Program Counter}
 
 A program counter is an integer that can be used to index into Harmony
 bytecode.  When you define a method, a lambda function, or a label,
@@ -6760,7 +6762,7 @@ Operations on program counters include the following:
 You can create lambda functions similarly to Python.  For example:
 \texttt{lambda$(x,y)$:$x+y$}.
 
-\section{Address}
+\subsection*{Address}
 
 In Harmony, each shared variable has an address, which is essentially
 a list of Harmony values.
@@ -6773,7 +6775,7 @@ If $a$ is an address, then $!a$ returns the value.
 Like C, Harmony supports the shorthand \texttt{$a$->v} for 
 the expression \texttt{($!a$).v}.
 
-\section{Context}
+\subsection*{Context}
 
 A context value captures the state of a thread.
 A context is itself composed over various Harmony values.
@@ -6825,7 +6827,7 @@ Both these functions should only be called in \texttt{atomic} mode
 and used for checking invariants.
 \end{comment}
 
-\chapter{List of Statements}
+\section{Statements}
 
 Harmony currently supports the following statements (below, \texttt{S} is a list of statements):
 
@@ -6885,14 +6887,14 @@ $e$ is an expression, $t$ is the thread-local state \\
 \hline
 \end{tabular}
 
-\section{Single expression evaluation}
+\subsection*{Single expression evaluation}
 
 Any expression by itself can be used as a statement.  The most common
 form of this is a function application, for example: \texttt{f}().
 This statement evaluates \texttt{f}() but ignores its result.
 It is equivalent to the assignment statement $\_ = \mathtt{f}()$.
 
-\section{Assignment}
+\subsection*{Assignment}
 
 The statement $x = 3$ changes the state by assigning~3 to
 variable $x$ (assuming~$x$ was not already~3).
@@ -6917,7 +6919,7 @@ $x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
 (In Python, the following two compound statements lead to different results
 for $y$: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
 
-\section{\textbf{assert}}
+\subsection*{\textbf{assert}}
 
 The statement \textbf{assert $b$} evaluates $b$ and reports an error
 if $b$ is false.  It should be considered a no-op---it is part of the
@@ -6934,7 +6936,7 @@ As in Python, you can specify an additional expression:
 \textbf{assert $b$, $e$}.  The value of $e$ will be reported as part
 of the error should $b$ evaluate to false.
 
-\section{\textbf{atomic}}
+\subsection*{\textbf{atomic}}
 
 The statement \textbf{atomic $S_1; S_2; ...$} evaluates statements
 $S_1, S_2, ...$ atomically in that no other threads can run while
@@ -6951,12 +6953,12 @@ It is not a replacement for lock/unlock, and should not generally be used
 for synchronization otherwise.  Lock/unlock does allow other
 threads to run concurrently---just not in the same critical section.
 
-\section{\textbf{await}}
+\subsection*{\textbf{await}}
 
 The statement \textbf{await $b$} is equivalent to \textbf{while !$b$: pass}.
 It is intended to improve readability of your code.
 
-\section{\textbf{const}}
+\subsection*{\textbf{const}}
 
 The expression \textbf{const} \texttt{N = 3} introduces a new constant
 \texttt{N} with the value 3.  Evaluating \texttt{N} does not lead to
@@ -6968,7 +6970,7 @@ assigns 3 to \texttt{N} and 4 to \texttt{M}.
 Harmony has limited support for \emph{constant folding}.  For example,
 \textbf{const} \texttt{N = 3 + 4} assigns value 7 to constant \texttt{N}.
 
-\section{\textbf{def}}
+\subsection*{\textbf{def}}
 
 The statement \textbf{def} \texttt{m} $a: S_1; S_2: ...$
 defines a new program counter constant \texttt{m} referring to
@@ -6986,7 +6988,7 @@ that is returned by the method.  Harmony does
 not support a \texttt{return} statement that \emph{breaks out}
 of the code before executing the last statement.
 
-\section{\textbf{del}}
+\subsection*{\textbf{del}}
 
 The statement \textbf{del} $x$ removes variable $x$ from the
 state.  $x$ can be either a local or a shared variable.  For
@@ -7002,7 +7004,7 @@ from Python:
 $x = [\mathtt{.a}, \mathtt{.b}]; \mathbf{del}~x[0]$ results in $x$ having value
 $\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
 
-\section{\textbf{for ... in [...where]}}
+\subsection*{\textbf{for ... in [...where]}}
 
 The statement \textbf{for} $x$ \textbf{in} $y: S_1; S_2; ...$
 iterates over $y$ and executes for each element the statements
@@ -7040,7 +7042,7 @@ that is, 2, 4, 6, 8, and 10.
 
 Harmony does not support \textbf{break} or \textbf{continue} statements.
 
-\section{\textbf{from ... import}}
+\subsection*{\textbf{from ... import}}
 
 The statement \textbf{from} \texttt{x} \textbf{import} \texttt{a, b, ...}
 imports module \texttt{x} and makes its constants $a, b, ...$ also constants
@@ -7054,7 +7056,7 @@ You can import all constants from a module \texttt{m}
 This, however, excludes constants whose names start with the character
 \texttt{\_}: those are considered \emph{private} to the module.
 
-\section{\textbf{go}}
+\subsection*{\textbf{go}}
 
 The statement \textbf{go} $c$ $e$ starts a thread with context $c$ that
 has executed a \textbf{stop} expression.  The \textbf{stop} expression
@@ -7062,7 +7064,7 @@ returns value $e$.
 The same context can be started multiple times, allowing threads to
 \emph{fork}.
 
-\section{\textbf{if ... [elif ...]* [else]}}
+\subsection*{\textbf{if ... [elif ...]* [else]}}
 
 Harmony supports \textbf{if} statements.
 In its most basic form, \textbf{if} $c: S_1; S_2; ...$ evaluates $c$
@@ -7076,7 +7078,7 @@ if and only if $c$ evaluated to false.
 You can think of \textbf{elif} $c:$ as shorthand for
 \textbf{else}: \textbf{if} $c:$.
 
-\section{\textbf{import}}
+\subsection*{\textbf{import}}
 
 The statement \textbf{import} $\mathtt{m}_1, \mathtt{m}_2, ...$ imports modules
 $\mathtt{m}_1, \mathtt{m}_2, ...$ in that order.
@@ -7089,7 +7091,7 @@ by calling \texttt{m.f()}.  If you would prefer to invoke it simply as
 \texttt{f()}, then you have to import using the statement
 \textbf{from} \texttt{m} \textbf{import} \texttt{f}.
 
-\section{\textbf{invariant}}
+\subsection*{\textbf{invariant}}
 
 The statement \textbf{invariant} $c$ declares that boolean expression $c$
 is an invariant.  $c$ is only allowed to read shared variables and
@@ -7098,7 +7100,7 @@ If it ever evaluates to \textbf{False} Harmony reports and error.  Harmony
 also reports an error if the expression evaluates to a value other
 than \textbf{False} or \textbf{True}.
 
-\section{\textbf{let}}
+\subsection*{\textbf{let}}
 
 You can introduce new local variables in a method using the
 \texttt{let} expression.
@@ -7133,17 +7135,17 @@ XXX\=XXX\=XXX\=XXX\kill
 \end{tabbing}
 \end{code}
 
-\section{\textbf{pass}}
+\subsection*{\textbf{pass}}
 
 The \textbf{pass} statement does nothing.
 
-\section{\textbf{possibly}}
+\subsection*{\textbf{possibly}}
 
 The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
 predicates $b_i$.
 At completion, Harmony reports which of the predicates never held.
 
-\section{\textbf{select ... in}}
+\subsection*{\textbf{select ... in}}
 
 The statement \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$
 requires that $y$ evaluates to a set value.
@@ -7180,7 +7182,7 @@ The statement is particularly useful in programming network protocols
 when having to wait for one or more messages and executing a set
 of actions atomically after the desired messages have arrived.
 
-\section{\textbf{sequential}}
+\subsection*{\textbf{sequential}}
 
 In Harmony, shared variable \texttt{Load} and \texttt{Store} operations
 are atomic and have \emph{sequential consistency}.
@@ -7196,7 +7198,7 @@ that the given variables have sequential consistency.
 Note that few modern processors support sequentially consistent memory
 by default, as doing so would lead to high overhead.
 
-\section{\textbf{spawn}}
+\subsection*{\textbf{spawn}}
 
 The statement \texttt{spawn} $m$ $a$ starts a new thread that executes
 method $m$ with argument $a$. $m$ must be a program counter constant,
@@ -7212,7 +7214,7 @@ Harmony normally checks that all threads eventually terminate.
 If a thread may never terminate, you should spawn it with
 \texttt{spawn eternal} $m$ $a$ to suppress those checks.
 
-\section{\textbf{trap}}
+\subsection*{\textbf{trap}}
 
 The statement \textbf{trap} $m$ $a$ specifies that the current thread
 should execute method $m$ with argument $a$ and some future, unspecified,
@@ -7221,447 +7223,11 @@ be handled by the thread.  Such interrupts can be disabled by setting
 the interrupt level of the thread to \textbf{True} using the
 \textbf{setintlevel} operator.
 
-\section{\textbf{while}}
+\subsection*{\textbf{while}}
 
 The statement \textbf{while} $c: S_1; S_2; ...$ executes statements
 $S_1, S_2, ...$ repeatedly as long as $c$ evaluates to \textbf{True}.
 Harmony does not support \textbf{break} or \textbf{continue} statements.
-
-\chapter{List of Modules}
-\label{ap:module}
-
-\section{The \texttt{alloc} module}
-
-The \texttt{alloc} module
-\index{alloc module}%
-supports thread-safe (but not interrupt-safe) dynamic allocation of
-shared memory locations.  There are just two methods:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{malloc($v$)} & return a pointer to a memory location initialized to $v$ \\
-\hline
-\texttt{free($p$)} & free an allocated memory location $p$ \\
-\hline
-\end{tabular}
-\vspace{1em}
-
-The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{malloc}() is specified to return \texttt{None} when running out of
-memory, although this is an impossible outcome in the current
-implementation of the module.
-
-\section{The \texttt{bag} module}
-\label{ap:bag}
-
-The \texttt{bag} module
-\index{bag module}%
-has various useful methods that operate on bags or
-multisets:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{empty()} & returns an empty bag\\
-\hline
-\texttt{fromSet($s$)} & create a bag from set $s$\\
-\hline
-\texttt{fromList($t$)} & convert list $t$ into a bag \\
-\hline
-\texttt{count($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
-\hline
-\texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
-\hline
-\texttt{add}($b$, $e$) & add one copy of $e$ to bag $b$ \\
-\hline
-\texttt{remove}($b$, $e$) & remove one copy of $e$ from bag $b$ \\
-\hline
-\texttt{combinations}($b$, $k$) & return set of all \emph{subbags} of size $k$ \\
-\hline
-\end{tabular}
-
-\section{The \texttt{hoare} module}
-\label{ap:hoare}
-
-\index{list module}%
-The \texttt{hoare} module implements support for Hoare-style monitors
-and condition variables.
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{Monitor()} & return a monitor mutex\\
-\hline
-\texttt{enter($m$)} & enter a monitor.  $m$ points to a monitor mutex\\
-\hline
-\texttt{exit($m$)} & exit a monitor.\\
-\hline
-\texttt{Condition()} & return a condition variable\\
-\hline
-\texttt{wait($c$, $m$)} & wait on condition variable pointed to by $c$ in monitor pointed to by $m$\\
-\hline
-\texttt{signal($c$, $m$)} & signal a condition variable\\
-\hline
-\end{tabular}
-
-\section{The \texttt{list} module}
-\label{ap:list}
-
-\index{list module}%
-The \texttt{list} module has various useful methods that operate on lists
-or tuples:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{subseq($t$, $b$, $f$)} & return a \emph{slice} of list $t$ starting
-at index $b$ and ending just before $f$\\
-\hline
-\texttt{append($t$, $e$)} & append $e$ to list $t$\\
-\hline
-\texttt{head($t$)} & return the first element of list $t$\\
-\hline
-\texttt{tail($t$)} & return all but the first element of list $t$\\
-\hline
-\texttt{reversed($t$)} & reverse a list \\
-\hline
-\texttt{sorted($t$)} & sorted set or list \\
-\hline
-\texttt{set($t$)} & convert values of a dict or list into a set \\
-\hline
-\texttt{list($t$)} & convert set into a list \\
-\hline
-\texttt{values($t$)} & convert values of a dict into a list sorted by key \\
-\hline
-\texttt{items($t$)} & convert dict into (key, value) list sorted by key \\
-\hline
-\texttt{enumerate($t$)} & like Python enumerate \\
-\hline
-\texttt{sum($t$)} & return the sum of all elements in $t$\\
-\hline
-\texttt{qsort($t$)} & sort list $t$ using quicksort\\
-\hline
-\end{tabular}
-
-\section{The \texttt{set} module}
-\label{ap:set}
-
-The \texttt{set} module
-\index{set module}%
-implements the following methods:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
-\hline
-\texttt{issuperset($s$, $t$)} & returns whether $s$ is a superset of $t$ \\
-\hline
-\texttt{add}($s$, $e$) & returns $s \cup \{ e \}$ \\
-\hline
-\texttt{remove}($s$, $e$) & returns $s - \{ e \}$ \\
-\hline
-\texttt{combinations}($b$, $k$) & returns set of all subsets of size $k$ \\
-\hline
-\end{tabular}
-
-\vspace{1em}
-For Python programmers: note that $s <= t$ does not check if $s$ is a subset of
-$t$ when $s$ and $t$ are sets, as ``$<=$'' implements a total order on all Harmony values
-including sets.
-
-\section{The \texttt{synch} module}
-
-\index{synch module}%
-The \texttt{synch} module provides the following methods:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
-\hline
-\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
-\hline
-\texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
-\hline
-\texttt{Lock}() & return a binary semaphore initialized to \textbf{False} \\
-\hline
-\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
-\hline
-\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
-\hline
-\texttt{Condition}() & return a condition variable \\
-\hline
-\texttt{wait}($c$, \textit{lk}) & wait on condition variable \texttt{!}$c$
-and lock \textit{lk} \\ \hline
-\texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
-\hline
-\texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
-\hline
-\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
-\hline
-\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
-\hline
-\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
-\hline
-\texttt{Queue}() & return a synchronized queue object \\
-\hline
-\texttt{get}($q$) & return next element of $q$, blocking if empty \\
-\hline
-\texttt{put}($q$, \textit{item}) & add \textit{item} to $a$ \\
-\hline
-\end{tabular}
-
-\chapter{List of Machine Instructions}
-\label{ap:harmonybytecode}
-
-{\small
-\begin{tabular}{|l|l|}
-\hline
-Address & compute address from two components \\
-\hline
-Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
-\hline
-Assert, Assert2 & pop $b$ and check that it is \textbf{True}.  Assert2 also pops value to print \\
-\hline
-AtomicInc/Dec & increment/decrement the atomic counter of this context \\
-\hline
-Continue & no-op (but causes a context switch) \\
-\hline
-Choose & choose an element from the set on top of the stack \\
-\hline
-Cut & cut a set into its smallest element and the remainder \\
-\hline
-Del [$v$] & delete shared variable $v$ \\
-\hline
-DelVar [$v$] & delete thread variable $v$ \\
-\hline
-Dup & duplicate the top element of the stack \\
-\hline
-Frame \texttt{m} $a$ & start method \texttt{m} with arguments $a$,
-initializing variables.  \\
-\hline
-Go & pop context and value, push value on context's stack, and add to context bag \\
-\hline
-IncVar $v$ & increment thread variable $v$ \\
-\hline
-Jump $p$ & set program counter to $p$ \\
-\hline
-JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
-\hline
-Load [$v$] & push the value of a shared variable onto the stack \\
-\hline
-LoadVar [$v$] & push the value of a thread variable onto the stack \\
-\hline
-Move $i$ & move stack element at offset $i$ to top of the stack \\
-\hline
-$n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
-\hline
-Pop & pop a value of the stack and discard it \\
-\hline
-Possibly $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{possibly} statement \\
-\hline
-Push $c$ & push constant $c$ onto the stack \\
-\hline
-ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
-\hline
-Return & pop return address, push \texttt{result}, and restore program counter \\
-\hline
-Sequential & pop an address of a variable that has sequential consistency \\
-\hline
-SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
-\hline
-Spawn [eternal] & pop initial thread-local state, argument, and method and spawn a new context \\
-\hline
-Split & pop tuple and push its elements \\
-\hline
-Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
-\hline
-Store [$v$] & pop a value from the stack and store it in a shared variable \\
-\hline
-StoreVar [$v$] & pop a value from the stack and store it in a thread variable \\
-\hline
-Trap & pop interrupt argument and method \\
-\hline
-\end{tabular}
-}
-
-\newpage
-Clarifications:
-\begin{itemize}
-\item The \texttt{Address} instruction expects two values on the stack.
-The top value must be an address value, representing a dictionary 
-The other value must be a key into the dictionary.
-The instruction then computes the address of the given key.
-\item Even though Harmony code does not allow taking addresses of thread variables, both
-shared and thread variables can have addresses.
-\item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
-and \texttt{Stop} instructions have an optional
-variable name: if omitted the top of the stack must contain the address of
-the variable.
-\item \texttt{Store} and \texttt{StoreVar} instructions have an optional
-variable name.  In both cases the value to be assigned is on the top
-of the stack.  If the name is omitted, the address is underneath that
-value on the stack.
-\item The effect of the \texttt{Apply} instructions depends much on $m$.
-If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
-and pushes the value.
-If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
-pushing the current program counter and setting the program counter to
-$m$.  $m$ is supposed to leave the result on the stack.
-\item The \texttt{Frame} instruction pushes the value of the thread
-register (\emph{i.e.}, the values of the thread variables) onto the
-stack.  It initializes the \texttt{result} variable to \texttt{None}.
-The \texttt{Return} instruction restores the thread register by popping
-its value of the stack.
-\item All method calls have exactly one argument, although it sometimes
-appears otherwise:
-\begin{itemize}
-\item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
-\item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
-\item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
-\end{itemize}
-The \texttt{Frame} instruction unpacks the argument to the method and places them into thread variables by the given names.
-\item Every \texttt{Stop} instruction must immediately be followed by a 
-\texttt{Continue} instruction.
-\end{itemize}
-
-\chapter{Contexts and Threads}
-\label{app:context}
-
-A context captures the state of a thread.  Each time the thread
-executes an instruction, it goes from one context to another.
-All instructions update the program counter (\texttt{Jump} instructions
-are not allowed to jump to their own locations), and so no instruction
-leaves the context the same.
-There may be multiple threads
-with the same state at the same time.
-A context consists of the following:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-name & the name of the main method that the thread is executing \\
-\hline
-argument & the argument given to the main method \\
-\hline
-program counter & an integer value pointing into the code \\
-\hline
-frame pointer & an integer value pointing into the stack \\
-\hline
-atomic & if non-zero, the thread is in atomic mode \\
-\hline
-readonly & if non-zero, the thread is in read-only mode \\
-\hline
-stack & a list of Harmony values \\
-\hline
-method variables & a dictionary mapping atoms (names of method variables) to values \\
-\hline
-thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
-\hline
-stopped & a boolean indicating if the context is stopped \\
-\hline
-failure & if not None, string that describes how the thread failed \\
-\hline
-\end{tabular}
-\vspace{1em}
-
-Details:
-\begin{itemize}
-\item The frame pointer points to the current \emph{stack frame},
-which consists of the caller's frame pointer and variables, the argument to
-the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
-\texttt{thread}), and the return address (in case of \texttt{normal}).
-\item A thread terminates when it reaches the \texttt{Return} instruction
-of the top-level method (when the stack frame is of type \texttt{thread})
-or when it hits an exception.  Exceptions include divide by zero,
-reading a non-existent key in a dictionary, accessing a non-existent
-variable, as well as when an assertion fails;
-\item The execution of a thread in \emph{atomic mode} does not get interleaved
-with that of other threads.
-\item The execution of a thread in \emph{read-only mode} is not allowed
-to update shared variables of spawn threads.
-\item The register of a thread always contains a dictionary, mapping
-atoms to arbitrary values.  The atoms correspond to the variable names
-in a Harmony program.
-\end{itemize}
-
-\chapter{The Harmony Virtual Machine}\label{app:hvm}
-
-The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
-has the following state:
-
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-code & a list of HVM machine instructions \\
-\hline
-labels & a dictionary of atoms to program counters \\
-\hline
-variables & a dictionary mapping atoms to values \\
-\hline
-ctxbag & a bag of runnable contexts \\
-\hline
-stopbag & a bag of stopped contexts \\
-\hline
-choosing & if not \texttt{None}, indicates a context that is choosing \\
-\hline
-\end{tabular}
-\vspace{1em}
-
-There is initially a single context with name
-\texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
-in atomic mode until it finishes executing the last
-\texttt{Return} instruction.
-Other threads, created through \texttt{spawn} statements, do not
-start executing until then.
-
-A \emph{step} is the execution of a single HVM machine instruction
-by a context.
-Each step generates a new state.
-When there are multiple contexts, the HVM can interleave them.
-However, trying to interleave every step would be needlessly expensive,
-as many steps involve changes to a context that are invisible to
-other contexts.
-
-A \emph{stride}
-\index{stride}%
-can involve multiple steps.  The following
-instructions start a new stride: \texttt{Load}, \texttt{Store},
-\texttt{AtomicInc}, and \texttt{Continue}.  The HVM
-interleaves stides, not steps.  Like steps, each
-stride involves a single context.  Unlike a step, a stride
-can leave the state unchanged (because its steps lead back
-to where the stride started).
-
-Executing a Harmony program results in a graph where the nodes are Harmony
-states and the edges are strides.
-When a state is \texttt{choosing}, the edges from that state are
-by a single context, one for each choice.  If not, the edges from
-the state are one per context.
-
-Consecutive strides by the same thread are called a \emph{turn}.
-Each state maintains the shortest path to it from the initial state in terms
-of turns.
-The diameter of the graph is the length of the longest path found in
-terms of turns.
-
-If some states have a problem, the state with the shortest path is reported.
-Problematic states include states that experienced exceptions.
-If there are no exceptions, Harmony computes the strongly connected components (SCCs)
-of the graph (the number of such components are printed as part of the output).
-The sink SCCs should each consist of a terminal state without any threads.
-If not, again the state with the shortest path is reported.
-
-If there are no problematic states, Harmony reports ``no issues found'' and outputs
-in the HTML file the state with the longest path.
-
-\chapter{Harmony Language Details}
-\label{ap:details}
-
-The Harmony language borrows heavily from Python.  However, there are
-some important differences that we will describe in this chapter.
 
 \section{Harmony is not object-oriented}
 
@@ -7962,6 +7528,436 @@ Harmony supports the same commenting conventions as Python.
 In addition, Harmony supports nested multi-line comments
 of the form \texttt{(* comment *)}.
 
+\chapter{Modules}
+\label{ap:module}
+
+\section{The \texttt{alloc} module}
+
+The \texttt{alloc} module
+\index{alloc module}%
+supports thread-safe (but not interrupt-safe) dynamic allocation of
+shared memory locations.  There are just two methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{malloc($v$)} & return a pointer to a memory location initialized to $v$ \\
+\hline
+\texttt{free($p$)} & free an allocated memory location $p$ \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+The usage is similar to \texttt{malloc} and \texttt{free} in C.
+\texttt{malloc}() is specified to return \texttt{None} when running out of
+memory, although this is an impossible outcome in the current
+implementation of the module.
+
+\section{The \texttt{bag} module}
+\label{ap:bag}
+
+The \texttt{bag} module
+\index{bag module}%
+has various useful methods that operate on bags or
+multisets:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{empty()} & returns an empty bag\\
+\hline
+\texttt{fromSet($s$)} & create a bag from set $s$\\
+\hline
+\texttt{fromList($t$)} & convert list $t$ into a bag \\
+\hline
+\texttt{count($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
+\hline
+\texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
+\hline
+\texttt{add}($b$, $e$) & add one copy of $e$ to bag $b$ \\
+\hline
+\texttt{remove}($b$, $e$) & remove one copy of $e$ from bag $b$ \\
+\hline
+\texttt{combinations}($b$, $k$) & return set of all \emph{subbags} of size $k$ \\
+\hline
+\end{tabular}
+
+\section{The \texttt{hoare} module}
+\label{ap:hoare}
+
+\index{list module}%
+The \texttt{hoare} module implements support for Hoare-style monitors
+and condition variables.
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{Monitor()} & return a monitor mutex\\
+\hline
+\texttt{enter($m$)} & enter a monitor.  $m$ points to a monitor mutex\\
+\hline
+\texttt{exit($m$)} & exit a monitor\\
+\hline
+\texttt{Condition()} & return a condition variable\\
+\hline
+\texttt{wait($c$, $m$)} & wait on condition variable pointed to by $c$ in monitor pointed to by $m$\\
+\hline
+\texttt{signal($c$, $m$)} & signal a condition variable\\
+\hline
+\end{tabular}
+
+\section{The \texttt{list} module}
+\label{ap:list}
+
+\index{list module}%
+The \texttt{list} module has various useful methods that operate on lists
+or tuples:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{subseq($t$, $b$, $f$)} & return a \emph{slice} of list $t$ starting
+at index $b$ and ending just before $f$\\
+\hline
+\texttt{append($t$, $e$)} & append $e$ to list $t$\\
+\hline
+\texttt{head($t$)} & return the first element of list $t$\\
+\hline
+\texttt{tail($t$)} & return all but the first element of list $t$\\
+\hline
+\texttt{reversed($t$)} & reverse a list \\
+\hline
+\texttt{sorted($t$)} & sorted set or list \\
+\hline
+\texttt{set($t$)} & convert values of a dict or list into a set \\
+\hline
+\texttt{list($t$)} & convert set into a list \\
+\hline
+\texttt{values($t$)} & convert values of a dict into a list sorted by key \\
+\hline
+\texttt{items($t$)} & convert dict into (key, value) list sorted by key \\
+\hline
+\texttt{enumerate($t$)} & like Python enumerate \\
+\hline
+\texttt{sum($t$)} & return the sum of all elements in $t$\\
+\hline
+\texttt{qsort($t$)} & sort list $t$ using quicksort\\
+\hline
+\end{tabular}
+
+\section{The \texttt{set} module}
+\label{ap:set}
+
+The \texttt{set} module
+\index{set module}%
+implements the following methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
+\hline
+\texttt{issuperset($s$, $t$)} & returns whether $s$ is a superset of $t$ \\
+\hline
+\texttt{add}($s$, $e$) & returns $s \cup \{ e \}$ \\
+\hline
+\texttt{remove}($s$, $e$) & returns $s \backslash \{ e \}$ \\
+\hline
+\texttt{combinations}($b$, $k$) & returns set of all subsets of size $k$ \\
+\hline
+\end{tabular}
+
+\vspace{1em}
+For Python programmers: note that $s <= t$ does not check if $s$ is a subset of
+$t$ when $s$ and $t$ are sets, as ``$<=$'' implements a total order on all Harmony values including sets (and the subset relation is not a total order).
+
+\section{The \texttt{synch} module}
+
+\index{synch module}%
+The \texttt{synch} module provides the following methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
+\hline
+\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
+\hline
+\texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
+\hline
+\texttt{Lock}() & return a binary semaphore initialized to \textbf{False} \\
+\hline
+\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
+\hline
+\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
+\hline
+\texttt{Condition}() & return a condition variable \\
+\hline
+\texttt{wait}($c$, \textit{lk}) & wait on condition variable \texttt{!}$c$
+and lock \textit{lk} \\ \hline
+\texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
+\hline
+\texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
+\hline
+\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
+\hline
+\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
+\hline
+\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
+\hline
+\texttt{Queue}() & return a synchronized queue object \\
+\hline
+\texttt{get}($q$) & return next element of $q$, blocking if empty \\
+\hline
+\texttt{put}($q$, \textit{item}) & add \textit{item} to $a$ \\
+\hline
+\end{tabular}
+
+
+\chapter{The Harmony Virtual Machine}\label{app:hvm}
+
+The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
+has the following state:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+code & a list of HVM machine instructions \\
+\hline
+labels & a dictionary of atoms to program counters \\
+\hline
+variables & a dictionary mapping atoms to values \\
+\hline
+ctxbag & a bag of runnable contexts \\
+\hline
+stopbag & a bag of stopped contexts \\
+\hline
+choosing & if not \texttt{None}, indicates a context that is choosing \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+There is initially a single context with name
+\texttt{\_\_init\_\_()} and program counter 0.  It starts executing
+in atomic mode until it finishes executing the last
+\texttt{Return} instruction.
+Other threads, created through \texttt{spawn} statements, do not
+start executing until then.
+
+A \emph{step} is the execution of a single HVM machine instruction
+by a context.
+Each step generates a new state.
+When there are multiple contexts, the HVM can interleave them.
+However, trying to interleave every step would be needlessly expensive,
+as many steps involve changes to a context that are invisible to
+other contexts.
+
+A \emph{stride}
+\index{stride}%
+can involve multiple steps.  The following
+instructions start a new stride: \texttt{Load}, \texttt{Store},
+\texttt{AtomicInc}, and \texttt{Continue}.  The HVM
+interleaves stides, not steps.  Like steps, each
+stride involves a single context.  Unlike a step, a stride
+can leave the state unchanged (because its steps lead back
+to where the stride started).
+
+Executing a Harmony program results in a graph where the nodes are Harmony
+states and the edges are strides.
+When a state is \texttt{choosing}, the edges from that state are
+by a single context, one for each choice.  If not, the edges from
+the state are one per context.
+
+Consecutive strides by the same thread are called a \emph{turn}.
+Each state maintains the shortest path to it from the initial state in terms
+of turns.
+The diameter of the graph is the length of the longest path found in
+terms of turns.
+
+If some states have a problem, the state with the shortest path is reported.
+Problematic states include states that experienced exceptions.
+If there are no exceptions, Harmony computes the strongly connected components (SCCs)
+of the graph (the number of such components are printed as part of the output).
+The sink SCCs should each consist of a terminal state without any threads.
+If not, again the state with the shortest path is reported.
+
+If there are no problematic states, Harmony reports ``no issues found'' and outputs
+in the HTML file the state with the longest path.
+
+\section{Machine Instructions}
+\label{ap:harmonybytecode}
+
+{\small
+\begin{tabular}{|l|l|}
+\hline
+Address & compute address from two components \\
+\hline
+Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
+\hline
+Assert, Assert2 & pop $b$ and check that it is \textbf{True}.  Assert2 also pops value to print \\
+\hline
+AtomicInc/Dec & increment/decrement the atomic counter of this context \\
+\hline
+Continue & no-op (but causes a context switch) \\
+\hline
+Choose & choose an element from the set on top of the stack \\
+\hline
+Cut & cut a set into its smallest element and the remainder \\
+\hline
+Del [$v$] & delete shared variable $v$ \\
+\hline
+DelVar [$v$] & delete thread variable $v$ \\
+\hline
+Dup & duplicate the top element of the stack \\
+\hline
+Frame \texttt{m} $a$ & start method \texttt{m} with arguments $a$,
+initializing variables.  \\
+\hline
+Go & pop context and value, push value on context's stack, and add to context bag \\
+\hline
+IncVar $v$ & increment thread variable $v$ \\
+\hline
+Jump $p$ & set program counter to $p$ \\
+\hline
+JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
+\hline
+Load [$v$] & push the value of a shared variable onto the stack \\
+\hline
+LoadVar [$v$] & push the value of a thread variable onto the stack \\
+\hline
+Move $i$ & move stack element at offset $i$ to top of the stack \\
+\hline
+$n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
+\hline
+Pop & pop a value of the stack and discard it \\
+\hline
+Possibly $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{possibly} statement \\
+\hline
+Push $c$ & push constant $c$ onto the stack \\
+\hline
+ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
+\hline
+Return & pop return address, push \texttt{result}, and restore program counter \\
+\hline
+Sequential & pop an address of a variable that has sequential consistency \\
+\hline
+SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
+\hline
+Spawn [eternal] & pop initial thread-local state, argument, and method and spawn a new context \\
+\hline
+Split & pop tuple and push its elements \\
+\hline
+Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
+\hline
+Store [$v$] & pop a value from the stack and store it in a shared variable \\
+\hline
+StoreVar [$v$] & pop a value from the stack and store it in a thread variable \\
+\hline
+Trap & pop interrupt argument and method \\
+\hline
+\end{tabular}
+}
+
+\newpage
+Clarifications:
+\begin{itemize}
+\item The \texttt{Address} instruction expects two values on the stack.
+The top value must be an address value, representing a dictionary 
+The other value must be a key into the dictionary.
+The instruction then computes the address of the given key.
+\item Even though Harmony code does not allow taking addresses of thread variables, both
+shared and thread variables can have addresses.
+\item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
+and \texttt{Stop} instructions have an optional
+variable name: if omitted the top of the stack must contain the address of
+the variable.
+\item \texttt{Store} and \texttt{StoreVar} instructions have an optional
+variable name.  In both cases the value to be assigned is on the top
+of the stack.  If the name is omitted, the address is underneath that
+value on the stack.
+\item The effect of the \texttt{Apply} instructions depends much on $m$.
+If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
+and pushes the value.
+If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
+pushing the current program counter and setting the program counter to
+$m$.  $m$ is supposed to leave the result on the stack.
+\item The \texttt{Frame} instruction pushes the value of the thread
+register (\emph{i.e.}, the values of the thread variables) onto the
+stack.  It initializes the \texttt{result} variable to \texttt{None}.
+The \texttt{Return} instruction restores the thread register by popping
+its value of the stack.
+\item All method calls have exactly one argument, although it sometimes
+appears otherwise:
+\begin{itemize}
+\item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
+\item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
+\item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
+\end{itemize}
+The \texttt{Frame} instruction unpacks the argument to the method and places them into thread variables by the given names.
+\item Every \texttt{Stop} instruction must immediately be followed by a 
+\texttt{Continue} instruction.
+\end{itemize}
+
+\section{Contexts and Threads}
+\label{app:context}
+
+A context captures the state of a thread.  Each time the thread
+executes an instruction, it goes from one context to another.
+All instructions update the program counter (\texttt{Jump} instructions
+are not allowed to jump to their own locations), and so no instruction
+leaves the context the same.
+There may be multiple threads
+with the same state at the same time.
+A context consists of the following:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+name & the name of the main method that the thread is executing \\
+\hline
+argument & the argument given to the main method \\
+\hline
+program counter & an integer value pointing into the code \\
+\hline
+frame pointer & an integer value pointing into the stack \\
+\hline
+atomic & if non-zero, the thread is in atomic mode \\
+\hline
+readonly & if non-zero, the thread is in read-only mode \\
+\hline
+stack & a list of Harmony values \\
+\hline
+method variables & a dictionary mapping atoms (names of method variables) to values \\
+\hline
+thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
+\hline
+stopped & a boolean indicating if the context is stopped \\
+\hline
+failure & if not None, string that describes how the thread failed \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+Details:
+\begin{itemize}
+\item The frame pointer points to the current \emph{stack frame},
+which consists of the caller's frame pointer and variables, the argument to
+the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
+\texttt{thread}), and the return address (in case of \texttt{normal}).
+\item A thread terminates when it reaches the \texttt{Return} instruction
+of the top-level method (when the stack frame is of type \texttt{thread})
+or when it hits an exception.  Exceptions include divide by zero,
+reading a non-existent key in a dictionary, accessing a non-existent
+variable, as well as when an assertion fails;
+\item The execution of a thread in \emph{atomic mode} does not get interleaved
+with that of other threads.
+\item The execution of a thread in \emph{read-only mode} is not allowed
+to update shared variables of spawn threads.
+\item The register of a thread always contains a dictionary, mapping
+atoms to arbitrary values.  The atoms correspond to the variable names
+in a Harmony program.
+\end{itemize}
+
 \chapter{How Harmony Works}\label{app:howitworks}
 
 This appendix gives a very brief overview of how Harmony works.
@@ -8010,7 +8006,7 @@ to be explored.
 
 The Harmony model checker, called \emph{Charm}, takes the output from
 the compiler and explores the entire state space in breadth-first order.
-Even Harmony does not really support input, there are three sources of
+Even though Harmony does not really support input, there are three sources of
 non-determinism that make this exploration non-trivial:
 
 \begin{itemize}
