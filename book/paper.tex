@@ -737,7 +737,7 @@ The first runs \texttt{incrementer(0)}; the second runs
 Method \texttt{incrementer} takes a parameter called \textit{self}.
 It increments \textit{count} and sets \textit{done}[\textit{self}] to \textbf{True}.
 It then waits until the other thread is done.
-(\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}) and semantically the same.
+(\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}.)
 After that, method \texttt{incrementer}
 verifies that the value of \textit{count} equals~2.
 % Like Python, Harmony supports \textbf{assert} statements with two arguments:
@@ -6248,6 +6248,10 @@ with \texttt{choose} and see if it finds a problem.  First try with
 $\texttt{NBALLOTS} = 2$ and then with $\texttt{NBALLOTS} = 3$.
 (Warning, the latter may take a long time.)  If it finds a problem,
 analyze the output and see what went wrong.
+\item \cite{MWA19} discusses a buggy version of Paxos.  In this version,
+the responses to the second phase are matched not by ballot number but
+by the value of the proposal.  Implement this version and, using Harmony,
+find the problem this causes.
 \end{problems}
 
 \chapter{Needham-Schroeder Authentication Protocol}
@@ -6353,6 +6357,15 @@ The security property is violated.  In particular, Bob, duped by Corey, finished
 the protocol with Alice and received $A_N$, and even though Bob and Alice
 are both honest, Corey has a copy of $A_N$.  So Corey is now able to impersonate
 Alice to Bob (but not vice versa because Alice did not try to authenticate Bob).
+
+\section*{Exercises}
+\begin{problems}
+\item Figure out how to fix the protocol.
+\item There were two versions of the Needham-Schroeder protocol: the
+Symmetric Key protocol and the Public Key protocol.  In this chapter
+we only discussed the latter, but the former also had a problem.  See
+if you can find it using Harmony.
+\end{problems}
 
 \bibliographystyle{alpha}
 \bibliography{paper}
