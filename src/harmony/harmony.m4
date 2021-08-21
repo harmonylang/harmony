@@ -77,6 +77,7 @@ class HarmonyCompilerError(Exception):
         self.message = message
         self.token = {
             "line": line,
+            "message": message,
             "column": column,
             "lexeme": str(lexeme),
             "filename": filename,
