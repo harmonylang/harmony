@@ -1,2 +1,2 @@
 synch.acquire(?forks[min(left, right)])
-synch.acquire(?forks[max(left, right])
+synch.acquire(?forks[max(left, right)])
