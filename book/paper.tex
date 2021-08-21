@@ -7157,6 +7157,9 @@ The \textbf{pass} statement does nothing.
 The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
 predicates $b_i$.
 At completion, Harmony reports which of the predicates never held.
+While \texttt{assert} statements check that nothing ever goes wrong,
+\texttt{possibly} statements can check that certain things sometimes
+go right.
 
 \subsection*{\textbf{select ... in}}
 
