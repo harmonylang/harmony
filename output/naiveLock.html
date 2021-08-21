@@ -171,7 +171,7 @@ table td, table th {
           <td align='right'>
             <a name='P2'>2</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
+          <td style='background-color: white;'>
             <span title='pop a value and store it in shared variable lockTaken' id='C2'>
               Store lockTaken
             </span>
@@ -181,9 +181,9 @@ table td, table th {
           <td align='right'>
             <a name='P3'>3</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
-            <span title='set program counter to 36' id='C3'>
-              Jump 36
+          <td style='background-color: #E6E6E6;'>
+            <span title='set program counter to 37' id='C3'>
+              Jump 37
             </span>
           </td>
         </tr>
@@ -211,7 +211,7 @@ table td, table th {
           <td align='right'>
             <a name='P6'>6</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
+          <td style='background-color: white;'>
             <span title='pop a set value and push one of its elements' id='C6'>
               Choose
             </span>
@@ -241,7 +241,7 @@ table td, table th {
           <td align='right'>
             <a name='P9'>9</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='pop a value and jump to 8 if the value is True' id='C9'>
               JumpCond True 8
             </span>
@@ -251,7 +251,7 @@ table td, table th {
           <td align='right'>
             <a name='P10'>10</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
+          <td style='background-color: white;'>
             <span title='push constant True' id='C10'>
               Push True
             </span>
@@ -273,7 +273,7 @@ table td, table th {
           </td>
           <td style='background-color: white;'>
             <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C12'>
-              AtomicInc
+              AtomicInc(False)
             </span>
           </td>
         </tr>
@@ -281,7 +281,7 @@ table td, table th {
           <td align='right'>
             <a name='P13'>13</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C13'>
               ReadonlyInc
             </span>
@@ -293,7 +293,7 @@ table td, table th {
           </td>
           <td style='background-color: white;'>
             <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C14'>
-              AtomicInc
+              AtomicInc(True)
             </span>
           </td>
         </tr>
@@ -301,7 +301,7 @@ table td, table th {
           <td align='right'>
             <a name='P15'>15</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='push constant PC(12)' id='C15'>
               Push PC(12)
             </span>
@@ -321,7 +321,7 @@ table td, table th {
           <td align='right'>
             <a name='P17'>17</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='push constant ()' id='C17'>
               Push ()
             </span>
@@ -341,7 +341,7 @@ table td, table th {
           <td align='right'>
             <a name='P19'>19</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='push constant 0' id='C19'>
               Push 0
             </span>
@@ -361,7 +361,7 @@ table td, table th {
           <td align='right'>
             <a name='P21'>21</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='pop 3 values and push the result of applying DictAdd' id='C21'>
               3-ary DictAdd
             </span>
@@ -381,7 +381,7 @@ table td, table th {
           <td align='right'>
             <a name='P23'>23</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='push the value of self' id='C23'>
               LoadVar self
             </span>
@@ -401,7 +401,7 @@ table td, table th {
           <td align='right'>
             <a name='P25'>25</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='push constant 1' id='C25'>
               Push 1
             </span>
@@ -421,7 +421,7 @@ table td, table th {
           <td align='right'>
             <a name='P27'>27</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='pop 2 values and push the result of applying ==' id='C27'>
               2-ary ==
             </span>
@@ -441,7 +441,7 @@ table td, table th {
           <td align='right'>
             <a name='P29'>29</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='decrement atomic counter of context' id='C29'>
               AtomicDec
             </span>
@@ -461,7 +461,7 @@ table td, table th {
           <td align='right'>
             <a name='P31'>31</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
+          <td style='background-color: #E6E6E6;'>
             <span title='decrement atomic counter of context' id='C31'>
               AtomicDec
             </span>
@@ -471,7 +471,7 @@ table td, table th {
           <td align='right'>
             <a name='P32'>32</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
+          <td style='background-color: white;'>
             <span title='push constant False' id='C32'>
               Push False
             </span>
@@ -491,7 +491,7 @@ table td, table th {
           <td align='right'>
             <a name='P34'>34</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
+          <td style='background-color: white;'>
             <span title='set program counter to 5' id='C34'>
               Jump 5
             </span>
@@ -502,8 +502,8 @@ table td, table th {
             <a name='P35'>35</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C35'>
-              Return
+            <span title='delete method variable self' id='C35'>
+              DelVar self
             </span>
           </td>
         </tr>
@@ -512,8 +512,8 @@ table td, table th {
             <a name='P36'>36</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant ()' id='C36'>
-              Push ()
+            <span title='restore caller method state and push result' id='C36'>
+              Return
             </span>
           </td>
         </tr>
@@ -521,9 +521,9 @@ table td, table th {
           <td align='right'>
             <a name='P37'>37</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
-            <span title='push constant 0' id='C37'>
-              Push 0
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant PC(4)' id='C37'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -532,8 +532,8 @@ table td, table th {
             <a name='P38'>38</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant PC(4)' id='C38'>
-              Push PC(4)
+            <span title='push constant 0' id='C38'>
+              Push 0
             </span>
           </td>
         </tr>
@@ -541,9 +541,9 @@ table td, table th {
           <td align='right'>
             <a name='P39'>39</a>&nbsp;
           </td>
-          <td style='background-color: white;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C39'>
-              Spawn
+          <td style='background-color: #E6E6E6;'>
+            <span title='push constant ()' id='C39'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -551,9 +551,9 @@ table td, table th {
           <td align='right'>
             <a name='P40'>40</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C40'>
-              Push ()
+          <td style='background-color: white;'>
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C40'>
+              Spawn
             </span>
           </td>
         </tr>
@@ -562,8 +562,8 @@ table td, table th {
             <a name='P41'>41</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 1' id='C41'>
-              Push 1
+            <span title='push constant PC(4)' id='C41'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -571,9 +571,9 @@ table td, table th {
           <td align='right'>
             <a name='P42'>42</a>&nbsp;
           </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(4)' id='C42'>
-              Push PC(4)
+          <td style='background-color: white;'>
+            <span title='push constant 1' id='C42'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -582,8 +582,8 @@ table td, table th {
             <a name='P43'>43</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a pc, argument, and tag and spawn a new thread' id='C43'>
-              Spawn
+            <span title='push constant ()' id='C43'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -591,9 +591,29 @@ table td, table th {
           <td align='right'>
             <a name='P44'>44</a>&nbsp;
           </td>
+          <td style='background-color: white;'>
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C44'>
+              Spawn
+            </span>
+          </td>
+        </tr>
+        <tr id='P45'>
+          <td align='right'>
+            <a name='P45'>45</a>&nbsp;
+          </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C44'>
+            <span title='restore caller method state and push result' id='C45'>
               Return
+            </span>
+          </td>
+        </tr>
+        <tr id='P46'>
+          <td align='right'>
+            <a name='P46'>46</a>&nbsp;
+          </td>
+          <td style='background-color: white;'>
+            <span title='delete method variable result' id='C46'>
+              DelVar result
             </span>
           </td>
         </tr>
@@ -684,7 +704,7 @@ var state =
     {
       "id": "1",
       "tid": "0",
-      "xhash": "55994b816947",
+      "xhash": "5617c9d98007",
       "name": "__init__()",
       "microsteps": [
         {
@@ -697,11 +717,11 @@ var state =
               "xpc": "0",
               "method": "__init__()",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] } },
           "atomic": "1",
           "push": [ { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "0"
@@ -719,63 +739,63 @@ var state =
           "pc": "2"
         },
         {
-          "npc": "36",
+          "npc": "37",
           "push": [ ],
           "pc": "3"
         },
         {
-          "npc": "37",
-          "push": [ { "type": "dict", "value": [] } ],
-          "pc": "36"
-        },
-        {
           "npc": "38",
-          "push": [ { "type": "int", "value": "0" } ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "37"
         },
         {
           "npc": "39",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "int", "value": "0" } ],
           "pc": "38"
         },
         {
           "npc": "40",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "39"
         },
         {
           "npc": "41",
-          "push": [ { "type": "dict", "value": [] } ],
+          "pop": "3",
+          "push": [ ],
           "pc": "40"
         },
         {
           "npc": "42",
-          "push": [ { "type": "int", "value": "1" } ],
+          "push": [ { "type": "pc", "value": "4" } ],
           "pc": "41"
         },
         {
           "npc": "43",
-          "push": [ { "type": "pc", "value": "4" } ],
+          "push": [ { "type": "int", "value": "1" } ],
           "pc": "42"
         },
         {
           "npc": "44",
-          "pop": "3",
-          "push": [ ],
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "43"
         },
         {
-          "npc": "44",
+          "npc": "45",
+          "pop": "3",
+          "push": [ ],
+          "pc": "44"
+        },
+        {
+          "npc": "45",
           "fp": "0",
           "trace": [
 
           ],
-          "local": { "this": { "type": "dict", "value": [] } },
+          "local": { },
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
-          "pc": "44"
+          "pc": "45"
         }
       ],
       "invfails": [
@@ -783,10 +803,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -797,7 +817,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81b767",
+          "yhash": "5617c9d9c567",
           "name": "thread(0)",
           "entry": "4",
           "pc": "4",
@@ -810,7 +830,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81b797",
+          "yhash": "5617c9d9c597",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -826,7 +846,7 @@ var state =
     {
       "id": "2",
       "tid": "1",
-      "xhash": "55994b81b767",
+      "xhash": "5617c9d9c567",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -838,11 +858,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
@@ -857,10 +877,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -871,7 +891,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81bc97",
+          "yhash": "5617c9d9cb57",
           "name": "thread(0)",
           "entry": "4",
           "pc": "6",
@@ -882,7 +902,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "choosing",
@@ -890,7 +910,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81b797",
+          "yhash": "5617c9d9c597",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -906,7 +926,7 @@ var state =
     {
       "id": "5",
       "tid": "1",
-      "xhash": "55994b81bc97",
+      "xhash": "5617c9d9cb57",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -919,11 +939,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
@@ -939,10 +959,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -953,7 +973,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81c427",
+          "yhash": "5617c9d9d317",
           "name": "thread(0)",
           "entry": "4",
           "pc": "8",
@@ -964,7 +984,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -972,7 +992,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81b797",
+          "yhash": "5617c9d9c597",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -988,7 +1008,7 @@ var state =
     {
       "id": "8",
       "tid": "1",
-      "xhash": "55994b81c427",
+      "xhash": "5617c9d9d317",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1000,11 +1020,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "False" } ],
           "pc": "8"
         },
@@ -1025,10 +1045,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1039,7 +1059,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81cb57",
+          "yhash": "5617c9d9d9b7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1050,7 +1070,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1058,7 +1078,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81b797",
+          "yhash": "5617c9d9c597",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1074,7 +1094,7 @@ var state =
     {
       "id": "15",
       "tid": "2",
-      "xhash": "55994b81b797",
+      "xhash": "5617c9d9c597",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1086,11 +1106,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "4"
         },
@@ -1105,10 +1125,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1119,7 +1139,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81cb57",
+          "yhash": "5617c9d9d9b7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1130,7 +1150,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1138,7 +1158,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81c047",
+          "yhash": "5617c9d9cef7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "6",
@@ -1149,7 +1169,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "choosing",
@@ -1158,9 +1178,9 @@ var state =
       ]
     },
     {
-      "id": "28",
+      "id": "27",
       "tid": "2",
-      "xhash": "55994b81c047",
+      "xhash": "5617c9d9cef7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1173,11 +1193,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "True" } ],
           "pc": "6"
         },
@@ -1193,10 +1213,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1207,7 +1227,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81cb57",
+          "yhash": "5617c9d9d9b7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1218,7 +1238,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1226,7 +1246,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81c8c7",
+          "yhash": "5617c9d9d7b7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "8",
@@ -1237,7 +1257,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "runnable",
@@ -1248,7 +1268,7 @@ var state =
     {
       "id": "36",
       "tid": "2",
-      "xhash": "55994b81c8c7",
+      "xhash": "5617c9d9d7b7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1260,11 +1280,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" }, { "type": "bool", "value": "False" } ],
           "pc": "8"
         },
@@ -1285,10 +1305,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1299,7 +1319,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81cb57",
+          "yhash": "5617c9d9d9b7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1310,7 +1330,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1318,7 +1338,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81d407",
+          "yhash": "5617c9d9e267",
           "name": "thread(1)",
           "entry": "4",
           "pc": "11",
@@ -1329,7 +1349,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "runnable",
@@ -1340,7 +1360,7 @@ var state =
     {
       "id": "42",
       "tid": "2",
-      "xhash": "55994b81d407",
+      "xhash": "5617c9d9e267",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1353,11 +1373,11 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "1" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
@@ -1367,10 +1387,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1381,7 +1401,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81cb57",
+          "yhash": "5617c9d9d9b7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "11",
@@ -1392,7 +1412,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1400,7 +1420,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81e2a7",
+          "yhash": "5617c9d9f337",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1411,7 +1431,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "runnable",
@@ -1422,7 +1442,7 @@ var state =
     {
       "id": "43",
       "tid": "1",
-      "xhash": "55994b81cb57",
+      "xhash": "5617c9d9d9b7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1434,11 +1454,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } },
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "11"
         }
@@ -1448,10 +1468,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1462,7 +1482,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b81dbb7",
+          "yhash": "5617c9d9ea17",
           "name": "thread(0)",
           "entry": "4",
           "pc": "12",
@@ -1473,7 +1493,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "mode": "runnable",
@@ -1481,7 +1501,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81e2a7",
+          "yhash": "5617c9d9f337",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1492,7 +1512,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "runnable",
@@ -1503,7 +1523,7 @@ var state =
     {
       "id": "47",
       "tid": "1",
-      "xhash": "55994b81dbb7",
+      "xhash": "5617c9d9ea17",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1515,11 +1535,11 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "this": { "type": "dict", "value": [] },
-          "local": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } },
+          "local": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } },
           "atomic": "1",
           "push": [ { "type": "int", "value": "1" }, { "type": "int", "value": "0" }, { "type": "dict", "value": [] }, { "type": "int", "value": "0" } ],
           "pc": "12"
@@ -1620,10 +1640,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "55994b81b907",
+          "yhash": "5617c9d9c797",
           "name": "__init__()",
           "entry": "0",
-          "pc": "44",
+          "pc": "45",
           "fp": "0",
           "trace": [
 
@@ -1634,7 +1654,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "55994b823ea7",
+          "yhash": "5617c9da4e17",
           "name": "thread(0)",
           "entry": "4",
           "pc": "28",
@@ -1645,7 +1665,7 @@ var state =
               "xpc": "4",
               "method": "thread(0)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "0" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "0" } }
             }
           ],
           "failure": "Harmony assertion failed",
@@ -1656,7 +1676,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55994b81e2a7",
+          "yhash": "5617c9d9f337",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1667,7 +1687,7 @@ var state =
               "xpc": "4",
               "method": "thread(1)",
               "calltype": "process",
-              "vars": { "result": { "type": "dict", "value": [] }, "self": { "type": "int", "value": "1" }, "this": { "type": "dict", "value": [] } }
+              "vars": { "result": { "type": "address", "value": [] }, "self": { "type": "int", "value": "1" } }
             }
           ],
           "mode": "runnable",
@@ -1680,7 +1700,7 @@ var state =
     "Frame __init__ ()",
     "Push False",
     "Store lockTaken",
-    "Jump 36",
+    "Jump 37",
     "Frame thread self",
     "Push { False, True }",
     "Choose",
@@ -1689,9 +1709,9 @@ var state =
     "JumpCond True 8",
     "Push True",
     "Store lockTaken",
-    "AtomicInc",
+    "AtomicInc(False)",
     "ReadonlyInc",
-    "AtomicInc",
+    "AtomicInc(True)",
     "Push PC(12)",
     "1-ary atLabel",
     "Push ()",
@@ -1712,22 +1732,24 @@ var state =
     "Push False",
     "Store lockTaken",
     "Jump 5",
+    "DelVar self",
     "Return",
-    "Push ()",
+    "Push PC(4)",
     "Push 0",
-    "Push PC(4)",
-    "Spawn",
     "Push ()",
-    "Push 1",
-    "Push PC(4)",
     "Spawn",
-    "Return"
+    "Push PC(4)",
+    "Push 1",
+    "Push ()",
+    "Spawn",
+    "Return",
+    "DelVar result"
   ],
   "explain": [
     "start of method __init__",
     "push constant False",
     "pop a value and store it in shared variable lockTaken",
-    "set program counter to 36",
+    "set program counter to 37",
     "start of method thread",
     "push constant { False, True }",
     "pop a set value and push one of its elements",
@@ -1759,27 +1781,66 @@ var state =
     "push constant False",
     "pop a value and store it in shared variable lockTaken",
     "set program counter to 5",
+    "delete method variable self",
     "restore caller method state and push result",
-    "push constant ()",
+    "push constant PC(4)",
     "push constant 0",
-    "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new thread",
     "push constant ()",
-    "push constant 1",
+    "pop thread-local state, argument, and pc and spawn a new thread",
     "push constant PC(4)",
-    "pop a pc, argument, and tag and spawn a new thread",
-    "restore caller method state and push result"
+    "push constant 1",
+    "push constant ()",
+    "pop thread-local state, argument, and pc and spawn a new thread",
+    "restore caller method state and push result",
+    "delete method variable result"
   ],
   "locations": {
+    "43": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "42": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "2": { "file": "code/naiveLock.hny", "line": "1", "code": "lockTaken = False" },
     "3": { "file": "code/naiveLock.hny", "line": "3", "code": "def thread(self):" },
     "12": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "9": { "file": "code/naiveLock.hny", "line": "6", "code": "        await not lockTaken" },
+    "41": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
     "8": { "file": "code/naiveLock.hny", "line": "6", "code": "        await not lockTaken" },
-    "40": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "13": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "11": { "file": "code/naiveLock.hny", "line": "7", "code": "        lockTaken = True" },
+    "40": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" },
     "10": { "file": "code/naiveLock.hny", "line": "7", "code": "        lockTaken = True" },
+    "20": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "4": { "file": "code/naiveLock.hny", "line": "3", "code": "def thread(self):" },
+    "30": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "7": { "file": "code/naiveLock.hny", "line": "4", "code": "    while choose({ False, True }):" },
+    "6": { "file": "code/naiveLock.hny", "line": "4", "code": "    while choose({ False, True }):" },
+    "17": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "22": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
     "32": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "15": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "39": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" },
+    "29": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
     "1": { "file": "code/naiveLock.hny", "line": "1", "code": "lockTaken = False" },
     "5": { "file": "code/naiveLock.hny", "line": "4", "code": "    while choose({ False, True }):" },
-    "36": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" }
+    "45": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "18": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "25": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "35": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "34": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "24": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "19": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "27": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "37": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" },
+    "26": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "36": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "31": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "21": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "16": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "44": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "33": { "file": "code/naiveLock.hny", "line": "13", "code": "        lockTaken = False" },
+    "14": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "23": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "46": { "file": "code/naiveLock.hny", "line": "16", "code": "spawn thread(1)" },
+    "28": { "file": "code/naiveLock.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "38": { "file": "code/naiveLock.hny", "line": "15", "code": "spawn thread(0)" }
   }
 }
 
@@ -2061,7 +2122,7 @@ function handleKeyPress(e) {
         var cloc = getCode(microsteps[currentTime].pc);
         while (++currentTime < totalTime) {
           var nloc = getCode(microsteps[currentTime].pc);
-          if (nloc != cloc) {
+          if (nloc.file != cloc.file || nloc.line != cloc.line || nloc.code != cloc.code) {
             break;
           }
         }

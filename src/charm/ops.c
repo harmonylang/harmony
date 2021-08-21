@@ -37,9 +37,10 @@ struct var_tree {
     } u;
 };
 
-static uint64_t this;
 static struct dict *ops_map, *f_map;
+static uint64_t underscore, this_atom;
 extern struct code *code;
+struct dict *possibly_cnt;
 
 bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
     assert((seqvars & VALUE_MASK) == VALUE_SET);
@@ -81,6 +82,9 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt,
                             uint64_t arg, uint64_t vars){
     switch (vt->type) {
     case VT_NAME:
+        if (vt->u.name == underscore) {
+            return vars;
+        }
         return dict_store(vars, vt->u.name, arg);
     case VT_TUPLE:
         if ((arg & VALUE_MASK) != VALUE_DICT) {
@@ -535,8 +539,8 @@ void op_Address(const void *env, struct state *state, struct context **pctx){
 }
 
 void op_Apply(const void *env, struct state *state, struct context **pctx){
-    uint64_t method = ctx_pop(pctx);
     uint64_t e = ctx_pop(pctx);
+    uint64_t method = ctx_pop(pctx);
 
     uint64_t type = method & VALUE_MASK;
     switch (type) {
@@ -600,18 +604,36 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx){
     }
 }
 
+void op_Possibly(const void *env, struct state *state, struct context **pctx){
+    uint64_t v = ctx_pop(pctx);
+    if ((v & VALUE_MASK) != VALUE_BOOL) {
+        ctx_failure(*pctx, "possibly can only be applied to bool values");
+    }
+    if (v == VALUE_TRUE) {
+        void **p = dict_insert(possibly_cnt, &(*pctx)->pc, sizeof((*pctx)->pc));
+        (* (uint64_t *) p)++;
+    }
+    (*pctx)->pc++;
+}
+
 void op_AtomicDec(const void *env, struct state *state, struct context **pctx){
     struct context *ctx = *pctx;
 
     assert(ctx->atomic > 0);
-    ctx->atomic--;
+    if (--ctx->atomic == 0) {
+        ctx->atomicFlag = false;
+    }
     ctx->pc++;
 }
 
 void op_AtomicInc(const void *env, struct state *state, struct context **pctx){
+    const struct env_AtomicInc *ea = env;
     struct context *ctx = *pctx;
 
     ctx->atomic++;
+    if (!ea->lazy) {
+        ctx->atomicFlag = true;
+    }
     ctx->pc++;
 }
 
@@ -629,6 +651,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
 
     uint64_t v = dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
+        if (ec->key != NULL) {
+            ctx_failure(ctx, "Can't cut set in key/value pairs");
+            return;
+        }
         assert(v != VALUE_SET);
         void *p = (void *) (v & ~VALUE_MASK);
 
@@ -637,7 +663,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_set(&vals[1], size - sizeof(uint64_t)));
-        ctx->vars = dict_store(ctx->vars, ec->var, vals[0]);
+        var_match(*pctx, ec->value, vals[0]);
         (*pctx)->pc++;
         return;
     }
@@ -650,7 +676,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx){
         assert(size > 0);
 
         ctx->vars = dict_store(ctx->vars, ec->set, value_put_dict(&vals[2], size - 2 * sizeof(uint64_t)));
-        ctx->vars = dict_store(ctx->vars, ec->var, vals[1]);
+        var_match(*pctx, ec->value, vals[1]);
+        if (ec->key != NULL) {
+            var_match(*pctx, ec->key, vals[0]);
+        }
         (*pctx)->pc++;
         return;
     }
@@ -702,8 +731,45 @@ void op_Del(const void *env, struct state *state, struct context **pctx){
 
 void op_DelVar(const void *env, struct state *state, struct context **pctx){
     const struct env_DelVar *ed = env;
-    (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
-    (*pctx)->pc++;
+
+    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    if (ed == NULL) {
+        uint64_t av = ctx_pop(pctx);
+        assert((av & VALUE_MASK) == VALUE_ADDRESS);
+        assert(av != VALUE_ADDRESS);
+
+        int size;
+        uint64_t *indices = value_get(av, &size);
+        size /= sizeof(uint64_t);
+
+        bool result;
+        if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "DelVar: 'this' is not a dictionary");
+                return;
+            }
+		    result = ind_remove((*pctx)->this, &indices[1], size - 1, &(*pctx)->this);
+        }
+        else {
+		    result = ind_remove((*pctx)->vars, indices, size, &(*pctx)->vars);
+        }
+        if (!result) {
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "DelVar: bad address: %s", x);
+            free(x);
+			return;
+		}
+    }
+	else {
+        if (ed->name == this_atom) {
+            ctx_failure(*pctx, "DelVar: can't del 'this'");
+            return;
+        }
+        else {
+            (*pctx)->vars = dict_remove((*pctx)->vars, ed->name);
+        }
+	}
+	(*pctx)->pc++;
 }
 
 void op_Dup(const void *env, struct state *state, struct context **pctx){
@@ -732,17 +798,17 @@ void op_Frame(const void *env, struct state *state, struct context **pctx){
     ctx_push(pctx, arg);
 
     uint64_t oldvars = (*pctx)->vars;
-    uint64_t thisval = dict_load(oldvars, this);
+
+    // Set result to None
+    (*pctx)->vars = dict_store(VALUE_DICT, result, VALUE_ADDRESS);
 
     // try to match against parameters
-    (*pctx)->vars = dict_store(dict_store(VALUE_DICT, this, thisval),
-				result, VALUE_DICT);
     var_match(*pctx, ef->args, arg);
     if ((*pctx)->failure != 0) {
         return;
     }
  
-    ctx_push(pctx, dict_remove(oldvars, this));
+    ctx_push(pctx, oldvars);
     ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
 
     struct context *ctx = *pctx;
@@ -810,13 +876,13 @@ void op_Invariant(const void *env, struct state *state, struct context **pctx){
     vals = realloc(vals, size + sizeof(uint64_t));
     * (uint64_t *) ((char *) vals + size) = ((*pctx)->pc << VALUE_BITS) | VALUE_PC;
     state->invariants = value_put_set(vals, size + sizeof(uint64_t));
-    (*pctx)->pc += ei->cnt + 1;
+    (*pctx)->pc = ei->end + 1;
 }
 
 int invariant_cnt(const void *env){
     const struct env_Invariant *ei = env;
 
-    return ei->cnt;
+    return ei->end;
 }
 
 void op_Jump(const void *env, struct state *state, struct context **pctx){
@@ -916,20 +982,38 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        if (!ind_tryload((*pctx)->vars, indices, size, &v)) {
-            ctx_failure(*pctx, "Loadvar: unknown address");
+        bool result;
+        if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "LoadVar: 'this' is not a dictionary");
+                return;
+            }
+            result = ind_tryload((*pctx)->this, &indices[1], size - 1, &v);
+        }
+        else {
+            result = ind_tryload((*pctx)->vars, indices, size, &v);
+        }
+        if (!result) {
+            char *x = indices_string(indices, size);
+            ctx_failure(*pctx, "LoadVar: bad address: %s", x);
+            free(x);
             return;
         }
         ctx_push(pctx, v);
     }
     else {
-        if (!dict_tryload((*pctx)->vars, el->name, &v)) {
+        if (el->name == this_atom) {
+            ctx_push(pctx, (*pctx)->this);
+        }
+        else if (dict_tryload((*pctx)->vars, el->name, &v)) {
+            ctx_push(pctx, v);
+        }
+        else {
             char *p = value_string(el->name);
-            ctx_failure(*pctx, "Loadvar: unknown variable %s", p + 1);
+            ctx_failure(*pctx, "LoadVar: unknown variable %s", p + 1);
             free(p);
             return;
         }
-        ctx_push(pctx, v);
     }
     (*pctx)->pc++;
 }
@@ -1013,10 +1097,9 @@ void op_Return(const void *env, struct state *state, struct context **pctx){
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
-        uint64_t thisval = dict_load((*pctx)->vars, this);
         uint64_t oldvars = ctx_pop(pctx);
         assert((oldvars & VALUE_MASK) == VALUE_DICT);
-        (*pctx)->vars = dict_store(oldvars, this, thisval);
+        (*pctx)->vars = oldvars;
         (void) ctx_pop(pctx);   // argument saved for stack trace
         if ((*pctx)->sp == 0) {     // __init__
             (*pctx)->terminated = true;
@@ -1147,6 +1230,10 @@ uint64_t bag_add(uint64_t bag, uint64_t v){
 
 void op_Spawn(const void *env, struct state *state, struct context **pctx){
     extern int code_len;
+    const struct env_Spawn *se = env;
+
+    uint64_t thisval = ctx_pop(pctx);
+    uint64_t arg = ctx_pop(pctx);
 
     uint64_t pc = ctx_pop(pctx);
     if ((pc & VALUE_MASK) != VALUE_PC) {
@@ -1157,8 +1244,6 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
 
     assert(pc < code_len);
     assert(strcmp(code[pc].oi->name, "Frame") == 0);
-    uint64_t arg = ctx_pop(pctx);
-    uint64_t thisval = ctx_pop(pctx);
 
     struct context *ctx = new_alloc(struct context);
 
@@ -1169,8 +1254,8 @@ void op_Spawn(const void *env, struct state *state, struct context **pctx){
     ctx->entry = (pc << VALUE_BITS) | VALUE_PC;
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
-    ctx->vars = dict_store(VALUE_DICT, this, thisval);
     ctx->interruptlevel = VALUE_FALSE;
+    ctx->eternal = se->eternal;
     ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&ctx, arg);
     uint64_t v = value_put_context(ctx);
@@ -1370,7 +1455,19 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        if (!ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars)) {
+        bool result;
+        if (indices[0] == this_atom) {
+            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
+                ctx_failure(*pctx, "StoreVar: 'this' is not a dictionary");
+                return;
+            }
+            result = ind_trystore((*pctx)->this, &indices[1], size - 1, v, &(*pctx)->this);
+        }
+
+        else {
+            result = ind_trystore((*pctx)->vars, indices, size, v, &(*pctx)->vars);
+        }
+        if (!result) {
             char *x = indices_string(indices, size);
             ctx_failure(*pctx, "StoreVar: bad address: %s", x);
             free(x);
@@ -1379,9 +1476,15 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx){
         (*pctx)->pc++;
     }
     else {
-        var_match(*pctx, es->args, v);
-        if ((*pctx)->failure == 0) {
+        if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
+            (*pctx)->this = v;
             (*pctx)->pc++;
+        }
+        else {
+            var_match(*pctx, es->args, v);
+            if ((*pctx)->failure == 0) {
+                (*pctx)->pc++;
+            }
         }
     }
 }
@@ -1405,7 +1508,6 @@ void *init_Apply(struct dict *map){ return NULL; }
 void *init_Assert(struct dict *map){ return NULL; }
 void *init_Assert2(struct dict *map){ return NULL; }
 void *init_AtomicDec(struct dict *map){ return NULL; }
-void *init_AtomicInc(struct dict *map){ return NULL; }
 void *init_Choose(struct dict *map){ return NULL; }
 void *init_Continue(struct dict *map){ return NULL; }
 void *init_Del(struct dict *map){ return NULL; }
@@ -1417,7 +1519,6 @@ void *init_ReadonlyInc(struct dict *map){ return NULL; }
 void *init_Return(struct dict *map){ return NULL; }
 void *init_Sequential(struct dict *map){ return NULL; }
 void *init_SetIntLevel(struct dict *map){ return NULL; }
-void *init_Spawn(struct dict *map){ return NULL; }
 void *init_Trap(struct dict *map){ return NULL; }
 
 void *init_Cut(struct dict *map){
@@ -1425,18 +1526,52 @@ void *init_Cut(struct dict *map){
     struct json_value *set = dict_lookup(map, "set", 3);
     assert(set->type == JV_ATOM);
     env->set = value_put_atom(set->u.atom.base, set->u.atom.len);
-    struct json_value *var = dict_lookup(map, "var", 3);
-    assert(var->type == JV_ATOM);
-    env->var = value_put_atom(var->u.atom.base, var->u.atom.len);
+
+    struct json_value *value = dict_lookup(map, "value", 5);
+    assert(value->type == JV_ATOM);
+    int index = 0;
+    env->value = var_parse(value->u.atom.base, value->u.atom.len, &index);
+
+    struct json_value *key = dict_lookup(map, "key", 3);
+    if (key != NULL) {
+        assert(key->type == JV_ATOM);
+        index = 0;
+        env->key = var_parse(key->u.atom.base, key->u.atom.len, &index);
+    }
+
+    return env;
+}
+
+void *init_AtomicInc(struct dict *map){
+    struct env_AtomicInc *env = new_alloc(struct env_AtomicInc);
+    struct json_value *lazy = dict_lookup(map, "lazy", 4);
+    if (lazy == NULL) {
+        env->lazy = false;
+    }
+    else {
+		assert(lazy->type == JV_ATOM);
+        if (lazy->u.atom.len == 0) {
+            env->lazy = false;
+        }
+        else {
+            char *p = lazy->u.atom.base;
+            env->lazy = *p == 't' || *p == 'T';
+        }
+    }
     return env;
 }
 
 void *init_DelVar(struct dict *map){
-    struct env_DelVar *env = new_alloc(struct env_DelVar);
     struct json_value *name = dict_lookup(map, "value", 5);
-    assert(name->type == JV_ATOM);
-    env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
-    return env;
+	if (name == NULL) {
+		return NULL;
+	}
+	else {
+		struct env_DelVar *env = new_alloc(struct env_DelVar);
+		assert(name->type == JV_ATOM);
+		env->name = value_put_atom(name->u.atom.base, name->u.atom.len);
+		return env;
+	}
 }
 
 void *init_Frame(struct dict *map){
@@ -1532,12 +1667,12 @@ void *init_Nary(struct dict *map){
 void *init_Invariant(struct dict *map){
     struct env_Invariant *env = new_alloc(struct env_Invariant);
 
-    struct json_value *cnt = dict_lookup(map, "cnt", 3);
-    assert(cnt->type == JV_ATOM);
-    char *copy = malloc(cnt->u.atom.len + 1);
-    memcpy(copy, cnt->u.atom.base, cnt->u.atom.len);
-    copy[cnt->u.atom.len] = 0;
-    env->cnt = atoi(copy);
+    struct json_value *end = dict_lookup(map, "end", 3);
+    assert(end->type == JV_ATOM);
+    char *copy = malloc(end->u.atom.len + 1);
+    memcpy(copy, end->u.atom.base, end->u.atom.len);
+    copy[end->u.atom.len] = 0;
+    env->end = atoi(copy);
     free(copy);
     return env;
 }
@@ -1573,11 +1708,43 @@ void *init_JumpCond(struct dict *map){
     return env;
 }
 
+void *init_Possibly(struct dict *map){
+    struct env_Possibly *env = new_alloc(struct env_Possibly);
+
+    struct json_value *index = dict_lookup(map, "index", 5);
+    assert(index->type == JV_ATOM);
+    char *copy = malloc(index->u.atom.len + 1);
+    memcpy(copy, index->u.atom.base, index->u.atom.len);
+    copy[index->u.atom.len] = 0;
+    env->index = atoi(copy);
+    free(copy);
+    return env;
+}
+
 void *init_Push(struct dict *map){
     struct json_value *jv = dict_lookup(map, "value", 5);
     assert(jv->type == JV_MAP);
     struct env_Push *env = new_alloc(struct env_Push);
     env->value = value_from_json(jv->u.map);
+    return env;
+}
+
+void *init_Spawn(struct dict *map){
+    struct env_Spawn *env = new_alloc(struct env_Spawn);
+    struct json_value *eternal = dict_lookup(map, "eternal", 7);
+    if (eternal == NULL) {
+        env->eternal = false;
+    }
+    else {
+		assert(eternal->type == JV_ATOM);
+        if (eternal->u.atom.len == 0) {
+            env->eternal = false;
+        }
+        else {
+            char *p = eternal->u.atom.base;
+            env->eternal = *p == 't' || *p == 'T';
+        }
+    }
     return env;
 }
 
@@ -2800,6 +2967,7 @@ struct op_info op_table[] = {
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
+	{ "Possibly", init_Possibly, op_Possibly },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
@@ -2862,6 +3030,9 @@ struct op_info *ops_get(char *opname, int size){
 void ops_init(){
     ops_map = dict_new(0);
     f_map = dict_new(0);
+    possibly_cnt = dict_new(0);
+	underscore = value_put_atom("_", 1);
+	this_atom = value_put_atom("this", 4);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
@@ -2871,5 +3042,4 @@ void ops_init(){
         void **p = dict_insert(f_map, fi->name, strlen(fi->name));
         *p = fi;
     }
-    this = value_put_atom("this", 4);
 }

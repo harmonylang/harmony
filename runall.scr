@@ -154,6 +154,16 @@ echo ==============
 ./harmony -msynch=synchS code/qtest4.hny
 
 echo ==============
+echo qtestconc.hny
+echo ==============
+./harmony code/qtestconc.hny
+
+echo ==============
+echo qtestconc.hny synchS
+echo ==============
+./harmony -msynch=synchS code/qtestconc.hny
+
+echo ==============
 echo queueMS.hny
 echo ==============
 ./harmony -mqueue=queueMS code/queuedemo.hny

@@ -6,6 +6,9 @@ CODEDIR = ../../code
 	python3 pp.py $< > $@
 
 CODE = \
+    2pc.tex \
+    2pc1.tex \
+    2pc2.tex \
     BBhoare.tex \
     BBsema.tex \
     BBsemadata.tex \
@@ -30,6 +33,8 @@ CODE = \
     Up.tex \
     UpEnter.tex \
     UpLock.tex \
+    abd.tex \
+    abdtest.tex \
     abp.tex \
     abptest.tex \
     actor.tex \
@@ -41,6 +46,9 @@ CODE = \
     barrier.tex \
     barrier1.tex \
     barriertest.tex \
+    bosco.tex \
+    bosco2.tex \
+    chain.tex \
     clock.tex \
     counter.tex \
     cs.tex \
@@ -53,6 +61,7 @@ CODE = \
     gpu.tex \
     hoare.tex \
     hw.tex \
+    leader.tex \
     linkedlist.tex \
     lltest.tex \
     lockintf.tex \
@@ -62,7 +71,11 @@ CODE = \
     naiveFlags.tex \
     naiveLock.tex \
     naiveTurn.tex \
+    needhamschroeder.tex \
     oo.tex \
+    paxos.tex \
+    paxos1.tex \
+    paxos2.tex \
     prog1.tex \
     prog2.tex \
     qbarrier.tex \

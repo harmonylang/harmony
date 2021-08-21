@@ -1,0 +1,32 @@
+import bag
+
+const F = 1
+const N = (3 * F) + 1
+const NROUNDS = 3
+
+network = bag.empty()
+decisions = {}
+
+def broadcast(msg):
+    atomic:
+        bag.add(?network, msg)
+
+def receive(round, k):
+    let msgs = { (r,e):c for (r,e):c in network where r == round }:
+        result = bag.combinations(msgs, k)
+
+def process(proposal):
+    broadcast(0, proposal)
+    for round in {0..NROUNDS-1}:
+        select quorum in receive(round, N - F):
+            let count = [ bag.count(quorum, (round, i)) for i in { 0..1 } ]:
+                assert(count[0] != count[1])
+                proposal = 0 if count[0] > count[1] else 1
+                if count[proposal] == (N - F):
+                    decisions |= { proposal }
+                    assert len(decisions) <= 1
+                broadcast(round + 1, proposal)
+
+let nzeroes = choose({0..N/2}):
+    for i in {0..N-1}:
+        spawn process(0 if i < nzeroes else 1)

@@ -80,6 +80,7 @@ static int dequeued;                // #states dequeued
 static bool dumpfirst;              // for json dumping
 static struct access_info *ai_free; // free list of access_info structures
 static struct node *tochk;
+static struct dict *code_map;       // maps pc to file:line
 
 static void graph_add(struct node *node){
     node->id = graph_size;
@@ -107,8 +108,13 @@ static void code_get(struct json_value *jv){
     c->load = strcmp(oi->name, "Load") == 0;
     c->store = strcmp(oi->name, "Store") == 0;
     c->del = strcmp(oi->name, "Del") == 0;
-    c->breakable = c->load || c->store || c->del ||
-                        strcmp(oi->name, "AtomicInc") == 0;
+    c->breakable = c->load || c->store || c->del;
+    if (!c->breakable && strcmp(oi->name, "AtomicInc") == 0) {
+        const struct env_AtomicInc *ea = c->env;
+        if (!ea->lazy) {
+            c->breakable = true;
+        }
+    }
 }
 
 bool invariant_check(struct state *state, struct context **pctx, int end){
@@ -147,8 +153,8 @@ void check_invariants(struct node *node, struct context **pctx){
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
         (*pctx)->pc = vals[i] >> VALUE_BITS;
         assert(strcmp(code[(*pctx)->pc].oi->name, "Invariant") == 0);
-        int cnt = invariant_cnt(code[(*pctx)->pc].env);
-        bool b = invariant_check(state, pctx, (*pctx)->pc + cnt);
+        int end = invariant_cnt(code[(*pctx)->pc].env);
+        bool b = invariant_check(state, pctx, end);
         if ((*pctx)->failure != 0) {
             printf("Invariant failed: %s\n", value_string((*pctx)->failure));
             b = false;
@@ -328,8 +334,11 @@ void onestep(struct node *node, uint64_t ctx, uint64_t choice, bool interrupt,
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
+        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
                                     code[cc->pc].breakable) {
+            if (!cc->atomicFlag && cc->atomic > 0) {
+                cc->atomicFlag = true;
+            }
             break;
         }
     }
@@ -708,8 +717,8 @@ void print_state(FILE *file, struct node *node){
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
         inv_ctx->pc = vals[i] >> VALUE_BITS;
         assert(strcmp(code[inv_ctx->pc].oi->name, "Invariant") == 0);
-        int cnt = invariant_cnt(code[inv_ctx->pc].env);
-        bool b = invariant_check(state, &inv_ctx, inv_ctx->pc + cnt);
+        int end = invariant_cnt(code[inv_ctx->pc].env);
+        bool b = invariant_check(state, &inv_ctx, end);
         if (inv_ctx->failure != 0) {
             b = false;
         }
@@ -946,8 +955,11 @@ uint64_t twostep(FILE *file, struct node *node, uint64_t ctx, uint64_t choice,
             }
         }
 
-        if (cc->atomic == 0 && sc->ctxbag != VALUE_DICT &&
-                code[cc->pc].breakable) {
+        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
+                                    code[cc->pc].breakable) {
+            if (!cc->atomicFlag && cc->atomic > 0) {
+                cc->atomicFlag = true;
+            }
             break;
         }
     }
@@ -1160,6 +1172,14 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
         notfirst = true;
         fprintf(out, "\n");
     }
+
+    // Get program counter
+    char *pcc = malloc(key_size + 1);
+    memcpy(pcc, key, key_size);
+    pcc[key_size] = 0;
+    int pc = atoi(pcc);
+    free(pcc);
+
     fprintf(out, "    \"%.*s\": { ", key_size, (char *) key);
 
     struct json_value *jv = value;
@@ -1172,6 +1192,9 @@ static void enum_loc(void *env, const void *key, unsigned int key_size,
     struct json_value *line = dict_lookup(jv->u.map, "line", 4);
     assert(line->type == JV_ATOM);
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
+
+    void **p = dict_insert(code_map, &pc, sizeof(pc));
+    int r = asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);
@@ -1260,12 +1283,48 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
+bool all_eternal(uint64_t ctxbag){
+    int size;
+    uint64_t *vals = value_get(ctxbag, &size);
+    size /= sizeof(uint64_t);
+    bool all = true;
+    for (int i = 0; i < size; i += 2) {
+        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(vals[i], NULL);
+        assert(ctx != NULL);
+        if (!ctx->eternal) {
+            all = false;
+            break;
+        }
+    }
+    return all;
+}
+
+void possibly_check(int pc){
+    extern struct dict *possibly_cnt;
+    const struct env_Possibly *ep = code[pc].env;
+
+    void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
+    if (cnt == 0) {
+        char *loc = dict_lookup(code_map, &pc, sizeof(pc));
+        if (loc == NULL) {
+            printf("invalidated possibly pc=%d/%d\n", pc, ep->index);
+        }
+        else {
+            printf("invalidated possibly %s/%d\n", loc, ep->index);
+        }
+    }
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
 }
 
 int main(int argc, char **argv){
+    code_map = dict_new(0);
+
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     for (i = 1; i < argc; i++) {
@@ -1357,8 +1416,9 @@ int main(int argc, char **argv){
     init_ctx->name = value_put_atom("__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
-    init_ctx->vars = dict_store(VALUE_DICT, this, VALUE_DICT);
+    init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
+    init_ctx->atomicFlag = true;
     ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
@@ -1514,7 +1574,8 @@ int main(int argc, char **argv){
             if (comp->good) {
                 continue;
             }
-            if (node->state->ctxbag == VALUE_DICT && node->state->stopbag == VALUE_DICT) {
+            // TODO.  In case of ctxbag, all contexts should probably be blocked
+            if (all_eternal(node->state->ctxbag) && all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }
@@ -1618,6 +1679,7 @@ int main(int argc, char **argv){
         case FAIL_BUSYWAIT:
             printf("Active busy waiting\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
+            no_issues = true;       // to report possibly stuff
             break;
         case FAIL_RACE:
             assert(bad->address != VALUE_ADDRESS);
@@ -1627,6 +1689,7 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
+            no_issues = true;       // to report possibly stuff
             break;
         default:
             panic("main: bad fail type");
@@ -1683,6 +1746,14 @@ int main(int argc, char **argv){
 
     fprintf(out, "}\n");
 	fclose(out);
+
+    if (no_issues) {
+        for (int i = 0; i < code_len; i++) {
+            if (strcmp(code[i].oi->name, "Possibly") == 0) {
+                possibly_check(i);
+            }
+        }
+    }
 
     return 0;
 }

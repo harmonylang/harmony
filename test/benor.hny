@@ -1,0 +1,63 @@
+import bag
+
+const F = 1
+const N = (2 * F) + 1
+const NROUNDS = 3
+
+sequential network
+
+network = bag.empty()
+decisions = {}
+
+def broadcast(msg):
+    atomic:
+        bag.add(?network, msg)
+
+# Wait for k messages in the given round and phase
+def receive(round, phase, k):
+    let msgs = bag.empty():
+        while bag.size(msgs) < k:
+            atomic:
+                msgs = { (r,p,e):network[r,p,e]
+                    for r,p,e in keys(network)
+                        where (r == round) and (p == phase) }
+        result = choose(bag.combinations(msgs, k))
+
+def process(proposal):
+    let est = proposal:
+        for round in {0..NROUNDS-1}:
+            # Broadcast estimate in phase 0
+            broadcast(round, 0, est)
+
+            # Wait until there are enough messages in the current round and phase
+            let quorum = receive(round, 0, N-F)
+            let count = [ bag.count(quorum, (round, 0, i)) for i in { 0..1 } ]:
+                # see if unanimous
+                if count[0] == (N - F):
+                    est = 0
+                elif count[1] == (N - F):
+                    est = 1
+                else:
+                    est = None
+
+            # Broadcast estimate in phase 1
+            broadcast(round, 1, est)
+
+            # Wait until there are enough messages in the current round and phase
+            let quorum = receive(round, 1, N-F)
+            let count = [ bag.count(quorum, (round, 1, i)) for i in { 0..1 } ]:
+                assert (count[0] == 0) or (count[1] == 0)
+                if count[0] > 0:
+                    est = 0
+                elif count[1] > 0:
+                    est = 1
+                else:
+                    est = choose({0, 1})
+                if count[est] == (N - F):
+                    atomic:
+                        decisions |= { est }
+                        assert len(decisions) <= 1
+
+let nzeroes = choose({0..N/2}):
+    for i in {0..N-1}:
+        spawn process(0 if i < nzeroes else 1)

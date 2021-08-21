@@ -6,32 +6,63 @@ def fromSet(s):
 
 def fromList(a):
     result = []
-    for i in keys(a):
-        if a[i] in keys(result):
-            result[a[i]] += 1
+    for v in a:
+        if v in keys(result):
+            result[v] += 1
         else:
-            result[a[i]] = 1
+            result[v] = 1
 
 def count(bg, elt):
+    assert 0 not in bg
     if elt in keys(bg):
         result = bg[elt]
     else:
         result = 0
 
+def size(bg):
+    assert 0 not in bg
+    result = 0
+    for c in bg:
+        result += c
+
+def bmin(bg):
+    assert 0 not in bg
+    result = min(keys(bg))
+
+def bmax(bg):
+    result = max(keys(bg))
+
 def bchoose(bg):
-    # TODO.  Assert that no elements are mapped to 0
-    assert 0 not in { bg[k] for k in keys(bg) }
+    assert 0 not in bg
     result = choose(keys(bg))
 
-def add(pb, elt):
-    if elt in keys(!pb):
-        (!pb)[elt] += 1
+def add(bg, elt):
+    assert 0 not in bg
+    result = bg
+    if elt in keys(result):
+        result[elt] += 1
     else:
-        (!pb)[elt] = 1
+        result[elt] = 1
 
-def remove(pb, elt):
-    if (elt in keys(!pb)) and ((!pb)[elt] > 0):
-        (!pb)[elt] -= 1
-    
-    if (!pb)[elt] <= 0:
-        del (!pb)[elt]
+def remove(bg, elt):
+    assert 0 not in bg
+    result = bg
+    if (elt in keys(result)) and (result[elt] > 0):
+        result[elt] -= 1
+    if result[elt] <= 0:
+        del result[elt]
+
+# Return set of all subbags of bg of size k
+def combinations(bg, k):
+    if k == 0:
+        result = { empty() }
+    else:
+        let n = size(bg):
+            if k > n:
+                result = {}
+            elif k == n:
+                result = { bg }
+            else:
+                let hd = bmin(bg) let tl = remove(bg, hd):
+                    result = { add(x, hd) for x in combinations(tl, k - 1) }
+                                | combinations(tl, k)

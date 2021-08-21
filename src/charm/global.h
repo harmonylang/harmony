@@ -33,19 +33,21 @@ struct context {     // context value
     uint64_t entry;       // entry point of main method
     uint64_t arg;         // argument provided to spawn
     uint64_t this;        // thread-local state
-    uint64_t vars;        // local variables
+    uint64_t vars;        // method-local variables
     uint64_t trap_pc;     // trap program counter
     uint64_t trap_arg;    // trap argument
     uint64_t failure;     // atom value describing failure, or 0 if no failure
     int pc;               // program counter
     int fp;               // frame pointer
-    int atomic;           // atomic counter
     int readonly;         // readonly counter
+    int atomic;           // atomic counter
+    bool atomicFlag;      // to implement lazy atomicity
     bool interruptlevel;  // interrupt level
     bool stopped;         // context is stopped
     bool terminated;      // context has terminated
+    bool eternal;         // context runs indefinitely
     int sp;               // stack size
-    uint64_t stack[0];
+    uint64_t stack[0];    // growing stack
 };
 
 struct state {
@@ -114,7 +116,8 @@ struct access_info {
 };
 
 struct env_Cut {
-    uint64_t set, var;
+    uint64_t set;
+    struct var_tree *key, *value;
 };
 
 struct env_DelVar {
@@ -126,12 +129,16 @@ struct env_Frame {
     struct var_tree *args;
 };
 
+struct env_AtomicInc {
+    bool lazy;
+};
+
 struct env_IncVar {
     uint64_t name;
 };
 
 struct env_Invariant {
-    int cnt;
+    int end;
 };
 
 struct env_Jump {
@@ -161,8 +168,16 @@ struct env_Nary {
     struct f_info *fi;
 };
 
+struct env_Possibly {
+    int index;
+};
+
 struct env_Push {
     uint64_t value;
+};
+
+struct env_Spawn {
+    bool eternal;
 };
 
 struct env_Split {

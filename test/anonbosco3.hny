@@ -1,0 +1,51 @@
+import synch, bag, list
+
+const F = 1
+const N = (3 * F) + 1
+const NROUNDS = 3
+
+sequential network
+
+network = bag.empty()
+decisions = {}
+
+def broadcast(msg):
+    atomic:
+        bag.add(?network, msg)
+
+def receive(round):
+    let receiving = True:
+        while receiving:
+            atomic: 
+                receiving = list.sum(network[r, e] for (r, e) in keys(network)
+                                    where r == round) < (N - F)
+                result = network
+
+def process(proposal):
+    let est = proposal:
+        for round in {0..NROUNDS-1}:
+            # Broadcast estimate
+            broadcast(round, est)
+
+            let msgs = receive(round)
+            let count = [0, 0]
+            let m = { e:msgs[r,e] for (r, e) in keys(msgs) where r == round }:
+                while bag.size(m) > (N - F):
+                    let e = bag.bchoose(m):
+                        m = bag.f_remove(m, e)
+
+                # Update estimate
+                if 0 in keys(m):
+                    count[0] = m[0]
+                if 1 in keys(m):
+                    count[1] = m[1]
+                assert(count[0] != count[1])
+                est = 0 if count[0] < count[1] else 1
+                if count[est] == (N - F):
+                    atomic:
+                        decisions |= { est }
+                        assert len(decisions) <= 1
+
+let nzeroes = choose({0..N/2}):
+    for i in {0..N-1}:
+        spawn process(0 if i < nzeroes else 1)

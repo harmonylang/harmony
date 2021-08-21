@@ -15,7 +15,7 @@
 \usepackage{etoolbox}
 % \usepackage{bold-extra}
 \usepackage{xcolor}
-\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue]{hyperref}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=violet]{hyperref}
 \def\itemautorefname{Exercise}%
 \def\chapterautorefname{Chapter}%
 \def\figureautorefname{Figure}%
@@ -238,6 +238,11 @@ XX\=XXX\=XXX\kill
   description={is a lock on a resource that can be held by multiple threads if they all 
     only read the resource}
 }
+\newglossaryentry{replication}
+{
+  name=replication,
+  description={maintains multiple copies of some resource to improve availability in the face of failures}
+}
 \newglossaryentry{semaphore}
 {
   name=semaphore,
@@ -279,6 +284,11 @@ XX\=XXX\=XXX\kill
   name=state,
   description={an assignment of values to variables.  In a Harmony virtual machine, this includes
       the contents of its shared memory and the set of contexts}
+}
+\newglossaryentry{state machine replication}
+{
+  name=state machine replication,
+  description={is a replication technique in which a collection of deterministic state machines process the same inputs in the same order}
 }
 \newglossaryentry{step}
 {
@@ -395,9 +405,10 @@ because it is hard to reproduce.
 \glsadd{model checking}%
 
 This book is intended to help people with understanding and
-developing concurrent code.  In particular, it uses a new tool
+developing concurrent code, which includes programs for distributed
+systems.  In particular, it uses a new tool
 called Harmony that helps with \emph{testing} concurrent code.
-The approach is based on \emph{model checking}:
+The approach is based on \emph{model checking}~\cite{CES86}:
 \index{model checking}%
 instead of relying
 on luck, Harmony will run \emph{all possible executions} of a particular
@@ -461,12 +472,14 @@ why a particular algorithm works.
 
 So, what is Harmony?
 Harmony is a concurrent programming language.  It was designed to teach
-the basics of concurrent programming, but it is also useful for
+the basics of concurrent and distributed programming, but it is also useful for
 testing new concurrent algorithms or even sequential and distributed
 algorithms.  Harmony programs are not intended to be ``run'' like programs
 in most other programming languages---instead Harmony programs are
 model checked to test that the program has certain desirable
 properties and does not suffer from bugs.
+Interestingly, Harmony does not have input/output statements, so there is
+no ``Hello World'' program.
 
 The syntax and semantics of Harmony is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
@@ -478,8 +491,9 @@ with the concepts of CPU, memory, register, stack, and machine
 instructions.
 
 Harmony is heavily influenced by Leslie Lamport's work on
-TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09}, as well as
-Gerard Holzmann's work on Promela and SPIN~\cite{SPIN}.
+TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09},
+Gerard Holzmann's work on Promela and SPIN~\cite{SPIN},
+and University of Washington's DSLabs system~\cite{MWA19}.
 Harmony is designed to have a lower learning curve than those
 systems, but is not as powerful.  When you finish this book
 and want to learn more, we strongly encourage checking
@@ -557,7 +571,25 @@ steps.
 \item \autoref{ch:abp} presents a problem and a solution to the distributed
 systems problem of having two threads communicate reliably over an unreliable
 network.
+\item \autoref{ch:leader} presents a protocol for electing a leader on
+a ring of processors, where each processor is uniquely identified and 
+only knows its successor on the ring.
+\item \autoref{ch:2pc} describes atomic database transactions and the two-phase commit protocol used to implement them.
+\item \autoref{ch:chain} describes \emph{state machine replication} and
+the \emph{chain replication} protocol to support replication.
+\item \autoref{ch:abd} presents a protocol for a fault-tolerant
+replicated object that supports only read and write operations.
+\item \autoref{ch:consensus} demonstrates a fault-tolerant distributed consensus
+algorithm (aka protocol) expressed in Harmony.
+\item \autoref{ch:paxos} shows how one can specify and check the well-known
+Paxos consensus protocol.
+\item \autoref{ch:ns} demonstrates finding a bug in the original Needham-Schroeder
+authentication protocol.
 \end{itemize}
+
+The appendices contain various details about Harmony itself, including
+an appendix that explains how Harmony works (\autoref{app:howitworks}) and
+an appendix on installing and running Harmony (\autoref{app:install}).
 
 \chapter{Introduction to Harmony}
 \label{ch:harmonyintro}
@@ -679,9 +711,9 @@ threads
 \index{thread}%
 running in parallel while sharing variables.
 \autoref{fig:progs} shows two programs.  Program (a) is sequential.
-It sets \textit{shared} to \texttt{True}, asserts that
-\textit{shared} = \texttt{True}, and finally sets
-\textit{shared} to \texttt{False}.
+It sets \textit{shared} to \textbf{True}, asserts that
+\textit{shared} = \textbf{True}, and finally sets
+\textit{shared} to \textbf{False}.
 If you run the program through Harmony, it will not find any problems
 because there is only one execution possible and 1) in that execution
 the assertion does not fail and 2) the execution terminates.
@@ -703,9 +735,9 @@ The first runs \texttt{incrementer(0)}; the second runs
 \texttt{incrementer(1)}.
 
 Method \texttt{incrementer} takes a parameter called \textit{self}.
-It increments \textit{count} and sets \textit{done}[\textit{self}] to \texttt{True}.
+It increments \textit{count} and sets \textit{done}[\textit{self}] to \textbf{True}.
 It then waits until the other thread is done.
-(\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}) and semantically the same.
+(\textbf{await} $c$ is shorthand for \textbf{while not} $c$: \textbf{pass}.)
 After that, method \texttt{incrementer}
 verifies that the value of \textit{count} equals~2.
 % Like Python, Harmony supports \textbf{assert} statements with two arguments:
@@ -734,7 +766,8 @@ What would the value of \textit{count} be at the end of that execution?
 \item Before you run the program, what do you think will happen?  Is the
 program correct in that \textit{count} will always end up being 2?
 (You may assume that \texttt{load} and \texttt{store} instructions of the
-underlying machine architecture are atomic (indivisible)---in fact they are.)
+underlying virtual machine architecture are atomic (indivisible)---in fact
+they are.)
 \end{itemize}
 \end{quote}
 
@@ -775,8 +808,8 @@ a possible interleaving of \texttt{incrementer(0)} and \texttt{incrementer(1)}:
 stores $1$ into \textit{count};
 \item \texttt{incrementer(0)} adds 1 to the value that it loaded (0), and
 stores $1$ into \textit{count};
-\item \texttt{incrementer(0)} sets \textit{done}[0] to \texttt{True};
-\item \texttt{incrementer(1)} sets \textit{done}[1] to \texttt{True}.
+\item \texttt{incrementer(0)} sets \textit{done}[0] to \textbf{True};
+\item \texttt{incrementer(1)} sets \textit{done}[1] to \textbf{True}.
 \end{enumerate}
 
 The result in this particular interleaving is that \textit{count} ends up
@@ -798,8 +831,9 @@ We could change the specification by changing the assertion as follows:
 \textbf{assert} (\textit{count} == 1) or (\textit{count} == 2)
 \end{code}
 
-This would fix the issue, but more likely it is the program that must
-be fixed, not the specification.
+This would fix the issue,\footnote{Actually, Harmony still complains, this time
+about a \emph{data race}, about which you will learn in \autoref{ch:harmonymachine}.}
+but more likely it is the program that must be fixed, not the specification.
 
 The exercises below have you try the same thing in Python.  As you will
 see, the bug is not easily triggered when you run a Python version of
@@ -879,6 +913,12 @@ which in turn is executed by the Harmony virtual machine (HVM).
 \index{virtual machine}%
 \index{Harmony Virtual Machine}%
 \index{HVM}%
+The Harmony compiler places the bytecode for file $x$.\texttt{htm} in
+file $x$.\texttt{hvm}.
+The model checker, called \emph{Charm}, places its output in a file
+called $x$.\texttt{hco} and a stylized version of the same output
+in an HTML file called $x$.\texttt{htm}.
+
 To understand the problem of concurrent computing, it
 is important to have a basic understanding of machine instructions,
 and in our case those of the HVM.
@@ -887,7 +927,7 @@ and in our case those of the HVM.
 
 Harmony programs, and indeed the HVM,  manipulate Harmony values.
 Harmony values are recursively defined:
-they include booleans (\texttt{False} and \texttt{True}),
+they include booleans (\textbf{False} and \textbf{True}),
 integers (but not floating point numbers),
 strings (enclosed by double quotes),
 sets of Harmony values,
@@ -940,10 +980,10 @@ Again, square brackets and parentheses work the same in Harmony, so
 is the same Harmony value as \texttt{(a, b, c)} (which looks like a Python tuple),
 which in turn is the same Harmony value as \texttt{\{ 0:a, 1:b, 2:c \}}.
 So, if $x$ = \texttt{[False, True]},
-then $x$[0] = \texttt{False} and $x$[1] = \texttt{True}, just like in Python.
+then $x$[0] = \textbf{False} and $x$[1] = \textbf{True}, just like in Python.
 However, when creating a singleton list, make sure you include the
 comma, as in \texttt{[False,]}.  The expression \texttt{[False]} just means
-\texttt{False}.
+\textbf{False}.
 
 Harmony is not an object-oriented language, so objects don't have
 built-in methods.  However, Harmony does have some powerful operators to
@@ -1233,12 +1273,12 @@ executes instructions 6 through 9, loading the value of
 \textit{count} but stopping just before storing 1 into \textit{count};
 \item Thread \texttt{incrementer(1)} (with identifier T2)
 executes instructions 6 through 18, storing 1 into
-\textit{count} and storing \texttt{True} into \textit{done}[1];
+\textit{count} and storing \textbf{True} into \textit{done}[1];
 \item Thread \texttt{incrementer(0)}
 continues execution, executing instructions 10 through 28
 storing value 1 into \textit{count} (instruction 10),
-storing \texttt{True} into \textit{done}[0] (instructions 11 through 15)
-finding that \textit{done}[1] is \texttt{True} (instructions 16 through 21),
+storing \textbf{True} into \textit{done}[0] (instructions 11 through 15)
+finding that \textit{done}[1] is \textbf{True} (instructions 16 through 21),
 and finally detecting that the assertion is violated
 (instructions 22 through 28).
 \end{enumerate}
@@ -1552,24 +1592,24 @@ lock first and release it upon exiting the critical section.
 Using a lock is a good thought, but how does one implement one?
 \autoref{fig:naivelock} presents a mutual exclusion attempt based on a
 na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
-Initially the lock is not owned, indicated by \textit{lockTaken} being \texttt{False}.
-To enter the critical section, a thread waits until \textit{lockTaken} is \texttt{False}
-and then sets it to \texttt{True} to indicate that the lock has been taken.
+Initially the lock is not owned, indicated by \textit{lockTaken} being \textbf{False}.
+To enter the critical section, a thread waits until \textit{lockTaken} is \textbf{False}
+and then sets it to \textbf{True} to indicate that the lock has been taken.
 The thread then executes the critical section.  Finally the thread
-releases the lock by setting \textit{lockTaken} back to \texttt{False}.
+releases the lock by setting \textit{lockTaken} back to \textbf{False}.
 
 Unfortunately, if we run the program through Harmony,
 we find that the assertion still fails.
 \autoref{fig:naiveLockhtml} shows the Harmony output.
 Thread~0 finds that the lock is available, but just before it stores
-\texttt{True} in \textit{lockTaken} in instruction~9, thread~1 gets
+\textbf{True} in \textit{lockTaken} in instruction~9, thread~1 gets
 to run.
 (Recall that you can hover your mouse over a machine instruction in order
 to see what it does.)
-Because \textit{lockTaken} is still \texttt{False}, it too
-believes it can acquire the lock, and stores \texttt{True} in
+Because \textit{lockTaken} is still \textbf{False}, it too
+believes it can acquire the lock, and stores \textbf{True} in
 \textit{lockTaken} and moves on to the critical section.
-Finally, thread~0 moves on, also stores \texttt{True}
+Finally, thread~0 moves on, also stores \textbf{True}
 into \textit{lockTaken} and also moves
 into the critical section.  Thread~0 is the one that detects the
 problem.
@@ -1591,21 +1631,21 @@ solution does prevent both threads being in the critical section at
 the same time.
 
 To see why, first note the following invariant: if thread $i$ is in the
-critical section, then \textit{flags}[$i$] == \texttt{True}.
+critical section, then \textit{flags}[$i$] == \textbf{True}.
 Without loss of generality,
 suppose that thread~0 sets \textit{flags}[0] at time $t_0$.
 Thread 0 can only reach the critical section if at some time $t_1$,
-$t_1 > t_0$, it finds that \textit{flags}[1] == \texttt{False}.
-Because of the invariant, \textit{flags}[1] == \texttt{False} implies that
+$t_1 > t_0$, it finds that \textit{flags}[1] == \textbf{False}.
+Because of the invariant, \textit{flags}[1] == \textbf{False} implies that
 thread~1 is not in the critical section at time $t_1$.
 Let $t_2$ be the time at which thread~0 sets \textit{flags}[0]
-to \texttt{False}.  Thread~0 is in the critical section sometime
+to \textbf{False}.  Thread~0 is in the critical section sometime
 between $t_1$ and $t_2$.
 It is easy to see that thread~1 cannot enter the critical section
-between $t_1$ and $t_2$, because \textit{flags}[1] == \texttt{False} at
+between $t_1$ and $t_2$, because \textit{flags}[1] == \textbf{False} at
 time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
-it would first have to set \textit{flags}[1] to \texttt{True} and
-then wait until \textit{flags}[0] == \texttt{False}.  But that does not happen
+it would first have to set \textit{flags}[1] to \textbf{True} and
+then wait until \textit{flags}[0] == \textbf{False}.  But that does not happen
 until time $t_2$.
 
 However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
@@ -1691,7 +1731,7 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
 The thread continues to be polite, waiting
 until either the other thread is nowhere near the critical section
-($\mathit{flag}[1 - \mathit{self}] == \mathtt{False}$) or has given way
+($\mathit{flag}[1 - \mathit{self}] == \mathbf{False}$) or has given way
 ($\mathit{turn} == \mathit{self}$).
 Running the algorithm with Harmony shows that it satisfies both mutual
 exclusion and progress.
@@ -1904,7 +1944,7 @@ Therefore we only need to consider a step by thread~1.
 From $\mathcal{G}$ we know that one of the following three cases must hold before
 thread~1 takes a step:
 \begin{enumerate}
-\item \textit{flags}[1] = \texttt{False};
+\item \textit{flags}[1] = \textbf{False};
 \item \textit{turn} = 0;
 \item thread~1 is at label \texttt{@gate}.
 \end{enumerate}
@@ -1913,8 +1953,8 @@ Let us consider each of these cases.
 We have to show that if thread~1 takes a step, then one of those
 cases must hold after the step.
 In the first case, if thread~1 takes a step, there are two possibilities:
-either $flags[1]$ will still be \texttt{False} (in which case the first case
-continues to hold), or $flags[1]$ will be \texttt{True}
+either $flags[1]$ will still be \textbf{False} (in which case the first case
+continues to hold), or $flags[1]$ will be \textbf{True}
 and thread~1 will be at label \texttt{@gate} (in which case the third case
 will hold).
 We know that thread~1 never sets \textit{turn} to 1, so
@@ -1934,7 +1974,7 @@ section and $\mathcal{G}(0)$ continues to hold;
 Then again $\mathcal{G}(0)$ continues to hold.
 \item Thread~0 takes a step and ends up in the critical section.
 Because thread~0 entered the critical section, we know that
-\textit{flags}[1] = \texttt{False} or \textit{turn} == 0 because
+\textit{flags}[1] = \textbf{False} or \textit{turn} == 0 because
 of the \texttt{await} condition.
 And hence $\mathcal{G}(0)$ continues to hold in that case as well.
 \end{enumerate}
@@ -1995,7 +2035,7 @@ is an atomic action:
 \item \label{ex:reorder}
 A colleague of the author asked if the first two assignments in
 Peterson's algorithm (setting \textit{flags}[\textit{self}])
-to \texttt{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
+to \textbf{True} and \textit{turn} to $1 - \mathit{self}$) can be reversed.
 After all, they are different variables assigned independent values---in a
 sequential program one could surely swap the two assignments.
 See if you can figure out for yourself if the two assignments can be
@@ -2276,7 +2316,7 @@ Here $s$ points to a shared Boolean variable and $p$
 to a private Boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
-and then sets the shared variable to \texttt{True} (``set'').
+and then sets the shared variable to \textbf{True} (``set'').
 
 \autoref{fig:tas} goes on to implement mutual exclusion for
 a set of \texttt{N} threads.
@@ -2285,14 +2325,14 @@ The approach is called \emph{spinlock},
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ variables.
-Variable \textit{shared} is initialized to \texttt{False} while
-\textit{private}[$i$] for each thread $i$ is initialized to \texttt{True}.
+Variable \textit{shared} is initialized to \textbf{False} while
+\textit{private}[$i$] for each thread $i$ is initialized to \textbf{True}.
 
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
-one of these variables is \texttt{False}.
+one of these variables is \textbf{False}.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
 lines $18 \cdots 22$ (which includes the critical section),
-then \textit{private}[$i$] == \texttt{False}.
+then \textit{private}[$i$] == \textbf{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
@@ -2300,22 +2340,22 @@ For those who read through the previous chapter:
 $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!}$p$ == \texttt{True} upon entry of \texttt{tas}
+\texttt{!}$p$ == \textbf{True} upon entry of \texttt{tas}
 (because of the condition on the \textbf{while} loop that the
 \texttt{tas} method is invoked in).
 There are two cases:
 \begin{enumerate}
-\item \texttt{!}$s$ is \texttt{False} upon entry to \texttt{tas}.
-Then upon exit \texttt{!}$p$ == \texttt{False} and \texttt{!}$s$ == \texttt{True},
+\item \texttt{!}$s$ is \textbf{False} upon entry to \texttt{tas}.
+Then upon exit \texttt{!}$p$ == \textbf{False} and \texttt{!}$s$ == \textbf{True},
 maintaining the invariant.
-\item \texttt{!}$s$ is \texttt{True} upon entry to \texttt{tas}.
+\item \texttt{!}$s$ is \textbf{True} upon entry to \texttt{tas}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
 because we can assume, by the induction hypothesis, that $\textit{private}[i]$ is
-\texttt{True} just before exiting the critical section.
+\textbf{True} just before exiting the critical section.
 Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread $i$ only proceeds to the critical
-section if \textit{private}[$i$] is \texttt{False}, and (ii) no other thread modifies
+section if \textit{private}[$i$] is \textbf{False}, and (ii) no other thread modifies
 \textit{private}[$i$].
 
 Harmony can check these invariants as well.
@@ -2328,7 +2368,7 @@ like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
 Harmony supports checking such invariants using the \texttt{invariant}
 keyword.
-The expression counts the number of \texttt{False} values and checks that
+The expression counts the number of \textbf{False} values and checks that
 the result is less than or equal to 1.
 Harmony checks the expression in every reachable state.
 
@@ -2594,7 +2634,7 @@ should return a pair that sums to 100.  Add the necessary synchronization code.
 \item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
 interface for both the \texttt{synch} and \texttt{synchS} modules.
 This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
-returns \texttt{True} if the binary semaphore was available (and now acquired) or \texttt{False}
+returns \textbf{True} if the binary semaphore was available (and now acquired) or \textbf{False}
 if the binary semaphore was already acquired.
 Hint: you do not have to change the existing code.
 \item People who use an ATM often first check their balance and then withdraw
@@ -3036,6 +3076,7 @@ consider all possible interleavings, and see if the result
 is consistent with an appropriate sequential execution of the
 operations.
 
+\index{logical timestamp}%
 Harmony provides support for testing linearizability,
 but requires that the programmer
 identifies what are known as \emph{linearization points}
@@ -4547,8 +4588,8 @@ have the following API:
 \end{enumerate}
 \noindent
 \texttt{tryAcquire} should not wait.
-Instead it should return \texttt{True} if the lock was successfully
-acquired and \texttt{False} if the lock was not available.
+Instead it should return \textbf{True} if the lock was successfully
+acquired and \textbf{False} if the lock was not available.
 % \item Implement semaphores using Mesa condition variables.
 \item Write a new version of the GPU allocator in \autoref{ex:gpu}
 using Mesa condition variables.
@@ -4778,7 +4819,7 @@ scenario.}
 \begin{problems}
 \item The solution in \autoref{fig:dinerscv} can be simplified by, instead
 of having a condition variable per fork, having a condition variable per
-diner.  It is the same number of condition variables, but you will not
+diner.  It uses the same number of condition variables, but you will not
 need to have \textbf{if} statements nested inside the \textbf{while} loop
 waiting for the forks.  See if you can figure it out.
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
@@ -4875,6 +4916,8 @@ Each client would acquire the lock, get the value of the counter
 and increment it, and release the lock.
 Instead, in the actor approach the counter is managed by a
 separate server thread.
+The server never terminates, so it is spawned with the keyword
+\textbf{eternal} to suppress non-terminating state warnings.
 Each client sends a request to the server, consisting in this case
 of simply the queue to which the server must send the response.
 The server maintains a local, zero-initialized counter variable.
@@ -5117,11 +5160,11 @@ it is being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
-of a thread to \texttt{True} using the \textbf{setintlevel} interface.
+of a thread to \textbf{True} using the \textbf{setintlevel} interface.
 \autoref{fig:trap4} illustrates how this is done.
 Note that it is not necessary to change the interrupt level during servicing an
-interrupt, because it is automatically set to \texttt{True} upon entry to the interrupt
-handler and restored to \texttt{False} upon exit.
+interrupt, because it is automatically set to \textbf{True} upon entry to the interrupt
+handler and restored to \textbf{False} upon exit.
 It is important that the \textit{main}() code re-enables interrupts after incrementing
 \textit{count}.  What would happen if \textit{main}() left interrupts disabled?
 
@@ -5181,7 +5224,7 @@ in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
 Implement a new method \texttt{i\_put}(\textit{item}) that does not
-block.  Instead, it should return \texttt{False} if the buffer is full and \texttt{True}
+block.  Instead, it should return \textbf{False} if the buffer is full and \textbf{True}
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
 \end{problems}
@@ -5384,7 +5427,7 @@ a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
 Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
-\textit{reliable} == \texttt{True}.  It causes the last acknowledgment to be sent
+\textit{reliable} == \textbf{True}.  It causes the last acknowledgment to be sent
 reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
 once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
@@ -5403,12 +5446,935 @@ Each client is uniquely identified.  You may either use separate channel pairs
 for each client, or solve the problem using a single pair of channels.
 \end{problems}
 
+\chapter{Leader Election}
+\label{ch:leader}
+
+\begin{figure}
+\begin{code}
+\harmonysource{leader}
+\end{code}
+\caption{\harmonylink{code/leader.hny} A leader election protocol on a ring.}
+\label{fig:leader}
+\end{figure}
+
+Leader election is the problem of electing a unique leader in a
+network of processors.  Typically this is challenging because the
+processors have only limited information.  In the version that we
+present, each processor has a unique identifier.  The processors
+are organized in a ring, but each processor only knows its own
+identifier and the identifier of its successor on the ring.  Having
+already looked into the problem of how to make the network reliable,
+we assume here that each processor can reliably send messages to
+its successor.
+
+The protocol that we present elects as leader the processor with the
+highest identifier~\cite{CR79} and works in two phases: in the first
+phase, each processor sends its identifier to its successor.  When
+a processor receives an identifier that is larger than its own
+identifier, it forward that to its successor as well.  If a processor
+receives its own identifier, it discovers that it is the leader.  That
+processor then starts the second phase by sending a message around the
+ring notifying the other processors of the leader's identifier.
+
+\autoref{fig:leader} describes the protocol and its test cases in Harmony.
+In Harmony, processors can be modeled by threads and there are a variety of ways in
+which one can model a network using shared variables.
+Here, we model the network as a set of messages.
+The \texttt{send} method atomically adds a message to this set.
+Messages are tuples with three fields:
+(\textit{dst}, \textit{id}, \textit{found}).
+\textit{dst} is the identifier of the destination processor;
+\textit{id} is the identifier that is being forwarded; and
+\textit{found} is a boolean indicating the second phase of the protocol.
+The \texttt{receive}(\textit{self}) method looks for all messages
+destined for the processor with identifier \textit{self}.
+
+To test the protocol, the code first chooses the number of processors
+and generates an identifier for each
+processor, chosen non-deterministically from a set of \texttt{NIDS}
+identifiers.  It also keeps track in the variable \textit{leader} of
+what the highest identifier is so it can later be checked.
+
+Method \texttt{processor}(\textit{self}, \textit{succ}) is the
+code for a processor with identifier \textit{self} and successor
+\textit{succ}.
+It starts simply by sending its own identifier to its successor.
+The processor then loops until it discovers the identifier of the
+leader in the second phase of the protocol.
+A processor waits for a message using the Harmony \textbf{select} statement.
+This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
+where $s$ is a set and $v$ is variable that is bound to an element of $s$.
+The properties of the \textbf{select} statement are as follows:
+\begin{itemize}
+\item it waits until $s$ is non-empty;
+\item it is executed atomically;
+\item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
+\end{itemize}
+\index{select statement}%
+
+If a processor receives its own identifier, it knows its the leader.
+The Harmony code checks this using an assertion.
+In real code the processor could not do this as it does not know
+the identifier of the leader, but assertions are only there to check
+correctness.
+The processor then sends a message to its successor that the leader
+has been found.
+If the processor receives an identifier higher than its own, the
+processor knows that it cannot be the leader.
+In that case, it simply forwards the message.
+A processor stops when it receives a message that indicates that
+the leader has been identified.
+
+Note that there is a lot of non-determinism in the specification, leading
+to a lot of executions that must be checked.
+First, every possible permutation of identifiers for the processors
+is tried.  When there are multiple messages to receive by a processor,
+every possible order is tried (including receiving the same message
+multiple times).  Fortunately, the \texttt{select} statement is executed
+atomically, otherwise the body of the statement could lead to additional
+thread interleavings.  Because in practice the different processors do
+not share memory, it is not necessary to check those interleavings.
+
+\section*{Exercises}
+\begin{problems}
+\item Check if the code finds a unique leader if identifiers are not unique.
+\item Messages are added atomically to the network.  Is this necessary?
+What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
+\end{problems}
+
+\chapter{Transactions and Two Phase Commit}
+\label{ch:2pc}
+
+\begin{figure}
+\begin{code}
+\harmonysource{2pc1}
+\end{code}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for banks.}
+\label{fig:2pc1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{2pc2}
+\end{code}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for transaction coordinators.}
+\label{fig:2pc2}
+\end{figure}
+
+Modern databases support multiple clients concurrently accessing the data.
+They store data on disk, but we will ignore that in this book.
+(If you want to model a disk, this is probably best done as a separate
+thread.)
+The complication we address here is that databases may be \emph{sharded},
+where different parts of the data are stored on different servers.
+The different servers may even be under different
+authoritive domains, such as multiple banks maintaining the accounts of their
+clients.
+
+In database terminology, a \emph{transaction} is an operation on a database.
+The operation can be quite complex, and the execution of a transaction
+should have at least the following two properties:
+\begin{itemize}
+\item \emph{all-or-nothing}: a transaction should either complete, or it should
+be a no-op.  It should never partially execute and then give up because of
+some kind of error or something.  Database
+people call this \emph{atomicity}, but it is not the same kind of atomicity that
+we have been discussing in this book.
+\item \emph{serialized}: any two concurrent transactions should appear to
+execute in some order.  Database people call this \emph{isolation}: one transaction
+should not be able to witness the intermediate state of another transaction
+in execution.
+\end{itemize}
+
+We will use as an example a distributed database that maintains accounts.
+For simplicity we will model this as a collection of banks, each maintaining a
+single account.  There are two kinds of transactions: \emph{transfer}
+(similar to \autoref{ex:bank}) and \emph{check}.  In this example, a transfer
+is a transaction that moves some funds between two accounts.
+A check is a transaction over all accounts and checks that the sum of the
+balances across the accounts remains the same.
+
+Executing such transactions must be done with care.  Consider what
+would happen if transactions are not all-or-nothing or are not
+serialized.  A transfer consists of two operations: withdrawing
+funds from one account and depositing the same amount of funds in
+the other.  These two operations can be done concurrently, but if
+the withdrawal fails (for example, because there are not sufficient
+funds in the source account) then the whole transaction should fail
+and become a no-op.  Even if this is not the case, a concurrent
+check transaction may accidentally witness a state in which either
+the withdrawal or the deposit happened, but not both.  And matters
+get more complicated with multiple concurrent transfers.
+
+The Two-Phase Commit protocol~\cite{Gray78} is a protocol that can be
+used to implement transactions across multiple database servers---banks
+in this case.
+Each transaction has a \emph{coordinator} that sends a \texttt{PREPARE}
+message to each of the servers involved in the transaction, asking them
+to prepare to commit to their part in a particular transaction.
+A server can either respond with
+\texttt{YES} if it is ready to commit and will avoid doing anything
+that might jeopardize this (like committing a conflicting transaction),
+or with \texttt{NO} if it does not want to participate in the transaction.
+If all servers respond with \texttt{YES}, then the coordinator can
+decide to \emph{commit} the transaction.  Otherwise the coordinator
+must decide to \emph{abort} the transaction.  In the second phase, the
+servers that responded with \texttt{YES} (if any) must be notified
+to inform them of the coordinator's decision.
+
+Different transactions can have different coordinators.  In our
+implementation, each bank and each coordinator is a thread.
+\autoref{fig:2pc1} shows the code for a bank.
+The state of a bank consists of the following local variables:
+\begin{itemize}
+\item \textit{self}: the bank's identifier;
+\item \textit{balance}: the current balance in the account;
+\item \textit{status}: either contains () if the bank is not involved in an
+ongoing transaction or contains the balance
+just before the transaction started;
+\item \textit{received}: the set of messages received and handled so far.
+\end{itemize}
+
+\noindent
+Messages sent to a bank have the following dictionary format:
+$\{ \mathtt{.dst}, \mathtt{.src}, \mathtt{.request}, \mathtt{.amount} \}$:
+\begin{itemize}
+\item \texttt{.dst}: identifier of the bank;
+\item \texttt{.src}: identifier of the coordinator that sent the message;
+\item \texttt{.request}: request type, which is either
+\texttt{.withdraw}, \texttt{.deposit}, \texttt{.commit}, or \texttt{.abort};
+\item \texttt{.amount}: amount to withdraw or deposit.
+\end{itemize}
+
+\noindent
+A bank waits for a message destined to itself that it has not yet received.
+In case of a withdrawal when the bank is idle and there are sufficient
+funds, the bank saves the current balance in \textit{status} to indicate
+an ongoing transaction and what its original balance was.
+The bank then responds with a \texttt{.yes} message to the coordinator,
+including the new balance.
+Otherwise, the bank responds with a \texttt{.no} message.
+Deposits are similar, except that it is not necessary to check for
+sufficient funds.
+In case of a \texttt{.commit} message, the bank changes its status
+to (), indicating that there is no ongoing transaction.  In case of
+a \texttt{.abort} message, the bank restores \textit{balance} first.
+
+\autoref{fig:2pc2} contains the code for transfers and inquiries, as well
+as tests.
+The \texttt{receive()} method is used by coordinators in a \textbf{select}
+statement to wait for a response from each bank involved in a transaction.
+Argument \texttt{self} is the
+identifier of the coordinator and \texttt{sources} is the set of banks.
+It returns the empty set if there not yet responses from all banks.
+Otherwise it returns a singleton set containing the set of responses,
+one for each source.
+
+The \texttt{transfer}() method contains the code for the transfer
+transaction.  Argument \textit{self} is the identifier of the coordinator,
+\textit{b1} is the source bank, \textit{b2} is the destination bank,
+and \textit{amt} is the amount to transfer.
+The coordinator sends a \texttt{PREPARE} message containing a
+\texttt{.withdraw} request to \textit{b1} and a \texttt{PREPARE}
+message containing a \texttt{.deposit} request to \textit{b2}.
+It then waits for responses from each.  If both responses are
+\texttt{.yes}, then it commits the transaction, otherwise it aborts
+the transaction.
+
+Note the use of the \textbf{possibly} statement in this code.
+It is similar to \textbf{assert}, but where \texttt{assert} checks that
+the predicate holds in \emph{all} executions, \texttt{possibly} checks
+that the predicate holds in at least one execution.
+The purpose is to check that the code doesn't simply always abort---there
+exist executions where the code commits.
+In practice, hopefully \emph{most} executions commit, but Harmony is not
+capable of probabilistic reasoning.
+
+The \texttt{check}() method checks if the sum of the balances equals
+\textit{total}, the sum of the initial balances.
+The code is similar to \textit{transfer}, except that it always
+aborts the transaction---there is no need to ever commit it.
+As a code-saving hack: the balance inquiry is done by withdrawing \$0.
+
+As for testing, the initial balances are picked arbitrarily between
+0 and \texttt{MAX\_BALANCE} (and Harmony as always will try every
+possible set of choices).
+Each coordinator chooses whether to do a transfer or a check.  In
+case of a transfer, it also chooses the source bank and the destination
+bank.
+
+While the protocol perhaps seems simple enough, there are a lot of
+\textbf{if} statements in the code, making it hard to reason about
+correctness.
+Model checking is useful to see if there are corner
+cases where the code does not work.
+While confidence increases by
+increasing the number of banks or the number of coordinators, doing so
+quickly increases the number of possible states so that model checking
+may become infeasible.
+
+\section*{Exercises}
+\begin{problems}
+\item In \autoref{ex:bank} the code ran into a deadlock.  Can the code
+in this chapter run into a deadlock?  Explain.
+\item Transactions can fail for two reasons: a transfer transaction can
+fail because of insufficient funds, but in general transaction can fail
+if there is a conflict with another transaction.  The latter can be
+fixed by retrying the transaction until it commits.  Implement this.
+\item One way to reduce the number of conflicts between transactions
+is to distinguish read and write operations.  Two read operations
+(in our case, operations that withdraw \$0) do not conflict,
+so a bank could have multiple ongoing read operations
+for different transactions.  Implement this.
+\item Two-phase commit can tolerate servers failing.  If a server does not
+respond within some reasonable amount of time, the coordinator can abort
+the transaction.  Implement this.
+\end{problems}
+
+\chapter{Chain Replication}
+\label{ch:chain}
+
+\begin{figure}
+\begin{code}
+\harmonysource{chain}
+\end{code}
+\caption{\harmonylink{code/chain.hny} Checking correctness of Chain Replication.}
+\label{fig:chain}
+\end{figure}
+
+\glsadd{replication}%
+\index{replication}%
+As you have probably experienced, computers can crash.
+If you are running a web service, you may not be able to afford
+a long outage.  If you are running software that flies a plane,
+then an outage for any length of time could lead to a disaster.
+To deal with service outages caused by computers crashing, you may want
+to \emph{replicate} the service onto multiple computers.  As long as
+one of the computers survives, the service remains available.
+
+\glsadd{state machine replication}%
+\index{state machine replication}%
+\index{determinism}%
+Besides availability, it is usually important that the replicated
+service acts as if it were a single one.  This requires that the
+replicas of the service coordinate their actions.
+The \emph{Replicated State Machine Approach}~\cite{Lam78,S90} is a
+general approach to do just this.
+First, you model your service as a deterministic state
+machine.  The replicas each run a copy of the state machine, started
+in the same state.  As long as the replicas handle the same inputs
+in the same order, determinism guarantees that they produce the same
+outputs in the same order.
+The trick then is to ensure that all replicas handle the
+same requests in the same order and to do so in a way that continues
+to work even if some strict subset of replicas crash.
+
+\emph{Chain Replication}~\cite{vRS04} is such a replication protocol.
+In Chain Replication, the replicas are organized in a linear chain.
+Each replica monitors its direct predecessor in the chain.  If a replica has
+no predecessors, we call it the \emph{head}.  The head may change over
+time, as a head may crash and replaced by another, but at any point in
+time there is only one head
+(and only one \emph{tail}, possibly the same replica).
+We model the state machine as a \emph{history}: a sequence of operations.
+Only the head is allowed to introduce new updates.
+When it does so, it advertises the new update along with its position
+in the history.  When the direct successor receives the next update
+it is expecting, it appends the update to its history and likewise
+advertises the new update.  When the update is applied to the history
+of the tail replica (the replica that has no live successors),
+then the update is considered final.
+
+So, when a replica fails, its successors should find out about it.
+In practice, one server can detect the failure of another server by
+pinging it.  If a server does not receive a response to its ping within
+some maximum amount of time, then the server considers its peer crashed.
+Note that this, in general, is not a safe thing to do---the network or
+the peer may be temporarily slow but the peer is not necessarily crashed
+when the timer expires.
+Nonetheless, we will assume here that failure detection does not make
+mistakes and that eventually every failure is eventually detected.
+This is called the \emph{Fail-Stop} failure model~\cite{SS83},
+which is distinct from the often more realistic \emph{Crash} failure model
+where processes can crash but accurate detection is not available.
+We will consider that failure model in the upcoming chapters.
+
+\autoref{fig:chain} shows an implemenation of chain replication.
+The code starts \texttt{NREPLICAS} \texttt{replica} threads numbered
+0 through $\mathtt{NREPLICAS} - 1$, with initially 0 being the head
+and $\mathtt{NREPLICAS} - 1$ being the tail.  At least one of the replicas 
+must be immortal---the code selects one of them although none of the
+replicas is required to fail during execution.
+Of course, a replica does not know whether it is immortal
+or not in practice---it should just assume so.
+The immortality of one of the replicas is only used for modeling the system.
+
+Each replica maintains its history and a set of its predecessors.
+It then loops until either it fails or it has applied all
+\texttt{NOPS} operations to its history.
+$\mathbf{choose}(\{ \mathit{immortal}, \textbf{True} \})$ can only
+evaluate to \textbf{False} in case $\textit{immortal}$ is false; otherwise
+it will always evaluate to \textbf{True}.
+What it does within the loop depends on whether it is the head
+(has no alive predecessors) or not.
+Because failure detection is accurate, at most one replica can think
+it is the head at any time (and, if so, it is in fact the head).
+Moreover, when it has
+detected all its predecessors having failed, eventually some replica
+thinks it is the head.
+
+Messages have the format $(\mathit{source}, \mathit{payload})$,
+where \textit{source} is the identifier of the replica that generated
+the message and \textit{payload} has information about the state of
+the replica.  The payload can take one of two forms.  The first is
+\texttt{.crash}, indicating that the source of the message has
+crashed.  The code models a replica crashing by that replica broadcasting
+a \texttt{.crash} message on the network.
+The other form of payload is a tuple
+$(\mathit{index}, \mathit{operation})$, which means that the source
+placed the given operation at the given index in its history.
+
+If a replica thinks it is the head, it adds an operation to its
+history.
+In practice this would be some operation that the head would have received
+from a client.  Clients send their operations to the head, which adds them
+to its history in the order received.
+We are not modeling clients of the service.
+Instead, in the model, the head adds its identifier \textit{self} to the
+history until the
+history has \texttt{NOPS} operations on it or until the head crashes,
+whichever comes first.  The head also broadcasts each update, which
+are intended for its successor.  Because of failures, it may be that
+at different times a replica has different successors, hence the
+broadcast.
+
+Otherwise, the replica does not believe it is the head and
+awaits a message from its direct predecessor.
+If the payload is \texttt{.crash}, then the replica removes this
+predecessor from its set of predecessors.  For example, if there
+are initially three replicas numbered 0, 1, and 2, and replica~1
+crashes, then replica~2 removes~1 from its set of predecessors, making
+replica~0 its direct (and only) predecessor.  If, instead, the payload
+is a tuple, then it must be the case that it contains the next operation
+to add to its history.  The replica adds the operation to its history
+and broadcasts the update, again intended for its successor.
+
+When the replica successfully adds all \texttt{NOPS} updates to its
+history without crashing, the code makes sure that any other such replica
+ends in the same state.  Variable \textit{final} is used to check the
+different histories against one another.
+
+\chapter{Replicated Atomic Read/Write Register}
+\label{ch:abd}
+
+\begin{figure}
+\begin{code}
+\harmonysource{abd}
+\end{code}
+\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register.}
+\label{fig:abd}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{abdtest}
+\end{code}
+\caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}.}
+\label{fig:abdtest}
+\end{figure}
+
+A \emph{register} is an object that you can read or write.  In a distributed
+system, it can be useful to have registers that are shared.
+A simple shared register implementation
+would have its value maintained by a server, and clients can read or write the
+shared register by exchanging messages with the server.
+We call two operations such that one does not finish before the other starts
+\emph{concurrent}.
+Since messages are delivered one at a time to the server,
+concurrent operations on the shared register appear atomic.
+In particular, we have the following three desirable properties:
+\begin{enumerate}
+\item All write operations are ordered;
+\item A read operation returns either the last value written or the value of
+a concurrent write operation.
+\item If read operation $r_1$ finishes before read operation $r_2$ starts,
+then $r_2$ cannot return a value that is older than the value returned
+by $r_1$.
+\end{enumerate}
+
+\index{single point of failure}%
+Unfortunately, however, the server is a \emph{single point of failure}:
+if it fails, all its clients suffer.
+We would therefore like to find a solution that can survive the crash
+of a server.
+While we could use Chain Replication to replicate the register, in
+this chapter we will use a solution that does not assume that
+crashes can be accurately detected.
+
+We will again replicate the register object: maintain multiple copies,
+but we will not use the replicated state machine approach.
+One could, for example, imagine that clients write to all copies and read
+from any single one.
+While this solves the single-point-of-failure problem, we lose all the
+nice properties above.  For one, it is not guaranteed that all servers
+receive and process all write operations in the same order.
+
+\index{logical timestamp}%
+We present a protocol preserving these properties that is based on the
+work by Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
+In order to tolerate \texttt{F} failures,
+it uses $\mathtt{N} = 2\mathtt{F} + 1$ servers.
+In other words, the register survives as long as a strict majority of
+its copies survive.
+All write operation will be ordered by a unique \emph{logical timestamp}
+(see also \autoref{ch:testing}).
+Each server maintains not only the value of the object, but also the
+timestamp of its corresponding write operation.
+
+Each read and write operation consists of two \emph{phases}.  In a phase,
+a client broadcasts a request to all servers and waits for responses
+from a majority ($\texttt{N} - \texttt{F}$ or equivalently
+$\texttt{F} + 1$ servers).  Note that because we are assuming that no
+more than \texttt{F} servers can fail, doing so is safe, in that a client
+cannot indefinitely block as long as that assumption holds.
+
+In the first phase, a client asks each server for its current
+timestamp and value.  After receiving $\mathtt{N} - \mathtt{F}$ responses,
+the client determines the response with the highest timestamp.
+In case of a write operation, the client then computes a new unique
+timestamp that is strictly higher than the highest it has seen.
+To make this work, timestamps are actually lexicographically ordered
+tuples consisting of an integer and the unique identifier of the
+client that writes the value.  So if $(t, c)$ is the highest timestamp
+observed by client $c'$, and $c'$  needs to create a new timestamp,
+it can select $(t + 1, c')$.
+After all $(t + 1, c') > (t, u)$ and no other client
+will create the same timestamp.
+
+Suppose client $c'$ is trying to write a value $v$.
+In phase 2, client $c'$ broadcasts a request containing timestamp $(t+1, c')$
+and $v$.  Each server that receives the request compares $(t+1, c')$ against
+its current timestamp.  If $(t+1, c')$ is larger than its current timestamp,
+it adopts the new timestamp and its corresponding value $v$.  In either case,
+the server responds to the client.
+Upon $c'$ receiving a response from $\mathtt{N} - \mathtt{F}$ servers,
+the write operation completes.
+In case of a read operation, client $c'$ simply \emph{writes back} the
+highest timestamp it saw in the first phase along with its corresponding value.
+
+\autoref{fig:abd} contains the code for a server, as well as the code
+for read and write operations.
+For efficiency of model checking, the servers are anonymous---otherwise
+we would have to consider every permutation of states of those servers.
+Because the servers are anonymous, they may end up sending the same
+exact message, but clients are waiting for a particular number of
+messages.
+Because of this, 
+we will model the network as a bag (aka multiset) of messages.
+The bag itself is
+modeled in Harmony as a dictionary that maps unique elements in the bag to their
+multiplicity.  So, for example, $\{ .\texttt{a}:1, .\texttt{b}:2 \}$ is the bag that consists of
+one $.\texttt{a}$ and two copies of $.\texttt{b}$.
+The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy functions on bags.
+
+A server initializes its timestamp $t$ to
+$(0, \mathtt{None})$ and its value to \texttt{None}.
+Each server also keeps track of all the requests its already received
+so it doesn't handle the same request twice.
+The rest of the code is fairly straightforward.
+
+Read and write operations are both invoked with a unique identifier
+\textit{uid}.  Both start by broadcasting a \texttt{.read}
+request to all servers and then waiting for a response from
+$\mathtt{N} - \mathtt{F}$ servers.
+The \texttt{receive()} function uses the \texttt{bag.combinations} method
+to find all combinations of subsets of responses of size
+$\mathtt{N} - \mathtt{F}$.
+The second phase of each operation is similar.
+
+\autoref{fig:abdtest} tests the third property of the properties listed
+above.  The \texttt{writer()} method writes a new value \texttt{.token}.
+The \texttt{reader()} method reads twice and makes sure that if the
+first read operation returns \texttt{.token}, then so does the second.
+This illustrates the importance of the second phase of the \texttt{read}
+operation.  You can comment out Lines~32 and~33 in \autoref{fig:abd} and
+see what goes wrong.
+
+One may wonder how failures can occur in this model.  They are not
+explicitly modeled, but Harmony tries every possible execution.
+This includes executions in which the clients terminate before
+$\texttt{F}$ of the servers start executing.  To the clients, this
+is indistinguishable from executions in which those
+servers have failed.
+
+\chapter{Distributed Consensus}
+\label{ch:consensus}
+
+\begin{figure}
+\begin{code}
+\harmonysource{bosco}
+\end{code}
+\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol.}
+\label{fig:bosco}
+\end{figure}
+
+Distributed consensus is the problem of having a collection of processors agree
+on a single value over a network.
+For example, in state machine replication, the state machines have to agree
+on which operation to apply next.
+Without failures, this can be solved using leader election: first elect a leader, then have that leader decide a value.
+But consensus often has to be done in adverse circumstances,
+for example in the face of processor failures.
+In this chapter, we will present a simple consensus algorithm that can tolerate
+fewer than $1/3^{rd}$ of processors failing by crashing.
+
+More precisely,
+constant \texttt{F} contains the maximum number of failures, and
+we will assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
+Each processor \emph{proposes} a value, which we assume here to be from the
+set \{ 0, 1 \}.
+By the usual definition of consensus, we want the following two properties:
+\begin{enumerate}
+\item \emph{Validity}: a processor can only decide a value that has been proposed;
+\item \emph{Agreement}: if two processors decide, then they decide the same value.
+\end{enumerate}
+The consensus problem is surprisingly tricky to solve in the face of processor
+failures and without making assumptions about how long it takes to send
+and receive a message.
+
+\autoref{fig:bosco} presents our algorithm.  Besides the network variable, it uses a
+shared list of proposals and a shared set of decisions.
+To reduce the state space to explore, not all permutations of zeroes and ones are
+explored.  With 5 processors ($\mathtt{F} = 2)$, say, we only explore the cases where
+no processors propose 1, where exactly one processors proposes 1, and where 2 processors
+proposes 1.
+In this particular algorithm, all messages are broadcast to all processors, so they do
+not require a destination address.
+The invariants we want to maintain
+on those variables is that $\textit{decisions} \subseteq \textit{proposals}$
+and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions} is
+$\emptyset$, the invariants clearly hold initially.
+
+The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
+$\texttt{N} - \texttt{F}$ messages, update their state based on the messages, and
+broadcast messages containing their new state.
+The reason that a processor waits for $\texttt{N} - \texttt{F}$ rather than \texttt{N}
+messages is because of failures: up to $\texttt{F}$ processors may never send a message
+and so it would be unwise to wait for all $\texttt{N}$.  You might be tempted to use
+a timer and time out on waiting for a particular processor.  But how would you initialize
+that timer?  While we will assume that the network is reliable, there is no guarantee
+that messages arrive within a particular time.
+We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
+A quorum must suffice for the algorithm to make progress.
+
+The state of a processor consists
+of its current round number and proposal.  Therefore, messages contain
+a round number and a proposal. To start things, each processor first
+broadcasts its initial round number (0) and proposal.
+The number of rounds that are necessary to achieve consensus is not bounded.  But
+Harmony can only check finite models, so there is a constant \texttt{NROUNDS} that
+limits the number of rounds.  It may be that no decisions are made, but that does not
+violate either Validity or Agreement.  We only check that \emph{if} decisions are
+made, they satisfy Validity and Agreement.
+
+In Line~22, a processor waits for $\texttt{N} - \texttt{F}$ messages using
+the Harmony \textbf{select} statement.
+Since Harmony has to check all possible executions of the protocol, the
+\texttt{receive}(\textit{round}, $k$) method returns all \emph{subbags} of messages
+for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method uses a
+dictionary comprehension to filter out all messages for the given \textit{round}
+and then uses the \texttt{bag.combinations} method to find all combinations of size $k$.
+The \textbf{select} statement waits until there is at least one such combination and
+then chooses an element, which is bound to the \textit{quorum} variable.
+The body of the \textbf{select} statement is then executed atomically.
+This is usually how distributed algorithms are modeled, because they can only interact
+through the network.  There is no need to interleave the different processes other
+than when messages are delivered.  By executing the body atomically, a lot of
+unnecessary interleavings are avoided and this reduces the state space that must
+be explored by the model checker significantly.
+
+The body of the \textbf{select} statement contains the core of the algorithm.
+Note that $\texttt{N} - \texttt{F} = 2\texttt{F} + 1$, so that the number of
+messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
+must exist a majority of zeroes or ones.  Variable \textit{count}[0] stores the number
+of zeroes and \texttt{count}[1] stores the number of ones received in the round.
+The rules of the algorithm are simple:
+\begin{itemize}
+\item update \textit{proposal} to be the majority value;
+\item if the quorum is unanimous, decide the value.
+\end{itemize}
+After that, proceed with the next round.
+
+The \texttt{possibly} statement checks if there exist executions where 0 is
+decided and if there exist executions where 1 is decided.  Doing so is useful
+because the assertions would certainly not fail if no decision is ever made.
+Also, it is nice to know that both 0 and 1 can be decided.
+
+\begin{figure}
+\begin{code}
+\harmonysource{bosco2}
+\end{code}
+\caption{\harmonylink{code/bosco2.hny} Reducing the state space.}
+\label{fig:bosco2}
+\end{figure}
+
+While one can run this code within little time for $\mathtt{F} = 2$, for
+$\mathtt{F} = 3$ the state space to explore is already quite large.
+One way to reduce the state space to explore is the following realization:
+each processor only considers messages for the round that it is in.
+If a message is for an old round, the processor will ignore it;
+if a message is for a future round, the processor will buffer it.
+So one can simplify the model and have each processor wait
+for \emph{all} \texttt{N} messages in a round
+instead of $\mathtt{N} - \mathtt{F}$.
+It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
+out of those \texttt{N} messages, but executions in which some processors
+are left behind in all rounds are no longer considered.
+It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
+processors only choose each other messages and essentially ignore the
+messages of the remaining \texttt{F} processors, so the resulting model
+is just as good.
+
+\autoref{fig:bosco2} shows the code for this model.  Running this with
+$\mathtt{F} = 3$ does not take very long and this approach is a good
+blueprint for testing other round-based protocols (of which there are
+many).
+
+\section*{Exercises}
+\begin{problems}
+\item The algorithm as given works in the face of crash failures.
+A more challenging class to tolerate are \emph{arbitrary failures} in
+which up to \texttt{F} processors may send arbitrary messages, including
+conflicting messages to different peers (equivocation).
+The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
+\item In 1983, Michael Ben-Or presented a randomized algorithm that can
+tolerate crash failures with
+just $\mathtt{N} = 2\mathtt{F} - 1$ processors~\cite{BenOr83}.
+Implement this algorithm.
+\end{problems}
+
+\chapter{Paxos}
+\label{ch:paxos}
+
+\begin{figure}
+\begin{code}
+\harmonysource{paxos1}
+\end{code}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 1.}
+\label{fig:paxos1}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{paxos2}
+\end{code}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 2.}
+\label{fig:paxos2}
+\end{figure}
+
+Paxos~\cite{Paxos} is the most well-known family of consensus protocols for
+environments in which few or no assumptions are made about timing.
+In this chapter we present a basic version of a Paxos protocol, one that is
+\emph{single-decree} (only tries to make a single decision).
+It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
+In order to tolerate \texttt{F} crash failures, you need at least $\texttt{F}+1$ leaders
+and $2\texttt{F} + 1$ acceptors, but leaders and acceptors can be colocated, so
+in total only $2\texttt{F} + 1$ independently failing processors are needed.
+Here we provide only a rudimentary introduction to Paxos; for more detailed
+information refer to~\cite{Paxos}.
+
+As in the consensus protocol of \autoref{ch:consensus}, Paxos uses rounds of messaging.
+The communication pattern, however, is different.
+Similar to the atomic read/write register protocol in \autoref{ch:abd},
+Paxos uses two kinds of rounds: ``Phase 1'' and ``Phase 2'' rounds.
+Rounds are identified by a so-called
+\emph{ballot number} combined with the phase number.
+Different leaders are in charge of different ballot numbers.
+Leaders broadcast ``Type A''
+messages to the acceptors, which respond point-to-point with ``Type B''
+messages.
+
+\autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for
+this Paxos protocol.  Paxos is perhaps best understood starting
+with the second phase.  At the end of the first phase the leader
+broadcasts a \texttt{2.A} message (Phase 2, Type A) to the acceptors
+containing the ballot number and a proposal and then waits for
+$\texttt{N} - \texttt{F}$ matching \texttt{2.B} responses from the
+acceptors.  If each response contains the ballot number and the
+proposal, then the proposal is deemed decided.  But one or more of
+the responses can contain a higher ballot number, in which case the
+leader has to try again with an even higher ballot number.  This is
+where the first phase comes in.
+
+It is not possible that an acceptor responds with a smaller ballot
+number.  This is because acceptors maintain two state variables.
+One is \textit{ballot}, the highest ballot number they have seen.
+Second is a variable called \textit{last\_accepted} that, if not
+\texttt{None}, contains the last proposal the acceptor has
+\emph{accepted} and the corresponding ballot number.  The acceptor
+also contains a set \emph{received} that contains (ballot, phase)
+tuples identifiying all rounds that the ballot has already participated
+in.  An acceptor waits for a message for a round that is not in
+\emph{received}.  If its ballot number is higher than what it has
+seen before, the acceptor moves into that ballot.  If the phase is
+2, then the acceptor accepts the proposal and remembers when it did
+so by saving the (ballot, proposal) tuple in \textit{last\_accepted}.
+In all cases, the acceptor responds with the current values of
+\textit{ballot} and \textit{last\_accepted}.
+
+In its first phase, a leader of a ballot must come up with a proposal that
+cannot conflict with a proposal of an earlier ballot that may already
+have been decided.  To this end, the leader broadcasts a \texttt{2.A}
+message to the acceptors and awaits $\mathtt{N} - \mathtt{F}$ of their
+\textit{last\_accepted}
+values.  If all those acceptors responded with \texttt{None}, then the leader
+is free to choose its own proposal.  Otherwise the leader updates
+its proposal with the one corresponding to the highest ballot number.
+The leader then moves on to the second round.
+
+In the initialization, the \texttt{proposals} variable is initialized
+to either $[\mathbf{False}, \mathbf{False}]$ or
+to $[\mathbf{True}, \mathbf{False}]$ (in case $\texttt{NBALLOTS} = 2$).
+The other combinations of \textbf{True} and \textbf{False} are symmetric,
+so there is no need to run the model checker through those scenarios as
+well, halving the running time.
+
+\section*{Exercises}
+\begin{problems}
+\item Perhaps the trickiest detail of the algorithm is that, in Line~14
+of \autoref{fig:paxos2}, the leader selects the proposal with the highest
+ballot number it receives.  Replace the \texttt{max} operator in that statement
+with \texttt{choose} and see if it finds a problem.  First try with
+$\texttt{NBALLOTS} = 2$ and then with $\texttt{NBALLOTS} = 3$.
+(Warning, the latter may take a long time.)  If it finds a problem,
+analyze the output and see what went wrong.
+\item \cite{MWA19} discusses a buggy version of Paxos.  In this version,
+the responses to the second phase are matched not by ballot number but
+by the value of the proposal.  Implement this version and, using Harmony,
+find the problem this causes.
+\end{problems}
+
+\chapter{Needham-Schroeder Authentication Protocol}
+\label{ch:ns}
+
+\begin{figure}
+\begin{code}
+\harmonysource{needhamschroeder}
+\end{code}
+\caption{\harmonylink{code/needhamschroeder.hny} Needham-Schroeder protocol and an attack.}
+\label{fig:ns}
+\end{figure}
+
+The Needham-Schroeder protocol~\cite{NS78} is a security protocol in which two parties
+authenticate one another by exchanging large and recently created random numbers
+called \emph{nonces} that nobody else should be able to read.
+The nonces should only be used once for an instantiation of the protocol between
+honest participants (i.e., participants that follow the protocol).
+The version we describe here uses \emph{public key cryptography}~\cite{DH76}: with public key
+cryptography it is possible to create a message for a particular destination that
+only that destination can read.  We denote with $\langle m \rangle_p$ a message
+$m$ encrypted for $p$ so that only $p$ can decrypt the message and see that it contains $m$.
+
+Suppose Alice wants to communicate with Bob.  The three critical steps in the
+Needham-Schroeder protocol are as follows:
+
+\begin{enumerate}
+\item Alice creates a new nonce $N_A$ and sends $\langle 1, A, N_A \rangle_\mathtt{Bob}$
+to Bob;
+\item Upon receipt, Bob creates a new nonce $N_B$ and sends
+$\langle 2, N_A, N_B \rangle_\mathtt{Alice}$ to Alice;
+\item Alice sends $\langle 3, N_B \rangle_\mathtt{Bob}$ to Bob.
+\end{enumerate}
+
+When Bob receives $\langle 1, A, N_A \rangle_\mathtt{Bob}$, Bob does not know for sure
+that the message came from Alice, and even if it came from Alice, it does not know if
+Alice sent the message recently or if it was replayed by some adversary.
+When Alice receives $\langle 2, N_A, N_B \rangle_\mathtt{Alice}$, Alice \emph{does}
+know that, if Bob is honest, (1) Bob and only Bob could have created this message, and
+(2) Bob must have done so recently (since Alice created $N_A$).
+When Bob receives $\langle 3, N_B \rangle_\mathtt{Bob}$, Bob decides that it is Alice
+that is trying to communicate at this time.  Since Bob created $N_B$ recently and sent it
+encrypted to Alice, Bob does not have to worry that the type 3 message was an old message
+that was replayed by some adversary.
+Also, if Alice is honest, it seems only Alice can have seen the message containing $N_B$.
+
+Thus, the intended security properties of this protocol are symmetric.
+Assuming Alice and Bob are both honest:
+\begin{itemize}
+\item if Alice finishes the protocol with Bob and received $B_N$ from Bob, then
+nobody but Alice and Bob can learn $N_B$.
+\item if Bob finishes the protocol with Alice and received $A_N$ from Alice, then
+nobody but Bob and Alice can learn $N_A$.
+\end{itemize}
+
+After the protocol, Alice can include $N_A$ in messages to Bob and Bob can
+include $N_B$ in messages to Alice to authenticate the sources of those messages
+to one another.
+
+\autoref{fig:ns} shows the protocol implemented in Harmony.
+A message $\langle m \rangle_p$ is encoded in Harmony as a dictionary
+$\{ \mathtt{.dst}: p, \mathtt{.contents}: m \}$.  The code for Alice and Bob
+simply follows the steps listed above.
+
+Unfortunately, the protocol turns out to be incorrect, but it took 17 years before
+somebody noticed~\cite{Lowe95}.  Model checking can be used to find the bug~\cite{Lowe96}.
+To demonstate the bug, we need to model the environment.
+In particular, we introduce a third party, which we will call Corey.
+We want to make sure that Corey cannot impersonate Alice or Bob.
+However, it is possible that Alice tries to set up an authenticated connection to Corey
+using the Needham-Schroeder protocol.  That in itself should not be a problem if the
+protocol were correct.
+
+The code in \autoref{fig:ns} has Alice either not do anything, or has Alice try to set
+up a connection to either Bob
+or Corey.  Bob only accepts connections with Alice.  Corey, when receiving a message
+that it can decrypt, will try to find an attack by sending every possible message to
+every possible destination.  In particular, it keeps track of every nonce that it has
+seen and will try to construct messages with them to send to Alice and Bob.
+If Bob finishes the protocol, it checks to see if Alice actually tried to connect
+to Bob.  If not, the assertion fails and an attack is found.
+
+Running the code in \autoref{fig:ns} quickly finds a viable attack.  The attack goes
+like this:
+
+\begin{enumerate}
+\item Alice creates a new nonce $N_A$ and sends $\langle 1, A, N_A \rangle_\mathtt{Corey}$
+to Corey;
+\item Upon receipt, Corey sends $\langle 1, A, N_A \rangle_\mathtt{Bob}$ to Bob;
+\item Upon receipt, Bob, believing it is engaging in the protocol with Alice,
+creates a new nonce $N_B$ and sends
+$\langle 2, N_A, N_B \rangle_\mathtt{Alice}$ to Alice;
+\item Alice thinks the message came from Corey (because it contains $N_A$, which
+Alice created for Corey and sent to Corey) and
+sends $\langle 3, N_B \rangle_\mathtt{Corey}$ to Corey.
+\item Corey learns $N_B$ and sends $\langle 3, N_B \rangle_\mathtt{Bob}$ to Bob.
+\item Bob receiving $\langle 3, N_B \rangle_\mathtt{Bob}$ is identical to the
+situation in which Alice tried to set up a connection to Bob,
+so Bob now thinks it is talking to Alice, even though Alice never tried to
+communicate with Bob.
+\end{enumerate}
+The security property is violated.  In particular, Bob, duped by Corey, finished
+the protocol with Alice and received $A_N$, and even though Bob and Alice
+are both honest, Corey has a copy of $A_N$.  So Corey is now able to impersonate
+Alice to Bob (but not vice versa because Alice did not try to authenticate Bob).
+
+\section*{Exercises}
+\begin{problems}
+\item Figure out how to fix the protocol.
+\item There were two versions of the Needham-Schroeder protocol: the
+Symmetric Key protocol and the Public Key protocol.  In this chapter
+we only discussed the latter, but the former also had a problem.  See
+if you can find it using Harmony.
+\end{problems}
+
 \bibliographystyle{alpha}
 \bibliography{paper}
 
 \appendix
 
-\chapter{Value Types}
+\chapter{Harmony Language Details}
+
+\section{Value Types and Operators}
 \label{ap:values}
 
 \autoref{ch:harmonymachine} provides an introduction to Harmony values.
@@ -5417,7 +6383,7 @@ Below is a complete list of Harmony value types with examples:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-Boolean & \texttt{False}, \texttt{True} \\
+Boolean & \textbf{False}, \textbf{True} \\
 \hline
 Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
@@ -5427,7 +6393,7 @@ Program Counter & (method names are program counter constants) \\
 \hline
 Dictionary & \texttt{\{ .account: 12345, .valid: False \} } \\
 \hline
-Set & \texttt{\{ 1, 2, 3 \}, \{ False, .id, 3 \} } \\
+Set & \texttt{\{\}, \{ 1, 2, 3 \}, \{ False, .id, 3 \} } \\
 \hline
 Address & \texttt{?lock, ?flags[2], None} \\
 \hline
@@ -5450,7 +6416,7 @@ times it occurs in the bag.
 
 All Harmony values are ordered with respect to one another.  First they
 are ordered by type according to the table above.
-So, for example, \texttt{\texttt{True} < 0 < .xyz < \{ 0 \})}.
+So, for example, \texttt{\textbf{True} < 0 < .xyz < \{ 0 \})}.
 Within types, the following rules apply:
 
 \begin{itemize}
@@ -5482,11 +6448,11 @@ Generic operators on Harmony values include:
 \end{tabular}
 \end{center}
 
-\section{Boolean}
+\subsection*{Boolean}
 
-The Boolean type has only two possible values: \texttt{False} and
-\texttt{True}.  Unlike in Python, in Harmony booleans are distinct
-from integers, and in particular $\mathtt{False} < 0$.  In statements
+The Boolean type has only two possible values: \textbf{False} and
+\textbf{True}.  Unlike in Python, in Harmony booleans are distinct
+from integers, and in particular $\mathbf{False} < 0$.  In statements
 and expressions where booleans are expected, it is not possible to
 substibute values of other types.
 
@@ -5509,7 +6475,7 @@ Operations on booleans include:
 \end{tabular}
 \end{center}
 
-\section{Integer}
+\subsection*{Integer}
 
 The integer type supports any whole number, as well as $-\mathtt{inf}$
 and $\mathtt{inf}$.  In the Python-based model checker, integers are
@@ -5555,7 +6521,7 @@ Operations on integers include:
 \end{tabular}
 \end{center}
 
-\section{Atom}
+\subsection*{Atom}
 
 Atoms are essentially names and consist of one or more unicode characters.
 If they do not contain special characters and do not start with a digit,
@@ -5569,7 +6535,7 @@ There are no special operations on atoms.
 (In the future, operators may be introduced that convert between strings
 and atoms.)
 
-\section{Set}
+\subsection*{Set}
 
 In Harmony you can create a set of any collection of Harmony values.
 Its syntax is \texttt{\{ $v_0, v_1, ...$ \}}.
@@ -5598,9 +6564,9 @@ Native operations on sets include:
 \hline
 \texttt{max $s$} & maximum element \\
 \hline
-\texttt{any $s$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $s$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $s$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $s$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \end{tabular}
 \end{center}
@@ -5614,11 +6580,11 @@ powerful and can include joining multiple sets (using nested for
 loops) and filtering (using the \texttt{where} keyword).
 
 For example:
-\texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ such that $(x * y) == 4$ \}}
+\texttt{\{ $x$ + $y$ for $x$ in $s$ for $y$ in $s$ where $(x * y) == 4$ \}}
 returns a set that is constructed by summing pairs of elements from $s$
 that, when multiplied, have the value 4.
 
-\section{Dictionary}
+\subsection*{Dictionary}
 
 A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
@@ -5630,7 +6596,7 @@ If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
 
-Dictionaries support comprehension.  The  basic form is:
+Dictionaries support comprehension.  The basic form is:
 \texttt{\{ f($k$):g($k$) for $k$ in $s$ \}}.
 
 There are various special cases of dictionaries,
@@ -5656,9 +6622,9 @@ Operations on dictionaries include the following:
 \hline
 \texttt{max $d$} & the maximum value in $d$ \\
 \hline
-\texttt{any $d$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $d$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $d$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $d$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \texttt{$d$ \& $d$ \& ...} & dictionary intersection \\
 \hline
@@ -5684,7 +6650,7 @@ dictionary intersection retains the minimum value while dictionary
 union retains the maximum value.  Unlike Python, Harmony
 dictionary intersection and union are commutative and associative.
 
-\section{List or Tuple}
+\subsection*{List or Tuple}
 
 In Harmony, there is no distinction between a list or a tuple.
 Both are a special case of dictionary.  In particular, a list of
@@ -5720,9 +6686,9 @@ Native operations on lists or tuples include the following:
 \hline
 \texttt{max $t$} & the maximum value in $t$ \\
 \hline
-\texttt{any $t$} & \texttt{True} if any value is \texttt{True} \\
+\texttt{any $t$} & \textbf{True} if any value is \textbf{True} \\
 \hline
-\texttt{all $t$} & \texttt{True} if all values are \texttt{True} \\
+\texttt{all $t$} & \textbf{True} if all values are \textbf{True} \\
 \hline
 \texttt{$t$ \& $t$ \& ...} & pairwise list minimum \\
 \hline
@@ -5738,7 +6704,7 @@ can write:
 
 \texttt{any($(x \% 2) == 0$ for $x$ in $t$)}.
 
-\section{String}
+\subsection*{String}
 
 In Harmony, a string is a list of single-character atoms.
 The Python string notations mostly work in Harmony as well.
@@ -5769,7 +6735,7 @@ Native operations on strings include the following:
 \end{tabular}
 \end{center}
 
-\section{Bag or Multiset}
+\subsection*{Bag or Multiset}
 
 A bag is represented by a dictionary that maps each element to its
 multiplicity, for example: \{ 10:2, 12:1 \}.
@@ -5789,7 +6755,7 @@ Native operations on bags include the following:
 \end{tabular}
 \end{center}
 
-\section{Program Counter}
+\subsection*{Program Counter}
 
 A program counter is an integer that can be used to index into Harmony
 bytecode.  When you define a method, a lambda function, or a label,
@@ -5809,23 +6775,25 @@ Operations on program counters include the following:
 You can create lambda functions similarly to Python.  For example:
 \texttt{lambda$(x,y)$:$x+y$}.
 
-\section{Address}
+\subsection*{Address}
 
 In Harmony, each shared variable has an address, which is essentially
 a list of Harmony values.
-For example, the address of variable \texttt{d.v[3]} consists of the
+For example, the address of variable $d.\mathtt{v}[3]$ consists of the
 list \texttt{.d}, \texttt{.v}, and 3.  The only way to construct an
-address in Harmony is using the \texttt{?} operator.
-\texttt{?d.v[3]} returns the address of variable \texttt{d.v[3]}.
+address in Harmony is using the $?$ operator.
+$?d.\mathtt{v}[3]$ returns the address of variable $d.\mathtt{v}[3]$.
 An address can be dereferenced to return the value of the variable.
 If $a$ is an address, then $!a$ returns the value.
 Like C, Harmony supports the shorthand \texttt{$a$->v} for 
 the expression \texttt{($!a$).v}.
 
-\section{Context}
+\subsection*{Context}
 
 A context value captures the state of a thread.
 A context is itself composed over various Harmony values.
+
+\begin{comment}
 Some of these values can be extracted.  In particular, if $c$
 is a context, then:
 
@@ -5860,26 +6828,33 @@ The possible modes of a context are as follows:
 \hline
 \end{tabular}
 \end{center}
+\end{comment}
 
 A thread can call \texttt{get\_context()} to retrieve its current
-context.  Also, the function \texttt{contexts()} returns a
+context.
+
+\begin{comment}
+Also, the function \texttt{contexts()} returns a
 bag of all contexts (including terminated ones).
 Both these functions should only be called in \texttt{atomic} mode
 and used for checking invariants.
+\end{comment}
 
-\chapter{List of Statements}
+\section{Statements}
 
-Harmony currently supports the following statements:
+Harmony currently supports the following statements (below, \texttt{S} is a list of statements):
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
+\hline
+$e$ & $e$ is an expression\\
 \hline
 \textit{lv} = [lv =]... $e$ & \textit{lv} is an lvalue and $e$ is an expression\\
 \hline
 \textit{lv} \texttt{[op]=} $e$ & \texttt{op} is one of \texttt{+}, \texttt{-},
 \texttt{*}, \texttt{/}, \texttt{//}, \texttt{\%},
-\texttt{\string\&}, \texttt{|}, \texttt{\string\^},
-\texttt{and}, and \texttt{or}\\
+\texttt{\&}, \texttt{|}, \texttt{\^},
+\texttt{and}, \texttt{or}\\
 \hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
@@ -5889,29 +6864,35 @@ Harmony currently supports the following statements:
 \hline
 \texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
 \hline
-\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable, \texttt{S} a list of statements\\
+\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable\\
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{for $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
-                            \texttt{S} a list of statements\\
+\texttt{for $a[:b]$ in $e$ [where $c$]: S} & $a$ and $b$ are bounded variables, $e$ is a set or dictionary \\
 \hline
 \texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
 \texttt{go $c$ $e$} & $c$ is a context, $e$ is an expression \\
 \hline
-\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\texttt{if $b$: S else: S} & $b$ is a boolean, \texttt{S} is a list of statements\\
 \hline
 \texttt{import m, ...} & \texttt{m} identifies a module \\
 \hline
-\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression, \texttt{S} a list of statements\\
+\texttt{invariant e} & \texttt{e} is an invariant\\
+\hline
+\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
+\texttt{possibly $b$ [, $b$, ...]} & each $b$ is a boolean \\
+\hline
+\texttt{select $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
+                            \texttt{S} a list of statements\\
+\hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
-\texttt{spawn m $e$ [, $t$]} & \texttt{m} is a method,
-$e$ is an expression, $t$ is the initial thread-local state \\
+\texttt{spawn [eternal] m $e$ [, $t$]} & \texttt{m} is a method,
+$e$ is an expression, $t$ is the thread-local state \\
 \hline
 \texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
 \hline
@@ -5919,435 +6900,353 @@ $e$ is an expression, $t$ is the initial thread-local state \\
 \hline
 \end{tabular}
 
-\chapter{List of Modules}
-\label{ap:module}
+\subsection*{Single expression evaluation}
 
-\section{The \texttt{alloc} module}
+Any expression by itself can be used as a statement.  The most common
+form of this is a function application, for example: \texttt{f}().
+This statement evaluates \texttt{f}() but ignores its result.
+It is equivalent to the assignment statement $\_ = \mathtt{f}()$.
 
-The \texttt{alloc} module
-\index{alloc module}%
-supports thread-safe (but not interrupt-safe) dynamic allocation of
-shared memory locations.  There are just two methods:
+\subsection*{Assignment}
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{malloc($v$)} & return a pointer to a memory location initialized to $v$ \\
-\hline
-\texttt{free($p$)} & free an allocated memory location $p$ \\
-\hline
-\end{tabular}
-\vspace{1em}
+The statement $x = 3$ changes the state by assigning~3 to
+variable $x$ (assuming~$x$ was not already~3).
+$x$ may be a local variable or a shared variable.
+The statement $x = y = 3$ first updates~$y$, then~$x$.
+The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = \mathtt{h}()$ first computes
+the address of $x[\mathtt{f}()]$, then computes the address of
+$y[\mathtt{g}()]$, then evaluates $\mathtt{h}()$, then assigns the resulting value to $y[\mathtt{g}()]$ (using its previously computed address), and finally assigns the same value to $x[\mathtt{f}()]$ (again using its previously computed address).
+The statement $a,b = c$ assumes that $c$ is a tuple with two values.
+It first evaluates the addresses of $a$ and $b$ and first assigns to
+the latter and then the former.
+If $c$ is not a tuple with two values, then Harmony will report an error.
 
-The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{malloc}() is specified to return \texttt{None} when running out of
-memory, although this is an impossible outcome in the current
-implementation of the module.
+Assigning to $\_$ evaluates the righthand side expression but is otherwise
+a no-op.
 
-\section{The \texttt{bag} module}
-\label{ap:bag}
+The statement $x~+$$= 3$ loads $x$, adds 3, and then stores the
+results in $x$.  In this case, it is equivalent to $x = x + 3$.
+However, in general this is not so.  For example, $x[\mathtt{f}()]~+$$= 3$
+only evaluates $\mathtt{f}()$ once.  Unlike Python, however,
+$x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
+(In Python, the following two compound statements lead to different results
+for $y$: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
 
-The \texttt{bag} module
-\index{bag module}%
-has various useful methods that operate on bags or
-multisets:
+\subsection*{\textbf{assert}}
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{empty()} & returns an empty bag\\
-\hline
-\texttt{fromSet($s$)} & create a bag from set $s$\\
-\hline
-\texttt{fromList($t$)} & convert list $t$ into a bag \\
-\hline
-\texttt{count($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
-\hline
-\texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
-\hline
-\texttt{add}(\textit{pb}, $e$) & add one copy of $e$ to bag \texttt{!}\textit{pb}\\
-\hline
-\texttt{remove}(\textit{pb}, $e$) & remove one copy of $e$ from bag \texttt{!}\textit{pb}\\
-\hline
-\end{tabular}
+The statement \textbf{assert $b$} evaluates $b$ and reports an error
+if $b$ is false.  It should be considered a no-op---it is part of the
+\emph{specification}, not part of the \emph{implementation} of the algorithm.
+In particular, it specifies an invariant: whenever the program counter is
+at the location where the \textbf{assert} statement is, then $b$ is
+always true.
 
-\section{The \texttt{hoare} module}
-\label{ap:hoare}
+If $b$ is an expression, then it is evaluated atomically.
+Moreover, the expression is not allowed to change the state.
+If it does change the state, Harmony will report an error as well.
 
-\index{list module}%
-The \texttt{hoare} module implements support for Hoare-style monitors
-and condition variables.
+As in Python, you can specify an additional expression:
+\textbf{assert $b$, $e$}.  The value of $e$ will be reported as part
+of the error should $b$ evaluate to false.
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{Monitor()} & return a monitor mutex\\
-\hline
-\texttt{enter($m$)} & enter a monitor.  $m$ points to a monitor mutex\\
-\hline
-\texttt{exit($m$)} & exit a monitor.\\
-\hline
-\texttt{Condition()} & return a condition variable\\
-\hline
-\texttt{wait($c$, $m$)} & wait on condition variable pointed to by $c$ in monitor pointed to by $m$\\
-\hline
-\texttt{signal($c$, $m$)} & signal a condition variable\\
-\hline
-\end{tabular}
+\subsection*{\textbf{atomic}}
 
-\section{The \texttt{list} module}
-\label{ap:list}
+The statement \textbf{atomic $S_1; S_2; ...$} evaluates statements
+$S_1, S_2, ...$ atomically in that no other threads can run while
+this atomic block is executing.  Typically an atomic block runs
+to completion before any other thread can run.  The only exception
+to this is if the atomic block executes a \textbf{stop} expression.
+In this case, another thread can run.  When the original thread
+is resumed (using a \textbf{go} statement), it is once again
+atomically executing.
 
-\index{list module}%
-The \texttt{list} module has various useful methods that operate on lists
-or tuples:
+The \textbf{atomic} statement is useful for implementing synchronization
+primitives such as test-and-set.  It is also useful for testing.
+It is not a replacement for lock/unlock, and should not generally be used
+for synchronization otherwise.  Lock/unlock does allow other
+threads to run concurrently---just not in the same critical section.
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{subseq($t$, $b$, $f$)} & return a \emph{slice} of list $t$ starting
-at index $b$ and ending just before $f$\\
-\hline
-\texttt{append($t$, $e$)} & append $e$ to list $t$\\
-\hline
-\texttt{head($t$)} & return the first element of list $t$\\
-\hline
-\texttt{tail($t$)} & return all but the first element of list $t$\\
-\hline
-\texttt{reversed($t$)} & reverse a list \\
-\hline
-\texttt{sorted($t$)} & sorted set or list \\
-\hline
-\texttt{set($t$)} & convert values of a dict or list into a set \\
-\hline
-\texttt{list($t$)} & convert set into a list \\
-\hline
-\texttt{values($t$)} & convert values of a dict into a list sorted by key \\
-\hline
-\texttt{items($t$)} & convert dict into (key, value) list sorted by key \\
-\hline
-\texttt{enumerate($t$)} & like Python enumerate \\
-\hline
-\texttt{sum($t$)} & return the sum of all elements in $t$\\
-\hline
-\texttt{qsort($t$)} & sort list $t$ using quicksort\\
-\hline
-\end{tabular}
+\subsection*{\textbf{await}}
 
-\section{The \texttt{set} module}
-\label{ap:set}
+The statement \textbf{await $b$} is equivalent to \textbf{while !$b$: pass}.
+It is intended to improve readability of your code.
 
-The \texttt{set} module
-\index{set module}%
-implements the following methods:
+\subsection*{\textbf{const}}
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
-\hline
-\texttt{issuperset($s$, $t$)} & returns whether $s$ is a superset of $t$ \\
-\hline
-\end{tabular}
+The expression \textbf{const} \texttt{N = 3} introduces a new constant
+\texttt{N} with the value 3.  Evaluating \texttt{N} does not lead to
+loading from a memory location.  The assignment can be overridden with
+the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
+with 4 assigned to \texttt{N} instead of 3.
+Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
+assigns 3 to \texttt{N} and 4 to \texttt{M}.
+Harmony has limited support for \emph{constant folding}.  For example,
+\textbf{const} \texttt{N = 3 + 4} assigns value 7 to constant \texttt{N}.
 
-\vspace{1em}
-For Python programmers: note that $s <= t$ does not check if $s$ is a subset of
-$t$ when $s$ and $t$ are sets, as ``$<=$'' implements a total order on all Harmony values
-including sets.
+\subsection*{\textbf{def}}
 
-\section{The \texttt{synch} module}
+The statement \textbf{def} \texttt{m} $a: S_1; S_2: ...$
+defines a new program counter constant \texttt{m} referring to
+a method that takes an argument $a$ and executes the statements
+$S_1, S_2, ...$.  The argument $a$ can be a tuple pattern similar
+to those used in \texttt{let} and \texttt{for} statements.
+Examples include $()$, $(x,)$, $(x, y)$, and $(x, (y, z))$.
+The given local variable names variable names are assigned
+upon application.
+It is allowed, but discouraged, to updates those local variables
+in statements $S_1, S_2, ...$.
+Each method has a predefined local variable
+\textit{result}, initialized to \texttt{None},
+that is returned by the method.  Harmony does
+not support a \texttt{return} statement that \emph{breaks out}
+of the code before executing the last statement.
 
-\index{synch module}%
-The \texttt{synch} module provides the following methods:
+\subsection*{\textbf{del}}
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
-\hline
-\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
-\hline
-\texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
-\hline
-\texttt{Lock}() & return a binary semaphore initialized to \texttt{False} \\
-\hline
-\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
-\hline
-\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
-\hline
-\texttt{Condition}() & return a condition variable \\
-\hline
-\texttt{wait}($c$, \textit{lk}) & wait on condition variable \texttt{!}$c$
-and lock \textit{lk} \\ \hline
-\texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
-\hline
-\texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
-\hline
-\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
-\hline
-\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
-\hline
-\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
-\hline
-\texttt{Queue}() & return a synchronized queue object \\
-\hline
-\texttt{get}($q$) & return next element of $q$, blocking if empty \\
-\hline
-\texttt{put}($q$, \textit{item}) & add \textit{item} to $a$ \\
-\hline
-\end{tabular}
+The statement \textbf{del} $x$ removes variable $x$ from the
+state.  $x$ can be either a local or a shared variable.  For
+example, the statement \textbf{del} $x.\texttt{age}$ removes
+the \texttt{.age} field from dictionary $x$.
+Harmony automatically removes top-level local variables that
+are no longer in use
+from the state in order to attempt to reduce the number of states
+that are evaluated during model checking.
 
-\chapter{List of Machine Instructions}
-\label{ap:harmonybytecode}
+Because Harmony lists are dictionaries, deleting from lists is different
+from Python:
+$x = [\mathtt{.a}, \mathtt{.b}]; \mathbf{del}~x[0]$ results in $x$ having value
+$\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
 
-{\small
-\begin{tabular}{|l|l|}
-\hline
-Address & compute address from two components \\
-\hline
-Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
-\hline
-Assert, Assert2 & pop $b$ and check that it is \texttt{True}.  Assert2 also pops value to print \\
-\hline
-AtomicInc/Dec & increment/decrement the atomic counter of this context \\
-\hline
-Continue & no-op (but causes a context switch) \\
-\hline
-Choose & choose an element from the set on top of the stack \\
-\hline
-Cut & cut a set into its smallest element and the remainder \\
-\hline
-Del [$v$] & delete shared variable $v$ \\
-\hline
-DelVar [$v$] & delete thread variable $v$ \\
-\hline
-Dup & duplicate the top element of the stack \\
-\hline
-Frame \texttt{m} $a$ & start method \texttt{m} with arguments $a$,
-initializing variables.  \\
-\hline
-Go & pop context and value, push value on context's stack, and add to context bag \\
-\hline
-IncVar $v$ & increment thread variable $v$ \\
-\hline
-Jump $p$ & set program counter to $p$ \\
-\hline
-JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
-\hline
-Load [$v$] & push the value of a shared variable onto the stack \\
-\hline
-LoadVar [$v$] & push the value of a thread variable onto the stack \\
-\hline
-Move $i$ & move stack element at offset $i$ to top of the stack \\
-\hline
-$n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
-\hline
-Pop & pop a value of the stack and discard it \\
-\hline
-Push $c$ & push constant $c$ onto the stack \\
-\hline
-ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
-\hline
-Return & pop return address, push \texttt{result}, and restore program counter \\
-\hline
-Sequential & pop an address of a variable that has sequential consistency \\
-\hline
-SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
-\hline
-Spawn & pop initial thread-local state, argument, and method and spawn a new context \\
-\hline
-Split & pop tuple and push its elements \\
-\hline
-Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
-\hline
-Store [$v$] & pop a value from the stack and store it in a shared variable \\
-\hline
-StoreVar [$v$] & pop a value from the stack and store it in a thread variable \\
-\hline
-Trap & pop interrupt argument and method \\
-\hline
-\end{tabular}
-}
+\subsection*{\textbf{for ... in [...where]}}
 
-\newpage
-Clarifications:
+The statement \textbf{for} $x$ \textbf{in} $y: S_1; S_2; ...$
+iterates over $y$ and executes for each element the statements
+$S_1, S_2, ...$.
+$y$ must be a set or a dictionary.  $y$ is evaluated only once at
+the beginning of the evaluation of this statement.  In case of a set,
+the result is sorted (using Harmony's global order on all values).
+In case of a dictionary, the statement iterates over the values of
+the dictionary in the order of the keys.  This makes iterating over
+lists intuitive and identical to Python.
+For each element, the statements $S_1, S_2, ...$ are executed with
+local variable $y$ having the value of the element.
+$x$ can be a pattern such as $(a)$ or $(a, (b, c))$.
+If the pattern cannot be matched, Harmony detects and error.
+It is allowed, but discouraged, to assign different values to $x$
+within statements $S_1, S2, ...$.
+
+If $y$ is a dictionary, Harmony also supports the form
+\textbf{for} $k:v$ \textbf{in} $y: S_1; S_2; ...$.  This works similar,
+except that $k$ is bound to the key and $v$ is bound to the value.
+
+The statement also supports nesting and filtering.
+Nesting is of the form
+\textbf{for} $x_1$ \textbf{in} $y_1$ \textbf{for} $x_2$ \textbf{in} $y_2$:
+$S_1; S_2; ...$,
+which is equivalent to the statement
+\textbf{for} $x_1$ \textbf{in} $y_1$: \textbf{for} $x_2$ \textbf{in} $y_2$:
+$S_1; S_2; ...$.
+Filtering is of the form
+\textbf{for} $x$ \textbf{in} $y$ \textbf{where} $z: S_1; S_2; ...$.
+For example,
+\textbf{for} $x$ \textbf{in} \{ 1 .. 10 \} \textbf{where} $(x \% 2) == 0:
+S_1; S_2; ...$ only evaluates statements $S_1, S_2, ...$ for even $x$,
+that is, 2, 4, 6, 8, and 10.
+
+Harmony does not support \textbf{break} or \textbf{continue} statements.
+
+\subsection*{\textbf{from ... import}}
+
+The statement \textbf{from} \texttt{x} \textbf{import} \texttt{a, b, ...}
+imports module \texttt{x} and makes its constants $a, b, ...$ also constants
+in the current module.  If a module is imported more than once, its code
+is only included the first time.  The constants will typically be the
+names of methods (program counter constants) within the module.
+
+You can import all constants from a module \texttt{m}
+(including program counter constants) using the statement
+\textbf{from} \texttt{m} \textbf{import} \texttt{*}.
+This, however, excludes constants whose names start with the character
+\texttt{\_}: those are considered \emph{private} to the module.
+
+\subsection*{\textbf{go}}
+
+The statement \textbf{go} $c$ $e$ starts a thread with context $c$ that
+has executed a \textbf{stop} expression.  The \textbf{stop} expression
+returns value $e$.
+The same context can be started multiple times, allowing threads to
+\emph{fork}.
+
+\subsection*{\textbf{if ... [elif ...]* [else]}}
+
+Harmony supports \textbf{if} statements.
+In its most basic form, \textbf{if} $c: S_1; S_2; ...$ evaluates $c$
+and executes statements $S_1, S_2, ...$ if and only if boolean expression
+$c$ evaluated to true.
+Harmony checks that $c$ is either \textbf{False} or \textbf{True}---if neither
+is the case, Harmony reports an error.
+The statement \textbf{if} $c: S_1, S_2, ...$ \textbf{else}:
+$T_1; T_2; ...$ is similar, but executes statements $T_1, T_2, ...$
+if and only if $c$ evaluated to false.
+You can think of \textbf{elif} $c:$ as shorthand for
+\textbf{else}: \textbf{if} $c:$.
+
+\subsection*{\textbf{import}}
+
+The statement \textbf{import} $\mathtt{m}_1, \mathtt{m}_2, ...$ imports modules
+$\mathtt{m}_1, \mathtt{m}_2, ...$ in that order.
+If a module is imported more than once,
+its code is only included the first time.
+The constants (including method constants) and shared variables declared 
+in that module can subsequently be referenced by prepending ``\texttt{m}.''.
+For example, method \texttt{f()} in imported module \texttt{m} is invoked
+by calling \texttt{m.f()}.  If you would prefer to invoke it simply as
+\texttt{f()}, then you have to import using the statement
+\textbf{from} \texttt{m} \textbf{import} \texttt{f}.
+
+\subsection*{\textbf{invariant}}
+
+The statement \textbf{invariant} $c$ declares that boolean expression $c$
+is an invariant.  $c$ is only allowed to read shared variables and
+is evaluated atomically after every state change.
+If it ever evaluates to \textbf{False} Harmony reports and error.  Harmony
+also reports an error if the expression evaluates to a value other
+than \textbf{False} or \textbf{True}.
+
+\subsection*{\textbf{let}}
+
+You can introduce new local variables in a method using the
+\texttt{let} expression.
+The statement \textbf{let} $a = b: S_1; S_2, ...$ evaluates $b$, assigns
+the result to local variable $a$, and evaluates statements
+$S_1, S_2, ...$.  \textbf{let} supports pattern matching, so you can
+write \texttt{let} $x, (y, z) = b: S_1; S_2, ...$.  This will only work
+if $b$ is a tuple with two elements, the second of which also being a
+tuple with two elements---if not, Harmony will report an error.
+The variables may be updates in statements $S_1, S_2, ...$.
+
+\textbf{let} statements may be nested, such as
+\textbf{let} $a_1 = b_1$ \textbf{let} $a_2 = b_2: S_1; S_2; ...$.
+Doing so can improve readability by reducing indentation
+compared to writing them as separate statements.
+Compare the following two examples:
+
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $a = y$: \\
+\>\>\textbf{let} $b = z$: \\
+\>\>\>...
+\end{tabbing}
+\end{code}
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $a = y$ \\
+\>\textbf{let} $b = z$: \\
+\>\>...
+\end{tabbing}
+\end{code}
+
+\subsection*{\textbf{pass}}
+
+The \textbf{pass} statement does nothing.
+
+\subsection*{\textbf{possibly}}
+
+The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
+predicates $b_i$.
+At completion, Harmony reports which of the predicates never held.
+
+\subsection*{\textbf{select ... in}}
+
+The statement \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$
+requires that $y$ evaluates to a set value.
+The statement does the following three things atomically:
 \begin{itemize}
-\item The \texttt{Address} instruction expects two values on the stack.
-The top value must be an address value, representing a dictionary 
-The other value must be a key into the dictionary.
-The instruction then computes the address of the given key.
-\item Even though Harmony code does not allow taking addresses of thread variables, both
-shared and thread variables can have addresses.
-\item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
-and \texttt{Stop} instructions have an optional
-variable name: if omitted the top of the stack must contain the address of
-the variable.
-\item \texttt{Store} and \texttt{StoreVar} instructions have an optional
-variable name.  In both cases the value to be assigned is on the top
-of the stack.  If the name is omitted, the address is underneath that
-value on the stack.
-\item The effect of the \texttt{Apply} instructions depends much on $m$.
-If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
-and pushes the value.
-If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
-pushing the current program counter and setting the program counter to
-$m$.  $m$ is supposed to leave the result on the stack.
-\item The \texttt{Frame} instruction pushes the value of the thread
-register (\emph{i.e.}, the values of the thread variables) onto the
-stack.  It initializes the \texttt{result} variable to the empty dictionary.
-The \texttt{Return} instruction restores the thread register by popping
-its value of the stack.
-\item All method calls have exactly one argument, although it sometimes
-appears otherwise:
-\begin{itemize}
-\item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
-\item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
-\item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
+\item it waits until $y$ is non-empty;
+\item it selects one element of $y$ non-deterministically (using
+a \texttt{choose} expression);
+\item it executes statements $S_1, S_2, ...$ with the selected element
+assigned to local variable $x$.
 \end{itemize}
-The \texttt{Frame} instruction unpacks the argument to the method and places them into thread variables by the given names.
-\item Every \texttt{Stop} instruction must immediately be followed by a 
-\texttt{Continue} instruction.
-\end{itemize}
+$x$ may be a pattern, like in \texttt{let}, \texttt{for}, and \texttt{def}
+statements.
+Harmony reports an error if $y$ evaluates to a value that is not a set.
+If \textit{waiting} is an unused local variable,
+then \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$ is equivalent to
 
-\chapter{Contexts and Threads}
-\label{app:context}
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{let} $\mathit{waiting} = \mathbf{True}:$ \\
+\>\>\textbf{while} \textit{waiting}: \\
+\>\>\>\textbf{atomic}: \\
+\>\>\>\>\textbf{if} $y$ != \{\}:\\
+\>\>\>\>\>\textbf{let} $x = \mathbf{choose}(y)$:\\
+\>\>\>\>\>\>$S_1$ \\
+\>\>\>\>\>\>$S_2$ \\
+\>\>\>\>\>\>$...$ \\
+\>\>\>\>\>$\mathit{waiting} = \mathbf{False}$
+\end{tabbing}
+\end{code}
 
-A context captures the state of a thread.  Each time the thread
-executes an instruction, it goes from one context to another.
-All instructions update the program counter (\texttt{Jump} instructions
-are not allowed to jump to their own locations), and so no instruction
-leaves the context the same.
-There may be multiple threads
-with the same state at the same time.
-A context consists of the following:
+The statement is particularly useful in programming network protocols
+when having to wait for one or more messages and executing a set
+of actions atomically after the desired messages have arrived.
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-name & the name of the main method that the thread is executing \\
-\hline
-argument & the argument given to the main method \\
-\hline
-program counter & an integer value pointing into the code \\
-\hline
-frame pointer & an integer value pointing into the stack \\
-\hline
-atomic & if non-zero, the thread is in atomic mode \\
-\hline
-readonly & if non-zero, the thread is in read-only mode \\
-\hline
-stack & a list of Harmony values \\
-\hline
-method variables & a dictionary mapping atoms (names of method variables) to values \\
-\hline
-thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
-\hline
-stopped & a boolean indicating if the context is stopped \\
-\hline
-failure & if not None, string that describes how the thread failed \\
-\hline
-\end{tabular}
-\vspace{1em}
+\subsection*{\textbf{sequential}}
 
-Details:
-\begin{itemize}
-\item The frame pointer points to the current \emph{stack frame},
-which consists of the caller's frame pointer and variables, the argument to
-the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
-\texttt{thread}), and the return address (in case of \texttt{normal}).
-\item A thread terminates when it reaches the \texttt{Return} instruction
-of the top-level method (when the stack frame is of type \texttt{thread})
-or when it hits an exception.  Exceptions include divide by zero,
-reading a non-existent key in a dictionary, accessing a non-existent
-variable, as well as when an assertion fails;
-\item The execution of a thread in \emph{atomic mode} does not get interleaved
-with that of other threads.
-\item The execution of a thread in \emph{read-only mode} is not allowed
-to update shared variables of spawn threads.
-\item The register of a thread always contains a dictionary, mapping
-atoms to arbitrary values.  The atoms correspond to the variable names
-in a Harmony program.
-\end{itemize}
+In Harmony, shared variable \texttt{Load} and \texttt{Store} operations
+are atomic and have \emph{sequential consistency}.
+However, Harmony does check for \emph{data races}.  A data race occurs
+when two or more threads simultaneously access the same shared variable,
+with at least one of the accesses being a \texttt{Store} operation
+\emph{outside of an atomic block}.
+If so, Harmony will report an error.  This error can be suppressed by
+declaring the shared variable as sequential.  In particular, the statement
+\texttt{sequential} $x, y, ...$ specifies that the algorithm assumes
+that the given variables have sequential consistency.
 
-\chapter{The Harmony Virtual Machine}
+Note that few modern processors support sequentially consistent memory
+by default, as doing so would lead to high overhead.
 
-The Harmony Virtual Machine (HVM) has the following state:
+\subsection*{\textbf{spawn}}
 
-\vspace{1em}
-\begin{tabular}{|l|l|}
-\hline
-code & a list of HVM machine instructions \\
-\hline
-labels & a dictionary of atoms to program counters \\
-\hline
-variables & a dictionary mapping atoms to values \\
-\hline
-ctxbag & a bag of runnable contexts \\
-\hline
-stopbag & a bag of stopped contexts \\
-\hline
-choosing & if not \texttt{None}, indicates a context that is choosing \\
-\hline
-\end{tabular}
-\vspace{1em}
+The statement \texttt{spawn} $m$ $a$ starts a new thread that executes
+method $m$ with argument $a$. $m$ must be a program counter constant,
+and $a$ is typically a tuple containing
+zero or more parameters to be passed to the method.
 
-There is initially a single context with name
-\texttt{\_\_init\_\_/()} and program counter 0.  It starts executing
-in atomic mode until it finishes executing the last
-\texttt{Return} instruction.
-Other threads, created through \texttt{spawn} statements, do not
-start executing until then.
+The default thread-local state of the thread, called \textit{self},
+is the empty dictionary by default.  It can be specified by adding
+a parameter: \texttt{spawn} $m$ $a, e$ specifies that $e$ should be
+the initial value of the thread-local state.
 
-A \emph{step} is the execution of a single HVM machine instruction
-by a context.
-Each step generates a new state.
-When there are multiple contexts, the HVM can interleave them.
-However, trying to interleave every step would be needlessly expensive,
-as many steps involve changes to a context that are invisible to
-other contexts.
+Harmony normally checks that all threads eventually terminate.
+If a thread may never terminate, you should spawn it with
+\texttt{spawn eternal} $m$ $a$ to suppress those checks.
 
-A \emph{stride}
-\index{stride}%
-can involve multiple steps.  The following
-instructions start a new stride: \texttt{Load}, \texttt{Store},
-\texttt{AtomicInc}, and \texttt{Continue}.  The HVM
-interleaves stides, not steps.  Like steps, each
-stride involves a single context.  Unlike a step, a stride
-can leave the state unchanged (because its steps lead back
-to where the stride started).
+\subsection*{\textbf{trap}}
 
-Executing a Harmony program results in a graph where the nodes are Harmony
-states and the edges are strides.
-When a state is \texttt{choosing}, the edges from that state are
-by a single context, one for each choice.  If not, the edges from
-the state are one per context.
+The statement \textbf{trap} $m$ $a$ specifies that the current thread
+should execute method $m$ with argument $a$ and some future, unspecified,
+time.  It models a timer interrupt or any kind of asynchronous event to
+be handled by the thread.  Such interrupts can be disabled by setting
+the interrupt level of the thread to \textbf{True} using the
+\textbf{setintlevel} operator.
 
-Consecutive strides by the same thread are called a \emph{turn}.
-Each state maintains the shortest path to it from the initial state in terms
-of turns.
-The diameter of the graph is the length of the longest path found in
-terms of turns.
+\subsection*{\textbf{while}}
 
-If some states have a problem, the state with the shortest path is reported.
-Problematic states include states that experienced exceptions.
-If there are no exceptions, Harmony computes the strongly connected components (SCCs)
-of the graph (the number of such components are printed as part of the output).
-The sink SCCs should each consist of a terminal state without any threads.
-If not, again the state with the shortest path is reported.
-
-If there are no problematic states, Harmony reports ``no issues found'' and outputs
-in the HTML file the state with the longest path.
-
-\chapter{Harmony Language Details}
-\label{ap:details}
-
-The Harmony language borrows heavily from Python.  However, there are
-some important differences that we will describe in this chapter.
+The statement \textbf{while} $c: S_1; S_2; ...$ executes statements
+$S_1, S_2, ...$ repeatedly as long as $c$ evaluates to \textbf{True}.
+Harmony does not support \textbf{break} or \textbf{continue} statements.
 
 \section{Harmony is not object-oriented}
 
-Python is object-oriented, but Harmony is not.  This can lead to some
-unexpected differences.  For example, consider the following code:
+Python is object-oriented, but Harmony is not.  For Python programmers,
+this can lead to some unexpected differences.
+For example, consider the following code:
 
 \begin{code}
 \harmonysource{oo}
@@ -6386,17 +7285,18 @@ Harmony:
 
 \begin{code}
 \begin{verbatim}
-x = y = Lock();
+x = y = Lock()
 \end{verbatim}
 \end{code}
 
 In Python, this creates two variables $x$ and $y$ referring to the same lock.
 In Harmony, the two variables will be two different locks.  If you want two
-variables referring to the same lock in Harmony, you would write:
+variables referring to the same lock in Harmony, you might write:
 
 \begin{code}
 \begin{verbatim}
-x = y = malloc(Lock());
+lock = Lock()
+x = y = ?lock
 \end{verbatim}
 \end{code}
 
@@ -6408,19 +7308,21 @@ object-orientation, but instead use \texttt{malloc} and \texttt{free}.
 \section{Constants, Global and Local Variables}\label{sec:vars}
 
 Each (non-reserved) identifier in a Harmony program refers to either
-a constant, a global variable, or a local variable.
+a constant, a global shared variable, a local variable, or a module.
 Constants are declared using \texttt{const} statements.
 Those constants are computed at compile-time.
 
 Local variables all declared.  They can be declared in
 \texttt{def} statements (i.e., arguments),
-\texttt{let} statements, and in \texttt{for} loops.
+\texttt{let} statements, \texttt{for} loops, and \texttt{select} statements.
 Also, each method has an implicitly declared
-\textit{result} variable.
+\textit{result} variable, which is initialized to \texttt{None}.
+Each thread has a variable called \textit{this} that contains
+the thread-local state.
 Local variables are tightly scoped and cannot be shared
 between threads.
 While in theory one method can be declared within another,
-they cannot share variables either.
+they cannot share local variables either.
 All other variables are global and must be initialized
 before any threads are spawned.
 
@@ -6437,7 +7339,7 @@ and then $c$ is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
 $a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
 
-There are three classes of precedence.
+There are three levels of precedence.
 Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
 \texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
 (\textit{a b}) \texttt{+} (\textit{c d}).
@@ -6460,7 +7362,7 @@ first.  In that expression, only $a$ or $b$ is evaluated depending on the value 
 In the expression $a$ \textbf{and} $b$ \textbf{and} $...$, evaluation is left
 to right but stops once one of the subexpressions evaluates to \textbf{False}.
 Similarly for \textbf{or}, where evaluation stops once one of the subexpressions
-evaluates to \texttt{True}.
+evaluates to \textbf{True}.
 A sequence of comparison operations, such as $a < b < c$, is evaluated left to right
 but stops as soon as one of the comparisons fails.
 
@@ -6496,9 +7398,9 @@ The following are the same in Python and Harmony:
 \item \texttt{$x$, $y$ = 1, (2, 3)}: assigns 1 to $x$ and (2, 3) to $y$;
 \item \texttt{$x$, ($y$, $z$) = 1, (2, 3)}: assigns 1 to $x$, 2 to $y$, and
 3 to $z$;
-\item \texttt{$x$, ($y$, $z$) = 1, 2;} generates an runtime error because 2 cannot
+\item \texttt{$x$, ($y$, $z$) = 1, 2}: generates an runtime error because 2 cannot
 be matched with ($y$, $z$);
-\item \texttt{$x[0]$, $x[1]$ = $x[1]$, $x[0]$;} swaps the first two elements of list $x$.
+\item \texttt{$x[0]$, $x[1]$ = $x[1]$, $x[0]$}: swaps the first two elements of list $x$.
 \end{itemize}
 
 As in Python, pattern matching can also be used in \texttt{for} statements.
@@ -6522,9 +7424,10 @@ you may want to declare as follows: \texttt{def} g($a,$).
 Calling g(1,) assigns 1 to $a$, while calling g(1, 2) would result in a
 runtime error as (1, 2) cannot be matched with ($a$,).
 
-Pattern matching can also be used in \texttt{const} and \texttt{let}
-statements.
+Pattern matching can also be used in \texttt{const}, \texttt{let},
+and \texttt{select} statements.
 
+\begin{comment}
 \section{For Loops and Comprehensions}
 
 While Harmony does not support general iterators such as Python does,
@@ -6538,8 +7441,11 @@ and tuples).  The details are a little different from Python:
 dictionary, but in the order of the keys.  In the case of lists, this
 works much the same as in Python, but in the case of general dictionaries,
 Python iterates over the keys rather than the values;
-\item If you want to iterate over the keys of a dictionary $d$, use
-\texttt{for} $k$ \texttt{in} \texttt{keys} $d$;
+\item If you want to iterate over the keys of a dictionary $d$, use either
+\begin{itemize}
+\item \texttt{for} $k$ \texttt{in} \texttt{keys} $d$; or
+\item \texttt{for} $k:\_$ \texttt{in} $d$
+\end{itemize}
 \item The \texttt{list} module (\autoref{ap:list}) provides methods \texttt{values}(),
 \texttt{items}(), \texttt{enumerate}(), and \texttt{reversed}() for
 other types of iteration supported by Python.
@@ -6553,10 +7459,17 @@ For example:
 \texttt{where} $i < j$: ...
 \end{code}
 
+In case of dictionaries, you can access both keys and values (not
+supported in Python):
+\begin{code}
+\texttt{for} $k:v$ in \{ .a: 1, .b: 2 \}: ...
+\end{code}
+
 Harmony also supports set, list, and dictionary comprehensions.
 \index{comprehensions}%
 Comprehensions are similar to Python, except that filtering uses
 the keyword \texttt{where} instead of \texttt{if}.
+\end{comment}
 
 \section{Dynamic Allocation}
 
@@ -6628,6 +7541,711 @@ Harmony supports the same commenting conventions as Python.
 In addition, Harmony supports nested multi-line comments
 of the form \texttt{(* comment *)}.
 
+\chapter{Modules}
+\label{ap:module}
+
+\section{The \texttt{alloc} module}
+
+The \texttt{alloc} module
+\index{alloc module}%
+supports thread-safe (but not interrupt-safe) dynamic allocation of
+shared memory locations.  There are just two methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{malloc($v$)} & return a pointer to a memory location initialized to $v$ \\
+\hline
+\texttt{free($p$)} & free an allocated memory location $p$ \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+The usage is similar to \texttt{malloc} and \texttt{free} in C.
+\texttt{malloc}() is specified to return \texttt{None} when running out of
+memory, although this is an impossible outcome in the current
+implementation of the module.
+
+\section{The \texttt{bag} module}
+\label{ap:bag}
+
+The \texttt{bag} module
+\index{bag module}%
+has various useful methods that operate on bags or
+multisets:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{empty()} & returns an empty bag\\
+\hline
+\texttt{fromSet($s$)} & create a bag from set $s$\\
+\hline
+\texttt{fromList($t$)} & convert list $t$ into a bag \\
+\hline
+\texttt{count($b$, $e$)} & count how many times $e$ occurs in bag $b$\\
+\hline
+\texttt{bchoose($b$)} & like \texttt{choose(s)}, but applied to a bag\\
+\hline
+\texttt{add}($b$, $e$) & add one copy of $e$ to bag $b$ \\
+\hline
+\texttt{remove}($b$, $e$) & remove one copy of $e$ from bag $b$ \\
+\hline
+\texttt{combinations}($b$, $k$) & return set of all \emph{subbags} of size $k$ \\
+\hline
+\end{tabular}
+
+\section{The \texttt{hoare} module}
+\label{ap:hoare}
+
+\index{list module}%
+The \texttt{hoare} module implements support for Hoare-style monitors
+and condition variables.
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{Monitor()} & return a monitor mutex\\
+\hline
+\texttt{enter($m$)} & enter a monitor.  $m$ points to a monitor mutex\\
+\hline
+\texttt{exit($m$)} & exit a monitor\\
+\hline
+\texttt{Condition()} & return a condition variable\\
+\hline
+\texttt{wait($c$, $m$)} & wait on condition variable pointed to by $c$ in monitor pointed to by $m$\\
+\hline
+\texttt{signal($c$, $m$)} & signal a condition variable\\
+\hline
+\end{tabular}
+
+\section{The \texttt{list} module}
+\label{ap:list}
+
+\index{list module}%
+The \texttt{list} module has various useful methods that operate on lists
+or tuples:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{subseq($t$, $b$, $f$)} & return a \emph{slice} of list $t$ starting
+at index $b$ and ending just before $f$\\
+\hline
+\texttt{append($t$, $e$)} & append $e$ to list $t$\\
+\hline
+\texttt{head($t$)} & return the first element of list $t$\\
+\hline
+\texttt{tail($t$)} & return all but the first element of list $t$\\
+\hline
+\texttt{reversed($t$)} & reverse a list \\
+\hline
+\texttt{sorted($t$)} & sorted set or list \\
+\hline
+\texttt{set($t$)} & convert values of a dict or list into a set \\
+\hline
+\texttt{list($t$)} & convert set into a list \\
+\hline
+\texttt{values($t$)} & convert values of a dict into a list sorted by key \\
+\hline
+\texttt{items($t$)} & convert dict into (key, value) list sorted by key \\
+\hline
+\texttt{enumerate($t$)} & like Python enumerate \\
+\hline
+\texttt{sum($t$)} & return the sum of all elements in $t$\\
+\hline
+\texttt{qsort($t$)} & sort list $t$ using quicksort\\
+\hline
+\end{tabular}
+
+\section{The \texttt{set} module}
+\label{ap:set}
+
+The \texttt{set} module
+\index{set module}%
+implements the following methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{issubset($s$, $t$)} & returns whether $s$ is a subset of $t$ \\
+\hline
+\texttt{issuperset($s$, $t$)} & returns whether $s$ is a superset of $t$ \\
+\hline
+\texttt{add}($s$, $e$) & returns $s \cup \{ e \}$ \\
+\hline
+\texttt{remove}($s$, $e$) & returns $s \backslash \{ e \}$ \\
+\hline
+\texttt{combinations}($b$, $k$) & returns set of all subsets of size $k$ \\
+\hline
+\end{tabular}
+
+\vspace{1em}
+For Python programmers: note that $s <= t$ does not check if $s$ is a subset of
+$t$ when $s$ and $t$ are sets, as ``$<=$'' implements a total order on all Harmony values including sets (and the subset relation is not a total order).
+
+\section{The \texttt{synch} module}
+
+\index{synch module}%
+The \texttt{synch} module provides the following methods:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
+\hline
+\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
+\hline
+\texttt{BinSem}($v$) & return a binary semaphore initialized to $v$ \\
+\hline
+\texttt{Lock}() & return a binary semaphore initialized to \textbf{False} \\
+\hline
+\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
+\hline
+\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
+\hline
+\texttt{Condition}() & return a condition variable \\
+\hline
+\texttt{wait}($c$, \textit{lk}) & wait on condition variable \texttt{!}$c$
+and lock \textit{lk} \\ \hline
+\texttt{notify}($c$) & notify a thread waiting on condition variable \texttt{!}$c$ \\
+\hline
+\texttt{notifyAll}($c$) & notify all threads waiting on condition variable \texttt{!}$c$ \\
+\hline
+\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
+\hline
+\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
+\hline
+\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
+\hline
+\texttt{Queue}() & return a synchronized queue object \\
+\hline
+\texttt{get}($q$) & return next element of $q$, blocking if empty \\
+\hline
+\texttt{put}($q$, \textit{item}) & add \textit{item} to $a$ \\
+\hline
+\end{tabular}
+
+
+\chapter{The Harmony Virtual Machine}\label{app:hvm}
+
+The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
+has the following state:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+code & a list of HVM machine instructions \\
+\hline
+labels & a dictionary of atoms to program counters \\
+\hline
+variables & a dictionary mapping atoms to values \\
+\hline
+ctxbag & a bag of runnable contexts \\
+\hline
+stopbag & a bag of stopped contexts \\
+\hline
+choosing & if not \texttt{None}, indicates a context that is choosing \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+There is initially a single context with name
+\texttt{\_\_init\_\_()} and program counter 0.  It starts executing
+in atomic mode until it finishes executing the last
+\texttt{Return} instruction.
+Other threads, created through \texttt{spawn} statements, do not
+start executing until then.
+
+A \emph{step} is the execution of a single HVM machine instruction
+by a context.
+Each step generates a new state.
+When there are multiple contexts, the HVM can interleave them.
+However, trying to interleave every step would be needlessly expensive,
+as many steps involve changes to a context that are invisible to
+other contexts.
+
+A \emph{stride}
+\index{stride}%
+can involve multiple steps.  The following
+instructions start a new stride: \texttt{Load}, \texttt{Store},
+\texttt{AtomicInc}, and \texttt{Continue}.  The HVM
+interleaves stides, not steps.  Like steps, each
+stride involves a single context.  Unlike a step, a stride
+can leave the state unchanged (because its steps lead back
+to where the stride started).
+
+Executing a Harmony program results in a graph where the nodes are Harmony
+states and the edges are strides.
+When a state is \texttt{choosing}, the edges from that state are
+by a single context, one for each choice.  If not, the edges from
+the state are one per context.
+
+Consecutive strides by the same thread are called a \emph{turn}.
+Each state maintains the shortest path to it from the initial state in terms
+of turns.
+The diameter of the graph is the length of the longest path found in
+terms of turns.
+
+If some states have a problem, the state with the shortest path is reported.
+Problematic states include states that experienced exceptions.
+If there are no exceptions, Harmony computes the strongly connected components (SCCs)
+of the graph (the number of such components are printed as part of the output).
+The sink SCCs should each consist of a terminal state without any threads.
+If not, again the state with the shortest path is reported.
+
+If there are no problematic states, Harmony reports ``no issues found'' and outputs
+in the HTML file the state with the longest path.
+
+\section{Machine Instructions}
+\label{ap:harmonybytecode}
+
+{\small
+\begin{tabular}{|l|l|}
+\hline
+Address & compute address from two components \\
+\hline
+Apply & pop $m$ and $i$ and apply $i$ to $m$, pushing a value \\
+\hline
+Assert, Assert2 & pop $b$ and check that it is \textbf{True}.  Assert2 also pops value to print \\
+\hline
+AtomicInc/Dec & increment/decrement the atomic counter of this context \\
+\hline
+Continue & no-op (but causes a context switch) \\
+\hline
+Choose & choose an element from the set on top of the stack \\
+\hline
+Cut & cut a set into its smallest element and the remainder \\
+\hline
+Del [$v$] & delete shared variable $v$ \\
+\hline
+DelVar [$v$] & delete thread variable $v$ \\
+\hline
+Dup & duplicate the top element of the stack \\
+\hline
+Frame \texttt{m} $a$ & start method \texttt{m} with arguments $a$,
+initializing variables.  \\
+\hline
+Go & pop context and value, push value on context's stack, and add to context bag \\
+\hline
+IncVar $v$ & increment thread variable $v$ \\
+\hline
+Jump $p$ & set program counter to $p$ \\
+\hline
+JumpCond $e$ $p$ & pop expression and, if equal to $e$, set program counter to $p$ \\
+\hline
+Load [$v$] & push the value of a shared variable onto the stack \\
+\hline
+LoadVar [$v$] & push the value of a thread variable onto the stack \\
+\hline
+Move $i$ & move stack element at offset $i$ to top of the stack \\
+\hline
+$n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements on the stack \\
+\hline
+Pop & pop a value of the stack and discard it \\
+\hline
+Possibly $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{possibly} statement \\
+\hline
+Push $c$ & push constant $c$ onto the stack \\
+\hline
+ReadonlyInc/Dec & increment/decrement the read-only counter of this context \\
+\hline
+Return & pop return address, push \texttt{result}, and restore program counter \\
+\hline
+Sequential & pop an address of a variable that has sequential consistency \\
+\hline
+SetIntLevel & pop $e$, set interrupt level to $e$, and push old interrupt level \\
+\hline
+Spawn [eternal] & pop initial thread-local state, argument, and method and spawn a new context \\
+\hline
+Split & pop tuple and push its elements \\
+\hline
+Stop [$v$] & save context into shared variable $v$ and remove from context bag \\
+\hline
+Store [$v$] & pop a value from the stack and store it in a shared variable \\
+\hline
+StoreVar [$v$] & pop a value from the stack and store it in a thread variable \\
+\hline
+Trap & pop interrupt argument and method \\
+\hline
+\end{tabular}
+}
+
+\newpage
+Clarifications:
+\begin{itemize}
+\item The \texttt{Address} instruction expects two values on the stack.
+The top value must be an address value, representing a dictionary 
+The other value must be a key into the dictionary.
+The instruction then computes the address of the given key.
+\item Even though Harmony code does not allow taking addresses of thread variables, both
+shared and thread variables can have addresses.
+\item The \texttt{Load}, \texttt{LoadVar}, \texttt{Del}, \texttt{DelVar},
+and \texttt{Stop} instructions have an optional
+variable name: if omitted the top of the stack must contain the address of
+the variable.
+\item \texttt{Store} and \texttt{StoreVar} instructions have an optional
+variable name.  In both cases the value to be assigned is on the top
+of the stack.  If the name is omitted, the address is underneath that
+value on the stack.
+\item The effect of the \texttt{Apply} instructions depends much on $m$.
+If $m$ is a dictionary, then \texttt{Apply} finds $i$ in the dictionary
+and pushes the value.
+If $m$ is a program counter, then \texttt{Apply} invokes method $m$ by
+pushing the current program counter and setting the program counter to
+$m$.  $m$ is supposed to leave the result on the stack.
+\item The \texttt{Frame} instruction pushes the value of the thread
+register (\emph{i.e.}, the values of the thread variables) onto the
+stack.  It initializes the \texttt{result} variable to \texttt{None}.
+The \texttt{Return} instruction restores the thread register by popping
+its value of the stack.
+\item All method calls have exactly one argument, although it sometimes
+appears otherwise:
+\begin{itemize}
+\item \texttt{m()} invokes method \texttt{m} with the empty dictionary \texttt{()} as argument;
+\item \texttt{m($a$)} invokes method \texttt{m} with argument $a$;
+\item \texttt{m($a$, $b$, $c$)} invokes method \texttt{m} with tuple \texttt{($a$, $b$, $c$)} as argument.
+\end{itemize}
+The \texttt{Frame} instruction unpacks the argument to the method and places them into thread variables by the given names.
+\item Every \texttt{Stop} instruction must immediately be followed by a 
+\texttt{Continue} instruction.
+\end{itemize}
+
+\section{Contexts and Threads}
+\label{app:context}
+
+A context captures the state of a thread.  Each time the thread
+executes an instruction, it goes from one context to another.
+All instructions update the program counter (\texttt{Jump} instructions
+are not allowed to jump to their own locations), and so no instruction
+leaves the context the same.
+There may be multiple threads
+with the same state at the same time.
+A context consists of the following:
+
+\vspace{1em}
+\begin{tabular}{|l|l|}
+\hline
+name & the name of the main method that the thread is executing \\
+\hline
+argument & the argument given to the main method \\
+\hline
+program counter & an integer value pointing into the code \\
+\hline
+frame pointer & an integer value pointing into the stack \\
+\hline
+atomic & if non-zero, the thread is in atomic mode \\
+\hline
+readonly & if non-zero, the thread is in read-only mode \\
+\hline
+stack & a list of Harmony values \\
+\hline
+method variables & a dictionary mapping atoms (names of method variables) to values \\
+\hline
+thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
+\hline
+stopped & a boolean indicating if the context is stopped \\
+\hline
+failure & if not None, string that describes how the thread failed \\
+\hline
+\end{tabular}
+\vspace{1em}
+
+Details:
+\begin{itemize}
+\item The frame pointer points to the current \emph{stack frame},
+which consists of the caller's frame pointer and variables, the argument to
+the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
+\texttt{thread}), and the return address (in case of \texttt{normal}).
+\item A thread terminates when it reaches the \texttt{Return} instruction
+of the top-level method (when the stack frame is of type \texttt{thread})
+or when it hits an exception.  Exceptions include divide by zero,
+reading a non-existent key in a dictionary, accessing a non-existent
+variable, as well as when an assertion fails;
+\item The execution of a thread in \emph{atomic mode} does not get interleaved
+with that of other threads.
+\item The execution of a thread in \emph{read-only mode} is not allowed
+to update shared variables of spawn threads.
+\item The register of a thread always contains a dictionary, mapping
+atoms to arbitrary values.  The atoms correspond to the variable names
+in a Harmony program.
+\end{itemize}
+
+\chapter{How Harmony Works}\label{app:howitworks}
+
+This appendix gives a very brief overview of how Harmony works.
+In a nutshell, Harmony goes through the following three phases:
+
+\begin{enumerate}
+\item The Harmony \emph{compiler} turns your Harmony program into
+bytecode.  A recursive descent parser and code generator written in
+Python (see \texttt{harmony.py}) turns an \texttt{x.hny} program
+into \texttt{x.hvm}, a JSON file containing the corresponding
+bytecode.
+\item The Harmony \emph{model checker} evaluates the state space
+that the program (now in bytecode) can generate.  The model checker
+is written in C as it needs to be highly efficient (see \texttt{charm.c}).
+The model checker starts from the initial state, and then, iteratively,
+checks for each state that it has found what next steps are possible and
+generates the next states using the Harmony virtual machine
+(\autoref{app:hvm}).  If the model is finite, eventually the model
+checker will generate a graph with all possible states.
+If there is a problematic path in this graph (see below), then it will
+report the shortest such path in the \texttt{x.hco} output file in JSON
+format.
+\item The \texttt{x.hco} output file is translated twice by
+\texttt{harmony.py}.  There is a so-called \emph{brief output} that
+is written to standard output.  The more comprehensive output is placed
+in the \texttt{x.htm} HTML output file, allowing you to navigate the
+problematic path and all the details of each of the states on the path.
+\end{enumerate}
+
+\section{Compiler}
+
+The Harmony compiler, in order to stay true to the Harmony source program,
+does not do much in the way of optimizations.  The main optimizations that
+it does are:
+
+\begin{itemize}
+\item Constant folding: (simple) expressions consisting only of constants
+are evaluated by the compiler rather than by the model checker;
+\item Jump threading: Harmony eliminates jump to jump instructions;
+\item Dead variable elimination: Harmony removes method variables that
+are no longer in use from the state in order to reduce the state space
+to be explored.
+\end{itemize}
+
+\section{Model Checker}
+
+The Harmony model checker, called \emph{Charm}, takes the output from
+the compiler and explores the entire state space in breadth-first order.
+Even though Harmony does not really support input, there are three sources of
+non-determinism that make this exploration non-trivial:
+
+\begin{itemize}
+\item \textbf{choose} \emph{expressions}: Harmony's ability to let the program
+choose a value from a set;
+\item \emph{thread interleaving}: different threads run pseudo-concurrently
+with their instructions interleaved in arbitrary ways;
+\item \emph{interrupts}: Harmony programs can set interrupts that can go
+off at arbitrary times.
+\end{itemize}
+
+Charm has some tricks to significantly reduce the state space to explore.
+\begin{itemize}
+\item A thread can have local state (program counter, stack,
+method variables, and thread-local state variables).
+That state is called the \emph{context} of the thread.
+The context of a thread cannot be accessed by other
+threads, nor by \textbf{invariant} statements.
+So the model checker only interleaves threads at \textbf{Load} and
+\textbf{Store} instructions where a thread interacts with global
+variables.
+\item Threads are anonymous, and therefore two or more threads can
+have the same context.  The state of the model checker therefore maintains
+a \emph{bag} (multiset) of contexts rather are than a \emph{set} of contexts.
+Thus even if there are hundreds of threads, there may be only tens of
+possible context states.
+\end{itemize}
+
+That said, \emph{state space explosion} is still a possibility, and
+Harmony programmers should keep this in mind when writing and testing
+their programs.  Do not be too ambitious: start with small tests and
+gradually build them up as necessary.
+
+The model checker stops either when it finds a failing execution or when
+it has explored the entire state space, whichever comes first.  An execution
+can fail for a variety of reasons:
+
+\begin{itemize}
+\item An invariant failing: Harmony evaluates all invariants in all states
+that if finds---if one fails, Harmony stops further exploration;
+\item An assertion failing;
+\item A \emph{silly} error: this includes reading variables that have not
+been assigned, trying to add a set to an integer, taking the length of
+something that is not a set of a dictionary, and so on;
+\item An infinite loop: a thread goes into an infinite loop without
+accessing shared variables.
+\end{itemize}
+
+The model checker also counts the number of times each \textbf{Possibly}
+instruction is invoked with the value \textbf{True}.  It reports those
+\textbf{Possibly} instructions that either have never been reached or
+never have been executed with the value \textbf{True}.
+
+\section{Model Checker Output Analysis}
+
+The output of the model checker is a graph that is typically very large.
+If some execution failed, then Harmony will simply report the path of
+that failing execution.  But otherwise there may be the following
+outcomes:
+
+\begin{itemize}
+\item No issues: no failing executions and each program can terminate;
+\item Non-terminating states: some executions lead to some form of deadlock
+or other issue that causes some (non-eternal) threads not to be able to
+terminate;
+\item Race conditions: there are executions in which two threads access
+the same shared state variable, with at least one of those accesses being a
+\textbf{Store} operation;
+\item Busy waiting: executions in which threads are actively waiting for
+some condition, usually by releasing and reacquiring locks.
+\end{itemize}
+
+\noindent
+In order to diagnose these outcomes, Harmony must analyze the graph.
+
+The first thing that Harmony does is to locate non-terminating
+states, if any.  To do this, Harmony first determines the \emph{strongly
+connected components} of the graph using Kosaraju's algorithm.
+A component (subgraph) of a graph is strongly connected if each
+vertex (state) in the component can be reached from each other vertex.
+The components then form a Directed Acyclic Graph (DAG).
+The DAG is easier to analyze than the original graph.
+One can easily determine the sink components
+(the components with no outgoing edges).  If such a component
+has non-eternal threads in it, then each state in that component
+is a non-terminating state.
+
+To find race conditions, the model checker looks in the graph for
+states in which there are multiple threads that can make a step.
+If there is a step in which multiple threads access the same shared
+variable, at least one of those accesses is a store operation, and
+at least one of those threads is not in atomic mode, then Harmony
+reports the shortest path to such a state.
+
+To show how Harmony detects busy waiting, we will first show how
+Harmony determines if a thread is blocked or not.  A thread is considered
+blocked if it cannot terminate without the help of another thread.
+For example, a thread waiting for a lock is blocked and cannot terminate
+until another thread releases the lock.  Determining whether a thread
+is blocked in a particular state can be done within the confines of the
+connected component: the analyzer tries all possible executions of the
+thread.  If it cannot ``escape'' the connected component by doing so, it
+is considered blocked.
+A thread is considered \emph{busy waiting} if it is blocked, but it is
+also changing the shared state while doing so.  A thread that is waiting
+on a spinlock only observes the state.
+
+Finally, in the output, each thread has a unique identifier:
+\texttt{T0} is the initialization thread; \texttt{T}$n$ is the $n^{th}$
+spawned thread that executes.  This seems to contradict the fact that
+Harmony threads are anonymous.  The output analyzer assigns these
+identifiers \emph{a posteriori} to the threads in the state graph
+by keeping track, along the reported execution path, what state each
+thread is in.  So by examining the initial context of the thread that
+is running from some particular state, it can determine if that context
+corresponds to the current context of some thread that ran previously
+or if the context belongs to a new thread that has not run before.
+
+\chapter{Installing and Running Harmony}\label{app:install}
+
+There are currently three options for using Harmony:
+
+\begin{enumerate}
+\item You can download and install a command-line version of Harmony on your
+computer;
+\item You can download and install \emph{HarmonyLang}, a VSCode plug-in for Harmony;
+\item You can run Harmony programs in the cloud using \emph{Harmony IDE}.
+\end{enumerate}
+
+Below you can find more information on each of these options.
+
+\section{Command-Line}
+
+You can get the latest released developer version of Harmony by
+downloading from \url{harmony.cs.cornell.edu}.  It includes the latest
+bug fixes and features at any time.  Harmony is developed and maintained
+by the author on both MacOSX and Linux, and so these are the preferred
+platforms at this time.  A Windows version is also available, but may not
+be the latest version and is currently not as well supported.
+
+When you download the \texttt{.zip} file, you will get the following
+files:
+
+\begin{itemize}
+\item \texttt{README.txt}: installation documentation;
+\item \texttt{archive.xml}: portable compressed archive of the code base;
+\item \texttt{install.py}: Python3 program to install and update the code base.
+\end{itemize}
+
+First place this directory (folder) where you would like it---the
+\texttt{Downloads} folder is at best a good temporary place.  You can put
+the directory in your home directory, for example.
+
+Installation requires Python3 and a 64-bit C compiler.  The developer uses
+recent versions of \texttt{gcc} and \texttt{clang} for development.
+Run \texttt{python3 install.py} to install the code base.
+It extracts files from archive.xml and installs them in the current
+directory.
+It will try to compile the model checker using \texttt{gcc}.
+If that fails under Windows, it will install an executable that
+is pre-compiled on a Windows 10 machine.  If these options do not work,
+you can compile the file \texttt{charm.c} by hand using a 64-bit C
+compile and place the output in \texttt{charm.exe}.
+
+After installation, there is a \texttt{harmony} file for use under
+MacOSX and Linux, and a \texttt{harmony.bat} file for use under Windows.
+You should be able to run \texttt{harmony --help} in any of these
+environments.
+
+If you would like to run \texttt{harmony} from any directory, you have to
+add the current directory to your search path.  Under MacOSX and Linux,
+you will have to set the \texttt{PATH} environment variable.
+See \url{http://www.linux-migration.org/ch02s06.html} for more information.
+Under Windows, search "Edit environment variables" in the search bar.
+You can add the directory either to the \texttt{Path} associated with
+your account or to the system \texttt{Path}.
+If you do not install \texttt{harmony} in your search path, you may have
+to run \texttt{./harmony} in the installation directory instead of
+just \texttt{harmony}.
+
+The installation directory will have the following subdirectories:
+
+\begin{itemize}
+\item \texttt{code}: contains all the code examples from this book;
+\item \texttt{modules}: contains the Harmony modules;
+\item \texttt{python}: contains the Python examples from the book.
+\end{itemize}
+
+For example, you can try \texttt{harmony code/Diners.hny} to run the
+Dining Philosophers code.
+Harmony currently produces three output files:
+\begin{itemize}
+\item \texttt{code/Diners.hvm}: the bytecode in JSON format;
+\item \texttt{code/Diners.hco}: the output of the model checker in JSON format;
+\item \texttt{code/Diners.htm}: the model checker output converted to HTML format.
+\end{itemize}
+
+You are probably only interested to see the last one, which you should be
+able to view in any web browser of your choice, including Safari, Chrome, Edge, or Firefox.
+
+You can see if you are running the latest version of Harmony at any
+time by running \texttt{Python3 install.py --check}.  If you would like
+to update your installation, run \texttt{Python3 install.puy --update}.
+
+\section{HarmonyLang for VSCode}
+
+The VSCode plug-in, developed by Kevin Sun and Anthony Yang,
+is available from the VSCode market place: \url{https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang}.
+This page comes with installation documentation.  VSCode also sports a
+wonderful animator for Harmony output.
+
+HarmonyLang is regularly updated to include the latest Harmony distribution.
+
+\section{Harmony IDE for the cloud}
+
+\texttt{Harmony IDE} is an Integrated Development Environment for Harmony,
+also developed by Kevin Sun and Anthony Yang,
+that runs in the cloud.  An important advantage of using \texttt{Harmony IDE}
+is that you do not have to install anything.  You can even run in on your
+smartphone.  However, since Harmony programs can use significant compute
+resources, \texttt{Harmony IDE} must put a limit on the amount of compute
+resources you can use.  So while \texttt{Harmony IDE} is currently a great
+way to try out Harmony, if you become a serious user of Harmony you
+will probably want to install either the command-line version or
+\texttt{HarmonyLang}.
+
 \cleardoublepage
 \phantomsection
 \addcontentsline{toc}{chapter}{Acknowledgments}
@@ -6640,9 +8258,17 @@ First and foremost I would like to thank my student Haobin Ni with
 whom I've had numerous discussions about the design of Harmony.
 Haobin even contributed some code to the Harmony compiler.
 
+Kevin Sun and Anthony Yang built a beautiful VSCode extension for Harmony
+called HarmonyLang and proceeded to build an animator for Harmony
+executions and two cloud-based Harmony offerings, which you can can learn
+about at \url{http://harmony.cs.cornell.edu}.  They also developed much of
+that web site.  Later they were joined by Shi Chong Zhao, who also
+made significant contributions.
+
 Most of what I know about concurrent programming I learned from
 my colleague Fred Schneider.  He suggested I write this book after
-demonstrating Harmony to him.
+demonstrating Harmony to him.  Being a foremost security expert, he also
+assisted significantly with the chapter on the Needham-Schroeder protocol.
 
 Leslie Lamport introduced me to using model checking to test properties
 of a concurrent system.  My experimentation with using TLC on Peterson's
@@ -6677,7 +8303,7 @@ and
 Zoltan Csaki.
 
 Finally, I would like to thank my family who had to suffer as I obsessed
-over writing the code and the book during the turbulent months of
+over writing the code and the book, at home, during the turbulent months of
 May and June 2020.
 
 % I wrote the Harmony compiler and this book
