@@ -3052,12 +3052,13 @@ class NaryRule(Rule):
             return (ast, t)
 
 class SetComprehensionRule(Rule):
-    def __init__(self, value):
+    def __init__(self, value, terminator):
         self.value = value
+        self.terminator = terminator
 
     def parse(self, t):
         token = t[0]
-        (lst, t) = self.iterParse(t[1:], {"}"})
+        (lst, t) = self.iterParse(t[1:], {self.terminator})
         return (SetComprehensionAST(self.value, lst, token), t[1:])
 
 class DictComprehensionRule(Rule):
@@ -3102,7 +3103,7 @@ class SetRule(Rule):
             if lexeme == "for":
                 self.expect("set comprehension", len(s) == 1, t[0],
                     "can have only one expression")
-                return SetComprehensionRule(s[0]).parse(t)
+                return SetComprehensionRule(s[0], '}').parse(t)
             if lexeme == "..":
                 self.expect("range", len(s) == 1, t[0],
                     "can have only two expressions")
@@ -3667,10 +3668,11 @@ class ForAST(AST):
         return self.value.getImports()
 
 class SelectAST(AST):
-    def __init__(self, token, bv, expr, stat):
+    def __init__(self, token, bv, expr, cond, stat):
         AST.__init__(self, token)
         self.bv = bv
         self.expr = expr
+        self.cond = cond
         self.stat = stat
 
     def __repr__(self):
@@ -3679,19 +3681,44 @@ class SelectAST(AST):
     def compile(self, scope, code):
         self.assign(scope, `self.bv)
         looplabel = LabelValue(None, "select loop")
-        startlabel = LabelValue(None, "select start")
+        selectlabel = LabelValue(None, "select start")
         (lexeme, file, line, column) = self.ast_token
         code.nextLabel(looplabel)
         code.append(AtomicIncOp(True))
+        if self.cond != None:
+            code.append(PushOp((SetValue(set()), file, line, column)))
         self.expr.compile(scope, code)
+        if self.cond != None:
+            uid = len(code.labeled_ops)
+            (lexeme, file, line, column) = self.ast_token
+            S = ("$s"+str(uid), file, line, column)
+            code.append(StoreVarOp(S))
+            global labelcnt
+            startlabel = LabelValue(None, "$%d_start"%labelcnt)
+            endlabel = LabelValue(None, "$%d_end"%labelcnt)
+            labelcnt += 1
+            code.nextLabel(startlabel)
+            code.append(LoadVarOp(S))
+            code.append(NaryOp(("IsEmpty", file, line, column), 1))
+            code.append(JumpCondOp(True, endlabel))
+            code.append(CutOp(S, self.bv, None))  
+            rest = self.cond
+            negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
+            cond = rest.args[0] if negate else rest
+            cond.compile(scope, code)
+            code.append(JumpCondOp(negate, startlabel))
+            code.append(LoadVarOp(self.bv))
+            code.append(NaryOp(("SetAdd", file, line, column), 2))
+            code.append(JumpOp(startlabel))
+            code.nextLabel(endlabel)
         code.append(DupOp())
         code.append(PushOp((SetValue(set()), file, line, column)))
         code.append(NaryOp(("==", file, line, column), 2))
-        code.append(JumpCondOp(False, startlabel))
+        code.append(JumpCondOp(False, selectlabel))
         code.append(PopOp())
         code.append(AtomicDecOp())
         code.append(JumpOp(looplabel))
-        code.nextLabel(startlabel)
+        code.nextLabel(selectlabel)
         code.append(ChooseOp())
         code.append(StoreVarOp(self.bv))
         self.stat.compile(scope, code)
@@ -4305,9 +4332,15 @@ class StatementRule(Rule):
             (bv, t) = BoundVarRule().parse(t[1:])
             (lexeme, file, line, nextColumn) = t[0]
             self.expect("select statement", lexeme == "in", t[0], "expected 'in'")
-            (expr, t) = NaryRule({":"}).parse(t[1:])
+            (expr, t) = NaryRule({":", "where"}).parse(t[1:])
+            (lexeme, file, line, nextColumn) = t[0]
+            if lexeme == "where":
+                (cond, t) = NaryRule({":"}).parse(t[1:])
+            else:
+                cond = None
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (SelectAST(token, bv, expr, stat), t)
+            return (SelectAST(token, bv, expr, cond, stat), t)
+
         if lexeme == "let":
             vars = []
             while True:

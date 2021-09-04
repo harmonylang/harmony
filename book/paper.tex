@@ -7017,7 +7017,7 @@ from Python:
 $x = [\mathtt{.a}, \mathtt{.b}]; \mathbf{del}~x[0]$ results in $x$ having value
 $\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
 
-\subsection*{\textbf{for ... in [...where]}}
+\subsection*{\textbf{for ... in ... [where ...]}}
 
 The statement \textbf{for} $x$ \textbf{in} $y: S_1; S_2; ...$
 iterates over $y$ and executes for each element the statements
@@ -7161,7 +7161,7 @@ While \texttt{assert} statements check that nothing ever goes wrong,
 \texttt{possibly} statements can check that certain things sometimes
 go right.
 
-\subsection*{\textbf{select ... in}}
+\subsection*{\textbf{select ... in ... [ where ... ]}}
 
 The statement \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$
 requires that $y$ evaluates to a set value.
@@ -7197,6 +7197,9 @@ XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
 The statement is particularly useful in programming network protocols
 when having to wait for one or more messages and executing a set
 of actions atomically after the desired messages have arrived.
+
+The optional \textbf{where} clause can be used to filter the set down to the elements
+that satisfy the condition following the \textbf{where} keyword.
 
 \subsection*{\textbf{sequential}}
 
