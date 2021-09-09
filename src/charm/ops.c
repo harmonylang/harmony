@@ -2185,8 +2185,7 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
     if ((e & VALUE_MASK) == VALUE_SET) {
         return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
     }
-    panic("op_isEmpty: not a set or dict");
-    return 0;
+    return ctx_failure(ctx, "loops can only iterate over dictionaries and sets");
 }
 
 uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n){
