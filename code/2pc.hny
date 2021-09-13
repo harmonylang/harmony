@@ -10,7 +10,7 @@ def send(m):
 def bank(self, balance):
     let status, received = (), {}:
         while True:
-            select req in { req for req in network - received where req.dst == self }:
+            select req in network - received where req.dst == self:
                 received |= { req }
                 if req.request == .withdraw:
                     if (status != ()) or (req.amount > balance):
