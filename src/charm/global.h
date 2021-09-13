@@ -60,22 +60,30 @@ struct state {
     uint64_t invariants;  // set of invariants that must hold
 };
 
-struct op_info {
-    const char *name;
-    void *(*init)(struct dict *);
-    void (*op)(const void *env, struct state *state, struct context **pctx);
+struct values_t {
+    struct dict *atoms;
+    struct dict *dicts;
+    struct dict *sets;
+    struct dict *addresses;
+    struct dict *contexts;
 };
 
-void value_init();
-uint64_t value_from_json(struct dict *map);
+struct op_info {
+    const char *name;
+    void *(*init)(struct dict *, struct values_t *values);
+    void (*op)(const void *env, struct state *state, struct context **pctx, struct values_t *values);
+};
+
+void value_init(struct values_t *values);
+uint64_t value_from_json(struct values_t *values, struct dict *map);
 int value_cmp(uint64_t v1, uint64_t v2);
 void *value_get(uint64_t v, int *size);
 void *value_copy(uint64_t v, int *size);
-uint64_t value_put_atom(const void *p, int size);
-uint64_t value_put_set(void *p, int size);
-uint64_t value_put_dict(void *p, int size);
-uint64_t value_put_address(void *p, int size);
-uint64_t value_put_context(struct context *ctx);
+uint64_t value_put_atom(struct values_t *values, const void *p, int size);
+uint64_t value_put_set(struct values_t *values, void *p, int size);
+uint64_t value_put_dict(struct values_t *values, void *p, int size);
+uint64_t value_put_address(struct values_t *values, void *p, int size);
+uint64_t value_put_context(struct values_t *values, struct context *ctx);
 char *value_string(uint64_t v);
 char *indices_string(const uint64_t *vec, int size);
 char *value_json(uint64_t v);
@@ -98,11 +106,11 @@ char *value_json(uint64_t v);
 #define VALUE_MAX   ((int64_t) ((~(uint64_t)0) >> (VALUE_BITS + 1)))
 #define VALUE_MIN   ((int64_t) ((~(uint64_t)0) << (64 - (VALUE_BITS + 1))))
 
-uint64_t dict_store(uint64_t dict, uint64_t key, uint64_t value);
+uint64_t dict_store(struct values_t *values, uint64_t dict, uint64_t key, uint64_t value);
 uint64_t dict_load(uint64_t dict, uint64_t key);
 bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result);
-uint64_t dict_remove(uint64_t dict, uint64_t key);
-uint64_t bag_add(uint64_t bag, uint64_t v);
+uint64_t dict_remove(struct values_t *values, uint64_t dict, uint64_t key);
+uint64_t bag_add(struct values_t *values, uint64_t bag, uint64_t v);
 void ctx_push(struct context **pctx, uint64_t v);
 
 struct access_info {
@@ -198,11 +206,11 @@ struct env_StoreVar {
     struct var_tree *args;
 };
 
-uint64_t ctx_failure(struct context *ctx, char *fmt, ...);
+uint64_t ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...);
 void panic(char *s);
-void ext_Del(const void *env, struct state *state, struct context **pctx,
+void ext_Del(const void *env, struct state *state, struct context **pctx, struct values_t *values,
                                                         struct access_info *ai);
-void ext_Load(const void *env, struct state *state, struct context **pctx,
+void ext_Load(const void *env, struct state *state, struct context **pctx, struct values_t *values,
                                                         struct access_info *ai);
-void ext_Store(const void *env, struct state *state, struct context **pctx,
+void ext_Store(const void *env, struct state *state, struct context **pctx, struct values_t *values,
                                                         struct access_info *ai);

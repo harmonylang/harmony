@@ -12,12 +12,6 @@
 #include "global.h"
 #endif
 
-static struct dict *atom_map;
-static struct dict *dict_map;
-static struct dict *set_map;
-static struct dict *address_map;
-static struct dict *context_map;
-
 void *value_get(uint64_t v, int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
@@ -43,40 +37,40 @@ void *value_copy(uint64_t v, int *psize){
     return r;
 }
 
-uint64_t value_put_atom(const void *p, int size){
+uint64_t value_put_atom(struct values_t *values, const void *p, int size){
     assert(size > 0);
-    void *q = dict_find(atom_map, p, size);
+    void *q = dict_find(values->atoms, p, size);
     return (uint64_t) q | VALUE_ATOM;
 }
 
-uint64_t value_put_set(void *p, int size){
+uint64_t value_put_set(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
-    void *q = dict_find(set_map, p, size);
+    void *q = dict_find(values->sets, p, size);
     return (uint64_t) q | VALUE_SET;
 }
 
-uint64_t value_put_dict(void *p, int size){
+uint64_t value_put_dict(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
-    void *q = dict_find(dict_map, p, size);
+    void *q = dict_find(values->dicts, p, size);
     return (uint64_t) q | VALUE_DICT;
 }
 
-uint64_t value_put_address(void *p, int size){
+uint64_t value_put_address(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
-    void *q = dict_find(address_map, p, size);
+    void *q = dict_find(values->addresses, p, size);
     return (uint64_t) q | VALUE_ADDRESS;
 }
 
-uint64_t value_put_context(struct context *ctx){
+uint64_t value_put_context(struct values_t *values, struct context *ctx){
 	assert(ctx->pc >= 0);
     int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
-    void *q = dict_find(context_map, ctx, size);
+    void *q = dict_find(values->contexts, ctx, size);
     return (uint64_t) q | VALUE_CONTEXT;
 }
 
@@ -670,15 +664,15 @@ uint64_t value_pc(struct dict *map){
     return (v << VALUE_BITS) | VALUE_PC;
 }
 
-uint64_t value_atom(struct dict *map){
+uint64_t value_atom(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
 	assert(value->u.atom.len > 0);
-    void *p = dict_find(atom_map, value->u.atom.base, value->u.atom.len);
+    void *p = dict_find(values->atoms, value->u.atom.base, value->u.atom.len);
     return (uint64_t) p | VALUE_ATOM;
 }
 
-uint64_t value_char(struct dict *map){
+uint64_t value_char(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     char *copy = malloc(value->u.atom.len + 1);
@@ -694,11 +688,11 @@ uint64_t value_char(struct dict *map){
         printf("value_char: can only handle ASCII characters right now\n");
     }
     char v = x & 0x7F;
-    void *p = dict_find(atom_map, &v, 1);
+    void *p = dict_find(values->atoms, &v, 1);
     return (uint64_t) p | VALUE_ATOM;
 }
 
-uint64_t value_dict(struct dict *map){
+uint64_t value_dict(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -712,18 +706,18 @@ uint64_t value_dict(struct dict *map){
         assert(k->type == JV_MAP);
         struct json_value *v = dict_lookup(jv->u.map, "value", 5);
         assert(v->type == JV_MAP);
-        vals[2*i] = value_from_json(k->u.map);
-        vals[2*i+1] = value_from_json(v->u.map);
+        vals[2*i] = value_from_json(values, k->u.map);
+        vals[2*i+1] = value_from_json(values, v->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(dict_map, vals,
+    void *p = dict_find(values->dicts, vals,
                     value->u.list.nvals * sizeof(uint64_t) * 2);
     free(vals);
     return (uint64_t) p | VALUE_DICT;
 }
 
-uint64_t value_set(struct dict *map){
+uint64_t value_set(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -733,16 +727,16 @@ uint64_t value_set(struct dict *map){
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(jv->u.map);
+        vals[i] = value_from_json(values, jv->u.map);
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(set_map, vals, value->u.list.nvals * sizeof(uint64_t));
+    void *p = dict_find(values->sets, vals, value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_SET;
 }
 
-uint64_t value_address(struct dict *map){
+uint64_t value_address(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
@@ -752,15 +746,15 @@ uint64_t value_address(struct dict *map){
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
-        vals[i] = value_from_json(jv->u.map);
+        vals[i] = value_from_json(values, jv->u.map);
     }
-    void *p = dict_find(address_map, vals,
+    void *p = dict_find(values->addresses, vals,
                             value->u.list.nvals * sizeof(uint64_t));
     free(vals);
     return (uint64_t) p | VALUE_ADDRESS;
 }
 
-uint64_t value_from_json(struct dict *map){
+uint64_t value_from_json(struct values_t *values, struct dict *map){
     struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
@@ -771,22 +765,22 @@ uint64_t value_from_json(struct dict *map){
         return value_int(map);
     }
     else if (atom_cmp(type->u.atom, "atom")) {
-        return value_atom(map);
+        return value_atom(values, map);
     }
     else if (atom_cmp(type->u.atom, "char")) {
-        return value_char(map);
+        return value_char(values, map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
-        return value_dict(map);
+        return value_dict(values, map);
     }
     else if (atom_cmp(type->u.atom, "set")) {
-        return value_set(map);
+        return value_set(values, map);
     }
     else if (atom_cmp(type->u.atom, "pc")) {
         return value_pc(map);
     }
     else if (atom_cmp(type->u.atom, "address")) {
-        return value_address(map);
+        return value_address(values, map);
     }
     else {
         panic("value_from_json: bad type");
@@ -794,10 +788,10 @@ uint64_t value_from_json(struct dict *map){
     }
 }
 
-void value_init(){
-    atom_map = dict_new(0);
-    dict_map = dict_new(0);
-    set_map = dict_new(0);
-    address_map = dict_new(0);
-    context_map = dict_new(0);
+void value_init(struct values_t *values){
+    values->atoms = dict_new(0);
+    values->dicts = dict_new(0);
+    values->sets = dict_new(0);
+    values->addresses = dict_new(0);
+    values->contexts = dict_new(0);
 }

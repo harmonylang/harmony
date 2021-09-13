@@ -1,0 +1,9 @@
+const N = 5
+const upTo = 5
+
+L = [0 for _ in {1..N}]
+
+for _ in {1..N*upTo}:
+    i = choose({ x for x in {0..N-1} where L[x] != upTo })
+    L[i] += 1
+
