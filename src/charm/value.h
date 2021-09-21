@@ -1,6 +1,18 @@
 #ifndef SRC_VALUE_H
 #define SRC_VALUE_H
 
+#include <stdbool.h>
+
+struct state {
+    uint64_t vars;        // shared variables
+    uint64_t seqs;        // sequential variables
+    uint64_t choosing;    // context that is choosing if non-zero
+    uint64_t ctxbag;      // bag of running contexts
+    uint64_t stopbag;     // bag of stopped contexts
+    uint64_t termbag;     // bag of terminated contexts
+    uint64_t invariants;  // set of invariants that must hold
+};
+
 struct context {          // context value
     uint64_t name;        // name of method
     uint64_t entry;       // entry point of main method
@@ -21,6 +33,11 @@ struct context {          // context value
     bool eternal;         // context runs indefinitely
     int sp;               // stack size
     uint64_t stack[0];    // growing stack
+};
+
+struct combined {           // combination of current state and current context
+    struct state state;
+    struct context context;
 };
 
 struct values_t {

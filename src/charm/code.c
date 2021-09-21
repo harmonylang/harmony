@@ -34,7 +34,7 @@ static struct instr_t code_instr_parse(struct values_t *values, struct json_valu
     return i;
 }
 
-struct code_t code_parse(struct values_t *values, struct json_value *json_code) {
+struct code_t code_init_parse(struct values_t *values, struct json_value *json_code) {
     assert(json_code->type == JV_LIST);
 
     struct code_t code;
@@ -44,6 +44,8 @@ struct code_t code_parse(struct values_t *values, struct json_value *json_code) 
     for (int i = 0; i < json_code->u.list.nvals; i++) {
         code.instrs[i] = code_instr_parse(values, json_code->u.list.vals[i]);
     }
+
+    code.code_map = dict_new(0);
 
     return code;
 }

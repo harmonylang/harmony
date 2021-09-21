@@ -15,8 +15,9 @@ struct instr_t {
 struct code_t {
     struct instr_t *instrs;
     int len;
+    struct dict *code_map;       // maps pc to file:line
 };
 
-struct code_t code_parse(struct values_t *values, struct json_value *json_code);
+struct code_t code_init_parse(struct values_t *values, struct json_value *json_code);
 
 #endif //SRC_CODE_H

@@ -7,6 +7,7 @@
 #include "minheap.h"
 #include "code.h"
 #include "value.h"
+#include "graph.h"
 #endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
@@ -24,19 +25,24 @@ unsigned long to_ulong(const char *p, int len);
 void ops_init(struct values_t *values);
 struct op_info *ops_get(char *opname, int size);
 
-struct state {
-    uint64_t vars;        // shared variables
-    uint64_t seqs;        // sequential variables
-    uint64_t choosing;    // context that is choosing if non-zero
-    uint64_t ctxbag;      // bag of running contexts
-    uint64_t stopbag;     // bag of stopped contexts
-    uint64_t termbag;     // bag of terminated contexts
-    uint64_t invariants;  // set of invariants that must hold
-};
-
 struct global_t {
     struct code_t code;
     struct values_t values;
+    struct graph_t graph;
+//    struct node **graph;         // vector of all nodes
+//    int graph_size;              // to create node identifiers
+//    int graph_alloc;             // size allocated
+    struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
+    struct minheap *warnings;    // queue of "struct failure"  (TODO: make part of struct node "issues")
+    uint64_t *processes;         // list of contexts of processes
+    int nprocesses;              // the number of processes in the list
+    double lasttime;             // since last report printed
+    int timecnt;                 // to reduce time overhead
+    int enqueued;                // #states enqueued
+    int dequeued;                // #states dequeued
+    bool dumpfirst;              // for json dumping
+    struct access_info *ai_free; // free list of access_info structures
+    struct node *tochk;
 };
 
 struct op_info {
@@ -51,16 +57,6 @@ bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result);
 uint64_t dict_remove(struct values_t *values, uint64_t dict, uint64_t key);
 uint64_t bag_add(struct values_t *values, uint64_t bag, uint64_t v);
 void ctx_push(struct context **pctx, uint64_t v);
-
-struct access_info {
-    struct access_info *next; // linked list maintenance
-    uint64_t *indices;        // address of load/store
-    int n;                    // length of address
-    bool load;                // store or del if false
-    int pc;                   // for debugging
-    int multiplicity;         // #identical contexts
-    int atomic;               // atomic counter
-};
 
 struct env_Cut {
     uint64_t set;

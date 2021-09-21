@@ -3,8 +3,9 @@ import timeit
 from tqdm import tqdm
 
 benchmark_filenames = [
-    ('choose', 10),
-    ('diners', 10)
+    ('choose', 5),
+    ('diners', 100),
+    ('qtestconc', 2)
 ]
 
 
@@ -14,7 +15,7 @@ def build_harmony():
 
 
 def compile_programs():
-    for (filename, _) in tqdm(benchmark_filenames, leave=False, desc='Compile Programs'):
+    for (filename, _) in tqdm(benchmark_filenames, leave=False, desc='Compile Programs', ncols=70):
         tqdm.write(f'Compiling {filename}')
         subprocess.run(['../harmony', f'{filename}.hny'], stdout=subprocess.DEVNULL)
 
@@ -22,7 +23,7 @@ def compile_programs():
 
 
 def run_benchmarks():
-    for (filename, num_iters) in tqdm(benchmark_filenames, position=0, desc='Run Benchmarks', leave=False):
+    for (filename, num_iters) in tqdm(benchmark_filenames, position=0, desc='Run Benchmarks', leave=False, ncols=70):
         setup = '''
 import subprocess
         '''
@@ -31,7 +32,7 @@ subprocess.run(['../charm.exe', '{filename}.hvm'], stdout=subprocess.DEVNULL)
         '''
 
         times = []
-        for i in tqdm(range(num_iters), desc=filename, leave=False):
+        for i in tqdm(range(num_iters), desc=filename, leave=False, ncols=70):
             time = timeit.timeit(stmt, setup, number=1)
             times.append(time)
 

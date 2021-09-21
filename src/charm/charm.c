@@ -11,82 +11,6 @@
 
 #define CHUNKSIZE   (1 << 12)
 
-struct combined {           // combination of current state and current context
-    struct state state;
-    struct context context;
-};
-
-struct component {
-    bool good;              // terminating or out-going edge
-    int size;               // #states
-    int representative;     // lowest numbered state in the component
-};
-
-struct edge {
-    struct edge *next;       // linked list maintenance
-    uint64_t ctx, choice;    // ctx that made the microstep, choice if any
-    bool interrupt;          // set if state change is an interrupt
-    struct node *node;       // resulting node (state)
-    uint64_t after;          // resulting context
-    int weight;              // 1 if context switch; 0 otherwise
-    struct access_info *ai;  // to detect data races
-};
-
-struct node {
-    // Information about state
-    struct state *state;    // state corresponding to this node
-    int id;                 // nodes are numbered starting from 0
-    struct edge *fwd;       // forward edges
-    struct edge *bwd;       // backward edges
-
-    // How to get here from parent node
-    struct node *parent;    // shortest path to initial state
-    int len;                // length of path to initial state
-    int steps;              // #microsteps from root
-    uint64_t before;        // context before state change
-    uint64_t after;         // context after state change (current context)
-    uint64_t choice;        // choice made if any
-    bool interrupt;         // set if gotten here by interrupt
-
-    // SCC
-    bool visited;           // for Kosaraju algorithm
-    unsigned int component; // strongly connected component id
-
-    bool processed;         // for debugging currently
-};
-
-struct failure {
-    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE } type;
-    struct node *node;      // failed state
-    uint64_t choice;        // choice if any
-    uint64_t address;       // in case of data race
-};
-
-static struct node **graph;         // vector of all nodes
-static int graph_size;              // to create node identifiers
-static int graph_alloc;             // size allocated
-static struct minheap *failures;    // queue of "struct failure"  (TODO: make part of struct node "issues")
-static struct minheap *warnings;    // queue of "struct failure"  (TODO: make part of struct node "issues")
-static uint64_t *processes;         // list of contexts of processes
-static int nprocesses;              // the number of processes in the list
-static double lasttime;             // since last report printed
-static int timecnt;                 // to reduce time overhead
-static int enqueued;                // #states enqueued
-static int dequeued;                // #states dequeued
-static bool dumpfirst;              // for json dumping
-static struct access_info *ai_free; // free list of access_info structures
-static struct node *tochk;
-static struct dict *code_map;       // maps pc to file:line
-
-static void graph_add(struct node *node){
-    node->id = graph_size;
-    if (graph_size >= graph_alloc) {
-        graph_alloc = (graph_alloc + 1) * 2;
-        graph = realloc(graph, (graph_alloc * sizeof(struct node *)));
-    }
-    graph[graph_size++] = node;
-}
-
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
     assert((*pctx)->sp == 0);
     assert((*pctx)->failure == 0);
@@ -134,25 +58,9 @@ void check_invariants(struct global_t *global, struct node *node, struct context
             f->type = FAIL_INVARIANT;
             f->choice = node->choice;
             f->node = node;
-            minheap_insert(failures, f);
+            minheap_insert(global->failures, f);
         }
     }
-}
-
-// For tracking data races
-struct access_info *ai_alloc(int multiplicity, int atomic, int pc){
-    struct access_info *ai;
-
-    if ((ai = ai_free) == 0) {
-        ai = calloc(1, sizeof(*ai));
-    }
-    else {
-        ai_free = ai->next;
-    }
-    ai->multiplicity = multiplicity;
-    ai->atomic = atomic;
-    ai->pc = pc;
-    return ai;
 }
 
 void onestep(
@@ -214,24 +122,24 @@ void onestep(
     for (;; loopcnt++) {
         int pc = cc->pc;
 
-        if (timecnt-- == 0) {
+        if (global->timecnt-- == 0) {
             struct timeval tv;
             gettimeofday(&tv, NULL);
             double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
-            if (now - lasttime > 1) {
-                if (lasttime != 0) {
+            if (now - global->lasttime > 1) {
+                if (global->lasttime != 0) {
                     char *p = value_string(cc->name);
                     printf("%s pc=%d states=%d queue=%d\n",
-                            p, cc->pc, enqueued, enqueued - dequeued);
+                            p, cc->pc, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }
-                lasttime = now;
+                global->lasttime = now;
                 if (now > timeout) {
                     fprintf(stderr, "charm: timeout exceeded\n");
                     exit(1);
                 }
             }
-            timecnt = 1;
+            global->timecnt = 1;
         }
 
         struct instr_t *instrs = global->code.instrs;
@@ -242,7 +150,7 @@ void onestep(
         }
         else {
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = ai_alloc(multiplicity, cc->atomic, pc);
+                struct access_info *ai = graph_ai_alloc(&global->ai_free, multiplicity, cc->atomic, pc);
                 if (instrs[pc].load)
                     ext_Load(instrs[pc].env, sc, &cc, global, ai);
                 else if (instrs[pc].store)
@@ -396,9 +304,9 @@ void onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + loopcnt;
-        graph_add(next);                // sets next->id
+        graph_add(&global->graph, next); // sets next->id
         if (next->id == 1383) {
-            tochk = next;
+            global->tochk = next;
         }
 
         if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
@@ -406,9 +314,9 @@ void onestep(
         }
 
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0
-                            && minheap_empty(failures)) {
+                            && minheap_empty(global->failures)) {
             minheap_insert(todo, next);
-            enqueued++;
+            global->enqueued++;
         }
     }
     else {
@@ -456,7 +364,7 @@ void onestep(
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
         f->choice = choice_copy;
         f->node = next;
-        minheap_insert(failures, f);
+        minheap_insert(global->failures, f);
     }
 
     free(cc);
@@ -769,9 +677,9 @@ void print_state(
     free(inv_ctx);
 
     fprintf(file, "      \"contexts\": [\n");
-    for (int i = 0; i < nprocesses; i++) {
-        print_context(global, file, processes[i], i, node);
-        if (i < nprocesses - 1) {
+    for (int i = 0; i < global->nprocesses; i++) {
+        print_context(global, file, global->processes[i], i, node);
+        if (i < global->nprocesses - 1) {
             fprintf(file, ",");
         }
         fprintf(file, "\n");
@@ -790,8 +698,8 @@ void diff_state(
     bool choose,
     uint64_t choice
 ) {
-    if (dumpfirst) {
-        dumpfirst = false;
+    if (global->dumpfirst) {
+        global->dumpfirst = false;
     }
     else {
         fprintf(file, ",");
@@ -1050,8 +958,8 @@ void path_dump(
      */
     uint64_t ctx = node->before;
     int pid;
-    for (pid = 0; pid < nprocesses; pid++) {
-        if (processes[pid] == ctx) {
+    for (pid = 0; pid < global->nprocesses; pid++) {
+        if (global->processes[pid] == ctx) {
             break;
         }
     }
@@ -1070,7 +978,7 @@ void path_dump(
         fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
     }
     // fprintf(file, "      \"choice\": \"%s\",\n", c);
-    dumpfirst = true;
+    global->dumpfirst = true;
     fprintf(file, "      \"microsteps\": [");
     free(name);
     free(arg);
@@ -1079,8 +987,8 @@ void path_dump(
     (*oldctx)->pc = context->pc;
 
     // Recreate the steps
-    assert(pid < nprocesses);
-    processes[pid] = twostep(
+    assert(pid < global->nprocesses);
+    global->processes[pid] = twostep(
         global,
         file,
         last,
@@ -1095,7 +1003,7 @@ void path_dump(
 
     /* Match each context to a process.
      */
-    bool *matched = calloc(nprocesses, sizeof(bool));
+    bool *matched = calloc(global->nprocesses, sizeof(bool));
     int nctxs;
     uint64_t *ctxs = value_get(node->state->ctxbag, &nctxs);
     nctxs /= sizeof(uint64_t);
@@ -1105,18 +1013,18 @@ void path_dump(
         int cnt = ctxs[i+1] >> VALUE_BITS;
         for (int j = 0; j < cnt; j++) {
             int k;
-            for (k = 0; k < nprocesses; k++) {
-                if (!matched[k] && processes[k] == ctxs[i]) {
+            for (k = 0; k < global->nprocesses; k++) {
+                if (!matched[k] && global->processes[k] == ctxs[i]) {
                     matched[k] = true;
                     break;
                 }
             }
-            if (k == nprocesses) {
-                processes = realloc(processes, (nprocesses + 1) * sizeof(uint64_t));
-                matched = realloc(matched, (nprocesses + 1) * sizeof(bool));
-                processes[nprocesses] = ctxs[i];
-                matched[nprocesses] = true;
-                nprocesses++;
+            if (k == global->nprocesses) {
+                global->processes = realloc(global->processes, (global->nprocesses + 1) * sizeof(uint64_t));
+                matched = realloc(matched, (global->nprocesses + 1) * sizeof(bool));
+                global->processes[global->nprocesses] = ctxs[i];
+                matched[global->nprocesses] = true;
+                global->nprocesses++;
             }
         }
     }
@@ -1124,73 +1032,6 @@ void path_dump(
   
     print_state(global, file, node);
     fprintf(file, "    }");
-}
-
-static struct stack {
-    struct stack *next;
-    struct node *node;
-} *stack;
-
-static void kosaraju_visit(struct node *node) {
-    if (node->visited) {
-        return;
-    }
-    node->visited = true;
-
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-        kosaraju_visit(edge->node);
-    }
-
-    // Push node
-    struct stack *s = new_alloc(struct stack);
-    s->node = node;
-    s->next = stack;
-    stack = s;
-}
-
-static void kosaraju_assign(struct node *node, int component){
-    if (node->visited) {
-        return;
-    }
-    node->visited = true;
-    node->component = component;
-    for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next) {
-        kosaraju_assign(edge->node, component);
-    }
-}
-
-static int find_scc(void){
-    for (int i = 0; i < graph_size; i++) {
-        kosaraju_visit(graph[i]);
-    }
-
-    // make sure all nodes are marked and on the stack
-    // while at it clear all the visited flags
-    int count = 0;
-    for (struct stack *s = stack; s != NULL; s = s->next) {
-        assert(s->node->visited);
-        s->node->visited = false;
-        count++;
-    }
-    assert(count == graph_size);
-
-    count = 0;
-    while (stack != NULL) {
-        // Pop
-        struct stack *top = stack;
-        stack = top->next;
-        struct node *next = top->node;
-        free(top);
-
-        if (!next->visited) {
-            kosaraju_assign(next, count++);
-        }
-    }
-    for (int i = 0; i < graph_size; i++) {
-        assert(graph[i]->visited);
-    }
-
-    return count;
 }
 
 static char *json_string_encode(char *s, int len){
@@ -1225,12 +1066,22 @@ static char *json_string_encode(char *s, int len){
     *p++ = 0;
     return result;
 }
-            
 
-static void enum_loc(void *env, const void *key, unsigned int key_size,
-                                HASHDICT_VALUE_TYPE value){
+struct enum_loc_env_t {
+    FILE *out;
+    struct dict *code_map;
+};
+
+static void enum_loc(
+    void *env,
+    const void *key,
+    unsigned int key_size,
+    HASHDICT_VALUE_TYPE value
+) {
     static bool notfirst = false;
-    FILE *out = env;
+    struct enum_loc_env_t *enum_loc_env = env;
+    FILE *out = enum_loc_env->out;
+    struct dict *code_map = enum_loc_env->code_map;
 
     if (notfirst) {
         fprintf(out, ",\n");
@@ -1314,7 +1165,7 @@ enum busywait is_stuck(struct node *start, struct node *node, uint64_t ctx, bool
     return result;
 }
 
-void detect_busywait(struct node *node){
+void detect_busywait(struct minheap *failures, struct node *node){
 	// Get the contexts
 	int size;
 	uint64_t *ctxs = value_get(node->state->ctxbag, &size);
@@ -1374,7 +1225,7 @@ void possibly_check(struct code_t *code, int pc) {
 
     void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
     if (cnt == 0) {
-        char *loc = dict_lookup(code_map, &pc, sizeof(pc));
+        char *loc = dict_lookup(code->code_map, &pc, sizeof(pc));
         if (loc == NULL) {
             printf("invalidated possibly pc=%d/%d\n", pc, ep->index);
         }
@@ -1390,8 +1241,6 @@ void usage(char *prog){
 }
 
 int main(int argc, char **argv){
-    code_map = dict_new(0);
-
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
     for (i = 1; i < argc; i++) {
@@ -1438,13 +1287,14 @@ int main(int argc, char **argv){
     double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
     double timeout = now + maxtime;
 
-    failures = minheap_create(fail_cmp);
-    warnings = minheap_create(fail_cmp);
 
     // initialize modules
     struct global_t *global = malloc(sizeof(struct global_t));
     value_init(&global->values);
     ops_init(&global->values);
+
+    global->failures = minheap_create(fail_cmp);
+    global->warnings = minheap_create(fail_cmp);
 
     // open the file
     FILE *fp = fopen(fname, "r");
@@ -1471,7 +1321,7 @@ int main(int argc, char **argv){
     // travel through the json code contents to create the code array
     struct json_value *jc = dict_lookup(jv->u.map, "code", 4);
     assert(jc->type == JV_LIST);
-    global->code = code_parse(&global->values, jc);
+    global->code = code_init_parse(&global->values, jc);
 
     // Create an initial state
 	uint64_t this = value_put_atom(&global->values, "this", 4);
@@ -1493,16 +1343,16 @@ int main(int argc, char **argv){
     state->ctxbag = dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
-    processes = new_alloc(uint64_t);
-    *processes = ictx;
-    nprocesses = 1;
+    global->processes = new_alloc(uint64_t);
+    *global->processes = ictx;
+    global->nprocesses = 1;
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new(0);
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
-    graph_add(node);
+    graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
@@ -1510,7 +1360,7 @@ int main(int argc, char **argv){
     // Put the initial state on the queue
     struct minheap *todo = minheap_create(node_cmp);
     minheap_insert(todo, node);
-    enqueued++;
+    global->enqueued++;
 
     // Create a context for evaluating invariants
     struct context *inv_ctx = new_alloc(struct context);
@@ -1525,10 +1375,10 @@ int main(int argc, char **argv){
 
     void *next;
     int state_counter = 1;
-    while (!minheap_empty(todo) && minheap_empty(failures)) {
+    while (!minheap_empty(todo) && minheap_empty(global->failures)) {
         next = minheap_getmin(todo);
         state_counter++;
-        dequeued++;
+        global->dequeued++;
 
         node = next;
         node->processed = true;
@@ -1589,69 +1439,22 @@ int main(int argc, char **argv){
             }
 
             // Check for data race
-            // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y
-            if (minheap_empty(warnings) && !cflag) {
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                    for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
-                        if (ai->indices != NULL) {
-                            assert(ai->n > 0);
-                            if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
-                                struct failure *f = new_alloc(struct failure);
-                                f->type = FAIL_RACE;
-                                f->choice = node->choice;
-                                f->node = node;
-                                f->address = value_put_address(&global->values, ai->indices, ai->n * sizeof(uint64_t));
-                                minheap_insert(warnings, f);
-                            }
-                            else {
-                                for (struct edge *edge2 = edge->next; edge2 != NULL; edge2 = edge2->next) {
-                                    for (struct access_info *ai2 = edge2->ai; ai2 != NULL; ai2 = ai2->next) {
-                                        if (ai2->indices != NULL && !(ai->load && ai2->load) &&
-                                                                (ai->atomic == 0 || ai2->atomic == 0)) {
-                                            int min = ai->n < ai2->n ? ai->n : ai2->n;
-                                            assert(min > 0);
-                                            if (memcmp(ai->indices, ai2->indices,
-                                                                min * sizeof(uint64_t)) == 0) {
-                                                struct failure *f = new_alloc(struct failure);
-                                                f->type = FAIL_RACE;
-                                                f->choice = node->choice;
-                                                f->node = node;
-                                                f->address = value_put_address(&global->values, ai->indices, min * sizeof(uint64_t));
-                                                minheap_insert(warnings, f);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                // Put access_info structs back on the free list
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                    struct access_info *ai = edge->ai;
-                    if (ai != NULL) {
-                        while (ai->next != NULL) {
-                            ai = ai->next;
-                        }
-                        ai->next = ai_free;
-                        ai_free = edge->ai;
-                        edge->ai = NULL;
-                    }
-                }
+            if (minheap_empty(global->warnings) && !cflag) {
+                graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
             }
         }
     }
 
-    printf("#states %d\n", graph_size);
+    printf("#states %d\n", global->graph.size);
 
-    if (minheap_empty(failures)) {
+    if (minheap_empty(global->failures)) {
         // find the strongly connected components
-        int ncomponents = find_scc();
+        int ncomponents = graph_find_scc(&global->graph);
 
         // mark the ones that are good
         struct component *components = calloc(ncomponents, sizeof(*components));
-        for (int i = 0; i < graph_size; i++) {
-            struct node *node = graph[i];
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
@@ -1676,26 +1479,26 @@ int main(int argc, char **argv){
 
         // now count the nodes that are in bad components
         int nbad = 0;
-        for (int i = 0; i < graph_size; i++) {
-            struct node *node = graph[i];
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             if (!components[node->component].good) {
                 nbad++;
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_TERMINATION;
                 f->choice = node->choice;
                 f->node = node;
-                minheap_insert(failures, f);
+                minheap_insert(global->failures, f);
             }
         }
 
         if (nbad == 0 && !cflag) {
-            for (int i = 0; i < graph_size; i++) {
-				graph[i]->visited = false;
+            for (int i = 0; i < global->graph.size; i++) {
+				global->graph.nodes[i]->visited = false;
 			}
-            for (int i = 0; i < graph_size; i++) {
-                struct node *node = graph[i];
+            for (int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
                 if (components[node->component].size > 1) {
-                    detect_busywait(node);
+                    detect_busywait(global->failures, node);
                 }
             }
         }
@@ -1706,8 +1509,8 @@ int main(int argc, char **argv){
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
-        for (int i = 0; i < graph_size; i++) {
-            struct node *node = graph[i];
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
             fprintf(df, "    component: %d\n", node->component);
@@ -1735,7 +1538,7 @@ int main(int argc, char **argv){
     }
     fprintf(out, "{\n");
 
-    bool no_issues = minheap_empty(failures) && minheap_empty(warnings);
+    bool no_issues = minheap_empty(global->failures) && minheap_empty(global->warnings);
     if (no_issues) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
@@ -1743,11 +1546,11 @@ int main(int argc, char **argv){
     else {
         // Find shortest "bad" path
         struct failure *bad = NULL;
-        if (minheap_empty(failures)) {
-            bad = minheap_getmin(warnings);
+        if (minheap_empty(global->failures)) {
+            bad = minheap_getmin(global->warnings);
         }
         else {
-            bad = minheap_getmin(failures);
+            bad = minheap_getmin(global->failures);
         }
 
         switch (bad->type) {
@@ -1786,7 +1589,7 @@ int main(int argc, char **argv){
         struct state oldstate;
         memset(&oldstate, 0, sizeof(oldstate));
         struct context *oldctx = calloc(1, sizeof(*oldctx));
-        dumpfirst = true;
+        global->dumpfirst = true;
         path_dump(global, out, bad->node, bad->choice, &oldstate, &oldctx, false);
         fprintf(out, "\n");
         free(oldctx);
@@ -1828,7 +1631,10 @@ int main(int argc, char **argv){
     fprintf(out, "  \"locations\": {");
     jc = dict_lookup(jv->u.map, "locations", 9);
     assert(jc->type == JV_MAP);
-    dict_iter(jc->u.map, enum_loc, out);
+    struct enum_loc_env_t enum_loc_env;
+    enum_loc_env.out = out;
+    enum_loc_env.code_map = global->code.code_map;
+    dict_iter(jc->u.map, enum_loc, &enum_loc_env);
     fprintf(out, "\n  }\n");
 
     fprintf(out, "}\n");
