@@ -129,7 +129,7 @@ void onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     char *p = value_string(cc->name);
-                    printf("%s pc=%d states=%d queue=%d\n",
+                    fprintf(stderr, "%s pc=%d states=%d queue=%d\n",
                             p, cc->pc, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }

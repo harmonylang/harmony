@@ -6259,7 +6259,7 @@ def main():
         gh.run(stem)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
-            print("open file://" + str(p) + " for more information")
+            print("open file://" + str(p) + " for more information", file=sys.stderr)
         sys.exit(0);
 
     if printCode == None:
