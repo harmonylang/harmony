@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #ifndef HARMONY_COMBINE
 #include <stdio.h>
 #include <stdlib.h>

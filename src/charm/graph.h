@@ -5,6 +5,7 @@
 
 #ifndef HARMONY_COMBINE
 #include "value.h"
+#include "minheap.h"
 #endif
 
 struct component {

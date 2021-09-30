@@ -795,3 +795,208 @@ void value_init(struct values_t *values){
     values->addresses = dict_new(0);
     values->contexts = dict_new(0);
 }
+
+// Store key:value in the given dictionary and returns its value code
+uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, uint64_t value){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    if (false) {
+        char *p = value_string(value);
+        char *q = value_string(dict);
+        char *r = value_string(key);
+        printf("DICT_STORE %s %s %s\n", p, q, r);
+        free(p);
+        free(q);
+        free(r);
+    }
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            if (vals[i + 1] == value) {
+                return dict;
+            }
+            int n = size * sizeof(uint64_t);
+            uint64_t *copy = malloc(n);
+            memcpy(copy, vals, n);
+            copy[i + 1] = value;
+            uint64_t v = value_put_dict(values, copy, n);
+            free(copy);
+            return v;
+        }
+        if (value_cmp(vals[i], key) > 0) {
+            break;
+        }
+    }
+
+    int n = (size + 2) * sizeof(uint64_t);
+    uint64_t *nvals = malloc(n);
+    memcpy(nvals, vals, i * sizeof(uint64_t));
+    nvals[i] = key;
+    nvals[i+1] = value;
+    memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(uint64_t));
+    uint64_t v = value_put_dict(values, nvals, n);
+    free(nvals);
+    return v;
+}
+
+uint64_t value_dict_load(uint64_t dict, uint64_t key){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            return vals[i + 1];
+        }
+        /*
+            if (value_cmp(vals[i], key) > 0) {
+                break;
+            }
+        */
+    }
+
+    printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
+    panic("dict_load");
+    return 0;
+}
+
+uint64_t value_dict_remove(struct values_t *values, uint64_t dict, uint64_t key){
+    assert((dict & VALUE_MASK) == VALUE_DICT);
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        return VALUE_DICT;
+    }
+    vals = value_get(dict & ~VALUE_MASK, &size);
+    size /= sizeof(uint64_t);
+    assert(size % 2 == 0);
+
+    if (size == 2) {
+        return vals[0] == key ? VALUE_DICT : dict;
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            int n = (size - 2) * sizeof(uint64_t);
+            uint64_t *copy = malloc(n);
+            memcpy(copy, vals, i * sizeof(uint64_t));
+            memcpy(&copy[i], &vals[i+2],
+                   (size - i - 2) * sizeof(uint64_t));
+            uint64_t v = value_put_dict(values, copy, n);
+            free(copy);
+            return v;
+        }
+        /*
+            if (value_cmp(vals[i], key) > 0) {
+                assert(false);
+            }
+        */
+    }
+
+    return dict;
+}
+
+bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
+    if ((dict & VALUE_MASK) != VALUE_DICT) {
+        return false;
+    }
+
+    uint64_t *vals;
+    int size;
+    if (dict == VALUE_DICT) {
+        vals = NULL;
+        size = 0;
+    }
+    else {
+        vals = value_get(dict & ~VALUE_MASK, &size);
+        size /= sizeof(uint64_t);
+        assert(size % 2 == 0);
+    }
+
+    int i;
+    for (i = 0; i < size; i += 2) {
+        if (vals[i] == key) {
+            *result = vals[i + 1];
+            return true;
+        }
+        /*
+            if (value_cmp(vals[i], key) > 0) {
+                break;
+            }
+        */
+    }
+    return false;
+}
+
+uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v){
+    uint64_t count;
+    if (value_dict_tryload(bag, v, &count)) {
+        assert((count & VALUE_MASK) == VALUE_INT);
+        assert(count != VALUE_INT);
+        count += 1 << VALUE_BITS;
+        return value_dict_store(values, bag, v, count);
+    }
+    else {
+        return value_dict_store(values, bag, v, (1 << VALUE_BITS) | VALUE_INT);
+    }
+}
+
+void value_ctx_push(struct context **pctx, uint64_t v){
+    assert(*pctx != NULL);
+    struct context *ctx = realloc(*pctx, sizeof(struct context) +
+                                         ((*pctx)->sp + 1) * sizeof(uint64_t));
+
+    ctx->stack[ctx->sp++] = v;
+    *pctx = ctx;
+}
+
+uint64_t value_ctx_pop(struct context **pctx){
+    struct context *ctx = *pctx;
+
+    assert(ctx->sp > 0);
+    return ctx->stack[--ctx->sp];
+}
+
+uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
+    char *r;
+    va_list args;
+
+    assert(ctx->failure == 0);
+
+    va_start(args, fmt);
+    if (vasprintf(&r, fmt, args) < 0) {
+        panic("ctx_failure: vasprintf");
+    }
+    va_end(args);
+
+    ctx->failure = value_put_atom(values, r, strlen(r));
+    free(r);
+
+    return 0;
+}

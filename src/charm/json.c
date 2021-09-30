@@ -3,10 +3,14 @@
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifndef HARMONY_COMBINE
-#include "global.h"
+#include "hashdict.h"
+#include "json.h"
 #endif
+
+#define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
 #define buf_adv(b)		do { assert((b)->len > 0); (b)->base++; (b)->len--; } while (false)
 

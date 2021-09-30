@@ -7,6 +7,8 @@
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
+#include "charm.h"
+#include "ops.h"
 #endif
 
 #define CHUNKSIZE   (1 << 12)
@@ -223,19 +225,19 @@ void onestep(
         if (global->code.instrs[cc->pc].choose) {
             assert(cc->sp > 0);
             if (cc->readonly > 0) {
-                ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
+                value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
                 break;
             }
             uint64_t s = cc->stack[cc->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
-                ctx_failure(cc, &global->values, "choose operation requires a set");
+                value_ctx_failure(cc, &global->values, "choose operation requires a set");
                 break;
             }
             int size;
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             if (size == 0) {
-                ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
+                value_ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
                 break;
             }
             if (size == 1) {            // TODO.  This optimization is probably not worth it
@@ -261,14 +263,14 @@ void onestep(
     }
 
     // Remove old context from the bag
-    uint64_t count = dict_load(sc->ctxbag, ctx);
+    uint64_t count = value_dict_load(sc->ctxbag, ctx);
     assert((count & VALUE_MASK) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
-        sc->ctxbag = dict_remove(&global->values, sc->ctxbag, ctx);
+        sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
     }
     else {
-        sc->ctxbag = dict_store(&global->values, sc->ctxbag, ctx, count);
+        sc->ctxbag = value_dict_store(&global->values, sc->ctxbag, ctx, count);
     }
 
     // Store new context in value directory.  Must be immutable now.
@@ -282,10 +284,10 @@ void onestep(
 
     // Add new context to state unless it's terminated or stopped
     if (cc->stopped) {
-        sc->stopbag = bag_add(&global->values, sc->stopbag, after);
+        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after);
     }
     else if (!cc->terminated) {
-        sc->ctxbag = bag_add(&global->values, sc->ctxbag, after);
+        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after);
     }
 
     // Weight of this step
@@ -887,13 +889,13 @@ uint64_t twostep(
         if (global->code.instrs[cc->pc].choose) {
             assert(cc->sp > 0);
             if (cc->readonly > 0) {
-                ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
+                value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
                 diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
                 break;
             }
             uint64_t s = cc->stack[cc->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
-                ctx_failure(cc, &global->values, "choose operation requires a set");
+                value_ctx_failure(cc, &global->values, "choose operation requires a set");
                 diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
                 break;
             }
@@ -901,7 +903,7 @@ uint64_t twostep(
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             if (size == 0) {
-                ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
+                value_ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
                 diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
                 break;
             }
@@ -1219,8 +1221,7 @@ bool all_eternal(uint64_t ctxbag){
     return all;
 }
 
-void possibly_check(struct code_t *code, int pc) {
-    extern struct dict *possibly_cnt;
+void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     const struct env_Possibly *ep = code->instrs[pc].env;
 
     void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
@@ -1291,7 +1292,7 @@ int main(int argc, char **argv){
     // initialize modules
     struct global_t *global = malloc(sizeof(struct global_t));
     value_init(&global->values);
-    ops_init(&global->values);
+    ops_init(global);
 
     global->failures = minheap_create(fail_cmp);
     global->warnings = minheap_create(fail_cmp);
@@ -1334,13 +1335,13 @@ int main(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
-    ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
-    ctx_push(&init_ctx, VALUE_DICT);
+    value_ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
     uint64_t ictx = value_put_context(&global->values, init_ctx);
-    state->ctxbag = dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
+    state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     global->processes = new_alloc(uint64_t);
@@ -1643,7 +1644,7 @@ int main(int argc, char **argv){
     if (no_issues) {
         for (int i = 0; i < global->code.len; i++) {
             if (strcmp(global->code.instrs[i].oi->name, "Possibly") == 0) {
-                possibly_check(&global->code, i);
+                possibly_check(global->possibly_cnt, &global->code, i);
             }
         }
     }

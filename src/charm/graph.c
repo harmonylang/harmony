@@ -4,7 +4,6 @@
 
 #ifndef HARMONY_COMBINE
 #include "graph.h"
-#include "minheap.h"
 #endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))

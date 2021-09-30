@@ -5,7 +5,7 @@
 #ifndef HARMONY_COMBINE
 #include "code.h"
 #include "hashdict.h"
-#include "global.h"
+#include "ops.h"
 #endif
 
 static struct instr_t code_instr_parse(struct values_t *values, struct json_value *jv) {

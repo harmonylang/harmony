@@ -6,12 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <inttypes.h>
 #include <ctype.h>
 #include <assert.h>
 
 #ifndef HARMONY_COMBINE
-#include "global.h"
+#include "ops.h"
 #endif
 
 #define MAX_ARITY   16
@@ -37,9 +36,9 @@ struct var_tree {
     } u;
 };
 
+// These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
 static uint64_t underscore, this_atom;
-struct dict *possibly_cnt;
 
 bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
     assert((seqvars & VALUE_MASK) == VALUE_SET);
@@ -59,24 +58,6 @@ bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
     return false;
 }
 
-uint64_t ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
-    char *r;
-    va_list args;
-
-    assert(ctx->failure == 0);
-
-    va_start(args, fmt);
-    if (vasprintf(&r, fmt, args) < 0) {
-		panic("ctx_failure: vasprintf");
-	}
-    va_end(args);
-
-    ctx->failure = value_put_atom(values, r, strlen(r));
-    free(r);
-
-    return 0;
-}
-
 uint64_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t *values,
                             uint64_t arg, uint64_t vars){
     switch (vt->type) {
@@ -84,35 +65,35 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
         if (vt->u.name == underscore) {
             return vars;
         }
-        return dict_store(values, vars, vt->u.name, arg);
+        return value_dict_store(values, vars, vt->u.name, arg);
     case VT_TUPLE:
         if ((arg & VALUE_MASK) != VALUE_DICT) {
             if (vt->u.tuple.n == 0) {
-                return ctx_failure(ctx, values, "match: expected ()");
+                return value_ctx_failure(ctx, values, "match: expected ()");
             }
             else {
-                return ctx_failure(ctx, values, "match: expected a tuple");
+                return value_ctx_failure(ctx, values, "match: expected a tuple");
             }
         }
         if (arg == VALUE_DICT) {
             if (vt->u.tuple.n != 0) {
-                return ctx_failure(ctx, values, "match: expected a %d-tuple",
+                return value_ctx_failure(ctx, values, "match: expected a %d-tuple",
                                                 vt->u.tuple.n);
             }
             return vars;
         }
         if (vt->u.tuple.n == 0) {
-            return ctx_failure(ctx, values, "match: expected an empty tuple");
+            return value_ctx_failure(ctx, values, "match: expected an empty tuple");
         }
         int size;
         uint64_t *vals = value_get(arg, &size);
         size /= 2 * sizeof(uint64_t);
         if (vt->u.tuple.n != size) {
-            return ctx_failure(ctx, values, "match: tuple size mismatch");
+            return value_ctx_failure(ctx, values, "match: tuple size mismatch");
         }
         for (int i = 0; i < size; i++) {
             if (vals[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
-                return ctx_failure(ctx, values, "match: not a tuple");
+                return value_ctx_failure(ctx, values, "match: not a tuple");
             }
             vars = var_match_rec(ctx, vt->u.tuple.elements[i], values, vals[2*i+1], vars);
         }
@@ -204,195 +185,21 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
     return vt;
 }
 
-void ctx_push(struct context **pctx, uint64_t v){
-	assert(*pctx != NULL);
-    struct context *ctx = realloc(*pctx, sizeof(struct context) + 
-                ((*pctx)->sp + 1) * sizeof(uint64_t));
-
-    ctx->stack[ctx->sp++] = v;
-    *pctx = ctx;
-}
-
-uint64_t ctx_pop(struct context **pctx){
-    struct context *ctx = *pctx;
-
-    assert(ctx->sp > 0);
-    return ctx->stack[--ctx->sp];
-}
-
 void interrupt_invoke(struct context **pctx){
     assert(!(*pctx)->interruptlevel);
 	assert(((*pctx)->trap_pc & VALUE_MASK) == VALUE_PC);
-    ctx_push(pctx, ((*pctx)->pc << VALUE_BITS) | VALUE_PC);
-    ctx_push(pctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
-    ctx_push(pctx, (*pctx)->trap_arg);
+    value_ctx_push(pctx, ((*pctx)->pc << VALUE_BITS) | VALUE_PC);
+    value_ctx_push(pctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(pctx, (*pctx)->trap_arg);
     (*pctx)->pc = (*pctx)->trap_pc >> VALUE_BITS;
     (*pctx)->trap_pc = 0;
     (*pctx)->interruptlevel = true;
 }
 
-uint64_t dict_load(uint64_t dict, uint64_t key){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
-
-    uint64_t *vals;
-    int size;
-    if (dict == VALUE_DICT) {
-        vals = NULL;
-        size = 0;
-    }
-    else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
-        assert(size % 2 == 0);
-    }
-
-    int i;
-    for (i = 0; i < size; i += 2) {
-        if (vals[i] == key) {
-            return vals[i + 1];
-        }
-        /* 
-            if (value_cmp(vals[i], key) > 0) {
-                break;
-            }
-        */
-    }
-
-	printf("CAN'T FIND %s in %s\n", value_string(key), value_string(dict));
-    panic("dict_load");
-    return 0;
-}
-
-uint64_t dict_remove(struct values_t *values, uint64_t dict, uint64_t key){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
-
-    uint64_t *vals;
-    int size;
-    if (dict == VALUE_DICT) {
-        return VALUE_DICT;
-    }
-    vals = value_get(dict & ~VALUE_MASK, &size);
-    size /= sizeof(uint64_t);
-    assert(size % 2 == 0);
-
-    if (size == 2) {
-        return vals[0] == key ? VALUE_DICT : dict;
-    }
-
-    int i;
-    for (i = 0; i < size; i += 2) {
-        if (vals[i] == key) {
-            int n = (size - 2) * sizeof(uint64_t);
-            uint64_t *copy = malloc(n);
-            memcpy(copy, vals, i * sizeof(uint64_t));
-            memcpy(&copy[i], &vals[i+2],
-                (size - i - 2) * sizeof(uint64_t));
-            uint64_t v = value_put_dict(values, copy, n);
-            free(copy);
-            return v;
-        }
-        /* 
-            if (value_cmp(vals[i], key) > 0) {
-                assert(false);
-            }
-        */
-    }
-
-    return dict;
-}
-
-bool dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
-    if ((dict & VALUE_MASK) != VALUE_DICT) {
-        return false;
-    }
-
-    uint64_t *vals;
-    int size;
-    if (dict == VALUE_DICT) {
-        vals = NULL;
-        size = 0;
-    }
-    else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
-        assert(size % 2 == 0);
-    }
-
-    int i;
-    for (i = 0; i < size; i += 2) {
-        if (vals[i] == key) {
-            *result = vals[i + 1];
-            return true;
-        }
-        /* 
-            if (value_cmp(vals[i], key) > 0) {
-                break;
-            }
-        */
-    }
-    return false;
-}
-
-// Store key:value in the given dictionary and returns its value code
-uint64_t dict_store(struct values_t *values, uint64_t dict, uint64_t key, uint64_t value){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
-
-    if (false) {
-        char *p = value_string(value);
-        char *q = value_string(dict);
-        char *r = value_string(key);
-        printf("DICT_STORE %s %s %s\n", p, q, r);
-        free(p);
-        free(q);
-        free(r);
-    }
-
-    uint64_t *vals;
-    int size;
-    if (dict == VALUE_DICT) {
-        vals = NULL;
-        size = 0;
-    }
-    else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
-        assert(size % 2 == 0);
-    }
-
-    int i;
-    for (i = 0; i < size; i += 2) {
-        if (vals[i] == key) {
-            if (vals[i + 1] == value) {
-                return dict;
-            }
-            int n = size * sizeof(uint64_t);
-            uint64_t *copy = malloc(n);
-            memcpy(copy, vals, n);
-            copy[i + 1] = value;
-            uint64_t v = value_put_dict(values, copy, n);
-            free(copy);
-            return v;
-        }
-        if (value_cmp(vals[i], key) > 0) {
-            break;
-        }
-    }
-
-    int n = (size + 2) * sizeof(uint64_t);
-    uint64_t *nvals = malloc(n);
-    memcpy(nvals, vals, i * sizeof(uint64_t));
-    nvals[i] = key;
-    nvals[i+1] = value;
-    memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(uint64_t));
-    uint64_t v = value_put_dict(values, nvals, n);
-    free(nvals);
-    return v;
-}
-
 bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
     uint64_t d = dict;
     for (int i = 0; i < n; i++) {
-        if (!dict_tryload(d, indices[i], &d)) {
+        if (!value_dict_tryload(d, indices[i], &d)) {
             return false;
         }
     }
@@ -405,7 +212,7 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struc
     assert(n > 0);
 
     if (n == 1) {
-        *result = dict_store(values, dict, indices[0], value);
+        *result = value_dict_store(values, dict, indices[0], value);
         return true;
     }
     else {
@@ -461,7 +268,7 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
     assert(n > 0);
 
     if (n == 1) {
-        *result = dict_remove(values, dict, indices[0]);
+        *result = value_dict_remove(values, dict, indices[0]);
         return true;
     }
     else {
@@ -512,16 +319,16 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
 }
 
 void op_Address(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t index = ctx_pop(pctx);
-    uint64_t av = ctx_pop(pctx);
+    uint64_t index = value_ctx_pop(pctx);
+    uint64_t av = value_ctx_pop(pctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
-        ctx_failure(*pctx, &global->values, "%s: not an address", p);
+        value_ctx_failure(*pctx, &global->values, "%s: not an address", p);
         free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
-        ctx_failure(*pctx, &global->values, "None unexpected");
+        value_ctx_failure(*pctx, &global->values, "None unexpected");
         return;
     }
     if (false) {
@@ -532,55 +339,55 @@ void op_Address(const void *env, struct state *state, struct context **pctx, str
     uint64_t *indices = value_copy(av, &size);
     indices = realloc(indices, size + sizeof(index));
     indices[size / sizeof(uint64_t)] = index;
-    ctx_push(pctx, value_put_address(&global->values, indices, size + sizeof(index)));
+    value_ctx_push(pctx, value_put_address(&global->values, indices, size + sizeof(index)));
     free(indices);
     (*pctx)->pc++;
 }
 
 void op_Apply(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t e = ctx_pop(pctx);
-    uint64_t method = ctx_pop(pctx);
+    uint64_t e = value_ctx_pop(pctx);
+    uint64_t method = value_ctx_pop(pctx);
 
     uint64_t type = method & VALUE_MASK;
     switch (type) {
     case VALUE_DICT:
         {
             uint64_t v;
-            if (!dict_tryload(method, e, &v)) {
+            if (!value_dict_tryload(method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
-                ctx_failure(*pctx, &global->values, "Bad index %s: not in %s", x, m);
+                value_ctx_failure(*pctx, &global->values, "Bad index %s: not in %s", x, m);
                 free(m);
                 free(x);
                 return;
             }
-            ctx_push(pctx, v);
+            value_ctx_push(pctx, v);
             (*pctx)->pc++;
         }
         return;
     case VALUE_PC:
-        ctx_push(pctx, (((*pctx)->pc + 1) << VALUE_BITS) | VALUE_PC);
-        ctx_push(pctx, (CALLTYPE_NORMAL << VALUE_BITS) | VALUE_INT);
-        ctx_push(pctx, e);
+        value_ctx_push(pctx, (((*pctx)->pc + 1) << VALUE_BITS) | VALUE_PC);
+        value_ctx_push(pctx, (CALLTYPE_NORMAL << VALUE_BITS) | VALUE_INT);
+        value_ctx_push(pctx, e);
         assert((method >> VALUE_BITS) != (*pctx)->pc);
         (*pctx)->pc = method >> VALUE_BITS;
         return;
     default:
         {
             char *x = value_string(method);
-            ctx_failure(*pctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
+            value_ctx_failure(*pctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
         }
     }
 }
 
 void op_Assert(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        ctx_failure(*pctx, &global->values, "assert can only be applied to bool values");
+        value_ctx_failure(*pctx, &global->values, "assert can only be applied to bool values");
     }
     if (v == VALUE_FALSE) {
-        ctx_failure(*pctx, &global->values, "Harmony assertion failed");
+        value_ctx_failure(*pctx, &global->values, "Harmony assertion failed");
     }
     else {
         (*pctx)->pc++;
@@ -588,14 +395,14 @@ void op_Assert(const void *env, struct state *state, struct context **pctx, stru
 }
 
 void op_Assert2(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t e = ctx_pop(pctx);
-    uint64_t v = ctx_pop(pctx);
+    uint64_t e = value_ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        ctx_failure(*pctx, &global->values, "assert2 can only be applied to bool values");
+        value_ctx_failure(*pctx, &global->values, "assert2 can only be applied to bool values");
     }
     if (v == VALUE_FALSE) {
         char *p = value_string(e);
-        ctx_failure(*pctx, &global->values, "Harmony assertion failed: %s", p);
+        value_ctx_failure(*pctx, &global->values, "Harmony assertion failed: %s", p);
         free(p);
     }
     else {
@@ -604,12 +411,12 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx, str
 }
 
 void op_Possibly(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        ctx_failure(*pctx, &global->values, "possibly can only be applied to bool values");
+        value_ctx_failure(*pctx, &global->values, "possibly can only be applied to bool values");
     }
     if (v == VALUE_TRUE) {
-        void **p = dict_insert(possibly_cnt, &(*pctx)->pc, sizeof((*pctx)->pc));
+        void **p = dict_insert(global->possibly_cnt, &(*pctx)->pc, sizeof((*pctx)->pc));
         (* (uint64_t *) p)++;
     }
     (*pctx)->pc++;
@@ -648,10 +455,10 @@ void op_Cut(const void *env, struct state *state, struct context **pctx, struct 
     const struct env_Cut *ec = env;
     struct context *ctx = *pctx;
 
-    uint64_t v = dict_load(ctx->vars, ec->set);
+    uint64_t v = value_dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
         if (ec->key != NULL) {
-            ctx_failure(ctx, &global->values, "Can't cut set in key/value pairs");
+            value_ctx_failure(ctx, &global->values, "Can't cut set in key/value pairs");
             return;
         }
         assert(v != VALUE_SET);
@@ -661,7 +468,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx, struct 
         uint64_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx->vars = dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(uint64_t)));
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(uint64_t)));
         var_match(*pctx, ec->value, &global->values, vals[0]);
         (*pctx)->pc++;
         return;
@@ -674,7 +481,7 @@ void op_Cut(const void *env, struct state *state, struct context **pctx, struct 
         uint64_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx->vars = dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(uint64_t)));
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(uint64_t)));
         var_match(*pctx, ec->value, &global->values, vals[1]);
         if (ec->key != NULL) {
             var_match(*pctx, ec->key, &global->values, vals[0]);
@@ -690,19 +497,19 @@ void ext_Del(const void *env, struct state *state, struct context **pctx, struct
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     if ((*pctx)->readonly > 0) {
-        ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant");
+        value_ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant");
         return;
     }
 
-    uint64_t av = ctx_pop(pctx);
+    uint64_t av = value_ctx_pop(pctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
-        ctx_failure(*pctx, &global->values, "Del %s: not an address", p);
+        value_ctx_failure(*pctx, &global->values, "Del %s: not an address", p);
         free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
-        ctx_failure(*pctx, &global->values, "Del: address is None");
+        value_ctx_failure(*pctx, &global->values, "Del: address is None");
         return;
     }
 
@@ -716,7 +523,7 @@ void ext_Del(const void *env, struct state *state, struct context **pctx, struct
     }
     uint64_t nd;
     if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
-        ctx_failure(*pctx, &global->values, "Del: no such variable");
+        value_ctx_failure(*pctx, &global->values, "Del: no such variable");
     }
     else {
         state->vars = nd;
@@ -733,7 +540,7 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx, stru
 
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
     if (ed == NULL) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -744,7 +551,7 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx, stru
         bool result;
         if (indices[0] == this_atom) {
             if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                ctx_failure(*pctx, &global->values, "DelVar: 'this' is not a dictionary");
+                value_ctx_failure(*pctx, &global->values, "DelVar: 'this' is not a dictionary");
                 return;
             }
 		    result = ind_remove((*pctx)->this, &indices[1], size - 1, &global->values, &(*pctx)->this);
@@ -754,27 +561,27 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx, stru
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "DelVar: bad address: %s", x);
+            value_ctx_failure(*pctx, &global->values, "DelVar: bad address: %s", x);
             free(x);
 			return;
 		}
     }
 	else {
         if (ed->name == this_atom) {
-            ctx_failure(*pctx, &global->values, "DelVar: can't del 'this'");
+            value_ctx_failure(*pctx, &global->values, "DelVar: can't del 'this'");
             return;
         }
         else {
-            (*pctx)->vars = dict_remove(&global->values, (*pctx)->vars, ed->name);
+            (*pctx)->vars = value_dict_remove(&global->values, (*pctx)->vars, ed->name);
         }
 	}
 	(*pctx)->pc++;
 }
 
 void op_Dup(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = ctx_pop(pctx);
-    ctx_push(pctx, v);
-    ctx_push(pctx, v);
+    uint64_t v = value_ctx_pop(pctx);
+    value_ctx_push(pctx, v);
+    value_ctx_push(pctx, v);
     (*pctx)->pc++;
 }
 
@@ -793,13 +600,13 @@ void op_Frame(const void *env, struct state *state, struct context **pctx, struc
     }
 
     // peek at argument
-    uint64_t arg = ctx_pop(pctx);
-    ctx_push(pctx, arg);
+    uint64_t arg = value_ctx_pop(pctx);
+    value_ctx_push(pctx, arg);
 
     uint64_t oldvars = (*pctx)->vars;
 
     // Set result to None
-    (*pctx)->vars = dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
+    (*pctx)->vars = value_dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
 
     // try to match against parameters
     var_match(*pctx, ef->args, &global->values, arg);
@@ -807,8 +614,8 @@ void op_Frame(const void *env, struct state *state, struct context **pctx, struc
         return;
     }
  
-    ctx_push(pctx, oldvars);
-    ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(pctx, oldvars);
+    value_ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
 
     struct context *ctx = *pctx;
     ctx->fp = ctx->sp;
@@ -821,33 +628,33 @@ void op_Go(
     struct context **pctx,
     struct global_t *global
 ){
-    uint64_t ctx = ctx_pop(pctx);
+    uint64_t ctx = value_ctx_pop(pctx);
     if ((ctx & VALUE_MASK) != VALUE_CONTEXT) {
-        ctx_failure(*pctx, &global->values, "Go: not a context");
+        value_ctx_failure(*pctx, &global->values, "Go: not a context");
         return;
     }
 
     // Remove from stopbag if it's there
     uint64_t count;
-    if (dict_tryload(state->stopbag, ctx, &count)) {
+    if (value_dict_tryload(state->stopbag, ctx, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
         count -= 1 << VALUE_BITS;
         if (count != VALUE_INT) {
-            state->stopbag = dict_store(&global->values, state->stopbag, ctx, count);
+            state->stopbag = value_dict_store(&global->values, state->stopbag, ctx, count);
         }
         else {
-            state->stopbag = dict_remove(&global->values, state->stopbag, ctx);
+            state->stopbag = value_dict_remove(&global->values, state->stopbag, ctx);
         }
     }
 
-    uint64_t result = ctx_pop(pctx);
+    uint64_t result = value_ctx_pop(pctx);
     struct context *copy = value_copy(ctx, NULL);
-    ctx_push(&copy, result);
+    value_ctx_push(&copy, result);
     copy->stopped = false;
     uint64_t v = value_put_context(&global->values, copy);
     free(copy);
-    state->ctxbag = bag_add(&global->values, state->ctxbag, v);
+    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v);
     (*pctx)->pc++;
 }
 
@@ -857,10 +664,10 @@ void op_IncVar(const void *env, struct state *state, struct context **pctx, stru
 
     assert((ctx->vars & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t v = dict_load(ctx->vars, ei->name);
+    uint64_t v = value_dict_load(ctx->vars, ei->name);
     assert((v & VALUE_MASK) == VALUE_INT);
     v += 1 << VALUE_BITS;
-    ctx->vars = dict_store(&global->values, ctx->vars, ei->name, v);
+    ctx->vars = value_dict_store(&global->values, ctx->vars, ei->name, v);
     (*pctx)->pc++;
 }
 
@@ -904,7 +711,7 @@ void op_JumpCond(const void *env, struct state *state, struct context **pctx, st
     if (false) {
         printf("JUMPCOND %d\n", ej->pc);
     }
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
     if (v == ej->cond) {
         assert((*pctx)->pc != ej->pc);
         (*pctx)->pc = ej->pc;
@@ -922,15 +729,15 @@ void ext_Load(const void *env, struct state *state, struct context **pctx, struc
 
     uint64_t v;
     if (el == 0) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            ctx_failure(*pctx, &global->values, "Load %s: not an address", p);
+            value_ctx_failure(*pctx, &global->values, "Load %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            ctx_failure(*pctx, &global->values, "Load: can't load from None");
+            value_ctx_failure(*pctx, &global->values, "Load: can't load from None");
             return;
         }
 
@@ -945,11 +752,11 @@ void ext_Load(const void *env, struct state *state, struct context **pctx, struc
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "Load: unknown address %s", x);
+            value_ctx_failure(*pctx, &global->values, "Load: unknown address %s", x);
             free(x);
             return;
         }
-        ctx_push(pctx, v);
+        value_ctx_push(pctx, v);
     }
     else {
         if (ai != NULL) {
@@ -959,11 +766,11 @@ void ext_Load(const void *env, struct state *state, struct context **pctx, struc
         }
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
-            ctx_failure(*pctx, &global->values, "Load: unknown variable %s", x+1);
+            value_ctx_failure(*pctx, &global->values, "Load: unknown variable %s", x+1);
             free(x);
             return;
         }
-        ctx_push(pctx, v);
+        value_ctx_push(pctx, v);
     }
     (*pctx)->pc++;
 }
@@ -978,7 +785,7 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx, str
 
     uint64_t v;
     if (el == NULL) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -989,7 +796,7 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx, str
         bool result;
         if (indices[0] == this_atom) {
             if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                ctx_failure(*pctx, &global->values, "LoadVar: 'this' is not a dictionary");
+                value_ctx_failure(*pctx, &global->values, "LoadVar: 'this' is not a dictionary");
                 return;
             }
             result = ind_tryload((*pctx)->this, &indices[1], size - 1, &v);
@@ -999,22 +806,22 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx, str
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "LoadVar: bad address: %s", x);
+            value_ctx_failure(*pctx, &global->values, "LoadVar: bad address: %s", x);
             free(x);
             return;
         }
-        ctx_push(pctx, v);
+        value_ctx_push(pctx, v);
     }
     else {
         if (el->name == this_atom) {
-            ctx_push(pctx, (*pctx)->this);
+            value_ctx_push(pctx, (*pctx)->this);
         }
-        else if (dict_tryload((*pctx)->vars, el->name, &v)) {
-            ctx_push(pctx, v);
+        else if (value_dict_tryload((*pctx)->vars, el->name, &v)) {
+            value_ctx_push(pctx, v);
         }
         else {
             char *p = value_string(el->name);
-            ctx_failure(*pctx, &global->values, "LoadVar: unknown variable %s", p + 1);
+            value_ctx_failure(*pctx, &global->values, "LoadVar: unknown variable %s", p + 1);
             free(p);
             return;
         }
@@ -1039,11 +846,11 @@ void op_Nary(const void *env, struct state *state, struct context **pctx, struct
     uint64_t args[MAX_ARITY];
 
     for (int i = 0; i < en->arity; i++) {
-        args[i] = ctx_pop(pctx);
+        args[i] = value_ctx_pop(pctx);
     }
     uint64_t result = (*en->fi->f)(state, *pctx, args, en->arity, &global->values);
     if ((*pctx)->failure == 0) {
-        ctx_push(pctx, result);
+        value_ctx_push(pctx, result);
         (*pctx)->pc++;
     }
 }
@@ -1063,7 +870,7 @@ void op_Push(const void *env, struct state *state, struct context **pctx, struct
         free(p);
     }
 
-    ctx_push(pctx, ep->value);
+    value_ctx_push(pctx, ep->value);
     (*pctx)->pc++;
 }
 
@@ -1091,20 +898,20 @@ void op_Return(const void *env, struct state *state, struct context **pctx, stru
         }
     }
     else {
-        uint64_t result = dict_load((*pctx)->vars, value_put_atom(&global->values, "result", 6));
-        uint64_t fp = ctx_pop(pctx);
+        uint64_t result = value_dict_load((*pctx)->vars, value_put_atom(&global->values, "result", 6));
+        uint64_t fp = value_ctx_pop(pctx);
         if ((fp & VALUE_MASK) != VALUE_INT) {
             printf("XXX %d %d %s\n", (*pctx)->pc, (*pctx)->sp, value_string(fp));
-            ctx_failure(*pctx, &global->values, "XXX");
+            value_ctx_failure(*pctx, &global->values, "XXX");
             return;
             // exit(1);
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         (*pctx)->fp = fp >> VALUE_BITS;
-        uint64_t oldvars = ctx_pop(pctx);
+        uint64_t oldvars = value_ctx_pop(pctx);
         assert((oldvars & VALUE_MASK) == VALUE_DICT);
         (*pctx)->vars = oldvars;
-        (void) ctx_pop(pctx);   // argument saved for stack trace
+        (void) value_ctx_pop(pctx);   // argument saved for stack trace
         if ((*pctx)->sp == 0) {     // __init__
             (*pctx)->terminated = true;
             if (false) {
@@ -1112,7 +919,7 @@ void op_Return(const void *env, struct state *state, struct context **pctx, stru
             }
             return;
         }
-        uint64_t calltype = ctx_pop(pctx);
+        uint64_t calltype = value_ctx_pop(pctx);
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {
         case CALLTYPE_PROCESS:
@@ -1120,18 +927,18 @@ void op_Return(const void *env, struct state *state, struct context **pctx, stru
             break;
         case CALLTYPE_NORMAL:
             {
-                uint64_t pc = ctx_pop(pctx);
+                uint64_t pc = value_ctx_pop(pctx);
                 assert((pc & VALUE_MASK) == VALUE_PC);
                 pc >>= VALUE_BITS;
                 assert(pc != (*pctx)->pc);
-                ctx_push(pctx, result);
+                value_ctx_push(pctx, result);
                 (*pctx)->pc = pc;
             }
             break;
 		case CALLTYPE_INTERRUPT:
 			assert((*pctx)->interruptlevel);
 			(*pctx)->interruptlevel = false;
-			uint64_t pc = ctx_pop(pctx);
+			uint64_t pc = value_ctx_pop(pctx);
 			assert((pc & VALUE_MASK) == VALUE_PC);
 			pc >>= VALUE_BITS;
 			assert(pc != (*pctx)->pc);
@@ -1144,10 +951,10 @@ void op_Return(const void *env, struct state *state, struct context **pctx, stru
 }
 
 void op_Sequential(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t addr = ctx_pop(pctx);
+    uint64_t addr = value_ctx_pop(pctx);
     if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(addr);
-        ctx_failure(*pctx, &global->values, "Sequential %s: not an address", p);
+        value_ctx_failure(*pctx, &global->values, "Sequential %s: not an address", p);
         free(p);
         return;
     }
@@ -1209,27 +1016,14 @@ static int sort(uint64_t *vals, int n){
 
 void op_SetIntLevel(const void *env, struct state *state, struct context **pctx, struct global_t *global){
 	bool oldlevel = (*pctx)->interruptlevel;
-	uint64_t newlevel =  ctx_pop(pctx);
+	uint64_t newlevel =  value_ctx_pop(pctx);
     if ((newlevel & VALUE_MASK) != VALUE_BOOL) {
-        ctx_failure(*pctx, &global->values, "setintlevel can only be set to a boolean");
+        value_ctx_failure(*pctx, &global->values, "setintlevel can only be set to a boolean");
         return;
     }
     (*pctx)->interruptlevel = newlevel >> VALUE_BITS;
-	ctx_push(pctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
+	value_ctx_push(pctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
     (*pctx)->pc++;
-}
-
-uint64_t bag_add(struct values_t *values, uint64_t bag, uint64_t v){
-    uint64_t count;
-    if (dict_tryload(bag, v, &count)) {
-        assert((count & VALUE_MASK) == VALUE_INT);
-        assert(count != VALUE_INT);
-        count += 1 << VALUE_BITS;
-        return dict_store(values, bag, v, count);
-    }
-    else {
-        return dict_store(values, bag, v, (1 << VALUE_BITS) | VALUE_INT);
-    }
 }
 
 void op_Spawn(
@@ -1240,12 +1034,12 @@ void op_Spawn(
 ) {
     const struct env_Spawn *se = env;
 
-    uint64_t thisval = ctx_pop(pctx);
-    uint64_t arg = ctx_pop(pctx);
+    uint64_t thisval = value_ctx_pop(pctx);
+    uint64_t arg = value_ctx_pop(pctx);
 
-    uint64_t pc = ctx_pop(pctx);
+    uint64_t pc = value_ctx_pop(pctx);
     if ((pc & VALUE_MASK) != VALUE_PC) {
-        ctx_failure(*pctx, &global->values, "spawn: not a method");
+        value_ctx_failure(*pctx, &global->values, "spawn: not a method");
         return;
     }
     pc >>= VALUE_BITS;
@@ -1264,11 +1058,11 @@ void op_Spawn(
     ctx->vars = VALUE_DICT;
     ctx->interruptlevel = VALUE_FALSE;
     ctx->eternal = se->eternal;
-    ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
-    ctx_push(&ctx, arg);
+    value_ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(&ctx, arg);
     uint64_t v = value_put_context(&global->values, ctx);
 
-    state->ctxbag = bag_add(&global->values, state->ctxbag, v);
+    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v);
 
     if (false) {
         char *p = value_string(state->ctxbag);
@@ -1282,15 +1076,15 @@ void op_Spawn(
 void op_Split(const void *env, struct state *state, struct context **pctx, struct global_t *global){
     const struct env_Split *es = env;
 
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
     uint64_t type = v & VALUE_MASK;
     if (type != VALUE_DICT && type != VALUE_SET) {
-        ctx_failure(*pctx, &global->values, "Can only split tuples or sets");
+        value_ctx_failure(*pctx, &global->values, "Can only split tuples or sets");
         return;
     }
     if (v == VALUE_DICT || v == VALUE_SET) {
         if (es->count != 0) {
-            ctx_failure(*pctx, &global->values, "Split: empty set or tuple");
+            value_ctx_failure(*pctx, &global->values, "Split: empty set or tuple");
         }
         else {
             (*pctx)->pc++;
@@ -1304,11 +1098,11 @@ void op_Split(const void *env, struct state *state, struct context **pctx, struc
     if (type == VALUE_DICT) {
         size /= 2 * sizeof(uint64_t);
         if (size != es->count) {
-            ctx_failure(*pctx, &global->values, "Split: list of wrong size");
+            value_ctx_failure(*pctx, &global->values, "Split: list of wrong size");
             return;
         }
         for (int i = 0; i < size; i++) {
-            ctx_push(pctx, vals[2*i + 1]);
+            value_ctx_push(pctx, vals[2*i + 1]);
         }
         (*pctx)->pc++;
         return;
@@ -1316,11 +1110,11 @@ void op_Split(const void *env, struct state *state, struct context **pctx, struc
     if (type == VALUE_SET) {
         size /= sizeof(uint64_t);
         if (size != es->count) {
-            ctx_failure(*pctx, &global->values, "Split: set of wrong size");
+            value_ctx_failure(*pctx, &global->values, "Split: set of wrong size");
             return;
         }
         for (int i = 0; i < size; i++) {
-            ctx_push(pctx, vals[i]);
+            value_ctx_push(pctx, vals[i]);
         }
         (*pctx)->pc++;
         return;
@@ -1334,20 +1128,20 @@ void op_Stop(const void *env, struct state *state, struct context **pctx, struct
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     if ((*pctx)->readonly > 0) {
-        ctx_failure(*pctx, &global->values, "Stop: in read-only mode");
+        value_ctx_failure(*pctx, &global->values, "Stop: in read-only mode");
         return;
     }
 
     if (es == 0) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            ctx_failure(*pctx, &global->values, "Stop %s: not an address", p);
+            value_ctx_failure(*pctx, &global->values, "Stop %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            ctx_failure(*pctx, &global->values, "Stop: address is None");
+            value_ctx_failure(*pctx, &global->values, "Stop: address is None");
             return;
         }
 
@@ -1361,7 +1155,7 @@ void op_Stop(const void *env, struct state *state, struct context **pctx, struct
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "Stop: bad address: %s", x);
+            value_ctx_failure(*pctx, &global->values, "Stop: bad address: %s", x);
             free(x);
             return;
         }
@@ -1372,7 +1166,7 @@ void op_Stop(const void *env, struct state *state, struct context **pctx, struct
         uint64_t v = value_put_context(&global->values, *pctx);
 
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            ctx_failure(*pctx, &global->values, "Store: bad variable");
+            value_ctx_failure(*pctx, &global->values, "Store: bad variable");
             return;
         }
     }
@@ -1385,22 +1179,22 @@ void ext_Store(const void *env, struct state *state, struct context **pctx, stru
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     if ((*pctx)->readonly > 0) {
-        ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant (including acquiring locks)");
+        value_ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant (including acquiring locks)");
         return;
     }
 
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
 
     if (es == 0) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            ctx_failure(*pctx, &global->values, "Store %s: not an address", p);
+            value_ctx_failure(*pctx, &global->values, "Store %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            ctx_failure(*pctx, &global->values, "Store: address is None");
+            value_ctx_failure(*pctx, &global->values, "Store: address is None");
             return;
         }
 
@@ -1426,7 +1220,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx, stru
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "Store: bad address: %s", x);
+            value_ctx_failure(*pctx, &global->values, "Store: bad address: %s", x);
             free(x);
             return;
         }
@@ -1438,7 +1232,7 @@ void ext_Store(const void *env, struct state *state, struct context **pctx, stru
             ai->load = is_sequential(state->seqs, ai->indices, ai->n);
         }
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            ctx_failure(*pctx, &global->values, "Store: bad variable");
+            value_ctx_failure(*pctx, &global->values, "Store: bad variable");
             return;
         }
     }
@@ -1451,11 +1245,11 @@ void op_Store(const void *env, struct state *state, struct context **pctx, struc
 
 void op_StoreVar(const void *env, struct state *state, struct context **pctx, struct global_t *global){
     const struct env_StoreVar *es = env;
-    uint64_t v = ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(pctx);
 
     assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
     if (es == NULL) {
-        uint64_t av = ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(pctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -1466,7 +1260,7 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx, st
         bool result;
         if (indices[0] == this_atom) {
             if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                ctx_failure(*pctx, &global->values, "StoreVar: 'this' is not a dictionary");
+                value_ctx_failure(*pctx, &global->values, "StoreVar: 'this' is not a dictionary");
                 return;
             }
             result = ind_trystore((*pctx)->this, &indices[1], size - 1, v, &global->values, &(*pctx)->this);
@@ -1477,7 +1271,7 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx, st
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            ctx_failure(*pctx, &global->values, "StoreVar: bad address: %s", x);
+            value_ctx_failure(*pctx, &global->values, "StoreVar: bad address: %s", x);
             free(x);
             return;
         }
@@ -1498,14 +1292,14 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx, st
 }
 
 void op_Trap(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    (*pctx)->trap_pc = ctx_pop(pctx);
+    (*pctx)->trap_pc = value_ctx_pop(pctx);
     if (((*pctx)->trap_pc & VALUE_MASK) != VALUE_PC) {
-        ctx_failure(*pctx, &global->values, "trap: not a method");
+        value_ctx_failure(*pctx, &global->values, "trap: not a method");
         return;
     }
     assert(((*pctx)->trap_pc >> VALUE_BITS) < global->code.len);
     assert(strcmp(global->code.instrs[(*pctx)->trap_pc >> VALUE_BITS].oi->name, "Frame") == 0);
-    (*pctx)->trap_arg = ctx_pop(pctx);
+    (*pctx)->trap_arg = value_ctx_pop(pctx);
     (*pctx)->pc++;
 }
 
@@ -1819,7 +1613,7 @@ uint64_t f_abs(struct state *state, struct context *ctx, uint64_t *args, int n, 
     assert(n == 1);
     int64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "abs() can only be applied to integers");
+        return value_ctx_failure(ctx, values, "abs() can only be applied to integers");
     }
     e >>= VALUE_BITS;
     return e >= 0 ? args[0] : (((-e) << VALUE_BITS) | VALUE_INT);
@@ -1837,7 +1631,7 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, 
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
-                return ctx_failure(ctx, values, "set.all() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "set.all() can only be applied to booleans");
             }
             if (v[i] == VALUE_FALSE) {
                 return VALUE_FALSE;
@@ -1851,7 +1645,7 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, 
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
-                return ctx_failure(ctx, values, "dict.all() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "dict.all() can only be applied to booleans");
             }
             if (v[2*i+1] == VALUE_FALSE) {
                 return VALUE_FALSE;
@@ -1859,7 +1653,7 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, 
         }
 		return VALUE_TRUE;
     }
-    return ctx_failure(ctx, values, "all() can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, values, "all() can only be applied to sets or dictionaries");
 }
 
 uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
@@ -1874,7 +1668,7 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, 
         size /= sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
-                return ctx_failure(ctx, values, "set.any() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "set.any() can only be applied to booleans");
             }
             if (v[i] != VALUE_FALSE) {
                 return VALUE_TRUE;
@@ -1888,7 +1682,7 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, 
         size /= 2 * sizeof(uint64_t);
         for (int i = 0; i < size; i++) {
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
-                return ctx_failure(ctx, values, "dict.any() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "dict.any() can only be applied to booleans");
             }
             if (v[2*i+1] != VALUE_FALSE) {
                 return VALUE_TRUE;
@@ -1896,24 +1690,24 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, 
         }
 		return VALUE_FALSE;
     }
-    return ctx_failure(ctx, values, "any() can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, values, "any() can only be applied to sets or dictionaries");
 }
 
 uint64_t nametag(struct context *ctx, struct values_t *values){
-    uint64_t nt = dict_store(values, VALUE_DICT,
+    uint64_t nt = value_dict_store(values, VALUE_DICT,
             (0 << VALUE_BITS) | VALUE_INT, ctx->entry);
-    return dict_store(values, nt,
+    return value_dict_store(values, nt,
             (1 << VALUE_BITS) | VALUE_INT, ctx->arg);
 }
 
 uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     assert(n == 1);
     if (ctx->atomic == 0) {
-        return ctx_failure(ctx, values, "atLabel: can only be called in atomic mode");
+        return value_ctx_failure(ctx, values, "atLabel: can only be called in atomic mode");
     }
     uint64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_PC) {
-        return ctx_failure(ctx, values, "atLabel: not a method");
+        return value_ctx_failure(ctx, values, "atLabel: not a method");
     }
     e >>= VALUE_BITS;
 
@@ -1928,7 +1722,7 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         if (ctx->pc == e) {
-            bag = bag_add(values, bag, nametag(ctx, values));
+            bag = value_bag_add(values, bag, nametag(ctx, values));
         }
     }
     return bag;
@@ -1937,14 +1731,14 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
 uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     int64_t e1 = args[0], e2 = args[1];
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to / not an integer");
+        return value_ctx_failure(ctx, values, "right argument to / not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to / not an integer");
+        return value_ctx_failure(ctx, values, "left argument to / not an integer");
     }
     e1 >>= VALUE_BITS;
     if (e1 == 0) {
-        return ctx_failure(ctx, values, "divide by zero");
+        return value_ctx_failure(ctx, values, "divide by zero");
     }
     int64_t result = (e2 >> VALUE_BITS) / e1;
     return (result << VALUE_BITS) | VALUE_INT;
@@ -2000,7 +1794,7 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n, s
         }
         return VALUE_FALSE;
     }
-    return ctx_failure(ctx, values, "'in' can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, values, "'in' can only be applied to sets or dictionaries");
 }
 
 uint64_t f_intersection(
@@ -2016,7 +1810,7 @@ uint64_t f_intersection(
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values, "'&' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, values, "'&' applied to mix of ints and other types");
             }
             e1 &= e2;
         }
@@ -2035,7 +1829,7 @@ uint64_t f_intersection(
         uint64_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if ((args[i] & VALUE_MASK) != VALUE_SET) {
-                return ctx_failure(ctx, values, "'&' applied to mix of sets and other types");
+                return value_ctx_failure(ctx, values, "'&' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 min_size = 0;
@@ -2114,14 +1908,14 @@ uint64_t f_intersection(
 		return VALUE_DICT;
 	}
     if ((e1 & VALUE_MASK) != VALUE_DICT) {
-        return ctx_failure(ctx, values, "'&' can only be applied to ints and dicts");
+        return value_ctx_failure(ctx, values, "'&' can only be applied to ints and dicts");
     }
     // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_DICT) {
-            return ctx_failure(ctx, values, "'&' applied to mix of dictionaries and other types");
+            return value_ctx_failure(ctx, values, "'&' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2182,7 +1976,7 @@ uint64_t f_invert(struct state *state, struct context *ctx, uint64_t *args, int 
     assert(n == 1);
     int64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "~ can only be applied to ints");
+        return value_ctx_failure(ctx, values, "~ can only be applied to ints");
     }
     e >>= VALUE_BITS;
     return ((~e) << VALUE_BITS) | VALUE_INT;
@@ -2197,14 +1991,14 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
     if ((e & VALUE_MASK) == VALUE_SET) {
         return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
     }
-    return ctx_failure(ctx, values, "loops can only iterate over dictionaries and sets");
+    return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries and sets");
 }
 
 uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     assert(n == 1);
     uint64_t v = args[0];
     if ((v & VALUE_MASK) != VALUE_DICT) {
-        return ctx_failure(ctx, values, "keys() can only be applied to dictionaries");
+        return value_ctx_failure(ctx, values, "keys() can only be applied to dictionaries");
     }
     if (v == VALUE_DICT) {
         return VALUE_SET;
@@ -2240,7 +2034,7 @@ uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n, 
         size /= 2 * sizeof(uint64_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
-    return ctx_failure(ctx, values, "len() can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, values, "len() can only be applied to sets or dictionaries");
 }
 
 uint64_t f_le(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
@@ -2259,10 +2053,10 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, 
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET) {
-        return ctx_failure(ctx, values, "can't apply max() to empty set");
+        return value_ctx_failure(ctx, values, "can't apply max() to empty set");
     }
     if (e == VALUE_DICT) {
-        return ctx_failure(ctx, values, "can't apply max() to empty list");
+        return value_ctx_failure(ctx, values, "can't apply max() to empty list");
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
@@ -2288,17 +2082,17 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, 
         }
 		return max;
     }
-    return ctx_failure(ctx, values, "max() can only be applied to sets or lists");
+    return value_ctx_failure(ctx, values, "max() can only be applied to sets or lists");
 }
 
 uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     assert(n == 1);
     uint64_t e = args[0];
 	if (e == VALUE_SET) {
-        return ctx_failure(ctx, values, "can't apply min() to empty set");
+        return value_ctx_failure(ctx, values, "can't apply min() to empty set");
     }
     if (e == VALUE_DICT) {
-        return ctx_failure(ctx, values, "can't apply min() to empty list");
+        return value_ctx_failure(ctx, values, "can't apply min() to empty list");
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
@@ -2324,7 +2118,7 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, 
         }
 		return min;
     }
-    return ctx_failure(ctx, values, "min() can only be applied to sets or lists");
+    return value_ctx_failure(ctx, values, "min() can only be applied to sets or lists");
 }
 
 uint64_t f_minus(
@@ -2338,7 +2132,7 @@ uint64_t f_minus(
     if (n == 1) {
         int64_t e = args[0];
         if ((e & VALUE_MASK) != VALUE_INT) {
-            return ctx_failure(ctx, values, "unary minus can only be applied to ints");
+            return value_ctx_failure(ctx, values, "unary minus can only be applied to ints");
         }
         e >>= VALUE_BITS;
         if (e == VALUE_MAX) {
@@ -2348,7 +2142,7 @@ uint64_t f_minus(
             return (VALUE_MAX << VALUE_BITS) | VALUE_INT;
         }
         if (-e <= VALUE_MIN || -e >= VALUE_MAX) {
-            return ctx_failure(ctx, values, "unary minus overflow (model too large)");
+            return value_ctx_failure(ctx, values, "unary minus overflow (model too large)");
         }
         return ((-e) << VALUE_BITS) | VALUE_INT;
     }
@@ -2356,20 +2150,20 @@ uint64_t f_minus(
         if ((args[0] & VALUE_MASK) == VALUE_INT) {
             int64_t e1 = args[0], e2 = args[1];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values, "minus applied to int and non-int");
+                return value_ctx_failure(ctx, values, "minus applied to int and non-int");
             }
             e1 >>= VALUE_BITS;
             e2 >>= VALUE_BITS;
             int64_t result = e2 - e1;
             if (result <= VALUE_MIN || result >= VALUE_MAX) {
-                return ctx_failure(ctx, values, "minus overflow (model too large)");
+                return value_ctx_failure(ctx, values, "minus overflow (model too large)");
             }
             return (result << VALUE_BITS) | VALUE_INT;
         }
 
         uint64_t e1 = args[0], e2 = args[1];
         if ((e1 & VALUE_MASK) != VALUE_SET || (e2 & VALUE_MASK) != VALUE_SET) {
-            return ctx_failure(ctx, values, "minus can only be applied to ints or sets");
+            return value_ctx_failure(ctx, values, "minus can only be applied to ints or sets");
         }
         int size1, size2;
         uint64_t *vals1, *vals2;
@@ -2420,10 +2214,10 @@ uint64_t f_minus(
 uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     int64_t e1 = args[0], e2 = args[1];
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to mod not an integer");
+        return value_ctx_failure(ctx, values, "right argument to mod not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to mod not an integer");
+        return value_ctx_failure(ctx, values, "left argument to mod not an integer");
     }
     int64_t mod = (e1 >> VALUE_BITS);
     int64_t result = (e2 >> VALUE_BITS) % mod;
@@ -2441,7 +2235,7 @@ uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n, 
     assert(n == 1);
     uint64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_BOOL) {
-        return ctx_failure(ctx, values, "not can only be applied to booleans");
+        return value_ctx_failure(ctx, values, "not can only be applied to booleans");
     }
     return e ^ (1 << VALUE_BITS);
 }
@@ -2453,13 +2247,13 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n,
         for (int i = 1; i < n; i++) {
             int64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values,
+                return value_ctx_failure(ctx, values,
                     "+: applied to mix of integers and other values");
             }
             e2 >>= VALUE_BITS;
             int64_t sum = e1 + e2;
             if (sum <= VALUE_MIN || sum >= VALUE_MAX) {
-                return ctx_failure(ctx, values,
+                return value_ctx_failure(ctx, values,
                     "+: integer overflow (model too large)");
             }
             e1 = sum;
@@ -2472,7 +2266,7 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n,
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_DICT) {
-            ctx_failure(ctx, values, "+: applied to mix of value types");
+            value_ctx_failure(ctx, values, "+: applied to mix of value types");
             free(vi);
             return 0;
         }
@@ -2516,10 +2310,10 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
     int64_t e1 = args[0], e2 = args[1];
 
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to ** not an integer");
+        return value_ctx_failure(ctx, values, "right argument to ** not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to ** not an integer");
+        return value_ctx_failure(ctx, values, "left argument to ** not an integer");
     }
     int64_t base = e2 >> VALUE_BITS;
     int64_t exp = e1 >> VALUE_BITS;
@@ -2527,7 +2321,7 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
         return (1 << VALUE_BITS) | VALUE_INT;
     }
     if (exp < 0) {
-        return ctx_failure(ctx, values, "**: negative exponent");
+        return value_ctx_failure(ctx, values, "**: negative exponent");
     }
 
     int64_t result = 1, orig = base;
@@ -2543,7 +2337,7 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
     }
     if (result < orig) {
         // TODO.  Improve overflow detection
-        return ctx_failure(ctx, values, "**: overflow (model too large)");
+        return value_ctx_failure(ctx, values, "**: overflow (model too large)");
     }
 
     return (result << VALUE_BITS) | VALUE_INT;
@@ -2554,10 +2348,10 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     int64_t e1 = args[0], e2 = args[1];
 
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to .. not an integer");
+        return value_ctx_failure(ctx, values, "right argument to .. not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to .. not an integer");
+        return value_ctx_failure(ctx, values, "left argument to .. not an integer");
     }
     int64_t start = e2 >> VALUE_BITS;
     int64_t finish = e1 >> VALUE_BITS;
@@ -2646,7 +2440,7 @@ uint64_t f_set_add(struct state *state, struct context *ctx, uint64_t *args, int
     return result;
 }
 
-uint64_t f_bag_add(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+uint64_t f_value_bag_add(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t elt = args[0], dict = args[1];
     assert((dict & VALUE_MASK) == VALUE_DICT);
@@ -2692,22 +2486,22 @@ uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, i
     int64_t e1 = args[0], e2 = args[1];
 
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to << not an integer");
+        return value_ctx_failure(ctx, values, "right argument to << not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to << not an integer");
+        return value_ctx_failure(ctx, values, "left argument to << not an integer");
     }
     e1 >>= VALUE_BITS;
     if (e1 < 0) {
-        return ctx_failure(ctx, values, "<<: negative shift count");
+        return value_ctx_failure(ctx, values, "<<: negative shift count");
     }
     e2 >>= VALUE_BITS;
     int64_t result = e2 << e1;
     if (((result << VALUE_BITS) >> VALUE_BITS) != result) {
-        return ctx_failure(ctx, values, "<<: overflow (model too large)");
+        return value_ctx_failure(ctx, values, "<<: overflow (model too large)");
     }
     if (result <= VALUE_MIN || result >= VALUE_MAX) {
-        return ctx_failure(ctx, values, "<<: overflow (model too large)");
+        return value_ctx_failure(ctx, values, "<<: overflow (model too large)");
     }
     return (result << VALUE_BITS) | VALUE_INT;
 }
@@ -2717,13 +2511,13 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
     int64_t e1 = args[0], e2 = args[1];
 
     if ((e1 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "right argument to >> not an integer");
+        return value_ctx_failure(ctx, values, "right argument to >> not an integer");
     }
     if ((e2 & VALUE_MASK) != VALUE_INT) {
-        return ctx_failure(ctx, values, "left argument to >> not an integer");
+        return value_ctx_failure(ctx, values, "left argument to >> not an integer");
     }
     if (e1 < 0) {
-        return ctx_failure(ctx, values, ">>: negative shift count");
+        return value_ctx_failure(ctx, values, ">>: negative shift count");
     }
     e1 >>= VALUE_BITS;
     e2 >>= VALUE_BITS;
@@ -2737,13 +2531,13 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
         int64_t e = args[i];
         if ((e & VALUE_MASK) == VALUE_DICT) {
             if (list >= 0) {
-                return ctx_failure(ctx, values, "* can only have at most one list");
+                return value_ctx_failure(ctx, values, "* can only have at most one list");
             }
             list = i;
         }
         else {
             if ((e & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values,
+                return value_ctx_failure(ctx, values,
                     "* can only be applied to integers and at most one list");
             }
             e >>= VALUE_BITS;
@@ -2753,7 +2547,7 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
             else {
                 int64_t product = result * e;
                 if (product / result != e) {
-                    return ctx_failure(ctx, values, "*: overflow (model too large)");
+                    return value_ctx_failure(ctx, values, "*: overflow (model too large)");
                 }
                 result = product;
             }
@@ -2761,7 +2555,7 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
     }
     if (list < 0) {
         if (result != (result << VALUE_BITS) >> VALUE_BITS) {
-            return ctx_failure(ctx, values, "*: overflow (model too large)");
+            return value_ctx_failure(ctx, values, "*: overflow (model too large)");
         }
         return (result << VALUE_BITS) | VALUE_INT;
     }
@@ -2795,7 +2589,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values, "'|' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, values, "'|' applied to mix of ints and other types");
             }
             e1 |= e2;
         }
@@ -2808,7 +2602,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         int total = 0;
         for (int i = 0; i < n; i++) {
             if ((args[i] & VALUE_MASK) != VALUE_SET) {
-                return ctx_failure(ctx, values, "'|' applied to mix of sets and other types");
+                return value_ctx_failure(ctx, values, "'|' applied to mix of sets and other types");
             }
             if (args[i] == VALUE_SET) {
                 vi[i].vals = NULL;
@@ -2841,14 +2635,14 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
 
     if ((e1 & VALUE_MASK) != VALUE_DICT) {
-        return ctx_failure(ctx, values, "'|' can only be applied to ints and dicts");
+        return value_ctx_failure(ctx, values, "'|' can only be applied to ints and dicts");
     }
     // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_DICT) {
-            return ctx_failure(ctx, values, "'|' applied to mix of dictionaries and other types");
+            return value_ctx_failure(ctx, values, "'|' applied to mix of dictionaries and other types");
         }
         if (args[i] == VALUE_DICT) {
             vi[i].vals = NULL;
@@ -2901,7 +2695,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, 
         for (int i = 1; i < n; i++) {
             uint64_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
-                return ctx_failure(ctx, values, "'^' applied to mix of ints and other types");
+                return value_ctx_failure(ctx, values, "'^' applied to mix of ints and other types");
             }
             e1 ^= e2;
         }
@@ -2913,7 +2707,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, 
     int total = 0;
     for (int i = 0; i < n; i++) {
         if ((args[i] & VALUE_MASK) != VALUE_SET) {
-            return ctx_failure(ctx, values, "'^' applied to mix of value types");
+            return value_ctx_failure(ctx, values, "'^' applied to mix of value types");
         }
         if (args[i] == VALUE_SET) {
             vi[i].vals = NULL;
@@ -3025,7 +2819,7 @@ struct f_info f_table[] = {
     { "all", f_all },
     { "any", f_any },
     { "atLabel", f_atLabel },
-    { "BagAdd", f_bag_add },
+    { "BagAdd", f_value_bag_add },
     { "DictAdd", f_dict_add },
     { "get_context", f_get_context },
     { "in", f_in },
@@ -3044,12 +2838,12 @@ struct op_info *ops_get(char *opname, int size){
     return dict_lookup(ops_map, opname, size);
 }
 
-void ops_init(struct values_t *values){
+void ops_init(struct global_t *global) {
     ops_map = dict_new(0);
     f_map = dict_new(0);
-    possibly_cnt = dict_new(0);
-	underscore = value_put_atom(values, "_", 1);
-	this_atom = value_put_atom(values, "this", 4);
+    global->possibly_cnt = dict_new(0);
+	underscore = value_put_atom(&global->values, "_", 1);
+	this_atom = value_put_atom(&global->values, "this", 4);
 
     for (struct op_info *oi = op_table; oi->name != NULL; oi++) {
         void **p = dict_insert(ops_map, oi->name, strlen(oi->name));
