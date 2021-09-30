@@ -1,4 +1,0 @@
-make all
-sh runall.scr 1>runall.actual
-diff -y --suppress-common-lines runall.expected runall.actual
-
