@@ -14,42 +14,6 @@
 
 #define CHUNKSIZE   (1 << 12)
 
-uint64_t evaluate_iface(struct global_t *global, struct state *state, struct context **pctx) {
-    assert((*pctx)->sp == 0);
-    assert((*pctx)->failure == 0);
-    (*pctx)->pc++;
-    while (!(*pctx)->terminated) {
-        struct op_info *oi = global->code.instrs[(*pctx)->pc].oi;
-        printf("Running %s\n", oi->name);
-        int oldpc = (*pctx)->pc;
-        (*oi->op)(global->code.instrs[oldpc].env, state, pctx, global);
-        if ((*pctx)->failure != 0) {
-            (*pctx)->sp = 0;
-            return 0;
-        }
-        assert((*pctx)->pc != oldpc);
-    }
-    assert((*pctx)->sp == 1);
-    (*pctx)->sp = 0;
-    assert((*pctx)->fp == 0);
-    return (*pctx)->stack[0];
-}
-
-int find_iface_pc(struct code_t *code) {
-    const int len = code->len;
-    for (int i = 0; i < len; i++) {
-        struct instr_t instr = code->instrs[i];
-        struct op_info *oi = instr.oi;
-        if (strcmp(oi->name, "Frame") == 0) {
-            const struct env_Frame *envFrame = instr.env;
-            if (strcmp(value_string(envFrame->name), ".__iface__") == 0) {
-                return i;
-            }
-        }
-    }
-    return -1;
-}
-
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
     assert((*pctx)->sp == 0);
     assert((*pctx)->failure == 0);
@@ -1273,6 +1237,99 @@ void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     }
 }
 
+uint64_t iface_evaluate(struct global_t *global, struct state *state, struct context **pctx) {
+    assert((*pctx)->sp == 0);
+    assert((*pctx)->failure == 0);
+    (*pctx)->pc++;
+    while (!(*pctx)->terminated) {
+        struct op_info *oi = global->code.instrs[(*pctx)->pc].oi;
+        printf("Running %s\n", oi->name);
+        int oldpc = (*pctx)->pc;
+        (*oi->op)(global->code.instrs[oldpc].env, state, pctx, global);
+        if ((*pctx)->failure != 0) {
+            (*pctx)->sp = 0;
+            return 0;
+        }
+        assert((*pctx)->pc != oldpc);
+    }
+    assert((*pctx)->sp == 1);
+    (*pctx)->sp = 0;
+    assert((*pctx)->fp == 0);
+    return (*pctx)->stack[0];
+}
+
+int iface_find_pc(struct code_t *code) {
+    const int len = code->len;
+    for (int i = 0; i < len; i++) {
+        struct instr_t instr = code->instrs[i];
+        struct op_info *oi = instr.oi;
+        if (strcmp(oi->name, "Frame") == 0) {
+            const struct env_Frame *envFrame = instr.env;
+            if (strcmp(value_string(envFrame->name), ".__iface__") == 0) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+struct dot_graph_t *iface_generate_spec_graph(struct global_t *global, int iface_pc) {
+    // Create a context for evaluating iface
+    struct context *iface_ctx = new_alloc(struct context);
+    iface_ctx->name = value_put_atom(&global->values, "__iface__", 8);
+    iface_ctx->arg = VALUE_DICT;
+    iface_ctx->this = VALUE_DICT;
+    iface_ctx->vars = VALUE_DICT;
+    iface_ctx->atomic = iface_ctx->readonly = 1;
+    iface_ctx->interruptlevel = false;
+
+    struct dot_graph_t *dot_graph = dot_graph_init(global->graph.size);
+
+    for (int i = 0; i < global->graph.size; i++) {
+        iface_ctx->pc = iface_pc;
+        iface_ctx->terminated = false;
+        iface_ctx->failure = 0;
+
+        struct node *node = global->graph.nodes[i];
+        assert(i == node->id);
+
+        struct state *state = node->state;
+        uint64_t result = iface_evaluate(global, state, &iface_ctx);
+        const char *result_str = value_string(result);
+        printf("State %d result %s\n", i, result_str);
+        if (iface_ctx->failure != 0) {
+            printf("Invariant failed: %s\n", value_string(iface_ctx->failure));
+        }
+
+        int dot_node_idx = dot_graph_new_node(dot_graph, result_str);
+        assert(i == dot_node_idx);
+    }
+
+    for (int i = 0; i < global->graph.size; i++) {
+        struct node *node = global->graph.nodes[i];
+        for (struct edge *e = node->fwd; e != NULL; e = e->next) {
+            dot_graph_add_edge(dot_graph, node->id, e->node->id);
+        }
+    }
+
+    return dot_graph;
+}
+
+void iface_write_spec_graph_to_file(struct global_t *global, const char* filename) {
+    int iface_pc = iface_find_pc(&global->code);
+    if (iface_pc < 0) {
+        return;
+    }
+    assert(0 <= iface_pc && iface_pc < global->code.len);
+
+    struct dot_graph_t *spec_graph = iface_generate_spec_graph(global, iface_pc);
+
+    FILE *iface_file = fopen(filename, "w");
+    assert(iface_file != NULL);
+    dot_graph_fprint(spec_graph, iface_file);
+    fclose(iface_file);
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1686,60 +1743,7 @@ int main(int argc, char **argv){
         }
     }
 
-    int iface_pc = find_iface_pc(&global->code);
-    if (iface_pc >= 0) {
-        assert(0 <= iface_pc && iface_pc < global->code.len);
-
-        // Create a context for evaluating iface
-        struct context *iface_ctx = new_alloc(struct context);
-        iface_ctx->name = value_put_atom(&global->values, "__iface__", 8);
-        iface_ctx->arg = VALUE_DICT;
-        iface_ctx->this = VALUE_DICT;
-        iface_ctx->vars = VALUE_DICT;
-        iface_ctx->atomic = inv_ctx->readonly = 1;
-        iface_ctx->interruptlevel = false;
-
-        struct dot_graph_t *dot_graph = dot_graph_init(global->graph.size);
-
-        for (int i = 0; i < global->graph.size; i++) {
-            iface_ctx->pc = iface_pc;
-            iface_ctx->terminated = false;
-            iface_ctx->failure = 0;
-
-            struct node *node = global->graph.nodes[i];
-            assert(i == node->id);
-
-            struct state *state = node->state;
-            uint64_t result = evaluate_iface(global, state, &iface_ctx);
-            const char *result_str = value_string(result);
-            printf("State %d result %s\n", i, result_str);
-            if (iface_ctx->failure != 0) {
-                printf("Invariant failed: %s\n", value_string(iface_ctx->failure));
-            }
-
-            int dot_node_idx = dot_graph_new_node(dot_graph, result_str);
-            assert(i == dot_node_idx);
-        }
-
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *e = node->fwd; e != NULL; e = e->next) {
-                dot_graph_add_edge(dot_graph, node->id, e->node->id);
-            }
-        }
-
-        FILE *iface_file;
-        {
-            char *iface_filename;
-            int r = asprintf(&iface_filename, "%.*s_iface.gv", (int) (dotloc - fname), fname);
-            assert(r >= 0);
-            iface_file = fopen(iface_filename, "w");
-            free(iface_filename);
-        }
-        assert(iface_file != NULL);
-        dot_graph_fprint(dot_graph, iface_file);
-        fclose(iface_file);
-    }
+    iface_write_spec_graph_to_file(global, "iface.gv");
 
     free(global);
     return 0;
