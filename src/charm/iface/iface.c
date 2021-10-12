@@ -6,7 +6,7 @@
 #ifndef HARMONY_COMBINE
 #include "iface.h"
 #include "hashset.h"
-#include "iface/iface_graph.h"
+#include "iface_graph.h"
 #endif
 
 struct node_vec_t {
@@ -168,7 +168,6 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
 
         struct iface_node_t **iface_node = (struct iface_node_t **)
                 dict_insert(node_to_iface_node, &node, sizeof(struct node *));
-        printf("iface_evaluate_spec_graph: add initial node\n");
         *iface_node = iface_graph_add_node(iface_graph);
 
         iface_ctx->pc = iface_pc;
@@ -188,7 +187,6 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
                     dict_insert(node_to_iface_node, &child, sizeof(struct node *));
 
             if (*child_iface_node == NULL) {
-                printf("iface_evaluate_spec_graph: add child node\n");
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 
@@ -227,7 +225,6 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
                     dict_insert(node_to_iface_node, &child, sizeof(struct node *));
 
             if (*child_iface_node == NULL) {
-                printf("iface_evaluate_spec_graph: add child node\n");
                 *child_iface_node = iface_graph_add_node(iface_graph);
             }
 
@@ -247,10 +244,11 @@ struct dot_graph_t *iface_convert_to_dot(struct iface_graph_t *graph) {
     for (int i = 0; i < graph->nodes_len; i++) {
         struct iface_node_t *node = graph->nodes[i];
 
-        char *desc = value_string(node->value);
-        int dot_idx = dot_graph_new_node(dot, desc);
-        dot->nodes[dot_idx].terminating = node->terminated;
-        assert(dot_idx == i);
+        struct dot_node_t *dot_node = dot_graph_new_node(dot);
+        // TODO: how to free value_string?
+        dot_node->name = value_string(node->value);
+        dot_node->terminating = node->terminated;
+        dot_node->initial = node->initial;
     }
 
     for (int i = 0; i < graph->edges_len; i++) {
@@ -269,18 +267,16 @@ struct dot_graph_t *iface_generate_dot_graph(struct global_t *global) {
         return NULL;
     }
 
-    bool destutter = true;
-
     struct iface_graph_t *iface_graph = iface_evaluate_spec_graph(global, iface_pc);
     struct dot_graph_t *dot;
-    if (destutter) {
-        struct iface_graph_t *destuttered = iface_graph_destutter(iface_graph);
-        iface_graph_deinit(iface_graph);
-        dot = iface_convert_to_dot(destuttered);
-        iface_graph_deinit(destuttered);
-    } else {
-        dot = iface_convert_to_dot(iface_graph);
-    }
+#if true
+    struct iface_graph_t *destuttered = iface_graph_destutter(iface_graph);
+    iface_graph_deinit(iface_graph);
+    dot = iface_convert_to_dot(destuttered);
+    iface_graph_deinit(destuttered);
+#else
+    dot = iface_convert_to_dot(iface_graph);
+#endif
     return dot;
 }
 

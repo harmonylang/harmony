@@ -10,7 +10,7 @@
 #include "charm.h"
 #include "ops.h"
 #include "dot.h"
-#include "iface.h"
+#include "iface/iface.h"
 #endif
 
 #define CHUNKSIZE   (1 << 12)

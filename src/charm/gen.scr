@@ -12,12 +12,13 @@ cat code.h
 cat graph.h
 cat charm.h
 cat ops.h
-cat iface.h
+cat iface/iface.h
 cat iface/iface_graph.h
 cat iface/iface_graph.c
 cat charm.c
 cat global.c
 cat hashdict.c
+cat hashset.c
 cat json.c
 cat ops.c
 cat minheap.c
@@ -25,4 +26,4 @@ cat value.c
 cat code.c
 cat graph.c
 cat dot.c
-cat iface.c
+cat iface/iface.c

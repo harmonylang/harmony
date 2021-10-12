@@ -9,39 +9,19 @@
 #endif
 
 struct hashset_t {
-    struct dict *dict;  // a dict from values to themselves
+    struct dict *dict;  // a dict from values to DUMMY
 };
 
-struct hashset_t hashset_new(int initial_size) {
-    struct hashset_t set;
-    set.dict = dict_new(initial_size);
-    return set;
-}
-
-static int DUMMY;
+struct hashset_t hashset_new(int initial_size);
 
 // returns true iff key was in the set before
-bool hashset_insert(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, key, keylen);
-    bool result = *value != NULL;
-    *value = &DUMMY;
-    return result;
-}
+bool hashset_insert(struct hashset_t set, const void *key, unsigned int keylen);
 
 // returns true iff key was in the set before
-bool hashset_remove(struct hashset_t set, const void *key, unsigned int keylen) {
-    void **value = dict_insert(set.dict, key, keylen);
-    bool result = *value != NULL;
-    *value = NULL;
-    return result;
-}
+bool hashset_remove(struct hashset_t set, const void *key, unsigned int keylen);
 
-bool hashset_contains(struct hashset_t set, const void *key, unsigned int keylen) {
-    return dict_lookup(set.dict, key, keylen) != NULL;
-}
+bool hashset_contains(struct hashset_t set, const void *key, unsigned int keylen);
 
-void hashset_delete(struct hashset_t set) {
-    dict_delete(set.dict);
-}
+void hashset_delete(struct hashset_t set);
 
 #endif //SRC_HASHSET_H

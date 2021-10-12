@@ -13,14 +13,14 @@ struct dot_node_t {
 };
 
 struct dot_graph_t {
-    struct dot_node_t *nodes;
+    struct dot_node_t **nodes;
     int len;
     int _alloc_len;
 };
 
 struct dot_graph_t *dot_graph_init(int alloc_len);
 void dot_graph_deinit(struct dot_graph_t *graph);
-int dot_graph_new_node(struct dot_graph_t *graph, const char *name);
+struct dot_node_t *dot_graph_new_node(struct dot_graph_t *graph);
 void dot_graph_add_edge(struct dot_graph_t *graph, int from_idx, int to_idx);
 void dot_graph_fprint(struct dot_graph_t *graph, FILE *f);
 

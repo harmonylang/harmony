@@ -23,10 +23,9 @@ void iface_graph_print(struct iface_graph_t *graph) {
 }
 
 static void iface_graph_check_invariants(struct iface_graph_t *graph) {
+#ifndef NDEBUG
     assert(0 <= graph->nodes_len);
     assert(graph->nodes_len <= graph->_nodes_alloc_len);
-
-    iface_graph_print(graph);
 
     int num_edges = 0;
     for (int i = 0; i < graph->nodes_len; i++) {
@@ -45,6 +44,7 @@ static void iface_graph_check_invariants(struct iface_graph_t *graph) {
     }
 
     assert(graph->edges_len == num_edges);
+#endif
 }
 
 struct iface_graph_t *iface_graph_init(int initial_size) {

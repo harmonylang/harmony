@@ -7,23 +7,26 @@
 #endif
 
 struct dot_graph_t *dot_graph_init(int alloc_len) {
-    struct dot_graph_t *graph = malloc(sizeof(struct  dot_graph_t));
-    graph->nodes = malloc(alloc_len * sizeof(struct dot_node_t));
+    struct dot_graph_t *graph = malloc(sizeof(struct dot_graph_t));
+    graph->nodes = malloc(alloc_len * sizeof(struct dot_node_t *));
     graph->_alloc_len = alloc_len;
     graph->len = 0;
     return graph;
 }
 
 void dot_graph_deinit(struct dot_graph_t *graph) {
+    for (int i = 0; i < graph->len; i++) {
+        free(graph->nodes[i]);
+    }
     free(graph->nodes);
     free(graph);
 }
 
-int dot_graph_new_node(struct dot_graph_t *graph, const char *name) {
-    struct dot_node_t node;
-    node.name = name;
-    node.fwd = NULL;
-    node.fwd_len = 0;
+struct dot_node_t *dot_graph_new_node(struct dot_graph_t *graph) {
+    struct dot_node_t *node = malloc(sizeof(struct dot_node_t));
+    node->name = "";
+    node->fwd = NULL;
+    node->fwd_len = 0;
 
     int node_idx = graph->len;
     graph->len++;
@@ -34,53 +37,54 @@ int dot_graph_new_node(struct dot_graph_t *graph, const char *name) {
     }
 
     graph->nodes[node_idx] = node;
-    return node_idx;
+    return node;
 }
 
 void dot_graph_add_edge(struct dot_graph_t *graph, int from_idx, int to_idx) {
-    struct dot_node_t from_node = graph->nodes[from_idx];
-    for (int i = 0; i < from_node.fwd_len; i++) {
-        if (from_node.fwd[i] == to_idx) {
+    struct dot_node_t *from_node = graph->nodes[from_idx];
+    for (int i = 0; i < from_node->fwd_len; i++) {
+        if (from_node->fwd[i] == to_idx) {
             return;
         }
     }
 
-    from_node.fwd_len++;
-    if (from_node.fwd != NULL) {
-        from_node.fwd = realloc(from_node.fwd,from_node.fwd_len * sizeof(int));
+    from_node->fwd_len++;
+    if (from_node->fwd != NULL) {
+        from_node->fwd = realloc(from_node->fwd,from_node->fwd_len * sizeof(int));
     } else {
-        from_node.fwd = malloc(from_node.fwd_len * sizeof(int));
+        from_node->fwd = malloc(from_node->fwd_len * sizeof(int));
     }
 
-    from_node.fwd[from_node.fwd_len-1] = to_idx;
+    from_node->fwd[from_node->fwd_len-1] = to_idx;
     graph->nodes[from_idx] = from_node;
 }
 
 void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
     fprintf(f, "digraph {\n");
     for (int i = 0; i < graph->len; i++) {
-        struct dot_node_t node = graph->nodes[i];
+        struct dot_node_t *node = graph->nodes[i];
         fprintf(f, "  %d", i);
 
         fprintf(f, " [");
 
-        fprintf(f, "label=\"%s\"", node.name);
+        fprintf(f, "label=\"%s\"", node->name);
         fprintf(f, ",");
 
         fprintf(f, "shape=");
-        if (node.terminating) {
-            fprintf(f, "doublecircle");
+        if (node->initial) {
+            fprintf(f, "octagon");
+        } else if (node->terminating) {
+            fprintf(f, "doubleoctagon");
         } else {
-            fprintf(f, "circle");
+            fprintf(f, "box");
         }
         fprintf(f, "]\n");
     }
 
     for (int node_idx = 0; node_idx < graph->len; node_idx++) {
-        struct dot_node_t node = graph->nodes[node_idx];
-        for (int fwd_idx = 0; fwd_idx < node.fwd_len; fwd_idx++) {
-            struct dot_node_t other = graph->nodes[node.fwd[fwd_idx]];
-            fprintf(f, "  %d -> %d\n", node_idx, node.fwd[fwd_idx]);
+        struct dot_node_t *node = graph->nodes[node_idx];
+        for (int fwd_idx = 0; fwd_idx < node->fwd_len; fwd_idx++) {
+            fprintf(f, "  %d -> %d\n", node_idx, node->fwd[fwd_idx]);
         }
     }
     fprintf(f, "}\n");
