@@ -14,6 +14,11 @@ struct dot_graph_t *dot_graph_init(int alloc_len) {
     return graph;
 }
 
+void dot_graph_deinit(struct dot_graph_t *graph) {
+    free(graph->nodes);
+    free(graph);
+}
+
 int dot_graph_new_node(struct dot_graph_t *graph, const char *name) {
     struct dot_node_t node;
     node.name = name;
@@ -53,11 +58,29 @@ void dot_graph_add_edge(struct dot_graph_t *graph, int from_idx, int to_idx) {
 
 void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
     fprintf(f, "digraph {\n");
+    for (int i = 0; i < graph->len; i++) {
+        struct dot_node_t node = graph->nodes[i];
+        fprintf(f, "  %d", i);
+
+        fprintf(f, " [");
+
+        fprintf(f, "label=\"%s\"", node.name);
+        fprintf(f, ",");
+
+        fprintf(f, "shape=");
+        if (node.terminating) {
+            fprintf(f, "doublecircle");
+        } else {
+            fprintf(f, "circle");
+        }
+        fprintf(f, "]\n");
+    }
+
     for (int node_idx = 0; node_idx < graph->len; node_idx++) {
         struct dot_node_t node = graph->nodes[node_idx];
         for (int fwd_idx = 0; fwd_idx < node.fwd_len; fwd_idx++) {
             struct dot_node_t other = graph->nodes[node.fwd[fwd_idx]];
-            fprintf(f, "  \"%s\" -> \"%s\"\n", node.name, other.name);
+            fprintf(f, "  %d -> %d\n", node_idx, node.fwd[fwd_idx]);
         }
     }
     fprintf(f, "}\n");

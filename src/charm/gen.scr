@@ -1,6 +1,10 @@
 echo '#define _GNU_SOURCE'
 echo '#define HARMONY_COMBINE'
-cat hashdict.h json.h minheap.h
+cat stack.h
+cat hashdict.h
+cat hashset.h
+cat json.h
+cat minheap.h
 cat dot.h
 cat global.h
 cat value.h
@@ -8,4 +12,17 @@ cat code.h
 cat graph.h
 cat charm.h
 cat ops.h
-cat charm.c global.c hashdict.c json.c ops.c minheap.c value.c code.c graph.c dot.c
+cat iface.h
+cat iface/iface_graph.h
+cat iface/iface_graph.c
+cat charm.c
+cat global.c
+cat hashdict.c
+cat json.c
+cat ops.c
+cat minheap.c
+cat value.c
+cat code.c
+cat graph.c
+cat dot.c
+cat iface.c

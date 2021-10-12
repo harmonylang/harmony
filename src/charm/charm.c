@@ -10,6 +10,7 @@
 #include "charm.h"
 #include "ops.h"
 #include "dot.h"
+#include "iface.h"
 #endif
 
 #define CHUNKSIZE   (1 << 12)
@@ -1204,24 +1205,6 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
-bool all_eternal(uint64_t ctxbag){
-    int size;
-    uint64_t *vals = value_get(ctxbag, &size);
-    size /= sizeof(uint64_t);
-    bool all = true;
-    for (int i = 0; i < size; i += 2) {
-        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
-        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
-        assert(ctx != NULL);
-        if (!ctx->eternal) {
-            all = false;
-            break;
-        }
-    }
-    return all;
-}
-
 void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     const struct env_Possibly *ep = code->instrs[pc].env;
 
@@ -1235,99 +1218,6 @@ void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
             printf("invalidated possibly %s/%d\n", loc, ep->index);
         }
     }
-}
-
-uint64_t iface_evaluate(struct global_t *global, struct state *state, struct context **pctx) {
-    assert((*pctx)->sp == 0);
-    assert((*pctx)->failure == 0);
-    (*pctx)->pc++;
-    while (!(*pctx)->terminated) {
-        struct op_info *oi = global->code.instrs[(*pctx)->pc].oi;
-        printf("Running %s\n", oi->name);
-        int oldpc = (*pctx)->pc;
-        (*oi->op)(global->code.instrs[oldpc].env, state, pctx, global);
-        if ((*pctx)->failure != 0) {
-            (*pctx)->sp = 0;
-            return 0;
-        }
-        assert((*pctx)->pc != oldpc);
-    }
-    assert((*pctx)->sp == 1);
-    (*pctx)->sp = 0;
-    assert((*pctx)->fp == 0);
-    return (*pctx)->stack[0];
-}
-
-int iface_find_pc(struct code_t *code) {
-    const int len = code->len;
-    for (int i = 0; i < len; i++) {
-        struct instr_t instr = code->instrs[i];
-        struct op_info *oi = instr.oi;
-        if (strcmp(oi->name, "Frame") == 0) {
-            const struct env_Frame *envFrame = instr.env;
-            if (strcmp(value_string(envFrame->name), ".__iface__") == 0) {
-                return i;
-            }
-        }
-    }
-    return -1;
-}
-
-struct dot_graph_t *iface_generate_spec_graph(struct global_t *global, int iface_pc) {
-    // Create a context for evaluating iface
-    struct context *iface_ctx = new_alloc(struct context);
-    iface_ctx->name = value_put_atom(&global->values, "__iface__", 8);
-    iface_ctx->arg = VALUE_DICT;
-    iface_ctx->this = VALUE_DICT;
-    iface_ctx->vars = VALUE_DICT;
-    iface_ctx->atomic = iface_ctx->readonly = 1;
-    iface_ctx->interruptlevel = false;
-
-    struct dot_graph_t *dot_graph = dot_graph_init(global->graph.size);
-
-    for (int i = 0; i < global->graph.size; i++) {
-        iface_ctx->pc = iface_pc;
-        iface_ctx->terminated = false;
-        iface_ctx->failure = 0;
-
-        struct node *node = global->graph.nodes[i];
-        assert(i == node->id);
-
-        struct state *state = node->state;
-        uint64_t result = iface_evaluate(global, state, &iface_ctx);
-        const char *result_str = value_string(result);
-        printf("State %d result %s\n", i, result_str);
-        if (iface_ctx->failure != 0) {
-            printf("Invariant failed: %s\n", value_string(iface_ctx->failure));
-        }
-
-        int dot_node_idx = dot_graph_new_node(dot_graph, result_str);
-        assert(i == dot_node_idx);
-    }
-
-    for (int i = 0; i < global->graph.size; i++) {
-        struct node *node = global->graph.nodes[i];
-        for (struct edge *e = node->fwd; e != NULL; e = e->next) {
-            dot_graph_add_edge(dot_graph, node->id, e->node->id);
-        }
-    }
-
-    return dot_graph;
-}
-
-void iface_write_spec_graph_to_file(struct global_t *global, const char* filename) {
-    int iface_pc = iface_find_pc(&global->code);
-    if (iface_pc < 0) {
-        return;
-    }
-    assert(0 <= iface_pc && iface_pc < global->code.len);
-
-    struct dot_graph_t *spec_graph = iface_generate_spec_graph(global, iface_pc);
-
-    FILE *iface_file = fopen(filename, "w");
-    assert(iface_file != NULL);
-    dot_graph_fprint(spec_graph, iface_file);
-    fclose(iface_file);
 }
 
 void usage(char *prog){
@@ -1387,9 +1277,19 @@ int main(int argc, char **argv){
     struct global_t *global = malloc(sizeof(struct global_t));
     value_init(&global->values);
     ops_init(global);
-
+    graph_init(&global->graph, 1024);
     global->failures = minheap_create(fail_cmp);
     global->warnings = minheap_create(fail_cmp);
+    global->processes = NULL;
+    global->nprocesses = 0;
+    global->lasttime = 0;
+    global->timecnt = 0;
+    global->enqueued = 0;
+    global->dequeued = 0;
+    global->dumpfirst = false;
+    global->ai_free = NULL;
+    global->tochk = NULL;
+    global->possibly_cnt = NULL;
 
     // open the file
     FILE *fp = fopen(fname, "r");
@@ -1560,7 +1460,7 @@ int main(int argc, char **argv){
                 continue;
             }
             // TODO.  In case of ctxbag, all contexts should probably be blocked
-            if (all_eternal(node->state->ctxbag) && all_eternal(node->state->stopbag)) {
+            if (value_ctx_all_eternal(node->state->ctxbag) && value_ctx_all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }

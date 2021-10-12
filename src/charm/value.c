@@ -1000,3 +1000,21 @@ uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *f
 
     return 0;
 }
+
+bool value_ctx_all_eternal(uint64_t ctxbag) {
+    int size;
+    uint64_t *vals = value_get(ctxbag, &size);
+    size /= sizeof(uint64_t);
+    bool all = true;
+    for (int i = 0; i < size; i += 2) {
+        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(vals[i], NULL);
+        assert(ctx != NULL);
+        if (!ctx->eternal) {
+            all = false;
+            break;
+        }
+    }
+    return all;
+}

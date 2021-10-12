@@ -88,5 +88,7 @@ uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v);
 void value_ctx_push(struct context **pctx, uint64_t v);
 uint64_t value_ctx_pop(struct context **pctx);
 uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...);
+bool value_ctx_all_eternal(uint64_t ctxbag);
+
 
 #endif //SRC_VALUE_H

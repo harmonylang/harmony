@@ -8,6 +8,13 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
+void graph_init(struct graph_t *graph, int initial_size) {
+    assert(initial_size >= 1);
+    graph->size = 0;
+    graph->alloc_size = initial_size;
+    graph->nodes = malloc(graph->alloc_size * sizeof(struct node *));
+}
+
 void graph_add(struct graph_t *graph, struct node *node) {
     node->id = graph->size;
     if (graph->size >= graph->alloc_size) {
