@@ -59,11 +59,26 @@ void dot_graph_add_edge(struct dot_graph_t *graph, int from_idx, int to_idx) {
     graph->nodes[from_idx] = from_node;
 }
 
+void node_fprint(struct dot_node_t *node, int i, FILE *f) {
+    if (node->initial) {
+        fprintf(f, "i");
+    } else if (node->terminating) {
+        fprintf(f, "t");
+    } else {
+        fprintf(f, "s");
+    }
+
+    fprintf(f, "%d", i);
+}
+
 void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
     fprintf(f, "digraph {\n");
     for (int i = 0; i < graph->len; i++) {
         struct dot_node_t *node = graph->nodes[i];
-        fprintf(f, "  %d", i);
+
+        fprintf(f, "  ");
+
+        node_fprint(node, i, f);
 
         fprintf(f, " [");
 
@@ -83,8 +98,15 @@ void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
 
     for (int node_idx = 0; node_idx < graph->len; node_idx++) {
         struct dot_node_t *node = graph->nodes[node_idx];
+
         for (int fwd_idx = 0; fwd_idx < node->fwd_len; fwd_idx++) {
-            fprintf(f, "  %d -> %d\n", node_idx, node->fwd[fwd_idx]);
+            struct dot_node_t *fwd = graph->nodes[node->fwd[fwd_idx]];
+
+            fprintf(f, "  ");
+            node_fprint(node, node_idx, f);
+            fprintf(f, " -> ");
+            node_fprint(fwd, node->fwd[fwd_idx], f);
+            fprintf(f, "\n");
         }
     }
     fprintf(f, "}\n");

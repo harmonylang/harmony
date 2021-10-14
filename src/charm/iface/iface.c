@@ -67,7 +67,7 @@ void node_vec_print_node_ids(struct node_vec_t *vec) {
     printf("]\n");
 }
 
-struct node_vec_t *find_non_atomic_children(struct node *n) {
+struct node_vec_t *find_one_step_children(struct node *n) {
     struct node_vec_t *result = node_vec_init(1);
     struct node_vec_t *work = node_vec_init(1);
     struct hashset_t visited = hashset_new(0);
@@ -96,6 +96,14 @@ struct node_vec_t *find_non_atomic_children(struct node *n) {
     node_vec_deinit(work);
     hashset_delete(visited);
 
+    return result;
+}
+
+struct node_vec_t *find_all_children(struct node *n) {
+    struct node_vec_t *result = node_vec_init(1);
+    for (struct edge *e = n->fwd; e != NULL; e = e->next) {
+        node_vec_push(result, e->node);
+    }
     return result;
 }
 
@@ -148,6 +156,8 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     iface_ctx->atomic = iface_ctx->readonly = 1;
     iface_ctx->interruptlevel = false;
 
+    // make a guess that the spec graph will have half as many nodes as the
+    // global graph
     struct iface_graph_t *iface_graph = iface_graph_init(global->graph.size / 2);
 
     // dict from (struct node *) to (struct iface_node_t *)
@@ -156,7 +166,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct hashset_t visited = hashset_new(0);
 
     assert(global->graph.size > 0);
-    struct node_vec_t *initial_nodes = find_non_atomic_children(global->graph.nodes[0]);
+    struct node_vec_t *initial_nodes = find_one_step_children(global->graph.nodes[0]);
     printf("Found %d initial nodes\n", initial_nodes->len);
     node_vec_print_node_ids(initial_nodes);
     struct node_vec_t *worklist = node_vec_init(1);
@@ -178,7 +188,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
             printf("Failure: %s\n", value_string(iface_ctx->failure));
         }
 
-        struct node_vec_t *children = find_non_atomic_children(node);
+        struct node_vec_t *children = find_all_children(node);
         node_vec_append_all(worklist, children);
         for (int j = 0; j < children->len; j++) {
             struct node *child = children->arr[j];
@@ -196,6 +206,8 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         hashset_insert(visited, &node, sizeof(struct node *));
         node_vec_deinit(children);
     }
+
+    node_vec_deinit(initial_nodes);
 
     while (!node_vec_is_empty(worklist)) {
         struct node *node = node_stack_pop(worklist);
@@ -216,7 +228,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
             printf("Failure: %s\n", value_string(iface_ctx->failure));
         }
 
-        struct node_vec_t *children = find_non_atomic_children(node);
+        struct node_vec_t *children = find_all_children(node);
         node_vec_append_all(worklist, children);
         for (int i = 0; i < children->len; i++) {
             struct node *child = children->arr[i];
@@ -234,6 +246,8 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         hashset_insert(visited, &node, sizeof(struct node *));
         node_vec_deinit(children);
     }
+
+    node_vec_deinit(worklist);
 
     return iface_graph;
 }
