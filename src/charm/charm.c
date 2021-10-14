@@ -9,6 +9,8 @@
 #include "global.h"
 #include "charm.h"
 #include "ops.h"
+#include "dot.h"
+#include "iface/iface.h"
 #endif
 
 #define CHUNKSIZE   (1 << 12)
@@ -1203,24 +1205,6 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
-bool all_eternal(uint64_t ctxbag){
-    int size;
-    uint64_t *vals = value_get(ctxbag, &size);
-    size /= sizeof(uint64_t);
-    bool all = true;
-    for (int i = 0; i < size; i += 2) {
-        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
-        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
-        struct context *ctx = value_get(vals[i], NULL);
-        assert(ctx != NULL);
-        if (!ctx->eternal) {
-            all = false;
-            break;
-        }
-    }
-    return all;
-}
-
 void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     const struct env_Possibly *ep = code->instrs[pc].env;
 
@@ -1293,9 +1277,19 @@ int main(int argc, char **argv){
     struct global_t *global = malloc(sizeof(struct global_t));
     value_init(&global->values);
     ops_init(global);
-
+    graph_init(&global->graph, 1024);
     global->failures = minheap_create(fail_cmp);
     global->warnings = minheap_create(fail_cmp);
+    global->processes = NULL;
+    global->nprocesses = 0;
+    global->lasttime = 0;
+    global->timecnt = 0;
+    global->enqueued = 0;
+    global->dequeued = 0;
+    global->dumpfirst = false;
+    global->ai_free = NULL;
+    global->tochk = NULL;
+    global->possibly_cnt = NULL;
 
     // open the file
     FILE *fp = fopen(fname, "r");
@@ -1466,7 +1460,7 @@ int main(int argc, char **argv){
                 continue;
             }
             // TODO.  In case of ctxbag, all contexts should probably be blocked
-            if (all_eternal(node->state->ctxbag) && all_eternal(node->state->stopbag)) {
+            if (value_ctx_all_eternal(node->state->ctxbag) && value_ctx_all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }
@@ -1648,6 +1642,8 @@ int main(int argc, char **argv){
             }
         }
     }
+
+    iface_write_spec_graph_to_file(global, "iface.gv");
 
     free(global);
     return 0;

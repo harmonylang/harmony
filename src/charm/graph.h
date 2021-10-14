@@ -70,6 +70,8 @@ struct graph_t {
     int alloc_size;              // size allocated
 };
 
+void graph_init(struct graph_t *graph, int initial_size);
+
 struct access_info *graph_ai_alloc(struct access_info **ai_free, int multiplicity, int atomic, int pc);
 
 void graph_check_for_data_race(
