@@ -134,10 +134,10 @@ void iface_graph_add_edge(struct iface_graph_t *graph, int src_idx, int dst_idx)
     iface_graph_check_invariants(graph);
 }
 
-void iface_graph_add_edge_unique(struct iface_graph_t *graph, int src_idx, int dst_idx) {
+void iface_graph_add_edge_unique(struct iface_graph_t *graph, int src_idx, int dst_idx, bool is_fwd) {
     for (int i = 0; i < graph->edges_len; i++) {
         struct iface_edge_t *edge = graph->edges[i];
-        if (edge->src->idx == src_idx && edge->dst->idx == dst_idx) {
+        if (edge->src->idx == src_idx && edge->dst->idx == dst_idx && edge->is_fwd == is_fwd) {
             return;
         }
     }
@@ -223,7 +223,9 @@ struct iface_graph_t *iface_graph_destutter(struct iface_graph_t *graph) {
 
     for (int i = 0; i < graph->edges_len; i++) {
         struct iface_edge_t *e = graph->edges[i];
-        iface_graph_add_edge_unique(normalized, e->src->_tag, e->dst->_tag);
+        if (e->is_fwd) {
+            iface_graph_add_edge_unique(normalized, e->src->_tag, e->dst->_tag, e->is_fwd);
+        }
     }
 
     iface_graph_check_invariants(normalized);
