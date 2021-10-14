@@ -49,12 +49,7 @@ void dot_graph_add_edge(struct dot_graph_t *graph, int from_idx, int to_idx) {
     }
 
     from_node->fwd_len++;
-    if (from_node->fwd != NULL) {
-        from_node->fwd = realloc(from_node->fwd,from_node->fwd_len * sizeof(int));
-    } else {
-        from_node->fwd = malloc(from_node->fwd_len * sizeof(int));
-    }
-
+    from_node->fwd = realloc(from_node->fwd, from_node->fwd_len * sizeof(int));
     from_node->fwd[from_node->fwd_len-1] = to_idx;
     graph->nodes[from_idx] = from_node;
 }

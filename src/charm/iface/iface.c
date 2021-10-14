@@ -146,6 +146,14 @@ int iface_find_pc(struct code_t *code) {
     return -1;
 }
 
+/**
+ * Creates an iface graph containing the results of evaluating the iface
+ * expression at every step.
+ *
+ * @param global
+ * @param iface_pc - pc of the instr that starts the iface function
+ * @return
+ */
 struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int iface_pc) {
     // Create a context for evaluating iface
     struct context *iface_ctx = new_alloc(struct context);
@@ -259,7 +267,6 @@ struct dot_graph_t *iface_convert_to_dot(struct iface_graph_t *graph) {
         struct iface_node_t *node = graph->nodes[i];
 
         struct dot_node_t *dot_node = dot_graph_new_node(dot);
-        // TODO: how to free value_string?
         dot_node->name = value_string(node->value);
         dot_node->terminating = node->terminated;
         dot_node->initial = node->initial;
