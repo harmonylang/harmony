@@ -3667,7 +3667,7 @@ class ForAST(AST):
     def getImports(self):
         return self.value.getImports()
 
-class SelectAST(AST):
+class OnceExistsAST(AST):
     def __init__(self, token, bv, expr, cond, stat):
         AST.__init__(self, token)
         self.bv = bv
@@ -3676,12 +3676,12 @@ class SelectAST(AST):
         self.stat = stat
 
     def __repr__(self):
-        return "Select(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+        return "OnceExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
-        self.assign(scope, `self.bv)
-        looplabel = LabelValue(None, "select loop")
-        selectlabel = LabelValue(None, "select start")
+        self.assign(scope, self.bv)
+        looplabel = LabelValue(None, "once exists loop")
+        selectlabel = LabelValue(None, "once exists start")
         (lexeme, file, line, column) = self.ast_token
         code.nextLabel(looplabel)
         code.append(AtomicIncOp(True))
@@ -3721,6 +3721,53 @@ class SelectAST(AST):
         code.nextLabel(selectlabel)
         code.append(ChooseOp())
         code.append(StoreVarOp(self.bv))
+        self.stat.compile(scope, code)
+        code.append(AtomicDecOp())
+
+    def getLabels(self):
+        return self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
+
+class OnceAST(AST):
+    def __init__(self, token, cond, stat):
+        AST.__init__(self, token)
+        self.cond = cond
+        self.stat = stat
+
+    def __repr__(self):
+        return "Once(" + str(self.cond) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        """
+        lstart:
+            atomic inc
+            [[cond]]
+            jump lbody if true
+            atomic dec
+            jump lstart
+        lbody:
+            [[stmt]]
+            atomic dec
+        """
+
+        global labelcnt
+
+        label_start = LabelValue(None, "once_start$%d"%labelcnt)
+        labelcnt += 1
+
+        label_body = LabelValue(None, "once_body$%d"%labelcnt)
+        labelcnt += 1
+
+        code.nextLabel(label_start)
+        code.append(AtomicIncOp(True))
+        self.cond.compile(scope, code)
+        code.append(JumpCondOp(True, label_body))
+        code.append(AtomicDecOp())
+        code.append(JumpOp(label_start))
+
+        code.nextLabel(label_body)
         self.stat.compile(scope, code)
         code.append(AtomicDecOp())
 
@@ -4329,6 +4376,7 @@ class StatementRule(Rule):
             (stat, t) = StatListRule(column).parse(t[1:])
             return (ForAST(lst, stat, token), t)
         if lexeme == "select":
+            # TODO: remove `select`
             (bv, t) = BoundVarRule().parse(t[1:])
             (lexeme, file, line, nextColumn) = t[0]
             self.expect("select statement", lexeme == "in", t[0], "expected 'in'")
@@ -4339,7 +4387,29 @@ class StatementRule(Rule):
             else:
                 cond = None
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (SelectAST(token, bv, expr, cond, stat), t)
+            return (OnceExistsAST(token, bv, expr, cond, stat), t)
+
+        if lexeme == "once":
+            # TODO: add bounds check?
+            lookahead, _0, _1, _2 = t[1]
+            if lookahead == "exists":
+                t = t[1:]
+                (bv, t) = BoundVarRule().parse(t[1:])
+                (lexeme, file, line, nextColumn) = t[0]
+                self.expect("'once exists' statement", lexeme == "in", t[0], "expected 'in'")
+                (expr, t) = NaryRule({":", "where"}).parse(t[1:])
+                (lexeme, file, line, nextColumn) = t[0]
+                if lexeme == "where":
+                    (cond, t) = NaryRule({":"}).parse(t[1:])
+                else:
+                    cond = None
+                (stat, t) = StatListRule(column).parse(t[1:])
+                return (OnceExistsAST(token, bv, expr, cond, stat), t)
+
+            else:
+                (cond, t) = NaryRule({":"}).parse(t[1:])
+                (stat, t) = StatListRule(column).parse(t[1:])
+                return (OnceAST(token, cond, stat), t)
 
         if lexeme == "let":
             vars = []
