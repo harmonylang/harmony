@@ -3743,7 +3743,9 @@ class OnceAST(AST):
         """
         lstart:
             atomic inc
+            readonly inc
             [[cond]]
+            readonly dec
             jump lbody if true
             atomic dec
             jump lstart
@@ -3762,7 +3764,9 @@ class OnceAST(AST):
 
         code.nextLabel(label_start)
         code.append(AtomicIncOp(True))
+        code.append(ReadonlyIncOp())
         self.cond.compile(scope, code)
+        code.append(ReadonlyDecOp())
         code.append(JumpCondOp(True, label_body))
         code.append(AtomicDecOp())
         code.append(JumpOp(label_start))
@@ -4390,7 +4394,7 @@ class StatementRule(Rule):
             return (OnceExistsAST(token, bv, expr, cond, stat), t)
 
         if lexeme == "once":
-            # TODO: add bounds check?
+            # TODO: add bounds check on t?
             lookahead, _0, _1, _2 = t[1]
             if lookahead == "exists":
                 t = t[1:]
