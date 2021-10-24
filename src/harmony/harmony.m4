@@ -258,7 +258,6 @@ def isreserved(s):
         "min",
         "None",
         "not",
-        "once",
         "or",
         "pass",
         "possibly",
@@ -3683,7 +3682,7 @@ class ForAST(AST):
     def getImports(self):
         return self.value.getImports()
 
-class OnceExistsAST(AST):
+class WhenExistsAST(AST):
     def __init__(self, token, bv, expr, cond, stat):
         AST.__init__(self, token)
         self.bv = bv
@@ -3692,12 +3691,12 @@ class OnceExistsAST(AST):
         self.stat = stat
 
     def __repr__(self):
-        return "OnceExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+        return "WhenExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         self.assign(scope, self.bv)
-        looplabel = LabelValue(None, "once exists loop")
-        selectlabel = LabelValue(None, "once exists start")
+        looplabel = LabelValue(None, "when exists loop")
+        selectlabel = LabelValue(None, "when exists start")
         (lexeme, file, line, column) = self.ast_token
         code.nextLabel(looplabel)
         code.append(AtomicIncOp(True))
@@ -3746,14 +3745,14 @@ class OnceExistsAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
-class OnceAST(AST):
+class WhenAST(AST):
     def __init__(self, token, cond, stat):
         AST.__init__(self, token)
         self.cond = cond
         self.stat = stat
 
     def __repr__(self):
-        return "Once(" + str(self.cond) + ", " + str(self.stat) + ")"
+        return "When(" + str(self.cond) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         """
@@ -3772,10 +3771,10 @@ class OnceAST(AST):
 
         global labelcnt
 
-        label_start = LabelValue(None, "once_start$%d"%labelcnt)
+        label_start = LabelValue(None, "WhenAST_start$%d"%labelcnt)
         labelcnt += 1
 
-        label_body = LabelValue(None, "once_body$%d"%labelcnt)
+        label_body = LabelValue(None, "WhenAST_body$%d"%labelcnt)
         labelcnt += 1
 
         code.nextLabel(label_start)
@@ -4482,16 +4481,16 @@ class StatementRule(Rule):
             else:
                 cond = None
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (OnceExistsAST(token, bv, expr, cond, stat), t)
+            return (WhenExistsAST(token, bv, expr, cond, stat), t)
 
-        if lexeme == "once":
+        if lexeme == "when":
             # TODO: add bounds check on t?
             lookahead, _0, _1, _2 = t[1]
             if lookahead == "exists":
                 t = t[1:]
                 (bv, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, nextColumn) = t[0]
-                self.expect("'once exists' statement", lexeme == "in", t[0], "expected 'in'")
+                self.expect("'when exists' statement", lexeme == "in", t[0], "expected 'in'")
                 (expr, t) = NaryRule({":", "where"}).parse(t[1:])
                 (lexeme, file, line, nextColumn) = t[0]
                 if lexeme == "where":
@@ -4499,12 +4498,12 @@ class StatementRule(Rule):
                 else:
                     cond = None
                 (stat, t) = StatListRule(column).parse(t[1:])
-                return (OnceExistsAST(token, bv, expr, cond, stat), t)
+                return (WhenExistsAST(token, bv, expr, cond, stat), t)
 
             else:
                 (cond, t) = NaryRule({":"}).parse(t[1:])
                 (stat, t) = StatListRule(column).parse(t[1:])
-                return (OnceAST(token, cond, stat), t)
+                return (WhenAST(token, cond, stat), t)
 
         if lexeme == "let":
             vars_and_conds = []
