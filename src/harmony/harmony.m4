@@ -3648,6 +3648,20 @@ class LetAST(AST):
         # for (var, expr) in self.vars:
         #     self.delete(scope, code, var)
 
+class VarAST(AST):
+    def __init__(self, token, vars):
+        AST.__init__(self, token)
+        self.vars = vars
+
+    def __repr__(self):
+        return "Var(" + str(self.vars) + ")"
+
+    def compile(self, scope, code):
+        for (var, expr) in self.vars:
+            expr.compile(scope, code)
+            code.append(StoreVarOp(var))
+            self.assign(scope, var)
+
 class ForAST(AST):
     def __init__(self, iter, stat, token):
         AST.__init__(self, token)
@@ -4429,6 +4443,23 @@ class StatementRule(Rule):
                 self.expect("let statement", lexeme == "let", t[0], "expected 'let' or ':'")
             (stat, t) = StatListRule(column).parse(t[1:])
             return (LetAST(token, vars, stat), t)
+
+        if lexeme == "var":
+            vars = []
+            (bv, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, nextColumn) = t[0]
+            self.expect("var statement", lexeme == "=", t[0], "expected '='")
+
+            same_line = []
+            for tok in t[1:]:
+                if tok[2] != line:
+                    break
+                same_line.append(tok)
+
+            (ast, t) = TupleRule(set()).parse(same_line)
+            vars.append((bv, ast))
+            return (VarAST(token, vars), t)
+
         if lexeme == "atomic":
             (stat, t) = BlockRule(column).parse(t[1:])
             return (AtomicAST(token, stat), t)
