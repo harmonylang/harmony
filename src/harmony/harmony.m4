@@ -270,6 +270,7 @@ def isreserved(s):
         "trap",
         "try",
         "True",
+        "when",
         "where",
         "while"
         "with"
@@ -3648,6 +3649,20 @@ class LetAST(AST):
         # for (var, expr) in self.vars:
         #     self.delete(scope, code, var)
 
+class VarAST(AST):
+    def __init__(self, token, vars):
+        AST.__init__(self, token)
+        self.vars = vars
+
+    def __repr__(self):
+        return "Var(" + str(self.vars) + ")"
+
+    def compile(self, scope, code):
+        for (var, expr) in self.vars:
+            expr.compile(scope, code)
+            code.append(StoreVarOp(var))
+            self.assign(scope, var)
+
 class ForAST(AST):
     def __init__(self, iter, stat, token):
         AST.__init__(self, token)
@@ -3667,7 +3682,7 @@ class ForAST(AST):
     def getImports(self):
         return self.value.getImports()
 
-class OnceExistsAST(AST):
+class WhenExistsAST(AST):
     def __init__(self, token, bv, expr, cond, stat):
         AST.__init__(self, token)
         self.bv = bv
@@ -3676,12 +3691,12 @@ class OnceExistsAST(AST):
         self.stat = stat
 
     def __repr__(self):
-        return "OnceExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
+        return "WhenExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         self.assign(scope, self.bv)
-        looplabel = LabelValue(None, "once exists loop")
-        selectlabel = LabelValue(None, "once exists start")
+        looplabel = LabelValue(None, "when exists loop")
+        selectlabel = LabelValue(None, "when exists start")
         (lexeme, file, line, column) = self.ast_token
         code.nextLabel(looplabel)
         code.append(AtomicIncOp(True))
@@ -3730,14 +3745,14 @@ class OnceExistsAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
-class OnceAST(AST):
+class WhenAST(AST):
     def __init__(self, token, cond, stat):
         AST.__init__(self, token)
         self.cond = cond
         self.stat = stat
 
     def __repr__(self):
-        return "Once(" + str(self.cond) + ", " + str(self.stat) + ")"
+        return "When(" + str(self.cond) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
         """
@@ -3756,10 +3771,10 @@ class OnceAST(AST):
 
         global labelcnt
 
-        label_start = LabelValue(None, "once_start$%d"%labelcnt)
+        label_start = LabelValue(None, "WhenAST_start$%d"%labelcnt)
         labelcnt += 1
 
-        label_body = LabelValue(None, "once_body$%d"%labelcnt)
+        label_body = LabelValue(None, "WhenAST_body$%d"%labelcnt)
         labelcnt += 1
 
         code.nextLabel(label_start)
@@ -3771,6 +3786,81 @@ class OnceAST(AST):
         code.append(AtomicDecOp())
         code.append(JumpOp(label_start))
 
+        code.nextLabel(label_body)
+        self.stat.compile(scope, code)
+        code.append(AtomicDecOp())
+
+    def getLabels(self):
+        return self.stat.getLabels()
+
+    def getImports(self):
+        return self.stat.getImports()
+
+class LetWhenAST(AST):
+    # vars_and_conds, a list of either
+    #   - ('var', bv, ast)
+    #   - ('cond', cond)
+    def __init__(self, token, vars_and_conds, stat):
+        AST.__init__(self, token)
+        self.vars_and_conds = vars_and_conds
+        self.stat = stat
+
+    def __repr__(self):
+        return "LetWhen(" + str(self.vars_and_conds) + ", " + str(self.stat) + ")"
+
+    def compile(self, scope, code):
+        """
+        start:
+            atomic inc
+            [[let1]]
+            [[cond1]]
+            jump condfailed if false
+            ...
+            [[letn]]
+            [[condn]]
+            jump condfailed if false
+            jump body
+        condfailed:
+            atomic dec
+            jump start
+        body:
+            [[stmt]]
+            atomic dec
+        """
+
+        # declare labels
+        global labelcnt
+        label_start = LabelValue(None, "LetWhenAST_start$%d"%labelcnt)
+        labelcnt += 1
+        label_condfailed = LabelValue(None, "LetWhenAST_condfailed$%d"%labelcnt)
+        labelcnt += 1
+        label_body = LabelValue(None, "LetWhenAST_body$%d"%labelcnt)
+        labelcnt += 1
+
+        # start:
+        code.nextLabel(label_start)
+        code.append(AtomicIncOp(True))
+        for var_or_cond in self.vars_and_conds:
+            if var_or_cond[0] == 'var':
+                var, expr = var_or_cond[1:]
+
+                expr.compile(scope, code)
+                code.append(StoreVarOp(var))
+                self.assign(scope, var)
+
+            else:
+                assert var_or_cond[0] == 'cond'
+                cond = var_or_cond[1]
+                cond.compile(scope, code)
+                code.append(JumpCondOp(False, label_condfailed))
+        code.append(JumpOp(label_body))
+
+        # condfailed:
+        code.nextLabel(label_condfailed)
+        code.append(AtomicDecOp())
+        code.append(JumpOp(label_start))
+
+        # body:
         code.nextLabel(label_body)
         self.stat.compile(scope, code)
         code.append(AtomicDecOp())
@@ -4391,16 +4481,16 @@ class StatementRule(Rule):
             else:
                 cond = None
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (OnceExistsAST(token, bv, expr, cond, stat), t)
+            return (WhenExistsAST(token, bv, expr, cond, stat), t)
 
-        if lexeme == "once":
+        if lexeme == "when":
             # TODO: add bounds check on t?
             lookahead, _0, _1, _2 = t[1]
             if lookahead == "exists":
                 t = t[1:]
                 (bv, t) = BoundVarRule().parse(t[1:])
                 (lexeme, file, line, nextColumn) = t[0]
-                self.expect("'once exists' statement", lexeme == "in", t[0], "expected 'in'")
+                self.expect("'when exists' statement", lexeme == "in", t[0], "expected 'in'")
                 (expr, t) = NaryRule({":", "where"}).parse(t[1:])
                 (lexeme, file, line, nextColumn) = t[0]
                 if lexeme == "where":
@@ -4408,27 +4498,63 @@ class StatementRule(Rule):
                 else:
                     cond = None
                 (stat, t) = StatListRule(column).parse(t[1:])
-                return (OnceExistsAST(token, bv, expr, cond, stat), t)
+                return (WhenExistsAST(token, bv, expr, cond, stat), t)
 
             else:
                 (cond, t) = NaryRule({":"}).parse(t[1:])
                 (stat, t) = StatListRule(column).parse(t[1:])
-                return (OnceAST(token, cond, stat), t)
+                return (WhenAST(token, cond, stat), t)
 
         if lexeme == "let":
-            vars = []
+            vars_and_conds = []
             while True:
-                (bv, t) = BoundVarRule().parse(t[1:])
-                (lexeme, file, line, nextColumn) = t[0]
-                self.expect("let statement", lexeme == "=", t[0], "expected '='")
-                (ast, t) = TupleRule({":", "let"}).parse(t[1:])
-                vars.append((bv, ast))
+                if lexeme == "let":
+                    (bv, t) = BoundVarRule().parse(t[1:])
+                    (lexeme, file, line, nextColumn) = t[0]
+                    self.expect("let statement", lexeme == "=", t[0], "expected '='")
+                    (ast, t) = TupleRule({":", "let", "when"}).parse(t[1:])
+                    vars_and_conds.append(('var', bv, ast))
+                else:
+                    assert lexeme == "when"
+                    (cond, t) = NaryRule({":", "let", "when"}).parse(t[1:])
+                    vars_and_conds.append(('cond', cond))
+
                 (lexeme, file, line, nextColumn) = t[0]
                 if lexeme == ":":
                     break
-                self.expect("let statement", lexeme == "let", t[0], "expected 'let' or ':'")
+
+                self.expect(
+                    "let statement",
+                    lexeme == "let" or lexeme == "when",
+                    t[0],
+                    "expected 'let', 'when', or ':'"
+                )
+
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (LetAST(token, vars, stat), t)
+
+            if all(vac[0] == 'var' for vac in vars_and_conds):
+                vars = [vac[1:] for vac in vars_and_conds if vac[0] == 'var']
+                return (LetAST(token, vars, stat), t)
+
+            else:
+                return (LetWhenAST(token, vars_and_conds, stat), t)
+
+        if lexeme == "var":
+            vars = []
+            (bv, t) = BoundVarRule().parse(t[1:])
+            (lexeme, file, line, nextColumn) = t[0]
+            self.expect("var statement", lexeme == "=", t[0], "expected '='")
+
+            same_line = []
+            for tok in t[1:]:
+                if tok[2] != line:
+                    break
+                same_line.append(tok)
+
+            (ast, t) = TupleRule(set()).parse(same_line)
+            vars.append((bv, ast))
+            return (VarAST(token, vars), t)
+
         if lexeme == "atomic":
             (stat, t) = BlockRule(column).parse(t[1:])
             return (AtomicAST(token, stat), t)
