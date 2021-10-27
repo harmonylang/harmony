@@ -4553,7 +4553,10 @@ class StatementRule(Rule):
                 same_line.append(tok)
 
             t = t[len(same_line):]
-            (ast, _) = TupleRule(set()).parse(same_line)
+            (ast, u) = TupleRule(set()).parse(same_line)
+            # William Ma: I think this will never be invoked, since TupleRule
+            # with closers={} will always try and parse the entire line...
+            assert len(u) == 0
             vars.append((bv, ast))
             return (VarAST(token, vars), t)
 
