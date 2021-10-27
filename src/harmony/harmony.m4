@@ -4554,9 +4554,12 @@ class StatementRule(Rule):
 
             t = t[len(same_line):]
             (ast, u) = TupleRule(set()).parse(same_line)
-            # William Ma: I think this will never be invoked, since TupleRule
-            # with closers={} will always try and parse the entire line...
-            assert len(u) == 0
+            self.expect(
+                "var statement",
+                len(u) == 0,
+                'remaining tokens on line %d: %s'%(line, u),
+                'no remaining tokens'
+            )
             vars.append((bv, ast))
             return (VarAST(token, vars), t)
 
