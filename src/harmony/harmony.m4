@@ -4544,14 +4544,16 @@ class StatementRule(Rule):
             (bv, t) = BoundVarRule().parse(t[1:])
             (lexeme, file, line, nextColumn) = t[0]
             self.expect("var statement", lexeme == "=", t[0], "expected '='")
+            t = t[1:]
 
             same_line = []
-            for tok in t[1:]:
+            for tok in t:
                 if tok[2] != line:
                     break
                 same_line.append(tok)
 
-            (ast, t) = TupleRule(set()).parse(same_line)
+            t = t[len(same_line):]
+            (ast, _) = TupleRule(set()).parse(same_line)
             vars.append((bv, ast))
             return (VarAST(token, vars), t)
 

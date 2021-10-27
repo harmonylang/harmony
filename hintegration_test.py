@@ -93,6 +93,7 @@ TEST_CASES: list[TestCase] = [
     TestCase('-msynch=synchS code/trap6.hny'),
     TestCase('code/hw.hny'),
     TestCase('code/abptest.hny'),
+    TestCase('test/DinersVar.hny'),
 ]
 
 

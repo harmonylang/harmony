@@ -801,3 +801,22 @@ No issues
 ```
 
 ---
+### test/DinersVar.hny
+
+Average duration: 0.3950159549713135
+
+Expected output:
+```
+#states 9095
+1700 components, 1 bad states
+Non-terminating state
+T0: __init__() [0-5,369-371,1047-1051,769-773,762-767,774,775,1052-1056,1102-1113,1104-1113,1104-1113,1104-1113,1104-1113,1104-1106,1114,1115] { bag: (), forks: [ False, False, False, False, False ], list: (), synch: () }
+T1: diner(0) [1057-1072(choose True),1073-1078,785-788,727-738,789-791,1079-1084,785-788,727-730] { bag: (), forks: [ True, False, False, False, False ], list: (), synch: () }
+T2: diner(1) [1057-1072(choose True),1073-1078,785-788,727-738,789-791,1079-1084,785-788,727-730] { bag: (), forks: [ True, True, False, False, False ], list: (), synch: () }
+T3: diner(2) [1057-1072(choose True),1073-1078,785-788,727-738,789-791,1079-1084,785-788,727-730] { bag: (), forks: [ True, True, True, False, False ], list: (), synch: () }
+T4: diner(3) [1057-1072(choose True),1073-1078,785-788,727-738,789-791,1079-1084,785-788,727-730] { bag: (), forks: [ True, True, True, True, False ], list: (), synch: () }
+T5: diner(4) [1057-1072(choose True),1073-1078,785-788,727-738,789-791,1079-1084,785-788,727-730] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }
+
+```
+
+---
