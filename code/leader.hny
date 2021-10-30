@@ -4,7 +4,7 @@ network = {}        # the network is a set of messages
 leader = 0          # used for checking correctness
 
 def send(m):
-    atomic: network |= { m }
+    atomically network |= { m }
 
 def receive(self):
     result = { (id, found) for (dst, id, found) in network where dst == self }

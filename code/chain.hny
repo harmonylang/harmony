@@ -5,7 +5,7 @@ network = {}            # the network is a set of messages
 final = None            # this is used to check correctness
 
 def send(m):
-    atomic: network |= { m }
+    atomically network |= { m }
 
 def receive(predecessor, index):
     result = { payload for (id, payload) in network where (id == predecessor)

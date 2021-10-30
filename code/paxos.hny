@@ -11,7 +11,7 @@ let nfalse = choose({0..NLEADERS/2}):
 decisions = {}
 
 def send(m):
-    atomic: network = bag.add(network, m)
+    atomically network = bag.add(network, m)
 
 def receive(ballot, phase):
     let msgs = { e:c for (b,p,t,e):c in network

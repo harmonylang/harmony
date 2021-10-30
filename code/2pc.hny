@@ -5,7 +5,7 @@ const MAX_BALANCE = 1
 network = {}
 
 def send(m):
-    atomic: network |= { m }
+    atomically network |= { m }
 
 def bank(self, balance):
     let status, received = (), {}:

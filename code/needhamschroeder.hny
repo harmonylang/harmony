@@ -3,7 +3,7 @@ network = {}
 dest = choose({ None, .bob, .corey })
 
 def send(m):
-    atomic: network |= { m }
+    atomically network |= { m }
 
 def alice():
     if dest != None:

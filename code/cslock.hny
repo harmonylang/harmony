@@ -8,12 +8,12 @@ invariant 0 <= count <= 1
 def thread():
     synch.acquire(?lock)
 
-    atomic: count += 1
+    atomically count += 1
 
     # critical section is here
     assert count == 1
 
-    atomic: count -= 1
+    atomically count -= 1
 
     synch.release(?lock)
 

@@ -6,7 +6,7 @@ const N = (2 * F) + 1
 network = bag.empty()
 
 def send(m):
-    atomic: network = bag.add(network, m)
+    atomically network = bag.add(network, m)
 
 def server():
     let t, v, received = (0, None), None, {}:

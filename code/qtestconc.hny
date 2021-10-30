@@ -21,8 +21,7 @@ def thread():
                 await qtime == this.qtime
                 let w = queuespec.get(?specq):
                     assert v == w
-    atomic:
-        qtime += 1
+    atomically qtime += 1
 
 for i in {1..NOPS}:
     spawn thread()

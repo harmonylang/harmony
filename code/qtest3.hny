@@ -10,8 +10,7 @@ putcount = getcount = 0
 
 def putter(v):
     queue.put(?testq, v)
-    atomic:
-        putcount += 1
+    atomically putcount += 1
 
 def getter():
     let v = queue.get(?testq):

@@ -8,7 +8,7 @@ network = bag.empty()
 decisions = {}
 
 def broadcast(msg):
-    atomic: network = bag.add(network, msg)
+    atomically network = bag.add(network, msg)
 
 def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:
