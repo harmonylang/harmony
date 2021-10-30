@@ -1,2 +1,2 @@
-echo "1,1," `git log --pretty=format:'' | wc -l | sed 's/[ \t]//g'` > buildversion
+echo "1,2," `git log --pretty=format:'' | wc -l | sed 's/[ \t]//g'` > buildversion
 m4 -P harmony.m4

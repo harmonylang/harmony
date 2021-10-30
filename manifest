@@ -1,5 +1,6 @@
 charm.c
 charm.Windows.exe
+code/2pc.hny
 code/BBhoare.hny
 code/BBhoaretest.hny
 code/BBsema.hny
@@ -27,6 +28,8 @@ code/RWtest.hny
 code/Up.hny
 code/UpEnter.hny
 code/UpLock.hny
+code/abd.hny
+code/abdtest.hny
 code/abp.hny
 code/abptest.hny
 code/actor.hny
@@ -38,6 +41,9 @@ code/bank.hny
 code/barrier.hny
 code/barrier1.hny
 code/barriertest.hny
+code/bosco.hny
+code/bosco2.hny
+code/chain.hny
 code/clock.hny
 code/counter.hny
 code/cs.hny
@@ -50,6 +56,7 @@ code/dinersfix2.hny
 code/gpu.hny
 code/hoare.hny
 code/hw.hny
+code/leader.hny
 code/linkedlist.hny
 code/lltest.hny
 code/lockintf.hny
@@ -61,7 +68,9 @@ code/naiveLock.hny
 code/naiveTurn.hny
 code/nbqueue.hny
 code/nbqueuetest.hny
+code/needhamschroeder.hny
 code/oo.hny
+code/paxos.hny
 code/prog1.hny
 code/prog2.hny
 code/qbarrier.hny

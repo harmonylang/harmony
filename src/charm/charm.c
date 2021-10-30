@@ -1289,7 +1289,7 @@ int main(int argc, char **argv){
     global->dumpfirst = false;
     global->ai_free = NULL;
     global->tochk = NULL;
-    global->possibly_cnt = NULL;
+    global->possibly_cnt = dict_new(0);
 
     // open the file
     FILE *fp = fopen(fname, "r");

@@ -2841,7 +2841,6 @@ struct op_info *ops_get(char *opname, int size){
 void ops_init(struct global_t *global) {
     ops_map = dict_new(0);
     f_map = dict_new(0);
-    global->possibly_cnt = dict_new(0);
 	underscore = value_put_atom(&global->values, "_", 1);
 	this_atom = value_put_atom(&global->values, "this", 4);
 
