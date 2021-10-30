@@ -11,7 +11,8 @@ def net_recv(pchan):
 
 def app_send(payload):
     s_seq = 1 - s_seq
-    let m, blocked = { .seq: s_seq, .payload: payload }, True:
+    let m = { .seq: s_seq, .payload: payload }:
+        var blocked = True
         while blocked:
             net_send(?s_chan, m, False)
             let response = net_recv(?r_chan):
@@ -19,11 +20,11 @@ def app_send(payload):
             
 def app_recv(reliable):
     r_seq = 1 - r_seq
-    let blocked = True:
-        while blocked:
-            let m = net_recv(?s_chan):
-                if m != ():
-                    net_send(?r_chan, { .ack: m.seq }, reliable)
-                    if m.seq == r_seq:
-                        result = m.payload
-                        blocked = False
+    var blocked = True
+    while blocked:
+        let m = net_recv(?s_chan):
+            if m != ():
+                net_send(?r_chan, { .ack: m.seq }, reliable)
+                if m.seq == r_seq:
+                    result = m.payload
+                    blocked = False

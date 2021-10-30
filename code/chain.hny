@@ -12,25 +12,25 @@ def receive(predecessor, index):
                         and ((payload == .crash) or (payload[0] == index)) }
 
 def replica(self, immortal):
-    let history, predecessors = [], { 0 .. self - 1 }:
-        while choose({ immortal, True }) and (len(history) < NOPS):
-            if predecessors == {}:  # I'm the head
-                send(self, (len(history), self))
-                history += [self,]
-            else:                   # I'm not the head (yet)
-                atomically when exists payload in receive(max(predecessors), len(history)):
-                    if payload == .crash:
-                        predecessors -= { max(predecessors) }
-                    else:
-                        send(self, payload)
-                        history += [payload[1],]
-        if len(history) == NOPS:    # successful completion
-            atomically:
-                assert (final == None) or (final == history)
-                possibly 0 in history, 1 in history, (NREPLICAS - 1) in history
-                final = history
-        else:       # replica crashed
-            send(self, .crash)
+    var history, predecessors = [], { 0 .. self - 1 }
+    while choose({ immortal, True }) and (len(history) < NOPS):
+        if predecessors == {}:  # I'm the head
+            send(self, (len(history), self))
+            history += [self,]
+        else:                   # I'm not the head (yet)
+            atomically when exists payload in receive(max(predecessors), len(history)):
+                if payload == .crash:
+                    predecessors -= { max(predecessors) }
+                else:
+                    send(self, payload)
+                    history += [payload[1],]
+    if len(history) == NOPS:    # successful completion
+        atomically:
+            assert (final == None) or (final == history)
+            possibly 0 in history, 1 in history, (NREPLICAS - 1) in history
+            final = history
+    else:       # replica crashed
+        send(self, .crash)
 
 let survivor = choose({ 0 .. NREPLICAS - 1 }):
     for i in { 0 .. NREPLICAS - 1 }:

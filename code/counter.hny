@@ -5,11 +5,11 @@ const NCLIENTS = 3
 server_queue = synch.Queue()
 
 def server():
-    let counter = 0:
-        while True:
-            let q = synch.get(?server_queue):   # await request
-                synch.put(q, counter)           # send response
-                counter += 1
+    var counter = 0
+    while True:
+        let q = synch.get(?server_queue):   # await request
+            synch.put(q, counter)           # send response
+            counter += 1
 
 spawn eternal server()
 

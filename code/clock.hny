@@ -18,10 +18,10 @@ clock3, clock4, refs = CLOCK(3), CLOCK(4), []
 
 const VALUES = { 1..5 }
 
-let last = {}:
-    for i in {1..100}:
-        let x = i if i < 5 else choose(VALUES - last):
-            refs = refs + [x,]
-            ref(?clock3, x); ref(?clock4, x)
-            assert(clock4.misses <= clock3.misses)
-            last = {x}
+var last = {}
+for i in {1..100}:
+    let x = i if i < 5 else choose(VALUES - last):
+        refs = refs + [x,]
+        ref(?clock3, x); ref(?clock4, x)
+        assert(clock4.misses <= clock3.misses)
+        last = {x}

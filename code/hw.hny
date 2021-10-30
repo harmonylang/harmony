@@ -20,10 +20,10 @@ def produce(item):
 def consume():
     result = None
     while result == None:
-        let range, i = back, 0:
-            while (i < range) and (result == None):
-                result = exch(?items[i])
-                i += 1
+        var i = 0
+        while (i < back) and (result == None):
+            result = exch(?items[i])
+            i += 1
 
 for i in {1..MAX_ITEMS}:
     spawn produce(i)

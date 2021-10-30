@@ -7,13 +7,13 @@ def Queue():
 def put(q, v):
     let node = malloc({ .next: None, .value: v, .lock: Lock() }):
         acquire(?q->lock)
-        let n = q->next:
-            while n != None:
-                acquire(?n->lock)
-                release(?q->lock)
-                q = n
-                n = n->next
-            q->next = node
+        var n = q->next
+        while n != None:
+            acquire(?n->lock)
+            release(?q->lock)
+            q = n
+            n = n->next
+        q->next = node
         release(?q->lock)
 
 def get(q):

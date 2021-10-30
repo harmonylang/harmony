@@ -4,27 +4,27 @@ def send(m):
     atomically network |= { m }
 
 def bank(self, balance):
-    let status, received = (), {}:
-        while True:
-            atomically when exists req in network - received when req.dst == self:
-                received |= { req }
-                if req.request == .withdraw:
-                    if (status != ()) or (req.amount > balance):
-                        send({ .dst: req.src, .src: self, .response: .no })
-                    else:
-                        status = balance
-                        balance -= req.amount
-                        send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
-                elif req.request == .deposit:
-                    if status != ():
-                        send({ .dst: req.src, .src: self, .response: .no })
-                    else:
-                        status = balance
-                        balance += req.amount
-                        send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
-                elif req.request == .commit:
-                    assert status != ()
-                    status = ()
+    var status, received = (), {}
+    while True:
+        atomically when exists req in network - received when req.dst == self:
+            received |= { req }
+            if req.request == .withdraw:
+                if (status != ()) or (req.amount > balance):
+                    send({ .dst: req.src, .src: self, .response: .no })
                 else:
-                    assert (status != ()) and (req.request == .abort)
-                    balance, status = status, ()
+                    status = balance
+                    balance -= req.amount
+                    send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
+            elif req.request == .deposit:
+                if status != ():
+                    send({ .dst: req.src, .src: self, .response: .no })
+                else:
+                    status = balance
+                    balance += req.amount
+                    send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
+            elif req.request == .commit:
+                assert status != ()
+                status = ()
+            else:
+                assert (status != ()) and (req.request == .abort)
+                balance, status = status, ()

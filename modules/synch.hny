@@ -36,7 +36,8 @@ def Condition():
     result = bag.empty()
 
 def wait(c, lk):
-    let cnt, ctx = True, 0, get_context():
+    var cnt = 0
+    let ctx = get_context():
         atomically:
             cnt = bag.count(!c, ctx)
             !c = bag.add(!c, ctx)

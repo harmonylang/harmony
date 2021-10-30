@@ -9,8 +9,8 @@ def Queue():
         }
 
 def put(q, v):
-    let node = malloc({ .value: v, .next: { .ptr: None, .cnt: 0 } })
-    let tail, done = None, False:
+    let node = malloc({ .value: v, .next: { .ptr: None, .cnt: 0 } }):
+        var tail, done = None, False
         while not done:
             tail = q->tail
             let next = tail.ptr->next:
@@ -24,21 +24,21 @@ def put(q, v):
         cas(?q->tail, tail, { .ptr: node, .cnt: tail.cnt + 1 })
 
 def get(q):
-    let done = False:
-        while not done:
-            let head, tail = q->head, q->tail
-            let next = head.ptr->next:
-                if head == q->head:
-                    if head.ptr == tail.ptr:
-                        if next.ptr == None:
-                            result = None
-                            done = True
-                        else:
-                            cas(?q->tail, tail,
-                                { .ptr: next.ptr, .cnt: tail.cnt + 1 })
+    var done = False
+    while not done:
+        let head, tail = q->head, q->tail
+        let next = head.ptr->next:
+            if head == q->head:
+                if head.ptr == tail.ptr:
+                    if next.ptr == None:
+                        result = None
+                        done = True
                     else:
-                        result = next.ptr->value
-                        done = cas(?q->head, head,
-                                { .ptr: next.ptr, .cnt: head.cnt + 1 })
-                        # if done:
-                        #     free(head.ptr)
+                        cas(?q->tail, tail,
+                            { .ptr: next.ptr, .cnt: tail.cnt + 1 })
+                else:
+                    result = next.ptr->value
+                    done = cas(?q->head, head,
+                            { .ptr: next.ptr, .cnt: head.cnt + 1 })
+                    # if done:
+                    #     free(head.ptr)

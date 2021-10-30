@@ -22,12 +22,12 @@ done = [False,] * NTHREADS
 # check that all non-None values in round are the same
 def check():
     result = True
-    let x = None:
-        for i in {0..NTHREADS-1}:
-            if result and (round[i] != None):
-                if x != None:
-                    result = round[i] == x
-                x = round[i]
+    var x = None
+    for i in {0..NTHREADS-1}:
+        if result and (round[i] != None):
+            if x != None:
+                result = round[i] == x
+            x = round[i]
 
 round = [None,] * NTHREADS
 done = [False,] * NTHREADS

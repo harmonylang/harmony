@@ -11,24 +11,24 @@ def receive(self):
 
 def processor(self, succ):
     send(succ, self, False)
-    let working = True:
-        while working:
-            atomically when exists (id, found) in receive(self):
-                if id == self:
-                    assert self == leader
-                    send(succ, id, True)
-                elif id > self:
-                    assert self != leader
-                    send(succ, id, found)
-                if found:
-                    working = False
+    var working = True
+    while working:
+        atomically when exists (id, found) in receive(self):
+            if id == self:
+                assert self == leader
+                send(succ, id, True)
+            elif id > self:
+                assert self != leader
+                send(succ, id, found)
+            if found:
+                working = False
 
-let ids, nprocs, procs = { 1 .. NIDS }, choose({ 1 .. NIDS }), []:
-    for i in { 0 .. nprocs - 1 }:
-        let next = choose(ids):
-            ids -= { next }
-            procs += [ next, ]
-            if next > leader:
-                leader = next
-    for i in { 0 .. nprocs - 1 }:
-        spawn processor(procs[i], procs[(i + 1) % nprocs])
+var ids, nprocs, procs = { 1 .. NIDS }, choose({ 1 .. NIDS }), []
+for i in { 0 .. nprocs - 1 }:
+    let next = choose(ids):
+        ids -= { next }
+        procs += [ next, ]
+        if next > leader:
+            leader = next
+for i in { 0 .. nprocs - 1 }:
+    spawn processor(procs[i], procs[(i + 1) % nprocs])

@@ -5,16 +5,16 @@ def _node(v, n):     # allocate and initialize a new list node
     result = malloc({ .lock: Lock(), .value: v, .next: n })
 
 def _find(lst, v):
-    let before = lst:
-        acquire(?before->lock)
-        let after = before->next:
-            acquire(?after->lock)
-            while after->value < v:
-                release(?before->lock)
-                before = after
-                after = before->next
-                acquire(?after->lock)
-            result = (before, after)
+    var before = lst
+    acquire(?before->lock)
+    var after = before->next
+    acquire(?after->lock)
+    while after->value < v:
+        release(?before->lock)
+        before = after
+        after = before->next
+        acquire(?after->lock)
+    result = (before, after)
 
 def LinkedList():
     result = _node(-inf, _node(inf, None))
