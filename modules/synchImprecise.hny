@@ -7,7 +7,8 @@ def Lock():
     result = False
 
 def lock(lk):
-    await not tas(lk)
+    while tas(lk):
+        pass
 
 def unlock(lk):
     !lk = False

@@ -11,7 +11,7 @@ def send(m):
 def server():
     let t, v, received = (0, None), None, {}:
         while True:
-            select m in { m for m in keys network - received
+            atomically when exists m in { m for m in keys network - received
                                 where m.type in {.read, .write} }:
                 received |= { m }
                 if (m.type == .write) and (m.value[0] > t):
@@ -25,18 +25,18 @@ def receive(uid, phase):
 
 def read(uid):
     send({ .type: .read, .src: (uid, 1) })
-    select msgs in receive(uid, 1):
+    atomically when exists msgs in receive(uid, 1):
         let (t, v) = max(m.value for m in keys msgs):
             send({ .type: .write, .src: (uid, 2), .value: (t, v) })
             result = v
-    select msgs in receive(uid, 2):
+    atomically when exists msgs in receive(uid, 2):
         pass
 
 def write(uid, v):
     send({ .type: .read, .src: (uid, 1) })
-    select msgs in receive(uid, 1):
+    atomically when exists msgs in receive(uid, 1):
         let (t, _) = max(m.value for m in keys msgs)
         let nt = (t[0] + 1, uid):
             send({ .type: .write, .src: (uid, 2), .value: (nt, v) })
-    select msgs in receive(uid, 2):
+    atomically when exists msgs in receive(uid, 2):
         pass

@@ -226,7 +226,7 @@ void onestep(
         oi = global->code.instrs[cc->pc].oi;
         if (global->code.instrs[cc->pc].choose) {
             assert(cc->sp > 0);
-            if (cc->readonly > 0) {
+            if (0 && cc->readonly > 0) {    // TODO
                 value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
                 break;
             }
@@ -890,7 +890,7 @@ uint64_t twostep(
         oi = global->code.instrs[cc->pc].oi;
         if (global->code.instrs[cc->pc].choose) {
             assert(cc->sp > 0);
-            if (cc->readonly > 0) {
+            if (0 && cc->readonly > 0) {    // TODO
                 value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
                 diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
                 break;

@@ -13,7 +13,7 @@ def processor(self, succ):
     send(succ, self, False)
     let working = True:
         while working:
-            select (id, found) in receive(self):
+            atomically when exists (id, found) in receive(self):
                 if id == self:
                     assert self == leader
                     send(succ, id, True)

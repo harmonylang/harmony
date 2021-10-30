@@ -35,11 +35,11 @@ def items(d):
 
 # like Python enumerate()
 def enumerate(d):
+    var index = 0
     result = []
-    let index = 0:
-        for k in keys d:
-            result += [ (index, d[k]), ]
-            index += 1
+    for k in keys d:
+        result += [ (index, d[k]), ]
+        index += 1
         
 # quicksort of a list
 def qsort(a):

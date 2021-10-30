@@ -12,7 +12,8 @@ def clear(s):
     
 def thread():
     while choose({ False, True }):
-        await not tas(?lock)
+        while tas(?lock):
+            pass
         @cs: assert atLabel(cs) == { (thread, ()): 1 }
         clear(?lock)
     

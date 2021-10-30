@@ -226,6 +226,7 @@ def isreserved(s):
         "assert",
         "atLabel",
         "atomic",
+        "atomically",
         "await",
         # "call",
         "choose",
@@ -238,6 +239,7 @@ def isreserved(s):
         "end",
         "eternal",
         "except",
+        "exists",
         "False",
         # "fun",
         "for",
@@ -1608,7 +1610,7 @@ class AtomicIncOp(Op):
         self.lazy = lazy
 
     def __repr__(self):
-        return "AtomicInc(%s)"%self.lazy
+        return "AtomicInc(%s)"%("lazy" if self.lazy else "eager")
 
     def jdump(self):
         return '{ "op": "AtomicInc", "lazy": "%s" }'%str(self.lazy)
@@ -2293,7 +2295,7 @@ class Code:
             lop.op.substitute(map)
 
 class AST:
-    def __init__(self, token):
+    def __init__(self, token, atomically):
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
         assert len(token) == 4, len(token)
@@ -2304,6 +2306,7 @@ class AST:
         assert isinstance(line, int), line
         assert isinstance(column, int), line
         self.ast_token = token
+        self.atomically = atomically
 
     def assign(self, scope, var):
         if isinstance(var, tuple):
@@ -2495,7 +2498,7 @@ class AST:
 
 class ConstantAST(AST):
     def __init__(self, const):
-        AST.__init__(self, const)
+        AST.__init__(self, const, False)
         self.const = const
 
     def __repr__(self):
@@ -2509,7 +2512,7 @@ class ConstantAST(AST):
 
 class NameAST(AST):
     def __init__(self, name):
-        AST.__init__(self, name)
+        AST.__init__(self, name, False)
         self.name = name
 
     def __repr__(self):
@@ -2576,7 +2579,7 @@ class NameAST(AST):
 
 class SetAST(AST):
     def __init__(self, token, collection):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.collection = collection
 
     def __repr__(self):
@@ -2593,7 +2596,7 @@ class SetAST(AST):
 
 class RangeAST(AST):
     def __init__(self, lhs, rhs, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.lhs = lhs
         self.rhs = rhs
         self.token = token
@@ -2612,7 +2615,7 @@ class RangeAST(AST):
 
 class TupleAST(AST):
     def __init__(self, list, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.list = list
         self.token = token
 
@@ -2653,7 +2656,7 @@ class TupleAST(AST):
 
 class DictAST(AST):
     def __init__(self, token, record):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.record = record
 
     def __repr__(self):
@@ -2672,7 +2675,7 @@ class DictAST(AST):
 
 class SetComprehensionAST(AST):
     def __init__(self, value, iter, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.value = value
         self.iter = iter
         self.token = token
@@ -2685,7 +2688,7 @@ class SetComprehensionAST(AST):
 
 class DictComprehensionAST(AST):
     def __init__(self, key, value, iter, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.key = key
         self.value = value
         self.iter = iter
@@ -2699,7 +2702,7 @@ class DictComprehensionAST(AST):
 
 class ListComprehensionAST(AST):
     def __init__(self, value, iter, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.value = value
         self.iter = iter
         self.token = token
@@ -2713,7 +2716,7 @@ class ListComprehensionAST(AST):
 # N-ary operator
 class NaryAST(AST):
     def __init__(self, op, args):
-        AST.__init__(self, op)
+        AST.__init__(self, op, False)
         self.op = op
         self.args = args
         assert all(isinstance(x, AST) for x in args), args
@@ -2780,7 +2783,7 @@ class NaryAST(AST):
 
 class CmpAST(AST):
     def __init__(self, token, ops, args):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.ops = ops
         self.args = args
         assert len(ops) == len(args) - 1
@@ -2815,7 +2818,7 @@ class CmpAST(AST):
 
 class ApplyAST(AST):
     def __init__(self, method, arg, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.method = method
         self.arg = arg
         self.token = token
@@ -3216,7 +3219,7 @@ class BasicExpressionRule(Rule):
 
 class PointerAST(AST):
     def __init__(self, expr, token):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.expr = expr
         self.token = token
 
@@ -3287,8 +3290,8 @@ class ExpressionRule(Rule):
         return (ast, t)
 
 class AssignmentAST(AST):
-    def __init__(self, lhslist, rv, op):
-        AST.__init__(self, op)
+    def __init__(self, lhslist, rv, op, atomically):
+        AST.__init__(self, op, atomically)
         self.lhslist = lhslist      # a, b = c, d = e = ...
         self.rv = rv                # rhs expression
         self.op = op                # ... op= ...
@@ -3299,6 +3302,8 @@ class AssignmentAST(AST):
 
     # handle an "x op= y" assignment
     def opassign(self, lv, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         lvar = lv.localVar(scope)
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
@@ -3335,6 +3340,8 @@ class AssignmentAST(AST):
         else:
             st = StoreOp(None, self.op, None) if lvar == None else StoreVarOp(None, lvar)
         code.append(st)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def compile(self, scope, code):
         (lexeme, file, line, column) = self.op
@@ -3343,6 +3350,9 @@ class AssignmentAST(AST):
             lv = self.lhslist[0]
             self.opassign(lv, scope, code)
             return
+
+        if self.atomically:
+            code.append(AtomicIncOp(True))
 
         # Compute the addresses of lhs expressions
         for lvs in self.lhslist:
@@ -3388,15 +3398,20 @@ class AssignmentAST(AST):
             else:
                 lvs.ph2(scope, code, skip)
 
+        if self.atomically:
+            code.append(AtomicDecOp())
+
 class DelAST(AST):
-    def __init__(self, token, lv):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, lv):
+        AST.__init__(self, token, atomically)
         self.lv = lv
 
     def __repr__(self):
         return "Del(" + str(self.lv) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
             op = DelOp(self.lv.name) if lvar == None else DelVarOp(self.lv.name)
@@ -3404,10 +3419,12 @@ class DelAST(AST):
             self.lv.ph1(scope, code)
             op = DelOp(None) if lvar == None else DelVarOp(None, lvar)
         code.append(op)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
 class SetIntLevelAST(AST):
     def __init__(self, token, arg):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.arg = arg
 
     def __repr__(self):
@@ -3419,7 +3436,7 @@ class SetIntLevelAST(AST):
 
 class StopAST(AST):
     def __init__(self, token, lv):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.lv = lv
 
     def __repr__(self):
@@ -3432,7 +3449,7 @@ class StopAST(AST):
 
 class AddressAST(AST):
     def __init__(self, token, lv):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         self.lv = lv
 
     def __repr__(self):
@@ -3488,8 +3505,8 @@ class AddressAST(AST):
         self.lv.ph1(scope, code)
 
 class PassAST(AST):
-    def __init__(self, token):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically):
+        AST.__init__(self, token, atomically)
 
     def __repr__(self):
         return "Pass"
@@ -3499,7 +3516,7 @@ class PassAST(AST):
 
 class BlockAST(AST):
     def __init__(self, token, b):
-        AST.__init__(self, token)
+        AST.__init__(self, token, False)
         assert len(b) > 0
         self.b = b
 
@@ -3519,8 +3536,8 @@ class BlockAST(AST):
         return functools.reduce(lambda x,y: x+y, imports)
 
 class IfAST(AST):
-    def __init__(self, token, alts, stat):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, alts, stat):
+        AST.__init__(self, token, atomically)
         self.alts = alts        # alternatives
         self.stat = stat        # else statement
 
@@ -3533,6 +3550,8 @@ class IfAST(AST):
         labelcnt += 1
         sublabel = 0
         endlabel = LabelValue(None, "$%d_end"%label)
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         for alt in self.alts:
             (rest, stat, thefile, theline) = alt
             code.location(thefile, theline)
@@ -3548,6 +3567,8 @@ class IfAST(AST):
         if self.stat != None:
             self.stat.compile(scope, code)
         code.nextLabel(endlabel)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def getLabels(self):
         labels = [ x.getLabels() for (c, x, _, _) in self.alts ]
@@ -3562,8 +3583,8 @@ class IfAST(AST):
         return functools.reduce(lambda x,y: x+y, imports)
 
 class WhileAST(AST):
-    def __init__(self, token, cond, stat):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, cond, stat):
+        AST.__init__(self, token, atomically)
         self.cond = cond
         self.stat = stat
 
@@ -3571,6 +3592,8 @@ class WhileAST(AST):
         return "While(" + str(self.cond) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
         cond = self.cond.args[0] if negate else self.cond
         global labelcnt
@@ -3583,6 +3606,8 @@ class WhileAST(AST):
         self.stat.compile(scope, code)
         code.append(JumpOp(startlabel))
         code.nextLabel(endlabel)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def getLabels(self):
         return self.stat.getLabels()
@@ -3590,27 +3615,9 @@ class WhileAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
-class AwaitAST(AST):
-    def __init__(self, token, cond):
-        AST.__init__(self, token)
-        self.cond = cond
-
-    def __repr__(self):
-        return "Await(" + str(self.cond) + ")"
-
-    def compile(self, scope, code):
-        negate = isinstance(self.cond, NaryAST) and self.cond.op[0] == "not"
-        cond = self.cond.args[0] if negate else self.cond
-        global labelcnt
-        label = LabelValue(None, "$%d"%labelcnt)
-        labelcnt += 1
-        code.nextLabel(label)
-        cond.compile(scope, code)
-        code.append(JumpCondOp(negate, label))
-
 class InvariantAST(AST):
-    def __init__(self, cond, token):
-        AST.__init__(self, token)
+    def __init__(self, cond, token, atomically):
+        AST.__init__(self, token, atomically)
         self.cond = cond
         self.token = token
 
@@ -3627,8 +3634,8 @@ class InvariantAST(AST):
         code.append(ReturnOp())
 
 class LetAST(AST):
-    def __init__(self, token, vars, stat):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, vars, stat):
+        AST.__init__(self, token, atomically)
         self.vars = vars
         self.stat = stat
 
@@ -3636,6 +3643,8 @@ class LetAST(AST):
         return "Let(" + str(self.vars) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         for (var, expr) in self.vars:
             expr.compile(scope, code)
             code.append(StoreVarOp(var))
@@ -3644,28 +3653,30 @@ class LetAST(AST):
         # Run the body
         self.stat.compile(scope, code)
 
-        # Restore the old variable state
-        # TODO.  This should be done asap, not at the end
-        # for (var, expr) in self.vars:
-        #     self.delete(scope, code, var)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
 class VarAST(AST):
-    def __init__(self, token, vars):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, vars):
+        AST.__init__(self, token, atomically)
         self.vars = vars
 
     def __repr__(self):
         return "Var(" + str(self.vars) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         for (var, expr) in self.vars:
             expr.compile(scope, code)
             code.append(StoreVarOp(var))
             self.assign(scope, var)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
 class ForAST(AST):
-    def __init__(self, iter, stat, token):
-        AST.__init__(self, token)
+    def __init__(self, iter, stat, token, atomically):
+        AST.__init__(self, token, atomically)
         self.value = stat
         self.iter = iter
         self.token = token
@@ -3674,7 +3685,11 @@ class ForAST(AST):
         return "For(" + str(self.iter) + ", " + str(self.stat) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         self.comprehension(scope, code, "for")
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def getLabels(self):
         return self.value.getLabels()
@@ -3682,126 +3697,14 @@ class ForAST(AST):
     def getImports(self):
         return self.value.getImports()
 
-class WhenExistsAST(AST):
-    def __init__(self, token, bv, expr, cond, stat):
-        AST.__init__(self, token)
-        self.bv = bv
-        self.expr = expr
-        self.cond = cond
-        self.stat = stat
-
-    def __repr__(self):
-        return "WhenExists(" + str(self.bv) + ", " + str(self.expr) + ", " + str(self.stat) + ")"
-
-    def compile(self, scope, code):
-        self.assign(scope, self.bv)
-        looplabel = LabelValue(None, "when exists loop")
-        selectlabel = LabelValue(None, "when exists start")
-        (lexeme, file, line, column) = self.ast_token
-        code.nextLabel(looplabel)
-        code.append(AtomicIncOp(True))
-        if self.cond != None:
-            code.append(PushOp((SetValue(set()), file, line, column)))
-        self.expr.compile(scope, code)
-        if self.cond != None:
-            uid = len(code.labeled_ops)
-            (lexeme, file, line, column) = self.ast_token
-            S = ("$s"+str(uid), file, line, column)
-            code.append(StoreVarOp(S))
-            global labelcnt
-            startlabel = LabelValue(None, "$%d_start"%labelcnt)
-            endlabel = LabelValue(None, "$%d_end"%labelcnt)
-            labelcnt += 1
-            code.nextLabel(startlabel)
-            code.append(LoadVarOp(S))
-            code.append(NaryOp(("IsEmpty", file, line, column), 1))
-            code.append(JumpCondOp(True, endlabel))
-            code.append(CutOp(S, self.bv, None))  
-            rest = self.cond
-            negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
-            cond = rest.args[0] if negate else rest
-            cond.compile(scope, code)
-            code.append(JumpCondOp(negate, startlabel))
-            code.append(LoadVarOp(self.bv))
-            code.append(NaryOp(("SetAdd", file, line, column), 2))
-            code.append(JumpOp(startlabel))
-            code.nextLabel(endlabel)
-        code.append(DupOp())
-        code.append(PushOp((SetValue(set()), file, line, column)))
-        code.append(NaryOp(("==", file, line, column), 2))
-        code.append(JumpCondOp(False, selectlabel))
-        code.append(PopOp())
-        code.append(AtomicDecOp())
-        code.append(JumpOp(looplabel))
-        code.nextLabel(selectlabel)
-        code.append(ChooseOp())
-        code.append(StoreVarOp(self.bv))
-        self.stat.compile(scope, code)
-        code.append(AtomicDecOp())
-
-    def getLabels(self):
-        return self.stat.getLabels()
-
-    def getImports(self):
-        return self.stat.getImports()
-
-class WhenAST(AST):
-    def __init__(self, token, cond, stat):
-        AST.__init__(self, token)
-        self.cond = cond
-        self.stat = stat
-
-    def __repr__(self):
-        return "When(" + str(self.cond) + ", " + str(self.stat) + ")"
-
-    def compile(self, scope, code):
-        """
-        lstart:
-            atomic inc
-            readonly inc
-            [[cond]]
-            readonly dec
-            jump lbody if true
-            atomic dec
-            jump lstart
-        lbody:
-            [[stmt]]
-            atomic dec
-        """
-
-        global labelcnt
-
-        label_start = LabelValue(None, "WhenAST_start$%d"%labelcnt)
-        labelcnt += 1
-
-        label_body = LabelValue(None, "WhenAST_body$%d"%labelcnt)
-        labelcnt += 1
-
-        code.nextLabel(label_start)
-        code.append(AtomicIncOp(True))
-        code.append(ReadonlyIncOp())
-        self.cond.compile(scope, code)
-        code.append(ReadonlyDecOp())
-        code.append(JumpCondOp(True, label_body))
-        code.append(AtomicDecOp())
-        code.append(JumpOp(label_start))
-
-        code.nextLabel(label_body)
-        self.stat.compile(scope, code)
-        code.append(AtomicDecOp())
-
-    def getLabels(self):
-        return self.stat.getLabels()
-
-    def getImports(self):
-        return self.stat.getImports()
-
 class LetWhenAST(AST):
-    # vars_and_conds, a list of either
-    #   - ('var', bv, ast)
-    #   - ('cond', cond)
-    def __init__(self, token, vars_and_conds, stat):
-        AST.__init__(self, token)
+    # vars_and_conds, a list of one of
+    #   - ('var', bv, ast)              // let bv = ast
+    #   - ('cond', cond)                // when cond:
+    #   - ('exists', bv, expr)    // when exists bv in expr
+    def __init__(self, token, atomically, vars_and_conds, stat):
+        AST.__init__(self, token, atomically)
+        self.token = token
         self.vars_and_conds = vars_and_conds
         self.stat = stat
 
@@ -3823,6 +3726,9 @@ class LetWhenAST(AST):
         condfailed:
             atomic dec
             jump start
+        select:
+            choose
+            storevar bv
         body:
             [[stmt]]
             atomic dec
@@ -3839,31 +3745,59 @@ class LetWhenAST(AST):
 
         # start:
         code.nextLabel(label_start)
-        code.append(AtomicIncOp(True))
+        if self.atomically:
+            code.append(AtomicIncOp(True))
+            code.append(ReadonlyIncOp())
         for var_or_cond in self.vars_and_conds:
             if var_or_cond[0] == 'var':
                 var, expr = var_or_cond[1:]
-
                 expr.compile(scope, code)
                 code.append(StoreVarOp(var))
                 self.assign(scope, var)
-
-            else:
-                assert var_or_cond[0] == 'cond'
+            elif var_or_cond[0] == 'cond':
                 cond = var_or_cond[1]
                 cond.compile(scope, code)
                 code.append(JumpCondOp(False, label_condfailed))
+            else:
+                assert var_or_cond[0] == 'exists'
+                (_, bv, expr) = var_or_cond
+                (_, file, line, column) = self.token
+                self.assign(scope, bv)
+                expr.compile(scope, code)
+                code.append(DupOp())
+                code.append(PushOp((SetValue(set()), file, line, column)))
+                code.append(NaryOp(("==", file, line, column), 2))
+                label_select = LabelValue(None, "LetWhenAST_select$%d"%labelcnt)
+                labelcnt += 1
+                code.append(JumpCondOp(False, label_select))
+
+                # set is empty.  Try again
+                code.append(PopOp())
+                if self.atomically:
+                    code.append(ReadonlyDecOp())
+                    code.append(AtomicDecOp())
+                code.append(JumpOp(label_start))
+
+                # select:
+                code.nextLabel(label_select)
+                code.append(ChooseOp())
+                code.append(StoreVarOp(bv))
         code.append(JumpOp(label_body))
 
         # condfailed:
         code.nextLabel(label_condfailed)
-        code.append(AtomicDecOp())
+        if self.atomically:
+            code.append(ReadonlyDecOp())
+            code.append(AtomicDecOp())
         code.append(JumpOp(label_start))
 
         # body:
         code.nextLabel(label_body)
+        if self.atomically:
+            code.append(ReadonlyDecOp())
         self.stat.compile(scope, code)
-        code.append(AtomicDecOp())
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def getLabels(self):
         return self.stat.getLabels()
@@ -3872,8 +3806,8 @@ class LetWhenAST(AST):
         return self.stat.getImports()
 
 class AtomicAST(AST):
-    def __init__(self, token, stat):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, stat):
+        AST.__init__(self, token, atomically)
         self.stat = stat
 
     def __repr__(self):
@@ -3892,8 +3826,8 @@ class AtomicAST(AST):
         return self.stat.getImports()
 
 class AssertAST(AST):
-    def __init__(self, token, cond, expr):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, cond, expr):
+        AST.__init__(self, token, atomically)
         self.token = token
         self.cond = cond
         self.expr = expr
@@ -3912,8 +3846,8 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp())
 
 class PossiblyAST(AST):
-    def __init__(self, token, condlist):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, condlist):
+        AST.__init__(self, token, atomically)
         self.token = token
         self.condlist = condlist
 
@@ -3930,8 +3864,8 @@ class PossiblyAST(AST):
         code.append(ReadonlyDecOp())
 
 class MethodAST(AST):
-    def __init__(self, token, name, args, stat):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, name, args, stat):
+        AST.__init__(self, token, atomically)
         self.name = name
         self.args = args
         self.stat = stat
@@ -3956,7 +3890,11 @@ class MethodAST(AST):
             ns.names[lexeme] = ("constant", (lb, file, line, column))
         self.assign(ns, self.args)
         ns.names["result"] = ("local", ("result", file, line, column))
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         self.stat.compile(ns, code)
+        if self.atomically:
+            code.append(AtomicDecOp())
         code.append(ReturnOp())
         code.nextLabel(endlabel)
 
@@ -3972,8 +3910,8 @@ class MethodAST(AST):
         return self.stat.getImports()
 
 class LambdaAST(AST):
-    def __init__(self, args, stat, token):
-        AST.__init__(self, token)
+    def __init__(self, args, stat, token, atomically):
+        AST.__init__(self, token, atomically)
         self.args = args
         self.stat = stat
         self.token = token
@@ -3996,7 +3934,11 @@ class LambdaAST(AST):
         self.assign(ns, self.args)
         R = ("result", file, line, column)
         ns.names["result"] = ("local", R)
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         self.stat.compile(ns, code)
+        if self.atomically:
+            code.append(AtomicDecOp())
         code.append(StoreVarOp(R))
         code.append(ReturnOp())
         code.nextLabel(endlabel)
@@ -4008,8 +3950,8 @@ class LambdaAST(AST):
         code.append(PushOp((startlabel, file, line, column)))
 
 class CallAST(AST):
-    def __init__(self, token, expr):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, expr):
+        AST.__init__(self, token, atomically)
         self.expr = expr
 
     def __repr__(self):
@@ -4017,12 +3959,16 @@ class CallAST(AST):
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
+            if self.atomically:
+                code.append(AtomicIncOp(True))
             self.expr.compile(scope, code)
+            if self.atomically:
+                code.append(AtomicDecOp())
             code.append(PopOp())
 
 class SpawnAST(AST):
-    def __init__(self, token, method, arg, this, eternal):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, method, arg, this, eternal):
+        AST.__init__(self, token, atomically)
         self.method = method
         self.arg = arg
         self.this = this
@@ -4041,8 +3987,8 @@ class SpawnAST(AST):
         code.append(SpawnOp(self.eternal))
 
 class TrapAST(AST):
-    def __init__(self, token, method, arg):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, method, arg):
+        AST.__init__(self, token, atomically)
         self.method = method
         self.arg = arg
 
@@ -4055,8 +4001,8 @@ class TrapAST(AST):
         code.append(TrapOp())
 
 class GoAST(AST):
-    def __init__(self, token, ctx, result):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, ctx, result):
+        AST.__init__(self, token, atomically)
         self.ctx = ctx
         self.result = result
 
@@ -4064,13 +4010,17 @@ class GoAST(AST):
         return "Go(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         self.result.compile(scope, code)
         self.ctx.compile(scope, code)
+        if self.atomically:
+            code.append(AtomicDecOp())
         code.append(GoOp())
 
 class ImportAST(AST):
-    def __init__(self, token, modlist):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, modlist):
+        AST.__init__(self, token, atomically)
         self.modlist = modlist
 
     def __repr__(self):
@@ -4084,8 +4034,8 @@ class ImportAST(AST):
         return self.modlist
 
 class FromAST(AST):
-    def __init__(self, token, module, items):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, module, items):
+        AST.__init__(self, token, atomically)
         self.module = module
         self.items = items
 
@@ -4118,7 +4068,7 @@ class FromAST(AST):
 
 class LabelStatAST(AST):
     def __init__(self, token, labels, ast, file, line):
-        AST.__init__(self, token)
+        AST.__init__(self, token, True)
         self.labels = { lb:LabelValue(None, "label") for lb in labels }
         self.ast = ast
         self.file = file
@@ -4150,8 +4100,8 @@ class LabelStatAST(AST):
         return self.ast.getImports();
 
 class SequentialAST(AST):
-    def __init__(self, token, vars):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, vars):
+        AST.__init__(self, token, atomically)
         self.vars = vars
     
     def __repr__(self):
@@ -4163,8 +4113,8 @@ class SequentialAST(AST):
             code.append(SequentialOp())
 
 class ConstAST(AST):
-    def __init__(self, token, const, expr):
-        AST.__init__(self, token)
+    def __init__(self, token, atomically, const, expr):
+        AST.__init__(self, token, atomically)
         self.const = const
         self.expr = expr
 
@@ -4209,15 +4159,6 @@ class ConstAST(AST):
                 code2.labeled_ops[ctx.pc].op.eval(state, ctx)
             v = ctx.pop()
             self.set(scope, self.const, v)
-
-class AssignmentRule(Rule):
-    def __init__(self, lhslist, op):
-        self.lhslist = lhslist
-        self.op = op
-
-    def parse(self, t):
-        (ast, t) = TupleRule({";"}).parse(t)
-        return (AssignmentAST(self.lhslist, ast, self.op), t)
 
 # Zero or more labels, then a statement, then a semicolon
 class LabelStatRule(Rule):
@@ -4395,10 +4336,16 @@ class StatementRule(Rule):
         return (tokens, t)
 
     def parse(self, t):
-        token = t[0]
-        (lexeme, file, line, column) = token
+        (lexeme, file, line, column) = t[0]
         if lexeme == ";":
-            return (PassAST(token), t[1:])
+            return (PassAST(t[0], False), t[1:])
+        if lexeme == "atomically":
+            atomically = True
+            t = t[1:]
+            (lexeme, _, _, _) = t[0]
+        else:
+            atomically = False
+        token = t[0]
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -4414,7 +4361,7 @@ class StatementRule(Rule):
                     column=column,
                     message="constant definition: unexpected token: %s" % str(tokens[0]),
                 )
-            return (ConstAST(token, const, ast), t)
+            return (ConstAST(token, atomically, const, ast), t)
         if lexeme == "if":
             alts = []
             while True:
@@ -4434,11 +4381,11 @@ class StatementRule(Rule):
                 (stat, t) = BlockRule(column).parse(t[1:])
             else:
                 stat = None
-            return (IfAST(token, alts, stat), t)
+            return (IfAST(token, atomically, alts, stat), t)
         if lexeme == "while":
             (cond, t) = NaryRule({":"}).parse(t[1:])
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (WhileAST(token, cond, stat), t)
+            return (WhileAST(token, atomically, cond, stat), t)
         if lexeme == "await":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
@@ -4451,7 +4398,7 @@ class StatementRule(Rule):
                     column=column,
                     message="await: unexpected token: %s" % str(tokens[0]),
                 )
-            return (AwaitAST(token, cond), t)
+            return (LetWhenAST(token, atomically, [ ('cond', cond) ], PassAST(token, False)), t)
         if lexeme == "invariant":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
@@ -4464,50 +4411,15 @@ class StatementRule(Rule):
                     column=column,
                     message="invariant: unexpected token: %s" % str(tokens[0]),
                 )
-            return (InvariantAST(cond, token), t)
+            return (InvariantAST(cond, token, atomically), t)
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
             (stat, t) = StatListRule(column).parse(t[1:])
-            return (ForAST(lst, stat, token), t)
-        if lexeme == "select":
-            # TODO: remove `select`
-            (bv, t) = BoundVarRule().parse(t[1:])
-            (lexeme, file, line, nextColumn) = t[0]
-            self.expect("select statement", lexeme == "in", t[0], "expected 'in'")
-            (expr, t) = NaryRule({":", "where"}).parse(t[1:])
-            (lexeme, file, line, nextColumn) = t[0]
-            if lexeme == "where":
-                (cond, t) = NaryRule({":"}).parse(t[1:])
-            else:
-                cond = None
-            (stat, t) = StatListRule(column).parse(t[1:])
-            return (WhenExistsAST(token, bv, expr, cond, stat), t)
+            return (ForAST(lst, stat, token, atomically), t)
 
-        if lexeme == "when":
-            # TODO: add bounds check on t?
-            lookahead, _0, _1, _2 = t[1]
-            if lookahead == "exists":
-                t = t[1:]
-                (bv, t) = BoundVarRule().parse(t[1:])
-                (lexeme, file, line, nextColumn) = t[0]
-                self.expect("'when exists' statement", lexeme == "in", t[0], "expected 'in'")
-                (expr, t) = NaryRule({":", "where"}).parse(t[1:])
-                (lexeme, file, line, nextColumn) = t[0]
-                if lexeme == "where":
-                    (cond, t) = NaryRule({":"}).parse(t[1:])
-                else:
-                    cond = None
-                (stat, t) = StatListRule(column).parse(t[1:])
-                return (WhenExistsAST(token, bv, expr, cond, stat), t)
-
-            else:
-                (cond, t) = NaryRule({":"}).parse(t[1:])
-                (stat, t) = StatListRule(column).parse(t[1:])
-                return (WhenAST(token, cond, stat), t)
-
-        if lexeme == "let":
+        if lexeme in { "let", "when" }:
             vars_and_conds = []
-            while True:
+            while lexeme != ':':
                 if lexeme == "let":
                     (bv, t) = BoundVarRule().parse(t[1:])
                     (lexeme, file, line, nextColumn) = t[0]
@@ -4516,28 +4428,27 @@ class StatementRule(Rule):
                     vars_and_conds.append(('var', bv, ast))
                 else:
                     assert lexeme == "when"
-                    (cond, t) = NaryRule({":", "let", "when"}).parse(t[1:])
-                    vars_and_conds.append(('cond', cond))
-
+                    (lexeme, file, line, nextColumn) = t[1]
+                    if lexeme == "exists":
+                        (bv, t) = BoundVarRule().parse(t[2:])
+                        (lexeme, file, line, nextColumn) = t[0]
+                        self.expect("'when exists' statement", lexeme == "in", t[0], "expected 'in'")
+                        (expr, t) = NaryRule({":", "let", "when"}).parse(t[1:])
+                        (lexeme, file, line, nextColumn) = t[0]
+                        vars_and_conds.append(('exists', bv, expr))
+                    else:
+                        (cond, t) = NaryRule({":", "let", "when"}).parse(t[1:])
+                        vars_and_conds.append(('cond', cond))
                 (lexeme, file, line, nextColumn) = t[0]
-                if lexeme == ":":
-                    break
-
-                self.expect(
-                    "let statement",
-                    lexeme == "let" or lexeme == "when",
-                    t[0],
-                    "expected 'let', 'when', or ':'"
-                )
 
             (stat, t) = StatListRule(column).parse(t[1:])
 
             if all(vac[0] == 'var' for vac in vars_and_conds):
                 vars = [vac[1:] for vac in vars_and_conds if vac[0] == 'var']
-                return (LetAST(token, vars, stat), t)
+                return (LetAST(token, atomically, vars, stat), t)
 
             else:
-                return (LetWhenAST(token, vars_and_conds, stat), t)
+                return (LetWhenAST(token, atomically, vars_and_conds, stat), t)
 
         if lexeme == "var":
             vars = []
@@ -4561,11 +4472,11 @@ class StatementRule(Rule):
                 'no remaining tokens'
             )
             vars.append((bv, ast))
-            return (VarAST(token, vars), t)
+            return (VarAST(token, atomically, vars), t)
 
         if lexeme == "atomic":
             (stat, t) = BlockRule(column).parse(t[1:])
-            return (AtomicAST(token, stat), t)
+            return (AtomicAST(token, atomically, stat), t)
         if lexeme == "del":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
@@ -4578,14 +4489,14 @@ class StatementRule(Rule):
                     column=column,
                     message="del: unexpected token: %s" % str(tokens[0]),
                 )
-            return (DelAST(token, ast), t)
+            return (DelAST(token, atomically, ast), t)
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, nextColumn) = name
             self.expect("method definition", isname(lexeme), name, "expected name")
             (bv, t) = BoundVarRule().parse(t[2:])
             (stat, t) = BlockRule(column).parse(t)
-            return (MethodAST(token, name, bv, stat), t)
+            return (MethodAST(token, atomically, name, bv, stat), t)
         if lexeme == "spawn":
             (tokens, t) = self.slice(t[1:], column)
             (lexeme, file, line, col) = tokens[0]
@@ -4620,7 +4531,7 @@ class StatementRule(Rule):
                         column=column,
                         message="spawn: unexpected token: %s" % str(tokens[0]),
                     )
-            return (SpawnAST(token, func.method, func.arg, this, eternal), t)
+            return (SpawnAST(token, atomically, func.method, func.arg, this, eternal), t)
         if lexeme == "trap":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
@@ -4643,7 +4554,7 @@ class StatementRule(Rule):
                     column=column,
                     message="trap: unexpected token: %s" % str(tokens[0]),
                 )
-            return (TrapAST(token, func.method, func.arg), t)
+            return (TrapAST(token, atomically, func.method, func.arg), t)
         if lexeme == "go":
             (tokens, t) = self.slice(t[1:], column)
             (func, tokens) = NaryRule(set()).parse(tokens)
@@ -4666,9 +4577,9 @@ class StatementRule(Rule):
                     column=column,
                     message="go: unexpected token: %s" % str(tokens[0]),
                 )
-            return (GoAST(token, func.method, func.arg), t)
+            return (GoAST(token, atomically, func.method, func.arg), t)
         if lexeme == "pass":
-            return (PassAST(token), t[1:])
+            return (PassAST(token, atomically), t[1:])
         if lexeme == "sequential":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
@@ -4690,7 +4601,7 @@ class StatementRule(Rule):
                         column=column,
                         message="sequential: unexpected token: %s" % str(tokens[0]),
                     )
-            return (SequentialAST(token, vars), t)
+            return (SequentialAST(token, atomically, vars), t)
         if lexeme == "import":
             (tokens, t) = self.slice(t[1:], column)
             mods = [tokens[0]]
@@ -4713,7 +4624,7 @@ class StatementRule(Rule):
                         message="import: unexpected token: %s" % str(tokens[0]),
                     )
 
-            return (ImportAST(token, mods), t)
+            return (ImportAST(token, atomically, mods), t)
         if lexeme == "from":
             (tokens, t) = self.slice(t[1:], column)
             (lexeme, file, line, column) = module = tokens[0]
@@ -4723,7 +4634,7 @@ class StatementRule(Rule):
             (lexeme, file, line, column) = tokens[2]
             if lexeme == '*':
                 assert len(tokens) == 3, tokens
-                return (FromAST(token, module, []), t)
+                return (FromAST(token, atomically, module, []), t)
             items = [tokens[2]]
             tokens = tokens[3:]
             if tokens != []:
@@ -4744,7 +4655,7 @@ class StatementRule(Rule):
                     message="from: unexpected token: %s" % str(tokens[0]),
                 )
 
-            return (FromAST(token, module, items), t)
+            return (FromAST(token, atomically, module, items), t)
         if lexeme == "assert":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)
@@ -4770,7 +4681,7 @@ class StatementRule(Rule):
                         column=column,
                         message="assert: unexpected token: %s" % str(tokens[0]),
                     )
-            return (AssertAST(token, cond, expr), t)
+            return (AssertAST(token, atomically, cond, expr), t)
         if lexeme == "possibly":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)
@@ -4787,7 +4698,7 @@ class StatementRule(Rule):
                     )
                 (cond, tokens) = NaryRule({","}).parse(tokens[1:])
                 condlist.append(cond)
-            return (PossiblyAST(token, condlist), t)
+            return (PossiblyAST(token, atomically, condlist), t)
         
         # If we get here, the next statement is either an expression
         # or an assignment.  The assignment grammar is either
@@ -4814,9 +4725,9 @@ class StatementRule(Rule):
             assignop = tokens[0]
             tokens = tokens[1:]
         if len(exprs) == 1:
-            return (CallAST(token, exprs[0]), t)
+            return (CallAST(token, atomically, exprs[0]), t)
         else:
-            return (AssignmentAST(exprs[:-1], exprs[-1], assignop), t)
+            return (AssignmentAST(exprs[:-1], exprs[-1], assignop, atomically), t)
 
 class ContextValue(Value):
     def __init__(self, name, entry, arg, this):

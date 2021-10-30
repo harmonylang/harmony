@@ -18,7 +18,7 @@ def replica(self, immortal):
                 send(self, (len(history), self))
                 history += [self,]
             else:                   # I'm not the head (yet)
-                select payload in receive(max(predecessors), len(history)):
+                atomically when exists payload in receive(max(predecessors), len(history)):
                     if payload == .crash:
                         predecessors -= { max(predecessors) }
                     else:

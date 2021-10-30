@@ -22,12 +22,12 @@ def acquired(binsema):
     result = !binsema
 
 def acquire(binsema):
-    await not tas(binsema)
+    atomically when not !binsema:
+        !binsema = True
 
 def release(binsema):
-    atomic:
-        assert !binsema
-        !binsema = False
+    assert !binsema
+    atomically !binsema = False
     
 def held(binsema):
     result = !binsema
@@ -59,26 +59,19 @@ def Semaphore(cnt):
     result = cnt
 
 def P(sema):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if !sema > 0:
-                    !sema -= 1
-                    blocked = False
+    atomically when !sema > 0:
+        !sema -= 1
+
 def V(sema):
-    atomic: !sema += 1
+    atomically !sema += 1
     
 def Queue():
     result = []
 
 def get(q):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if !q != []:
-                    result = list.head(!q)
-                    !q = list.tail(!q)
-                    blocked = False
+    atomically when !q != []:
+        result = list.head(!q)
+        !q = list.tail(!q)
 
 def put(q, item):
-    atomic: !q = list.append(!q, item)
+    atomically !q = list.append(!q, item)
