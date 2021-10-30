@@ -6,7 +6,7 @@ def send(m):
 def bank(self, balance):
     let status, received = (), {}:
         while True:
-            select req in network - received where req.dst == self:
+            atomically when exists req in network - received when req.dst == self:
                 received |= { req }
                 if req.request == .withdraw:
                     if (status != ()) or (req.amount > balance):
