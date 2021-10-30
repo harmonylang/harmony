@@ -2,8 +2,8 @@ def Condition():
     result = bag.empty()
 
 def wait(c, lk):
-    let blocked, cnt, ctx = True, 0, get_context():
-        atomic:
+    let cnt, ctx = 0, get_context():
+        atomically:
             cnt = bag.count(!c, ctx)
             !c = bag.add(!c, ctx)
             !lk = False

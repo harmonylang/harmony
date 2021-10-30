@@ -1,5 +1,5 @@
 def tas(lk):
-    atomic:
+    atomically:
         result = !lk
         !lk = True
     
@@ -17,23 +17,18 @@ def Condition(lk):
     result = { .lock: lk, .waiters: {} }
 
 def wait(c):
-    let lk, blocked = None, True:
-        atomic:
-            lk = c->lock
-            c->waiters += { nametag() }
-            !lk = False
-        
-        while blocked:
-            atomic:
-                if (not (!lk)) and (not ((nametag()) in c->waiters)):
-                    !lk = True
-                    blocked = False
+    var lk = None
+    atomically:
+        lk = c->lock
+        c->waiters += { nametag() }
+        !lk = False
+    atomically when (not (!lk)) and (not ((nametag()) in c->waiters)):
+        !lk = True
 
 def notify(c):
-    atomic:
-        let waiters = c->waiters:
-            if waiters != {}:
-                c->waiters = waiters - { choose(waiters) }
+    atomically let waiters = c->waiters:
+        if waiters != {}:
+            c->waiters = waiters - { choose(waiters) }
             
 def notifyAll(c):
     c->waiters = {}
@@ -42,12 +37,8 @@ def Semaphore(cnt):
     result = cnt
 
 def P(sema):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if (!sema) > 0:
-                    !sema -= 1
-                    blocked = False
+    atomically when (!sema) > 0:
+        !sema -= 1
 
 def V(sema):
-    atomic: !sema += 1
+    atomically !sema += 1

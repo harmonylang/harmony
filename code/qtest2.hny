@@ -11,7 +11,7 @@ gotten = {}
 
 def getter():
     let v = queue.get(?testq):
-        atomic:
+        atomically:
             assert v not in gotten
             assert v != None
             gotten |= {v}

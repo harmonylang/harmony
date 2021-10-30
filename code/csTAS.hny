@@ -1,12 +1,12 @@
 lock = False
 
 def tas(s):
-    atomic:
+    atomically:
         result = !s
         !s = True
 
 def clear(s):
-    atomic:
+    atomically:
         assert !s
         !s = False
     

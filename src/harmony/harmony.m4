@@ -149,7 +149,7 @@ def load_string(all, filename, scope, code):
         )
 
     try:
-        (ast, rem) = StatListRule(-1).parse(tokens)
+        (ast, rem) = StatListRule(-1, False).parse(tokens)
     except IndexError:
         # best guess...
         (lexeme, file, line, column) = tokens[-1]
@@ -3515,8 +3515,8 @@ class PassAST(AST):
         pass
 
 class BlockAST(AST):
-    def __init__(self, token, b):
-        AST.__init__(self, token, False)
+    def __init__(self, token, atomically, b):
+        AST.__init__(self, token, atomically)
         assert len(b) > 0
         self.b = b
 
@@ -3524,8 +3524,12 @@ class BlockAST(AST):
         return "Block(" + str(self.b) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         for s in self.b:
             s.compile(scope, code)
+        if self.atomically:
+            code.append(AtomicDecOp())
 
     def getLabels(self):
         labels = [ x.getLabels() for x in self.b ]
@@ -4182,8 +4186,9 @@ class LabelStatRule(Rule):
         return (LabelStatAST(token, labels, ast, thefile, theline), t)
 
 class StatListRule(Rule):
-    def __init__(self, indent):
+    def __init__(self, indent, atomically):
         self.indent = indent
+        self.atomically = atomically
 
     def parse(self, t):
         if t == []:
@@ -4226,16 +4231,17 @@ class StatListRule(Rule):
                     message="Parsing: incomplete statement starting at %s" % str(slice[0]),
                 )
 
-        return (BlockAST(first_token, b), t)
+        return (BlockAST(first_token, self.atomically, b), t)
 
 class BlockRule(Rule):
-    def __init__(self, indent):
+    def __init__(self, indent, atomically):
         self.indent = indent
+        self.atomically = atomically
 
     def parse(self, t):
         (lexeme, file, line, column) = t[0]
         self.expect("block statement", lexeme == ":", t[0], "missing ':'")
-        return StatListRule(self.indent).parse(t[1:])
+        return StatListRule(self.indent, self.atomically).parse(t[1:])
 
 # This parses the lefthand side of an assignment in a let expression.  Grammar:
 #   lhs = (tuple ",")* [tuple]
@@ -4346,6 +4352,8 @@ class StatementRule(Rule):
         else:
             atomically = False
         token = t[0]
+        if lexeme == ":":
+            return BlockRule(column, atomically).parse(t)
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -4366,7 +4374,7 @@ class StatementRule(Rule):
             alts = []
             while True:
                 (cond, t) = NaryRule({":"}).parse(t[1:])
-                (stat, t) = StatListRule(column).parse(t[1:])
+                (stat, t) = StatListRule(column, False).parse(t[1:])
                 alts += [(cond, stat, file, line)]
                 if t == []:
                     nextColumn = column
@@ -4378,13 +4386,13 @@ class StatementRule(Rule):
                 if lexeme != "elif":
                     break
             if nextColumn == column and lexeme == "else":
-                (stat, t) = BlockRule(column).parse(t[1:])
+                (stat, t) = BlockRule(column, False).parse(t[1:])
             else:
                 stat = None
             return (IfAST(token, atomically, alts, stat), t)
         if lexeme == "while":
             (cond, t) = NaryRule({":"}).parse(t[1:])
-            (stat, t) = StatListRule(column).parse(t[1:])
+            (stat, t) = StatListRule(column, False).parse(t[1:])
             return (WhileAST(token, atomically, cond, stat), t)
         if lexeme == "await":
             (tokens, t) = self.slice(t[1:], column)
@@ -4414,7 +4422,7 @@ class StatementRule(Rule):
             return (InvariantAST(cond, token, atomically), t)
         if lexeme == "for":
             (lst, t) = self.iterParse(t[1:], {":"})
-            (stat, t) = StatListRule(column).parse(t[1:])
+            (stat, t) = StatListRule(column, False).parse(t[1:])
             return (ForAST(lst, stat, token, atomically), t)
 
         if lexeme in { "let", "when" }:
@@ -4441,7 +4449,7 @@ class StatementRule(Rule):
                         vars_and_conds.append(('cond', cond))
                 (lexeme, file, line, nextColumn) = t[0]
 
-            (stat, t) = StatListRule(column).parse(t[1:])
+            (stat, t) = StatListRule(column, False).parse(t[1:])
 
             if all(vac[0] == 'var' for vac in vars_and_conds):
                 vars = [vac[1:] for vac in vars_and_conds if vac[0] == 'var']
@@ -4474,9 +4482,6 @@ class StatementRule(Rule):
             vars.append((bv, ast))
             return (VarAST(token, atomically, vars), t)
 
-        if lexeme == "atomic":
-            (stat, t) = BlockRule(column).parse(t[1:])
-            return (AtomicAST(token, atomically, stat), t)
         if lexeme == "del":
             (tokens, t) = self.slice(t[1:], column)
             (ast, tokens) = ExpressionRule().parse(tokens)
@@ -4495,7 +4500,7 @@ class StatementRule(Rule):
             (lexeme, file, line, nextColumn) = name
             self.expect("method definition", isname(lexeme), name, "expected name")
             (bv, t) = BoundVarRule().parse(t[2:])
-            (stat, t) = BlockRule(column).parse(t)
+            (stat, t) = BlockRule(column, False).parse(t)
             return (MethodAST(token, atomically, name, bv, stat), t)
         if lexeme == "spawn":
             (tokens, t) = self.slice(t[1:], column)

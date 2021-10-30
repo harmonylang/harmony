@@ -7,7 +7,7 @@ def Lock():
     result = BinSema(False)
 
 def acquire(binsema):
-    atomic:
+    atomically:
         if binsema->acquired:
             stop binsema->suspended[len binsema->suspended]
             assert binsema->acquired
@@ -15,7 +15,7 @@ def acquire(binsema):
             binsema->acquired = True
 
 def release(binsema):
-    atomic:
+    atomically:
         assert binsema->acquired
         if binsema->suspended == []:
             binsema->acquired = False

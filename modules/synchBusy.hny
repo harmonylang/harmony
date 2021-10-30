@@ -1,5 +1,5 @@
 def tas(lk):
-    atomic:
+    atomically:
         result = !lk
         !lk = True
 
@@ -30,12 +30,8 @@ def Semaphore(cnt):
     result = cnt
 
 def P(sema):
-    let blocked = True:
-        while blocked:
-            atomic:
-                if !sema > 0:
-                    !sema -= 1
-                    blocked = False
+    atomically when !sema > 0:
+        !sema -= 1
                 
 def V(sema):
-    atomic: !sema += 1
+    atomically !sema += 1

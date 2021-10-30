@@ -5,12 +5,12 @@ back = 0
 items = [None,] * MAX_ITEMS
 
 def inc(pcnt):
-    atomic:
+    atomically:
         result = !pcnt
         !pcnt += 1
 
 def exch(pv):
-    atomic:
+    atomically:
         result = !pv
         !pv = None
 

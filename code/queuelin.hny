@@ -5,7 +5,7 @@ def Queue():
     result = { .head: None, .tail: None, .lock: Lock(), .time: 0 }
 
 def _linpoint(q):
-    atomic:
+    atomically:
         this.qtime = q->time
         q->time += 1
 

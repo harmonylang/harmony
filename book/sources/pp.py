@@ -58,6 +58,7 @@ def isreserved(s):
         "assert",
         "atLabel",
         "atomic",
+        "atomically",
         "await",
         "bag",
         "choose",
@@ -69,6 +70,7 @@ def isreserved(s):
         "else",
         "end",
         "eternal",
+        "exists",
         "from",
         "False",
         "for",
@@ -99,6 +101,7 @@ def isreserved(s):
         "this",
         "trap",
         "True",
+        "when",
         "where",
         "while"
     ]

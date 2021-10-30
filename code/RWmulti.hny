@@ -8,10 +8,7 @@ def reader(self):
     @rcs: assert atLabel.wcs == dict{}
     flags[self] = True
     if choose({ False, True }):
-        let blocked = True:
-            while blocked:
-                if all(flags[i] for i in {1..NREADERS}):
-                    blocked = False
+        await all(flags[i] for i in {1..NREADERS})
     release_rlock()
 
 def writer():
