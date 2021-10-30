@@ -5419,7 +5419,7 @@ def parseConstant(c, v):
         code.labeled_ops[ctx.pc].op.eval(state, ctx)
     constants[c] = ctx.pop()
 
-def doCompile(filenames, consts, mods):
+def doCompile(filenames, consts, mods, interface):
     for c in consts:
         try:
             i = c.index("=")
@@ -5449,6 +5449,11 @@ def doCompile(filenames, consts, mods):
         except IOError:
             print("harmony: can't open", fname, file=sys.stderr)
             sys.exit(1)
+
+    if interface != None:
+        load_string("def __iface__(): result = (%s)"%interface,
+            "interface", scope, code)
+
     code.append(ReturnOp())     # to terminate "__init__" process
 
     # Analyze liveness of variables
@@ -6271,6 +6276,7 @@ def usage():
     print("    -d: htmldump full state into html file")
     print("    -f: run with internal model checker (not supported)")
     print("    -h: help")
+    print("    -i expr: specify in interface function")
     print("    -m module=version: select a module version")
     print("    -s: silent (do not print periodic status updates)")
     print("    -v: print version number")
@@ -6281,6 +6287,7 @@ def main():
 
     # Get options.  First set default values
     consts = []
+    interface = None
     mods = []
     parse_code_only = False
     printCode = None
@@ -6291,8 +6298,8 @@ def main():
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhjm:stvp",
-                ["const=", "cf=", "help", "module=", "suppress", "version", "parse"])
+        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:stvp",
+                ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -6314,6 +6321,8 @@ def main():
             blockflag = True
         elif o in { "-c", "--const" }:
             consts.append(a)
+        elif o in { "-i", "--intf" }:
+            interface = a
         elif o == "-d":
             fulldump = True
         elif o in { "-m", "--module" }:
@@ -6348,7 +6357,7 @@ def main():
     hvmfile = stem + ".hvm"
 
     try:
-        code, scope = doCompile(args, consts, mods)
+        code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
         if parse_code_only:
             with open(hvmfile, "w") as f:
