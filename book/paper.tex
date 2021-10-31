@@ -1455,16 +1455,12 @@ We would like to place an assertion at the \texttt{@cs} label that
 specifies that only the current thread can be there.
 
 Harmony in fact supports this.
-It has an operator \textbf{atLabel}~$L$,
-\index{atLabel operator}%
+It has an operator \textbf{countLabel}~$L$,
+\index{countLabel operator}%
 where $L$
 is the atom containing the name of the label (in this case, \texttt{cs}).
-The operator returns a bag (multiset) of (method, argument) pairs of threads
-executing at that label.
-In our case there are two threads: \texttt{(thread, 0)} and \texttt{(thread, 1)}.
-A bag is represented by a dictionary that maps each element
-in the bag to the number of times the element appears in the bag.
-Method \textbf{atLabel} only exists for specification purposes---do not
+The operator returns the number of threads executing at that label.
+Method \textbf{countLabel} only exists for specification purposes---do not
 use it in normal code.
 If you run the code through Harmony, the assertion should fail because
 there is no code yet for safely entering and exiting the critical section.
@@ -2399,7 +2395,7 @@ variable and a private variable for each thread.   The private
 variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective threads.
 A thread usually does not keep explicit track of whether it has a lock
-or not, because it is usually implied by the control flow of the program---a
+or not, because it is implied by the control flow of the program---a
 thread implicitly \emph{knows} that when it is executing in a critical
 section it has the lock.
 There is no need to keep \textit{private} as a shared
@@ -2950,7 +2946,7 @@ concurrent code.
 
 The framework in \autoref{fig:csbarebones} works well for thoroughly
 testing mutual exclusion and progress in critical sections, but depends
-on \texttt{atLabel}, an unusual operator specific to Harmony that is mostly
+on \texttt{countLabel}, an unusual operator specific to Harmony that is mostly
 useful for testing mutual exclusion.
 It turns out that we do not need labels to express this.
 \autoref{fig:cslock} tests mutual exclusion and progress for
@@ -4497,6 +4493,13 @@ It is represented by a dictionary containing
 a bag of contexts of threads waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
 
+In Harmony, a bag is usually represented by a dictionary that maps
+the elements of the bag to their multiplicities.
+For example, the value \texttt{\{ .a: 2, .b: 3 \}} represents a bag
+with two copies of \texttt{.a} and three copies of \texttt{.b}.
+The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy
+functions on bags.
+
 \texttt{wait} adds the context of the thread to the bag.
 This increments the number of threads in the bag with the same context.
 \texttt{wait} then loops until that count is restored to the
@@ -5969,13 +5972,7 @@ we would have to consider every permutation of states of those servers.
 Because the servers are anonymous, they may end up sending the same
 exact message, but clients are waiting for a particular number of
 messages.
-Because of this, 
-we will model the network as a bag (aka multiset) of messages.
-The bag itself is
-modeled in Harmony as a dictionary that maps unique elements in the bag to their
-multiplicity.  So, for example, $\{ .\texttt{a}:1, .\texttt{b}:2 \}$ is the bag that consists of
-one $.\texttt{a}$ and two copies of $.\texttt{b}$.
-The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy functions on bags.
+Because of this, we will model the network as a bag of messages.
 
 A server initializes its timestamp $t$ to
 $(0, \mathtt{None})$ and its value to \texttt{None}.

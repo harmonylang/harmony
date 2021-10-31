@@ -1,0 +1,29 @@
+const MAX_COUNT = 6
+const N = 6
+
+assert MAX_COUNT >= N
+
+sequential counter
+
+counter = 0
+ticket = 0
+
+def fetch_and_increment(p):
+    atomically:
+        result = !p
+        !p = (!p + 1) % MAX_COUNT
+
+def thread():
+    while choose({ False, True }):
+        # Enter critical section
+        let my_ticket = fetch_and_increment(?ticket):
+            await my_ticket == counter
+
+            # Critical section
+            @cs: assert countLabel(cs) == 1
+
+            # Leave critical section
+            fetch_and_increment(?counter)
+
+for i in {0..N-1}:
+    spawn thread()
