@@ -2558,7 +2558,7 @@ class NameAST(AST):
 
     # TODO.  How about local-const?
     def localVar(self, scope):
-        (t, v) = scope.find(self.name)
+        (t, v) = scope.lookup(self.name)
         assert t in { "constant", "local-var", "local-const", "global", "module" }
         return self.name[0] if t == "local-var" else None
 
@@ -3335,7 +3335,7 @@ class AssignmentAST(AST):
         lvar = lv.localVar(scope)
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
-            (t, v) = scope.find(lv.name)
+            (t, v) = scope.lookup(lv.name)
             lexeme, file, line, column = self.ast_token
             if t == "module":
                 raise HarmonyCompilerError(
@@ -3400,7 +3400,7 @@ class AssignmentAST(AST):
         for lvs in reversed(self.lhslist):
             skip -= 1
             if isinstance(lvs, NameAST):
-                (t, v) = scope.find(lvs.name)
+                (t, v) = scope.lookup(lvs.name)
                 if t == "module":
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
@@ -3552,10 +3552,14 @@ class BlockAST(AST):
         return "Block(" + str(self.b) + ")"
 
     def compile(self, scope, code):
+        ns = Scope(scope)
+        for s in self.b:
+            for ((lexeme, file, line, column), lb) in s.getLabels():
+                ns.names[lexeme] = ("constant", (lb, file, line, column))
         if self.atomically:
             code.append(AtomicIncOp(True))
         for s in self.b:
-            s.compile(scope, code)
+            s.compile(ns, code)
         if self.atomically:
             code.append(AtomicDecOp())
 
@@ -3584,7 +3588,8 @@ class IfAST(AST):
         endlabel = LabelValue(None, "$%d_end"%label)
         if self.atomically:
             code.append(AtomicIncOp(True))
-        for alt in self.alts:
+        last = len(self.alts) - 1
+        for i, alt in enumerate(self.alts):
             (rest, stat, thefile, theline) = alt
             code.location(thefile, theline)
             negate = isinstance(rest, NaryAST) and rest.op[0] == "not"
@@ -3594,7 +3599,8 @@ class IfAST(AST):
             code.append(JumpCondOp(negate, iflabel))
             sublabel += 1
             stat.compile(scope, code)
-            code.append(JumpOp(endlabel))
+            if self.stat != None or i != last:
+                code.append(JumpOp(endlabel))
             code.nextLabel(iflabel)
         if self.stat != None:
             self.stat.compile(scope, code)
@@ -3677,13 +3683,14 @@ class LetAST(AST):
     def compile(self, scope, code):
         if self.atomically:
             code.append(AtomicIncOp(True))
+        ns = Scope(scope)
         for (var, expr) in self.vars:
-            expr.compile(scope, code)
+            expr.compile(ns, code)
             code.append(StoreVarOp(var))
-            self.define(scope, var)
+            self.define(ns, var)
 
         # Run the body
-        self.stat.compile(scope, code)
+        self.stat.compile(ns, code)
 
         if self.atomically:
             code.append(AtomicDecOp())
@@ -3719,7 +3726,8 @@ class ForAST(AST):
     def compile(self, scope, code):
         if self.atomically:
             code.append(AtomicIncOp(True))
-        self.comprehension(scope, code, "for")
+        ns = Scope(scope)
+        self.comprehension(ns, code, "for")
         if self.atomically:
             code.append(AtomicDecOp())
 
@@ -3780,22 +3788,23 @@ class LetWhenAST(AST):
         if self.atomically:
             code.append(AtomicIncOp(True))
             code.append(ReadonlyIncOp())
+        ns = Scope(scope)
         for var_or_cond in self.vars_and_conds:
             if var_or_cond[0] == 'var':
                 var, expr = var_or_cond[1:]
-                expr.compile(scope, code)
+                expr.compile(ns, code)
                 code.append(StoreVarOp(var))
-                self.define(scope, var)
+                self.define(ns, var)
             elif var_or_cond[0] == 'cond':
                 cond = var_or_cond[1]
-                cond.compile(scope, code)
+                cond.compile(ns, code)
                 code.append(JumpCondOp(False, label_condfailed))
             else:
                 assert var_or_cond[0] == 'exists'
                 (_, bv, expr) = var_or_cond
                 (_, file, line, column) = self.token
-                self.define(scope, bv)
-                expr.compile(scope, code)
+                self.define(ns, bv)
+                expr.compile(ns, code)
                 code.append(DupOp())
                 code.append(PushOp((SetValue(set()), file, line, column)))
                 code.append(NaryOp(("==", file, line, column), 2))
@@ -3827,7 +3836,7 @@ class LetWhenAST(AST):
         code.nextLabel(label_body)
         if self.atomically:
             code.append(ReadonlyDecOp())
-        self.stat.compile(scope, code)
+        self.stat.compile(ns, code)
         if self.atomically:
             code.append(AtomicDecOp())
 
@@ -4115,7 +4124,7 @@ class LabelStatAST(AST):
         if self.labels == {}:
             self.ast.compile(scope, code)
         else:
-            root = scope
+            # root = scope
             # while root.parent != None:
             #     root = root.parent
             for ((lexeme, file, line, column), label) in self.labels.items():
@@ -5219,15 +5228,6 @@ class Scope:
         # print("Warning: unknown name:", name, " (assuming global variable)")
         self.names[lexeme] = ("global", name)
         return ("global", name)
-
-    def find(self, name):
-        (lexeme, file, line, column) = name
-        tv = self.names.get(lexeme)
-        if tv != None:
-            return tv
-        self.names[lexeme] = ("global", name)
-        # print("Warning: unknown name:", name, " (find)")
-        return ("global", lexeme)
 
 def optjump(code, pc):
     while pc < len(code.labeled_ops):
