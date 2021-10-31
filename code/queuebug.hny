@@ -5,14 +5,15 @@ def Queue():
     result = { .next: None, .value: None, .lock: Lock() }
 
 def put(q, v):
+    var nq = q
     let node = malloc({ .next: None, .value: v, .lock: Lock() }):
-        while q != None:
-            acquire(?q->lock)
-            let n = q->next:
+        while nq != None:
+            acquire(?nq->lock)
+            let n = nq->next:
                 if n == None:
-                    q->next = node
-                release(?q->lock)
-                q = n
+                    nq->next = node
+                release(?nq->lock)
+                nq = n
 
 def get(q):
     acquire(?q->lock)

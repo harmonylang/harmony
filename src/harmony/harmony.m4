@@ -2308,11 +2308,23 @@ class AST:
         self.ast_token = token
         self.atomically = atomically
 
+    # a new local constant or tree of constants
+    def define(self, scope, const):
+        if isinstance(const, tuple):
+            scope.checkUnused(const)
+            (lexeme, file, line, column) = const
+            scope.names[lexeme] = ("local-const", const)
+        else:
+            assert isinstance(const, list)
+            for c in const:
+                self.define(scope, c)
+
+    # a new local variable or tree of variables
     def assign(self, scope, var):
         if isinstance(var, tuple):
             scope.checkUnused(var)
             (lexeme, file, line, column) = var
-            scope.names[lexeme] = ("local", var)
+            scope.names[lexeme] = ("local-var", var)
         else:
             assert isinstance(var, list)
             for v in var:
@@ -2400,9 +2412,9 @@ class AST:
         if type == "for":
             (var, var2, expr) = rest
 
-            self.assign(scope, var)
+            self.define(scope, var)
             if var2 != None:
-                self.assign(scope, var2)
+                self.define(scope, var2)
             uid = len(code.labeled_ops)
             (lexeme, file, line, column) = self.token
 
@@ -2520,7 +2532,7 @@ class NameAST(AST):
 
     def compile(self, scope, code):
         (t, v) = scope.lookup(self.name)
-        if t == "local":
+        if t in { "local-var", "local-const" }:
             code.append(LoadVarOp(self.name))
         elif t == "constant":
             (lexeme, file, line, column) = self.name
@@ -2529,18 +2541,15 @@ class NameAST(AST):
             assert t in { "global", "module" }
             code.append(LoadOp(self.name, self.name, scope.prefix))
 
+    # TODO.  How about local-const?
     def localVar(self, scope):
         (t, v) = scope.find(self.name)
-        assert t in { "constant", "local", "global", "module" }
-        return self.name[0] if t == "local" else None
+        assert t in { "constant", "local-var", "local-const", "global", "module" }
+        return self.name[0] if t == "local-var" else None
 
     def ph1(self, scope, code):
         (t, v) = scope.lookup(self.name)
-        if t == "local":
-            (lexeme, file, line, column) = v
-            if lexeme != "_":
-                code.append(PushOp((AddressValue([lexeme]), file, line, column)))
-        elif t == "constant":
+        if t in { "constant", "local-const" }:
             (lexeme, file, line, column) = v
             raise HarmonyCompilerError(
                 filename=file,
@@ -2549,6 +2558,10 @@ class NameAST(AST):
                 column=column,
                 message="constant cannot be an lvalue: %s" % str(self.name),
             )
+        elif t == "local-var":
+            (lexeme, file, line, column) = v
+            if lexeme != "_":
+                code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         else:
             (lexeme, file, line, column) = self.name
             code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
@@ -2558,7 +2571,7 @@ class NameAST(AST):
             code.append(MoveOp(skip + 2))
             code.append(MoveOp(2))
         (t, v) = scope.lookup(self.name)
-        if t == "local":
+        if t == "local-var":
             if self.name[0] == "_":
                 code.append(PopOp());
             else:
@@ -2570,7 +2583,7 @@ class NameAST(AST):
     def isConstant(self, scope):
         (lexeme, file, line, column) = self.name
         (t, v) = scope.lookup(self.name)
-        if t in { "local", "global", "module" }:
+        if t in { "local-var", "local-const", "global", "module" }:
             return False
         elif t == "constant":
             return True
@@ -3317,7 +3330,7 @@ class AssignmentAST(AST):
                     column=column,
                     message='Cannot operate on module %s' % str(lv.name),
                 )
-            if t == "constant":
+            if t in { "constant", "local-const" }:
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
@@ -3325,7 +3338,7 @@ class AssignmentAST(AST):
                     column=column,
                     message='Cannot operate on constant %s' % str(lv.name),
                 )
-            assert t in { "local", "global" }
+            assert t in { "local-var", "global" }
             ld = LoadOp(lv.name, lv.name, scope.prefix) if t == "global" else LoadVarOp(lv.name)
         else:
             lv.ph1(scope, code)
@@ -3381,7 +3394,7 @@ class AssignmentAST(AST):
                         column=column,
                         message='Cannot assign to module %s' % str(lvs.name),
                     )
-                if t == "constant":
+                if t in { "constant", "local-const" }:
                     raise HarmonyCompilerError(
                         lexeme=lexeme,
                         filename=file,
@@ -3389,7 +3402,7 @@ class AssignmentAST(AST):
                         column=column,
                         message='Cannot assign to constant %s' % str(lvs.name),
                     )
-                assert t in { "local", "global" }, (t, lvs.name)
+                assert t in { "local-var", "global" }, (t, lvs.name)
                 if v[0] == "_":
                     code.append(PopOp());
                 else:
@@ -3462,7 +3475,7 @@ class AddressAST(AST):
         if isinstance(lv, NameAST):
             (t, v) = scope.lookup(lv.name)
             lexeme, file, line, column = lv.name
-            if t == "local":
+            if t in { "local-var", "local-const" }:
                 raise HarmonyCompilerError(
                     filename=file,
                     lexeme=lexeme,
@@ -3652,7 +3665,7 @@ class LetAST(AST):
         for (var, expr) in self.vars:
             expr.compile(scope, code)
             code.append(StoreVarOp(var))
-            self.assign(scope, var)
+            self.define(scope, var)
 
         # Run the body
         self.stat.compile(scope, code)
@@ -3757,7 +3770,7 @@ class LetWhenAST(AST):
                 var, expr = var_or_cond[1:]
                 expr.compile(scope, code)
                 code.append(StoreVarOp(var))
-                self.assign(scope, var)
+                self.define(scope, var)
             elif var_or_cond[0] == 'cond':
                 cond = var_or_cond[1]
                 cond.compile(scope, code)
@@ -3766,7 +3779,7 @@ class LetWhenAST(AST):
                 assert var_or_cond[0] == 'exists'
                 (_, bv, expr) = var_or_cond
                 (_, file, line, column) = self.token
-                self.assign(scope, bv)
+                self.define(scope, bv)
                 expr.compile(scope, code)
                 code.append(DupOp())
                 code.append(PushOp((SetValue(set()), file, line, column)))
@@ -3892,8 +3905,8 @@ class MethodAST(AST):
         ns = Scope(scope)
         for ((lexeme, file, line, column), lb) in self.stat.getLabels():
             ns.names[lexeme] = ("constant", (lb, file, line, column))
-        self.assign(ns, self.args)
-        ns.names["result"] = ("local", ("result", file, line, column))
+        self.define(ns, self.args)
+        ns.names["result"] = ("local-var", ("result", file, line, column))
         if self.atomically:
             code.append(AtomicIncOp(True))
         self.stat.compile(ns, code)
@@ -3935,9 +3948,9 @@ class LambdaAST(AST):
 
         (lexeme, file, line, column) = self.token
         ns = Scope(scope)
-        self.assign(ns, self.args)
+        self.define(ns, self.args)
         R = ("result", file, line, column)
-        ns.names["result"] = ("local", R)
+        ns.names["result"] = ("local-var", R)
         if self.atomically:
             code.append(AtomicIncOp(True))
         self.stat.compile(ns, code)
@@ -5154,7 +5167,7 @@ def print_path(bad_node):
 class Scope:
     def __init__(self, parent):
         self.parent = parent               # parent scope
-        self.names = { "this": ("local", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
+        self.names = { "this": ("local-var", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
         self.labels = {} if parent == None else parent.labels
         self.prefix = [] if parent == None else parent.prefix
 
@@ -5175,7 +5188,7 @@ class Scope:
     def lookup(self, name):
         (lexeme, file, line, column) = name
         if lexeme == "_":
-            return ("local", name)
+            return ("local-var", name)
         tv = self.names.get(lexeme)
         if tv != None:
             return tv
@@ -5184,7 +5197,7 @@ class Scope:
             tv = ancestor.names.get(lexeme)
             if tv != None:
                 # (t, v) = tv
-                # if t == "local":
+                # if t == "local-var":
                 #    return None
                 return tv
             ancestor = ancestor.parent

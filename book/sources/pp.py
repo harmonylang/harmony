@@ -101,6 +101,7 @@ def isreserved(s):
         "this",
         "trap",
         "True",
+        "var",
         "when",
         "where",
         "while"
