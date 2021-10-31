@@ -14,7 +14,7 @@ def thread():
     while choose({ False, True }):
         while tas(?lock):
             pass
-        @cs: assert atLabel(cs) == { (thread, ()): 1 }
+        @cs: assert countLabel(cs) == 1
         clear(?lock)
     
 for i in {1..10}:

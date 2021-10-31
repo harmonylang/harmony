@@ -232,6 +232,7 @@ def isreserved(s):
         "choose",
         "const",
         "contexts",
+        "countLabel",
         "def",
         "del",
         "elif",
@@ -284,8 +285,8 @@ def isname(s):
 
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
-        "contexts", "get_context", "min", "max", "not", "keys", "hash", "len",
-        "print"
+        "contexts", "countLabel", "get_context", "min", "max", "not",
+        "keys", "hash", "len", "print"
     }
 
 def isxbinop(s):
@@ -1767,6 +1768,13 @@ class NaryOp(Op):
                 bag[nametag] = cnt if c == None else (c + cnt)
         return DictValue(bag)
 
+    def countLabel(self, state, pc):
+        result = 0
+        for (ctx, cnt) in state.ctxbag.items():
+            if ctx.pc == pc:
+                result += 1
+        return result
+
     def contexts(self, state):
         return DictValue({ **state.ctxbag, **state.termbag, **state.stopbag })
 
@@ -1920,6 +1928,13 @@ class NaryOp(Op):
                 if not self.checktype(state, context, sa, isinstance(e, PcValue)):
                     return
                 context.push(self.atLabel(state, e.pc))
+            elif op == "countLabel":
+                if not context.atomic:
+                    context.failure = "not in atomic block: " + str(self.op)
+                    return
+                if not self.checktype(state, context, sa, isinstance(e, PcValue)):
+                    return
+                context.push(self.countLabel(state, e.pc))
             elif op == "get_context":
                 # if not self.checktype(state, context, sa, isinstance(e, int)):
                 #   return
@@ -2739,7 +2754,7 @@ class NaryAST(AST):
 
     def isConstant(self, scope):
         (op, file, line, column) = self.op
-        if op in { "atLabel", "choose", "contexts", "get_context" }:
+        if op in { "atLabel", "choose", "contexts", "countLabel", "get_context" }:
             return False
         return all(x.isConstant(scope) for x in self.args)
 

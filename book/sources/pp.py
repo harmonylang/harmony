@@ -63,6 +63,7 @@ def isreserved(s):
         "bag",
         "choose",
         "const",
+        "countLabel",
         "def",
         "del",
         "dict",

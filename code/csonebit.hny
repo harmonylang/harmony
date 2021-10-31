@@ -11,7 +11,7 @@ def thread(self):
             flags[self] = True
         
         # Critical section
-        @cs: assert atLabel(cs) == { (thread, self): 1 }
+        @cs: assert countLabel(cs) == 1
 
         # Leave critical section
         flags[self] = False

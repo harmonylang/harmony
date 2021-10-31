@@ -1707,7 +1707,7 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
     }
     uint64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_PC) {
-        return value_ctx_failure(ctx, values, "atLabel: not a method");
+        return value_ctx_failure(ctx, values, "atLabel: not a label");
     }
     e >>= VALUE_BITS;
 
@@ -1726,6 +1726,34 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
         }
     }
     return bag;
+}
+
+uint64_t f_countLabel(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+    assert(n == 1);
+    if (ctx->atomic == 0) {
+        return value_ctx_failure(ctx, values, "countLabel: can only be called in atomic mode");
+    }
+    uint64_t e = args[0];
+    if ((e & VALUE_MASK) != VALUE_PC) {
+        return value_ctx_failure(ctx, values, "countLabel: not a label");
+    }
+    e >>= VALUE_BITS;
+
+    int size;
+    uint64_t *vals = value_get(state->ctxbag, &size);
+    size /= sizeof(uint64_t);
+    assert(size > 0);
+    assert(size % 2 == 0);
+    uint64_t result = 0;
+    for (int i = 0; i < size; i += 2) {
+        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
+        assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
+        struct context *ctx = value_get(vals[i], NULL);
+        if (ctx->pc == e) {
+            result++;
+        }
+    }
+    return (result << VALUE_BITS) | VALUE_INT;
 }
 
 uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
@@ -2820,6 +2848,7 @@ struct f_info f_table[] = {
     { "any", f_any },
     { "atLabel", f_atLabel },
     { "BagAdd", f_value_bag_add },
+    { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
     { "get_context", f_get_context },
     { "in", f_in },

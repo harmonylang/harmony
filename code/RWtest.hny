@@ -6,12 +6,11 @@ def thread():
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
             RW.read_acquire(?rw)
-            @rcs: assert atLabel(wcs) == ()
+            @rcs: assert countLabel(wcs) == 0
             RW.read_release(?rw)
         else:                       # .write
             RW.write_acquire(?rw)
-            @wcs: assert (atLabel(wcs) == { (thread, ()): 1 }) and
-                         (atLabel(rcs) == ())
+            @wcs: assert (countLabel(wcs) == 1) and (countLabel(rcs) == 0)
             RW.write_release(?rw)
 
 for i in {1..3}:
