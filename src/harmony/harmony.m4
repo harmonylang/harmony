@@ -3945,7 +3945,7 @@ class MethodAST(AST):
                 scope.names[name] = (t, v)
 
     def getLabels(self):
-        return { (self.name, self.label) }
+        return { (self.name, self.label) } | self.stat.getLabels()
 
     def getImports(self):
         return self.stat.getImports()

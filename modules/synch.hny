@@ -50,7 +50,7 @@ def notify(c):
         !c = bag.remove(!c, bag.bchoose(!c))
 
 def notifyAll(c):
-    !c = bag.empty()
+    atomically !c = bag.empty()
 
 def Semaphore(cnt):
     result = cnt

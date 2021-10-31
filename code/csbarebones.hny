@@ -1,13 +1,9 @@
-in_cs = 0       # number of threads in the critical section
-
 def thread():
     while True:
         # Enter critical section
 
-        # Critical section
-        atomically in_cs += 1
-        assert in_cs == 1
-        atomically in_cs -= 1
+        # Critical section is here
+        @cs: assert countLabel(cs) == 1
 
         # Exit critical section
     

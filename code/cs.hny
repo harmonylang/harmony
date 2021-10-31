@@ -1,10 +1,11 @@
-in_cs = 0
-
 def thread():
     while choose({ False, True }):
-        atomically in_cs += 1  # enter critical section
-        assert in_cs == 1
-        atomically in_cs -= 1  # exit critical section
+        # Enter critical section
+
+        # Critical section is here
+        @cs: assert countLabel(cs) == 1
+
+        # Exit critical section
     
 spawn thread()
 spawn thread()
