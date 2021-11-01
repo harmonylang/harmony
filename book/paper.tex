@@ -522,6 +522,9 @@ is not trivial.
 elegant (although not very efficient or practical) solution to implementating a critical section.
 \item \autoref{ch:method} gives some more details on the Harmony
 language needed for the rest of the book.
+\item \autoref{ch:specification} talks about how Harmony can be used as
+a specification language.  It introduces how can can specify atomic
+constructs.
 \item \autoref{ch:spinlock} introduces atomic \emph{locks}
 for implemented critical sections.
 \item \autoref{ch:synch} presents Harmony modules
@@ -2208,6 +2211,68 @@ B\'{e}l\'{a}dy et al. found: 1 2 3 4 1 2 5 1 2 3 4 5.
 For the \texttt{CLOCK} algorithm the program actually finds a shorter
 reference string: 1 2 3 4 2 1 2 5 1 2.
 
+\chapter{Specification}
+\label{ch:specification}
+
+\begin{figure}
+\begin{code}
+\harmonysource{lockspec}
+\end{code}
+\caption{\harmonylink{modules/synch.hny} Specification of a lock.}
+\label{fig:lockspec}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{cssynch}
+\end{code}
+\caption{\harmonylink{code/cssynch.hny} Using a lock to implement a
+critical section.}
+\label{fig:cssynch}
+\end{figure}
+
+So far we have used Harmony to \emph{implement} various algorithms.
+But Harmony can also be used to \emph{specify} what an algorithm is
+supposed to do.
+For example, \autoref{fig:lockspec} specifies the intended behavior
+of a lock.
+In this case, a lock is a boolean, initially \texttt{False},
+with two operations, \texttt{acquire()} and \texttt{release()}.
+The \texttt{acquire()} operation waits until the lock is \texttt{False}
+and then sets it to \texttt{True} in an atomic operation.
+The \texttt{release()} operation sets the lock back to \texttt{False}.
+The code is similar to \autoref{fig:naivelock}, except that waiting
+for the lock to become available and taking it is executed as an
+atomic operation.
+
+The code in \autoref{fig:lockspec} is taken from Harmony's \texttt{synch}
+module.  \autoref{fig:cssynch} shows how locks may be used.  Note that
+the code of \autoref{fig:lockspec} is executable in Harmony.
+However, the \texttt{atomically} keyword is not available in general
+programming languages and should not be used for implementation.
+Peterson's algorithm is an implementation of a lock, although only for
+two processes.  In the following chapters we will look at more general
+ways of implementing locks using atomic constructions that are usually
+available in the underlying hardware.
+
+In Harmony, any statement can be preceded by the \texttt{atomically}
+keyword.  It means that statement as a whole is to be executed atomically.
+The \texttt{atomically} keyword can be used to specify the behavior of
+methods such as \texttt{acquire} and \texttt{release}.  But note that
+an actual executable program such as in \autoref{fig:cssynch} should not
+use the keyword.  In fact, if we want to make the entire program
+executable, we have to also show how \texttt{acquire} and \texttt{release}
+are implemented, not just how they are specified.
+\autoref{ch:spinlock} presents such an implementation.
+
+The code in \autoref{fig:lockspec} also uses the Harmony \texttt{when}
+statement.  A \texttt{when} statement waits until a time in which
+condition holds (not necessarily the first time) and then executes the
+statement block.  The \texttt{await} \textit{condition} statement is
+the same as \texttt{when} \textit{condition}: \texttt{pass}.
+Combined with the \texttt{atomically} keyword, the entire statement
+is executed atomically at a time that the condition holds.
+
 \chapter{Spinlock}
 \label{ch:spinlock}
 \index{spinlock}%
@@ -2222,13 +2287,8 @@ reference string: 1 2 3 4 2 1 2 5 1 2.
 \label{fig:tas}
 \end{figure}
 
-\autoref{fig:naivelock} showed a faulty attempt at solving mutual
-exclusion using a lock.  The problem with the implementation of the
-lock is that checking the lock and setting it if it is available is
-not \emph{atomic}.  Thus multiple threads contending for the lock
-can all ``grab the lock'' at the same time.  While Peterson's
-algorithm gets around the problem, it is not efficient, especially
-if generalized to multiple threads.
+Peterson's algorithm implements locks, but it is not efficient,
+especially if generalized to multiple threads.
 Worse, Peterson relies on load and store operations to be executed
 atomically, but this may not be the case.
 There are a variety of possible reasons for this.
@@ -2288,13 +2348,9 @@ that can read memory and then write it in an indivisible step.
 While the HVM does not have any specific built-in atomic instructions
 besides loading and storing variables,
 it does have support for executing multiple instructions atomically.
-This feature is available in the Harmony language in two ways.
-First, any Harmony statement can be made atomic by placing a label in front
-of it.  Second, a group of Harmony statements can be made atomic
-through the \textbf{atomic}
-\index{atomic statement}%
-statement.
-We can use \textbf{atomic} statement blocks to implement a wide variety of
+Any Harmony statement can be made atomic by placing either a label in front
+of it or the keyword \texttt{atomically}.
+We can use atomic statements to implement a wide variety of
 atomic operations.
 For example, we could fix the program in \autoref{fig:inc} by
 constructing an atomic increment operation for a counter, like so:
@@ -2384,9 +2440,10 @@ write out the invariants that need to hold and check them using Harmony.
 
 \begin{figure}
 \begin{code}
-\harmonysource{csTAS}
+\harmonysource{taslock}
 \end{code}
-\caption{\harmonylink{code/csTAS.hny} Fixed version of \autoref{fig:naivelock} using test-and-set.}
+\caption{\harmonylink{code/taslock.hny} Implementation of a spinlock
+using test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
@@ -2403,30 +2460,30 @@ variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of spinlock.
 The solution is similar to the na\"{i}ve solution of \autoref{fig:naivelock},
 but uses test-and-set to check and set the lock variable atomically.
-The lock is also cleared in an \textbf{atomic} block to prevent a data race.
+The lock is also cleared in an atomic statement to prevent a data race.
 This approach is general for any number of threads.
 
 It is important to appreciate the difference between an
 \emph{atomic section} (the statements executed within an
-\textbf{atomic} statement) and a \emph{critical section}
+atomic block of statements) and a \emph{critical section}
 (protected by a lock of some sort).
 The former ensures that while the
-\textbf{atomic} statement is executing no other thread can execute.
+statements are executing no other thread can execute.
 The latter allows multiple threads to run concurrently,
 just not within the critical section.
 The former is rarely available to a programmer (e.g., none of
 Python, C, or Java support it), while the latter
 is very common.
 
-In Harmony, \textbf{atomic} statements allow you to \emph{implement} your own
+In Harmony, atomic statements allow you to \emph{implement} your own
 atomic primitives such as test-and-set.  Other common examples
-include compare-and swap and fetch-and-add.  \textbf{atomic} statements
+include compare-and swap and fetch-and-add.  Atomic statements
 are not intended to replace locks or other synchonization primitives.
 When solving synchronization problems you should not directly use
-\textbf{atomic} statements but use the synchronization primitives that are available
+atomic statements but use the synchronization primitives that are available
 to you.  But if you want to design a new synchronization primitive, then
-use \textbf{atomic} by all means.
-You can also use \textbf{atomic} statements in your test code.
+use \textbf{atomically} by all means.
+You can also use atomic statements in your test code.
 In fact, as mentioned before, \textbf{assert} statements are executed atomically.
 
 \begin{figure}
@@ -2471,11 +2528,11 @@ reports them even though Harmony has sequentially consistent memory.
 Harmony does not report data races in two cases.
 First, using the \textbf{sequential} statement, you can specify that
 concurrent access to the specified variables is intended.
-Second, if the accesses are within an \textbf{atomic} statement, then they
+Second, if the accesses are within an atomic statement block, then they
 are not considered part of a data race.
 
 \begin{comment}
-For the same reason that you should not use \textbf{atomic}
+For the same reason that you should not use atomic
 statements in your ordinary synchronization code, you should not use
 \textbf{sequential} statements either.  Neither is supported by regular
 programming languages.  They exist in Harmony for the purpose of
@@ -2577,8 +2634,9 @@ acquire the binary semaphore.
 \index{acquire}%
 acquires the binary semaphore if available and suspends the invoking thread if not.
 In the latter case, the context of the thread is added to the end of the list of contexts.
-Note that \textbf{stop} is called within an \textbf{atomic} statement---this is
-the only exception to an atomic statement running to completion.  While the
+Note that \textbf{stop} is called within an atomic statement block---this is
+the only exception to such an atomic statement block running to completion.
+While the
 thread is running no other threads can run, but when the thread suspends itself
 other threads can run.
 \item
@@ -2651,8 +2709,8 @@ In this case, by the time the withdraw operation is performed,
 the balance can have changed.
 Fix the code in \autoref{fig:atm}.  Note, you should leave the
 customer code the same. You are only allowed to change the
-\texttt{atm\_} methods, and you cannot use the \textbf{atomic}
-statement.
+\texttt{atm\_} methods, and you cannot use the \textbf{atomically}
+keyword.
 \end{problems}
 
 \begin{figure}
@@ -5542,7 +5600,7 @@ not share memory, it is not necessary to check those interleavings.
 \begin{problems}
 \item Check if the code finds a unique leader if identifiers are not unique.
 \item Messages are added atomically to the network.  Is this necessary?
-What happens if you remove the \textbf{atomic} keyword?  Explain what happens.
+What happens if you remove the \textbf{atomically} keyword?  Explain what happens.
 \end{problems}
 
 \chapter{Transactions and Two Phase Commit}
@@ -6831,13 +6889,6 @@ The possible modes of a context are as follows:
 A thread can call \texttt{get\_context()} to retrieve its current
 context.
 
-\begin{comment}
-Also, the function \texttt{contexts()} returns a
-bag of all contexts (including terminated ones).
-Both these functions should only be called in \texttt{atomic} mode
-and used for checking invariants.
-\end{comment}
-
 \section{Statements}
 
 Harmony currently supports the following statements (below, \texttt{S} is a list of statements):
@@ -6947,7 +6998,7 @@ As in Python, you can specify an additional expression:
 \textbf{assert $b$, $e$}.  The value of $e$ will be reported as part
 of the error should $b$ evaluate to false.
 
-\subsection*{\textbf{atomic}}
+\subsection*{\textbf{atomically}}
 
 The statement \textbf{atomic $S_1; S_2; ...$} evaluates statements
 $S_1, S_2, ...$ atomically in that no other threads can run while

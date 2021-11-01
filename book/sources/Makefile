@@ -53,6 +53,7 @@ CODE = \
     counter.tex \
     cs.tex \
     cslock.tex \
+    cssynch.tex \
     csTAS.tex \
     csbarebones.tex \
     csonebit.tex \
@@ -65,6 +66,7 @@ CODE = \
     linkedlist.tex \
     lltest.tex \
     lockintf.tex \
+    lockspec.tex \
     locksusp.tex \
     mesa.tex \
     multitest.tex \
@@ -101,6 +103,7 @@ CODE = \
     stack2.tex \
     stack3.tex \
     stack4.tex \
+    taslock.tex \
     trap.tex \
     trap2.tex \
     trap3.tex \

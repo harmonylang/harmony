@@ -1,29 +1,16 @@
-const MAX_COUNT = 6
-const N = 6
-
-assert MAX_COUNT >= N
-
-sequential counter
-
-counter = 0
-ticket = 0
+const MAX_THREADS = 8
 
 def fetch_and_increment(p):
     atomically:
         result = !p
-        !p = (!p + 1) % MAX_COUNT
+        !p = (!p + 1) % MAX_THREADS
 
-def thread():
-    while choose({ False, True }):
-        # Enter critical section
-        let my_ticket = fetch_and_increment(?ticket):
-            await my_ticket == counter
+def Lock():
+    result = { .counter: 0, .dispenser: 0 }
 
-            # Critical section
-            @cs: assert countLabel(cs) == 1
+def acquire(lk):
+    let my_ticket = fetch_and_increment(?lk->dispenser):
+        atomically await lk->counter == my_ticket
 
-            # Leave critical section
-            fetch_and_increment(?counter)
-
-for i in {0..N-1}:
-    spawn thread()
+def release(lk):
+    fetch_and_increment(?lk->counter)

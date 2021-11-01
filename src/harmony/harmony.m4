@@ -3668,6 +3668,13 @@ class InvariantAST(AST):
         labelcnt += 1
         code.append(InvariantOp(label, self.token))
         self.cond.compile(scope, code)
+
+        # TODO. The following is a workaround for a bug.
+        # When you do "invariant 0 <= count <= 1", it inserts
+        # DelVar operations before the ReturnOp, and the InvariantOp
+        # operation then jumps to the wrong instruction
+        code.append(ContinueOp())
+
         code.nextLabel(label)
         code.append(ReturnOp())
 

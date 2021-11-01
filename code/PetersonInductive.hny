@@ -12,7 +12,7 @@ def thread(self):
 
         # Critical section
         @cs: assert (not flags[1 - self]) or (turn == self)
-                or (atLabel(gate) == {(thread, 1 - self): 1})
+                or (countLabel(gate) == 1)
 
         # Leave critical section
         flags[self] = False

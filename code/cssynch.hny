@@ -1,0 +1,11 @@
+import synch
+
+lock = synch.Lock()
+
+def thread():
+    synch.acquire(?lock)
+    @cs: assert countLabel(cs) == 1
+    synch.release(?lock)
+
+for i in {1..5}:
+    spawn thread()
