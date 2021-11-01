@@ -104,6 +104,7 @@ CODE = \
     stack3.tex \
     stack4.tex \
     taslock.tex \
+    ticket.tex \
     trap.tex \
     trap2.tex \
     trap3.tex \

@@ -527,8 +527,8 @@ a specification language.  It introduces how can can specify atomic
 constructs.
 \item \autoref{ch:spinlock} introduces atomic \emph{locks}
 for implemented critical sections.
-\item \autoref{ch:synch} presents Harmony modules
-that support locks and other synchronization primitives.
+\item \autoref{ch:synch} looks at various ways in which the lock specification
+in \autoref{ch:specification} can be implemented.
 \item \autoref{ch:cds} gives an introduction to building concurrent
 data structures.
 \item \autoref{ch:testing} discusses approaches to testing
@@ -2146,11 +2146,16 @@ This would make the code usable by multiple applications.
 Finally, methods can have local variables.
 Different from Python, Harmony local variables must be
 explicitly bound within a scope.
-You have already seen examples: the arguments to the method,
-the variable \textit{result}, and the bound variable (or
-variables) within a \texttt{for} statement.
-The \texttt{let} statement allows declaring additional
-local variables.  For example:
+Method variables are either mutable or immutable.
+The arguments to a method and the bound variable (or
+variables) within a \texttt{for} statement are immutable;
+the variable \textit{result} is mutable.
+Using the \texttt{var} statement, new mutable local variables can be
+declared.
+For example, \texttt{var} $x = 3$ declares a new mutable local variable
+$x$.
+The \texttt{let} statement allows declaring new immutable local variables.
+For example:
 \texttt{let} $x = 3$: $y$ $+$$=$ $x$ adds 3 to the global variable
 $y$.
 See \autoref{sec:vars} for more information.
@@ -2231,6 +2236,14 @@ critical section.}
 \label{fig:cssynch}
 \end{figure}
 
+\begin{figure}
+\begin{code}
+\harmonysource{UpLock}
+\end{code}
+\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock.}
+\label{fig:incfixed}
+\end{figure}
+
 So far we have used Harmony to \emph{implement} various algorithms.
 But Harmony can also be used to \emph{specify} what an algorithm is
 supposed to do.
@@ -2245,13 +2258,20 @@ The code is similar to \autoref{fig:naivelock}, except that waiting
 for the lock to become available and taking it is executed as an
 atomic operation.
 
-The code in \autoref{fig:lockspec} is taken from Harmony's \texttt{synch}
-module.  \autoref{fig:cssynch} shows how locks may be used.  Note that
-the code of \autoref{fig:lockspec} is executable in Harmony.
+The code in \autoref{fig:lockspec} is similar to the code in
+Harmony's \texttt{synch} module.
+(The module generalizes locks to \emph{binary semaphores}, but the
+lock interface is the same.)
+\autoref{fig:cssynch} shows how locks may be used to implement
+a critical section.
+\autoref{fig:incfixed} gives an example of how locks may be used
+to fix the program of \autoref{fig:inc}.
+
+Note that the code of \autoref{fig:lockspec} is executable in Harmony.
 However, the \texttt{atomically} keyword is not available in general
 programming languages and should not be used for implementation.
 Peterson's algorithm is an implementation of a lock, although only for
-two processes.  In the following chapters we will look at more general
+two processes.  In the following chapters, we will look at more general
 ways of implementing locks using atomic constructions that are usually
 available in the underlying hardware.
 
@@ -2260,18 +2280,45 @@ keyword.  It means that statement as a whole is to be executed atomically.
 The \texttt{atomically} keyword can be used to specify the behavior of
 methods such as \texttt{acquire} and \texttt{release}.  But note that
 an actual executable program such as in \autoref{fig:cssynch} should not
-use the keyword.  In fact, if we want to make the entire program
-executable, we have to also show how \texttt{acquire} and \texttt{release}
+use the \texttt{atomically} keyword.
+In fact, if we want to make the entire program executable on hardware,
+we have to also show how \texttt{Lock}, \texttt{acquire}, and \texttt{release}
 are implemented, not just how they are specified.
 \autoref{ch:spinlock} presents such an implementation.
 
 The code in \autoref{fig:lockspec} also uses the Harmony \texttt{when}
 statement.  A \texttt{when} statement waits until a time in which
 condition holds (not necessarily the first time) and then executes the
-statement block.  The \texttt{await} \textit{condition} statement is
-the same as \texttt{when} \textit{condition}: \texttt{pass}.
+statement block.  The ``\texttt{await} \textit{condition}'' statement is
+the same as ``\texttt{when} \textit{condition}: \texttt{pass}''.
 Combined with the \texttt{atomically} keyword, the entire statement
 is executed atomically at a time that the condition holds.
+
+It is important to appreciate the difference between an
+\emph{atomic section} (the statements executed within an
+atomic block of statements) and a \emph{critical section}
+(protected by a lock of some sort).
+The former ensures that while the
+statements are executing no other thread can execute.
+The latter allows multiple threads to run concurrently,
+just not within the critical section.
+The former is rarely available to a programmer (e.g., none of
+Python, C, or Java support it), while the latter
+is very common.
+
+% In Harmony, atomic statements allow you to \emph{implement} your own
+% atomic primitives such as test-and-set.  Other common examples
+% include compare-and swap and fetch-and-add.
+Atomic statements
+are not intended to replace locks or other synchonization primitives.
+When solving synchronization problems you should not directly use
+atomic statements but use the synchronization primitives that are available
+to you.  But if you want to \emph{specify} a new synchronization primitive,
+then use \textbf{atomically} by all means.
+You can also use atomic statements in your test code.
+In fact, as mentioned before, \textbf{assert} statements are included to
+test if certain conditions hold in every execution and are executed
+atomically.
 
 \chapter{Spinlock}
 \label{ch:spinlock}
@@ -2363,7 +2410,7 @@ many CPUs have an atomic ``test-and-set'' (TAS)
 \index{test-and-set}%
 \index{TAS}%
 operation.
-Method \texttt{tas} in \autoref{fig:tas} shows its specification.
+Method \texttt{test\_and\_set} in \autoref{fig:tas} shows its specification.
 Here $s$ points to a shared Boolean variable and $p$
 to a private Boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
@@ -2388,19 +2435,19 @@ then \textit{private}[$i$] == \textbf{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
-For those who read through the previous chapter:
+For those who read through \autoref{ch:peterson}
 $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!}$p$ == \textbf{True} upon entry of \texttt{tas}
+\texttt{!}$p$ == \textbf{True} upon entry of \texttt{test\_and\_set}
 (because of the condition on the \textbf{while} loop that the
-\texttt{tas} method is invoked in).
+\texttt{test\_and\_set} method is invoked in).
 There are two cases:
 \begin{enumerate}
-\item \texttt{!}$s$ is \textbf{False} upon entry to \texttt{tas}.
+\item \texttt{!}$s$ is \textbf{False} upon entry to \texttt{test\_and\_set}.
 Then upon exit \texttt{!}$p$ == \textbf{False} and \texttt{!}$s$ == \textbf{True},
 maintaining the invariant.
-\item \texttt{!}$s$ is \textbf{True} upon entry to \texttt{tas}.
+\item \texttt{!}$s$ is \textbf{True} upon entry to \texttt{test\_and\_set}.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
@@ -2433,7 +2480,7 @@ and swap the values.
 write out the invariants that need to hold and check them using Harmony.
 \end{problems}
 
-\chapter{Blocking}
+\chapter{Lock Implementations}
 \label{ch:synch}
 \index{lock}%
 \index{synch module}%
@@ -2442,64 +2489,19 @@ write out the invariants that need to hold and check them using Harmony.
 \begin{code}
 \harmonysource{taslock}
 \end{code}
-\caption{\harmonylink{code/taslock.hny} Implementation of a spinlock
-using test-and-set.}
+\caption{\harmonylink{code/taslock.hny} Implementation of the lock
+specification in \autoref{fig:lockspec} using a spinlock based on
+test-and-set.}
 \label{fig:tas2}
 \end{figure}
 
-In \autoref{fig:tas} we have shown a solution based on a shared
-variable and a private variable for each thread.   The private
-variables themselves are actually implemented as shared variables,
-but they are accessed only by their respective threads.
-A thread usually does not keep explicit track of whether it has a lock
-or not, because it is implied by the control flow of the program---a
-thread implicitly \emph{knows} that when it is executing in a critical
-section it has the lock.
-There is no need to keep \textit{private} as a shared
-variable---we only did so to be able to show and check the invariants.
-\autoref{fig:tas2} shows a more straightforward implementation of spinlock.
-The solution is similar to the na\"{i}ve solution of \autoref{fig:naivelock},
-but uses test-and-set to check and set the lock variable atomically.
-The lock is also cleared in an atomic statement to prevent a data race.
-This approach is general for any number of threads.
-
-It is important to appreciate the difference between an
-\emph{atomic section} (the statements executed within an
-atomic block of statements) and a \emph{critical section}
-(protected by a lock of some sort).
-The former ensures that while the
-statements are executing no other thread can execute.
-The latter allows multiple threads to run concurrently,
-just not within the critical section.
-The former is rarely available to a programmer (e.g., none of
-Python, C, or Java support it), while the latter
-is very common.
-
-In Harmony, atomic statements allow you to \emph{implement} your own
-atomic primitives such as test-and-set.  Other common examples
-include compare-and swap and fetch-and-add.  Atomic statements
-are not intended to replace locks or other synchonization primitives.
-When solving synchronization problems you should not directly use
-atomic statements but use the synchronization primitives that are available
-to you.  But if you want to design a new synchronization primitive, then
-use \textbf{atomically} by all means.
-You can also use atomic statements in your test code.
-In fact, as mentioned before, \textbf{assert} statements are executed atomically.
-
 \begin{figure}
 \begin{code}
-\harmonysource{lockintf}
+\harmonysource{ticket}
 \end{code}
-\caption{\harmonylink{modules/synch.hny} The binary semaphore interface and implementation in the \texttt{synch} module.}
-\label{fig:spinlocks}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{UpLock}
-\end{code}
-\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock.}
-\label{fig:incfixed}
+\caption{\harmonylink{code/ticket.hny} Implementation of the lock
+specification in \autoref{fig:lockspec} using a ticket lock.}
+\label{fig:ticket}
 \end{figure}
 
 Locks are probably the most prevalent and basic form of synchronization
@@ -2531,6 +2533,65 @@ concurrent access to the specified variables is intended.
 Second, if the accesses are within an atomic statement block, then they
 are not considered part of a data race.
 
+In \autoref{fig:tas} we have shown a lock implementation based on a shared
+variable and a private variable for each thread.   The private
+variables themselves are actually implemented as shared variables,
+but they are accessed only by their respective threads.
+A thread usually does not keep explicit track of whether it has a lock
+or not, because it is implied by the control flow of the program---a
+thread implicitly \emph{knows} that when it is executing in a critical
+section it has the lock.
+There is no need to keep \textit{private} as a shared
+variable---we only did so to be able to show and check the invariants.
+\autoref{fig:tas2} shows a more straightforward implementation of a spinlock.
+% The solution is similar to the na\"{i}ve solution of \autoref{fig:naivelock},
+% but uses test-and-set to check and set the lock variable atomically.
+The lock is also cleared in an atomic statement to prevent a data race.
+This approach is general for any number of threads.
+
+You can test the spinlock with the program in \autoref{fig:cssynch}
+using the command \texttt{harmony -m synch=taslock code/cssynch.hny}.
+The \texttt{-m} flag tells Harmony to use the \texttt{taslock.hny} file
+rather than the standard \texttt{synch} module (which only contains
+a specification of the lock methods).
+
+\index{starvation}%
+The spinlock implementation suffers potentially from \emph{starvation}:
+an unlucky thread may never be able to get the lock while other threads
+successfully acquire the lock one after another.  It could even happen
+with just two threads: one thread might successfully acquire the lock
+repeatedly in a loop, while another thread is never lucky enough the
+acquire the thread in between.
+\autoref{ch:starvation} will talk more about starvation and how
+to prevent it.
+
+A \emph{ticket lock} (\autoref{fig:ticket} is an implementation of a
+lock that prevents starvation using an atomic \emph{fetch-and-increment}
+operator.  It is inspired by European bakeries.  A European bakery has a
+clearly displayed counter (usually just two digits) and a ticket dispenser.
+Tickets are numbered 0 through 99 and repeat over and over again
+(in the case of a two digit counter).
+When a customer walks into the bakery, they draw a number from the dispenser
+and wait until their number comes up.
+Every time a customer has been helped, the counter is incremented.
+(Note that this only works if there can be no more than 100 customers in
+the bakery at a time.)
+
+\autoref{fig:ticket} similarly uses two variables for a lock,
+\textit{counter} and \textit{dispenser}.  When a thread acquires the
+lock, it fetches the current dispenser value and increments it
+modulo \texttt{MAX\_THREADS}, all in one atomic operation.
+In practice, \texttt{MAX\_THREADS} would
+be a number like $2^32$ or $2^64$, but since the Harmony model checker
+checks every possible state, limiting it to a small number such as done
+here will significantly reduce the time to model check a Harmony program.
+Plus it is easier to check that it fails when you run it with more than
+\texttt{MAX\_THREADS} threads.
+You can test the implementation using the command
+\texttt{harmony -m synch=ticket code/cssynch.hny}.
+To see it fail, try
+\texttt{harmony -c NTHREADS=10 -m synch=ticket code/cssynch.hny}.
+
 \begin{comment}
 For the same reason that you should not use atomic
 statements in your ordinary synchronization code, you should not use
@@ -2541,6 +2602,7 @@ The statements should only appear in modules that define synchronization
 primitives or in test programs.
 \end{comment}
 
+\begin{comment}
 \index{binary semaphore}
 Locks are a special case of \emph{binary semaphores}.
 Like locks, binary semaphores are either in an \emph{acquired} state
@@ -2554,38 +2616,26 @@ released state, and is always released by the same thread that acquired it.
 A binary semaphore can be initialized to an acquired state and can be
 released by threads other than the thread that last acquired the
 binary semaphore.
-
-Harmony has a module called \texttt{synch} that includes support for
-binary semaphores and locks.
-\autoref{fig:spinlocks} shows how they are implemented, and
-\autoref{fig:incfixed} gives an example of how they may be used,
-in this case to fix the program of \autoref{fig:inc}.
-Notice that the module hides the implementation of
-binary semaphores and locks.
-The \texttt{synch} module includes a variety of other useful
-synchronization primitives, which will be discussed in later
-chapters.
-Also notice the use of the sequentially consistent \textit{done}
-variable for testing purposes.
+\end{comment}
 
 \glsadd{blocked thread}%
 
+We now turn to a radically different way of implementing locks, one
+that is commonly provided by operating systems to user processes.
 We call a thread \emph{blocked}
 \index{blocked thread}%
 if a thread cannot change the state or terminate unless
 another thread changes the state first.
-A thread trying to
-acquire a test-and-set spinlock held by another thread is a good example
+A thread trying to acquire a lock held by another thread is a good example
 of a thread being blocked.
-The only way forward is if the other thread releases the spinlock.
+The only way forward is if the other thread releases the lock.
 A thread that is in an infinite loop is also considered blocked.
-% although Harmony can often detect infinite loops specifically.
 
 \begin{figure}
 \begin{code}
 \harmonysource{locksusp}
 \end{code}
-\caption{\harmonylink{modules/synchS.hny} The binary semaphore interface in the \texttt{synchS} module uses suspension.}
+\caption{\harmonylink{modules/synchS.hny} The lock implementation in the \texttt{synchS} module uses suspension.}
 \label{fig:suspension}
 \end{figure}
 
@@ -2620,19 +2670,16 @@ just executed the \textbf{stop}
 \index{stop expression}%
 expression.  The \textbf{stop} expression returns the value $R$.
 
-There is a second version of the \texttt{synch} module, called \texttt{synchS},
-that uses suspension instead of spinlocks.
-\autoref{fig:suspension} shows the same interface
-as \autoref{fig:spinlocks} implemented using suspension.
-The interface is implemented as follows:
+\autoref{fig:suspension} shows the lock interface using suspension.
+It is implemented as follows:
 \begin{itemize}
-\item A binary semaphore maintains both a boolean indicating whether the
-binary semaphore is currently acquired and a list of contexts of threads that want to
-acquire the binary semaphore.
+\item A lock maintains both a boolean indicating whether the
+lock is currently acquired and a list of contexts of threads that want to
+acquire the lock.
 \item
 \texttt{acquire}()
 \index{acquire}%
-acquires the binary semaphore if available and suspends the invoking thread if not.
+acquires the lock if available and suspends the invoking thread if not.
 In the latter case, the context of the thread is added to the end of the list of contexts.
 Note that \textbf{stop} is called within an atomic statement block---this is
 the only exception to such an atomic statement block running to completion.
@@ -2642,7 +2689,7 @@ other threads can run.
 \item
 \texttt{release}()
 \index{release}%
-checks to see if any threads are waiting to acquire the binary semaphore.
+checks to see if any threads are waiting to acquire the lock.
 If so, it uses the \texttt{head} and \texttt{tail}
 methods from the \texttt{list} module (see \autoref{ap:module})
 to resume the first thread that got
@@ -2651,30 +2698,15 @@ suspended and to remove its context from the list.
 Selecting the first thread is a design choice.  Another implementation could
 have picked the last one, and yet another implementation could have used
 \texttt{choose} to pick an arbitrary one.  Selecting the first is a common
-choice in binary semaphore implementations as it prevents \emph{starvation}:
-\index{starvation}%
-every thread
-gets a chance to acquire the binary semaphore (assuming every thread eventually releases
-it).  \autoref{ch:starvation} will talk more about starvation and how
-to prevent it.
+choice in lock implementations as it prevents starvation.
 
-Harmony allows you to select which version of the \texttt{synch} module you would
-like to use with the \texttt{-m} flag.
-\index{module}%
-For example,
-
-\begin{code}
-\begin{verbatim}
-harmony -m synch=synchS x.hny
-\end{verbatim}
-\end{code}
-
-runs the file \texttt{x.hny} using the suspension version of the \texttt{synch} module.
-You will find that using the \texttt{synchS} module often leads to
-the model checker searching a
-significantly larger state space than using the \texttt{synch} module.
-Part of the reason is that the \texttt{synchS} module keeps track of the order
-in which threads wait to acquire a binary semaphore, while the \texttt{synch} module does not.
+You will find that using the \emph{implementation} of a lock instead
+of the \emph{specification} of a lock (in the \texttt{synch} module)
+often leads to the model checker searching a
+significantly larger state space.
+Thus it makes sense to model check larger programs in a modular fashion:
+model check one module implementation at a time, using
+specifications for the other modules.
 
 \section*{Exercises}
 \begin{problems}

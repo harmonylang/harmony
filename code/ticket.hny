@@ -13,4 +13,5 @@ def acquire(lk):
         atomically await lk->counter == my_ticket
 
 def release(lk):
-    fetch_and_increment(?lk->counter)
+    let next = lk->counter + 1:
+        atomically lk->counter = next

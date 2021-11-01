@@ -1,17 +1,14 @@
-def tas(s):
+def test_and_set(s):
     atomically:
         result = !s
         !s = True
-
-def clear(s):
-    atomically !s = False
 
 def Lock():
     result = False
 
 def acquire(lk):
-    while tas(lk):
+    while test_and_set(lk):
         pass
 
 def release(lk):
-    clear(lk)
+    atomically !s = False

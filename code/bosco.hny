@@ -1,6 +1,6 @@
 import bag
 
-const F = 2
+const F = 1
 const N = (3 * F) + 1
 const NROUNDS = 3
 
@@ -16,7 +16,8 @@ def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:
         result = bag.combinations(msgs, k)
 
-def processor(proposal):
+def processor(prop):
+    var proposal = prop
     broadcast(0, proposal)
     for round in {0..NROUNDS-1}:
         atomically when exists quorum in receive(round, N - F):
