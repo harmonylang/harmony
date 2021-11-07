@@ -16,7 +16,7 @@ def _find(lst, v):
         acquire(?after->lock)
     result = (before, after)
 
-def LinkedList():
+def SetObject():
     result = _node(-inf, _node(inf, None))
 
 def insert(lst, v):

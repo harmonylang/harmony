@@ -2884,18 +2884,27 @@ undefined semantics in most environments.
 
 \begin{figure}
 \begin{code}
+\harmonysource{setobj}
+\end{code}
+\caption{\harmonylink{code/setobj.hny} Specification of a concurrent
+set object.}
+\label{fig:setobj}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 \harmonysource{linkedlist}
 \end{code}
-\caption{\harmonylink{code/linkedlist.hny} Linked list with fine-grained locking.}
+\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking.}
 \label{fig:linkedlist}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-\harmonysource{lltest}
+\harmonysource{intsettest}
 \end{code}
-\caption{\harmonylink{code/lltest.hny} Test code for \autoref{fig:linkedlist}.}
-\label{fig:lltest}
+\caption{\harmonylink{code/intsettest.hny} Test code for \autoref{fig:linkedlist}.}
+\label{fig:intsettest}
 \end{figure}
 
 \index{big lock}%
@@ -2910,12 +2919,15 @@ for the entire data structure might restrict concurrency to an unacceptable leve
 To reduce the granularity of locking, each node in the data structure must be
 endowed with its own lock instead.
 
-\autoref{fig:linkedlist} implements an ordered linked
-list of integers without duplicates.
-(\autoref{fig:lltest} contains test code.)
-Values can be added using \texttt{insert} or deleted using \texttt{remove}.
-Method \texttt{contains} checks if a particular value is in the list.
+\autoref{fig:setobj} gives the specification of a concurrent set object.
+\texttt{SetObject()} returns a pointer to a variable that
+contains an empty set, rather than returning an empty set.
+Values can be added using \texttt{insert()} or deleted using \texttt{remove()}.
+Method \texttt{contains()} checks if a particular value is in the list.
 
+\autoref{fig:linkedlist} implements a concurrent set of integers using
+an ordered linked list of integers without duplicates.
+(\autoref{fig:intsettest} contains test code.)
 The list has two dummy ``book-end'' nodes with values \texttt{-inf} and
 \texttt{inf} (similar to the Python \texttt{math.inf} constant).
 An invariant of the algorithm is that at any point in time the

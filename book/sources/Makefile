@@ -62,6 +62,7 @@ CODE = \
     gpu.tex \
     hoare.tex \
     hw.tex \
+    intsettest.tex \
     leader.tex \
     linkedlist.tex \
     lltest.tex \
@@ -97,6 +98,7 @@ CODE = \
     qtest4.tex \
     qsort.tex \
     qsorttest.tex \
+    setobj.tex \
     spinlock.tex \
     spinlockInv.tex \
     stacktest.tex \
