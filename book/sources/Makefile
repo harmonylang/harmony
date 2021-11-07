@@ -83,6 +83,7 @@ CODE = \
     qbarrier.tex \
     queue.tex \
     queuebug.tex \
+    queueconc.tex \
     queuedemo.tex \
     queuefix.tex \
     queuelin.tex \

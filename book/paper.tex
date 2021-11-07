@@ -2764,9 +2764,33 @@ keyword.
 \chapter{Concurrent Data Structures}
 \label{ch:cds}
 
+\begin{figure}
+\begin{code}
+\harmonysource{queuespec}
+\end{code}
+\caption{\harmonylink{code/queuespec.hny} A sequential specification for a queue.}
+\label{fig:queueseq}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queue}
+\end{code}
+\caption{\harmonylink{code/queue.hny} A concurrent specification for a queue.}
+\label{fig:queue}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuedemo}
+\end{code}
+\caption{\harmonylink{code/queuedemo.hny} Using a concurrent queue.}
+\label{fig:queuedemo}
+\end{figure}
+
 The most common use for locks is in building concurrent data structures.
 By way of example, we will first demonstrate how to build a concurrent queue.
-The \texttt{queue} module will have the following API:
+The \texttt{queue} module has the following API:
 \begin{itemize}
 \item $q = \mathtt{Queue}()$: allocate a new queue;
 \item $\mathtt{put}(q, v)$: add $v$ to the tail of the queue;
@@ -2775,10 +2799,16 @@ if $q$ is empty or $r = v$ if $v$ was at the head of the queue.
 \end{itemize}
 
 \noindent
-See \autoref{fig:queuedemo} for a simple demonstration program that uses the queue.
+\autoref{fig:queueseq} shows a sequential specification for such a
+queue in Harmony (exploiting some methods from the \texttt{list}
+module described in \autoref{ap:list}),
+but it cannot be used with threads concurrently accessing this queue.
+\autoref{fig:queue} shows the corresponding concurrent specification.
+See \autoref{fig:queuedemo} for a simple demonstration program that uses
+a concurrent queue.
 
 We will first implement the queue as a linked list.
-The implementation in \autoref{fig:queue}
+The implementation in \autoref{fig:queueconc}
 uses the \texttt{alloc} module for dynamic allocation
 \index{dynamic allocation}%
 of nodes in the list using \texttt{malloc}() and \texttt{free}().
@@ -2838,18 +2868,10 @@ undefined semantics in most environments.
 
 \begin{figure}
 \begin{code}
-\harmonysource{queuedemo}
+\harmonysource{queueconc}
 \end{code}
-\caption{\harmonylink{code/queuedemo.hny} Using a concurrent queue.}
-\label{fig:queuedemo}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{queue}
-\end{code}
-\caption{\harmonylink{code/queue.hny}A basic concurrent queue data structure.}
-\label{fig:queue}
+\caption{\harmonylink{code/queueconc.hny} An implementation of a concurrent queue data structure.}
+\label{fig:queueconc}
 \end{figure}
 
 \begin{figure}
@@ -2993,22 +3015,6 @@ a lock for each node in the tree.
 
 \begin{figure}
 \begin{code}
-\harmonysource{queuespec}
-\end{code}
-\caption{\harmonylink{code/queuespec.hny} Sequential queue specification.}
-\label{fig:queuespec}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{qtestseq}
-\end{code}
-\caption{\harmonylink{code/qtestseq.hny} Sequential queue test.}
-\label{fig:qtestseq}
-\end{figure}
-
-\begin{figure}
-\begin{code}
 \harmonysource{queuelin}
 \end{code}
 \caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points.}
@@ -3066,9 +3072,8 @@ A good place to start is thinking about a \emph{sequential} specification
 for queues.
 A specification is simply a program, written at a high level of
 abstraction.
-\autoref{fig:queuespec} shows a sequential specification of a
-queue in Harmony (exploiting some methods from the \texttt{list}
-module described in \autoref{ap:list}).
+\autoref{fig:queueseq} shows a sequential specification of a
+queue in Harmony.
 
 First we can check if the queue implementation
 in \autoref{fig:queue} meets the sequential
