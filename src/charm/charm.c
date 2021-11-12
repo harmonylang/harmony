@@ -81,7 +81,7 @@ void check_invariants(struct global_t *global, struct node *node, struct context
     }
 }
 
-static struct step_result *onestep_phase1(
+static struct step_result *onestep(
     struct global_t *global,
     struct node *node,      // starting node
     struct state *sc,       // actual state
@@ -361,7 +361,7 @@ static void process_result(
     sr->context = NULL;
 }
 
-static struct step_result *onestep_phase2(
+static struct step_result *make_step(
     struct global_t *global,
     struct node *node,
     uint64_t ctx,
@@ -380,9 +380,9 @@ static struct step_result *onestep_phase2(
 
     // See if we need to interrupt
     if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, false, multiplicity, timeout);
+        sr = onestep(global, node, sc, ctx, cc, choice, true, false, multiplicity, timeout);
         if (sr == NULL) {
-            sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, true, multiplicity, timeout);
+            sr = onestep(global, node, sc, ctx, cc, choice, true, true, multiplicity, timeout);
         }
         sc = new_alloc(struct state);
         memcpy(sc, node->state, sizeof(*sc));
@@ -393,55 +393,12 @@ static struct step_result *onestep_phase2(
     }
 
     sc->choosing = 0;
-    struct step_result *sr2 = onestep_phase1(global, node, sc, ctx, cc, choice, false, false, multiplicity, timeout);
+    struct step_result *sr2 = onestep(global, node, sc, ctx, cc, choice, false, false, multiplicity, timeout);
     if (sr2 == NULL) {
-        sr2 = onestep_phase1(global, node, sc, ctx, cc, choice, false, true, multiplicity, timeout);
+        sr2 = onestep(global, node, sc, ctx, cc, choice, false, true, multiplicity, timeout);
     }
     sr2->next = sr;
     return sr2;
-}
-
-static void onestep(
-    struct global_t *global,
-    struct node *node,
-    uint64_t ctx,
-    uint64_t choice,        // if about to make a choice, which choice?
-    bool interrupt,         // start with invoking interrupt handler
-    struct dict *visited,
-    struct minheap *todo[2],
-    struct context **pinv_ctx,
-    int multiplicity,       // #contexts that are in the current state
-    double timeout
-) {
-    // Make a copy of the state
-    struct state *sc = new_alloc(struct state);
-    memcpy(sc, node->state, sizeof(*sc));
-
-    // Make a copy of the context
-    struct context *cc = value_copy(ctx, NULL);
-
-    struct step_result *sr;
-
-    // See if we need to interrupt
-    if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, false, multiplicity, timeout);
-        if (sr == NULL) {
-            sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, true, multiplicity, timeout);
-        }
-        process_result(global, visited, todo, pinv_ctx, sr);
-        free(sr);
-        sc = new_alloc(struct state);
-        memcpy(sc, node->state, sizeof(*sc));
-        cc = value_copy(ctx, NULL);
-    }
-
-    sc->choosing = 0;
-    sr = onestep_phase1(global, node, sc, ctx, cc, choice, false, false, multiplicity, timeout);
-    if (sr == NULL) {
-        sr = onestep_phase1(global, node, sc, ctx, cc, choice, false, true, multiplicity, timeout);
-    }
-    process_result(global, visited, todo, pinv_ctx, sr);
-    free(sr);
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -1480,7 +1437,7 @@ int main(int argc, char **argv){
                 size /= sizeof(uint64_t);
                 assert(size > 0);
                 for (int i = 0; i < size; i++) {
-                    struct step_result *sr = onestep_phase2(
+                    struct step_result *sr = make_step(
                         global,
                         node,
                         state->choosing,
@@ -1499,7 +1456,7 @@ int main(int argc, char **argv){
                 for (int i = 0; i < size; i += 2) {
                     assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
                     assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                    struct step_result *sr = onestep_phase2(
+                    struct step_result *sr = make_step(
                         global,
                         node,
                         ctxs[i],

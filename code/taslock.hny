@@ -11,4 +11,4 @@ def acquire(lk):
         pass
 
 def release(lk):
-    atomically !s = False
+    atomically !lk = False

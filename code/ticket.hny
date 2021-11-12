@@ -13,5 +13,5 @@ def acquire(lk):
         atomically await lk->counter == my_ticket
 
 def release(lk):
-    let next = lk->counter + 1:
+    let next = (lk->counter + 1) % MAX_THREADS:
         atomically lk->counter = next
