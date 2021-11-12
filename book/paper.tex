@@ -3089,7 +3089,7 @@ queue in Harmony.
 
 First we can check if the queue implementation
 in \autoref{fig:queue} meets the sequential
-queue specification in \autoref{fig:queuespec}.
+queue specification in \autoref{fig:queueseq}.
 To check if the queue implementation meets the specification,
 we need to see if any sequence of queue operations in the
 implementation matches a corresponding sequence in the
@@ -3206,7 +3206,7 @@ The test program is similar to the sequential test program
 (\autoref{fig:qtestseq}) but starts a thread for each operation.
 The operations are executed concurrently on the concurrent queue
 implementation of \autoref{fig:queuelin}, but they are executed sequentially
-on the sequential queue specification of \autoref{fig:queuespec}.
+on the sequential queue specification of \autoref{fig:queueseq}.
 To that end, the test program maintains a global time variable
 \textit{qtime}, and each thread waits until the timestamp assigned to
 the last concurrent queue operation matches \textit{qtime} before invoking

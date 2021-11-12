@@ -15,6 +15,20 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct step_result {
+    struct step_result *next;    // for list maintenance
+    struct node *node;           // node of starting state
+    struct state *state;         // resulting state
+    struct context *context;     // resulting context
+    int steps;                   // #microsteps from root
+    uint64_t before;             // context before state change
+    uint64_t after;              // context after state change (current context)
+    uint64_t choice;             // choice made if any
+    bool interrupt;              // set if gotten here by interrupt
+    struct access_info *ai_list; // list of accesses for race detection
+    bool infinite_loop;          // infinite loop detected
+};
+
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
     assert((*pctx)->sp == 0);
     assert((*pctx)->failure == 0);
@@ -67,53 +81,26 @@ void check_invariants(struct global_t *global, struct node *node, struct context
     }
 }
 
-void onestep(
+static struct step_result *onestep_phase1(
     struct global_t *global,
-    struct node *node,
-    uint64_t ctx,
-    uint64_t choice,
-    bool interrupt,
-    struct dict *visited,
-    struct minheap *todo,
-    struct context **pinv_ctx,
+    struct node *node,      // starting node
+    struct state *sc,       // actual state
+    uint64_t ctx,           // context identifier
+    struct context *cc,     // actual context
+    uint64_t choice,        // if about to make a choice, which choice?
+    bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,
-    int multiplicity,
+    int multiplicity,       // #contexts that are in the current state
     double timeout
 ) {
-    // Make a copy of the state
-    struct state *sc = new_alloc(struct state);
-    memcpy(sc, node->state, sizeof(*sc));
-    sc->choosing = 0;
-
-    // Make a copy of the context
-    struct context *cc = value_copy(ctx, NULL);
     assert(!cc->terminated);
     assert(cc->failure == 0);
-
-    if (false) {
-        printf("ONESTEP %"PRIx64" %"PRIx64"\n", ctx, sc->ctxbag);
-    }
 
     // See if we should also try an interrupt.
     if (interrupt) {
         extern void interrupt_invoke(struct context **pctx);
 		assert(cc->trap_pc != 0);
         interrupt_invoke(&cc);
-    }
-    else if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        onestep(
-            global,
-            node,
-            ctx,
-            choice,
-            true,
-            visited,
-            todo,
-            pinv_ctx,
-            infloop_detect,
-            multiplicity,
-            timeout
-        );
     }
 
     // Copy the choice
@@ -133,8 +120,8 @@ void onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     char *p = value_string(cc->name);
-                    fprintf(stderr, "%s pc=%d states=%d queue=%d\n",
-                            p, cc->pc, global->enqueued, global->enqueued - global->dequeued);
+                    fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
+                            p, cc->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -192,22 +179,9 @@ void onestep(
             }
             else {
                 // start over, as twostep does not have loopcnt optimization
-                onestep(
-                    global,
-                    node,
-                    ctx,
-                    choice_copy,
-                    interrupt,
-                    visited,
-                    todo,
-                    pinv_ctx,
-                    true,
-                    multiplicity,
-                    timeout
-                );
                 free(cc);
                 free(sc);
-                return;
+                return NULL;
             }
         }
 
@@ -292,86 +266,182 @@ void onestep(
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after);
     }
 
+    // Store the result of the step and return
+    struct step_result *sr = new_alloc(struct step_result);
+    sr->node = node;
+    sr->state = sc;
+    sr->context = cc;
+    sr->before = ctx;
+    sr->choice = choice_copy;
+    sr->interrupt = interrupt;
+    sr->after = after;
+    sr->steps = node->steps + loopcnt;
+    sr->ai_list = ai_list;
+    sr->infinite_loop = infinite_loop;
+    return sr;
+}
+
+static void process_result(
+    struct global_t *global,
+    struct dict *visited,
+    struct minheap *todo[2],
+    struct context **pinv_ctx,
+    struct step_result *sr
+){
+    struct node *node = sr->node, *next;
+
     // Weight of this step
-    int weight = ctx == node->after ? 0 : 1;
+    int weight = sr->before == node->after ? 0 : 1;
 
     // See if this new state was already seen before.
-    void **p = dict_insert(visited, sc, sizeof(*sc));
-    struct node *next;
+    void **p = dict_insert(visited, sr->state, sizeof(*sr->state));
     if ((next = *p) == NULL) {
         *p = next = new_alloc(struct node);
         next->parent = node;
-        next->state = sc;               // TODO: duplicate value
-        next->before = ctx;
-        next->choice = choice_copy;
-        next->interrupt = interrupt;
-        next->after = after;
+        next->state = sr->state;
+        next->before = sr->before;
+        next->choice = sr->choice;
+        next->interrupt = sr->interrupt;
+        next->after = sr->after;
         next->len = node->len + weight;
-        next->steps = node->steps + loopcnt;
+        next->steps = sr->steps;
         graph_add(&global->graph, next); // sets next->id
         if (next->id == 1383) {
             global->tochk = next;
         }
 
-        if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
+        if (sr->state->choosing == 0 && sr->state->invariants != VALUE_SET) {
             check_invariants(global, next, pinv_ctx);
         }
 
-        if (sc->ctxbag != VALUE_DICT && cc->failure == 0
+        if (sr->state->ctxbag != VALUE_DICT && sr->context->failure == 0
                             && minheap_empty(global->failures)) {
-            minheap_insert(todo, next);
+            minheap_insert(todo[weight], next);
             global->enqueued++;
         }
     }
     else {
-        free(sc);
-
-        if (next->len > node->len + weight ||
-                (next->len == node->len + weight && next->steps > node->steps + loopcnt)) {
-            assert(!next->processed);
-            next->parent = node;
-            next->before = ctx;
-            next->after = after;
-            next->choice = choice_copy;
-            next->len = node->len + weight;
-            next->steps = node->steps + loopcnt;
-            minheap_decrease(todo, next);
-        }
+        free(sr->state);
+        sr->state = NULL;
     }
 
     // Add a forward edge from node to next.
     struct edge *fwd = new_alloc(struct edge);
-    fwd->ctx = ctx;
-    fwd->choice = choice_copy;
-    fwd->interrupt = interrupt;
+    fwd->ctx = sr->before;
+    fwd->choice = sr->choice;
+    fwd->interrupt = sr->interrupt;
     fwd->node = next;
     fwd->weight = weight;
     fwd->next = node->fwd;
-    fwd->after = after;
-    fwd->ai = ai_list;
+    fwd->after = sr->after;
+    fwd->ai = sr->ai_list;
     node->fwd = fwd;
 
     // Add a backward edge from next to node.
     struct edge *bwd = new_alloc(struct edge);
-    bwd->ctx = ctx;
-    bwd->choice = choice_copy;
-    fwd->interrupt = interrupt;
+    bwd->ctx = sr->before;
+    bwd->choice = sr->choice;
+    fwd->interrupt = sr->interrupt;
     bwd->node = node;
     bwd->weight = weight;
     bwd->next = next->bwd;
-    bwd->after = after;
-    bwd->ai = ai_list;
+    bwd->after = sr->after;
+    bwd->ai = sr->ai_list;
     next->bwd = bwd;
 
-    if (cc->failure != 0) {
+    if (sr->context->failure != 0) {
         struct failure *f = new_alloc(struct failure);
-        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-        f->choice = choice_copy;
+        f->type = sr->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->choice = sr->choice;
         f->node = next;
         minheap_insert(global->failures, f);
     }
 
-    free(cc);
+    free(sr->context);
+    sr->context = NULL;
+}
+
+static struct step_result *onestep_phase2(
+    struct global_t *global,
+    struct node *node,
+    uint64_t ctx,
+    uint64_t choice,        // if about to make a choice, which choice?
+    int multiplicity,       // #contexts that are in the current state
+    double timeout
+) {
+    // Make a copy of the state
+    struct state *sc = new_alloc(struct state);
+    memcpy(sc, node->state, sizeof(*sc));
+
+    // Make a copy of the context
+    struct context *cc = value_copy(ctx, NULL);
+
+    struct step_result *sr;
+
+    // See if we need to interrupt
+    if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
+        sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, false, multiplicity, timeout);
+        if (sr == NULL) {
+            sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, true, multiplicity, timeout);
+        }
+        sc = new_alloc(struct state);
+        memcpy(sc, node->state, sizeof(*sc));
+        cc = value_copy(ctx, NULL);
+    }
+    else {
+        sr = NULL;
+    }
+
+    sc->choosing = 0;
+    struct step_result *sr2 = onestep_phase1(global, node, sc, ctx, cc, choice, false, false, multiplicity, timeout);
+    if (sr2 == NULL) {
+        sr2 = onestep_phase1(global, node, sc, ctx, cc, choice, false, true, multiplicity, timeout);
+    }
+    sr2->next = sr;
+    return sr2;
+}
+
+static void onestep(
+    struct global_t *global,
+    struct node *node,
+    uint64_t ctx,
+    uint64_t choice,        // if about to make a choice, which choice?
+    bool interrupt,         // start with invoking interrupt handler
+    struct dict *visited,
+    struct minheap *todo[2],
+    struct context **pinv_ctx,
+    int multiplicity,       // #contexts that are in the current state
+    double timeout
+) {
+    // Make a copy of the state
+    struct state *sc = new_alloc(struct state);
+    memcpy(sc, node->state, sizeof(*sc));
+
+    // Make a copy of the context
+    struct context *cc = value_copy(ctx, NULL);
+
+    struct step_result *sr;
+
+    // See if we need to interrupt
+    if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
+        sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, false, multiplicity, timeout);
+        if (sr == NULL) {
+            sr = onestep_phase1(global, node, sc, ctx, cc, choice, true, true, multiplicity, timeout);
+        }
+        process_result(global, visited, todo, pinv_ctx, sr);
+        free(sr);
+        sc = new_alloc(struct state);
+        memcpy(sc, node->state, sizeof(*sc));
+        cc = value_copy(ctx, NULL);
+    }
+
+    sc->choosing = 0;
+    sr = onestep_phase1(global, node, sc, ctx, cc, choice, false, false, multiplicity, timeout);
+    if (sr == NULL) {
+        sr = onestep_phase1(global, node, sc, ctx, cc, choice, false, true, multiplicity, timeout);
+    }
+    process_result(global, visited, todo, pinv_ctx, sr);
+    free(sr);
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -1220,6 +1290,17 @@ void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     }
 }
 
+// Insert list sr in front of *plist
+static void sr_append(struct step_result **plist, struct step_result *sr){
+    struct step_result *t = sr;
+
+    while (t->next != NULL) {
+        t = t->next;
+    }
+    t->next = *plist;
+    *plist = sr;
+}
+
 void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1353,8 +1434,10 @@ int main(int argc, char **argv){
     *p = node;
 
     // Put the initial state on the queue
-    struct minheap *todo = minheap_create(node_cmp);
-    minheap_insert(todo, node);
+    struct minheap *todo[2];
+    todo[0] = minheap_create(node_cmp);
+    todo[1] = minheap_create(node_cmp);
+    minheap_insert(todo[0], node);
     global->enqueued++;
 
     // Create a context for evaluating invariants
@@ -1370,73 +1453,85 @@ int main(int argc, char **argv){
 
     void *next;
     int state_counter = 1;
-    while (!minheap_empty(todo) && minheap_empty(global->failures)) {
-        next = minheap_getmin(todo);
-        state_counter++;
-        global->dequeued++;
+    while (!minheap_empty(todo[0]) && minheap_empty(global->failures)) {
+        struct step_result *sr_list = NULL;
 
-        node = next;
-        node->processed = true;
-        state = node->state;
+        while (!minheap_empty(todo[0]) && minheap_empty(global->failures)) {
+            next = minheap_getmin(todo[0]);
+            state_counter++;
+            global->dequeued++;
 
-        if (state->choosing != 0) {
-            assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
-            if (false) {
-                printf("CHOOSING %"PRIx64"\n", state->choosing);
+            node = next;
+            state = node->state;
+
+            if (state->choosing != 0) {
+                assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
+                if (false) {
+                    printf("CHOOSING %"PRIx64"\n", state->choosing);
+                }
+
+                struct context *cc = value_get(state->choosing, NULL);
+                assert(cc != NULL);
+                assert(cc->sp > 0);
+                uint64_t s = cc->stack[cc->sp - 1];
+                assert((s & VALUE_MASK) == VALUE_SET);
+                int size;
+                uint64_t *vals = value_get(s, &size);
+                size /= sizeof(uint64_t);
+                assert(size > 0);
+                for (int i = 0; i < size; i++) {
+                    struct step_result *sr = onestep_phase2(
+                        global,
+                        node,
+                        state->choosing,
+                        vals[i],
+                        1,
+                        timeout
+                    );
+                    sr_append(&sr_list, sr);
+                }
             }
+            else {
+                int size;
+                uint64_t *ctxs = value_get(state->ctxbag, &size);
+                size /= sizeof(uint64_t);
+                assert(size > 0);
+                for (int i = 0; i < size; i += 2) {
+                    assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
+                    assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+                    struct step_result *sr = onestep_phase2(
+                        global,
+                        node,
+                        ctxs[i],
+                        0,
+                        ctxs[i+1] >> VALUE_BITS,
+                        timeout
+                    );
+                    sr_append(&sr_list, sr);
+                }
 
-            struct context *cc = value_get(state->choosing, NULL);
-            assert(cc != NULL);
-            assert(cc->sp > 0);
-            uint64_t s = cc->stack[cc->sp - 1];
-            assert((s & VALUE_MASK) == VALUE_SET);
-            int size;
-            uint64_t *vals = value_get(s, &size);
-            size /= sizeof(uint64_t);
-            assert(size > 0);
-            for (int i = 0; i < size; i++) {
-                onestep(
-                    global,
-                    node,
-                    state->choosing,
-                    vals[i],
-                    false,
-                    visited,
-                    todo,
-                    &inv_ctx,
-                    false,
-                    1,
-                    timeout
-                );
+                // Check for data race
+                if (minheap_empty(global->warnings) && !cflag) {
+                    graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
+                }
             }
         }
-        else {
-            int size;
-            uint64_t *ctxs = value_get(state->ctxbag, &size);
-            size /= sizeof(uint64_t);
-            assert(size > 0);
-            for (int i = 0; i < size; i += 2) {
-                assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-                assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                onestep(
-                    global,
-                    node,
-                    ctxs[i],
-                    0,
-                    false,
-                    visited,
-                    todo,
-                    &inv_ctx,
-                    false,
-                    ctxs[i+1] >> VALUE_BITS,
-                    timeout
-                );
-            }
 
-            // Check for data race
-            if (minheap_empty(global->warnings) && !cflag) {
-                graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
-            }
+        if (!minheap_empty(global->failures)) {
+            break;
+        }
+        assert(minheap_empty(todo[0]));
+
+        struct step_result *sr;
+        while ((sr = sr_list) != NULL) {
+            process_result(global, visited, todo, &inv_ctx, sr);
+            sr_list = sr->next;
+            free(sr);
+        }
+        if (minheap_empty(todo[0])) {
+            struct minheap *tmp = todo[0];
+            todo[0] = todo[1];
+            todo[1] = tmp;
         }
     }
 
