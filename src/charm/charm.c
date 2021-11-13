@@ -105,6 +105,7 @@ struct worker {
     pthread_t tid;               // thread identifier
     struct minheap *todo;        // set of states to evaluate
     struct step_result *results; // list of results
+    int timecnt;                 // to reduce gettime() overhead
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
@@ -159,6 +160,12 @@ void check_invariants(struct global_t *global, struct node *node, struct context
     }
 }
 
+static double gettime(){
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + (double) tv.tv_usec / 1000000;
+}
+
 static struct step_result *onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -192,26 +199,22 @@ static struct step_result *onestep(
     for (;; loopcnt++) {
         int pc = cc->pc;
 
-        if (w->index == 0) {
-            if (global->timecnt-- == 0) {
-                struct timeval tv;
-                gettimeofday(&tv, NULL);
-                double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
-                if (now - global->lasttime > 1) {
-                    if (global->lasttime != 0) {
-                        char *p = value_string(cc->name);
-                        fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
-                                p, cc->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
-                        free(p);
-                    }
-                    global->lasttime = now;
-                    if (now > w->timeout) {
-                        fprintf(stderr, "charm: timeout exceeded\n");
-                        exit(1);
-                    }
+        if (w->index == 0 && w->timecnt-- == 0) {
+            double now = gettime();
+            if (now - global->lasttime > 1) {
+                if (global->lasttime != 0) {
+                    char *p = value_string(cc->name);
+                    fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
+                            p, cc->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
+                    free(p);
                 }
-                global->timecnt = 1;
+                global->lasttime = now;
+                if (now > w->timeout) {
+                    fprintf(stderr, "charm: timeout exceeded\n");
+                    exit(1);
+                }
             }
+            w->timecnt = 100;
         }
 
         struct instr_t *instrs = global->code.instrs;
@@ -1401,7 +1404,7 @@ static void do_work(struct worker *w){
 static void *worker(void *arg){
     struct worker *w = arg;
 
-    for (;;) {
+    for (int epoch = 0;; epoch++) {
         pthread_barrier_wait(w->start_barrier);
 		// printf("WORKER %d starting\n", w->index);
 		do_work(w);
@@ -1459,11 +1462,7 @@ int main(int argc, char **argv){
         outfile = "harmony.hco";
     }
 
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    double now = tv.tv_sec + (double) tv.tv_usec / 1000000;
-    double timeout = now + maxtime;
-
+    double timeout = gettime() + maxtime;
 
     // initialize modules
     struct global_t *global = malloc(sizeof(struct global_t));
@@ -1475,7 +1474,6 @@ int main(int argc, char **argv){
     global->processes = NULL;
     global->nprocesses = 0;
     global->lasttime = 0;
-    global->timecnt = 0;
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
@@ -1560,6 +1558,7 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("NWORKERS = %d\n", nworkers);
+    nworkers = 2;
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
     pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
@@ -1588,10 +1587,13 @@ int main(int argc, char **argv){
     minheap_insert(workers[0].todo, node);
     global->enqueued++;
 
+    double before = gettime(), postproc = 0;
     while (minheap_empty(global->failures)) {
         // make the threads work
         pthread_barrier_wait(&start_barrier);
         pthread_barrier_wait(&end_barrier);
+
+        double before_postproc = gettime();
 
         // Deal with the unstable values
         dict_stabilize(global->values.atoms);
@@ -1636,9 +1638,11 @@ int main(int argc, char **argv){
                 distr = 0;
             }
         }
+
+        postproc += gettime() - before_postproc;
     }
 
-    printf("#states %d\n", global->graph.size);
+    printf("#states %d (time %.3lf+%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc);
 
     if (minheap_empty(global->failures)) {
         // find the strongly connected components

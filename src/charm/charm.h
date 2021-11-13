@@ -17,7 +17,6 @@ struct global_t {
     uint64_t *processes;         // list of contexts of processes
     int nprocesses;              // the number of processes in the list
     double lasttime;             // since last report printed
-    int timecnt;                 // to reduce time overhead
     int enqueued;                // #states enqueued
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
