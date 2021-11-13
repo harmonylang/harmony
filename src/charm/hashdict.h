@@ -22,6 +22,8 @@ struct keynode {
 struct dict_bucket {
     struct keynode *stable;
     struct keynode *unstable;
+    pthread_mutex_t lock;
+	int count;
 };
 		
 struct dict {
@@ -30,7 +32,6 @@ struct dict {
 	double growth_treshold;
 	double growth_factor;
     int concurrent;         // 0 = not concurrent
-    pthread_mutex_t lock;
 };
 
 struct dict *dict_new(int initial_size);

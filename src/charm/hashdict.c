@@ -45,9 +45,11 @@ struct dict *dict_new(int initial_size) {
 	dict->length = initial_size;
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
+	for (int i = 0; i < dict->length; i++) {
+		pthread_mutex_init(&dict->table[i].lock, NULL);
+	}
 	dict->growth_treshold = 2.0;
 	dict->growth_factor = 10;
-    pthread_mutex_init(&dict->lock, NULL);
 	return dict;
 }
 
@@ -57,8 +59,8 @@ void dict_delete(struct dict *dict) {
 			keynode_delete(dict->table[i].stable);
 		if (dict->table[i].unstable != NULL)
 			keynode_delete(dict->table[i].unstable);
+		pthread_mutex_destroy(&dict->table[i].lock);
 	}
-    pthread_mutex_destroy(&dict->lock);
 	free(dict->table);
 	free(dict);
 }
@@ -109,21 +111,18 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	}
 
     if (dict->concurrent) {
-        pthread_mutex_lock(&dict->lock);
+        pthread_mutex_lock(&db->lock);
 
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
-                pthread_mutex_unlock(&dict->lock);
+                pthread_mutex_unlock(&db->lock);
                 return k;
             }
             k = k->next;
         }
     }
-
-    // Add the item
-    dict->count++;
 
     // If not concurrent may have to grown the table now
 	if (!dict->concurrent && db->stable == NULL) {
@@ -136,13 +135,15 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 
     k = keynode_new((char*)key, keyn);
     if (dict->concurrent) {
-        k->next = dict->table[n].unstable;
-        dict->table[n].unstable = k;
-        pthread_mutex_unlock(&dict->lock);
+        k->next = db->unstable;
+        db->unstable = k;
+        pthread_mutex_unlock(&db->lock);
+		db->count++;
     }
     else {
-        k->next = dict->table[n].stable;
-        dict->table[n].stable = k;
+        k->next = db->stable;
+        db->stable = k;
+		dict->count++;
     }
 	return k;
 }
@@ -176,16 +177,16 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 
     // Look in the unstable list
     if (dict->concurrent) {
-        pthread_mutex_lock(&dict->lock);
+        pthread_mutex_lock(&db->lock);
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && !memcmp(k->key, key, keyn)) {
-                pthread_mutex_unlock(&dict->lock);
+                pthread_mutex_unlock(&db->lock);
                 return k->value;
             }
             k = k->next;
         }
-        pthread_mutex_unlock(&dict->lock);
+        pthread_mutex_unlock(&db->lock);
     }
 
 	return NULL;
@@ -200,18 +201,19 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             k = k->next;
         }
         if (dict->concurrent) {
-            pthread_mutex_lock(&dict->lock);
+            pthread_mutex_lock(&db->lock);
             k = db->unstable;
             while (k != NULL) {
                 (*f)(env, k->key, k->len, k->value);
                 k = k->next;
             }
-            pthread_mutex_unlock(&dict->lock);
+            pthread_mutex_unlock(&db->lock);
         }
 	}
 }
 
 void dict_stabilize(struct dict *dict) {
+	dict->count = 0;
 	for (int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k;
@@ -220,5 +222,10 @@ void dict_stabilize(struct dict *dict) {
             k->next = db->stable;
             db->stable = k;
         }
+		dict->count += db->count;
     }
+	double f = (double)dict->count / (double)dict->length;
+	if (f > dict->growth_treshold) {
+		dict_resize(dict, dict->length * dict->growth_factor);
+	}
 }
