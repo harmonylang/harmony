@@ -81,20 +81,6 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 
 #define CHUNKSIZE   (1 << 12)
 
-struct step_result {
-    struct step_result *next;    // for list maintenance
-    struct node *node;           // node of starting state
-    struct state *state;         // resulting state
-    struct context *context;     // resulting context
-    int steps;                   // #microsteps from root
-    uint64_t before;             // context before state change
-    uint64_t after;              // context after state change (current context)
-    uint64_t choice;             // choice made if any
-    bool interrupt;              // set if gotten here by interrupt
-    struct access_info *ai_list; // list of accesses for race detection
-    bool infinite_loop;          // infinite loop detected
-};
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
@@ -103,9 +89,15 @@ struct worker {
 
     int index;                   // index of worker
     pthread_t tid;               // thread identifier
+    struct dict *visited;        // states
     struct minheap *todo;        // set of states to evaluate
-    struct step_result *results; // list of results
     int timecnt;                 // to reduce gettime() overhead
+    struct access_info *ai_free; // free list of access_info structures
+    struct context *inv_ctx;     // for evaluating invariants
+    struct minheap *warnings;    // set of warnings generated
+    struct minheap *failures;    // set of failures generated
+
+    struct minheap *todo_out[2]; // out-queues for weights 0 and 1
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
@@ -131,7 +123,8 @@ bool invariant_check(struct global_t *global, struct state *state, struct contex
     return b >> VALUE_BITS;
 }
 
-void check_invariants(struct global_t *global, struct node *node, struct context **pctx){
+void check_invariants(struct worker *w, struct node *node, struct context **pctx){
+    struct global_t *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
@@ -155,7 +148,7 @@ void check_invariants(struct global_t *global, struct node *node, struct context
             f->type = FAIL_INVARIANT;
             f->choice = node->choice;
             f->node = node;
-            minheap_insert(global->failures, f);
+            minheap_insert(w->failures, f);
         }
     }
 }
@@ -166,7 +159,7 @@ static double gettime(){
     return tv.tv_sec + (double) tv.tv_usec / 1000000;
 }
 
-static struct step_result *onestep(
+static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
     struct state *sc,       // actual state
@@ -174,8 +167,8 @@ static struct step_result *onestep(
     struct context *cc,     // actual context
     uint64_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
-    bool infloop_detect,
-    int multiplicity       // #contexts that are in the current state
+    bool infloop_detect,    // try to detect infloop from the start
+    int multiplicity        // #contexts that are in the current state
 ) {
     assert(!cc->terminated);
     assert(cc->failure == 0);
@@ -225,7 +218,7 @@ static struct step_result *onestep(
         }
         else {
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = graph_ai_alloc(&global->ai_free, multiplicity, cc->atomic, pc);
+                struct access_info *ai = graph_ai_alloc(&w->ai_free, multiplicity, cc->atomic, pc);
                 if (instrs[pc].load)
                     ext_Load(instrs[pc].env, sc, &cc, global, ai);
                 else if (instrs[pc].store)
@@ -265,7 +258,7 @@ static struct step_result *onestep(
                 // start over, as twostep does not have loopcnt optimization
                 free(cc);
                 free(sc);
-                return NULL;
+                return false;
             }
         }
 
@@ -350,99 +343,75 @@ static struct step_result *onestep(
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after);
     }
 
-    // Store the result of the step and return
-    struct step_result *sr = new_alloc(struct step_result);
-    sr->node = node;
-    sr->state = sc;
-    sr->context = cc;
-    sr->before = ctx;
-    sr->choice = choice_copy;
-    sr->interrupt = interrupt;
-    sr->after = after;
-    sr->steps = node->steps + loopcnt;
-    sr->ai_list = ai_list;
-    sr->infinite_loop = infinite_loop;
-    return sr;
-}
-
-static void process_result(
-    struct global_t *global,
-    struct dict *visited,
-    struct minheap *todo[2],
-    struct context **pinv_ctx,
-    struct step_result *sr
-){
-    struct node *node = sr->node, *next;
-
     // Weight of this step
-    int weight = sr->before == node->after ? 0 : 1;
+    int weight = ctx == node->after ? 0 : 1;
 
     // See if this new state was already seen before.
-    void **p = dict_insert(visited, sr->state, sizeof(*sr->state));
+    void **p = dict_insert(w->visited, sc, sizeof(*sc));
+    struct node *next;
     if ((next = *p) == NULL) {
         *p = next = new_alloc(struct node);
         next->parent = node;
-        next->state = sr->state;
-        next->before = sr->before;
-        next->choice = sr->choice;
-        next->interrupt = sr->interrupt;
-        next->after = sr->after;
+        next->state = sc;
+        next->before = ctx;
+        next->choice = choice_copy;
+        next->interrupt = interrupt;
+        next->after = after;
         next->len = node->len + weight;
-        next->steps = sr->steps;
-        graph_add(&global->graph, next); // sets next->id
+        next->steps = node->steps + loopcnt;
 
-        if (sr->state->choosing == 0 && sr->state->invariants != VALUE_SET) {
-            check_invariants(global, next, pinv_ctx);
+        if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
+            check_invariants(w, next, &w->inv_ctx);
         }
 
-        if (sr->state->ctxbag != VALUE_DICT && sr->context->failure == 0
-                            && minheap_empty(global->failures)) {
-            minheap_insert(todo[weight], next);
+        if (sc->ctxbag != VALUE_DICT && cc->failure == 0
+                            && minheap_empty(w->failures)) {
+            minheap_insert(w->todo_out[weight], next);
             global->enqueued++;
         }
     }
     else {
-        free(sr->state);
-        sr->state = NULL;
+        free(sc);
+        sc = NULL;
     }
 
     // Add a forward edge from node to next.
     struct edge *fwd = new_alloc(struct edge);
-    fwd->ctx = sr->before;
-    fwd->choice = sr->choice;
-    fwd->interrupt = sr->interrupt;
+    fwd->ctx = ctx;
+    fwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
     fwd->node = next;
     fwd->weight = weight;
     fwd->next = node->fwd;
-    fwd->after = sr->after;
-    fwd->ai = sr->ai_list;
+    fwd->after = after;
+    fwd->ai = ai_list;
     node->fwd = fwd;
 
     // Add a backward edge from next to node.
     struct edge *bwd = new_alloc(struct edge);
-    bwd->ctx = sr->before;
-    bwd->choice = sr->choice;
-    fwd->interrupt = sr->interrupt;
+    bwd->ctx = ctx;
+    bwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
     bwd->node = node;
     bwd->weight = weight;
     bwd->next = next->bwd;
-    bwd->after = sr->after;
-    bwd->ai = sr->ai_list;
+    bwd->after = after;
+    bwd->ai = ai_list;
     next->bwd = bwd;
 
-    if (sr->context->failure != 0) {
+    if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
-        f->type = sr->infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-        f->choice = sr->choice;
+        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->choice = choice_copy;
         f->node = next;
-        minheap_insert(global->failures, f);
+        minheap_insert(w->failures, f);
     }
 
-    free(sr->context);
-    sr->context = NULL;
+    free(cc);
+    return true;
 }
 
-static struct step_result *make_step(
+static void make_step(
     struct worker *w,
     struct node *node,
     uint64_t ctx,
@@ -456,29 +425,22 @@ static struct step_result *make_step(
     // Make a copy of the context
     struct context *cc = value_copy(ctx, NULL);
 
-    struct step_result *sr;
-
     // See if we need to interrupt
     if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        sr = onestep(w, node, sc, ctx, cc, choice, true, false, multiplicity);
-        if (sr == NULL) {
-            sr = onestep(w, node, sc, ctx, cc, choice, true, true, multiplicity);
+        bool succ = onestep(w, node, sc, ctx, cc, choice, true, false, multiplicity);
+        if (!succ) {
+            (void) onestep(w, node, sc, ctx, cc, choice, true, true, multiplicity);
         }
         sc = new_alloc(struct state);
         memcpy(sc, node->state, sizeof(*sc));
         cc = value_copy(ctx, NULL);
     }
-    else {
-        sr = NULL;
-    }
 
     sc->choosing = 0;
-    struct step_result *sr2 = onestep(w, node, sc, ctx, cc, choice, false, false, multiplicity);
-    if (sr2 == NULL) {
-        sr2 = onestep(w, node, sc, ctx, cc, choice, false, true, multiplicity);
+    bool succ = onestep(w, node, sc, ctx, cc, choice, false, false, multiplicity);
+    if (!succ) {
+        (void) onestep(w, node, sc, ctx, cc, choice, false, true, multiplicity);
     }
-    sr2->next = sr;
-    return sr2;
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -1327,17 +1289,6 @@ void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
     }
 }
 
-// Insert list sr in front of *plist
-static void sr_append(struct step_result **plist, struct step_result *sr){
-    struct step_result *t = sr;
-
-    while (t->next != NULL) {
-        t = t->next;
-    }
-    t->next = *plist;
-    *plist = sr;
-}
-
 static void do_work(struct worker *w){
 	while (!minheap_empty(w->todo)) {
 		struct node *node = minheap_getmin(w->todo);
@@ -1360,14 +1311,13 @@ static void do_work(struct worker *w){
 			size /= sizeof(uint64_t);
 			assert(size > 0);
 			for (int i = 0; i < size; i++) {
-				struct step_result *sr = make_step(
+				make_step(
 					w,
 					node,
 					state->choosing,
 					vals[i],
 					1
 				);
-				sr_append(&w->results, sr);
 			}
 		}
 		else {
@@ -1378,22 +1328,20 @@ static void do_work(struct worker *w){
 			for (int i = 0; i < size; i += 2) {
 				assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
 				assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-				struct step_result *sr = make_step(
+				make_step(
 					w,
 					node,
 					ctxs[i],
 					0,
 					ctxs[i+1] >> VALUE_BITS
 				);
-				sr_append(&w->results, sr);
 			}
 
-#ifdef TODO
-			// Check for data race
-			if (minheap_empty(global->warnings) && !cflag) {
-				graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
-			}
-#endif
+            // Check for data race
+            if (minheap_empty(w->warnings)) {
+                graph_check_for_data_race(node, w->warnings,
+                            &w->global->values, &w->ai_free);
+            }
 		}
 	}
 }
@@ -1474,7 +1422,6 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
-    global->ai_free = NULL;
     global->possibly_cnt = dict_new(0);
 
     // open the file
@@ -1542,15 +1489,6 @@ int main(int argc, char **argv){
     todo[0] = minheap_create(node_cmp);
     todo[1] = minheap_create(node_cmp);
 
-    // Create a context for evaluating invariants
-    struct context *inv_ctx = new_alloc(struct context);
-    inv_ctx->name = value_put_atom(&global->values, "__invariant__", 13);
-    inv_ctx->arg = VALUE_DICT;
-    inv_ctx->this = VALUE_DICT;
-    inv_ctx->vars = VALUE_DICT;
-    inv_ctx->atomic = inv_ctx->readonly = 1;
-    inv_ctx->interruptlevel = false;
-
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("nworkers = %d\n", nworkers);
@@ -1567,7 +1505,21 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
+        w->visited = visited;
         w->todo = minheap_create(node_cmp);
+        w->todo_out[0] = minheap_create(node_cmp);
+        w->todo_out[1] = minheap_create(node_cmp);
+        w->warnings = minheap_create(fail_cmp);
+        w->failures = minheap_create(fail_cmp);
+
+        // Create a context for evaluating invariants
+        w->inv_ctx = new_alloc(struct context);
+        w->inv_ctx->name = value_put_atom(&global->values, "__invariant__", 13);
+        w->inv_ctx->arg = VALUE_DICT;
+        w->inv_ctx->this = VALUE_DICT;
+        w->inv_ctx->vars = VALUE_DICT;
+        w->inv_ctx->atomic = w->inv_ctx->readonly = 1;
+        w->inv_ctx->interruptlevel = false;
     }
 
     // Start the workers, who'll wait on the start barrier
@@ -1586,6 +1538,7 @@ int main(int argc, char **argv){
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
         value_set_concurrent(&global->values, 1);
+        dict_set_concurrent(visited, 1);
 
         // make the threads work
         pthread_barrier_wait(&start_barrier);
@@ -1595,22 +1548,29 @@ int main(int argc, char **argv){
 
         // Deal with the unstable values
         value_set_concurrent(&global->values, 0);
+        dict_set_concurrent(visited, 0);
 
-        if (!minheap_empty(global->failures)) {
-            break;
-        }
-
-        // Process the results of all the workers
+        // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
             assert(minheap_empty(w->todo));
 
-            struct step_result *sr;
-            while ((sr = w->results) != NULL) {
-                process_result(global, visited, todo, &inv_ctx, sr);
-                w->results = sr->next;
-                free(sr);
+            while (!minheap_empty(w->failures)) {
+                struct failure *f = minheap_getmin(w->failures);
+                minheap_insert(global->failures, f);
             }
+
+            for (int weight = 0; weight <= 1; weight++) {
+                while (!minheap_empty(w->todo_out[weight])) {
+                    struct node *node = minheap_getmin(w->todo_out[weight]);
+                    minheap_insert(todo[weight], node);
+                    graph_add(&global->graph, node);
+                }
+            }
+        }
+
+        if (!minheap_empty(global->failures)) {
+            break;
         }
 
         if (minheap_empty(todo[0])) {

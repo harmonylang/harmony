@@ -120,6 +120,7 @@ void graph_check_for_data_race(
                 assert(ai->n > 0);
                 if (ai->multiplicity > 1 && !ai->load && ai->atomic == 0) {
                     struct failure *f = new_alloc(struct failure);
+                    printf("FAIL 1\n");
                     f->type = FAIL_RACE;
                     f->choice = node->choice;
                     f->node = node;
@@ -135,6 +136,7 @@ void graph_check_for_data_race(
                                 assert(min > 0);
                                 if (memcmp(ai->indices, ai2->indices,
                                            min * sizeof(uint64_t)) == 0) {
+                                    printf("FAIL 2\n");
                                     struct failure *f = new_alloc(struct failure);
                                     f->type = FAIL_RACE;
                                     f->choice = node->choice;
