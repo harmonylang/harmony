@@ -53,6 +53,12 @@ struct dict *dict_new(int initial_size) {
 	return dict;
 }
 
+struct dict *dict_new_concurrent(int initial_size) {
+    struct dict *dict = dict_new(initial_size);
+    dict->concurrent = 1;
+	return dict;
+}
+
 void dict_delete(struct dict *dict) {
 	for (int i = 0; i < dict->length; i++) {
 		if (dict->table[i].stable != NULL)

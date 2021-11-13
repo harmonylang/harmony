@@ -35,6 +35,7 @@ struct dict {
 };
 
 struct dict *dict_new(int initial_size);
+struct dict *dict_new_concurrent(int initial_size);
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 void **dict_insert(struct dict *dict, const void *key, unsigned int keylen);
