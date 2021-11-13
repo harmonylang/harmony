@@ -1682,6 +1682,14 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
+    // Copy the warnings from the worker threads
+    // TODO.  Does not need to be global
+    if (minheap_empty(global->failures)) {
+        for (int i = 0; i < nworkers; i++) {
+            minheap_move(workers[i].warnings, global->warnings);
+        }
+    }
+
     FILE *out = fopen(outfile, "w");
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);

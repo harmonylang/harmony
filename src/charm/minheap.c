@@ -108,6 +108,15 @@ int minheap_size(struct minheap *mh) {
     return mh->size;
 }
 
+// TODO: make more efficient
+// Move everything from mh1 into mh2
+void minheap_move(struct minheap *mh1, struct minheap *mh2){
+    while (!minheap_empty(mh1)) {
+        void *v = minheap_getmin(mh1);
+        minheap_insert(mh2, v);
+    }
+}
+
 void minheap_destroy(struct minheap *mh) {
     free(mh->array);
     free(mh);
