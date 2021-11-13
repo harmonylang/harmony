@@ -390,9 +390,6 @@ static void process_result(
         next->len = node->len + weight;
         next->steps = sr->steps;
         graph_add(&global->graph, next); // sets next->id
-        if (next->id == 1383) {
-            global->tochk = next;
-        }
 
         if (sr->state->choosing == 0 && sr->state->invariants != VALUE_SET) {
             check_invariants(global, next, pinv_ctx);
@@ -1478,7 +1475,6 @@ int main(int argc, char **argv){
     global->dequeued = 0;
     global->dumpfirst = false;
     global->ai_free = NULL;
-    global->tochk = NULL;
     global->possibly_cnt = dict_new(0);
 
     // open the file

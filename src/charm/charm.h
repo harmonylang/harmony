@@ -21,7 +21,6 @@ struct global_t {
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct access_info *ai_free; // free list of access_info structures
-    struct node *tochk;
     struct dict *possibly_cnt;
 };
 
