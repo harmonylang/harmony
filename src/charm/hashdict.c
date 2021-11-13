@@ -219,6 +219,9 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
 }
 
 void dict_stabilize(struct dict *dict) {
+	if (!dict->concurrent) {
+		return;
+	}
 	dict->count = 0;
 	for (int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];

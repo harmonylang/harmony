@@ -1338,71 +1338,73 @@ static void sr_append(struct step_result **plist, struct step_result *sr){
     *plist = sr;
 }
 
+static void do_work(struct worker *w){
+	while (!minheap_empty(w->todo)) {
+		struct node *node = minheap_getmin(w->todo);
+		struct state *state = node->state;
+		w->global->dequeued++; // TODO race condition
+
+		if (state->choosing != 0) {
+			assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
+			if (false) {
+				printf("CHOOSING %"PRIx64"\n", state->choosing);
+			}
+
+			struct context *cc = value_get(state->choosing, NULL);
+			assert(cc != NULL);
+			assert(cc->sp > 0);
+			uint64_t s = cc->stack[cc->sp - 1];
+			assert((s & VALUE_MASK) == VALUE_SET);
+			int size;
+			uint64_t *vals = value_get(s, &size);
+			size /= sizeof(uint64_t);
+			assert(size > 0);
+			for (int i = 0; i < size; i++) {
+				struct step_result *sr = make_step(
+					w,
+					node,
+					state->choosing,
+					vals[i],
+					1
+				);
+				sr_append(&w->results, sr);
+			}
+		}
+		else {
+			int size;
+			uint64_t *ctxs = value_get(state->ctxbag, &size);
+			size /= sizeof(uint64_t);
+			assert(size > 0);
+			for (int i = 0; i < size; i += 2) {
+				assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
+				assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+				struct step_result *sr = make_step(
+					w,
+					node,
+					ctxs[i],
+					0,
+					ctxs[i+1] >> VALUE_BITS
+				);
+				sr_append(&w->results, sr);
+			}
+
+#ifdef TODO
+			// Check for data race
+			if (minheap_empty(global->warnings) && !cflag) {
+				graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
+			}
+#endif
+		}
+	}
+}
+
 static void *worker(void *arg){
     struct worker *w = arg;
 
     // printf("WORKER %d starting\n", w->index);
     for (;;) {
         pthread_barrier_wait(w->start_barrier);
-
-        while (!minheap_empty(w->todo)) {
-            struct node *node = minheap_getmin(w->todo);
-            struct state *state = node->state;
-            w->global->dequeued++; // TODO race condition
-
-            if (state->choosing != 0) {
-                assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
-                if (false) {
-                    printf("CHOOSING %"PRIx64"\n", state->choosing);
-                }
-
-                struct context *cc = value_get(state->choosing, NULL);
-                assert(cc != NULL);
-                assert(cc->sp > 0);
-                uint64_t s = cc->stack[cc->sp - 1];
-                assert((s & VALUE_MASK) == VALUE_SET);
-                int size;
-                uint64_t *vals = value_get(s, &size);
-                size /= sizeof(uint64_t);
-                assert(size > 0);
-                for (int i = 0; i < size; i++) {
-                    struct step_result *sr = make_step(
-                        w,
-                        node,
-                        state->choosing,
-                        vals[i],
-                        1
-                    );
-                    sr_append(&w->results, sr);
-                }
-            }
-            else {
-                int size;
-                uint64_t *ctxs = value_get(state->ctxbag, &size);
-                size /= sizeof(uint64_t);
-                assert(size > 0);
-                for (int i = 0; i < size; i += 2) {
-                    assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-                    assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-                    struct step_result *sr = make_step(
-                        w,
-                        node,
-                        ctxs[i],
-                        0,
-                        ctxs[i+1] >> VALUE_BITS
-                    );
-                    sr_append(&w->results, sr);
-                }
-
-    #ifdef TODO
-                // Check for data race
-                if (minheap_empty(global->warnings) && !cflag) {
-                    graph_check_for_data_race(node, global->warnings, &global->values, &global->ai_free);
-                }
-    #endif
-            }
-        }
-
+		do_work(w);
         pthread_barrier_wait(w->end_barrier);
     }
 
@@ -1557,6 +1559,8 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
+	printf("NWORKERS = %d\n", nworkers);
+	nworkers = 1;
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
     pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
@@ -1587,8 +1591,11 @@ int main(int argc, char **argv){
 
     while (minheap_empty(global->failures)) {
         // make the threads work
+		/*
         pthread_barrier_wait(&start_barrier);
         pthread_barrier_wait(&end_barrier);
+		*/
+		do_work(&workers[0]);
 
         // Deal with the unstable values
         dict_stabilize(global->values.atoms);
@@ -1632,6 +1639,7 @@ int main(int argc, char **argv){
             if (++distr == nworkers) {
                 distr = 0;
             }
+			break;
         }
     }
 
