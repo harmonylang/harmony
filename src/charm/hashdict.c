@@ -50,6 +50,7 @@ struct dict *dict_new(int initial_size) {
 	}
 	dict->growth_treshold = 2.0;
 	dict->growth_factor = 10;
+	dict->concurrent = 0;
 	return dict;
 }
 

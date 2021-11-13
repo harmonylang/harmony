@@ -1401,14 +1401,14 @@ static void do_work(struct worker *w){
 static void *worker(void *arg){
     struct worker *w = arg;
 
-    // printf("WORKER %d starting\n", w->index);
     for (;;) {
         pthread_barrier_wait(w->start_barrier);
+		// printf("WORKER %d starting\n", w->index);
 		do_work(w);
+		// printf("WORKER %d finished\n", w->index);
         pthread_barrier_wait(w->end_barrier);
     }
 
-    // printf("WORKER %d finished\n", w->index);
     return NULL;
 }
 
@@ -1560,7 +1560,6 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("NWORKERS = %d\n", nworkers);
-	nworkers = 1;
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
     pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
@@ -1591,11 +1590,8 @@ int main(int argc, char **argv){
 
     while (minheap_empty(global->failures)) {
         // make the threads work
-		/*
         pthread_barrier_wait(&start_barrier);
         pthread_barrier_wait(&end_barrier);
-		*/
-		do_work(&workers[0]);
 
         // Deal with the unstable values
         dict_stabilize(global->values.atoms);
@@ -1639,7 +1635,6 @@ int main(int argc, char **argv){
             if (++distr == nworkers) {
                 distr = 0;
             }
-			break;
         }
     }
 
