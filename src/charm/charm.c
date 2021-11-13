@@ -1557,8 +1557,7 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
-	printf("NWORKERS = %d\n", nworkers);
-    nworkers = 2;
+	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
     pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
