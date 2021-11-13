@@ -1415,7 +1415,6 @@ int main(int argc, char **argv){
     ops_init(global);
     graph_init(&global->graph, 1024);
     global->failures = minheap_create(fail_cmp);
-    global->warnings = minheap_create(fail_cmp);
     global->processes = NULL;
     global->nprocesses = 0;
     global->lasttime = 0;
@@ -1554,11 +1553,7 @@ int main(int argc, char **argv){
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
             assert(minheap_empty(w->todo));
-
-            while (!minheap_empty(w->failures)) {
-                struct failure *f = minheap_getmin(w->failures);
-                minheap_insert(global->failures, f);
-            }
+            minheap_move(w->failures, global->failures);
 
             for (int weight = 0; weight <= 1; weight++) {
                 while (!minheap_empty(w->todo_out[weight])) {
@@ -1683,10 +1678,10 @@ int main(int argc, char **argv){
     }
 
     // Copy the warnings from the worker threads
-    // TODO.  Does not need to be global
+    struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
         for (int i = 0; i < nworkers; i++) {
-            minheap_move(workers[i].warnings, global->warnings);
+            minheap_move(workers[i].warnings, warnings);
         }
     }
 
@@ -1697,7 +1692,7 @@ int main(int argc, char **argv){
     }
     fprintf(out, "{\n");
 
-    bool no_issues = minheap_empty(global->failures) && minheap_empty(global->warnings);
+    bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
@@ -1706,7 +1701,7 @@ int main(int argc, char **argv){
         // Find shortest "bad" path
         struct failure *bad = NULL;
         if (minheap_empty(global->failures)) {
-            bad = minheap_getmin(global->warnings);
+            bad = minheap_getmin(warnings);
         }
         else {
             bad = minheap_getmin(global->failures);
