@@ -1588,6 +1588,9 @@ int main(int argc, char **argv){
 
     double before = gettime(), postproc = 0;
     while (minheap_empty(global->failures)) {
+        // Put the value dictionaries in concurrent mode
+        value_set_concurrent(&global->values, 1);
+
         // make the threads work
         pthread_barrier_wait(&start_barrier);
         pthread_barrier_wait(&end_barrier);
@@ -1595,11 +1598,7 @@ int main(int argc, char **argv){
         double before_postproc = gettime();
 
         // Deal with the unstable values
-        dict_stabilize(global->values.atoms);
-        dict_stabilize(global->values.dicts);
-        dict_stabilize(global->values.sets);
-        dict_stabilize(global->values.addresses);
-        dict_stabilize(global->values.contexts);
+        value_set_concurrent(&global->values, 0);
 
         if (!minheap_empty(global->failures)) {
             break;

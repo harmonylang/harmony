@@ -35,12 +35,11 @@ struct dict {
 };
 
 struct dict *dict_new(int initial_size);
-struct dict *dict_new_concurrent(int initial_size);
 void dict_delete(struct dict *dict);
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keylen);
 void **dict_insert(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_find(struct dict *dict, const void *key, unsigned int keylen);
 void *dict_retrieve(const void *p, int *psize);
 void dict_iter(struct dict *dict, enumFunc f, void *user);
-void dict_stabilize(struct dict *dict);
+void dict_set_concurrent(struct dict *dict, int concurrent);
 #endif

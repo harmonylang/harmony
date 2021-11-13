@@ -789,11 +789,19 @@ uint64_t value_from_json(struct values_t *values, struct dict *map){
 }
 
 void value_init(struct values_t *values){
-    values->atoms = dict_new_concurrent(0);
-    values->dicts = dict_new_concurrent(0);
-    values->sets = dict_new_concurrent(0);
-    values->addresses = dict_new_concurrent(0);
-    values->contexts = dict_new_concurrent(0);
+    values->atoms = dict_new(0);
+    values->dicts = dict_new(0);
+    values->sets = dict_new(0);
+    values->addresses = dict_new(0);
+    values->contexts = dict_new(0);
+}
+
+void value_set_concurrent(struct values_t *values, int concurrent){
+    dict_set_concurrent(values->atoms, concurrent);
+    dict_set_concurrent(values->dicts, concurrent);
+    dict_set_concurrent(values->sets, concurrent);
+    dict_set_concurrent(values->addresses, concurrent);
+    dict_set_concurrent(values->contexts, concurrent);
 }
 
 // Store key:value in the given dictionary and returns its value code

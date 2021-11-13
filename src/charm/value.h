@@ -49,6 +49,7 @@ struct values_t {
 };
 
 void value_init(struct values_t *values);
+void value_set_concurrent(struct values_t *values, int concurrent);
 uint64_t value_from_json(struct values_t *values, struct dict *map);
 int value_cmp(uint64_t v1, uint64_t v2);
 void *value_get(uint64_t v, int *size);

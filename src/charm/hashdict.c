@@ -54,12 +54,6 @@ struct dict *dict_new(int initial_size) {
 	return dict;
 }
 
-struct dict *dict_new_concurrent(int initial_size) {
-    struct dict *dict = dict_new(initial_size);
-    dict->concurrent = 1;
-	return dict;
-}
-
 void dict_delete(struct dict *dict) {
 	for (int i = 0; i < dict->length; i++) {
 		if (dict->table[i].stable != NULL)
@@ -219,10 +213,18 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
 	}
 }
 
-void dict_stabilize(struct dict *dict) {
-	if (!dict->concurrent) {
+// To switch between concurrent and sequential modes
+void dict_set_concurrent(struct dict *dict, int concurrent) {
+	if (dict->concurrent == concurrent) {
 		return;
 	}
+    dict->concurrent = concurrent;
+    if (concurrent) {
+        return;
+    }
+
+    // When going from concurrent to sequential, need to move over
+    // the unstable values and possibly grow the table
 	dict->count = 0;
 	for (int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
