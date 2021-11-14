@@ -174,14 +174,14 @@ echo ==============
 ./harmony -mqueue=queueMS -msynch=synchS code/queuedemo.hny
 
 echo ==============
-echo lltest
+echo intsettest
 echo ==============
-./harmony code/lltest.hny
+./harmony -msetobj=linkedlist code/intsettest.hny
 
 echo ==============
-echo lltest synchS
+echo intsettest synchS
 echo ==============
-./harmony -msynch=synchS code/lltest.hny
+./harmony -msynch=synchS -msetobj=linkedlist code/intsettest.hny
 
 echo ==============
 echo RWtest

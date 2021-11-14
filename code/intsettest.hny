@@ -1,4 +1,4 @@
-from intset import *
+from setobj import *
 
 myset = SetObject()
 
