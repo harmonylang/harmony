@@ -1703,12 +1703,16 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    if (false) {
+    if (true) {
+        FILE *df = fopen("charm.dump", "w");
+        assert(df != NULL);
         char **table = malloc(global->graph.size * sizeof(char*));
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             table[i] = state_string(node->state);
+            fprintf(df, "%s\n", table[i]);
         }
+        fclose(df);
         for (int i = 0; i < global->graph.size; i++) {
             for (int j = i + 1; j < global->graph.size; j++) {
                 if (strcmp(table[i], table[j]) == 0) {

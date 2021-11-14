@@ -548,56 +548,56 @@ static char *value_string_context(uint64_t v) {
     alloc_printf(&r, "CONTEXT(");
 
     s = value_string(ctx->name);
-    append_printf(&r, "%s", s);
+    append_printf(&r, "name=%s", s);
     free(s);
 
     s = value_string(ctx->entry);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",entry=%s", s);
     free(s);
 
     s = value_string(ctx->arg);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",arg=%s", s);
     free(s);
 
     s = value_string(ctx->this);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",this=%s", s);
     free(s);
 
     s = value_string(ctx->vars);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",vars=%s", s);
     free(s);
 
     s = value_string(ctx->trap_pc);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",trap_pc=%s", s);
     free(s);
 
     s = value_string(ctx->trap_arg);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",trap_arg=%s", s);
     free(s);
 
     s = value_string(ctx->failure);
-    append_printf(&r, ",%s", s);
+    append_printf(&r, ",failure=%s", s);
     free(s);
 
-    append_printf(&r, ",%d", ctx->pc);
+    append_printf(&r, ",pc=%d", ctx->pc);
 
-    append_printf(&r, ",%d", ctx->fp);
+    append_printf(&r, ",fp=%d", ctx->fp);
 
-    append_printf(&r, ",%d", ctx->readonly);
+    append_printf(&r, ",readonly=%d", ctx->readonly);
 
-    append_printf(&r, ",%d", ctx->atomic);
+    append_printf(&r, ",atomic=%d", ctx->atomic);
 
-    append_printf(&r, ",%d", ctx->atomicFlag);
+    append_printf(&r, ",aflag=%d", ctx->atomicFlag);
 
-    append_printf(&r, ",%d", ctx->interruptlevel);
+    append_printf(&r, ",il=%d", ctx->interruptlevel);
 
-    append_printf(&r, ",%d", ctx->stopped);
+    append_printf(&r, ",stopped=%d", ctx->stopped);
 
-    append_printf(&r, ",%d", ctx->terminated);
+    append_printf(&r, ",terminated=%d", ctx->terminated);
 
-    append_printf(&r, ",%d", ctx->eternal);
+    append_printf(&r, ",eternal=%d", ctx->eternal);
 
-    append_printf(&r, ",%d,STACK[", ctx->sp);
+    append_printf(&r, ",sp=%d,STACK[", ctx->sp);
 
     for (int i = 0; i < ctx->sp; i++) {
         s = value_string(ctx->stack[i]);
