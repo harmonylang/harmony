@@ -49,12 +49,12 @@ struct node {
     uint64_t after;         // context after state change (current context)
     uint64_t choice;        // choice made if any
     bool interrupt;         // set if gotten here by interrupt
+    int weight;             // 1 if context switch; 0 otherwise
+    struct access_info *ai; // to detect data races
 
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
-
-    bool processed;         // for debugging currently
 };
 
 struct failure {

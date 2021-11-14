@@ -597,13 +597,15 @@ static char *value_string_context(uint64_t v) {
 
     append_printf(&r, ",%d", ctx->eternal);
 
-    append_printf(&r, ",%d,STACK:", ctx->sp);
+    append_printf(&r, ",%d,STACK[", ctx->sp);
 
     for (int i = 0; i < ctx->sp; i++) {
         s = value_string(ctx->stack[i]);
         append_printf(&r, ",%s", s);
         free(s);
     }
+
+    append_printf(&r, "]");
 
     append_printf(&r, ")");
 #endif

@@ -18,59 +18,52 @@
 
 #ifdef __APPLE__
 
+#define PTHREAD_BARRIER_SERIAL_THREAD 1
+
 typedef int pthread_barrierattr_t;
 typedef struct
 {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-    int count;
-    int tripCount;
+    unsigned int threads_required;
+    unsigned int threads_left;
+    unsigned int cycle;
 } pthread_barrier_t;
 
 
-int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t *attr, unsigned int count)
-{
-    if(count == 0)
-    {
-        errno = EINVAL;
-        return -1;
-    }
-    if(pthread_mutex_init(&barrier->mutex, 0) < 0)
-    {
-        return -1;
-    }
-    if(pthread_cond_init(&barrier->cond, 0) < 0)
-    {
-        pthread_mutex_destroy(&barrier->mutex);
-        return -1;
-    }
-    barrier->tripCount = count;
-    barrier->count = 0;
-
+int pthread_barrier_init(
+    pthread_barrier_t *barrier,
+    const pthread_barrierattr_t *attr,
+    unsigned int count
+){
+    barrier->threads_required = barrier->threads_left = count;
+    barrier->cycle = 0;
+    pthread_mutex_init(&barrier->mutex, NULL);
+    pthread_cond_init(&barrier->cond, NULL);
     return 0;
 }
 
-int pthread_barrier_destroy(pthread_barrier_t *barrier)
-{
+int pthread_barrier_destroy(pthread_barrier_t *barrier) {
     pthread_cond_destroy(&barrier->cond);
     pthread_mutex_destroy(&barrier->mutex);
     return 0;
 }
 
-int pthread_barrier_wait(pthread_barrier_t *barrier)
-{
+int pthread_barrier_wait(pthread_barrier_t *barrier) {
     pthread_mutex_lock(&barrier->mutex);
-    ++(barrier->count);
-    if(barrier->count >= barrier->tripCount)
-    {
-        barrier->count = 0;
+
+    if (--barrier->threads_left == 0) {
+        barrier->cycle++;
+        barrier->threads_left = barrier->threads_required;
         pthread_cond_broadcast(&barrier->cond);
         pthread_mutex_unlock(&barrier->mutex);
-        return 1;
+        return PTHREAD_BARRIER_SERIAL_THREAD;
     }
-    else
-    {
-        pthread_cond_wait(&barrier->cond, &(barrier->mutex));
+    else {
+        unsigned int cycle = barrier->cycle;
+
+        while (cycle == barrier->cycle)
+            pthread_cond_wait(&barrier->cond, &barrier->mutex);
         pthread_mutex_unlock(&barrier->mutex);
         return 0;
     }
@@ -89,7 +82,6 @@ struct worker {
 
     int index;                   // index of worker
     pthread_t tid;               // thread identifier
-    struct dict *visited;        // states
     struct minheap *todo;        // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct access_info *ai_free; // free list of access_info structures
@@ -97,7 +89,7 @@ struct worker {
     struct minheap *warnings;    // set of warnings generated
     struct minheap *failures;    // set of failures generated
 
-    struct minheap *todo_out[2]; // out-queues for weights 0 and 1
+    struct minheap *results[2]; // out-queues for weights 0 and 1
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
@@ -346,59 +338,25 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-    // See if this new state was already seen before.
-    void **p = dict_insert(w->visited, sc, sizeof(*sc));
-    struct node *next;
-    if ((next = *p) == NULL) {
-        *p = next = new_alloc(struct node);
-        next->parent = node;
-        next->state = sc;
-        next->before = ctx;
-        next->choice = choice_copy;
-        next->interrupt = interrupt;
-        next->after = after;
-        next->len = node->len + weight;
-        next->steps = node->steps + loopcnt;
+    struct node *next = new_alloc(struct node);
+    next->parent = node;
+    next->state = sc;
+    next->before = ctx;
+    next->choice = choice_copy;
+    next->interrupt = interrupt;
+    next->after = after;
+    next->len = node->len + weight;
+    next->steps = node->steps + loopcnt;
+    next->weight = weight;
+    next->ai = ai_list;
 
-        if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
-            check_invariants(w, next, &w->inv_ctx);
-        }
-
-        if (sc->ctxbag != VALUE_DICT && cc->failure == 0
-                            && minheap_empty(w->failures)) {
-            minheap_insert(w->todo_out[weight], next);
-            global->enqueued++;     // TODO: data race
-        }
-    }
-    else {
-        free(sc);
-        sc = NULL;
+    if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
+        check_invariants(w, next, &w->inv_ctx);
     }
 
-    // Add a forward edge from node to next.
-    struct edge *fwd = new_alloc(struct edge);
-    fwd->ctx = ctx;
-    fwd->choice = choice_copy;
-    fwd->interrupt = interrupt;
-    fwd->node = next;
-    fwd->weight = weight;
-    fwd->next = node->fwd;
-    fwd->after = after;
-    fwd->ai = ai_list;
-    node->fwd = fwd;
+    minheap_insert(w->results[weight], next);
 
-    // Add a backward edge from next to node.
-    struct edge *bwd = new_alloc(struct edge);
-    bwd->ctx = ctx;
-    bwd->choice = choice_copy;
-    fwd->interrupt = interrupt;
-    bwd->node = node;
-    bwd->weight = weight;
-    bwd->next = next->bwd;
-    bwd->after = after;
-    bwd->ai = ai_list;
-    next->bwd = bwd;
-
+#ifdef XXX
     if (cc->failure != 0) {
         struct failure *f = new_alloc(struct failure);
         f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -406,6 +364,7 @@ static bool onestep(
         f->node = next;
         minheap_insert(w->failures, f);
     }
+#endif
 
     free(cc);
     return true;
@@ -1337,11 +1296,13 @@ static void do_work(struct worker *w){
 				);
 			}
 
+#ifdef XXX
             // Check for data race
             if (minheap_empty(w->warnings)) {
                 graph_check_for_data_race(node, w->warnings,
                             &w->global->values, &w->ai_free);
             }
+#endif
 		}
 	}
 }
@@ -1360,16 +1321,33 @@ static void *worker(void *arg){
     return NULL;
 }
 
+static char *state_string( struct state *state){
+    void alloc_printf(char **r, char *fmt, ...);
+    void append_printf(char **p, char *fmt, ...);
+
+    char *r, *v;
+    alloc_printf(&r, "{");
+    v = value_string(state->vars);
+    append_printf(&r, "%s", v); free(v);
+    v = value_string(state->seqs);
+    append_printf(&r, ",%s", v); free(v);
+    v = value_string(state->choosing);
+    append_printf(&r, ",%s", v); free(v);
+    v = value_string(state->ctxbag);
+    append_printf(&r, ",%s", v); free(v);
+    v = value_string(state->stopbag);
+    append_printf(&r, ",%s", v); free(v);
+    v = value_string(state->termbag);
+    append_printf(&r, ",%s", v); free(v);
+    v = value_string(state->invariants);
+    append_printf(&r, ",%s}", v); free(v);
+    return r;
+}
+
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
-    fprintf(fp, "{");
-    fprintf(fp, ".vars: %s", value_string(state->vars));
-    fprintf(fp, ".seqs: %s", value_string(state->seqs));
-    fprintf(fp, ".choo: %s", value_string(state->choosing));
-    fprintf(fp, ".ctxb: %s", value_string(state->ctxbag));
-    fprintf(fp, ".stop: %s", value_string(state->stopbag));
-    fprintf(fp, ".term: %s", value_string(state->termbag));
-    fprintf(fp, ".invs: %s", value_string(state->invariants));
-    fprintf(fp, "}\n");
+    char *v = state_string(state);
+    fprintf(fp, "%s\n", v);
+    free(v);
 }
 
 static void usage(char *prog){
@@ -1498,6 +1476,10 @@ int main(int argc, char **argv){
     todo[0] = minheap_create(node_cmp);
     todo[1] = minheap_create(node_cmp);
 
+    struct minheap *results[2];
+    results[0] = minheap_create(node_cmp);
+    results[1] = minheap_create(node_cmp);
+
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
 	printf("nworkers = %d\n", nworkers);
@@ -1514,10 +1496,9 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
-        w->visited = visited;
         w->todo = minheap_create(node_cmp);
-        w->todo_out[0] = minheap_create(node_cmp);
-        w->todo_out[1] = minheap_create(node_cmp);
+        w->results[0] = minheap_create(node_cmp);
+        w->results[1] = minheap_create(node_cmp);
         w->warnings = minheap_create(fail_cmp);
         w->failures = minheap_create(fail_cmp);
 
@@ -1547,7 +1528,6 @@ int main(int argc, char **argv){
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
         value_set_concurrent(&global->values, 1);
-        dict_set_concurrent(visited, 1);
 
         // make the threads work
         pthread_barrier_wait(&start_barrier);
@@ -1557,7 +1537,6 @@ int main(int argc, char **argv){
 
         // Deal with the unstable values
         value_set_concurrent(&global->values, 0);
-        dict_set_concurrent(visited, 0);
 
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
@@ -1565,27 +1544,110 @@ int main(int argc, char **argv){
             assert(minheap_empty(w->todo));
 
             for (int weight = 0; weight <= 1; weight++) {
-                while (!minheap_empty(w->todo_out[weight])) {
-                    struct node *node = minheap_getmin(w->todo_out[weight]);
-                    graph_add(&global->graph, node);   // sets node->id
-                    minheap_insert(todo[weight], node);
+                while (!minheap_empty(w->results[weight])) {
+                    struct node *node = minheap_getmin(w->results[weight]);
+                    minheap_insert(results[weight], node);
                 }
             }
 
-            minheap_move(w->failures, global->failures);
+            // XXX minheap_move(w->failures, global->failures);
         }
 
-        if (!minheap_empty(global->failures)) {
-            break;
+        while (!minheap_empty(results[0])) {
+            struct node *node = minheap_getmin(results[0]);
+            struct node *parent = node->parent;
+            void **p = dict_insert(visited, node->state, sizeof(struct state));
+            if (*p == NULL) {
+                *p = node;
+                graph_add(&global->graph, node);   // sets node->id
+                minheap_insert(todo[0], node);
+                global->enqueued++;
+            }
+            else {
+                free(node);
+                node = *p;
+            }
+
+            // Add a forward edge from parent
+            struct edge *fwd = new_alloc(struct edge);
+            fwd->ctx = node->before;
+            fwd->choice = node->choice;
+            fwd->interrupt = node->interrupt;
+            fwd->node = node;
+            fwd->weight = node->weight;
+            fwd->after = node->after;
+            fwd->ai = node->ai;
+            fwd->next = parent->fwd;
+            parent->fwd = fwd;
+
+            // Add a backward edge from node to parent.
+            struct edge *bwd = new_alloc(struct edge);
+            bwd->ctx = node->before;
+            bwd->choice = node->choice;
+            bwd->interrupt = node->interrupt;
+            bwd->node = parent;
+            bwd->weight = node->weight;
+            bwd->after = node->after;
+            bwd->ai = node->ai;
+            bwd->next = node->bwd;
+            node->bwd = bwd;
         }
 
         if (minheap_empty(todo[0])) {
-            if (minheap_empty(todo[1])) {
-                break;
+            struct minheap *tmp = results[0];
+            results[0] = results[1];
+            results[1] = tmp;
+        }
+
+        // TODO.  Duplicates code from above
+        while (!minheap_empty(results[0])) {
+            struct node *node = minheap_getmin(results[0]);
+            struct node *parent = node->parent;
+            void **p = dict_insert(visited, node->state, sizeof(struct state));
+            if (*p == NULL) {
+                *p = node;
+                graph_add(&global->graph, node);   // sets node->id
+                minheap_insert(todo[0], node);
+                global->enqueued++;
             }
-            struct minheap *tmp = todo[0];
-            todo[0] = todo[1];
-            todo[1] = tmp;
+            else {
+                free(node);
+                node = *p;
+            }
+
+            // Add a forward edge from parent
+            struct edge *fwd = new_alloc(struct edge);
+            fwd->ctx = node->before;
+            fwd->choice = node->choice;
+            fwd->interrupt = node->interrupt;
+            fwd->node = node;
+            fwd->weight = node->weight;
+            fwd->after = node->after;
+            fwd->ai = node->ai;
+            fwd->next = parent->fwd;
+            parent->fwd = fwd;
+
+            // Add a backward edge from node to parent.
+            struct edge *bwd = new_alloc(struct edge);
+            bwd->ctx = node->before;
+            bwd->choice = node->choice;
+            bwd->interrupt = node->interrupt;
+            bwd->node = parent;
+            bwd->weight = node->weight;
+            bwd->after = node->after;
+            bwd->ai = node->ai;
+            bwd->next = node->bwd;
+            node->bwd = bwd;
+        }
+
+#ifdef XXX
+        if (!minheap_empty(global->failures)) {
+            break;
+        }
+#endif
+
+        if (minheap_empty(todo[0])) {
+            break;
         }
 
         // Distribute the work evenly among the workers
@@ -1688,14 +1750,40 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    if (true) {
-        FILE *df = fopen("charm.dump", "w");
-        assert(df != NULL);
+    if (false) {
+        char **table = malloc(global->graph.size * sizeof(char*));
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            pr_state(global, df, node->state, i);
+            table[i] = state_string(node->state);
         }
-        fclose(df);
+        for (int i = 0; i < global->graph.size; i++) {
+            for (int j = i + 1; j < global->graph.size; j++) {
+                if (strcmp(table[i], table[j]) == 0) {
+                    uint64_t *cb1, *cb2;
+                    int n1, n2;
+                    cb1 = value_get(global->graph.nodes[i]->state->ctxbag, &n1);
+                    cb2 = value_get(global->graph.nodes[j]->state->ctxbag, &n2);
+                    printf("SAME %d %d %d %llx %llx\n", i, j,
+                        memcmp(
+                            global->graph.nodes[i]->state,
+                            global->graph.nodes[j]->state,
+                            sizeof(struct state)
+                        ),
+                        (uint64_t) cb1,
+                        (uint64_t) cb2
+                    );
+                    void dict_check(struct dict *dict, const void *key, unsigned int keyn);
+                    dict_check(global->values.dicts, cb1, n1);
+                    dict_check(global->values.dicts, cb2, n2);
+                    printf("SIZE %d %d\n", n1, n2);
+                    n1 /= sizeof(uint64_t);
+                    for (int k = 0; k < n1; k++) {
+                        printf("%llx %llx\n", *cb1++, *cb2++);
+                    }
+                    exit(0);
+                }
+            }
+        }
     }
 
     // Copy the warnings from the worker threads
