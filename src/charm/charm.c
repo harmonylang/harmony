@@ -84,7 +84,6 @@ struct worker {
     pthread_t tid;               // thread identifier
     struct minheap *todo;        // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
-    struct access_info *ai_free; // free list of access_info structures
     struct context *inv_ctx;     // for evaluating invariants
 
     struct minheap *results[2]; // out-queues for weights 0 and 1
@@ -206,7 +205,7 @@ static bool onestep(
         }
         else {
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = graph_ai_alloc(&w->ai_free, multiplicity, cc->atomic, pc);
+                struct access_info *ai = graph_ai_alloc(multiplicity, cc->atomic, pc);
                 if (instrs[pc].load)
                     ext_Load(instrs[pc].env, sc, &cc, global, ai);
                 else if (instrs[pc].store)
@@ -1283,14 +1282,6 @@ static void do_work(struct worker *w){
 					ctxs[i+1] >> VALUE_BITS
 				);
 			}
-
-#ifdef XXX
-            // Check for data race
-            if (minheap_empty(w->warnings)) {
-                graph_check_for_data_race(node, w->warnings,
-                            &w->global->values, &w->ai_free);
-            }
-#endif
 		}
 	}
 }
@@ -1751,10 +1742,13 @@ int main(int argc, char **argv){
     // Look for data races
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
-        // for (int i = 0; i < nworkers; i++) {
-        //     minheap_move(workers[i].warnings, warnings);
-        // }
-        ;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            graph_check_for_data_race(node, warnings, &global->values);
+            if (!minheap_empty(warnings)) {
+                break;
+            }
+        }
     }
 
     FILE *out = fopen(outfile, "w");

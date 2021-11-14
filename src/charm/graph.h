@@ -75,13 +75,12 @@ struct graph_t {
 
 void graph_init(struct graph_t *graph, int initial_size);
 
-struct access_info *graph_ai_alloc(struct access_info **ai_free, int multiplicity, int atomic, int pc);
+struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values,
-    struct access_info **ai_free
+    struct values_t *values
 );
 void graph_add(struct graph_t *graph, struct node *node);
 int graph_find_scc(struct graph_t *graph);

@@ -92,15 +92,8 @@ int graph_find_scc(struct graph_t *graph) {
 }
 
 // For tracking data races
-struct access_info *graph_ai_alloc(struct access_info **ai_free, int multiplicity, int atomic, int pc) {
-    struct access_info *ai;
-
-    if ((ai = *ai_free) == 0) {
-        ai = calloc(1, sizeof(*ai));
-    }
-    else {
-        *ai_free = ai->next;
-    }
+struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc) {
+    struct access_info *ai = calloc(1, sizeof(*ai));
     ai->multiplicity = multiplicity;
     ai->atomic = atomic;
     ai->pc = pc;
@@ -110,8 +103,7 @@ struct access_info *graph_ai_alloc(struct access_info **ai_free, int multiplicit
 void graph_check_for_data_race(
     struct node *node,
     struct minheap *warnings,
-    struct values_t *values,
-    struct access_info **ai_free
+    struct values_t *values
 ) {
     // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
@@ -147,18 +139,6 @@ void graph_check_for_data_race(
                     }
                 }
             }
-        }
-    }
-    // Put access_info structs back on the free list
-    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-        struct access_info *ai = edge->ai;
-        if (ai != NULL) {
-            while (ai->next != NULL) {
-                ai = ai->next;
-            }
-            ai->next = *ai_free;
-            *ai_free = edge->ai;
-            edge->ai = NULL;
         }
     }
 }
