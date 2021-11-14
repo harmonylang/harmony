@@ -34,12 +34,15 @@ struct edge {
     struct access_info *ai;  // to detect data races
 };
 
+enum fail_type { FAIL_NONE, FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE };
+
 struct node {
     // Information about state
     struct state *state;    // state corresponding to this node
     int id;                 // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
+    enum fail_type ftype;    // failure if any
 
     // How to get here from parent node
     struct node *parent;    // shortest path to initial state
@@ -58,7 +61,7 @@ struct node {
 };
 
 struct failure {
-    enum { FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE } type;
+    enum fail_type type;
     struct node *node;      // failed state
     uint64_t choice;        // choice if any
     uint64_t address;       // in case of data race
