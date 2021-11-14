@@ -324,10 +324,10 @@ static bool onestep(
 
     // Add new context to state unless it's terminated or stopped
     if (cc->stopped) {
-        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after);
+        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
     }
     else if (!cc->terminated) {
-        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after);
+        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
     // Weight of this step
@@ -1329,6 +1329,8 @@ void process_results(
             f->node = node;
             minheap_insert(global->failures, f);
         }
+
+        // printf("ADD %d <=> %d\n", parent->id, node->id);
 
         // Add a forward edge from parent
         struct edge *fwd = new_alloc(struct edge);

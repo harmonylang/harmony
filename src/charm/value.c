@@ -1029,12 +1029,12 @@ bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
     return false;
 }
 
-uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v){
+uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v, int multiplicity){
     uint64_t count;
     if (value_dict_tryload(bag, v, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
-        count += 1 << VALUE_BITS;
+        count += multiplicity << VALUE_BITS;
         return value_dict_store(values, bag, v, count);
     }
     else {

@@ -85,7 +85,7 @@ uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, 
 uint64_t value_dict_load(uint64_t dict, uint64_t key);
 bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result);
 uint64_t value_dict_remove(struct values_t *values, uint64_t dict, uint64_t key);
-uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v);
+uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v, int multiplicity);
 void value_ctx_push(struct context **pctx, uint64_t v);
 uint64_t value_ctx_pop(struct context **pctx);
 uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...);

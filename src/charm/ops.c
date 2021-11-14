@@ -654,7 +654,7 @@ void op_Go(
     copy->stopped = false;
     uint64_t v = value_put_context(&global->values, copy);
     free(copy);
-    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v);
+    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
     (*pctx)->pc++;
 }
 
@@ -1062,7 +1062,7 @@ void op_Spawn(
     value_ctx_push(&ctx, arg);
     uint64_t v = value_put_context(&global->values, ctx);
 
-    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v);
+    state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
 
     if (false) {
         char *p = value_string(state->ctxbag);
@@ -1722,7 +1722,8 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         if (ctx->pc == e) {
-            bag = value_bag_add(values, bag, nametag(ctx, values));
+            bag = value_bag_add(values, bag, nametag(ctx, values),
+                (int) (vals[i+1] >> VALUE_BITS));
         }
     }
     return bag;
@@ -1750,7 +1751,7 @@ uint64_t f_countLabel(struct state *state, struct context *ctx, uint64_t *args, 
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         if (ctx->pc == e) {
-            result++;
+            result += vals[i+1] >> VALUE_BITS;;
         }
     }
     return (result << VALUE_BITS) | VALUE_INT;
