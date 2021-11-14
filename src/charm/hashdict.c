@@ -51,6 +51,7 @@ struct dict *dict_new(int initial_size) {
 	dict->growth_treshold = 2.0;
 	dict->growth_factor = 10;
 	dict->concurrent = 0;
+    pthread_mutex_init(&dict->lock, NULL);  // TODO.  For debug
 	return dict;
 }
 
@@ -66,18 +67,15 @@ void dict_delete(struct dict *dict) {
 	free(dict);
 }
 
-void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k2) {
+static void dict_reinsert_when_resizing(struct dict *dict, struct keynode *k2) {
 	int n = hash_func(k2->key, k2->len) % dict->length;
-	if (dict->table[n].stable == NULL) {
-		dict->table[n].stable = k2;
-		return;
-	}
 	struct keynode *k = dict->table[n].stable;
 	k2->next = k;
 	dict->table[n].stable = k2;
 }
 
-void dict_resize(struct dict *dict, int newsize) {
+static void dict_resize(struct dict *dict, int newsize) {
+    pthread_mutex_lock(&dict->lock);
 	int o = dict->length;
 	struct dict_bucket *old = dict->table;
 	dict->table = calloc(sizeof(struct dict_bucket), newsize);
@@ -88,16 +86,17 @@ void dict_resize(struct dict *dict, int newsize) {
         struct keynode *k = b->stable;
 		while (k != NULL) {
 			struct keynode *next = k->next;
-			k->next = 0;
 			dict_reinsert_when_resizing(dict, k);
 			k = next;
 		}
 	}
 	free(old);
+    pthread_mutex_unlock(&dict->lock);
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	assert(keyn > 0);
+    pthread_mutex_lock(&dict->lock);
 	int n = hash_func((const char*)key, keyn) % dict->length;
     struct dict_bucket *db = &dict->table[n];
 
@@ -106,6 +105,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+            pthread_mutex_unlock(&dict->lock);
 			return k;
 		}
 		k = k->next;
@@ -119,6 +119,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
         while (k != NULL) {
             if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
                 pthread_mutex_unlock(&db->lock);
+                pthread_mutex_unlock(&dict->lock);
                 return k;
             }
             k = k->next;
@@ -129,6 +130,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	if (!dict->concurrent && db->stable == NULL) {
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_treshold) {
+            pthread_mutex_unlock(&dict->lock);
 			dict_resize(dict, dict->length * dict->growth_factor);
 			return dict_find(dict, key, keyn);
 		}
@@ -146,6 +148,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
         db->stable = k;
 		dict->count++;
     }
+    pthread_mutex_unlock(&dict->lock);
 	return k;
 }
 
@@ -163,6 +166,7 @@ void *dict_retrieve(const void *p, int *psize){
 }
 
 void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
+    pthread_mutex_lock(&dict->lock);
 	int n = hash_func((const char*)key, keyn) % dict->length;
     struct dict_bucket *db = &dict->table[n];
 	// __builtin_prefetch(db);
@@ -171,6 +175,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && !memcmp(k->key, key, keyn)) {
+            pthread_mutex_unlock(&dict->lock);
 			return k->value;
 		}
 		k = k->next;
@@ -183,6 +188,7 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         while (k != NULL) {
             if (k->len == keyn && !memcmp(k->key, key, keyn)) {
                 pthread_mutex_unlock(&db->lock);
+                pthread_mutex_unlock(&dict->lock);
                 return k->value;
             }
             k = k->next;
@@ -190,10 +196,12 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
         pthread_mutex_unlock(&db->lock);
     }
 
+    pthread_mutex_unlock(&dict->lock);
 	return NULL;
 }
 
 void dict_iter(struct dict *dict, enumFunc f, void *env) {
+    pthread_mutex_lock(&dict->lock);
 	for (int i = 0; i < dict->length; i++) {
         struct dict_bucket *db = &dict->table[i];
         struct keynode *k = db->stable;
@@ -211,11 +219,14 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             pthread_mutex_unlock(&db->lock);
         }
 	}
+    pthread_mutex_unlock(&dict->lock);
 }
 
 // To switch between concurrent and sequential modes
 void dict_set_concurrent(struct dict *dict, int concurrent) {
+    if (1) return;      // TODO. debug only
 	if (dict->concurrent == concurrent) {
+        assert(false);      // Shouldn't normally happen
 		return;
 	}
     dict->concurrent = concurrent;
@@ -238,6 +249,10 @@ void dict_set_concurrent(struct dict *dict, int concurrent) {
     }
 	double f = (double)dict->count / (double)dict->length;
 	if (f > dict->growth_treshold) {
-		dict_resize(dict, dict->length * dict->growth_factor);
+        int min = dict->length * dict->growth_factor;
+        if (min < dict->count) {
+            min = dict->count * 2;
+        }
+		dict_resize(dict, min);
 	}
 }

@@ -32,6 +32,7 @@ struct dict {
 	double growth_treshold;
 	double growth_factor;
     int concurrent;         // 0 = not concurrent
+    pthread_mutex_t lock;   // TODO for debugging
 };
 
 struct dict *dict_new(int initial_size);

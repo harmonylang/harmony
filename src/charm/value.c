@@ -538,10 +538,75 @@ static char *value_json_address(uint64_t v) {
 
 static char *value_string_context(uint64_t v) {
     struct context *ctx = value_get(v, NULL);
-    char *name = value_string(ctx->name);
     char *r;
+#ifdef SHORT
+    char *name = value_string(ctx->name);
     alloc_printf(&r, "CONTEXT(%s, %d)", name, ctx->pc);
     free(name);
+#else
+    char *s;
+    alloc_printf(&r, "CONTEXT(");
+
+    s = value_string(ctx->name);
+    append_printf(&r, "%s", s);
+    free(s);
+
+    s = value_string(ctx->entry);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->arg);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->this);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->vars);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->trap_pc);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->trap_arg);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    s = value_string(ctx->failure);
+    append_printf(&r, ",%s", s);
+    free(s);
+
+    append_printf(&r, ",%d", ctx->pc);
+
+    append_printf(&r, ",%d", ctx->fp);
+
+    append_printf(&r, ",%d", ctx->readonly);
+
+    append_printf(&r, ",%d", ctx->atomic);
+
+    append_printf(&r, ",%d", ctx->atomicFlag);
+
+    append_printf(&r, ",%d", ctx->interruptlevel);
+
+    append_printf(&r, ",%d", ctx->stopped);
+
+    append_printf(&r, ",%d", ctx->terminated);
+
+    append_printf(&r, ",%d", ctx->eternal);
+
+    append_printf(&r, ",%d,STACK:", ctx->sp);
+
+    for (int i = 0; i < ctx->sp; i++) {
+        s = value_string(ctx->stack[i]);
+        append_printf(&r, ",%s", s);
+        free(s);
+    }
+
+    append_printf(&r, ")");
+#endif
     return r;
 }
 

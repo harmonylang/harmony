@@ -367,7 +367,7 @@ static bool onestep(
         if (sc->ctxbag != VALUE_DICT && cc->failure == 0
                             && minheap_empty(w->failures)) {
             minheap_insert(w->todo_out[weight], next);
-            global->enqueued++;
+            global->enqueued++;     // TODO: data race
         }
     }
     else {
@@ -1360,7 +1360,19 @@ static void *worker(void *arg){
     return NULL;
 }
 
-void usage(char *prog){
+static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
+    fprintf(fp, "{");
+    fprintf(fp, ".vars: %s", value_string(state->vars));
+    fprintf(fp, ".seqs: %s", value_string(state->seqs));
+    fprintf(fp, ".choo: %s", value_string(state->choosing));
+    fprintf(fp, ".ctxb: %s", value_string(state->ctxbag));
+    fprintf(fp, ".stop: %s", value_string(state->stopbag));
+    fprintf(fp, ".term: %s", value_string(state->termbag));
+    fprintf(fp, ".invs: %s", value_string(state->invariants));
+    fprintf(fp, "}\n");
+}
+
+static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
 }
@@ -1452,9 +1464,7 @@ int main(int argc, char **argv){
 
     // Create an initial state
 	uint64_t this = value_put_atom(&global->values, "this", 4);
-    struct context *init_ctx = new_alloc(struct context);;
-    // uint64_t nv = value_put_atom("name", 4);
-    // uint64_t tv = value_put_atom("tag", 3);
+    struct context *init_ctx = new_alloc(struct context);
     init_ctx->name = value_put_atom(&global->values, "__init__", 8);
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
@@ -1553,15 +1563,16 @@ int main(int argc, char **argv){
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
             assert(minheap_empty(w->todo));
-            minheap_move(w->failures, global->failures);
 
             for (int weight = 0; weight <= 1; weight++) {
                 while (!minheap_empty(w->todo_out[weight])) {
                     struct node *node = minheap_getmin(w->todo_out[weight]);
+                    graph_add(&global->graph, node);   // sets node->id
                     minheap_insert(todo[weight], node);
-                    graph_add(&global->graph, node);
                 }
             }
+
+            minheap_move(w->failures, global->failures);
         }
 
         if (!minheap_empty(global->failures)) {
@@ -1673,6 +1684,16 @@ int main(int argc, char **argv){
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
             }
+        }
+        fclose(df);
+    }
+
+    if (true) {
+        FILE *df = fopen("charm.dump", "w");
+        assert(df != NULL);
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            pr_state(global, df, node->state, i);
         }
         fclose(df);
     }
