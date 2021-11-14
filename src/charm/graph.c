@@ -105,7 +105,7 @@ void graph_check_for_data_race(
     struct minheap *warnings,
     struct values_t *values
 ) {
-    // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y
+    // TODO.  We're checking both if x and y conflict and y and x conflict for any two x and y, which is redundant
     for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
         for (struct access_info *ai = edge->ai; ai != NULL; ai = ai->next) {
             if (ai->indices != NULL) {

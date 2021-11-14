@@ -1310,6 +1310,7 @@ void process_results(
         struct node *node = minheap_getmin(results);
         struct node *parent = node->parent;
         enum fail_type ftype = node->ftype;
+        struct access_info *ai_list = node->ai;
         void **p = dict_insert(visited, node->state, sizeof(struct state));
         if (*p == NULL) {
             *p = node;
@@ -1340,7 +1341,7 @@ void process_results(
         fwd->node = node;
         fwd->weight = node->weight;
         fwd->after = node->after;
-        fwd->ai = node->ai;
+        fwd->ai = ai_list;
         fwd->next = parent->fwd;
         parent->fwd = fwd;
 
@@ -1352,13 +1353,13 @@ void process_results(
         bwd->node = parent;
         bwd->weight = node->weight;
         bwd->after = node->after;
-        bwd->ai = node->ai;
+        bwd->ai = ai_list;
         bwd->next = node->bwd;
         node->bwd = bwd;
     }
 }
 
-static char *state_string( struct state *state){
+char *state_string(struct state *state){
     void alloc_printf(char **r, char *fmt, ...);
     void append_printf(char **p, char *fmt, ...);
 
