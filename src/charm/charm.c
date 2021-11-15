@@ -361,7 +361,7 @@ static void make_step(
     struct worker *w,
     struct node *node,
     uint64_t ctx,
-    uint64_t choice,        // if about to make a choice, which choice?
+    uint64_t choice,       // if about to make a choice, which choice?
     int multiplicity       // #contexts that are in the current state
 ) {
     // Make a copy of the state
@@ -1140,7 +1140,12 @@ static void enum_loc(
 }
 
 enum busywait { BW_ESCAPE, BW_RETURN, BW_VISITED };
-enum busywait is_stuck(struct node *start, struct node *node, uint64_t ctx, bool change) {
+static enum busywait is_stuck(
+    struct node *start,
+    struct node *node,
+    uint64_t ctx,
+    bool change
+) {
 	if (node->component != start->component) {
 		return BW_ESCAPE;
 	}
@@ -1184,7 +1189,7 @@ enum busywait is_stuck(struct node *start, struct node *node, uint64_t ctx, bool
     return result;
 }
 
-void detect_busywait(struct minheap *failures, struct node *node){
+static void detect_busywait(struct minheap *failures, struct node *node){
 	// Get the contexts
 	int size;
 	uint64_t *ctxs = value_get(node->state->ctxbag, &size);
@@ -1308,26 +1313,29 @@ void process_results(
 ) {
     while (!minheap_empty(results)) {
         struct node *node = minheap_getmin(results);
-        struct node *parent = node->parent;
-        enum fail_type ftype = node->ftype;
-        struct access_info *ai_list = node->ai;
+        struct node *parent = node->parent, *next;
+        bool must_free;     // whether node must be freed or not
+
+        /* See if we already visited this node.
+         */
         void **p = dict_insert(visited, node->state, sizeof(struct state));
-        if (*p == NULL) {
-            *p = node;
+        if ((next = *p) == NULL) {
+            next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             minheap_insert(todo[0], node);
             global->enqueued++;
+            must_free = false;
         }
         else {
-            free(node);
-            node = *p;
+            next = *p;
+            must_free = true;
         }
 
-        if (ftype != FAIL_NONE) {
+        if (node->ftype != FAIL_NONE) {
             struct failure *f = new_alloc(struct failure);
-            f->type = ftype;
+            f->type = node->ftype;
             f->choice = node->choice;
-            f->node = node;
+            f->node = next;
             minheap_insert(global->failures, f);
         }
 
@@ -1338,10 +1346,10 @@ void process_results(
         fwd->ctx = node->before;
         fwd->choice = node->choice;
         fwd->interrupt = node->interrupt;
-        fwd->node = node;
+        fwd->node = next;
         fwd->weight = node->weight;
         fwd->after = node->after;
-        fwd->ai = ai_list;
+        fwd->ai = node->ai;
         fwd->next = parent->fwd;
         parent->fwd = fwd;
 
@@ -1353,9 +1361,13 @@ void process_results(
         bwd->node = parent;
         bwd->weight = node->weight;
         bwd->after = node->after;
-        bwd->ai = ai_list;
+        bwd->ai = node->ai;
         bwd->next = node->bwd;
         node->bwd = bwd;
+
+        if (must_free) {
+            free(node);
+        }
     }
 }
 
