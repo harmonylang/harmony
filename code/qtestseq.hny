@@ -1,18 +1,18 @@
-import queue, queuespec
+import queue, queueconc
 
 const NOPS = 4
 const VALUES = { 1..NOPS }
 
-implq = queue.Queue()
-specq = queuespec.Queue()
+specq = queue.Queue()
+implq = queueconc.Queue()
 
 for i in {1..NOPS}:
     let op = choose({ .get, .put }):
         if op == .put:
             let v = choose(VALUES):
-                queue.put(?implq, v)
-                queuespec.put(?specq, v)
+                queueconc.put(?implq, v)
+                queue.put(?specq, v)
         else:
-            let v = queue.get(?implq)
-            let w = queuespec.get(?specq):
+            let v = queueconc.get(?implq)
+            let w = queue.get(?specq):
                 assert v == w

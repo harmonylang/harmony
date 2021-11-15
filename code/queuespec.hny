@@ -12,3 +12,4 @@ def get(q):
     else:
         result = list.head(!q)
         !q = list.tail(!q)
+

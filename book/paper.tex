@@ -531,6 +531,8 @@ for implemented critical sections.
 in \autoref{ch:specification} can be implemented.
 \item \autoref{ch:cds} gives an introduction to building concurrent
 data structures.
+\item \autoref{ch:finegrained} gives an example of fine-grained locking
+methods that allow more concurrency than coarse-grained approaches..
 \item \autoref{ch:testing} discusses approaches to testing
 concurrent code in Harmony.
 \item \autoref{ch:debugging} instead goes into how to find a bug
@@ -703,7 +705,7 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 (a) \harmonylink{code/prog1.hny} Sequential && (b) \harmonylink{code/prog2.hny} Concurrent
 \end{tabular}
 \end{center}
-\caption{ A sequential and a concurrent program.}
+\caption{A sequential and a concurrent program.}
 \label{fig:progs}
 \end{figure}
 
@@ -2764,20 +2766,22 @@ keyword.
 \chapter{Concurrent Data Structures}
 \label{ch:cds}
 
-\begin{figure}
-\begin{code}
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{cc}
+\begin{tcolorbox}[width=0.41\linewidth]
 \harmonysource{queuespec}
-\end{code}
-\caption{\harmonylink{code/queuespec.hny} A sequential specification for a queue.}
-\label{fig:queueseq}
-\end{figure}
-
-\begin{figure}
-\begin{code}
+\end{tcolorbox}
+&
+\begin{tcolorbox}[width=0.52\linewidth]
 \harmonysource{queue}
-\end{code}
-\caption{\harmonylink{code/queue.hny} A concurrent specification for a queue.}
-\label{fig:queue}
+\end{tcolorbox}
+\\
+(a) \harmonylink{code/queuespec.hny} Sequential & (b) \harmonylink{code/queue.hny} Concurrent queue
+\end{tabular}
+\end{center}
+\caption{A sequential and a concurrent specification of a queue.}
+\label{fig:queues}
 \end{figure}
 
 \begin{figure}
@@ -2799,11 +2803,11 @@ if $q$ is empty or $r = v$ if $v$ was at the head of the queue.
 \end{itemize}
 
 \noindent
-\autoref{fig:queueseq} shows a sequential specification for such a
+\autoref{fig:queues}(a) shows a sequential specification for such a
 queue in Harmony (exploiting some methods from the \texttt{list}
 module described in \autoref{ap:list}),
 but it cannot be used with threads concurrently accessing this queue.
-\autoref{fig:queue} shows the corresponding concurrent specification.
+\autoref{fig:queues}(b) shows the corresponding concurrent specification.
 See \autoref{fig:queuedemo} for a simple demonstration program that uses
 a concurrent queue.
 
@@ -2820,9 +2824,9 @@ The \texttt{head} pointer is \texttt{None} if and only if the queue is empty.
 (\texttt{None} is a special address value that is not the address of any
 memory location.)
 
-\texttt{queue.Queue()} returns a new queue object consisting of a \texttt{None} head
+\texttt{Queue()} returns a new queue object consisting of a \texttt{None} head
 and tail pointer and a lock.
-$\mathtt{queue.put}(q, v)$ and $\mathtt{queue.get}(q)$ both take a pointer $q$ to the
+The $\mathtt{put}(q, v)$ and $\mathtt{get}(q)$ methods both take a pointer $q$ to the
 queue object because both may modify the queue.
 Before they access the value of the head or tail of the queue they first obtain
 the lock.
@@ -2881,6 +2885,40 @@ undefined semantics in most environments.
 \caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items.}
 \label{fig:queueMS}
 \end{figure}
+
+\section*{Exercises}
+\begin{problems}
+\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to \autoref{fig:queues}(b)
+that checks to see if $v$ is in queue $q$.
+\item Add a method $\mathtt{length}(q)$ to \autoref{fig:queueconc} that returns the length of the given queue.
+The complexity of the method should be $O(1)$, which is to say that you should maintain
+the length of the queue as a field member and update it in \texttt{put} and \texttt{get}.
+\item \label{ex:qlength} Write a method $\mathtt{check}(q)$
+that checks the integrity of the queue in \autoref{fig:queueconc}.
+In particular, it should check the following integrity properties:
+\begin{itemize}
+\item If the list is empty, $q$$\rightarrow$$\mathtt{tail}$ should be \texttt{None}.
+Otherwise, the last element in the linked list starting from $q$$\rightarrow$$\mathtt{head}$
+should equal $q$$\rightarrow$$\mathtt{head}$. Moreover,
+$q$$\rightarrow$$\texttt{tail}$$\rightarrow$$next$ should be \texttt{None};
+\item The length field that you added in \autoref{ex:qlength} should equal the length
+of the list.
+\end{itemize}
+Method $\mathtt{check}(q)$ should not obtain a lock; instead add the following line
+just before releasing the lock in \texttt{put} and \texttt{get}:
+\begin{code}
+\textbf{assert} \texttt{check()}
+\end{code}
+\item \label{ex:qremove} Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queueconc}
+that removes all occurrences of $v$, if any, from queue $q$.
+\item The test program in \autoref{fig:queuedemo} is a not thorough test program.
+Design and implement a test program for \autoref{fig:queuedemo}.
+Make sure you \emph{test} the test program by trying it out against some buggy
+queue implementations.
+\end{problems}
+
+\chapter{Fine-Grained Locking}
+\label{ch:finegrained}
 
 \begin{figure}
 \begin{code}
@@ -2949,7 +2987,7 @@ Using \texttt{\_find} the \texttt{insert}, \texttt{remove}, and \texttt{contains
 methods are fairly straightforward.
 
 \glsadd{linearizable}%
-Like the queue in \autoref{fig:queue}, the implementation of the list is
+Like the queue in \autoref{fig:queues}(b), the implementation of the list is
 \emph{linearizable}~\cite{HW90},
 \index{linearizable}%
 a strong notion of consistency that
@@ -2972,35 +3010,6 @@ If not found, it coincides with retrieving the pointer to the
 
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to \autoref{fig:queue}
-that checks to see if $v$ is in queue $q$.
-\item Add a method $\mathtt{length}(q)$ to \autoref{fig:queue} that returns the length of the given queue.
-The complexity of the method should be $O(1)$, which is to say that you should maintain
-the length of the queue as a field member and update it in \texttt{put} and \texttt{get}.
-\item \label{ex:qlength} Write a method $\mathtt{check}(q)$
-that checks the integrity of the queue in \autoref{fig:queue}.
-In particular, it should check the following integrity properties:
-\begin{itemize}
-\item If the list is empty, $q$$\rightarrow$$\mathtt{tail}$ should be \texttt{None}.
-Otherwise, the last element in the linked list starting from $q$$\rightarrow$$\mathtt{head}$
-should equal $q$$\rightarrow$$\mathtt{head}$. Moreover,
-$q$$\rightarrow$$\texttt{tail}$$\rightarrow$$next$ should be \texttt{None};
-\item The length field that you added in \autoref{ex:qlength} should equal the length
-of the list.
-\end{itemize}
-Method $\mathtt{check}(q)$ should not obtain a lock; instead add the following line
-just before releasing the lock in \texttt{put} and \texttt{get}:
-\begin{code}
-\textbf{assert} \texttt{check()}
-\end{code}
-\item \label{ex:qremove} Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queue}
-that removes all occurrences of $v$, if any, from queue $q$.
-\item The test program in \autoref{fig:queuedemo} is a not thorough test program.
-Design and implement a test program for \autoref{fig:queuedemo}.
-Make sure you \emph{test} the test program by trying it out against some buggy
-queue implementations.
-\item Create a thread-safe sorted binary tree.  Implement a module
-\texttt{bintree} with methods
 \item Add methods to the data structure in \autoref{fig:linkedlist}
 that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
@@ -3017,12 +3026,22 @@ a lock for each node in the tree.
 \chapter{Testing}
 \label{ch:testing}
 
+\begin{comment}
 \begin{figure}
 \begin{code}
 \harmonysource{cslock}
 \end{code}
 \caption{\harmonylink{code/cslock.hny} Critical section testing without labels.}
 \label{fig:cslock}
+\end{figure}
+\end{comment}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtestseq}
+\end{code}
+\caption{\harmonylink{code/qtestseq.hny} Sequential queue test.}
+\label{fig:qtestseq}
 \end{figure}
 
 \begin{figure}
@@ -3045,13 +3064,14 @@ Testing is a way to increase confidence in the correctness
 of an implementation.
 \autoref{fig:queuedemo} demonstrates how concurrent queues
 may be used, but it is not a very thorough test program
-for an implementation such as the one in \autoref{fig:queue}
+for an implementation such as the one in \autoref{fig:queueconc}
 and does little to increase our confidence in its correctness.
 To wit, if \texttt{get()} always returned 1, the program
 would find no problems.
 In this chapter, we will look at approaches to testing
 concurrent code.
 
+\begin{comment}
 The framework in \autoref{fig:csbarebones} works well for thoroughly
 testing mutual exclusion and progress in critical sections, but depends
 on \texttt{countLabel}, an unusual operator specific to Harmony that is mostly
@@ -3062,34 +3082,15 @@ critical sections implemented using locks.
 The test uses a simple atomic counter that is incremented before entering
 the critical section and decremented after leaving it.
 Mutual exclusion holds if the counter never goes over 1.
-
-\emph{Test programs themselves should be tested}.
-Just because a test program works with a particular implementation
-does not mean the implementation is correct---it may be that the implementation
-is incorrect but the test program does not have enough coverage to find any
-bugs in the implementation.
-In the case of testing mutual exclusion with atomic counters, you will want
-to see if you can use this method to find the problems in \autoref{fig:naivelock},
-\autoref{fig:naiveflags},
-and \autoref{fig:naiveturn}.
-Conversely, a test program may be broken in that it finds bugs that do not exist.
-So, in this case,
-you also want to check if an atomic counter solution works with known
-correct solutions such as \autoref{fig:peterson} and \autoref{fig:tas}
-if possible.
+\end{comment}
 
 As with critical sections, when testing a concurrent data structure
 we need a specification for its correctness.
-A good place to start is thinking about a \emph{sequential} specification
-for queues.
-A specification is simply a program, written at a high level of
-abstraction.
-\autoref{fig:queueseq} shows a sequential specification of a
+\autoref{fig:queues}(a) shows a sequential specification of a
 queue in Harmony.
-
 First we can check if the queue implementation
-in \autoref{fig:queue} meets the sequential
-queue specification in \autoref{fig:queueseq}.
+in \autoref{fig:queueconc} meets the sequential
+queue specification in \autoref{fig:queues}(a).
 To check if the queue implementation meets the specification,
 we need to see if any sequence of queue operations in the
 implementation matches a corresponding sequence in the
@@ -3114,6 +3115,27 @@ and the queue specification.
 In the case of \texttt{get}, the results of the operation
 on both the implementation and specification are checked against one another.
 
+\emph{Test programs themselves should be tested}.
+Just because a test program works with a particular implementation
+does not mean the implementation is correct---it may be that the implementation
+is incorrect but the test program does not have enough coverage to find any
+bugs in the implementation.
+So run a test program like this with a variety of queue implementations that
+have known bugs in them and make sure that the test program finds them.
+\begin{comment}
+In the case of testing mutual exclusion with atomic counters, you will want
+to see if you can use this method to find the problems in \autoref{fig:naivelock},
+\autoref{fig:naiveflags},
+and \autoref{fig:naiveturn}.
+\end{comment}
+Conversely, a test program may be broken in that it finds bugs that do not exist.
+\begin{comment}
+So, in this case,
+you also want to check if an atomic counter solution works with known
+correct solutions such as \autoref{fig:peterson} and \autoref{fig:tas}
+if possible.
+\end{comment}
+
 As with any other test program,
 \autoref{fig:qtestseq} may not trigger extant bugs, but
 it nonetheless inspires reasonable confidence that the
@@ -3127,7 +3149,7 @@ For example, a common programming mistake is to forget to
 update the \texttt{tail} pointer in \texttt{get()} in case
 the queue becomes empty.  Normally, it is a surprisingly
 tricky bug to find.  You can comment out those lines
-in \autoref{fig:queue} and run the test program---it should
+in \autoref{fig:queueconc} and run the test program---it should
 easily find the bug and explain exactly how
 the bug manifests itself, adding confidence that the test program
 is reasonably thorough.
@@ -3136,7 +3158,7 @@ The test program also finds some common mistakes in using
 locks, such as forgetting to release a lock when the queue
 is empty, but it is not designed to find concurrency bugs
 in general.  If you remove all \texttt{acquire()} and
-\texttt{release()} calls from \autoref{fig:queue},
+\texttt{release()} calls from \autoref{fig:queueconc},
 the test program will not (and should not)
 find any errors.
 The next step is to test if the queue implementation
@@ -3163,7 +3185,7 @@ a single lock and every operation on that data
 structure starts with acquiring the lock and ends
 with releasing the lock, it will automatically be
 linearizable.
-The queue implementation in \autoref{fig:queue} does
+The queue implementation in \autoref{fig:queueconc} does
 not quite match this pattern, as the \texttt{put}
 operation allocates a new node before acquiring
 the lock.
@@ -3172,7 +3194,7 @@ the new node has no dependencies on the queue
 when it is allocated.
 
 Still, it would be useful to check in Harmony that
-\autoref{fig:queue} is linearizable.
+\autoref{fig:queueconc} is linearizable.
 To do this, instead of applying the operations sequentially,
 we want the test program to invoke the operations concurrently,
 consider all possible interleavings, and see if the result
@@ -3185,7 +3207,7 @@ but requires that the programmer
 identifies what are known as \emph{linearization points}
 in the implementation that indicate exactly \emph{which} sequential
 execution the concurrent execution must align with.
-\autoref{fig:queuelin} is a copy of \autoref{fig:queue} extended with
+\autoref{fig:queuelin} is a copy of \autoref{fig:queueconc} extended with
 linearization points.
 For each operation (\texttt{get} and \texttt{put}), the corresponding
 linearization point must occur somewhere between acquiring and releasing
@@ -3206,7 +3228,7 @@ The test program is similar to the sequential test program
 (\autoref{fig:qtestseq}) but starts a thread for each operation.
 The operations are executed concurrently on the concurrent queue
 implementation of \autoref{fig:queuelin}, but they are executed sequentially
-on the sequential queue specification of \autoref{fig:queueseq}.
+on the sequential queue specification of \autoref{fig:queues}(a).
 To that end, the test program maintains a global time variable
 \textit{qtime}, and each thread waits until the timestamp assigned to
 the last concurrent queue operation matches \textit{qtime} before invoking
@@ -3434,7 +3456,7 @@ It was about to acquire the lock on \textit{pool}[0], but now that
 node no longer exists.
 
 To fix the code without changing the data structure, we can use
-hand-over-hand locking (\autoref{ch:cds}).
+hand-over-hand locking (\autoref{ch:finegrained}).
 \autoref{fig:queuefix} shows an implementation
 that uses hand-over-hand locking
 both for \texttt{put}() and for \texttt{get}().  It passes all tests.
