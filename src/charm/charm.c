@@ -1718,7 +1718,7 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    if (true) {
+    if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         char **table = malloc(global->graph.size * sizeof(char*));
