@@ -3870,6 +3870,14 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \end{problems}
 \end{comment}
 
+\begin{figure}
+\begin{code}
+\harmonysource{boundedbuffer}
+\end{code}
+\caption{\harmonylink{code/boundedbuffer.hny} Bounded buffer specification.}
+\label{fig:boundedbuffer}
+\end{figure}
+
 \section{Bounded Buffer}
 \index{bounded buffer}%
 \index{producer/consumer problem}%
@@ -3940,7 +3948,9 @@ the \emph{tail} points where new items are enqueued and the \emph{head}
 points where items are dequeued.
 If the buffer is full, the enqueuer must wait; if the buffer is empty, the
 dequeuer must wait.
-This problem is known as the ``Producer/Consumer Problem'' and was
+\autoref{fig:boundedbuffer} specifies a bounded buffer.
+Coming up with a good implementation is known as the
+``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.
 Multiple producers and multiple consumers may all share
 the same bounded buffer.
@@ -3958,6 +3968,15 @@ some thread may act as a \emph{server} that clients can send requests to
 and receive responses from.  In that case, there is a bounded buffer
 for each client/server pair. Clients produce requests and
 consume responses, while the server consumes requests and produces responses.
+
+\index{flow control}%
+Unlike an ordinary queue, where queues can grow arbitrarily, bounded buffers
+provide \emph{flow control}: if the consumer runs faster than the producer
+(or producers), it will automatically block until there are new requests.
+Similarly, if the producers add requests at a rate that is higher than the
+consumers can deal with, the producers are blocked.  While a buffer of size 1
+already provides those properties, a larger buffer is able to deal with short
+spikes without blocking anybody.
 
 \begin{comment}
 \autoref{fig:pc} gives a high-level description.  The

@@ -48,6 +48,7 @@ CODE = \
     barriertest.tex \
     bosco.tex \
     bosco2.tex \
+    boundedbuffer.tex \
     chain.tex \
     clock.tex \
     counter.tex \
