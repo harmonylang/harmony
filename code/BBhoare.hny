@@ -1,6 +1,6 @@
 import hoare
 
-def BB(size):
+def BoundedBuffer(size):
     result = {
             .mon: hoare.Monitor(),
             .prod: hoare.Condition(), .cons: hoare.Condition(),

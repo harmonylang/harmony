@@ -214,14 +214,14 @@ echo ==============
 ./harmony -mRW=RWfair -msynch=synchS code/RWtest.hny
 
 echo ==============
-echo BBhoaretest
+echo BBtest
 echo ==============
-./harmony code/BBhoaretest.hny
+./harmony -mboundedbuffer=BBhoare code/BBtest.hny
 
 echo ==============
-echo BBhoaretest synchS
+echo BBtest synchS
 echo ==============
-./harmony -msynch=synchS code/BBhoaretest.hny
+./harmony -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
 
 echo ==============
 echo RWcv

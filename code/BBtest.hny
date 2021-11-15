@@ -1,13 +1,13 @@
-import BBhoare
+import boundedbuffer
 
 def producer(bb, v):
-    BBhoare.put(bb, v)
+    boundedbuffer.put(bb, v)
 
 def consumer(bb):
-    let v = BBhoare.get(bb):
+    let v = boundedbuffer.get(bb):
         assert v in { 1, 2 }
 
-testbb = BBhoare.BB(1)
+testbb = boundedbuffer.BoundedBuffer(1)
 spawn producer(?testbb, 1)
 spawn producer(?testbb, 2)
 spawn consumer(?testbb)
