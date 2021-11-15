@@ -3512,6 +3512,14 @@ and \emph{bounded buffers}.
 
 \begin{figure}
 \begin{code}
+\harmonysource{RW}
+\end{code}
+\caption{\harmonylink{code/RW.hny} Specification of reader/writer locks.}
+\label{fig:rwspec}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 \harmonysource{RWtest}
 \end{code}
 \caption{\harmonylink{code/RWtest.hny} Test code for reader/writer locks.}
@@ -3525,9 +3533,9 @@ and \emph{bounded buffers}.
 \begin{comment}
 \begin{figure}
 \begin{code}
-\harmonysource{RW}
+\harmonysource{RWbusy}
 \end{code}
-\caption{\harmonylink{code/RW.hny} Busy-Waiting Reader/Writer Lock implementation.}
+\caption{\harmonylink{code/RWbusy.hny} Busy-Waiting Reader/Writer Lock implementation.}
 \label{fig:rwbusy}
 \end{figure}
 
@@ -3559,7 +3567,7 @@ or (ii) one or more readers to acquire the lock.  This is called
 a \emph{reader/writer lock}~\cite{CHP71}.
 %
 A reader/writer lock is an object whose abstract (and opaque)
-state contains two integer counters:
+state contains two integer counters (see \autoref{fig:rwspec}):
 \begin{enumerate}
 \item \textit{nreaders}: the number of readers
 \item \textit{nwriters}: the number of writers
