@@ -176,8 +176,8 @@ table td, table th {
             <a name='P3'>3</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='set program counter to 48' id='C3'>
-              Jump 48
+            <span title='set program counter to 42' id='C3'>
+              Jump 42
             </span>
           </td>
         </tr>
@@ -216,8 +216,8 @@ table td, table th {
             <a name='P7'>7</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a value and jump to 46 if the value is False' id='C7'>
-              JumpCond False 46
+            <span title='pop a value and jump to 40 if the value is False' id='C7'>
+              JumpCond False 40
             </span>
           </td>
         </tr>
@@ -336,8 +336,8 @@ table td, table th {
             <a name='P19'>19</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop a value and jump to 13 if the value is True' id='C19'>
-              JumpCond True 13
+            <span title='pop 1 value and push the result of applying not' id='C19'>
+              1-ary not
             </span>
           </td>
         </tr>
@@ -346,8 +346,8 @@ table td, table th {
             <a name='P20'>20</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C20'>
-              AtomicInc(False)
+            <span title='pop a value and jump to 13 if the value is False' id='C20'>
+              JumpCond False 13
             </span>
           </td>
         </tr>
@@ -356,8 +356,8 @@ table td, table th {
             <a name='P21'>21</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C21'>
-              ReadonlyInc
+            <span title='set program counter to 23' id='C21'>
+              Jump 23
             </span>
           </td>
         </tr>
@@ -366,8 +366,8 @@ table td, table th {
             <a name='P22'>22</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C22'>
-              AtomicInc(True)
+            <span title='set program counter to 13' id='C22'>
+              Jump 13
             </span>
           </td>
         </tr>
@@ -376,8 +376,8 @@ table td, table th {
             <a name='P23'>23</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant PC(20)' id='C23'>
-              Push PC(20)
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C23'>
+              AtomicInc(eager)
             </span>
           </td>
         </tr>
@@ -386,8 +386,8 @@ table td, table th {
             <a name='P24'>24</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 1 value and push the result of applying atLabel' id='C24'>
-              1-ary atLabel
+            <span title='increment readonly counter of context; thread cannot mutate shared variables if > 0' id='C24'>
+              ReadonlyInc
             </span>
           </td>
         </tr>
@@ -396,8 +396,8 @@ table td, table th {
             <a name='P25'>25</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant ()' id='C25'>
-              Push ()
+            <span title='increment atomic counter of context; thread runs uninterrupted if larger than 0' id='C25'>
+              AtomicInc(lazy)
             </span>
           </td>
         </tr>
@@ -406,8 +406,8 @@ table td, table th {
             <a name='P26'>26</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant ()' id='C26'>
-              Push ()
+            <span title='push constant PC(23)' id='C26'>
+              Push PC(23)
             </span>
           </td>
         </tr>
@@ -416,8 +416,8 @@ table td, table th {
             <a name='P27'>27</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 0' id='C27'>
-              Push 0
+            <span title='pop 1 value and push the result of applying countLabel' id='C27'>
+              1-ary countLabel
             </span>
           </td>
         </tr>
@@ -426,8 +426,8 @@ table td, table th {
             <a name='P28'>28</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant PC(4)' id='C28'>
-              Push PC(4)
+            <span title='push constant 1' id='C28'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -436,8 +436,8 @@ table td, table th {
             <a name='P29'>29</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop 3 values and push the result of applying DictAdd' id='C29'>
-              3-ary DictAdd
+            <span title='pop 2 values and push the result of applying ==' id='C29'>
+              2-ary ==
             </span>
           </td>
         </tr>
@@ -446,8 +446,8 @@ table td, table th {
             <a name='P30'>30</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant 1' id='C30'>
-              Push 1
+            <span title='pop a condition and raise exception if condition is false' id='C30'>
+              Assert
             </span>
           </td>
         </tr>
@@ -456,8 +456,8 @@ table td, table th {
             <a name='P31'>31</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push the value of self' id='C31'>
-              LoadVar self
+            <span title='decrement atomic counter of context' id='C31'>
+              AtomicDec
             </span>
           </td>
         </tr>
@@ -466,8 +466,8 @@ table td, table th {
             <a name='P32'>32</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 3 values and push the result of applying DictAdd' id='C32'>
-              3-ary DictAdd
+            <span title='decrement readonly counter of context' id='C32'>
+              ReadonlyDec
             </span>
           </td>
         </tr>
@@ -476,8 +476,8 @@ table td, table th {
             <a name='P33'>33</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 1' id='C33'>
-              Push 1
+            <span title='decrement atomic counter of context' id='C33'>
+              AtomicDec
             </span>
           </td>
         </tr>
@@ -486,8 +486,8 @@ table td, table th {
             <a name='P34'>34</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop 3 values and push the result of applying DictAdd' id='C34'>
-              3-ary DictAdd
+            <span title='push constant ?flags' id='C34'>
+              Push ?flags
             </span>
           </td>
         </tr>
@@ -496,8 +496,8 @@ table td, table th {
             <a name='P35'>35</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop 2 values and push the result of applying ==' id='C35'>
-              2-ary ==
+            <span title='push the value of self' id='C35'>
+              LoadVar self
             </span>
           </td>
         </tr>
@@ -506,8 +506,8 @@ table td, table th {
             <a name='P36'>36</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a condition and raise exception if condition is false' id='C36'>
-              Assert
+            <span title='combine the top two values on the stack into an address and push the result' id='C36'>
+              Address
             </span>
           </td>
         </tr>
@@ -516,8 +516,8 @@ table td, table th {
             <a name='P37'>37</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='decrement atomic counter of context' id='C37'>
-              AtomicDec
+            <span title='push constant False' id='C37'>
+              Push False
             </span>
           </td>
         </tr>
@@ -526,8 +526,8 @@ table td, table th {
             <a name='P38'>38</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='decrement readonly counter of context' id='C38'>
-              ReadonlyDec
+            <span title='pop a value and an address and store the value at the address' id='C38'>
+              Store
             </span>
           </td>
         </tr>
@@ -536,8 +536,8 @@ table td, table th {
             <a name='P39'>39</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='decrement atomic counter of context' id='C39'>
-              AtomicDec
+            <span title='set program counter to 5' id='C39'>
+              Jump 5
             </span>
           </td>
         </tr>
@@ -546,8 +546,8 @@ table td, table th {
             <a name='P40'>40</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant ?flags' id='C40'>
-              Push ?flags
+            <span title='delete method variable self' id='C40'>
+              DelVar self
             </span>
           </td>
         </tr>
@@ -556,8 +556,8 @@ table td, table th {
             <a name='P41'>41</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push the value of self' id='C41'>
-              LoadVar self
+            <span title='restore caller method state and push result' id='C41'>
+              Return
             </span>
           </td>
         </tr>
@@ -566,8 +566,8 @@ table td, table th {
             <a name='P42'>42</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='combine the top two values on the stack into an address and push the result' id='C42'>
-              Address
+            <span title='push constant PC(4)' id='C42'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -576,8 +576,8 @@ table td, table th {
             <a name='P43'>43</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant False' id='C43'>
-              Push False
+            <span title='push constant 0' id='C43'>
+              Push 0
             </span>
           </td>
         </tr>
@@ -586,8 +586,8 @@ table td, table th {
             <a name='P44'>44</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='pop a value and an address and store the value at the address' id='C44'>
-              Store
+            <span title='push constant ()' id='C44'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -596,8 +596,8 @@ table td, table th {
             <a name='P45'>45</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='set program counter to 5' id='C45'>
-              Jump 5
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C45'>
+              Spawn
             </span>
           </td>
         </tr>
@@ -606,8 +606,8 @@ table td, table th {
             <a name='P46'>46</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='delete method variable self' id='C46'>
-              DelVar self
+            <span title='push constant PC(4)' id='C46'>
+              Push PC(4)
             </span>
           </td>
         </tr>
@@ -616,8 +616,8 @@ table td, table th {
             <a name='P47'>47</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='restore caller method state and push result' id='C47'>
-              Return
+            <span title='push constant 1' id='C47'>
+              Push 1
             </span>
           </td>
         </tr>
@@ -626,8 +626,8 @@ table td, table th {
             <a name='P48'>48</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant PC(4)' id='C48'>
-              Push PC(4)
+            <span title='push constant ()' id='C48'>
+              Push ()
             </span>
           </td>
         </tr>
@@ -636,8 +636,8 @@ table td, table th {
             <a name='P49'>49</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='push constant 0' id='C49'>
-              Push 0
+            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C49'>
+              Spawn
             </span>
           </td>
         </tr>
@@ -646,8 +646,8 @@ table td, table th {
             <a name='P50'>50</a>&nbsp;
           </td>
           <td style='background-color: white;'>
-            <span title='push constant ()' id='C50'>
-              Push ()
+            <span title='restore caller method state and push result' id='C50'>
+              Return
             </span>
           </td>
         </tr>
@@ -656,67 +656,7 @@ table td, table th {
             <a name='P51'>51</a>&nbsp;
           </td>
           <td style='background-color: #E6E6E6;'>
-            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C51'>
-              Spawn
-            </span>
-          </td>
-        </tr>
-        <tr id='P52'>
-          <td align='right'>
-            <a name='P52'>52</a>&nbsp;
-          </td>
-          <td style='background-color: white;'>
-            <span title='push constant PC(4)' id='C52'>
-              Push PC(4)
-            </span>
-          </td>
-        </tr>
-        <tr id='P53'>
-          <td align='right'>
-            <a name='P53'>53</a>&nbsp;
-          </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='push constant 1' id='C53'>
-              Push 1
-            </span>
-          </td>
-        </tr>
-        <tr id='P54'>
-          <td align='right'>
-            <a name='P54'>54</a>&nbsp;
-          </td>
-          <td style='background-color: white;'>
-            <span title='push constant ()' id='C54'>
-              Push ()
-            </span>
-          </td>
-        </tr>
-        <tr id='P55'>
-          <td align='right'>
-            <a name='P55'>55</a>&nbsp;
-          </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='pop thread-local state, argument, and pc and spawn a new thread' id='C55'>
-              Spawn
-            </span>
-          </td>
-        </tr>
-        <tr id='P56'>
-          <td align='right'>
-            <a name='P56'>56</a>&nbsp;
-          </td>
-          <td style='background-color: white;'>
-            <span title='restore caller method state and push result' id='C56'>
-              Return
-            </span>
-          </td>
-        </tr>
-        <tr id='P57'>
-          <td align='right'>
-            <a name='P57'>57</a>&nbsp;
-          </td>
-          <td style='background-color: #E6E6E6;'>
-            <span title='delete method variable result' id='C57'>
+            <span title='delete method variable result' id='C51'>
               DelVar result
             </span>
           </td>
@@ -809,7 +749,7 @@ var state =
     {
       "id": "1",
       "tid": "0",
-      "xhash": "555833433907",
+      "xhash": "55b4ecf03d07",
       "name": "__init__()",
       "microsteps": [
         {
@@ -844,54 +784,54 @@ var state =
           "pc": "2"
         },
         {
-          "npc": "48",
+          "npc": "42",
           "push": [ ],
           "pc": "3"
         },
         {
-          "npc": "49",
+          "npc": "43",
           "push": [ { "type": "pc", "value": "4" } ],
+          "pc": "42"
+        },
+        {
+          "npc": "44",
+          "push": [ { "type": "int", "value": "0" } ],
+          "pc": "43"
+        },
+        {
+          "npc": "45",
+          "push": [ { "type": "dict", "value": [] } ],
+          "pc": "44"
+        },
+        {
+          "npc": "46",
+          "pop": "3",
+          "push": [ ],
+          "pc": "45"
+        },
+        {
+          "npc": "47",
+          "push": [ { "type": "pc", "value": "4" } ],
+          "pc": "46"
+        },
+        {
+          "npc": "48",
+          "push": [ { "type": "int", "value": "1" } ],
+          "pc": "47"
+        },
+        {
+          "npc": "49",
+          "push": [ { "type": "dict", "value": [] } ],
           "pc": "48"
         },
         {
           "npc": "50",
-          "push": [ { "type": "int", "value": "0" } ],
+          "pop": "3",
+          "push": [ ],
           "pc": "49"
         },
         {
-          "npc": "51",
-          "push": [ { "type": "dict", "value": [] } ],
-          "pc": "50"
-        },
-        {
-          "npc": "52",
-          "pop": "3",
-          "push": [ ],
-          "pc": "51"
-        },
-        {
-          "npc": "53",
-          "push": [ { "type": "pc", "value": "4" } ],
-          "pc": "52"
-        },
-        {
-          "npc": "54",
-          "push": [ { "type": "int", "value": "1" } ],
-          "pc": "53"
-        },
-        {
-          "npc": "55",
-          "push": [ { "type": "dict", "value": [] } ],
-          "pc": "54"
-        },
-        {
-          "npc": "56",
-          "pop": "3",
-          "push": [ ],
-          "pc": "55"
-        },
-        {
-          "npc": "56",
+          "npc": "50",
           "fp": "0",
           "trace": [
 
@@ -900,7 +840,7 @@ var state =
           "mode": "terminated",
           "pop": "4",
           "push": [ ],
-          "pc": "56"
+          "pc": "50"
         }
       ],
       "invfails": [
@@ -908,10 +848,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -922,7 +862,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833437e67",
+          "yhash": "7f9434000ec7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "4",
@@ -935,7 +875,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "555833437e97",
+          "yhash": "7f9434000ef7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -951,7 +891,7 @@ var state =
     {
       "id": "2",
       "tid": "1",
-      "xhash": "555833437e67",
+      "xhash": "7f9434000ec7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -982,10 +922,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -996,7 +936,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833438457",
+          "yhash": "7f94340014a7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "6",
@@ -1015,7 +955,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "555833437e97",
+          "yhash": "7f9434000ef7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1029,9 +969,9 @@ var state =
       ]
     },
     {
-      "id": "5",
+      "id": "7",
       "tid": "1",
-      "xhash": "555833438457",
+      "xhash": "7f94340014a7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1085,10 +1025,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -1099,7 +1039,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833438d07",
+          "yhash": "7f9434001aa7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "12",
@@ -1118,7 +1058,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "555833437e97",
+          "yhash": "7f9434000ef7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1132,9 +1072,9 @@ var state =
       ]
     },
     {
-      "id": "10",
+      "id": "9",
       "tid": "1",
-      "xhash": "555833438d07",
+      "xhash": "7f9434001aa7",
       "name": "thread(0)",
       "microsteps": [
         {
@@ -1188,10 +1128,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -1202,7 +1142,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833439a67",
+          "yhash": "7f942c0012e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "18",
@@ -1221,7 +1161,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "555833437e97",
+          "yhash": "7f9434000ef7",
           "name": "thread(1)",
           "entry": "4",
           "pc": "4",
@@ -1235,9 +1175,9 @@ var state =
       ]
     },
     {
-      "id": "15",
+      "id": "19",
       "tid": "2",
-      "xhash": "555833437e97",
+      "xhash": "7f9434000ef7",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1268,10 +1208,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -1282,7 +1222,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833439a67",
+          "yhash": "7f942c0012e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "18",
@@ -1301,7 +1241,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "5558334387f7",
+          "yhash": "7f9434001727",
           "name": "thread(1)",
           "entry": "4",
           "pc": "6",
@@ -1323,7 +1263,7 @@ var state =
     {
       "id": "30",
       "tid": "2",
-      "xhash": "5558334387f7",
+      "xhash": "7f9434001727",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1377,10 +1317,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -1391,7 +1331,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833439a67",
+          "yhash": "7f942c0012e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "18",
@@ -1410,7 +1350,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "555833439297",
+          "yhash": "7f942c000e97",
           "name": "thread(1)",
           "entry": "4",
           "pc": "12",
@@ -1430,9 +1370,9 @@ var state =
       ]
     },
     {
-      "id": "38",
+      "id": "40",
       "tid": "2",
-      "xhash": "555833439297",
+      "xhash": "7f942c000e97",
       "name": "thread(1)",
       "microsteps": [
         {
@@ -1486,10 +1426,10 @@ var state =
       "contexts": [
         {
           "tid": "0",
-          "yhash": "555833438097",
+          "yhash": "7f9434001137",
           "name": "__init__()",
           "entry": "0",
-          "pc": "56",
+          "pc": "50",
           "fp": "0",
           "trace": [
 
@@ -1500,7 +1440,7 @@ var state =
         },
         {
           "tid": "1",
-          "yhash": "555833439a67",
+          "yhash": "7f942c0012e7",
           "name": "thread(0)",
           "entry": "4",
           "pc": "18",
@@ -1519,7 +1459,7 @@ var state =
         },
         {
           "tid": "2",
-          "yhash": "55583343a337",
+          "yhash": "7f9434002047",
           "name": "thread(1)",
           "entry": "4",
           "pc": "18",
@@ -1543,11 +1483,11 @@ var state =
     "Frame __init__ ()",
     "Push [False, False]",
     "Store flags",
-    "Jump 48",
+    "Jump 42",
     "Frame thread self",
     "Push { False, True }",
     "Choose",
-    "JumpCond False 46",
+    "JumpCond False 40",
     "Push ?flags",
     "LoadVar self",
     "Address",
@@ -1559,22 +1499,16 @@ var state =
     "2-ary -",
     "Address",
     "Load",
-    "JumpCond True 13",
-    "AtomicInc(False)",
+    "1-ary not",
+    "JumpCond False 13",
+    "Jump 23",
+    "Jump 13",
+    "AtomicInc(eager)",
     "ReadonlyInc",
-    "AtomicInc(True)",
-    "Push PC(20)",
-    "1-ary atLabel",
-    "Push ()",
-    "Push ()",
-    "Push 0",
-    "Push PC(4)",
-    "3-ary DictAdd",
+    "AtomicInc(lazy)",
+    "Push PC(23)",
+    "1-ary countLabel",
     "Push 1",
-    "LoadVar self",
-    "3-ary DictAdd",
-    "Push 1",
-    "3-ary DictAdd",
     "2-ary ==",
     "Assert",
     "AtomicDec",
@@ -1603,11 +1537,11 @@ var state =
     "start of method __init__",
     "push constant [False, False]",
     "pop a value and store it in shared variable flags",
-    "set program counter to 48",
+    "set program counter to 42",
     "start of method thread",
     "push constant { False, True }",
     "pop a set value and push one of its elements",
-    "pop a value and jump to 46 if the value is False",
+    "pop a value and jump to 40 if the value is False",
     "push constant ?flags",
     "push the value of self",
     "combine the top two values on the stack into an address and push the result",
@@ -1619,22 +1553,16 @@ var state =
     "pop 2 values and push the result of applying -",
     "combine the top two values on the stack into an address and push the result",
     "pop an address and push the value at the address",
-    "pop a value and jump to 13 if the value is True",
+    "pop 1 value and push the result of applying not",
+    "pop a value and jump to 13 if the value is False",
+    "set program counter to 23",
+    "set program counter to 13",
     "increment atomic counter of context; thread runs uninterrupted if larger than 0",
     "increment readonly counter of context; thread cannot mutate shared variables if > 0",
     "increment atomic counter of context; thread runs uninterrupted if larger than 0",
-    "push constant PC(20)",
-    "pop 1 value and push the result of applying atLabel",
-    "push constant ()",
-    "push constant ()",
-    "push constant 0",
-    "push constant PC(4)",
-    "pop 3 values and push the result of applying DictAdd",
+    "push constant PC(23)",
+    "pop 1 value and push the result of applying countLabel",
     "push constant 1",
-    "push the value of self",
-    "pop 3 values and push the result of applying DictAdd",
-    "push constant 1",
-    "pop 3 values and push the result of applying DictAdd",
     "pop 2 values and push the result of applying ==",
     "pop a condition and raise exception if condition is false",
     "decrement atomic counter of context",
@@ -1660,63 +1588,57 @@ var state =
     "delete method variable result"
   ],
   "locations": {
-    "43": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
-    "50": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
-    "42": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "43": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
+    "50": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
+    "42": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
     "2": { "file": "code/naiveFlags.hny", "line": "1", "code": "flags = [ False, False ]" },
-    "51": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
+    "51": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "3": { "file": "code/naiveFlags.hny", "line": "3", "code": "def thread(self):" },
     "12": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True" },
-    "56": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "9": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True" },
     "41": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
     "8": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True" },
     "13": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "52": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "11": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True" },
     "40": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
-    "53": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "10": { "file": "code/naiveFlags.hny", "line": "6", "code": "        flags[self] = True" },
-    "20": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "20": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
     "4": { "file": "code/naiveFlags.hny", "line": "3", "code": "def thread(self):" },
-    "30": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "30": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
     "7": { "file": "code/naiveFlags.hny", "line": "4", "code": "    while choose({ False, True }):" },
     "6": { "file": "code/naiveFlags.hny", "line": "4", "code": "    while choose({ False, True }):" },
-    "47": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "47": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "17": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "22": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "32": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "22": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
+    "32": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
     "15": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "39": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "29": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "39": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "29": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
     "1": { "file": "code/naiveFlags.hny", "line": "1", "code": "flags = [ False, False ]" },
-    "57": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
     "5": { "file": "code/naiveFlags.hny", "line": "4", "code": "    while choose({ False, True }):" },
-    "55": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
-    "45": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "45": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
     "18": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "25": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "35": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "49": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
-    "34": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "24": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "25": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "35": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "49": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
+    "34": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "24": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
     "19": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "48": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
-    "27": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "37": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "26": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "36": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "31": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "21": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "48": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
+    "27": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "37": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "26": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "36": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
+    "31": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "21": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
     "16": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "44": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
-    "33": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
+    "44": { "file": "code/naiveFlags.hny", "line": "15", "code": "spawn thread(0)" },
+    "33": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
     "14": { "file": "code/naiveFlags.hny", "line": "7", "code": "        await not flags[1 - self]" },
-    "23": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "46": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" },
-    "28": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "38": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert atLabel(cs) == { (thread, self): 1 }" },
-    "54": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" }
+    "23": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "46": { "file": "code/naiveFlags.hny", "line": "16", "code": "spawn thread(1)" },
+    "28": { "file": "code/naiveFlags.hny", "line": "10", "code": "        @cs: assert countLabel(cs) == 1" },
+    "38": { "file": "code/naiveFlags.hny", "line": "13", "code": "        flags[self] = False" }
   }
 }
 
