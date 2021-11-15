@@ -5611,10 +5611,11 @@ code for a processor with identifier \textit{self} and successor
 It starts simply by sending its own identifier to its successor.
 The processor then loops until it discovers the identifier of the
 leader in the second phase of the protocol.
-A processor waits for a message using the Harmony \textbf{select} statement.
-This statement takes the form \textbf{select} $v$ \textbf{in} $s$: \emph{statement block}
+A processor waits for a message using the Harmony
+\textbf{atomically when exists} statement.
+This statement takes the form \textbf{atomically when exists} $v$ \textbf{in} $s$: \emph{statement block}
 where $s$ is a set and $v$ is variable that is bound to an element of $s$.
-The properties of the \textbf{select} statement are as follows:
+The properties of the statement are as follows:
 \begin{itemize}
 \item it waits until $s$ is non-empty;
 \item it is executed atomically;
@@ -5640,7 +5641,8 @@ to a lot of executions that must be checked.
 First, every possible permutation of identifiers for the processors
 is tried.  When there are multiple messages to receive by a processor,
 every possible order is tried (including receiving the same message
-multiple times).  Fortunately, the \texttt{select} statement is executed
+multiple times).  Fortunately, the \texttt{atomically when exists} statement
+is executed
 atomically, otherwise the body of the statement could lead to additional
 thread interleavings.  Because in practice the different processors do
 not share memory, it is not necessary to check those interleavings.
@@ -5772,7 +5774,8 @@ a \texttt{.abort} message, the bank restores \textit{balance} first.
 
 \autoref{fig:2pc2} contains the code for transfers and inquiries, as well
 as tests.
-The \texttt{receive()} method is used by coordinators in a \textbf{select}
+The \texttt{receive()} method is used by coordinators in an
+\textbf{atomically when exists}
 statement to wait for a response from each bank involved in a transaction.
 Argument \texttt{self} is the
 identifier of the coordinator and \texttt{sources} is the set of banks.
@@ -6182,22 +6185,22 @@ violate either Validity or Agreement.  We only check that \emph{if} decisions ar
 made, they satisfy Validity and Agreement.
 
 In Line~22, a processor waits for $\texttt{N} - \texttt{F}$ messages using
-the Harmony \textbf{select} statement.
+the Harmony \textbf{atomically when exists} statement.
 Since Harmony has to check all possible executions of the protocol, the
 \texttt{receive}(\textit{round}, $k$) method returns all \emph{subbags} of messages
 for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method uses a
 dictionary comprehension to filter out all messages for the given \textit{round}
 and then uses the \texttt{bag.combinations} method to find all combinations of size $k$.
-The \textbf{select} statement waits until there is at least one such combination and
+The \textbf{atomically when exists} statement waits until there is at least one such combination and
 then chooses an element, which is bound to the \textit{quorum} variable.
-The body of the \textbf{select} statement is then executed atomically.
+The body of the statement is then executed atomically.
 This is usually how distributed algorithms are modeled, because they can only interact
 through the network.  There is no need to interleave the different processes other
 than when messages are delivered.  By executing the body atomically, a lot of
 unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
-The body of the \textbf{select} statement contains the core of the algorithm.
+The body of the \textbf{atomically when exists} statement contains the core of the algorithm.
 Note that $\texttt{N} - \texttt{F} = 2\texttt{F} + 1$, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable \textit{count}[0] stores the number
@@ -7581,7 +7584,7 @@ Calling g(1,) assigns 1 to $a$, while calling g(1, 2) would result in a
 runtime error as (1, 2) cannot be matched with ($a$,).
 
 Pattern matching can also be used in \texttt{const}, \texttt{let},
-and \texttt{select} statements.
+and \texttt{when exists} statements.
 
 \begin{comment}
 \section{For Loops and Comprehensions}
