@@ -95,22 +95,6 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
-void dict_check(struct dict *dict, const void *key, unsigned int keyn){
-	int n = hash_func((const char*)key, keyn) % dict->length;
-    struct dict_bucket *db = &dict->table[n];
-
-    printf("START MATCH\n");
-	struct keynode *k = db->stable;
-	while (k != NULL) {
-		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
-            printf("MATCH %llx %llx\n",
-                (uint64_t) key, (uint64_t) k->key);
-		}
-		k = k->next;
-	}
-    printf("END MATCH\n");
-}
-
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	assert(keyn > 0);
 	int n = hash_func((const char*)key, keyn) % dict->length;
