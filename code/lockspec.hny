@@ -1,0 +1,10 @@
+def Lock():
+    result = False
+
+def acquire(lk):
+    atomically when not !lk:
+        !lk = True
+
+def release(lk):
+    assert !lk
+    atomically !lk = False
