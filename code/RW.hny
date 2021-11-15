@@ -1,0 +1,16 @@
+def RWlock():
+    result = { .nreaders: 0, .nwriters: 0 }
+
+def read_acquire(rw):
+    atomically when rw->nwriters == 0:
+        rw->nreaders += 1
+
+def read_release(rw):
+    atomically rw->nreaders -= 1
+
+def write_acquire(rw):
+    atomically when (rw->nreaders + rw->nwriters) == 0:
+        rw->nwriters = 1
+
+def write_release(rw):
+    atomically rw->nwriters = 0
