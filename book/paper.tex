@@ -6940,7 +6940,8 @@ context.
 
 \section{Statements}
 
-Harmony currently supports the following statements (below, \texttt{S} is a list of statements):
+Harmony currently supports the following statements
+(below, \texttt{S} is a list of statements):
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
@@ -6955,8 +6956,6 @@ $e$ & $e$ is an expression\\
 \texttt{and}, \texttt{or}\\
 \hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
-\hline
-\texttt{atomic: S} & \texttt{S} a list of statements\\
 \hline
 \texttt{await $b$} & $b$ is a boolean\\
 \hline
@@ -6978,7 +6977,7 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{invariant e} & \texttt{e} is an invariant\\
 \hline
-\texttt{let $a$ = $e$ [let ...]: S} & $a$ is a bounded variable, $e$ is an expression\\
+\texttt{let $a$ = $e$: S} & $a$ is a bounded variable, $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
@@ -6994,9 +6993,24 @@ $e$ is an expression, $t$ is the thread-local state \\
 \hline
 \texttt{trap m $e$} & \texttt{m} is a method and $e$ is an expression \\
 \hline
+\texttt{var $v$ = $e$} & $v$ is a new variable, $e$ is an expression\\
+\hline
+\texttt{when $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
+\hline
+\texttt{when exists $a$ in $e$: S} & $a$ is a bounded variable, $e$ is an expression\\
+\hline
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \end{tabular}
+
+\begin{itemize}
+\item Bounded variables are read-only.
+\item A statement can be preceded by the \texttt{atomically} keyword to make
+the statement atomic.
+\item Multiple \texttt{for} statements can be combined into a single statement.
+\item Multiple \texttt{let} and \texttt{when} statements can be combined into
+a single statement.
+\end{itemize}
 
 \subsection*{Single expression evaluation}
 
@@ -7049,24 +7063,27 @@ of the error should $b$ evaluate to false.
 
 \subsection*{\textbf{atomically}}
 
-The statement \textbf{atomic $S_1; S_2; ...$} evaluates statements
-$S_1, S_2, ...$ atomically in that no other threads can run while
-this atomic block is executing.  Typically an atomic block runs
-to completion before any other thread can run.  The only exception
+A statement can be preceded by the \texttt{atomically} keyword to
+make the statement atomic.
+The statement \textbf{atomically: $S_1; S_2; ...$} evaluates statements
+$S_1, S_2, ...$ atomically.
+This means that the statement runs indivisibly---no other thread can
+interleave in the atomic statement.  The only exception
 to this is if the atomic block executes a \textbf{stop} expression.
 In this case, another thread can run.  When the original thread
 is resumed (using a \textbf{go} statement), it is once again
 atomically executing.
 
-The \textbf{atomic} statement is useful for implementing synchronization
-primitives such as test-and-set.  It is also useful for testing.
+\textbf{atomically} statements are useful for specification and
+implementing synchronization primitives such as test-and-set.
+It is also useful for testing.
 It is not a replacement for lock/unlock, and should not generally be used
 for synchronization otherwise.  Lock/unlock does allow other
 threads to run concurrently---just not in the same critical section.
 
 \subsection*{\textbf{await}}
 
-The statement \textbf{await $b$} is equivalent to \textbf{while !$b$: pass}.
+The statement \textbf{await $b$} is equivalent to \textbf{when $b$: pass}.
 It is intended to improve readability of your code.
 
 \subsection*{\textbf{const}}
@@ -7089,10 +7106,8 @@ a method that takes an argument $a$ and executes the statements
 $S_1, S_2, ...$.  The argument $a$ can be a tuple pattern similar
 to those used in \texttt{let} and \texttt{for} statements.
 Examples include $()$, $(x,)$, $(x, y)$, and $(x, (y, z))$.
-The given local variable names variable names are assigned
-upon application.
-It is allowed, but discouraged, to updates those local variables
-in statements $S_1, S_2, ...$.
+The given local variable names are assigned upon application and
+are read-only.
 Each method has a predefined local variable
 \textit{result}, initialized to \texttt{None},
 that is returned by the method.  Harmony does
@@ -7213,15 +7228,14 @@ than \textbf{False} or \textbf{True}.
 
 \subsection*{\textbf{let}}
 
-You can introduce new local variables in a method using the
-\texttt{let} expression.
+You can introduce new bound variables in a method using the
+\texttt{let} statement.
 The statement \textbf{let} $a = b: S_1; S_2, ...$ evaluates $b$, assigns
-the result to local variable $a$, and evaluates statements
+the result to read-only variable $a$, and evaluates statements
 $S_1, S_2, ...$.  \textbf{let} supports pattern matching, so you can
 write \texttt{let} $x, (y, z) = b: S_1; S_2, ...$.  This will only work
 if $b$ is a tuple with two elements, the second of which also being a
 tuple with two elements---if not, Harmony will report an error.
-The variables may be updates in statements $S_1, S_2, ...$.
 
 \textbf{let} statements may be nested, such as
 \textbf{let} $a_1 = b_1$ \textbf{let} $a_2 = b_2: S_1; S_2; ...$.
@@ -7258,46 +7272,6 @@ At completion, Harmony reports which of the predicates never held.
 While \texttt{assert} statements check that nothing ever goes wrong,
 \texttt{possibly} statements can check that certain things sometimes
 go right.
-
-\subsection*{\textbf{select ... in ... [ where ... ]}}
-
-The statement \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$
-requires that $y$ evaluates to a set value.
-The statement does the following three things atomically:
-\begin{itemize}
-\item it waits until $y$ is non-empty;
-\item it selects one element of $y$ non-deterministically (using
-a \texttt{choose} expression);
-\item it executes statements $S_1, S_2, ...$ with the selected element
-assigned to local variable $x$.
-\end{itemize}
-$x$ may be a pattern, like in \texttt{let}, \texttt{for}, and \texttt{def}
-statements.
-Harmony reports an error if $y$ evaluates to a value that is not a set.
-If \textit{waiting} is an unused local variable,
-then \textbf{select} $x$ \textbf{in} $y: S_1; S_2; ...$ is equivalent to
-
-\begin{code}
-\begin{tabbing}
-XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
-\>\textbf{let} $\mathit{waiting} = \mathbf{True}:$ \\
-\>\>\textbf{while} \textit{waiting}: \\
-\>\>\>\textbf{atomic}: \\
-\>\>\>\>\textbf{if} $y$ != \{\}:\\
-\>\>\>\>\>\textbf{let} $x = \mathbf{choose}(y)$:\\
-\>\>\>\>\>\>$S_1$ \\
-\>\>\>\>\>\>$S_2$ \\
-\>\>\>\>\>\>$...$ \\
-\>\>\>\>\>$\mathit{waiting} = \mathbf{False}$
-\end{tabbing}
-\end{code}
-
-The statement is particularly useful in programming network protocols
-when having to wait for one or more messages and executing a set
-of actions atomically after the desired messages have arrived.
-
-The optional \textbf{where} clause can be used to filter the set down to the elements
-that satisfy the condition following the \textbf{where} keyword.
 
 \subsection*{\textbf{sequential}}
 
@@ -7339,6 +7313,84 @@ time.  It models a timer interrupt or any kind of asynchronous event to
 be handled by the thread.  Such interrupts can be disabled by setting
 the interrupt level of the thread to \textbf{True} using the
 \textbf{setintlevel} operator.
+
+\subsection*{\textbf{var}}
+
+You can introduce new local variables in a method using the
+\texttt{var} statement.
+The statement \textbf{var} $a = b$ evaluates $b$ and assigns
+the result to local variable $a$.
+\textbf{var} supports pattern matching, so you can
+write \texttt{var} $x, (y, z) = b$.  This will only work
+if $b$ is a tuple with two elements, the second of which also being a
+tuple with two elements---if not, Harmony will report an error.
+
+\subsection*{\textbf{when}}
+
+The statement \textbf{when} $c: S_1; S_2; ...$ executes statements
+$S_1, S_2, ...$ after waiting until $c$ evaluates to \textbf{True}.
+\texttt{when} statements are most useful when combined with the
+\texttt{atomically} keyword.
+If \textit{waiting} is an unused local variable,
+then \textbf{atomically when} $c: S_1; S_2; ...$ is equivalent to
+
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{var} $\mathit{waiting} = \mathbf{True}$ \\
+\>\textbf{while} \textit{waiting}: \\
+\>\>\textbf{atomically}: \\
+\>\>\>\textbf{if} $c$:\\
+\>\>\>\>$S_1$ \\
+\>\>\>\>$S_2$ \\
+\>\>\>\>$...$ \\
+\>\>\>\>$\mathit{waiting} = \mathbf{False}$
+\end{tabbing}
+\end{code}
+
+Multiple \texttt{let} and \texttt{when} statements can be combined.
+The expressions before the colon are re-evaluated repeated until all
+\texttt{when} conditions are satisfied.
+
+\subsection*{\textbf{when exists ... in ...}}
+
+The statement \textbf{when exists} $x$ \textbf{in} $y: S_1; S_2; ...$
+requires that $y$ evaluates to a set value.
+The statement does the following three things:
+\begin{itemize}
+\item it waits until $y$ is non-empty;
+\item it selects one element of $y$ non-deterministically (using
+a \texttt{choose} expression);
+\item it executes statements $S_1, S_2, ...$ with the selected element
+bound to read-only variable $x$.
+\end{itemize}
+$x$ may be a pattern, like in \texttt{let}, \texttt{for}, and \texttt{def}
+statements.
+Harmony reports an error if $y$ evaluates to a value that is not a set.
+
+\texttt{when} statements are most useful when combined with the
+\texttt{atomically} keyword.
+If \textit{waiting} is an unused local variable,
+then \textbf{atomically when exists} $x$ \textbf{in} $y: S_1; S_2; ...$ is equivalent to
+
+\begin{code}
+\begin{tabbing}
+XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\=XXX\kill
+\>\textbf{var} $\mathit{waiting} = \mathbf{True}:$ \\
+\>\textbf{while} \textit{waiting}: \\
+\>\>\textbf{atomic}: \\
+\>\>\>\textbf{if} $y$ != \{\}:\\
+\>\>\>\>\textbf{let} $x = \mathbf{choose}(y)$:\\
+\>\>\>\>\>$S_1$ \\
+\>\>\>\>\>$S_2$ \\
+\>\>\>\>\>$...$ \\
+\>\>\>\>$\mathit{waiting} = \mathbf{False}$
+\end{tabbing}
+\end{code}
+
+The statement is particularly useful in programming network protocols
+when having to wait for one or more messages and executing a set
+of actions atomically after the desired messages have arrived.
 
 \subsection*{\textbf{while}}
 
@@ -7412,16 +7464,19 @@ object-orientation, but instead use \texttt{malloc} and \texttt{free}.
 \section{Constants, Global and Local Variables}\label{sec:vars}
 
 Each (non-reserved) identifier in a Harmony program refers to either
-a constant, a global shared variable, a local variable, or a module.
+a global constant, a global shared variable, a local bound variable,
+a local mutable variable, or a module.
 Constants are declared using \texttt{const} statements.
 Those constants are computed at compile-time.
 
-Local variables all declared.  They can be declared in
+Local variables all declared.
+Bound variables can be declared in
 \texttt{def} statements (i.e., arguments),
-\texttt{let} statements, \texttt{for} loops, and \texttt{select} statements.
+\texttt{let} statements, \texttt{for} loops, and \texttt{when exists} statements.
+Mutable variables can be declared with the \texttt{var} statement.
 Also, each method has an implicitly declared
 \textit{result} variable, which is initialized to \texttt{None}.
-Each thread has a variable called \textit{this} that contains
+Each thread has a mutable variable called \textit{this} that contains
 the thread-local state.
 Local variables are tightly scoped and cannot be shared
 between threads.
@@ -7429,9 +7484,6 @@ While in theory one method can be declared within another,
 they cannot share local variables either.
 All other variables are global and must be initialized
 before any threads are spawned.
-
-While arguments to a method and variables in \texttt{for} loops
-can be modified, we discourage it for improved code readability.
 
 \section{Operator Precedence}
 

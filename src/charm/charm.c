@@ -1718,7 +1718,7 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    if (false) {
+    if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         char **table = malloc(global->graph.size * sizeof(char*));
@@ -1728,34 +1728,6 @@ int main(int argc, char **argv){
             fprintf(df, "%s\n", table[i]);
         }
         fclose(df);
-        for (int i = 0; i < global->graph.size; i++) {
-            for (int j = i + 1; j < global->graph.size; j++) {
-                if (strcmp(table[i], table[j]) == 0) {
-                    uint64_t *cb1, *cb2;
-                    int n1, n2;
-                    cb1 = value_get(global->graph.nodes[i]->state->ctxbag, &n1);
-                    cb2 = value_get(global->graph.nodes[j]->state->ctxbag, &n2);
-                    printf("SAME %d %d %d %llx %llx\n", i, j,
-                        memcmp(
-                            global->graph.nodes[i]->state,
-                            global->graph.nodes[j]->state,
-                            sizeof(struct state)
-                        ),
-                        (uint64_t) cb1,
-                        (uint64_t) cb2
-                    );
-                    void dict_check(struct dict *dict, const void *key, unsigned int keyn);
-                    dict_check(global->values.dicts, cb1, n1);
-                    dict_check(global->values.dicts, cb2, n2);
-                    printf("SIZE %d %d\n", n1, n2);
-                    n1 /= sizeof(uint64_t);
-                    for (int k = 0; k < n1; k++) {
-                        printf("%llx %llx\n", *cb1++, *cb2++);
-                    }
-                    exit(0);
-                }
-            }
-        }
     }
 
     // Look for data races
