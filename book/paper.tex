@@ -3938,17 +3938,15 @@ harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.hny
 \end{figure}
 \end{comment}
 
-\index{ring buffer}%
-A \emph{bounded buffer} (aka \emph{ring buffer}) is
+A \emph{bounded buffer} is
 a queue with the usual \texttt{put/get} interface,
-but implemented using a circular buffer
-\index{circular buffer}%
-of a certain length and two pointers:
-the \emph{tail} points where new items are enqueued and the \emph{head}
-points where items are dequeued.
+but implemented using a buffer
+of a certain maximum length.
 If the buffer is full, the enqueuer must wait; if the buffer is empty, the
 dequeuer must wait.
 \autoref{fig:boundedbuffer} specifies a bounded buffer.
+It is similar to the implementation in \autoref{fig:queues}(b) but adds
+checking for bounds.
 Coming up with a good implementation is known as the
 ``Producer/Consumer Problem'' and was
 proposed by Dijkstra~\cite{EWD329}.

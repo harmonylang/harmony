@@ -1,14 +1,13 @@
+import list
+
 def BoundedBuffer(size):
-    result = { .buffer: (), .size: size, .tail: 0, .head: 0, .count: 0 }
+    result = { .buffer: [], .size: size }
 
 def put(bb, v):
-    atomically when bb->count < bb->size:
-        bb->buffer[bb->tail] = v
-        bb->tail = (bb->tail + 1) % bb->size
-        bb->count += 1
+    atomically when len(bb->buffer) < bb->size:
+        bb->buffer = list.append(bb->buffer, v)
 
 def get(bb):
-    atomically when bb->count > 0:
-        result = bb->buffer[bb->head]
-        bb->head = (bb->head + 1) % bb->size
-        bb->count -= 1
+    atomically when bb->buffer != []:
+        result = list.head(bb->buffer)
+        bb->buffer = list.tail(bb->buffer)
