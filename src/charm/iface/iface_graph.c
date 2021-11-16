@@ -159,6 +159,7 @@ static void mark_region_with_tag(struct iface_node_t *node_in_region, const int 
     struct hashset_t visited = hashset_new(0);
     struct stack_t *stack = stack_init(1);
 
+    node_in_region->_tag = tag;
     stack_push(stack, node_in_region);
 
     while (stack_len(stack) > 0) {
@@ -167,10 +168,24 @@ static void mark_region_with_tag(struct iface_node_t *node_in_region, const int 
             continue;
         }
         assert(iface_node_is_equal(node, node_in_region));
-        assert(node->_tag == -1);
 
-        node->_tag = tag;
+#ifdef true
+        bool belongs_in_same_region = true;
+        for (struct iface_edge_t *edge = node->fwd; edge != NULL; edge = edge->next) {
+            if (!iface_node_is_equal(edge->dst, node_in_region)) {
+                belongs_in_same_region = false;
+                break;
+            }
+        }
+
+        if (!belongs_in_same_region) {
+            continue;
+        }
+#endif
+
+        assert(node->_tag == -1 || node->_tag == tag);
         hashset_insert(visited, &node, sizeof(struct iface_node_t *));
+        node->_tag = tag;
 
         for (struct iface_edge_t *edge = node->fwd; edge != NULL; edge = edge->next) {
             if (iface_node_is_equal(edge->dst, node_in_region)) {
