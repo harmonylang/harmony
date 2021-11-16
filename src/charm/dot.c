@@ -75,20 +75,13 @@ void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
 
         node_fprint(node, i, f);
 
-        fprintf(f, " [");
-
-        fprintf(f, "label=\"%s\"", node->name);
-        fprintf(f, ",");
-
-        fprintf(f, "shape=");
         if (node->initial) {
-            fprintf(f, "octagon");
+            fprintf(f, " [label=__init__, shape=octagon]\n");
         } else if (node->terminating) {
-            fprintf(f, "doubleoctagon");
+            fprintf(f, " [label=\"%s\", shape=doubleoctagon]\n", node->name);
         } else {
-            fprintf(f, "box");
+            fprintf(f, " [label=\"%s\", shape=box]\n", node->name);
         }
-        fprintf(f, "]\n");
     }
 
     for (int node_idx = 0; node_idx < graph->len; node_idx++) {

@@ -174,32 +174,24 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     struct hashset_t visited = hashset_new(0);
 
     assert(global->graph.size > 0);
-    struct node_vec_t *initial_nodes = find_one_step_children(global->graph.nodes[0]);
-    printf("Found %d initial nodes\n", initial_nodes->len);
-    node_vec_print_node_ids(initial_nodes);
     struct node_vec_t *worklist = node_vec_init(1);
-
-    for (int i = 0; i < initial_nodes->len; i++) {
-        struct node *node = initial_nodes->arr[i];
-
-        assert(!hashset_contains(visited, &node, sizeof(struct node *)));
-
+    {
+        // process initial node
+        struct node *initial_node = global->graph.nodes[0];
+        node_vec_push(worklist, initial_node);
         struct iface_node_t **iface_node = (struct iface_node_t **)
-                dict_insert(node_to_iface_node, &node, sizeof(struct node *));
+                dict_insert(node_to_iface_node, &initial_node, sizeof(struct node *));
         *iface_node = iface_graph_add_node(iface_graph);
 
-        iface_ctx->pc = iface_pc;
-        (*iface_node)->value = iface_evaluate(global, node->state, &iface_ctx);
+        // Give initial node the None value, though it's displayed as "__init__"
+        (*iface_node)->value = VALUE_ADDRESS;
         (*iface_node)->initial = true;
-        (*iface_node)->terminated = value_ctx_all_eternal(node->state->ctxbag);
-        if (iface_ctx->failure != 0) {
-            printf("Failure: %s\n", value_string(iface_ctx->failure));
-        }
+        (*iface_node)->terminated = false;
 
-        struct node_vec_t *children = find_all_children(node);
+        struct node_vec_t *children = find_all_children(initial_node);
         node_vec_append_all(worklist, children);
-        for (int j = 0; j < children->len; j++) {
-            struct node *child = children->arr[j];
+        for (int i = 0; i < children->len; i++) {
+            struct node *child = children->arr[i];
 
             struct iface_node_t **child_iface_node = (struct iface_node_t **)
                     dict_insert(node_to_iface_node, &child, sizeof(struct node *));
@@ -211,11 +203,9 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
             iface_graph_add_edge(iface_graph, (*iface_node)->idx, (*child_iface_node)->idx);
         }
 
-        hashset_insert(visited, &node, sizeof(struct node *));
+        hashset_insert(visited, &initial_node, sizeof(struct node *));
         node_vec_deinit(children);
     }
-
-    node_vec_deinit(initial_nodes);
 
     while (!node_vec_is_empty(worklist)) {
         struct node *node = node_stack_pop(worklist);
@@ -233,7 +223,10 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_node->initial = false;
         iface_node->terminated = value_ctx_all_eternal(node->state->ctxbag);
         if (iface_ctx->failure != 0) {
-            printf("Failure: %s\n", value_string(iface_ctx->failure));
+            iface_node->value = VALUE_ADDRESS;
+#ifndef NDEBUG
+            printf("Iface Failure: %s\n", value_string(iface_ctx->failure));
+#endif
         }
 
         struct node_vec_t *children = find_all_children(node);
