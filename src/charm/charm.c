@@ -1861,6 +1861,8 @@ int main(int argc, char **argv){
 
     iface_write_spec_graph_to_file(global, "iface.gv");
 
+    iface_write_spec_graph_to_json_file(global, "iface.json");
+
     free(global);
     return 0;
 }
