@@ -1275,7 +1275,7 @@ static void do_work(struct worker *w){
 			int size;
 			uint64_t *ctxs = value_get(state->ctxbag, &size);
 			size /= sizeof(uint64_t);
-			assert(size > 0);
+			assert(size >= 0);
 			for (int i = 0; i < size; i += 2) {
 				assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
 				assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
