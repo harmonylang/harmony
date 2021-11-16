@@ -223,7 +223,7 @@ struct iface_graph_t *iface_graph_destutter(struct iface_graph_t *graph) {
 
     for (int i = 0; i < graph->edges_len; i++) {
         struct iface_edge_t *e = graph->edges[i];
-        if (e->is_fwd) {
+        if (e->is_fwd && e->src->_tag != e->dst->_tag) {
             iface_graph_add_edge_unique(normalized, e->src->_tag, e->dst->_tag, e->is_fwd);
         }
     }
