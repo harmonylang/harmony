@@ -3,15 +3,12 @@ import json
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
 
-INITIAL = 0
-NORMAL = 1
-FINAL = 2
-
 def parse(js):
     states = {}
+    initial_state = None;
     final_states = set()
-    input_symbols = { "__start__", "__init__", "__term__" }
-    transitions = { "__initial__": { "__start__": set() } }
+    input_symbols = { "__term__" }
+    transitions = {}
 
     # Since an NFA and DFA are only allowed to have a single initial
     # state, I have created an initial state __initial__.  From that
@@ -27,31 +24,22 @@ def parse(js):
         input_symbols.add(val)
         transitions[idx] = {}
         if s["type"] == "initial":
-            transitions["__initial__"][val] = {idx}
-            transitions[idx]["__init__"] = set()
-            states[idx] = (INITIAL, val)
+            initial_state = idx;
         elif s["type"] == "terminal":
             final_states.add(idx)
-            states[idx] = (FINAL, val)
-        else:
-            states[idx] = (NORMAL, val)
+        states[idx] = val
 
     for edge in js['edges']:
         src = str(edge["src"])
         dst = str(edge["dst"])
-        (srctype, _) = states[src]
-        (dsttype, val) = states[dst]
-        if srctype == INITIAL:
-            transitions[src]["__init__"].add(dst)
-            label = "__init__"
-        elif dsttype == FINAL:
-            label = "__term__"
+        if dst in final_states:
+            val = "__term__"
         else:
-            label = val
-        if (label in transitions[src]):
-            transitions[src][label].add(dst)
+            val = states[dst]
+        if (val in transitions[src]):
+            transitions[src][val].add(dst)
         else:
-            transitions[src][label] = {dst}
+            transitions[src][val] = {dst}
 
     # print("states", states)
     # print("final", final_states)
@@ -59,16 +47,17 @@ def parse(js):
     # print("transitions", transitions)
 
     nfa = NFA(
-        states=states.keys() | { "__initial__" },
+        states=set(states.keys()),
         input_symbols=input_symbols,
         transitions=transitions,
-        initial_state='__initial__',
+        initial_state=initial_state,
         final_states=final_states
     )
 
     dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
     # dfa.show_diagram(path='./dfa1.png')
+    # sys.exit(0)
 
     print()
 
@@ -78,6 +67,7 @@ def parse(js):
     for (idx, s) in enumerate(dfa.states):
         names[s] = idx
         values[s] = "???"
+    values[dfa.initial_state] = "initial"
 
     # Figure out the value of each of the states
     for (src, edges) in dfa.transitions.items():
@@ -88,30 +78,21 @@ def parse(js):
     print("digraph {")
 
     # Find Harmony initial states
-    initial_states = set()
-    for (lab, dst) in dfa.transitions[dfa.initial_state].items():
-        if dst != "{}":
-            initial_states.add(dst)
-
-    final_states = set()
-    for final in dfa.final_states:
-        final_states.add(final)
 
     for s in dfa.states:
-        if s == dfa.initial_state or s == "{}":
+        if s == "{}":
             continue
-        if s in initial_states:
+        if s == dfa.initial_state:
             print("  s%s [label=\"%s\",shape=octagon]"%(names[s], values[s]))
-        elif s in final_states:
+        elif s in dfa.final_states:
             print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], values[s]))
         else:
             print("  s%s [label=\"%s\",shape=box]"%(names[s], values[s]))
 
     for (src, edges) in dfa.transitions.items():
-        if src != dfa.initial_state:
-            for (input, dst) in edges.items():
-                if dst != '{}' and src != dst:
-                    print("  s%s -> s%s"%(names[src], names[dst]))
+        for (input, dst) in edges.items():
+            if dst != '{}' and src != dst:
+                print("  s%s -> s%s"%(names[src], names[dst]))
 
     print("}")
 
