@@ -3,6 +3,40 @@ import json
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
 
+def destutter(states, transitions):
+    updated = set()
+    for (k, v) in states.items():
+        # See if state k has an outgoing edge with its value
+        if v in transitions[k]:
+            # See what incoming nodes k has
+            incoming = set()
+            for k2 in states:
+                if v in transitions[k2] and k in transitions[k2][v]:
+                    incoming.add(k2)
+            # distribute each outgoing edge among the incoming nodes
+            for out in transitions[k][v]:
+                for k2 in incoming:
+                    if k2 != out:
+                        transitions[k2][v].add(out)
+
+            # remove the outgoing edges
+            del transitions[k][v]
+
+            updated.add((k, v))
+
+    if updated == set():
+        return False
+
+    for (k, v) in updated:
+        if transitions[k] == {}:
+            del states[k]
+            del transitions[k]
+            for k2 in states:
+                if v in transitions[k2] and k in transitions[k2][v]:
+                    transitions[k2][v].remove(k)
+
+    return True
+
 def parse(js):
     states = {}
     initial_state = None;
@@ -25,6 +59,7 @@ def parse(js):
         transitions[idx] = {}
         if s["type"] == "initial":
             initial_state = idx;
+            val = "__init__";
         elif s["type"] == "terminal":
             final_states.add(idx)
         states[idx] = val
@@ -32,19 +67,25 @@ def parse(js):
     for edge in js['edges']:
         src = str(edge["src"])
         dst = str(edge["dst"])
-        if dst in final_states:
-            val = "__term__"
-        else:
-            val = states[dst]
-        if (val in transitions[src]):
-            transitions[src][val].add(dst)
-        else:
-            transitions[src][val] = {dst}
+        assert dst != initial_state
+        assert src not in final_states
+        if src != dst:
+            if dst in final_states:
+                val = "__term__"
+            else:
+                val = states[dst]
+            if val in transitions[src]:
+                transitions[src][val].add(dst)
+            else:
+                transitions[src][val] = {dst}
 
     # print("states", states)
     # print("final", final_states)
     # print("symbols", input_symbols)
     # print("transitions", transitions)
+
+    while destutter(states, transitions):
+        pass
 
     nfa = NFA(
         states=set(states.keys()),
