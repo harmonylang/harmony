@@ -3,6 +3,16 @@ import json
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
 
+def dfadump(dfa):
+    rename = {}
+    for i, s in enumerate(dfa.states):
+        rename[s] = "{}" if s == "{}" else str(i)
+    print("states", { rename[s] for s in dfa.states }, file=sys.stderr)
+    for (s, d) in dfa.transitions.items():
+        print(rename[s], ":", file=sys.stderr)
+        for t, s2 in d.items():
+            print("   ", t, ":", rename[s2], file=sys.stderr)
+
 def destutter(states, transitions):
     updated = set()
     for (k, v) in states.items():
@@ -95,7 +105,15 @@ def parse(js):
         final_states=final_states
     )
 
-    dfa = DFA.from_nfa(nfa)  # returns an equivalent DFA
+    intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
+
+    # TODO.  Minifying the DFA can lead to results where not all incoming
+    #        edges to a node are labeled the same.  Is that ok??
+    # dfa = intermediate.minify()
+    dfa = intermediate
+
+    # dfadump(dfa)
+    # sys.exit(0)
 
     # dfa.show_diagram(path='./dfa1.png')
     # sys.exit(0)
