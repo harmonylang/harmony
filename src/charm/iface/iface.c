@@ -317,8 +317,7 @@ void iface_write_spec_graph_to_file(struct global_t *global, const char* filenam
 void iface_write_spec_graph_to_json_file(struct global_t *global, const char* filename) {
     int iface_pc = iface_find_pc(&global->code);
     if (iface_pc < 0) {
-        fprintf(stderr, "iface_write_spec_graph_to_json_file: find_pc failed\n");
-        exit(1);
+        return;
     }
     struct iface_graph_t *iface_graph = iface_evaluate_spec_graph(global, iface_pc);
     struct iface_graph_t *destuttered = iface_graph_destutter(iface_graph);
