@@ -187,6 +187,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         (*iface_node)->value = VALUE_ADDRESS;
         (*iface_node)->initial = true;
         (*iface_node)->terminated = false;
+        (*iface_node)->choosing = false;
 
         struct node_vec_t *children = find_all_children(initial_node);
         node_vec_append_all(worklist, children);
@@ -222,6 +223,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         iface_node->value = iface_evaluate(global, node->state, &iface_ctx);
         iface_node->initial = false;
         iface_node->terminated = value_ctx_all_eternal(node->state->ctxbag);
+        iface_node->choosing = node->state->choosing != 0;
         if (iface_ctx->failure != 0) {
             iface_node->value = VALUE_ADDRESS;
 #ifndef NDEBUG
@@ -263,6 +265,7 @@ struct dot_graph_t *iface_convert_to_dot(struct iface_graph_t *graph) {
         dot_node->name = value_string(node->value);
         dot_node->terminating = node->terminated;
         dot_node->initial = node->initial;
+        dot_node->choosing = node->choosing;
     }
 
     for (int i = 0; i < graph->edges_len; i++) {
@@ -349,6 +352,9 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
         }
         else if (node->terminated) {
             fprintf(iface_file, "\"terminal\"");
+        }
+        else if (node->choosing) {
+            fprintf(iface_file, "\"choose\"");
         }
         else {
             fprintf(iface_file, "\"normal\"");

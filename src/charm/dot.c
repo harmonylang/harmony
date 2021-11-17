@@ -79,6 +79,8 @@ void dot_graph_fprint(struct dot_graph_t *graph, FILE *f) {
             fprintf(f, " [label=__init__, shape=octagon]\n");
         } else if (node->terminating) {
             fprintf(f, " [label=\"%s\", shape=doubleoctagon]\n", node->name);
+        } else if (node->choosing) {
+            fprintf(f, " [label=\"%s\", shape=tripleoctagon]\n", node->name);
         } else {
             fprintf(f, " [label=\"%s\", shape=box]\n", node->name);
         }

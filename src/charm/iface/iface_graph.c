@@ -234,6 +234,7 @@ struct iface_graph_t *iface_graph_destutter(struct iface_graph_t *graph) {
         node->value = n->value;
         node->initial = n->initial;
         node->terminated = n->terminated;
+        node->choosing = n->choosing;
     }
 
     for (int i = 0; i < graph->edges_len; i++) {
