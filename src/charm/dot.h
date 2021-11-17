@@ -8,6 +8,7 @@ struct dot_node_t {
     const char *name;   // null-terminated string
     bool terminating;
     bool initial;
+    bool choosing;
     int *fwd;           // forward edges
     int fwd_len;        // number forward edges
 };

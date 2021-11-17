@@ -15,6 +15,7 @@ struct iface_node_t {
     uint64_t value;
     bool initial;
     bool terminated;
+    bool choosing;
 
     struct iface_edge_t *fwd;
     struct iface_edge_t *bwd;
