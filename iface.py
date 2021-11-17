@@ -13,6 +13,35 @@ def dfadump(dfa):
         for t, s2 in d.items():
             print("   ", t, ":", rename[s2], file=sys.stderr)
 
+# Get rid of choose states
+def dechoose(states, transitions, choose_states):
+    for (k, v) in states.items():
+        if k in choose_states:
+            # See what incoming nodes k has
+            incoming = set()
+            for k2 in states:
+                if v in transitions[k2] and k in transitions[k2][v]:
+                    incoming.add(k2)
+            for k2 in incoming:
+                # remove the existing transition from the incoming node
+                transitions[k2][v].remove(k)
+                if transitions[k2][v] == set():
+                    del transitions[k2][v]
+
+                # distribute each outgoing edge among the incoming node
+                for (v2, s) in transitions[k].items():
+                    for out in s:
+                        if k2 != out:
+                            if v2 in transitions[k2]:
+                                transitions[k2][v2].add(out)
+                            else:
+                                transitions[k2][v2] = { out }
+
+    for k in choose_states:
+        del states[k]
+        del transitions[k]
+
+# Get rid of stutter transitions
 def destutter(states, transitions):
     updated = set()
     for (k, v) in states.items():
@@ -51,6 +80,7 @@ def parse(js):
     states = {}
     initial_state = None;
     final_states = set()
+    choose_states = set()
     input_symbols = { "__term__" }
     transitions = {}
 
@@ -69,9 +99,11 @@ def parse(js):
         transitions[idx] = {}
         if s["type"] == "initial":
             initial_state = idx;
-            val = "__init__";
+            val = "__init__"
         elif s["type"] == "terminal":
             final_states.add(idx)
+        elif s["type"] == "choose":
+            choose_states.add(idx)
         states[idx] = val
 
     for edge in js['edges']:
@@ -89,13 +121,15 @@ def parse(js):
             else:
                 transitions[src][val] = {dst}
 
-    # print("states", states)
-    # print("final", final_states)
-    # print("symbols", input_symbols)
-    # print("transitions", transitions)
+    dechoose(states, transitions, choose_states)
 
     while destutter(states, transitions):
         pass
+
+    # print("states", states, file=sys.stderr)
+    # print("final", final_states, file=sys.stderr)
+    # print("symbols", input_symbols, file=sys.stderr)
+    # print("transitions", transitions, file=sys.stderr)
 
     nfa = NFA(
         states=set(states.keys()),
@@ -109,8 +143,8 @@ def parse(js):
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same.  Is that ok??
-    # dfa = intermediate.minify()
-    dfa = intermediate
+    dfa = intermediate.minify()
+    # dfa = intermediate
 
     # dfadump(dfa)
     # sys.exit(0)
