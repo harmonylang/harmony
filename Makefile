@@ -5,8 +5,8 @@ all:
 	chmod +x harmony
 
 iface: iface.py iface.json
-	: ./harmony -i 'flags' code/csonebit.hny
-	./harmony -i '(flags,turn)' code/Peterson.hny
+	./harmony -i 'countLabel(cs)' code/csonebit.hny
+	: ./harmony -i '(flags,turn)' code/Peterson.hny
 	python3 iface.py iface.json > x.gv
 	dot -Tpdf x.gv > x.pdf
 	open x.pdf

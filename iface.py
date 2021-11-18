@@ -84,14 +84,6 @@ def parse(js):
     input_symbols = { "__term__" }
     transitions = {}
 
-    # Since an NFA and DFA are only allowed to have a single initial
-    # state, I have created an initial state __initial__.  From that
-    # initial state, there is a transition to each of the Harmony
-    # initial states, labeled by the label of the initial state.
-    # From each Harmony initial state there is a transition labeled
-    # "__init__" to the first state after that initial state.  There
-    # is a "__term__" transition to each final state.
-
     for s in js["nodes"]:
         idx = str(s["idx"])
         val = str(s["value"])
@@ -142,9 +134,9 @@ def parse(js):
     intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
-    #        edges to a node are labeled the same.  Is that ok??
-    dfa = intermediate.minify()
-    # dfa = intermediate
+    #        edges to a node are labeled the same and other stuff.
+    # dfa = intermediate.minify()
+    dfa = intermediate
 
     # dfadump(dfa)
     # sys.exit(0)
@@ -169,8 +161,6 @@ def parse(js):
                 values[dst] = input
 
     print("digraph {")
-
-    # Find Harmony initial states
 
     for s in dfa.states:
         if s == "{}":
