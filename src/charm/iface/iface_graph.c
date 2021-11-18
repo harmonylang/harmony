@@ -148,7 +148,8 @@ void iface_graph_add_edge_unique(struct iface_graph_t *graph, int src_idx, int d
 bool iface_node_is_equal(struct iface_node_t *lhs, struct iface_node_t *rhs) {
     return lhs->value == rhs->value
         && lhs->initial == rhs->initial
-        && lhs->terminated == rhs->terminated;
+        && lhs->terminated == rhs->terminated
+        && lhs->choosing == rhs->choosing;
 }
 
 /**

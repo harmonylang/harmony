@@ -286,8 +286,9 @@ struct dot_graph_t *iface_generate_dot_graph(struct global_t *global) {
 
     struct iface_graph_t *iface_graph = iface_evaluate_spec_graph(global, iface_pc);
     struct dot_graph_t *dot;
-#if true
+#if false
     struct iface_graph_t *destuttered = iface_graph_destutter(iface_graph);
+    printf("iface destutter: removed %d states\n", (iface_graph->nodes_len - destuttered->nodes_len));
     iface_graph_deinit(iface_graph);
     dot = iface_convert_to_dot(destuttered);
     iface_graph_deinit(destuttered);
@@ -320,8 +321,11 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
         return;
     }
     struct iface_graph_t *iface_graph = iface_evaluate_spec_graph(global, iface_pc);
+#if false
     struct iface_graph_t *destuttered = iface_graph_destutter(iface_graph);
     iface_graph_deinit(iface_graph);
+    iface_graph = destuttered;
+#endif
 
     FILE *iface_file = fopen(filename, "w");
     if (iface_file == NULL) {
@@ -333,8 +337,8 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
 
     fprintf(iface_file, "  \"nodes\": [\n");
     bool first = true;
-    for (int i = 0; i < destuttered->nodes_len; i++) {
-        struct iface_node_t *node = destuttered->nodes[i];
+    for (int i = 0; i < iface_graph->nodes_len; i++) {
+        struct iface_node_t *node = iface_graph->nodes[i];
 
         if (!first) {
             fprintf(iface_file, ",\n");
@@ -366,8 +370,8 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
 
     fprintf(iface_file, "  \"edges\": [\n");
     first = true;
-    for (int i = 0; i < destuttered->edges_len; i++) {
-        struct iface_edge_t *edge = destuttered->edges[i];
+    for (int i = 0; i < iface_graph->edges_len; i++) {
+        struct iface_edge_t *edge = iface_graph->edges[i];
 
         if (edge->is_fwd) {
             if (!first) {
@@ -387,5 +391,5 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
 
     fprintf(iface_file, "}\n");
 
-    iface_graph_deinit(destuttered);
+    iface_graph_deinit(iface_graph);
 }
