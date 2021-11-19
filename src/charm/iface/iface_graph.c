@@ -94,7 +94,7 @@ struct iface_node_t *iface_graph_add_node(struct iface_graph_t *graph) {
     node->initial = false;
     node->terminated = false;
     node->choosing = false;
-    node->choosing_atomic_level = 0;
+    node->state = NULL;
     node->fwd = NULL;
     node->bwd = NULL;
     node->idx = graph->nodes_len - 1;
@@ -151,8 +151,7 @@ bool iface_node_is_equal(struct iface_node_t *lhs, struct iface_node_t *rhs) {
     return lhs->value == rhs->value
         && lhs->initial == rhs->initial
         && lhs->terminated == rhs->terminated
-        && lhs->choosing == rhs->choosing
-        && lhs->choosing_atomic_level == rhs->choosing_atomic_level;
+        && lhs->choosing == rhs->choosing;
 }
 
 /**
@@ -239,7 +238,7 @@ struct iface_graph_t *iface_graph_destutter(struct iface_graph_t *graph) {
         node->initial = n->initial;
         node->terminated = n->terminated;
         node->choosing = n->choosing;
-        node->choosing_atomic_level = n->choosing_atomic_level;
+        node->state = n->state;
     }
 
     for (int i = 0; i < graph->edges_len; i++) {
