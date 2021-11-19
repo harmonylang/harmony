@@ -9,6 +9,7 @@ struct dot_node_t {
     bool terminating;
     bool initial;
     bool choosing;
+    int choosing_atomic_level;
     int *fwd;           // forward edges
     int fwd_len;        // number forward edges
 };

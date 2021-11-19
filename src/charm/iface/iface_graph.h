@@ -16,6 +16,7 @@ struct iface_node_t {
     bool initial;
     bool terminated;
     bool choosing;
+    int choosing_atomic_level;
 
     struct iface_edge_t *fwd;
     struct iface_edge_t *bwd;
