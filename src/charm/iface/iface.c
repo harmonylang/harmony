@@ -351,9 +351,11 @@ void iface_write_spec_graph_to_json_file(struct global_t *global, const char* fi
         fprintf(iface_file, "    {\n");
         fprintf(iface_file, "      \"idx\": %d,\n", node->idx);
         fprintf(iface_file, "      \"value\": \"%s\",\n", value_string(node->value));
-        if (node->choosing && node->state != NULL) {
+        if (node->choosing) {
+            assert(node->state != NULL);
             struct context *ctx = value_get(node->state->choosing, NULL);
             fprintf(iface_file, "      \"choosing_atomic_level\": %d,\n", ctx->atomic);
+            fprintf(iface_file, "      \"choosing_atomic_flag\": %s,\n", ctx->atomicFlag ? "true" : "false");
         }
         fprintf(iface_file, "      \"type\": ");
         if (node->initial) {
