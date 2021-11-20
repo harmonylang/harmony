@@ -94,7 +94,7 @@ def parse(js):
             val = "__init__"
         elif s["type"] == "terminal":
             final_states.add(idx)
-        elif s["type"] == "choose":
+        elif s["type"] == "choose" and int(s["choosing_atomic_level"]) > 0:
             choose_states.add(idx)
         states[idx] = val
 

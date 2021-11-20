@@ -1696,6 +1696,61 @@ int main(int argc, char **argv){
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
+        fprintf(df, "{\n");
+        fprintf(df, "  \"nodes\": [\n");
+        bool first = true;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            assert(node->id == i);
+            if (first) {
+                first = false;
+            }
+            else {
+                fprintf(df, ",\n");
+            }
+            fprintf(df, "    {\n");
+            fprintf(df, "      \"idx\": %d,\n", node->id);
+            fprintf(df, "      \"component\": %d,\n", node->component);
+            if (node->parent != NULL) {
+                fprintf(df, "      \"parent\": %d,\n", node->parent->id);
+            }
+            fprintf(df, "      \"value\": \"%s:%d\",\n", value_string(node->state->vars), node->state->choosing != 0);
+            if (i == 0) {
+                fprintf(df, "      \"type\": \"initial\"\n");
+            }
+            else {
+                fprintf(df, "      \"type\": \"normal\"\n");
+            }
+            fprintf(df, "    }");
+        }
+        fprintf(df, "\n");
+        fprintf(df, "  ],\n");
+        fprintf(df, "  \"edges\": [\n");
+        first = true;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                if (first) {
+                    first = false;
+                }
+                else {
+                    fprintf(df, ",\n");
+                }
+                fprintf(df, "    {\n");
+                fprintf(df, "      \"src\": %d,\n", node->id);
+                fprintf(df, "      \"dst\": %d\n", edge->node->id);
+                fprintf(df, "    }");
+            }
+        }
+        fprintf(df, "\n");
+        fprintf(df, "  ]\n");
+        fprintf(df, "}\n");
+        fclose(df);
+    }
+
+    if (true) {
+        FILE *df = fopen("charm.dump", "w");
+        assert(df != NULL);
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
