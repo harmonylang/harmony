@@ -11,9 +11,8 @@ def test_and_set(s, p):
         !s = True
 
 def clear(s):
-    atomically:
-        assert !s
-        !s = False
+    assert !s
+    atomically !s = False
 
 def thread(self):
     while choose({ False, True }):

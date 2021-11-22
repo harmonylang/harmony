@@ -607,13 +607,12 @@ There are also some important differences:
 \begin{itemize}
 \item Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
-\item Harmony does not (currently) support floating point, iterators, or I/O;
-Harmony does support \textbf{for} loops and various ``comprehensions.''
+\item Harmony does not support floating point or I/O;
 \item Python is object-oriented, supporting classes with methods and
 inheritance; Harmony has objects but does not support classes.
 On the other hand, Harmony supports pointers to objects and methods.
 \end{itemize}
-There are also less important ones that you will discover as
+There are also less important differences that you will discover as
 you get more familiar with programming in Harmony.
 
 \begin{figure}
@@ -627,11 +626,12 @@ you get more familiar with programming in Harmony.
 \autoref{fig:triangle} shows a simple example of a Harmony program.
 (The code for examples in this book can be found in the \texttt{code} folder under
 the name listed in the caption of the example.)
-The example is sequential and has a method \texttt{triangle} that takes
+The example is a sequential program
+and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
 \textit{result} that eventually contains the result of the
 method (there is no \textbf{return} statement in Harmony).  The method
-also has a variable called \textit{n} containing the value of the
+also has a bound variable called \textit{n} containing the value of the
 argument.  The \{ \textit{x..y} \} notation generates a set containing the numbers
 from~\textit{x} to~\textit{y} (inclusive).
 (Harmony does not have iterators and in particular does
@@ -854,7 +854,8 @@ as easy to write concurrent programs in Python, it is much easier to
 find concurrency bugs using Harmony.
 
 \begin{problems}
-\item Harmony programs can usually be easily translated into Python.  For example,
+\item Harmony programs can usually be easily translated into
+Python by hand.  For example,
 \autoref{fig:incpy} is a Python version of \autoref{fig:inc}.
 \begin{enumerate}
 \item Run \autoref{fig:incpy} using Python.  Does the assertion fail?
@@ -978,7 +979,7 @@ The empty tuple is written as \texttt{()}.
 % Note that this is different from the empty set, which is \texttt{\{\}}.
 As in Python, you can create singleton tuples by including a comma.
 For example, \texttt{(1,)} is a tuple consisting just of the number 1.
-Importantly, $(1) = 1 \ne (1,)$.
+Importantly, $(1) = 1 \ne (1,) = \{ 0:1 \}$.
 
 Again, square brackets and parentheses work the same in Harmony, so
 \texttt{[a, b, c]} (which looks like a Python list)
@@ -1457,7 +1458,7 @@ ensure is that there can never be two threads in the critical section.
 This property is called \emph{mutual exclusion}.
 \index{mutual exclusion}%
 We would like to place an assertion at the \texttt{@cs} label that
-specifies that only the current thread can be there.
+specifies that only one (the current) thread can be there.
 
 Harmony in fact supports this.
 It has an operator \textbf{countLabel}~$L$,
@@ -1600,7 +1601,7 @@ The thread then executes the critical section.  Finally the thread
 releases the lock by setting \textit{lockTaken} back to \textbf{False}.
 
 Unfortunately, if we run the program through Harmony,
-we find that the assertion still fails.
+we find that the assertion fails.
 \autoref{fig:naiveLockhtml} shows the Harmony output.
 Thread~0 finds that the lock is available, but just before it stores
 \textbf{True} in \textit{lockTaken} in instruction~9, thread~1 gets
@@ -1632,21 +1633,21 @@ solution does prevent both threads being in the critical section at
 the same time.
 
 To see why, first note the following invariant: if thread $i$ is in the
-critical section, then \textit{flags}[$i$] == \textbf{True}.
+critical section, then \textit{flags}[$i$] = \textbf{True}.
 Without loss of generality,
 suppose that thread~0 sets \textit{flags}[0] at time $t_0$.
 Thread 0 can only reach the critical section if at some time $t_1$,
-$t_1 > t_0$, it finds that \textit{flags}[1] == \textbf{False}.
-Because of the invariant, \textit{flags}[1] == \textbf{False} implies that
+$t_1 > t_0$, it finds that \textit{flags}[1] = \textbf{False}.
+Because of the invariant, \textit{flags}[1] = \textbf{False} implies that
 thread~1 is not in the critical section at time $t_1$.
 Let $t_2$ be the time at which thread~0 sets \textit{flags}[0]
 to \textbf{False}.  Thread~0 is in the critical section sometime
 between $t_1$ and $t_2$.
 It is easy to see that thread~1 cannot enter the critical section
-between $t_1$ and $t_2$, because \textit{flags}[1] == \textbf{False} at
+between $t_1$ and $t_2$, because \textit{flags}[1] = \textbf{False} at
 time $t_1$.  To reach the critical section between $t_1$ and $t_2$,
 it would first have to set \textit{flags}[1] to \textbf{True} and
-then wait until \textit{flags}[0] == \textbf{False}.  But that does not happen
+then wait until \textit{flags}[0] = \textbf{False}.  But that does not happen
 until time $t_2$.
 
 However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
@@ -1664,7 +1665,7 @@ Each thread politely lets the other thread have a turn first.
 When \textit{turn} = $i$, thread~$i$ can
 enter the critical section, while thread $1-i$ has to wait.
 An invariant of this solution is that while thread~$i$ is in the critical
-section, \textit{turn} == $i$.
+section, $\mathit{turn} = i$.
 Since \textit{turn} cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that the thread that has been waiting the
@@ -1732,8 +1733,8 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
 The thread continues to be polite, waiting
 until either the other thread is nowhere near the critical section
-($\mathit{flag}[1 - \mathit{self}] == \mathbf{False}$) or has given way
-($\mathit{turn} == \mathit{self}$).
+($\mathit{flag}[1 - \mathit{self}] = \mathbf{False}$) or has given way
+($\mathit{turn} = \mathit{self}$).
 Running the algorithm with Harmony shows that it satisfies both mutual
 exclusion and progress.
 
@@ -1975,7 +1976,7 @@ section and $\mathcal{G}(0)$ continues to hold;
 Then again $\mathcal{G}(0)$ continues to hold.
 \item Thread~0 takes a step and ends up in the critical section.
 Because thread~0 entered the critical section, we know that
-\textit{flags}[1] = \textbf{False} or \textit{turn} == 0 because
+$\mathit{flags}[1] = \textbf{False}$ or $\mathit{turn} = 0$ because
 of the \texttt{await} condition.
 And hence $\mathcal{G}(0)$ continues to hold in that case as well.
 \end{enumerate}
@@ -2115,8 +2116,8 @@ If a variable contains an address, we call that variable a \emph{pointer}.
 \index{pointer}%
 If $p$ is a pointer to a shared variable, then the
 expression \texttt{!}$p$ is the value of the shared variable.
-In particular, \texttt{!?}$x$ == $x$.
-This is similar to how C pointers work (\texttt{*\string&}$x$ == $x$).
+In particular, \texttt{!?}$x$ = $x$.
+This is similar to how C pointers work (\texttt{*\string&}$x$ = $x$).
 
 Often, pointers point to dictionaries, and so if $p$ is such a pointer,
 then $(!p).\mathtt{field}$ would evaluate to the specified field in the dictionary.
@@ -2262,8 +2263,8 @@ atomic operation.
 
 The code in \autoref{fig:lockspec} is similar to the code in
 Harmony's \texttt{synch} module.
-(The module generalizes locks to \emph{binary semaphores}, but the
-lock interface is the same.)
+(The module generalizes locks to \emph{binary semaphores}
+(\autoref{ch:sbs}), but the lock interface is the same.)
 \autoref{fig:cssynch} shows how locks may be used to implement
 a critical section.
 \autoref{fig:incfixed} gives an example of how locks may be used
@@ -2280,7 +2281,7 @@ available in the underlying hardware.
 In Harmony, any statement can be preceded by the \texttt{atomically}
 keyword.  It means that statement as a whole is to be executed atomically.
 The \texttt{atomically} keyword can be used to specify the behavior of
-methods such as \texttt{acquire} and \texttt{release}.  But note that
+methods such as \texttt{acquire} and \texttt{release}.  But
 an actual executable program such as in \autoref{fig:cssynch} should not
 use the \texttt{atomically} keyword.
 In fact, if we want to make the entire program executable on hardware,
@@ -2313,7 +2314,7 @@ is very common.
 % include compare-and swap and fetch-and-add.
 Atomic statements
 are not intended to replace locks or other synchonization primitives.
-When solving synchronization problems you should not directly use
+When implementing synchronization solutions you should not directly use
 atomic statements but use the synchronization primitives that are available
 to you.  But if you want to \emph{specify} a new synchronization primitive,
 then use \textbf{atomically} by all means.
@@ -2433,7 +2434,7 @@ An important invariant, $\mathcal{I}_1$, of the program is that at any time at m
 one of these variables is \textbf{False}.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread $i$ is executing between
 lines $18 \cdots 22$ (which includes the critical section),
-then \textit{private}[$i$] == \textbf{False}.
+then \textit{private}[$i$] = \textbf{False}.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
@@ -2441,13 +2442,13 @@ For those who read through \autoref{ch:peterson}
 $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!}$p$ == \textbf{True} upon entry of \texttt{test\_and\_set}
+\texttt{!}$p$ = \textbf{True} upon entry of \texttt{test\_and\_set}
 (because of the condition on the \textbf{while} loop that the
 \texttt{test\_and\_set} method is invoked in).
 There are two cases:
 \begin{enumerate}
 \item \texttt{!}$s$ is \textbf{False} upon entry to \texttt{test\_and\_set}.
-Then upon exit \texttt{!}$p$ == \textbf{False} and \texttt{!}$s$ == \textbf{True},
+Then upon exit \texttt{!}$p$ = \textbf{False} and \texttt{!}$s$ = \textbf{True},
 maintaining the invariant.
 \item \texttt{!}$s$ is \textbf{True} upon entry to \texttt{test\_and\_set}.
 Then upon exit nothing has changed, maintaining the invariant.
@@ -2564,8 +2565,8 @@ successfully acquire the lock one after another.  It could even happen
 with just two threads: one thread might successfully acquire the lock
 repeatedly in a loop, while another thread is never lucky enough the
 acquire the thread in between.
-\autoref{ch:starvation} will talk more about starvation and how
-to prevent it.
+% \autoref{ch:starvation} will talk more about starvation and how
+% to prevent it.
 
 A \emph{ticket lock} (\autoref{fig:ticket} is an implementation of a
 lock that prevents starvation using an atomic \emph{fetch-and-increment}
@@ -2584,8 +2585,9 @@ the bakery at a time.)
 lock, it fetches the current dispenser value and increments it
 modulo \texttt{MAX\_THREADS}, all in one atomic operation.
 In practice, \texttt{MAX\_THREADS} would
-be a number like $2^32$ or $2^64$, but since the Harmony model checker
-checks every possible state, limiting it to a small number such as done
+be a number like $2^{32}$ or $2^{64}$, but since the Harmony model checker
+checks every possible state, limiting \texttt{MAX\_THREADS}
+to a small number such as done
 here will significantly reduce the time to model check a Harmony program.
 Plus it is easier to check that it fails when you run it with more than
 \texttt{MAX\_THREADS} threads.
@@ -3622,7 +3624,7 @@ label \texttt{@wcs}.
 specification for two threads.
 
 A thread that wants to read first waits until there are no writers:
-\textit{nwriters} == 0.  Then it increments the number of readers.
+\textit{nwriters} = 0.  Then it increments the number of readers.
 Similarly, a
 thread that wants to write waits until there are no readers \emph{or} writers.
 Then it increments the number of writers.
@@ -4215,7 +4217,7 @@ using split binary semaphores.
 \item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
 up to \texttt{M} threads to acquire it at the same time.\footnote{A bound lock is a restricted version of a \emph{counting} semaphore.}
 A bound lock
-with \texttt{M == 1} is an ordinary lock.
+with \texttt{M = 1} is an ordinary lock.
 You should define a constant \texttt{M} and two methods:
 \texttt{acquire\_bound\_lock()}
 and \texttt{release\_bound\_lock()}.
@@ -5584,7 +5586,7 @@ a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
 Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
-\textit{reliable} == \textbf{True}.  It causes the last acknowledgment to be sent
+\textit{reliable} = \textbf{True}.  It causes the last acknowledgment to be sent
 reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
 once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
@@ -7009,13 +7011,13 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{await $b$} & $b$ is a boolean\\
 \hline
-\texttt{const a = $e$} & \texttt{a} is a bounded variable, $e$ is a constant expression\\
+\texttt{const a = $e$} & \texttt{a} is a bound variable, $e$ is a constant expression\\
 \hline
-\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bounded variable\\
+\texttt{def m $a$: S} & \texttt{m} is an identifier, $a$ a bound variable\\
 \hline
 \texttt{del} \textit{lv} & delete\\
 \hline
-\texttt{for $a[:b]$ in $e$ [where $c$]: S} & $a$ and $b$ are bounded variables, $e$ is a set or dictionary \\
+\texttt{for $a[:b]$ in $e$ [where $c$]: S} & $a$ and $b$ are bound variables, $e$ is a set or dictionary \\
 \hline
 \texttt{from m import ...} & \texttt{m} identifies a module \\
 \hline
@@ -7027,13 +7029,13 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{invariant e} & \texttt{e} is an invariant\\
 \hline
-\texttt{let $a$ = $e$: S} & $a$ is a bounded variable, $e$ is an expression\\
+\texttt{let $a$ = $e$: S} & $a$ is a bound variable, $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
 \texttt{possibly $b$ [, $b$, ...]} & each $b$ is a boolean \\
 \hline
-\texttt{select $a$ in $e$: S} & $a$ is a bounded variable, $e$ is a set,
+\texttt{select $a$ in $e$: S} & $a$ is a bound variable, $e$ is a set,
                             \texttt{S} a list of statements\\
 \hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
@@ -7047,14 +7049,14 @@ $e$ is an expression, $t$ is the thread-local state \\
 \hline
 \texttt{when $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
-\texttt{when exists $a$ in $e$: S} & $a$ is a bounded variable, $e$ is an expression\\
+\texttt{when exists $a$ in $e$: S} & $a$ is a bound variable, $e$ is an expression\\
 \hline
 \texttt{while $b$: S} & $b$ is a boolean, \texttt{S} a list of statements\\
 \hline
 \end{tabular}
 
 \begin{itemize}
-\item Bounded variables are read-only.
+\item Bound variables are read-only.
 \item A statement can be preceded by the \texttt{atomically} keyword to make
 the statement atomic.
 \item Multiple \texttt{for} statements can be combined into a single statement.
