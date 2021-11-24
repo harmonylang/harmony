@@ -135,8 +135,8 @@ def parse(js):
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same and other stuff.
-    # dfa = intermediate.minify()
-    dfa = intermediate
+    dfa = intermediate.minify()
+    # dfa = intermediate
 
     # dfadump(dfa)
     # sys.exit(0)
