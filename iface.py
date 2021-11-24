@@ -16,6 +16,7 @@ def dfadump(dfa):
 
 # Get rid of choose states
 def dechoose(states, transitions, choose_states):
+    print("dechoose", file=sys.stderr)
     for (k, v) in states.items():
         if k in choose_states:
             # See what incoming nodes k has
@@ -44,36 +45,53 @@ def dechoose(states, transitions, choose_states):
 
 # Get rid of stutter transitions
 def destutter(states, transitions):
+    print("destutter", len(states), file=sys.stderr)
+
+    # figure out for each state what other states point to it
+    pointsto = { k:set() for k in states }
+    for src in states:
+        for (v, s) in transitions[src].items():
+            for dst in s:
+                pointsto[dst].add(src)
+
     updated = set()
     for (k, v) in states.items():
         # See if state k has an outgoing edge with its value
         if v in transitions[k]:
             # See what incoming nodes k has
             incoming = set()
-            for k2 in states:
-                if v in transitions[k2] and k in transitions[k2][v]:
+            for k2 in pointsto[k]:
+                if v in transitions[k2]:
+                    assert k in transitions[k2][v]
                     incoming.add(k2)
             # distribute each outgoing edge among the incoming nodes
             for out in transitions[k][v]:
                 for k2 in incoming:
                     if k2 != out:
                         transitions[k2][v].add(out)
+                        pointsto[k].add(k2)
 
             # remove the outgoing edges
             del transitions[k][v]
 
-            updated.add((k, v))
+            updated.add(k)
 
     if updated == set():
         return False
 
-    for (k, v) in updated:
+    # Remove states with no outgoing edges
+    for src in states:
+        for v in transitions[src]:
+            toremove = set()
+            for dst in transitions[src][v]:
+                if transitions[dst] == {}:
+                    toremove.add(dst)
+            if toremove != set():
+                transitions[src][v] -= toremove
+    for k in updated:
         if transitions[k] == {}:
             del states[k]
             del transitions[k]
-            for k2 in states:
-                if v in transitions[k2] and k in transitions[k2][v]:
-                    transitions[k2][v].remove(k)
 
     return True
 
