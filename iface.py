@@ -1,4 +1,5 @@
 import sys
+import getopt
 import json
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
@@ -76,7 +77,7 @@ def destutter(states, transitions):
 
     return True
 
-def parse(js):
+def parse(js, outfmt, minify):
     states = {}
     initial_state = None;
     final_states = set()
@@ -135,8 +136,10 @@ def parse(js):
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same and other stuff.
-    dfa = intermediate.minify()
-    # dfa = intermediate
+    if minify:
+        dfa = intermediate.minify()
+    else:
+        dfa = intermediate
 
     # dfadump(dfa)
     # sys.exit(0)
@@ -160,30 +163,101 @@ def parse(js):
             if dst != '{}' and src != dst:
                 values[dst] = input
 
-    print("digraph {")
+    if outfmt == "dot":
+        print("digraph {")
 
-    for s in dfa.states:
-        if s == "{}":
-            continue
-        if s == dfa.initial_state:
-            print("  s%s [label=\"%s\",shape=octagon]"%(names[s], values[s]))
-        elif s in dfa.final_states:
-            print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], values[s]))
-        else:
-            print("  s%s [label=\"%s\",shape=box]"%(names[s], values[s]))
+        for s in dfa.states:
+            if s == "{}":
+                continue
+            if s == dfa.initial_state:
+                print("  s%s [label=\"%s\",shape=octagon]"%(names[s], values[s]))
+            elif s in dfa.final_states:
+                print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], values[s]))
+            else:
+                print("  s%s [label=\"%s\",shape=box]"%(names[s], values[s]))
 
-    for (src, edges) in dfa.transitions.items():
-        for (input, dst) in edges.items():
-            if dst != '{}' and src != dst:
-                print("  s%s -> s%s"%(names[src], names[dst]))
+        for (src, edges) in dfa.transitions.items():
+            for (input, dst) in edges.items():
+                if dst != '{}' and src != dst:
+                    print("  s%s -> s%s"%(names[src], names[dst]))
 
-    print("}")
+        print("}")
+    else:       # json format, same as input
+        assert outfmt == "json"
+        print("{")
+        print("  \"nodes\": [")
+
+        first = True
+        for s in dfa.states:
+            if s == "{}":
+                continue
+            if first:
+                first = False
+            else:
+                print(",")
+            print("    {")
+            print("      \"idx\": \"%s\","%names[s])
+            print("      \"value\": \"%s\","%values[s])
+            if s == dfa.initial_state:
+                t = "initial"
+            elif s in dfa.final_states:
+                t = "final"
+            else:
+                t = "normal"
+            print("      \"type\": \"%s\""%t)
+            print("    }", end="")
+        print()
+        print("  ],")
+
+        print("  \"edges\": [")
+        first = True
+        for (src, edges) in dfa.transitions.items():
+            for (input, dst) in edges.items():
+                if dst != '{}' and src != dst:
+                    if first:
+                        first = False
+                    else:
+                        print(",")
+                    print("    {")
+                    print("      \"src\": \"%s\","%names[src])
+                    print("      \"dst\": \"%s\""%names[dst])
+                    print("    }", end="")
+        print()
+        print("  ]")
+
+        print("}")
+
+def usage():
+    print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)
+    sys.exit(1)
 
 def main():
-    file = sys.argv[1]
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "MT:",
+                ["type=", "minify", "help"])
+    except getopt.GetoptError as err:
+        print(str(err))
+        usage()
+    outfmt = "dot"
+    minify = False
+    for o, a in opts:
+        if o in [ "-T", "--type"]:
+            if a not in [ "dot", "json" ]:
+                print("type must be dot or json", file=sys.stderr)
+                sys.exit(1)
+            outfmt = a
+        elif o in [ "-M", "--minify" ]:
+            minify = True
+        else:
+            usage()
+
+    if args == []:
+        usage()
+
+    file = args[0]
     with open(file) as f:
         js = json.load(f)
-        parse(js);
+        parse(js, outfmt, minify);
 
 if __name__ == "__main__":
     main()
