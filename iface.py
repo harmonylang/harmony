@@ -91,6 +91,7 @@ def parse(js, outfmt, minify):
         input_symbols.add(val)
         transitions[idx] = {}
         if s["type"] == "initial":
+            assert initial_state == None
             initial_state = idx;
             val = "__init__"
         elif s["type"] == "terminal":
@@ -146,8 +147,6 @@ def parse(js, outfmt, minify):
 
     # dfa.show_diagram(path='./dfa1.png')
     # sys.exit(0)
-
-    print()
 
     # Give each state a simple integer name
     names = {}
