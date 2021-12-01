@@ -18,7 +18,7 @@ def parse(js, outfmt, minify):
     states = {}
     initial_state = None;
     final_states = set()
-    input_symbols = { "__term__" }
+    input_symbols = set()
     transitions = {}
 
     for s in js["nodes"]:
@@ -40,10 +40,7 @@ def parse(js, outfmt, minify):
             input_symbols.add(edge["log"])
         assert dst != initial_state
         assert src not in final_states
-        if dst in final_states:
-            val = "__term__"
-        else:
-            val = edge["log"]
+        val = edge["log"]
         if val in transitions[src]:
             transitions[src][val].add(dst)
         else:
@@ -62,16 +59,16 @@ def parse(js, outfmt, minify):
         final_states=final_states
     )
 
+    print("NFA -> DFA", file=sys.stderr)
     intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
-
-    for (src, edges) in intermediate.transitions.items():
-        for (input, dst) in edges.items():
-            assert input != ""
+    print("NFA -> DFA done %d"%len(intermediate.states), file=sys.stderr)
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same and other stuff.
     if minify:
+        print("minify", file=sys.stderr)
         dfa = intermediate.minify()
+        print("minify done %d"%len(dfa.states), file=sys.stderr)
     else:
         dfa = intermediate
 

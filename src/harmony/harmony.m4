@@ -494,11 +494,7 @@ def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
         return str(v)
     if isinstance(v, str):
-        if isname(v):
-            return "." + v
-        else:
-            assert len(v) == 1, v
-            return ".0x%02X"%ord(v[0])
+        return '"%s"'%v
     assert False, v
 
 def jsonValue(v):
@@ -509,11 +505,7 @@ def jsonValue(v):
     if isinstance(v, int) or isinstance(v, float):
         return '{ "type": "int", "value": "%s" }'%str(v)
     if isinstance(v, str):
-        if isname(v):
-            return '{ "type": "atom", "value": "%s" }'%str(v)
-        else:
-            assert len(v) == 1, v
-            return '{ "type": "char", "value": "%02X" }'%ord(v[0])
+        return '{ "type": "atom", "value": "%s" }'%str(v)
     assert False, v
 
 def strVars(v):
@@ -3241,8 +3233,9 @@ class BasicExpressionRule(Rule):
         if lexeme == "inf":
             return (ConstantAST((math.inf, file, line, column)), t[1:])
         if lexeme[0] == '"':
-            return (TupleAST([ ConstantAST((c, file, line, column))
-                                for c in lexeme[1:] ], token), t[1:])
+            return (ConstantAST((lexeme[1:], file, line, column)), t[1:])
+            # return (TupleAST([ ConstantAST((c, file, line, column))
+            #                   for c in lexeme[1:] ], token), t[1:])
         if lexeme == ".": 
             (lexeme, file, line, column) = t[1]
             if lexeme.startswith("0x"):
