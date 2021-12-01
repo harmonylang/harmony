@@ -15,6 +15,8 @@ struct op_info *ops_get(char *opname, int size);
 struct step {
     struct context *ctx;
     struct access_info *ai;
+    uint64_t *log;
+    int nlog;
 };
 
 struct op_info {

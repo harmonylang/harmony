@@ -353,6 +353,7 @@ static void make_step(
     int multiplicity       // #contexts that are in the current state
 ) {
     struct step step;
+    memset(&step, 0, sizeof(step));
 
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -360,7 +361,6 @@ static void make_step(
 
     // Make a copy of the context
     step.ctx = value_copy(ctx, NULL);
-    step.ai = NULL;
 
     // See if we need to interrupt
     if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
@@ -644,8 +644,8 @@ void print_state(
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
     struct step inv_step;
+    memset(&inv_step, 0, sizeof(inv_step));
     inv_step.ctx = new_alloc(struct context);
-    inv_step.ai = NULL;
 
     // uint64_t inv_nv = value_put_atom("name", 4);
     // uint64_t inv_tv = value_put_atom("tag", 3);
@@ -841,7 +841,7 @@ uint64_t twostep(
     sc->choosing = 0;
 
     struct step step;
-    step.ai = NULL;
+    memset(&step, 0, sizeof(step));
     step.ctx = value_copy(ctx, NULL);
     if (step.ctx->terminated || step.ctx->failure != 0) {
         free(step.ctx);
