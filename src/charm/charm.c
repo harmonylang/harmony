@@ -1432,6 +1432,13 @@ static char *json_escape(const char *s, unsigned int len){
 	return strbuf_getstr(&sb);
 }
 
+static char *json_escape_value(uint64_t v){
+    char *s = value_string(v);
+    char *r = json_escape(s, strlen(s));
+    free(s);
+    return r;
+}
+
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
     exit(1);
@@ -1746,7 +1753,7 @@ int main(int argc, char **argv){
             if (node->parent != NULL) {
                 fprintf(df, "      \"parent\": %d,\n", node->parent->id);
             }
-            fprintf(df, "      \"value\": \"%s:%d\",\n", value_json(node->state->vars), node->state->choosing != 0);
+            fprintf(df, "      \"value\": \"%s:%d\",\n", json_escape_value(node->state->vars), node->state->choosing != 0);
             if (i == 0) {
                 fprintf(df, "      \"type\": \"initial\"\n");
             }
@@ -1777,7 +1784,7 @@ int main(int argc, char **argv){
 
                 fprintf(df, "      \"log\": \"");
                 for (int j = 0; j < edge->nlog; j++) {
-                    char *p = value_json(edge->log[j]);
+                    char *p = json_escape_value(edge->log[j]);
                     fprintf(df, "[%s]", p);
                     free(p);
                 }
