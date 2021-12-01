@@ -254,6 +254,9 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
         node_vec_deinit(children);
     }
 
+    free(iface_step.ctx);
+    free(iface_step.log);
+
     node_vec_deinit(worklist);
 
     return iface_graph;

@@ -381,6 +381,7 @@ static void make_step(
     }
 
     free(step.ctx);
+    free(step.log);
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -942,6 +943,7 @@ uint64_t twostep(
 
     free(sc);
     free(step.ctx);
+    free(step.log);
 
     return ctx;
 }
