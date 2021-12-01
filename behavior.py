@@ -102,7 +102,7 @@ def parse(js, outfmt, minify):
         for (src, edges) in dfa.transitions.items():
             for (input, dst) in edges.items():
                 if dst != '{}' and (src != dst or input != ""):
-                    print("  s%s -> s%s [label=\"%s\"]"%(names[src], names[dst], input))
+                    print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
 
         print("}")
     else:       # json format, same as input
