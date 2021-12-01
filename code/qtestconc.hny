@@ -1,6 +1,6 @@
 import queuelin, queuespec
 
-const NOPS = 4
+const NOPS = 2
 const VALUES = { 1..NOPS }
 
 sequential qtime

@@ -4,6 +4,12 @@ all:
 	gcc -O3 -std=c99 -DNDEBUG charm.c -m64 -o charm.exe -lpthread
 	chmod +x harmony
 
+behavior: behavior.py charm.dump
+	./harmony code/qtestconc4.hny
+	python3 behavior.py -Tdot charm.dump > x.gv
+	dot -Tpdf x.gv > x.pdf
+	open x.pdf
+
 iface: iface.py iface.json
 	./harmony -i 'countLabel(cs)' code/csonebit.hny
 	: ./harmony -i 'countLabel(cs)' code/Peterson.hny
