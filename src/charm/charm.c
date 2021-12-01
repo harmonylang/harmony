@@ -331,8 +331,14 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
+
     next->ai = step->ai;
     step->ai = NULL;
+    next->log = step->log;
+    next->nlog = step->nlog;
+    step->log = NULL;
+    step->nlog = 0;
+
     if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
     }
@@ -381,7 +387,6 @@ static void make_step(
     }
 
     free(step.ctx);
-    free(step.log);
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -1348,6 +1353,8 @@ void process_results(
         fwd->weight = node->weight;
         fwd->after = node->after;
         fwd->ai = node->ai;
+        fwd->log = node->log;
+        fwd->nlog = node->nlog;
         fwd->next = parent->fwd;
         parent->fwd = fwd;
 
@@ -1360,6 +1367,8 @@ void process_results(
         bwd->weight = node->weight;
         bwd->after = node->after;
         bwd->ai = node->ai;
+        bwd->log = node->log;
+        bwd->nlog = node->nlog;
         bwd->next = node->bwd;
         node->bwd = bwd;
 
