@@ -257,6 +257,7 @@ def isreserved(s):
         "lambda",
         "len",
         "let",
+        "log",
         "max",
         "min",
         "None",
@@ -1453,6 +1454,24 @@ class AssertOp(Op):
                 context.failure += ": " + strValue(expr)
             return
         context.pc += 1
+
+class LogOp(Op):
+    def __init__(self, token):
+        self.token = token
+
+    def __repr__(self):
+        return "Log"
+
+    def jdump(self):
+        return '{ "op": "Log" }'
+
+    def explain(self):
+        return "pop a value and add to history"
+
+    def eval(self, state, context):
+        cond = context.pop()
+        context.pc += 1
+        assert False
 
 class PossiblyOp(Op):
     def __init__(self, token, index):
@@ -3881,7 +3900,7 @@ class AssertAST(AST):
         self.expr = expr
 
     def __repr__(self):
-        return "Assert(" + str(self.token) + str(self.cond) + ", " + str(self.expr) + ")"
+        return "Assert(" + str(self.token) + ", " + str(self.cond) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
         code.append(ReadonlyIncOp())
@@ -3890,6 +3909,23 @@ class AssertAST(AST):
         if self.expr != None:
             self.expr.compile(scope, code)
         code.append(AssertOp(self.token, self.expr != None))
+        code.append(AtomicDecOp())
+        code.append(ReadonlyDecOp())
+
+class LogAST(AST):
+    def __init__(self, token, atomically, cond):
+        AST.__init__(self, token, atomically)
+        self.token = token
+        self.cond = cond
+
+    def __repr__(self):
+        return "Log(" + str(self.token) + ", " + str(self.cond) + ")"
+
+    def compile(self, scope, code):
+        code.append(ReadonlyIncOp())
+        code.append(AtomicIncOp(True))
+        self.cond.compile(scope, code)
+        code.append(LogOp(self.token))
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
@@ -4731,6 +4767,19 @@ class StatementRule(Rule):
                         message="assert: unexpected token: %s" % str(tokens[0]),
                     )
             return (AssertAST(token, atomically, cond, expr), t)
+        if lexeme == "log":
+            (tokens, t) = self.slice(t[1:], column)
+            (cond, tokens) = NaryRule(set()).parse(tokens)
+            if tokens != []:
+                lexeme, file, line, column = tokens[0]
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="log: unexpected token: %s" % str(tokens[0]),
+                )
+            return (LogAST(token, atomically, cond), t)
         if lexeme == "possibly":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)

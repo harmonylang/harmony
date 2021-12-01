@@ -410,6 +410,11 @@ void op_Assert2(const void *env, struct state *state, struct context **pctx, str
     }
 }
 
+void op_Log(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+    uint64_t v = value_ctx_pop(pctx);
+    (*pctx)->pc++;
+}
+
 void op_Possibly(const void *env, struct state *state, struct context **pctx, struct global_t *global){
     uint64_t v = value_ctx_pop(pctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
@@ -1313,6 +1318,7 @@ void *init_Continue(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Del(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Dup(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Go(struct dict *map, struct values_t *values){ return NULL; }
+void *init_Log(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Pop(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct values_t *values){ return NULL; }
@@ -2804,6 +2810,7 @@ struct op_info op_table[] = {
 	{ "JumpCond", init_JumpCond, op_JumpCond },
 	{ "Load", init_Load, op_Load },
 	{ "LoadVar", init_LoadVar, op_LoadVar },
+	{ "Log", init_Log, op_Log },
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
