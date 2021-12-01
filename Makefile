@@ -5,7 +5,7 @@ all:
 	chmod +x harmony
 
 behavior: behavior.py charm.dump
-	./harmony y.hny
+	./harmony x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny
 	: ./harmony code/qtestconc4.hny
 	python3 behavior.py -Tdot -M charm.dump > x.gv
