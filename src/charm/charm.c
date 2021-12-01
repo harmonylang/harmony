@@ -84,52 +84,52 @@ struct worker {
     pthread_t tid;               // thread identifier
     struct minheap *todo;        // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
-    struct context *inv_ctx;     // for evaluating invariants
+    struct step inv_step;        // for evaluating invariants
 
     struct minheap *results[2]; // out-queues for weights 0 and 1
 };
 
-bool invariant_check(struct global_t *global, struct state *state, struct context **pctx, int end){
-    assert((*pctx)->sp == 0);
-    assert((*pctx)->failure == 0);
-    (*pctx)->pc++;
-    while ((*pctx)->pc != end) {
-        struct op_info *oi = global->code.instrs[(*pctx)->pc].oi;
-        int oldpc = (*pctx)->pc;
-        (*oi->op)(global->code.instrs[oldpc].env, state, pctx, global);
-        if ((*pctx)->failure != 0) {
-            (*pctx)->sp = 0;
+bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
+    assert(step->ctx->sp == 0);
+    assert(step->ctx->failure == 0);
+    step->ctx->pc++;
+    while (step->ctx->pc != end) {
+        struct op_info *oi = global->code.instrs[step->ctx->pc].oi;
+        int oldpc = step->ctx->pc;
+        (*oi->op)(global->code.instrs[oldpc].env, state, step, global);
+        if (step->ctx->failure != 0) {
+            step->ctx->sp = 0;
             return false;
         }
-        assert((*pctx)->pc != oldpc);
-        assert(!(*pctx)->terminated);
+        assert(step->ctx->pc != oldpc);
+        assert(!step->ctx->terminated);
     }
-    assert((*pctx)->sp == 1);
-    (*pctx)->sp = 0;
-    assert((*pctx)->fp == 0);
-    uint64_t b = (*pctx)->stack[0];
+    assert(step->ctx->sp == 1);
+    step->ctx->sp = 0;
+    assert(step->ctx->fp == 0);
+    uint64_t b = step->ctx->stack[0];
     assert((b & VALUE_MASK) == VALUE_BOOL);
     return b >> VALUE_BITS;
 }
 
-void check_invariants(struct worker *w, struct node *node, struct context **pctx){
+void check_invariants(struct worker *w, struct node *node, struct step *step){
     struct global_t *global = w->global;
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
     assert((state->invariants & VALUE_MASK) == VALUE_SET);
-    assert((*pctx)->sp == 0);
+    assert(step->ctx->sp == 0);
     int size;
     uint64_t *vals = value_get(state->invariants, &size);
     size /= sizeof(uint64_t);
     for (int i = 0; i < size; i++) {
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
-        (*pctx)->pc = vals[i] >> VALUE_BITS;
-        assert(strcmp(global->code.instrs[(*pctx)->pc].oi->name, "Invariant") == 0);
-        int end = invariant_cnt(global->code.instrs[(*pctx)->pc].env);
-        bool b = invariant_check(global, state, pctx, end);
-        if ((*pctx)->failure != 0) {
-            printf("Invariant failed: %s\n", value_string((*pctx)->failure));
+        step->ctx->pc = vals[i] >> VALUE_BITS;
+        assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
+        int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
+        bool b = invariant_check(global, state, step, end);
+        if (step->ctx->failure != 0) {
+            printf("Invariant failed: %s\n", value_string(step->ctx->failure));
             b = false;
         }
         if (!b) {
@@ -151,22 +151,21 @@ static bool onestep(
     struct node *node,      // starting node
     struct state *sc,       // actual state
     uint64_t ctx,           // context identifier
-    struct context *cc,     // actual context
+    struct step *step,      // step info
     uint64_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
     int multiplicity        // #contexts that are in the current state
 ) {
-    assert(!cc->terminated);
-    assert(cc->failure == 0);
+    assert(!step->ctx->terminated);
+    assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
 
     // See if we should also try an interrupt.
     if (interrupt) {
-        extern void interrupt_invoke(struct context **pctx);
-		assert(cc->trap_pc != 0);
-        interrupt_invoke(&cc);
+		assert(step->ctx->trap_pc != 0);
+        interrupt_invoke(step);
     }
 
     // Copy the choice
@@ -174,18 +173,17 @@ static bool onestep(
 
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
-    struct access_info *ai_list = NULL;
     int loopcnt = 0;
     for (;; loopcnt++) {
-        int pc = cc->pc;
+        int pc = step->ctx->pc;
 
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
-                    char *p = value_string(cc->name);
+                    char *p = value_string(step->ctx->name);
                     fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
-                            p, cc->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
+                            p, step->ctx->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -200,84 +198,74 @@ static bool onestep(
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
         if (instrs[pc].choose) {
-            cc->stack[cc->sp - 1] = choice;
-            cc->pc++;
+            step->ctx->stack[step->ctx->sp - 1] = choice;
+            step->ctx->pc++;
         }
         else {
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                struct access_info *ai = graph_ai_alloc(multiplicity, cc->atomic, pc);
-                if (instrs[pc].load)
-                    ext_Load(instrs[pc].env, sc, &cc, global, ai);
-                else if (instrs[pc].store)
-                    ext_Store(instrs[pc].env, sc, &cc, global, ai);
-                else
-                    ext_Del(instrs[pc].env, sc, &cc, global, ai);
-                ai->next = ai_list;
-                ai_list = ai;
+                step->ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
             }
-            else {
-                (*oi->op)(instrs[pc].env, sc, &cc, global);
-            }
+            (*oi->op)(instrs[pc].env, sc, step, global);
+            step->ai = NULL;
         }
-		assert(cc->pc >= 0);
-		assert(cc->pc < global->code.len);
+		assert(step->ctx->pc >= 0);
+		assert(step->ctx->pc < global->code.len);
 
-        if (!cc->terminated && cc->failure == 0 && (infloop_detect || loopcnt > 1000)) {
+        if (!step->ctx->terminated && step->ctx->failure == 0 && (infloop_detect || loopcnt > 1000)) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
 
-            int stacksize = cc->sp * sizeof(uint64_t);
+            int stacksize = step->ctx->sp * sizeof(uint64_t);
             int combosize = sizeof(struct combined) + stacksize;
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
-            memcpy(&combo->context, cc, sizeof(*cc) + stacksize);
+            memcpy(&combo->context, step->ctx, sizeof(*step->ctx) + stacksize);
             void **p = dict_insert(infloop, combo, combosize);
             free(combo);
             if (*p == (void *) 0) {
                 *p = (void *) 1;
             }
             else if (infloop_detect) {
-                cc->failure = value_put_atom(&global->values, "infinite loop", 13);
+                step->ctx->failure = value_put_atom(&global->values, "infinite loop", 13);
                 infinite_loop = true;
             }
             else {
                 // start over, as twostep does not have loopcnt optimization
-                free(cc);
                 free(sc);
                 return false;
             }
         }
 
-        if (cc->terminated || cc->failure != 0 || cc->stopped) {
+        if (step->ctx->terminated || step->ctx->failure != 0 || step->ctx->stopped) {
             break;
         }
-        if (cc->pc == pc) {
+        if (step->ctx->pc == pc) {
             fprintf(stderr, ">>> %s\n", oi->name);
         }
-        assert(cc->pc != pc);
-		assert(cc->pc >= 0);
-		assert(cc->pc < global->code.len);
+        assert(step->ctx->pc != pc);
+		assert(step->ctx->pc >= 0);
+		assert(step->ctx->pc < global->code.len);
 
         /* Peek at the next instruction.
          */
-        oi = global->code.instrs[cc->pc].oi;
-        if (global->code.instrs[cc->pc].choose) {
-            assert(cc->sp > 0);
-            if (0 && cc->readonly > 0) {    // TODO
-                value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
+        oi = global->code.instrs[step->ctx->pc].oi;
+        if (global->code.instrs[step->ctx->pc].choose) {
+            assert(step->ctx->sp > 0);
+            if (0 && step->ctx->readonly > 0) {    // TODO
+                value_ctx_failure(step->ctx, &global->values, "can't choose in assertion or invariant");
                 break;
             }
-            uint64_t s = cc->stack[cc->sp - 1];
+            uint64_t s = step->ctx->stack[step->ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
-                value_ctx_failure(cc, &global->values, "choose operation requires a set");
+                value_ctx_failure(step->ctx, &global->values, "choose operation requires a set");
                 break;
             }
             int size;
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             if (size == 0) {
-                value_ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
+                value_ctx_failure(step->ctx, &global->values, "choose operation requires a non-empty set");
                 break;
             }
             if (size == 1) {            // TODO.  This optimization is probably not worth it
@@ -289,10 +277,10 @@ static bool onestep(
             }
         }
 
-        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
-                                    global->code.instrs[cc->pc].breakable) {
-            if (!cc->atomicFlag && cc->atomic > 0) {
-                cc->atomicFlag = true;
+        if (!step->ctx->atomicFlag && sc->ctxbag != VALUE_DICT &&
+                                    global->code.instrs[step->ctx->pc].breakable) {
+            if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
+                step->ctx->atomicFlag = true;
             }
             break;
         }
@@ -314,19 +302,19 @@ static bool onestep(
     }
 
     // Store new context in value directory.  Must be immutable now.
-    uint64_t after = value_put_context(&global->values, cc);
+    uint64_t after = value_put_context(&global->values, step->ctx);
 
     // If choosing, save in state
     if (choosing) {
-        assert(!cc->terminated);
+        assert(!step->ctx->terminated);
         sc->choosing = after;
     }
 
     // Add new context to state unless it's terminated or stopped
-    if (cc->stopped) {
+    if (step->ctx->stopped) {
         sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
     }
-    else if (!cc->terminated) {
+    else if (!step->ctx->terminated) {
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
@@ -343,17 +331,17 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
-    next->ai = ai_list;
-    if (cc->failure != 0) {
+    next->ai = step->ai;
+    step->ai = NULL;
+    if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
     }
     else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
-        check_invariants(w, next, &w->inv_ctx);
+        check_invariants(w, next, &w->inv_step);
     }
 
     minheap_insert(w->results[weight], next);
 
-    free(cc);
     return true;
 }
 
@@ -364,29 +352,35 @@ static void make_step(
     uint64_t choice,       // if about to make a choice, which choice?
     int multiplicity       // #contexts that are in the current state
 ) {
+    struct step step;
+
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
     memcpy(sc, node->state, sizeof(*sc));
 
     // Make a copy of the context
-    struct context *cc = value_copy(ctx, NULL);
+    step.ctx = value_copy(ctx, NULL);
+    step.ai = NULL;
 
     // See if we need to interrupt
-    if (sc->choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, sc, ctx, cc, choice, true, false, multiplicity);
+    if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
+        bool succ = onestep(w, node, sc, ctx, &step, choice, true, false, multiplicity);
         if (!succ) {
-            (void) onestep(w, node, sc, ctx, cc, choice, true, true, multiplicity);
+            (void) onestep(w, node, sc, ctx, &step, choice, true, true, multiplicity);
         }
-        sc = new_alloc(struct state);
+        // sc = new_alloc(struct state);
         memcpy(sc, node->state, sizeof(*sc));
-        cc = value_copy(ctx, NULL);
+        free(step.ctx);
+        step.ctx = value_copy(ctx, NULL);
     }
 
     sc->choosing = 0;
-    bool succ = onestep(w, node, sc, ctx, cc, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, sc, ctx, &step, choice, false, false, multiplicity);
     if (!succ) {
-        (void) onestep(w, node, sc, ctx, cc, choice, false, true, multiplicity);
+        (void) onestep(w, node, sc, ctx, &step, choice, false, true, multiplicity);
     }
+
+    free(step.ctx);
 }
 
 void print_vars(FILE *file, uint64_t v){
@@ -649,15 +643,18 @@ void print_state(
 
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
-    struct context *inv_ctx = new_alloc(struct context);
+    struct step inv_step;
+    inv_step.ctx = new_alloc(struct context);
+    inv_step.ai = NULL;
+
     // uint64_t inv_nv = value_put_atom("name", 4);
     // uint64_t inv_tv = value_put_atom("tag", 3);
-    inv_ctx->name = value_put_atom(&global->values, "__invariant__", 13);
-    inv_ctx->arg = VALUE_DICT;
-    inv_ctx->this = VALUE_DICT;
-    inv_ctx->vars = VALUE_DICT;
-    inv_ctx->atomic = inv_ctx->readonly = 1;
-    inv_ctx->interruptlevel = false;
+    inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
+    inv_step.ctx->arg = VALUE_DICT;
+    inv_step.ctx->this = VALUE_DICT;
+    inv_step.ctx->vars = VALUE_DICT;
+    inv_step.ctx->atomic = inv_step.ctx->readonly = 1;
+    inv_step.ctx->interruptlevel = false;
 
     fprintf(file, "      \"invfails\": [");
     assert((state->invariants & VALUE_MASK) == VALUE_SET);
@@ -667,11 +664,11 @@ void print_state(
     int nfailures = 0;
     for (int i = 0; i < size; i++) {
         assert((vals[i] & VALUE_MASK) == VALUE_PC);
-        inv_ctx->pc = vals[i] >> VALUE_BITS;
-        assert(strcmp(global->code.instrs[inv_ctx->pc].oi->name, "Invariant") == 0);
-        int end = invariant_cnt(global->code.instrs[inv_ctx->pc].env);
-        bool b = invariant_check(global, state, &inv_ctx, end);
-        if (inv_ctx->failure != 0) {
+        inv_step.ctx->pc = vals[i] >> VALUE_BITS;
+        assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
+        int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
+        bool b = invariant_check(global, state, &inv_step, end);
+        if (inv_step.ctx->failure != 0) {
             b = false;
         }
         if (!b) {
@@ -680,11 +677,11 @@ void print_state(
             }
             fprintf(file, "\n        {\n");
             fprintf(file, "          \"pc\": \"%"PRIu64"\",\n", vals[i] >> VALUE_BITS);
-            if (inv_ctx->failure == 0) {
+            if (inv_step.ctx->failure == 0) {
                 fprintf(file, "          \"reason\": \"invariant violated\"\n");
             }
             else {
-                char *val = value_string(inv_ctx->failure);
+                char *val = value_string(inv_step.ctx->failure);
                 fprintf(file, "          \"reason\": \"%s\"\n", val + 1);
                 free(val);
             }
@@ -693,7 +690,7 @@ void print_state(
         }
     }
     fprintf(file, "\n      ],\n");
-    free(inv_ctx);
+    free(inv_step.ctx);
 
     fprintf(file, "      \"contexts\": [\n");
     for (int i = 0; i < global->nprocesses; i++) {
@@ -843,85 +840,83 @@ uint64_t twostep(
     memcpy(sc, node->state, sizeof(*sc));
     sc->choosing = 0;
 
-    // Make a copy of the context
-    struct context *cc = value_copy(ctx, NULL);
-    // diff_dump(file, oldstate, sc, oldctx, cc, node->interrupt);
-    if (cc->terminated || cc->failure != 0) {
-        free(cc);
+    struct step step;
+    step.ctx = value_copy(ctx, NULL);
+    if (step.ctx->terminated || step.ctx->failure != 0) {
+        free(step.ctx);
         return ctx;
     }
 
     if (interrupt) {
-        extern void interrupt_invoke(struct context **pctx);
-		assert(cc->trap_pc != 0);
-        interrupt_invoke(&cc);
-        diff_dump(global, file, oldstate, sc, oldctx, cc, true, false, 0);
+		assert(step.ctx->trap_pc != 0);
+        interrupt_invoke(&step);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
-        int pc = cc->pc;
+        int pc = step.ctx->pc;
 
         struct op_info *oi = global->code.instrs[pc].oi;
         if (global->code.instrs[pc].choose) {
-            cc->stack[cc->sp - 1] = choice;
-            cc->pc++;
+            step.ctx->stack[step.ctx->sp - 1] = choice;
+            step.ctx->pc++;
         }
         else {
-            (*oi->op)(global->code.instrs[pc].env, sc, &cc, global);
+            (*oi->op)(global->code.instrs[pc].env, sc, &step, global);
         }
 
-        if (!cc->terminated && cc->failure == 0) {
+        if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
 
-            int stacksize = cc->sp * sizeof(uint64_t);
+            int stacksize = step.ctx->sp * sizeof(uint64_t);
             int combosize = sizeof(struct combined) + stacksize;
             struct combined *combo = calloc(1, combosize);
             combo->state = *sc;
-            memcpy(&combo->context, cc, sizeof(*cc) + stacksize);
+            memcpy(&combo->context, step.ctx, sizeof(*step.ctx) + stacksize);
             void **p = dict_insert(infloop, combo, combosize);
             free(combo);
             if (*p == (void *) 0) {
                 *p = (void *) 1;
             }
             else {
-                cc->failure = value_put_atom(&global->values, "infinite loop", 13);
+                step.ctx->failure = value_put_atom(&global->values, "infinite loop", 13);
             }
         }
 
-        diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
-        if (cc->terminated || cc->failure != 0 || cc->stopped) {
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+        if (step.ctx->terminated || step.ctx->failure != 0 || step.ctx->stopped) {
             break;
         }
-        if (cc->pc == pc) {
+        if (step.ctx->pc == pc) {
             fprintf(stderr, ">>> %s\n", oi->name);
         }
-        assert(cc->pc != pc);
+        assert(step.ctx->pc != pc);
 
         /* Peek at the next instruction.
          */
-        oi = global->code.instrs[cc->pc].oi;
-        if (global->code.instrs[cc->pc].choose) {
-            assert(cc->sp > 0);
-            if (0 && cc->readonly > 0) {    // TODO
-                value_ctx_failure(cc, &global->values, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
+        oi = global->code.instrs[step.ctx->pc].oi;
+        if (global->code.instrs[step.ctx->pc].choose) {
+            assert(step.ctx->sp > 0);
+            if (0 && step.ctx->readonly > 0) {    // TODO
+                value_ctx_failure(step.ctx, &global->values, "can't choose in assertion or invariant");
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
                 break;
             }
-            uint64_t s = cc->stack[cc->sp - 1];
+            uint64_t s = step.ctx->stack[step.ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
-                value_ctx_failure(cc, &global->values, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
+                value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
                 break;
             }
             int size;
             uint64_t *vals = value_get(s, &size);
             size /= sizeof(uint64_t);
             if (size == 0) {
-                value_ctx_failure(cc, &global->values, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, cc, false, global->code.instrs[pc].choose, choice);
+                value_ctx_failure(step.ctx, &global->values, "choose operation requires a non-empty set");
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
                 break;
             }
             if (size == 1) {
@@ -932,20 +927,20 @@ uint64_t twostep(
             }
         }
 
-        if (!cc->atomicFlag && sc->ctxbag != VALUE_DICT &&
-                                    global->code.instrs[cc->pc].breakable) {
-            if (!cc->atomicFlag && cc->atomic > 0) {
-                cc->atomicFlag = true;
+        if (!step.ctx->atomicFlag && sc->ctxbag != VALUE_DICT &&
+                                    global->code.instrs[step.ctx->pc].breakable) {
+            if (!step.ctx->atomicFlag && step.ctx->atomic > 0) {
+                step.ctx->atomicFlag = true;
             }
             break;
         }
     }
 
     // assert(sc->vars == nextvars);
-    ctx = value_put_context(&global->values, cc);
+    ctx = value_put_context(&global->values, step.ctx);
 
     free(sc);
-    free(cc);
+    free(step.ctx);
 
     return ctx;
 }
@@ -1551,13 +1546,13 @@ int main(int argc, char **argv){
         w->results[1] = minheap_create(node_cmp);
 
         // Create a context for evaluating invariants
-        w->inv_ctx = new_alloc(struct context);
-        w->inv_ctx->name = value_put_atom(&global->values, "__invariant__", 13);
-        w->inv_ctx->arg = VALUE_DICT;
-        w->inv_ctx->this = VALUE_DICT;
-        w->inv_ctx->vars = VALUE_DICT;
-        w->inv_ctx->atomic = w->inv_ctx->readonly = 1;
-        w->inv_ctx->interruptlevel = false;
+        w->inv_step.ctx = new_alloc(struct context);
+        w->inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
+        w->inv_step.ctx->arg = VALUE_DICT;
+        w->inv_step.ctx->this = VALUE_DICT;
+        w->inv_step.ctx->vars = VALUE_DICT;
+        w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
+        w->inv_step.ctx->interruptlevel = false;
     }
 
     // Start the workers, who'll wait on the start barrier

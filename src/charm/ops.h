@@ -12,10 +12,15 @@
 void ops_init(struct global_t* global);
 struct op_info *ops_get(char *opname, int size);
 
+struct step {
+    struct context *ctx;
+    struct access_info *ai;
+};
+
 struct op_info {
     const char *name;
     void *(*init)(struct dict *, struct values_t *values);
-    void (*op)(const void *env, struct state *state, struct context **pctx, struct global_t *global);
+    void (*op)(const void *env, struct state *state, struct step *step, struct global_t *global);
 };
 
 struct env_Cut {
@@ -101,11 +106,6 @@ struct env_StoreVar {
     struct var_tree *args;
 };
 
-void ext_Del(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-             struct access_info *ai);
-void ext_Load(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-              struct access_info *ai);
-void ext_Store(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-               struct access_info *ai);
+void interrupt_invoke(struct step *step);
 
 #endif //SRC_OPS_H

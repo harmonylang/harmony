@@ -185,15 +185,15 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
     return vt;
 }
 
-void interrupt_invoke(struct context **pctx){
-    assert(!(*pctx)->interruptlevel);
-	assert(((*pctx)->trap_pc & VALUE_MASK) == VALUE_PC);
-    value_ctx_push(pctx, ((*pctx)->pc << VALUE_BITS) | VALUE_PC);
-    value_ctx_push(pctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
-    value_ctx_push(pctx, (*pctx)->trap_arg);
-    (*pctx)->pc = (*pctx)->trap_pc >> VALUE_BITS;
-    (*pctx)->trap_pc = 0;
-    (*pctx)->interruptlevel = true;
+void interrupt_invoke(struct step *step){
+    assert(!step->ctx->interruptlevel);
+	assert((step->ctx->trap_pc & VALUE_MASK) == VALUE_PC);
+    value_ctx_push(&step->ctx, (step->ctx->pc << VALUE_BITS) | VALUE_PC);
+    value_ctx_push(&step->ctx, (CALLTYPE_INTERRUPT << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(&step->ctx, step->ctx->trap_arg);
+    step->ctx->pc = step->ctx->trap_pc >> VALUE_BITS;
+    step->ctx->trap_pc = 0;
+    step->ctx->interruptlevel = true;
 }
 
 bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
@@ -318,17 +318,17 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
     }
 }
 
-void op_Address(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t index = value_ctx_pop(pctx);
-    uint64_t av = value_ctx_pop(pctx);
+void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t index = value_ctx_pop(&step->ctx);
+    uint64_t av = value_ctx_pop(&step->ctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
-        value_ctx_failure(*pctx, &global->values, "%s: not an address", p);
+        value_ctx_failure(step->ctx, &global->values, "%s: not an address", p);
         free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
-        value_ctx_failure(*pctx, &global->values, "None unexpected");
+        value_ctx_failure(step->ctx, &global->values, "None unexpected");
         return;
     }
     if (false) {
@@ -339,14 +339,14 @@ void op_Address(const void *env, struct state *state, struct context **pctx, str
     uint64_t *indices = value_copy(av, &size);
     indices = realloc(indices, size + sizeof(index));
     indices[size / sizeof(uint64_t)] = index;
-    value_ctx_push(pctx, value_put_address(&global->values, indices, size + sizeof(index)));
+    value_ctx_push(&step->ctx, value_put_address(&global->values, indices, size + sizeof(index)));
     free(indices);
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Apply(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t e = value_ctx_pop(pctx);
-    uint64_t method = value_ctx_pop(pctx);
+void op_Apply(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t e = value_ctx_pop(&step->ctx);
+    uint64_t method = value_ctx_pop(&step->ctx);
 
     uint64_t type = method & VALUE_MASK;
     switch (type) {
@@ -356,79 +356,79 @@ void op_Apply(const void *env, struct state *state, struct context **pctx, struc
             if (!value_dict_tryload(method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
-                value_ctx_failure(*pctx, &global->values, "Bad index %s: not in %s", x, m);
+                value_ctx_failure(step->ctx, &global->values, "Bad index %s: not in %s", x, m);
                 free(m);
                 free(x);
                 return;
             }
-            value_ctx_push(pctx, v);
-            (*pctx)->pc++;
+            value_ctx_push(&step->ctx, v);
+            step->ctx->pc++;
         }
         return;
     case VALUE_PC:
-        value_ctx_push(pctx, (((*pctx)->pc + 1) << VALUE_BITS) | VALUE_PC);
-        value_ctx_push(pctx, (CALLTYPE_NORMAL << VALUE_BITS) | VALUE_INT);
-        value_ctx_push(pctx, e);
-        assert((method >> VALUE_BITS) != (*pctx)->pc);
-        (*pctx)->pc = method >> VALUE_BITS;
+        value_ctx_push(&step->ctx, ((step->ctx->pc + 1) << VALUE_BITS) | VALUE_PC);
+        value_ctx_push(&step->ctx, (CALLTYPE_NORMAL << VALUE_BITS) | VALUE_INT);
+        value_ctx_push(&step->ctx, e);
+        assert((method >> VALUE_BITS) != step->ctx->pc);
+        step->ctx->pc = method >> VALUE_BITS;
         return;
     default:
         {
             char *x = value_string(method);
-            value_ctx_failure(*pctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
         }
     }
 }
 
-void op_Assert(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = value_ctx_pop(pctx);
+void op_Assert(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t v = value_ctx_pop(&step->ctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(*pctx, &global->values, "assert can only be applied to bool values");
+        value_ctx_failure(step->ctx, &global->values, "assert can only be applied to bool values");
     }
     if (v == VALUE_FALSE) {
-        value_ctx_failure(*pctx, &global->values, "Harmony assertion failed");
+        value_ctx_failure(step->ctx, &global->values, "Harmony assertion failed");
     }
     else {
-        (*pctx)->pc++;
+        step->ctx->pc++;
     }
 }
 
-void op_Assert2(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t e = value_ctx_pop(pctx);
-    uint64_t v = value_ctx_pop(pctx);
+void op_Assert2(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t e = value_ctx_pop(&step->ctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(*pctx, &global->values, "assert2 can only be applied to bool values");
+        value_ctx_failure(step->ctx, &global->values, "assert2 can only be applied to bool values");
     }
     if (v == VALUE_FALSE) {
         char *p = value_string(e);
-        value_ctx_failure(*pctx, &global->values, "Harmony assertion failed: %s", p);
+        value_ctx_failure(step->ctx, &global->values, "Harmony assertion failed: %s", p);
         free(p);
     }
     else {
-        (*pctx)->pc++;
+        step->ctx->pc++;
     }
 }
 
-void op_Log(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = value_ctx_pop(pctx);
-    (*pctx)->pc++;
+void op_Log(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t v = value_ctx_pop(&step->ctx);
+    step->ctx->pc++;
 }
 
-void op_Possibly(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = value_ctx_pop(pctx);
+void op_Possibly(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t v = value_ctx_pop(&step->ctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(*pctx, &global->values, "possibly can only be applied to bool values");
+        value_ctx_failure(step->ctx, &global->values, "possibly can only be applied to bool values");
     }
     if (v == VALUE_TRUE) {
-        void **p = dict_insert(global->possibly_cnt, &(*pctx)->pc, sizeof((*pctx)->pc));
+        void **p = dict_insert(global->possibly_cnt, &step->ctx->pc, sizeof(step->ctx->pc));
         (* (uint64_t *) p)++;
     }
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_AtomicDec(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    struct context *ctx = *pctx;
+void op_AtomicDec(const void *env, struct state *state, struct step *step, struct global_t *global){
+    struct context *ctx = step->ctx;
 
     assert(ctx->atomic > 0);
     if (--ctx->atomic == 0) {
@@ -437,9 +437,9 @@ void op_AtomicDec(const void *env, struct state *state, struct context **pctx, s
     ctx->pc++;
 }
 
-void op_AtomicInc(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_AtomicInc(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_AtomicInc *ea = env;
-    struct context *ctx = *pctx;
+    struct context *ctx = step->ctx;
 
     ctx->atomic++;
     if (!ea->lazy) {
@@ -448,17 +448,17 @@ void op_AtomicInc(const void *env, struct state *state, struct context **pctx, s
     ctx->pc++;
 }
 
-void op_Choose(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Choose(const void *env, struct state *state, struct step *step, struct global_t *global){
     panic("op_Choose: should not be called");
 }
 
-void op_Continue(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    (*pctx)->pc++;
+void op_Continue(const void *env, struct state *state, struct step *step, struct global_t *global){
+    step->ctx->pc++;
 }
 
-void op_Cut(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Cut(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Cut *ec = env;
-    struct context *ctx = *pctx;
+    struct context *ctx = step->ctx;
 
     uint64_t v = value_dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
@@ -474,8 +474,8 @@ void op_Cut(const void *env, struct state *state, struct context **pctx, struct 
         assert(size > 0);
 
         ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(uint64_t)));
-        var_match(*pctx, ec->value, &global->values, vals[0]);
-        (*pctx)->pc++;
+        var_match(step->ctx, ec->value, &global->values, vals[0]);
+        step->ctx->pc++;
         return;
     }
     if ((v & VALUE_MASK) == VALUE_DICT) {
@@ -487,65 +487,60 @@ void op_Cut(const void *env, struct state *state, struct context **pctx, struct 
         assert(size > 0);
 
         ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(uint64_t)));
-        var_match(*pctx, ec->value, &global->values, vals[1]);
+        var_match(step->ctx, ec->value, &global->values, vals[1]);
         if (ec->key != NULL) {
-            var_match(*pctx, ec->key, &global->values, vals[0]);
+            var_match(step->ctx, ec->key, &global->values, vals[0]);
         }
-        (*pctx)->pc++;
+        step->ctx->pc++;
         return;
     }
     panic("op_Cut: not a set or dict");
 }
 
-void ext_Del(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-                                                        struct access_info *ai){
+void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
-    if ((*pctx)->readonly > 0) {
-        value_ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant");
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &global->values, "Can't update state in assert or invariant");
         return;
     }
 
-    uint64_t av = value_ctx_pop(pctx);
+    uint64_t av = value_ctx_pop(&step->ctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
-        value_ctx_failure(*pctx, &global->values, "Del %s: not an address", p);
+        value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
         free(p);
         return;
     }
     if (av == VALUE_ADDRESS) {
-        value_ctx_failure(*pctx, &global->values, "Del: address is None");
+        value_ctx_failure(step->ctx, &global->values, "Del: address is None");
         return;
     }
 
     int size;
     uint64_t *indices = value_get(av, &size);
     size /= sizeof(uint64_t);
-    if (ai != NULL) {
-        ai->indices = indices;
-        ai->n = size;
-        ai->load = false;
+    if (step->ai != NULL) {
+        step->ai->indices = indices;
+        step->ai->n = size;
+        step->ai->load = false;
     }
     uint64_t nd;
     if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
-        value_ctx_failure(*pctx, &global->values, "Del: no such variable");
+        value_ctx_failure(step->ctx, &global->values, "Del: no such variable");
     }
     else {
         state->vars = nd;
-        (*pctx)->pc++;
+        step->ctx->pc++;
     }
 }
 
-void op_Del(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    ext_Del(env, state, pctx, global, NULL);
-}
-
-void op_DelVar(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_DelVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_DelVar *ed = env;
 
-    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
     if (ed == NULL) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -555,42 +550,42 @@ void op_DelVar(const void *env, struct state *state, struct context **pctx, stru
 
         bool result;
         if (indices[0] == this_atom) {
-            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                value_ctx_failure(*pctx, &global->values, "DelVar: 'this' is not a dictionary");
+            if ((step->ctx->this & VALUE_MASK) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &global->values, "DelVar: 'this' is not a dictionary");
                 return;
             }
-		    result = ind_remove((*pctx)->this, &indices[1], size - 1, &global->values, &(*pctx)->this);
+		    result = ind_remove(step->ctx->this, &indices[1], size - 1, &global->values, &step->ctx->this);
         }
         else {
-		    result = ind_remove((*pctx)->vars, indices, size, &global->values, &(*pctx)->vars);
+		    result = ind_remove(step->ctx->vars, indices, size, &global->values, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "DelVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "DelVar: bad address: %s", x);
             free(x);
 			return;
 		}
     }
 	else {
         if (ed->name == this_atom) {
-            value_ctx_failure(*pctx, &global->values, "DelVar: can't del 'this'");
+            value_ctx_failure(step->ctx, &global->values, "DelVar: can't del 'this'");
             return;
         }
         else {
-            (*pctx)->vars = value_dict_remove(&global->values, (*pctx)->vars, ed->name);
+            step->ctx->vars = value_dict_remove(&global->values, step->ctx->vars, ed->name);
         }
 	}
-	(*pctx)->pc++;
+	step->ctx->pc++;
 }
 
-void op_Dup(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t v = value_ctx_pop(pctx);
-    value_ctx_push(pctx, v);
-    value_ctx_push(pctx, v);
-    (*pctx)->pc++;
+void op_Dup(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t v = value_ctx_pop(&step->ctx);
+    value_ctx_push(&step->ctx, v);
+    value_ctx_push(&step->ctx, v);
+    step->ctx->pc++;
 }
 
-void op_Frame(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
     static uint64_t result = 0;
 
     if (result == 0) {
@@ -599,30 +594,30 @@ void op_Frame(const void *env, struct state *state, struct context **pctx, struc
 
     const struct env_Frame *ef = env;
     if (false) {
-        printf("FRAME %d %d %"PRIx64" ", (*pctx)->pc, (*pctx)->sp, ef->name);
+        printf("FRAME %d %d %"PRIx64" ", step->ctx->pc, step->ctx->sp, ef->name);
         var_dump(ef->args);
         printf("\n");
     }
 
     // peek at argument
-    uint64_t arg = value_ctx_pop(pctx);
-    value_ctx_push(pctx, arg);
+    uint64_t arg = value_ctx_pop(&step->ctx);
+    value_ctx_push(&step->ctx, arg);
 
-    uint64_t oldvars = (*pctx)->vars;
+    uint64_t oldvars = step->ctx->vars;
 
     // Set result to None
-    (*pctx)->vars = value_dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
+    step->ctx->vars = value_dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
 
     // try to match against parameters
-    var_match(*pctx, ef->args, &global->values, arg);
-    if ((*pctx)->failure != 0) {
+    var_match(step->ctx, ef->args, &global->values, arg);
+    if (step->ctx->failure != 0) {
         return;
     }
  
-    value_ctx_push(pctx, oldvars);
-    value_ctx_push(pctx, ((*pctx)->fp << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(&step->ctx, oldvars);
+    value_ctx_push(&step->ctx, (step->ctx->fp << VALUE_BITS) | VALUE_INT);
 
-    struct context *ctx = *pctx;
+    struct context *ctx = step->ctx;
     ctx->fp = ctx->sp;
     ctx->pc += 1;
 }
@@ -630,12 +625,12 @@ void op_Frame(const void *env, struct state *state, struct context **pctx, struc
 void op_Go(
     const void *env,
     struct state *state,
-    struct context **pctx,
+    struct step *step,
     struct global_t *global
 ){
-    uint64_t ctx = value_ctx_pop(pctx);
+    uint64_t ctx = value_ctx_pop(&step->ctx);
     if ((ctx & VALUE_MASK) != VALUE_CONTEXT) {
-        value_ctx_failure(*pctx, &global->values, "Go: not a context");
+        value_ctx_failure(step->ctx, &global->values, "Go: not a context");
         return;
     }
 
@@ -653,19 +648,19 @@ void op_Go(
         }
     }
 
-    uint64_t result = value_ctx_pop(pctx);
+    uint64_t result = value_ctx_pop(&step->ctx);
     struct context *copy = value_copy(ctx, NULL);
     value_ctx_push(&copy, result);
     copy->stopped = false;
     uint64_t v = value_put_context(&global->values, copy);
     free(copy);
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_IncVar(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_IncVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_IncVar *ei = env;
-    struct context *ctx = *pctx;
+    struct context *ctx = step->ctx;
 
     assert((ctx->vars & VALUE_MASK) == VALUE_DICT);
 
@@ -673,10 +668,10 @@ void op_IncVar(const void *env, struct state *state, struct context **pctx, stru
     assert((v & VALUE_MASK) == VALUE_INT);
     v += 1 << VALUE_BITS;
     ctx->vars = value_dict_store(&global->values, ctx->vars, ei->name, v);
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Invariant(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Invariant(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Invariant *ei = env;
 
     assert((state->invariants & VALUE_MASK) == VALUE_SET);
@@ -690,9 +685,9 @@ void op_Invariant(const void *env, struct state *state, struct context **pctx, s
         vals = value_get(state->invariants, &size);
     }
     vals = realloc(vals, size + sizeof(uint64_t));
-    * (uint64_t *) ((char *) vals + size) = ((*pctx)->pc << VALUE_BITS) | VALUE_PC;
+    * (uint64_t *) ((char *) vals + size) = (step->ctx->pc << VALUE_BITS) | VALUE_PC;
     state->invariants = value_put_set(&global->values, vals, size + sizeof(uint64_t));
-    (*pctx)->pc = ei->end + 1;
+    step->ctx->pc = ei->end + 1;
 }
 
 int invariant_cnt(const void *env){
@@ -701,96 +696,91 @@ int invariant_cnt(const void *env){
     return ei->end;
 }
 
-void op_Jump(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Jump(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Jump *ej = env;
 
     if (false) {
         printf("JUMP %d\n", ej->pc);
     }
-    (*pctx)->pc = ej->pc;
+    step->ctx->pc = ej->pc;
 }
 
-void op_JumpCond(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_JumpCond(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_JumpCond *ej = env;
 
     if (false) {
         printf("JUMPCOND %d\n", ej->pc);
     }
-    uint64_t v = value_ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
     if (v == ej->cond) {
-        assert((*pctx)->pc != ej->pc);
-        (*pctx)->pc = ej->pc;
+        assert(step->ctx->pc != ej->pc);
+        step->ctx->pc = ej->pc;
     }
     else {
-        (*pctx)->pc++;
+        step->ctx->pc++;
     }
 }
 
-void ext_Load(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-                                                        struct access_info *ai){
+void op_Load(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Load *el = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     uint64_t v;
     if (el == 0) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(*pctx, &global->values, "Load %s: not an address", p);
+            value_ctx_failure(step->ctx, &global->values, "Load %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(*pctx, &global->values, "Load: can't load from None");
+            value_ctx_failure(step->ctx, &global->values, "Load: can't load from None");
             return;
         }
 
         int size;
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
-        if (ai != NULL) {
-            ai->indices = indices;
-            ai->n = size;
-            ai->load = true;
+        if (step->ai != NULL) {
+            step->ai->indices = indices;
+            step->ai->n = size;
+            step->ai->load = true;
         }
 
         if (!ind_tryload(state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "Load: unknown address %s", x);
+            value_ctx_failure(step->ctx, &global->values, "Load: unknown address %s", x);
             free(x);
             return;
         }
-        value_ctx_push(pctx, v);
+        value_ctx_push(&step->ctx, v);
     }
     else {
-        if (ai != NULL) {
-            ai->indices = el->indices;
-            ai->n = el->n;
-            ai->load = true;
+        if (step->ai != NULL) {
+            step->ai->indices = el->indices;
+            step->ai->n = el->n;
+            step->ai->load = true;
         }
         if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
-            value_ctx_failure(*pctx, &global->values, "Load: unknown variable %s", x+1);
+            value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x+1);
             free(x);
             return;
         }
-        value_ctx_push(pctx, v);
+        value_ctx_push(&step->ctx, v);
     }
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Load(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    ext_Load(env, state, pctx, global, NULL);
-}
-
-void op_LoadVar(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_LoadVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_LoadVar *el = env;
-    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
 
     uint64_t v;
     if (el == NULL) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -800,43 +790,43 @@ void op_LoadVar(const void *env, struct state *state, struct context **pctx, str
 
         bool result;
         if (indices[0] == this_atom) {
-            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                value_ctx_failure(*pctx, &global->values, "LoadVar: 'this' is not a dictionary");
+            if ((step->ctx->this & VALUE_MASK) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &global->values, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload((*pctx)->this, &indices[1], size - 1, &v);
+            result = ind_tryload(step->ctx->this, &indices[1], size - 1, &v);
         }
         else {
-            result = ind_tryload((*pctx)->vars, indices, size, &v);
+            result = ind_tryload(step->ctx->vars, indices, size, &v);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "LoadVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "LoadVar: bad address: %s", x);
             free(x);
             return;
         }
-        value_ctx_push(pctx, v);
+        value_ctx_push(&step->ctx, v);
     }
     else {
         if (el->name == this_atom) {
-            value_ctx_push(pctx, (*pctx)->this);
+            value_ctx_push(&step->ctx, step->ctx->this);
         }
-        else if (value_dict_tryload((*pctx)->vars, el->name, &v)) {
-            value_ctx_push(pctx, v);
+        else if (value_dict_tryload(step->ctx->vars, el->name, &v)) {
+            value_ctx_push(&step->ctx, v);
         }
         else {
             char *p = value_string(el->name);
-            value_ctx_failure(*pctx, &global->values, "LoadVar: unknown variable %s", p + 1);
+            value_ctx_failure(step->ctx, &global->values, "LoadVar: unknown variable %s", p + 1);
             free(p);
             return;
         }
     }
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Move(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Move(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Move *em = env;
-    struct context *ctx = *pctx;
+    struct context *ctx = step->ctx;
     int offset = ctx->sp - em->offset;
 
     uint64_t v = ctx->stack[offset];
@@ -846,27 +836,27 @@ void op_Move(const void *env, struct state *state, struct context **pctx, struct
     ctx->pc++;
 }
 
-void op_Nary(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Nary(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Nary *en = env;
     uint64_t args[MAX_ARITY];
 
     for (int i = 0; i < en->arity; i++) {
-        args[i] = value_ctx_pop(pctx);
+        args[i] = value_ctx_pop(&step->ctx);
     }
-    uint64_t result = (*en->fi->f)(state, *pctx, args, en->arity, &global->values);
-    if ((*pctx)->failure == 0) {
-        value_ctx_push(pctx, result);
-        (*pctx)->pc++;
+    uint64_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
+    if (step->ctx->failure == 0) {
+        value_ctx_push(&step->ctx, result);
+        step->ctx->pc++;
     }
 }
 
-void op_Pop(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    assert((*pctx)->sp > 0);
-    (*pctx)->sp--;
-    (*pctx)->pc++;
+void op_Pop(const void *env, struct state *state, struct step *step, struct global_t *global){
+    assert(step->ctx->sp > 0);
+    step->ctx->sp--;
+    step->ctx->pc++;
 }
 
-void op_Push(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
     if (false) {
@@ -875,79 +865,79 @@ void op_Push(const void *env, struct state *state, struct context **pctx, struct
         free(p);
     }
 
-    value_ctx_push(pctx, ep->value);
-    (*pctx)->pc++;
+    value_ctx_push(&step->ctx, ep->value);
+    step->ctx->pc++;
 }
 
-void op_ReadonlyDec(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    struct context *ctx = *pctx;
+void op_ReadonlyDec(const void *env, struct state *state, struct step *step, struct global_t *global){
+    struct context *ctx = step->ctx;
 
     assert(ctx->readonly > 0);
     ctx->readonly--;
     ctx->pc++;
 }
 
-void op_ReadonlyInc(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    struct context *ctx = *pctx;
+void op_ReadonlyInc(const void *env, struct state *state, struct step *step, struct global_t *global){
+    struct context *ctx = step->ctx;
 
     ctx->readonly++;
     ctx->pc++;
 }
 
-void op_Return(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    if ((*pctx)->sp == 0) {     // __init__    TODO: no longer the case
+void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
+    if (step->ctx->sp == 0) {     // __init__    TODO: no longer the case
         assert(false);
-        (*pctx)->terminated = true;
+        step->ctx->terminated = true;
         if (false) {
             printf("RETURN INIT\n");
         }
     }
     else {
-        uint64_t result = value_dict_load((*pctx)->vars, value_put_atom(&global->values, "result", 6));
-        uint64_t fp = value_ctx_pop(pctx);
+        uint64_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
+        uint64_t fp = value_ctx_pop(&step->ctx);
         if ((fp & VALUE_MASK) != VALUE_INT) {
-            printf("XXX %d %d %s\n", (*pctx)->pc, (*pctx)->sp, value_string(fp));
-            value_ctx_failure(*pctx, &global->values, "XXX");
+            printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
+            value_ctx_failure(step->ctx, &global->values, "XXX");
             return;
             // exit(1);
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
-        (*pctx)->fp = fp >> VALUE_BITS;
-        uint64_t oldvars = value_ctx_pop(pctx);
+        step->ctx->fp = fp >> VALUE_BITS;
+        uint64_t oldvars = value_ctx_pop(&step->ctx);
         assert((oldvars & VALUE_MASK) == VALUE_DICT);
-        (*pctx)->vars = oldvars;
-        (void) value_ctx_pop(pctx);   // argument saved for stack trace
-        if ((*pctx)->sp == 0) {     // __init__
-            (*pctx)->terminated = true;
+        step->ctx->vars = oldvars;
+        (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
+        if (step->ctx->sp == 0) {     // __init__
+            step->ctx->terminated = true;
             if (false) {
                 printf("RETURN INIT\n");
             }
             return;
         }
-        uint64_t calltype = value_ctx_pop(pctx);
+        uint64_t calltype = value_ctx_pop(&step->ctx);
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {
         case CALLTYPE_PROCESS:
-            (*pctx)->terminated = true;
+            step->ctx->terminated = true;
             break;
         case CALLTYPE_NORMAL:
             {
-                uint64_t pc = value_ctx_pop(pctx);
+                uint64_t pc = value_ctx_pop(&step->ctx);
                 assert((pc & VALUE_MASK) == VALUE_PC);
                 pc >>= VALUE_BITS;
-                assert(pc != (*pctx)->pc);
-                value_ctx_push(pctx, result);
-                (*pctx)->pc = pc;
+                assert(pc != step->ctx->pc);
+                value_ctx_push(&step->ctx, result);
+                step->ctx->pc = pc;
             }
             break;
 		case CALLTYPE_INTERRUPT:
-			assert((*pctx)->interruptlevel);
-			(*pctx)->interruptlevel = false;
-			uint64_t pc = value_ctx_pop(pctx);
+			assert(step->ctx->interruptlevel);
+			step->ctx->interruptlevel = false;
+			uint64_t pc = value_ctx_pop(&step->ctx);
 			assert((pc & VALUE_MASK) == VALUE_PC);
 			pc >>= VALUE_BITS;
-			assert(pc != (*pctx)->pc);
-			(*pctx)->pc = pc;
+			assert(pc != step->ctx->pc);
+			step->ctx->pc = pc;
 			break;
         default:
             panic("op_Return: bad call type");
@@ -955,11 +945,11 @@ void op_Return(const void *env, struct state *state, struct context **pctx, stru
     }
 }
 
-void op_Sequential(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    uint64_t addr = value_ctx_pop(pctx);
+void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
+    uint64_t addr = value_ctx_pop(&step->ctx);
     if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(addr);
-        value_ctx_failure(*pctx, &global->values, "Sequential %s: not an address", p);
+        value_ctx_failure(step->ctx, &global->values, "Sequential %s: not an address", p);
         free(p);
         return;
     }
@@ -974,7 +964,7 @@ void op_Sequential(const void *env, struct state *state, struct context **pctx, 
         int k = value_cmp(seqs[i], addr);
         if (k == 0) {
             free(seqs);
-            (*pctx)->pc++;
+            step->ctx->pc++;
             return;
         }
         if (k > 0) {
@@ -986,7 +976,7 @@ void op_Sequential(const void *env, struct state *state, struct context **pctx, 
     seqs[i] = addr;
     state->seqs = value_put_set(&global->values, seqs, (size + 1) * sizeof(uint64_t));
     free(seqs);
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
 // sort two key/value pairs
@@ -1019,32 +1009,32 @@ static int sort(uint64_t *vals, int n){
     return p - vals;
 }
 
-void op_SetIntLevel(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-	bool oldlevel = (*pctx)->interruptlevel;
-	uint64_t newlevel =  value_ctx_pop(pctx);
+void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global_t *global){
+	bool oldlevel = step->ctx->interruptlevel;
+	uint64_t newlevel =  value_ctx_pop(&step->ctx);
     if ((newlevel & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(*pctx, &global->values, "setintlevel can only be set to a boolean");
+        value_ctx_failure(step->ctx, &global->values, "setintlevel can only be set to a boolean");
         return;
     }
-    (*pctx)->interruptlevel = newlevel >> VALUE_BITS;
-	value_ctx_push(pctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
-    (*pctx)->pc++;
+    step->ctx->interruptlevel = newlevel >> VALUE_BITS;
+	value_ctx_push(&step->ctx, (oldlevel << VALUE_BITS) | VALUE_BOOL);
+    step->ctx->pc++;
 }
 
 void op_Spawn(
     const void *env,
     struct state *state,
-    struct context **pctx,
+    struct step *step,
     struct global_t *global
 ) {
     const struct env_Spawn *se = env;
 
-    uint64_t thisval = value_ctx_pop(pctx);
-    uint64_t arg = value_ctx_pop(pctx);
+    uint64_t thisval = value_ctx_pop(&step->ctx);
+    uint64_t arg = value_ctx_pop(&step->ctx);
 
-    uint64_t pc = value_ctx_pop(pctx);
+    uint64_t pc = value_ctx_pop(&step->ctx);
     if ((pc & VALUE_MASK) != VALUE_PC) {
-        value_ctx_failure(*pctx, &global->values, "spawn: not a method");
+        value_ctx_failure(step->ctx, &global->values, "spawn: not a method");
         return;
     }
     pc >>= VALUE_BITS;
@@ -1075,24 +1065,24 @@ void op_Spawn(
         free(p);
     }
 
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Split(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Split(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Split *es = env;
 
-    uint64_t v = value_ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
     uint64_t type = v & VALUE_MASK;
     if (type != VALUE_DICT && type != VALUE_SET) {
-        value_ctx_failure(*pctx, &global->values, "Can only split tuples or sets");
+        value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
         return;
     }
     if (v == VALUE_DICT || v == VALUE_SET) {
         if (es->count != 0) {
-            value_ctx_failure(*pctx, &global->values, "Split: empty set or tuple");
+            value_ctx_failure(step->ctx, &global->values, "Split: empty set or tuple");
         }
         else {
-            (*pctx)->pc++;
+            step->ctx->pc++;
         }
         return;
     }
@@ -1103,50 +1093,50 @@ void op_Split(const void *env, struct state *state, struct context **pctx, struc
     if (type == VALUE_DICT) {
         size /= 2 * sizeof(uint64_t);
         if (size != es->count) {
-            value_ctx_failure(*pctx, &global->values, "Split: list of wrong size");
+            value_ctx_failure(step->ctx, &global->values, "Split: list of wrong size");
             return;
         }
         for (int i = 0; i < size; i++) {
-            value_ctx_push(pctx, vals[2*i + 1]);
+            value_ctx_push(&step->ctx, vals[2*i + 1]);
         }
-        (*pctx)->pc++;
+        step->ctx->pc++;
         return;
     }
     if (type == VALUE_SET) {
         size /= sizeof(uint64_t);
         if (size != es->count) {
-            value_ctx_failure(*pctx, &global->values, "Split: set of wrong size");
+            value_ctx_failure(step->ctx, &global->values, "Split: set of wrong size");
             return;
         }
         for (int i = 0; i < size; i++) {
-            value_ctx_push(pctx, vals[i]);
+            value_ctx_push(&step->ctx, vals[i]);
         }
-        (*pctx)->pc++;
+        step->ctx->pc++;
         return;
     }
     panic("op_Split: not a set or dict");
 }
 
-void op_Stop(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_Stop(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Stop *es = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
-    if ((*pctx)->readonly > 0) {
-        value_ctx_failure(*pctx, &global->values, "Stop: in read-only mode");
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &global->values, "Stop: in read-only mode");
         return;
     }
 
     if (es == 0) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(*pctx, &global->values, "Stop %s: not an address", p);
+            value_ctx_failure(step->ctx, &global->values, "Stop %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(*pctx, &global->values, "Stop: address is None");
+            value_ctx_failure(step->ctx, &global->values, "Stop: address is None");
             return;
         }
 
@@ -1154,67 +1144,66 @@ void op_Stop(const void *env, struct state *state, struct context **pctx, struct
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
 
-        (*pctx)->stopped = true;
-        (*pctx)->pc++;
-        uint64_t v = value_put_context(&global->values, *pctx);
+        step->ctx->stopped = true;
+        step->ctx->pc++;
+        uint64_t v = value_put_context(&global->values, step->ctx);
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "Stop: bad address: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "Stop: bad address: %s", x);
             free(x);
             return;
         }
     }
     else {
-        (*pctx)->stopped = true;
-        (*pctx)->pc++;
-        uint64_t v = value_put_context(&global->values, *pctx);
+        step->ctx->stopped = true;
+        step->ctx->pc++;
+        uint64_t v = value_put_context(&global->values, step->ctx);
 
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            value_ctx_failure(*pctx, &global->values, "Store: bad variable");
+            value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
             return;
         }
     }
 }
 
-void ext_Store(const void *env, struct state *state, struct context **pctx, struct global_t *global,
-                                                        struct access_info *ai){
+void op_Store(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Store *es = env;
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
-    if ((*pctx)->readonly > 0) {
-        value_ctx_failure(*pctx, &global->values, "Can't update state in assert or invariant (including acquiring locks)");
+    if (step->ctx->readonly > 0) {
+        value_ctx_failure(step->ctx, &global->values, "Can't update state in assert or invariant (including acquiring locks)");
         return;
     }
 
-    uint64_t v = value_ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
 
     if (es == 0) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
-            value_ctx_failure(*pctx, &global->values, "Store %s: not an address", p);
+            value_ctx_failure(step->ctx, &global->values, "Store %s: not an address", p);
             free(p);
             return;
         }
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(*pctx, &global->values, "Store: address is None");
+            value_ctx_failure(step->ctx, &global->values, "Store: address is None");
             return;
         }
 
         int size;
         uint64_t *indices = value_get(av, &size);
         size /= sizeof(uint64_t);
-        if (ai != NULL) {
-            ai->indices = indices;
-            ai->n = size;
-            ai->load = is_sequential(state->seqs, ai->indices, ai->n);
+        if (step->ai != NULL) {
+            step->ai->indices = indices;
+            step->ai->n = size;
+            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
 
         if (false) {
-            printf("STORE IND %d %d %d %"PRIx64" %s %s\n", (*pctx)->pc, (*pctx)->sp, size, v,
-                    value_string((*pctx)->stack[(*pctx)->sp - 1]),
+            printf("STORE IND %d %d %d %"PRIx64" %s %s\n", step->ctx->pc, step->ctx->sp, size, v,
+                    value_string(step->ctx->stack[step->ctx->sp - 1]),
                     value_string(av));
             for (int i = 0; i < size; i++) {
                 char *index = value_string(indices[i]);
@@ -1225,36 +1214,32 @@ void ext_Store(const void *env, struct state *state, struct context **pctx, stru
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "Store: bad address: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "Store: bad address: %s", x);
             free(x);
             return;
         }
     }
     else {
-        if (ai != NULL) {
-            ai->indices = es->indices;
-            ai->n = es->n;
-            ai->load = is_sequential(state->seqs, ai->indices, ai->n);
+        if (step->ai != NULL) {
+            step->ai->indices = es->indices;
+            step->ai->n = es->n;
+            step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            value_ctx_failure(*pctx, &global->values, "Store: bad variable");
+            value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
             return;
         }
     }
-    (*pctx)->pc++;
+    step->ctx->pc++;
 }
 
-void op_Store(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    ext_Store(env, state, pctx, global, NULL);
-}
-
-void op_StoreVar(const void *env, struct state *state, struct context **pctx, struct global_t *global){
+void op_StoreVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_StoreVar *es = env;
-    uint64_t v = value_ctx_pop(pctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
 
-    assert(((*pctx)->vars & VALUE_MASK) == VALUE_DICT);
+    assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
     if (es == NULL) {
-        uint64_t av = value_ctx_pop(pctx);
+        uint64_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
@@ -1264,48 +1249,48 @@ void op_StoreVar(const void *env, struct state *state, struct context **pctx, st
 
         bool result;
         if (indices[0] == this_atom) {
-            if (((*pctx)->this & VALUE_MASK) != VALUE_DICT) {
-                value_ctx_failure(*pctx, &global->values, "StoreVar: 'this' is not a dictionary");
+            if ((step->ctx->this & VALUE_MASK) != VALUE_DICT) {
+                value_ctx_failure(step->ctx, &global->values, "StoreVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_trystore((*pctx)->this, &indices[1], size - 1, v, &global->values, &(*pctx)->this);
+            result = ind_trystore(step->ctx->this, &indices[1], size - 1, v, &global->values, &step->ctx->this);
         }
 
         else {
-            result = ind_trystore((*pctx)->vars, indices, size, v, &global->values, &(*pctx)->vars);
+            result = ind_trystore(step->ctx->vars, indices, size, v, &global->values, &step->ctx->vars);
         }
         if (!result) {
             char *x = indices_string(indices, size);
-            value_ctx_failure(*pctx, &global->values, "StoreVar: bad address: %s", x);
+            value_ctx_failure(step->ctx, &global->values, "StoreVar: bad address: %s", x);
             free(x);
             return;
         }
-        (*pctx)->pc++;
+        step->ctx->pc++;
     }
     else {
         if (es->args->type == VT_NAME && es->args->u.name == this_atom) {
-            (*pctx)->this = v;
-            (*pctx)->pc++;
+            step->ctx->this = v;
+            step->ctx->pc++;
         }
         else {
-            var_match(*pctx, es->args, &global->values, v);
-            if ((*pctx)->failure == 0) {
-                (*pctx)->pc++;
+            var_match(step->ctx, es->args, &global->values, v);
+            if (step->ctx->failure == 0) {
+                step->ctx->pc++;
             }
         }
     }
 }
 
-void op_Trap(const void *env, struct state *state, struct context **pctx, struct global_t *global){
-    (*pctx)->trap_pc = value_ctx_pop(pctx);
-    if (((*pctx)->trap_pc & VALUE_MASK) != VALUE_PC) {
-        value_ctx_failure(*pctx, &global->values, "trap: not a method");
+void op_Trap(const void *env, struct state *state, struct step *step, struct global_t *global){
+    step->ctx->trap_pc = value_ctx_pop(&step->ctx);
+    if ((step->ctx->trap_pc & VALUE_MASK) != VALUE_PC) {
+        value_ctx_failure(step->ctx, &global->values, "trap: not a method");
         return;
     }
-    assert(((*pctx)->trap_pc >> VALUE_BITS) < global->code.len);
-    assert(strcmp(global->code.instrs[(*pctx)->trap_pc >> VALUE_BITS].oi->name, "Frame") == 0);
-    (*pctx)->trap_arg = value_ctx_pop(pctx);
-    (*pctx)->pc++;
+    assert((step->ctx->trap_pc >> VALUE_BITS) < global->code.len);
+    assert(strcmp(global->code.instrs[step->ctx->trap_pc >> VALUE_BITS].oi->name, "Frame") == 0);
+    step->ctx->trap_arg = value_ctx_pop(&step->ctx);
+    step->ctx->pc++;
 }
 
 void *init_Address(struct dict *map, struct values_t *values){ return NULL; }
