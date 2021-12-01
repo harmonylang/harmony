@@ -12,6 +12,7 @@ cat code.h
 cat graph.h
 cat charm.h
 cat ops.h
+cat strbuf.h
 cat iface/iface.h
 cat iface/iface_graph.h
 cat iface/iface_graph.c
@@ -25,5 +26,6 @@ cat minheap.c
 cat value.c
 cat code.c
 cat graph.c
+cat strbuf.c
 cat dot.c
 cat iface/iface.c

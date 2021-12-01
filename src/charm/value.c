@@ -476,8 +476,9 @@ char *indices_string(const uint64_t *vec, int size) {
         return r;
     }
     char *s = value_string(vec[0]);
-    assert(s[0] == '.');
-    alloc_printf(&r, "?%s", s + 1);
+    assert(s[0] == '"');
+	int len = strlen(s);
+    alloc_printf(&r, "?%.*s", len - 2, s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {

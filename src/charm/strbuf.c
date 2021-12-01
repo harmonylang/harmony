@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+
+#ifndef HARMONY_COMBINE
 #include "strbuf.h"
+#endif
 
 // Initializes a string buffer
 void strbuf_init(struct strbuf *sb){

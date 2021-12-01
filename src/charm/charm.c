@@ -13,6 +13,7 @@
 #include "charm.h"
 #include "ops.h"
 #include "dot.h"
+#include "strbuf.h"
 #include "iface/iface.h"
 #endif
 
@@ -232,7 +233,6 @@ static bool onestep(
             }
             else {
                 // start over, as twostep does not have loopcnt optimization
-                free(sc);
                 return false;
             }
         }
@@ -400,8 +400,9 @@ void print_vars(FILE *file, uint64_t v){
             fprintf(file, ",");
         }
         char *k = value_string(vars[i]);
+		int len = strlen(k);
         char *v = value_json(vars[i+1]);
-        fprintf(file, " \"%s\": %s", k+1, v);
+        fprintf(file, " \"%.*s\": %s", len - 2, k + 1, v);
         free(k);
         free(v);
     }
@@ -465,12 +466,13 @@ bool print_trace(
 
 				const struct env_Frame *ef = global->code.instrs[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
+				int len = strlen(s);
                 a = value_string(ctx->stack[fp - 3]);
 				if (*a == '(') {
-					fprintf(file, "              \"method\": \"%s%s\",\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%.*s%s\",\n", len - 2, s + 1, a);
 				}
 				else {
-					fprintf(file, "              \"method\": \"%s(%s)\",\n", s + 1, a);
+					fprintf(file, "              \"method\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
 				}
 
                 uint64_t ct = ctx->stack[fp - 4];
@@ -541,12 +543,13 @@ void print_context(
     struct context *c = value_get(ctx, NULL);
 
     s = value_string(c->name);
+	int len = strlen(s);
     a = value_string(c->arg);
     if (*a == '(') {
-        fprintf(file, "          \"name\": \"%s%s\",\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
     else {
-        fprintf(file, "          \"name\": \"%s(%s)\",\n", s + 1, a);
+        fprintf(file, "          \"name\": \"%.*s(%s)\",\n", len - 2, s + 1, a);
     }
     free(s);
     free(a);
@@ -573,7 +576,8 @@ void print_context(
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-        fprintf(file, "          \"failure\": \"%s\",\n", s + 1);
+		int len = strlen(s);
+        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, s + 1);
         free(s);
     }
 
@@ -688,7 +692,8 @@ void print_state(
             }
             else {
                 char *val = value_string(inv_step.ctx->failure);
-                fprintf(file, "          \"reason\": \"%s\"\n", val + 1);
+				int len = strlen(val);
+                fprintf(file, "          \"reason\": \"%.*s\"\n", len - 2, val + 1);
                 free(val);
             }
             nfailures++;
@@ -769,7 +774,8 @@ void diff_state(
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-        fprintf(file, "          \"failure\": \"%s\",\n", val + 1);
+		int len = strlen(val);
+        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, val + 1);
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
@@ -989,15 +995,16 @@ void path_dump(
     struct context *context = value_get(ctx, NULL);
     assert(!context->terminated);
     char *name = value_string(context->name);
+	int len = strlen(name);
     char *arg = value_string(context->arg);
     // char *c = value_string(choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRIx64"\",\n", ctx);
     if (*arg == '(') {
-        fprintf(file, "      \"name\": \"%s%s\",\n", name + 1, arg);
+        fprintf(file, "      \"name\": \"%.*s%s\",\n", len - 2, name + 1, arg);
     }
     else {
-        fprintf(file, "      \"name\": \"%s(%s)\",\n", name + 1, arg);
+        fprintf(file, "      \"name\": \"%.*s(%s)\",\n", len - 2, name + 1, arg);
     }
     // fprintf(file, "      \"choice\": \"%s\",\n", c);
     global->dumpfirst = true;
@@ -1405,6 +1412,24 @@ static void pr_state(struct global_t *global, FILE *fp, struct state *state, int
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
     free(v);
+}
+
+static char *json_escape(const char *s, unsigned int len){
+	struct strbuf sb;
+
+	strbuf_init(&sb);
+	while (len > 0) {
+		switch (*s) {		// TODO.  More cases
+		case '"':
+			strbuf_append(&sb, "\\\"", 2);
+			break;
+		default:
+			strbuf_append(&sb, s, 1);
+		}
+		s++;
+		len--;
+	}
+	return strbuf_getstr(&sb);
 }
 
 static void usage(char *prog){
@@ -1890,7 +1915,9 @@ int main(int argc, char **argv){
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[0];
         assert(codestr->type == JV_ATOM);
-        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
+		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
+        fprintf(out, "    \"%s\"", v);
+		free(v);
         if (i < jc->u.list.nvals - 1) {
             fprintf(out, ",");
         }
@@ -1905,7 +1932,9 @@ int main(int argc, char **argv){
         assert(next->u.list.nvals == 2);
         struct json_value *codestr = next->u.list.vals[1];
         assert(codestr->type == JV_ATOM);
-        fprintf(out, "    \"%.*s\"", codestr->u.atom.len, codestr->u.atom.base);
+		char *v = json_escape(codestr->u.atom.base, codestr->u.atom.len);
+        fprintf(out, "    \"%s\"", v);
+		free(v);
         if (i < jc->u.list.nvals - 1) {
             fprintf(out, ",");
         }

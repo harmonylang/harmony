@@ -6320,9 +6320,9 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "pretty": [', file=f)
         for pc in range(len(code.labeled_ops)):
             if pc < len(code.labeled_ops) - 1:
-                print('    ["%s","%s"],'%(code.labeled_ops[pc].op, code.labeled_ops[pc].op.explain()), file=f)
+                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
             else:
-                print('    ["%s","%s"]'%(code.labeled_ops[pc].op, code.labeled_ops[pc].op.explain()), file=f)
+                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
         print("  ],", file=f);
         print("  \"locations\": {", file=f, end="");
         firstTime = True
