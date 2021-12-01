@@ -841,6 +841,7 @@ uint64_t twostep(
     sc->choosing = 0;
 
     struct step step;
+    step.ai = NULL;
     step.ctx = value_copy(ctx, NULL);
     if (step.ctx->terminated || step.ctx->failure != 0) {
         free(step.ctx);

@@ -164,6 +164,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     iface_step.ctx->vars = VALUE_DICT;
     iface_step.ctx->atomic = iface_step.ctx->readonly = 1;
     iface_step.ctx->interruptlevel = false;
+    iface.ai = NULL;
 
     // make a guess that the spec graph will have half as many nodes as the
     // global graph
