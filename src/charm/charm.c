@@ -1700,7 +1700,7 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    if (false) {
+    if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         fprintf(df, "{\n");
@@ -1725,6 +1725,9 @@ int main(int argc, char **argv){
             if (i == 0) {
                 fprintf(df, "      \"type\": \"initial\"\n");
             }
+            else if (node->state->ctxbag == VALUE_DICT) {
+                fprintf(df, "      \"type\": \"terminal\"\n");
+            }
             else {
                 fprintf(df, "      \"type\": \"normal\"\n");
             }
@@ -1745,7 +1748,16 @@ int main(int argc, char **argv){
                 }
                 fprintf(df, "    {\n");
                 fprintf(df, "      \"src\": %d,\n", node->id);
-                fprintf(df, "      \"dst\": %d\n", edge->node->id);
+                fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+
+                fprintf(df, "      \"log\": \"");
+                for (int j = 0; j < edge->nlog; j++) {
+                    char *p = value_string(edge->log[j]);
+                    fprintf(df, "[%s]", p);
+                    free(p);
+                }
+                fprintf(df, "\"\n");
+
                 fprintf(df, "    }");
             }
         }
@@ -1755,7 +1767,7 @@ int main(int argc, char **argv){
         fclose(df);
     }
 
-    if (true) {
+    if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (int i = 0; i < global->graph.size; i++) {
