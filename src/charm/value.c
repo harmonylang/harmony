@@ -304,7 +304,7 @@ static char *value_string_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
     char *s = dict_retrieve(p, &size), *r;
-    alloc_printf(&r, ".%.*s", size, s);
+    alloc_printf(&r, "\"%.*s\"", size, s);
     return r;
 }
 

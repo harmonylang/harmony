@@ -1721,7 +1721,7 @@ int main(int argc, char **argv){
             if (node->parent != NULL) {
                 fprintf(df, "      \"parent\": %d,\n", node->parent->id);
             }
-            fprintf(df, "      \"value\": \"%s:%d\",\n", value_string(node->state->vars), node->state->choosing != 0);
+            fprintf(df, "      \"value\": \"%s:%d\",\n", value_json(node->state->vars), node->state->choosing != 0);
             if (i == 0) {
                 fprintf(df, "      \"type\": \"initial\"\n");
             }
@@ -1752,7 +1752,7 @@ int main(int argc, char **argv){
 
                 fprintf(df, "      \"log\": \"");
                 for (int j = 0; j < edge->nlog; j++) {
-                    char *p = value_string(edge->log[j]);
+                    char *p = value_json(edge->log[j]);
                     fprintf(df, "[%s]", p);
                     free(p);
                 }
