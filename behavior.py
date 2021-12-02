@@ -92,7 +92,10 @@ def parse(js, outfmt, minify):
             if s == "{}":
                 continue
             if s in dfa.final_states:
-                print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
+                if s == dfa.initial_state:
+                    print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], "initial"))
+                else:
+                    print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
             elif s == dfa.initial_state:
                 print("  s%s [label=\"%s\",shape=octagon]"%(names[s], "initial"))
             else:

@@ -1432,7 +1432,7 @@ static char *json_escape(const char *s, unsigned int len){
 	return strbuf_getstr(&sb);
 }
 
-static char *json_escape_value(uint64_t v){
+char *json_escape_value(uint64_t v){
     char *s = value_string(v);
     char *r = json_escape(s, strlen(s));
     free(s);

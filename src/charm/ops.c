@@ -374,7 +374,8 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         return;
     default:
         {
-            char *x = value_string(method);
+            extern char *json_escape_value(uint64_t v);
+            char *x = json_escape_value(method);
             value_ctx_failure(step->ctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
         }
