@@ -1734,7 +1734,22 @@ int main(int argc, char **argv){
 
     if (true) {
         FILE *df = fopen("charm.dump", "w");
-        assert(df != NULL);
+        if (df == NULL) {
+            fprintf(stderr, "Can't write charm.dump\n");
+            exit(1);
+        }
+
+        // Figure out how many extra "intermediate" states we need.
+        int extra = 0;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                if (edge->nlog > 1) {
+                    extra += edge->nlog - 1;
+                }
+            }
+        }
+
         fprintf(df, "{\n");
         fprintf(df, "  \"nodes\": [\n");
         bool first = true;
@@ -1765,6 +1780,18 @@ int main(int argc, char **argv){
             }
             fprintf(df, "    }");
         }
+        for (int i = 0; i < extra; i++) {
+            if (first) {
+                first = false;
+            }
+            else {
+                fprintf(df, ",\n");
+            }
+            fprintf(df, "    {\n");
+            fprintf(df, "      \"idx\": \"i%d\",\n", i);
+            fprintf(df, "      \"type\": \"intermediate\"\n");
+            fprintf(df, "    }");
+        }
         fprintf(df, "\n");
         fprintf(df, "  ],\n");
         fprintf(df, "  \"edges\": [\n");
@@ -1778,19 +1805,49 @@ int main(int argc, char **argv){
                 else {
                     fprintf(df, ",\n");
                 }
-                fprintf(df, "    {\n");
-                fprintf(df, "      \"src\": %d,\n", node->id);
-                fprintf(df, "      \"dst\": %d,\n", edge->node->id);
-
-                fprintf(df, "      \"log\": \"");
-                for (int j = 0; j < edge->nlog; j++) {
-                    char *p = json_escape_value(edge->log[j]);
-                    fprintf(df, "[%s]", p);
-                    free(p);
+                if (edge->nlog == 0) {
+                    fprintf(df, "    {\n");
+                    fprintf(df, "      \"src\": %d,\n", node->id);
+                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+                    fprintf(df, "      \"log\": \"\"\n");
+                    fprintf(df, "    }");
                 }
-                fprintf(df, "\"\n");
+                else if (edge->nlog == 1) {
+                    fprintf(df, "    {\n");
+                    fprintf(df, "      \"src\": %d,\n", node->id);
+                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+                    char *p = json_escape_value(edge->log[0]);
+                    fprintf(df, "      \"log\": \"%s\"\n", p);
+                    free(p);
+                    fprintf(df, "    }");
+                }
+                else {
+                    fprintf(df, "    {\n");
+                    fprintf(df, "      \"src\": %d,\n", node->id);
+                    fprintf(df, "      \"dst\": \"i%d\",\n", --extra);
+                    char *p = json_escape_value(edge->log[0]);
+                    fprintf(df, "      \"log\": \"%s\"\n", p);
+                    free(p);
+                    fprintf(df, "    },\n");
 
-                fprintf(df, "    }");
+                    for (int j = 1; j < edge->nlog - 1; j++) {
+                        fprintf(df, "    {\n");
+                        fprintf(df, "      \"src\": \"i%d\",\n", extra);
+                        fprintf(df, "      \"dst\": \"i%d\",\n", --extra);
+                        p = json_escape_value(edge->log[j]);
+                        fprintf(df, "      \"log\": \"%s\"\n", p);
+                        free(p);
+                        fprintf(df, "    },\n");
+                    }
+
+                    fprintf(df, "    {\n");
+                    fprintf(df, "      \"src\": \"i%d\",\n", extra);
+                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+                    p = json_escape_value(edge->log[edge->nlog - 1]);
+                    fprintf(df, "      \"log\": \"%s\"\n", p);
+                    free(p);
+                    fprintf(df, "    }");
+                }
             }
         }
         fprintf(df, "\n");

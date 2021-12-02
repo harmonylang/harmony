@@ -15,7 +15,7 @@ def dfadump(dfa):
             print("   ", t, ":", rename[s2], file=sys.stderr)
 
 def parse(js, outfmt, minify):
-    states = {}
+    states = set()
     initial_state = None;
     final_states = set()
     input_symbols = set()
@@ -23,7 +23,6 @@ def parse(js, outfmt, minify):
 
     for s in js["nodes"]:
         idx = str(s["idx"])
-        val = str(s["value"])
         transitions[idx] = {}
         if s["type"] == "initial":
             assert initial_state == None
@@ -31,7 +30,7 @@ def parse(js, outfmt, minify):
             val = "__init__"
         elif s["type"] == "terminal":
             final_states.add(idx)
-        states[idx] = val
+        states.add(idx)
 
     for edge in js['edges']:
         src = str(edge["src"])
@@ -52,7 +51,7 @@ def parse(js, outfmt, minify):
     # print("transitions", transitions, file=sys.stderr)
 
     nfa = NFA(
-        states=set(states.keys()),
+        states=set(states),
         input_symbols=input_symbols,
         transitions=transitions,
         initial_state=initial_state,
