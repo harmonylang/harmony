@@ -1,6 +1,7 @@
 import sys
 import getopt
 import json
+from pydot import Dot, Edge, Node
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
 
@@ -13,6 +14,45 @@ def dfadump(dfa):
         print(rename[s], ":", file=sys.stderr)
         for t, s2 in d.items():
             print("   ", t, ":", rename[s2], file=sys.stderr)
+
+def show_diagram(dfa, path=None):
+    graph = Dot(graph_type='digraph', rankdir='LR')
+    nodes = {}
+    for state in dfa.states:
+        if state == "{}":
+            continue
+        if state == dfa.initial_state:
+            # color start state with green
+            if state in dfa.final_states:
+                initial_state_node = Node(
+                    state,
+                    style='filled',
+                    peripheries=2,
+                    fillcolor='#66cc33', label="initial")
+            else:
+                initial_state_node = Node(
+                    state, style='filled', fillcolor='#66cc33', label="initial")
+            nodes[state] = initial_state_node
+            graph.add_node(initial_state_node)
+        else:
+            if state in dfa.final_states:
+                state_node = Node(state, peripheries=2, label="final")
+            else:
+                state_node = Node(state, label="")
+            nodes[state] = state_node
+            graph.add_node(state_node)
+    # adding edges
+    for from_state, lookup in dfa.transitions.items():
+        for to_label, to_state in lookup.items():
+            if to_state != '{}' and (from_state != to_state or to_label != ""):
+                graph.add_edge(Edge(
+                    nodes[from_state],
+                    nodes[to_state],
+                    label=to_label
+                ))
+    if path:
+        graph.write_png(path)
+    return graph
 
 def parse(js, outfmt, minify):
     states = set()
@@ -66,16 +106,15 @@ def parse(js, outfmt, minify):
     #        edges to a node are labeled the same and other stuff.
     if minify:
         print("minify", file=sys.stderr)
-        dfa = intermediate.minify()
+        dfa = intermediate.minify(retain_names = True)
         print("minify done %d"%len(dfa.states), file=sys.stderr)
     else:
         dfa = intermediate
 
     # dfadump(dfa)
-    # sys.exit(0)
 
-    # dfa.show_diagram(path='./dfa1.png')
-    # sys.exit(0)
+    if True:
+        show_diagram(dfa, path='./dfa1.png')
 
     # Give each state a simple integer name
     names = {}
