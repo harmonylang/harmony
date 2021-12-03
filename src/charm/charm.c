@@ -172,7 +172,8 @@ static bool onestep(
     // Copy the choice
     uint64_t choice_copy = choice;
 
-    bool log_occurred = global->code.instrs[step->ctx->pc].choose;
+    // bool log_occurred = global->code.instrs[step->ctx->pc].choose;
+    bool log_occurred = false;
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     int loopcnt = 0;
