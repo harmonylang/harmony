@@ -1,0 +1,2 @@
+while choose { False, True }:
+    print "hello world"

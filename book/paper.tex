@@ -596,6 +596,96 @@ The appendices contain various details about Harmony itself, including
 an appendix that explains how Harmony works (\autoref{app:howitworks}) and
 an appendix on installing and running Harmony (\autoref{app:install}).
 
+\chapter{Hello World}
+\label{ch:helloworld}
+
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{ccc}
+\includegraphics[width=0.35\textwidth]{../code/hello1.png}
+& \rule{0.05\linewidth}{0in} &
+\includegraphics[width=0.45\textwidth]{../code/hello2.png} \\
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{hello1}
+\end{tcolorbox}
+& \rule{0.05\linewidth}{0in} &
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{hello2}
+\end{tcolorbox}
+\\
+(a) \harmonylink{code/hello1.hny} && (b) \harmonylink{code/hello2.hny}
+\end{tabular}
+\end{center}
+\caption{Hello World!}
+\label{fig:helloworld}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.45\textwidth]{../code/hello3.png}
+\end{center}
+\begin{code}
+\harmonysource{hello3}
+\end{code}
+\caption{\harmonylink{code/hello3.hny} Nondeterministic choice}
+\label{fig:hello3}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.15\textwidth]{../code/hello4.png}
+\end{center}
+\begin{code}
+\harmonysource{hello4}
+\end{code}
+\caption{\harmonylink{code/hello4.hny} Loop for some time, but don't have to
+go on for ever}
+\label{fig:hello4}
+\end{figure}
+
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{ccc}
+\includegraphics[width=0.45\textwidth]{../code/hello5.png}
+& \rule{0.05\linewidth}{0in} &
+\includegraphics[width=0.45\textwidth]{../code/hello6.png} \\
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{hello5}
+\end{tcolorbox}
+& \rule{0.05\linewidth}{0in} &
+\begin{tcolorbox}[width=0.4\linewidth]
+\harmonysource{hello6}
+\end{tcolorbox}
+\\
+(a) \harmonylink{code/hello5.hny} && (b) \harmonylink{code/hello6.hny}
+\end{tabular}
+\end{center}
+\caption{Method calls and threads}
+\label{fig:helloworld}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{../code/hello7.png}
+\end{center}
+\begin{code}
+\harmonysource{hello7}
+\end{code}
+\caption{\harmonylink{code/hello7.hny} Interleaving threads}
+\label{fig:hello7}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{../code/hello8.png}
+\end{center}
+\begin{code}
+\harmonysource{hello8}
+\end{code}
+\caption{\harmonylink{code/hello8.hny} More interleaving}
+\label{fig:hello8}
+\end{figure}
+
 \chapter{Introduction to Harmony}
 \label{ch:harmonyintro}
 

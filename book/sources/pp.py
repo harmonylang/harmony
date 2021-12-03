@@ -93,7 +93,7 @@ def isreserved(s):
         "not",
         "or",
         "pass",
-        "possibly",
+        "print",
         "select",
         "sequential",
         "setintlevel",
@@ -249,7 +249,7 @@ def lexer(s, file):
 
         # string
         if s[0] == '"':
-            print("````", end="")
+            print('\\texttt{"}', end="")
             i = 1
             str = '"'
             while i < len(s) and s[i] != '"':
@@ -278,7 +278,7 @@ def lexer(s, file):
             if i < len(s):
                 i += 1
             str += '"'
-            print("''''", end="")
+            print('\\texttt{"}', end="")
             nextconst = False
             importline = False
             result += [ (str, file, line, column) ]

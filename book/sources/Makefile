@@ -55,12 +55,19 @@ CODE = \
     cs.tex \
     cslock.tex \
     cssynch.tex \
-    csTAS.tex \
     csbarebones.tex \
     csonebit.tex \
     dinersfix.tex \
     dinersfix2.tex \
     gpu.tex \
+    hello1.tex \
+    hello2.tex \
+    hello3.tex \
+    hello4.tex \
+    hello5.tex \
+    hello6.tex \
+    hello7.tex \
+    hello8.tex \
     hoare.tex \
     hw.tex \
     intsettest.tex \

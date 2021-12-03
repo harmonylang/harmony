@@ -1,0 +1,6 @@
+def helloworld(x, y):
+    print(x)
+    print(y)
+
+spawn helloworld(1, "A")
+spawn helloworld(2, "B")
