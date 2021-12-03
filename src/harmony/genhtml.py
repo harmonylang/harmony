@@ -193,8 +193,10 @@ m4_include(charm.js)
         print("  </div>", file=f)
         print("</div>", file=f)
 
-    def html_botright(self, f):
+    def html_botright(self, f, stem, outputflag):
         if self.nthreads == 0:
+            if outputflag:
+                print("<img src='%s.png' alt='DFA image'>"%pathlib.PurePosixPath(stem).name, file=f)
             return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)
@@ -236,7 +238,7 @@ m4_include(charm.js)
         print("  </tbody>", file=f)
         print("</table>", file=f)
 
-    def html_outer(self, f):
+    def html_outer(self, f, stem, outputflag):
         print("<table>", file=f)
         print("  <tr>", file=f)
         print("    <td colspan='2'>", file=f)
@@ -258,7 +260,7 @@ m4_include(charm.js)
         self.html_botleft(f)
         print("    </td>", file=f)
         print("    <td valign='top'>", file=f)
-        self.html_botright(f)
+        self.html_botright(f, stem, outputflag)
         print("    </td>", file=f)
         print("  </tr>", file=f)
         print("</table>", file=f)
@@ -273,7 +275,7 @@ m4_include(charm.js)
         print("  " + str(path), end="", file=f)
         return index + 1
 
-    def html_script(self, f, hcofile):
+    def html_script(self, f, stem):
         print("<script>", file=f)
         print("var nthreads = %d;"%self.nthreads, file=f)
         print("var nmegasteps = %d;"%self.nmegasteps, file=f)
@@ -282,16 +284,16 @@ m4_include(charm.js)
         print(file=f)
         print("];", file=f)
         print("var state =", file=f)
-        self.file_include(hcofile, f)
+        self.file_include(stem + ".hco", f)
         print(";", file=f)
         print(self.js, file=f)
         # file_include("charm.js", f)
         print("</script>", file=f)
 
-    def html_body(self, f, hcofile):
+    def html_body(self, f, stem, outputflag):
         print("<body>", file=f)
-        self.html_outer(f)
-        self.html_script(f, hcofile)
+        self.html_outer(f, stem, outputflag)
+        self.html_script(f, stem)
         print("</body>", file=f)
 
     def html_head(self, f):
@@ -302,10 +304,10 @@ m4_include(charm.js)
         print("  </style>", file=f)
         print("</head>", file=f)
 
-    def html(self, f, hcofile):
+    def html(self, f, stem, outputflag):
         print("<html>", file=f)
         self.html_head(f)
-        self.html_body(f, hcofile)
+        self.html_body(f, stem, outputflag)
         print("</html>", file=f)
 
     def var_convert(self, v):
@@ -336,7 +338,7 @@ m4_include(charm.js)
                 d[k] = val
         self.dict_merge(vardir, d)
 
-    def run(self, stem):
+    def run(self, stem, outputflag):
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
         with open(stem + ".hco") as f:
@@ -361,4 +363,4 @@ m4_include(charm.js)
                             self.nthreads = tid + 1
 
         with open(stem + ".htm", "w") as out:
-            self.html(out, stem + ".hco")
+            self.html(out, stem, outputflag)
