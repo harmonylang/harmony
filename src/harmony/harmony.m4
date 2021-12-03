@@ -257,7 +257,6 @@ def isreserved(s):
         "lambda",
         "len",
         "let",
-        "log",
         "max",
         "min",
         "None",
@@ -287,7 +286,7 @@ def isname(s):
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
         "contexts", "countLabel", "get_context", "min", "max", "not",
-        "keys", "hash", "len", "print"
+        "keys", "hash", "len"
     }
 
 def isxbinop(s):
@@ -1957,9 +1956,6 @@ class NaryOp(Op):
                 # if not self.checktype(state, context, sa, isinstance(e, str)):
                 #     return
                 context.push(self.contexts(state))
-            elif op == "print":
-                print("PRINT", e, "TNIRP")
-                context.push(e)
             elif op == "IsEmpty":
                 if isinstance(e, DictValue):
                     context.push(e.d == {})
@@ -4760,7 +4756,7 @@ class StatementRule(Rule):
                         message="assert: unexpected token: %s" % str(tokens[0]),
                     )
             return (AssertAST(token, atomically, cond, expr), t)
-        if lexeme == "log":
+        if lexeme == "print":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule(set()).parse(tokens)
             if tokens != []:
