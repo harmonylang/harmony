@@ -99,9 +99,7 @@ def behavior_parse(js, minify, output):
     print("NFA -> DFA", file=sys.stderr)
     intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
-    # TODO.  Minifying the DFA can lead to results where not all incoming
-    #        edges to a node are labeled the same and other stuff.
-    if False and minify:
+    if minify:
         print("minify %d"%len(intermediate.states), file=sys.stderr)
         dfa = intermediate.minify(retain_names = True)
         print("minify done %d"%len(dfa.states), file=sys.stderr)
