@@ -49,7 +49,9 @@ import html
 import queue
 import functools
 import json
-
+import pydot
+from automata.fa.nfa import NFA
+from automata.fa.dfa import DFA
 from typing import Any
 
 # TODO.  These should not be global ideally
@@ -65,8 +67,8 @@ labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
 
 m4_include(brief.py)
-
 m4_include(genhtml.py)
+m4_include(behavior.py)
 
 class HarmonyCompilerError(Exception):
     """
@@ -6460,7 +6462,7 @@ def main():
         # if not testflag:
         #    os.remove(hvmfile)
         b = Brief()
-        b.run(stem + ".hco")
+        b.run(stem)
         gh = GenHTML()
         gh.run(stem)
         if not suppressOutput:

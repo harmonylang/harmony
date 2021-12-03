@@ -1,23 +1,6 @@
-import sys
-import getopt
-import json
-from pydot import Dot, Edge, Node
-from automata.fa.nfa import NFA
-from automata.fa.dfa import DFA
-
-def dfadump(dfa):
-    rename = {}
-    for i, s in enumerate(dfa.states):
-        rename[s] = "{}" if s == "{}" else str(i)
-    print("states", { rename[s] for s in dfa.states }, file=sys.stderr)
-    for (s, d) in dfa.transitions.items():
-        print(rename[s], ":", file=sys.stderr)
-        for t, s2 in d.items():
-            print("   ", t, ":", rename[s2], file=sys.stderr)
-
 # Modified from automata-lib
-def show_diagram(dfa, path=None):
-    graph = Dot(graph_type='digraph', rankdir='LR')
+def behavior_show_diagram(dfa, path=None):
+    graph = pydot.Dot(graph_type='digraph', rankdir='LR')
     nodes = {}
     for state in dfa.states:
         if state == "{}":
@@ -25,28 +8,28 @@ def show_diagram(dfa, path=None):
         if state == dfa.initial_state:
             # color start state with green
             if state in dfa.final_states:
-                initial_state_node = Node(
+                initial_state_node = pydot.Node(
                     state,
                     style='filled',
                     peripheries=2,
                     fillcolor='#66cc33', label="initial")
             else:
-                initial_state_node = Node(
+                initial_state_node = pydot.Node(
                     state, style='filled', fillcolor='#66cc33', label="initial")
             nodes[state] = initial_state_node
             graph.add_node(initial_state_node)
         else:
             if state in dfa.final_states:
-                state_node = Node(state, peripheries=2, label="final")
+                state_node = pydot.Node(state, peripheries=2, label="final")
             else:
-                state_node = Node(state, label="")
+                state_node = pydot.Node(state, label="")
             nodes[state] = state_node
             graph.add_node(state_node)
     # adding edges
     for from_state, lookup in dfa.transitions.items():
         for to_label, to_state in lookup.items():
             if to_state != '{}' and (from_state != to_state or to_label != ""):
-                graph.add_edge(Edge(
+                graph.add_edge(pydot.Edge(
                     nodes[from_state],
                     nodes[to_state],
                     label=to_label
@@ -55,7 +38,7 @@ def show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
-def parse(js, outfmt, minify, output):
+def behavior_parse(js, minify, output):
     states = set()
     initial_state = None;
     final_states = set()
@@ -111,9 +94,7 @@ def parse(js, outfmt, minify, output):
     else:
         dfa = intermediate
 
-    # dfadump(dfa)
-
-    show_diagram(dfa, path=output)
+    behavior_show_diagram(dfa, path=output)
 
     if False:
         # Give each state a simple integer name
@@ -191,47 +172,47 @@ def parse(js, outfmt, minify, output):
 
             print("}")
 
-def usage():
-    print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)
-    sys.exit(1)
-
-def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "MT:",
-                ["type=", "minify", "help"])
-    except getopt.GetoptError as err:
-        print(str(err))
-        usage()
-    outfmt = "dot"
-    minify = False
-    for o, a in opts:
-        if o in [ "-T", "--type"]:
-            if a not in [ "dot", "json" ]:
-                print("type must be dot or json", file=sys.stderr)
-                sys.exit(1)
-            outfmt = a
-        elif o in [ "-M", "--minify" ]:
-            minify = True
-        else:
-            usage()
-
-    if args == []:
-        usage()
-
-    file = args[0]
-    dotloc = file.rfind(".")
-    if dotloc == 0:
-        usage()
-    if dotloc > 0:
-        stem = file[:dotloc]
-    else:
-        stem = file
-
-    minify = True       # TODO
-
-    with open(file) as f:
-        js = json.load(f)
-        parse(js, outfmt, minify, stem + ".png");
-
-if __name__ == "__main__":
-    main()
+# def usage():
+#     print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)
+#     sys.exit(1)
+# 
+# def main():
+#     try:
+#         opts, args = getopt.getopt(sys.argv[1:], "MT:",
+#                 ["type=", "minify", "help"])
+#     except getopt.GetoptError as err:
+#         print(str(err))
+#         usage()
+#     outfmt = "dot"
+#     minify = False
+#     for o, a in opts:
+#         if o in [ "-T", "--type"]:
+#             if a not in [ "dot", "json" ]:
+#                 print("type must be dot or json", file=sys.stderr)
+#                 sys.exit(1)
+#             outfmt = a
+#         elif o in [ "-M", "--minify" ]:
+#             minify = True
+#         else:
+#             usage()
+# 
+#     if args == []:
+#         usage()
+# 
+#     file = args[0]
+#     dotloc = file.rfind(".")
+#     if dotloc == 0:
+#         usage()
+#     if dotloc > 0:
+#         stem = file[:dotloc]
+#     else:
+#         stem = file
+# 
+#     minify = True       # TODO
+# 
+#     with open(file) as f:
+#         js = json.load(f)
+#         parse(js, outfmt, minify, stem + ".png");
+# 
+# if __name__ == "__main__":
+#     main()

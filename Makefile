@@ -4,11 +4,11 @@ all:
 	gcc -g -std=c99 charm.c -m64 -o charm.exe -lpthread
 	chmod +x harmony
 
-behavior: behavior.py x.hny
+behavior: x.hny
 	./harmony x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny
 	: ./harmony code/qtestconc4.hny
-	python3 behavior.py -Tdot -M x.hco
+	: python3 behavior.py -Tdot -M x.hco
 	open x.png
 
 iface: iface.py iface.json
