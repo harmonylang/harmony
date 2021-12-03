@@ -113,83 +113,83 @@ def parse(js, outfmt, minify):
 
     # dfadump(dfa)
 
-    if True:
-        show_diagram(dfa, path='./dfa1.png')
+    show_diagram(dfa, path='./dfa1.png')
 
-    # Give each state a simple integer name
-    names = {}
-    values = {}
-    for (idx, s) in enumerate(dfa.states):
-        names[s] = idx
-        values[s] = "???"
-    values[dfa.initial_state] = "initial"
+    if False:
+        # Give each state a simple integer name
+        names = {}
+        values = {}
+        for (idx, s) in enumerate(dfa.states):
+            names[s] = idx
+            values[s] = "???"
+        values[dfa.initial_state] = "initial"
 
-    if outfmt == "dot":
-        print("digraph {")
+        if outfmt == "dot":
+            print("digraph {")
 
-        for s in dfa.states:
-            if s == "{}":
-                continue
-            if s in dfa.final_states:
-                if s == dfa.initial_state:
-                    print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], "initial"))
-                else:
-                    print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
-            elif s == dfa.initial_state:
-                print("  s%s [label=\"%s\",shape=octagon]"%(names[s], "initial"))
-            else:
-                print("  s%s [label=\"%s\",shape=circle]"%(names[s], ""))
-
-        for (src, edges) in dfa.transitions.items():
-            for (input, dst) in edges.items():
-                if dst != '{}' and (src != dst or input != ""):
-                    print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
-
-        print("}")
-    else:       # json format, same as input
-        assert outfmt == "json"
-        print("{")
-        print("  \"nodes\": [")
-
-        first = True
-        for s in dfa.states:
-            if s == "{}":
-                continue
-            if first:
-                first = False
-            else:
-                print(",")
-            print("    {")
-            print("      \"idx\": \"%s\","%names[s])
-            print("      \"value\": \"%s\","%values[s])
-            if s == dfa.initial_state:
-                t = "initial"
-            elif s in dfa.final_states:
-                t = "final"
-            else:
-                t = "normal"
-            print("      \"type\": \"%s\""%t)
-            print("    }", end="")
-        print()
-        print("  ],")
-
-        print("  \"edges\": [")
-        first = True
-        for (src, edges) in dfa.transitions.items():
-            for (input, dst) in edges.items():
-                if dst != '{}' and src != dst:
-                    if first:
-                        first = False
+            for s in dfa.states:
+                if s == "{}":
+                    continue
+                if s in dfa.final_states:
+                    if s == dfa.initial_state:
+                        print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], "initial"))
                     else:
-                        print(",")
-                    print("    {")
-                    print("      \"src\": \"%s\","%names[src])
-                    print("      \"dst\": \"%s\""%names[dst])
-                    print("    }", end="")
-        print()
-        print("  ]")
+                        print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
+                elif s == dfa.initial_state:
+                    print("  s%s [label=\"%s\",shape=octagon]"%(names[s], "initial"))
+                else:
+                    print("  s%s [label=\"%s\",shape=circle]"%(names[s], ""))
 
-        print("}")
+            for (src, edges) in dfa.transitions.items():
+                for (input, dst) in edges.items():
+                    if dst != '{}' and (src != dst or input != ""):
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
+
+            print("}")
+        else:       # json format, same as input
+            assert outfmt == "json"
+            print("{")
+            print("  \"nodes\": [")
+
+            first = True
+            for s in dfa.states:
+                if s == "{}":
+                    continue
+                if first:
+                    first = False
+                else:
+                    print(",")
+                print("    {")
+                print("      \"idx\": \"%s\","%names[s])
+                print("      \"value\": \"%s\","%values[s])
+                if s == dfa.initial_state:
+                    t = "initial"
+                elif s in dfa.final_states:
+                    t = "final"
+                else:
+                    t = "normal"
+                print("      \"type\": \"%s\""%t)
+                print("    }", end="")
+            print()
+            print("  ],")
+
+            print("  \"edges\": [")
+            first = True
+            for (src, edges) in dfa.transitions.items():
+                for (input, dst) in edges.items():
+                    if dst != '{}' and src != dst:
+                        if first:
+                            first = False
+                        else:
+                            print(",")
+                        print("    {")
+                        print("      \"src\": \"%s\","%names[src])
+                        print("      \"dst\": \"%s\""%names[dst])
+                        print("    }", end="")
+            print()
+            print("  ]")
+
+            print("}")
 
 def usage():
     print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)

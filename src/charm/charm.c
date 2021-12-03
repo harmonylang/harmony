@@ -1737,76 +1737,6 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    if (true) {
-        FILE *df = fopen("charm.dump", "w");
-        if (df == NULL) {
-            fprintf(stderr, "Can't write charm.dump\n");
-            exit(1);
-        }
-
-        fprintf(df, "{\n");
-        fprintf(df, "  \"nodes\": [\n");
-        bool first = true;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            assert(node->id == i);
-            if (first) {
-                first = false;
-            }
-            else {
-                fprintf(df, ",\n");
-            }
-            fprintf(df, "    {\n");
-            fprintf(df, "      \"idx\": %d,\n", node->id);
-            fprintf(df, "      \"component\": %d,\n", node->component);
-            if (node->parent != NULL) {
-                fprintf(df, "      \"parent\": %d,\n", node->parent->id);
-            }
-            fprintf(df, "      \"value\": \"%s:%d\",\n", json_escape_value(node->state->vars), node->state->choosing != 0);
-            if (i == 0) {
-                fprintf(df, "      \"type\": \"initial\"\n");
-            }
-            else if (node->state->ctxbag == VALUE_DICT) {
-                fprintf(df, "      \"type\": \"terminal\"\n");
-            }
-            else {
-                fprintf(df, "      \"type\": \"normal\"\n");
-            }
-            fprintf(df, "    }");
-        }
-        fprintf(df, "\n");
-        fprintf(df, "  ],\n");
-        fprintf(df, "  \"edges\": [\n");
-        first = true;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (first) {
-                    first = false;
-                }
-                else {
-                    fprintf(df, ",\n");
-                }
-                fprintf(df, "    {\n");
-                fprintf(df, "      \"src\": %d,\n", node->id);
-                fprintf(df, "      \"dst\": %d,\n", edge->node->id);
-                if (edge->log == VALUE_CONTEXT) {       // TODO
-                    fprintf(df, "      \"log\": \"\"\n");
-                }
-                else {
-                    char *p = json_escape_value(edge->log);
-                    fprintf(df, "      \"log\": \"%s\"\n", p);
-                    free(p);
-                }
-                fprintf(df, "    }");
-            }
-        }
-        fprintf(df, "\n");
-        fprintf(df, "  ]\n");
-        fprintf(df, "}\n");
-        fclose(df);
-    }
-
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
@@ -1867,6 +1797,65 @@ int main(int argc, char **argv){
     if (no_issues) {
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
+
+        fprintf(out, "  \"nodes\": [\n");
+        bool first = true;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            assert(node->id == i);
+            if (first) {
+                first = false;
+            }
+            else {
+                fprintf(out, ",\n");
+            }
+            fprintf(out, "    {\n");
+            fprintf(out, "      \"idx\": %d,\n", node->id);
+            fprintf(out, "      \"component\": %d,\n", node->component);
+            if (node->parent != NULL) {
+                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
+            }
+            fprintf(out, "      \"value\": \"%s:%d\",\n", json_escape_value(node->state->vars), node->state->choosing != 0);
+            if (i == 0) {
+                fprintf(out, "      \"type\": \"initial\"\n");
+            }
+            else if (node->state->ctxbag == VALUE_DICT) {
+                fprintf(out, "      \"type\": \"terminal\"\n");
+            }
+            else {
+                fprintf(out, "      \"type\": \"normal\"\n");
+            }
+            fprintf(out, "    }");
+        }
+        fprintf(out, "\n");
+        fprintf(out, "  ],\n");
+        fprintf(out, "  \"edges\": [\n");
+        first = true;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                if (first) {
+                    first = false;
+                }
+                else {
+                    fprintf(out, ",\n");
+                }
+                fprintf(out, "    {\n");
+                fprintf(out, "      \"src\": %d,\n", node->id);
+                fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+                if (edge->log == VALUE_CONTEXT) {       // TODO
+                    fprintf(out, "      \"log\": \"\"\n");
+                }
+                else {
+                    char *p = json_escape_value(edge->log);
+                    fprintf(out, "      \"log\": \"%s\"\n", p);
+                    free(p);
+                }
+                fprintf(out, "    }");
+            }
+        }
+        fprintf(out, "\n");
+        fprintf(out, "  ],\n");
     }
     else {
         // Find shortest "bad" path

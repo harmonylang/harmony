@@ -4,13 +4,12 @@ all:
 	gcc -g -std=c99 charm.c -m64 -o charm.exe -lpthread
 	chmod +x harmony
 
-behavior: behavior.py charm.dump
+behavior: behavior.py x.hny
 	./harmony x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny
 	: ./harmony code/qtestconc4.hny
-	python3 behavior.py -Tdot -M charm.dump > x.gv
-	dot -Tpdf x.gv > x.pdf
-	open x.pdf
+	python3 behavior.py -Tdot -M x.hco
+	open dfa1.png
 
 iface: iface.py iface.json
 	./harmony -i 'countLabel(cs)' code/csonebit.hny
