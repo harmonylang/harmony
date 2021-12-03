@@ -115,13 +115,14 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self, stem):
+    def run(self, stem, outputflag):
         fname = stem + ".hco"
         with open(fname) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                behavior_parse(top, True, stem + ".png");
+                if outputflag:
+                    behavior_parse(top, True, stem + ".png");
                 return True
 
             # print("Issue:", top["issue"])

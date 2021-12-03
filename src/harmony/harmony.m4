@@ -6369,11 +6369,12 @@ def main():
     blockflag = False
     charmflag = True
     fulldump = False
+    outputflag = False
     testflag = False
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:stvp",
+        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:ostvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -6402,6 +6403,8 @@ def main():
             fulldump = True
         elif o in { "-m", "--module" }:
             mods.append(a)
+        elif o == "-o":
+            outputflag = True
         elif o == "-s":
             silent = True
         elif o == "-t":
@@ -6462,7 +6465,7 @@ def main():
         # if not testflag:
         #    os.remove(hvmfile)
         b = Brief()
-        b.run(stem)
+        b.run(stem, outputflag)
         gh = GenHTML()
         gh.run(stem)
         if not suppressOutput:

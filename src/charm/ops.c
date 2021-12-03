@@ -715,7 +715,11 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
         printf("JUMPCOND %d\n", ej->pc);
     }
     uint64_t v = value_ctx_pop(&step->ctx);
-    if (v == ej->cond) {
+    if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
+                            !(v == VALUE_FALSE || v == VALUE_TRUE)) {
+        value_ctx_failure(step->ctx, &global->values, "JumpCond: not an boolean");
+    }
+    else if (v == ej->cond) {
         assert(step->ctx->pc != ej->pc);
         step->ctx->pc = ej->pc;
     }

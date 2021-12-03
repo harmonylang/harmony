@@ -417,6 +417,31 @@ void print_vars(FILE *file, uint64_t v){
     fprintf(file, " }");
 }
 
+static char *json_escape(const char *s, unsigned int len){
+	struct strbuf sb;
+
+	strbuf_init(&sb);
+	while (len > 0) {
+		switch (*s) {		// TODO.  More cases
+		case '"':
+			strbuf_append(&sb, "\\\"", 2);
+			break;
+		default:
+			strbuf_append(&sb, s, 1);
+		}
+		s++;
+		len--;
+	}
+	return strbuf_getstr(&sb);
+}
+
+char *json_escape_value(uint64_t v){
+    char *s = value_string(v);
+    char *r = json_escape(s, strlen(s));
+    free(s);
+    return r;
+}
+
 bool print_trace(
     struct global_t *global,
     FILE *file,
@@ -475,7 +500,7 @@ bool print_trace(
 				const struct env_Frame *ef = global->code.instrs[pc].env;
 				char *s = value_string(ef->name), *a = NULL;
 				int len = strlen(s);
-                a = value_string(ctx->stack[fp - 3]);
+                a = json_escape_value(ctx->stack[fp - 3]);
 				if (*a == '(') {
 					fprintf(file, "              \"method\": \"%.*s%s\",\n", len - 2, s + 1, a);
 				}
@@ -552,7 +577,7 @@ void print_context(
 
     s = value_string(c->name);
 	int len = strlen(s);
-    a = value_string(c->arg);
+    a = json_escape_value(c->arg);
     if (*a == '(') {
         fprintf(file, "          \"name\": \"%.*s%s\",\n", len - 2, s + 1, a);
     }
@@ -1004,7 +1029,7 @@ void path_dump(
     assert(!context->terminated);
     char *name = value_string(context->name);
 	int len = strlen(name);
-    char *arg = value_string(context->arg);
+    char *arg = json_escape_value(context->arg);
     // char *c = value_string(choice);
     fprintf(file, "      \"tid\": \"%d\",\n", pid);
     fprintf(file, "      \"xhash\": \"%"PRIx64"\",\n", ctx);
@@ -1420,31 +1445,6 @@ static void pr_state(struct global_t *global, FILE *fp, struct state *state, int
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
     free(v);
-}
-
-static char *json_escape(const char *s, unsigned int len){
-	struct strbuf sb;
-
-	strbuf_init(&sb);
-	while (len > 0) {
-		switch (*s) {		// TODO.  More cases
-		case '"':
-			strbuf_append(&sb, "\\\"", 2);
-			break;
-		default:
-			strbuf_append(&sb, s, 1);
-		}
-		s++;
-		len--;
-	}
-	return strbuf_getstr(&sb);
-}
-
-char *json_escape_value(uint64_t v){
-    char *s = value_string(v);
-    char *r = json_escape(s, strlen(s));
-    free(s);
-    return r;
 }
 
 static void usage(char *prog){

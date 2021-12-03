@@ -5,7 +5,7 @@ all:
 	chmod +x harmony
 
 behavior: x.hny
-	./harmony x.hny
+	./harmony -o x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny
 	: ./harmony code/qtestconc4.hny
 	: python3 behavior.py -Tdot -M x.hco
