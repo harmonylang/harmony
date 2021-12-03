@@ -26,7 +26,7 @@ static struct instr_t code_instr_parse(struct values_t *values, struct json_valu
     i.del = strcmp(oi->name, "Del") == 0;
     i.log = strcmp(oi->name, "Log") == 0;
     i.breakable = i.load || i.store || i.del;
-    if (!i.breakable && strcmp(oi->name, "AtomicInc") == 0) {
+    if (strcmp(oi->name, "AtomicInc") == 0) {
         const struct env_AtomicInc *ea = i.env;
         if (!ea->lazy) {
             i.breakable = true;

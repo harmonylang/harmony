@@ -412,8 +412,9 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 }
 
 void op_Log(const void *env, struct state *state, struct step *step, struct global_t *global){
-    assert(step->log == VALUE_CONTEXT);
-    step->log = value_ctx_pop(&step->ctx);
+    uint64_t v = value_ctx_pop(&step->ctx);
+    step->log = realloc(step->log, (step->nlog + 1) * sizeof(v));
+    step->log[step->nlog++] = v;
     step->ctx->pc++;
 }
 

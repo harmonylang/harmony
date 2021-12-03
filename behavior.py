@@ -15,6 +15,7 @@ def dfadump(dfa):
         for t, s2 in d.items():
             print("   ", t, ":", rename[s2], file=sys.stderr)
 
+# Modified from automata-lib
 def show_diagram(dfa, path=None):
     graph = Dot(graph_type='digraph', rankdir='LR')
     nodes = {}
@@ -54,7 +55,7 @@ def show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
-def parse(js, outfmt, minify):
+def parse(js, outfmt, minify, output):
     states = set()
     initial_state = None;
     final_states = set()
@@ -100,12 +101,11 @@ def parse(js, outfmt, minify):
 
     print("NFA -> DFA", file=sys.stderr)
     intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
-    print("NFA -> DFA done %d"%len(intermediate.states), file=sys.stderr)
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same and other stuff.
     if minify:
-        print("minify", file=sys.stderr)
+        print("minify %d"%len(intermediate.states), file=sys.stderr)
         dfa = intermediate.minify(retain_names = True)
         print("minify done %d"%len(dfa.states), file=sys.stderr)
     else:
@@ -113,7 +113,7 @@ def parse(js, outfmt, minify):
 
     # dfadump(dfa)
 
-    show_diagram(dfa, path='./dfa1.png')
+    show_diagram(dfa, path=output)
 
     if False:
         # Give each state a simple integer name
@@ -219,9 +219,19 @@ def main():
         usage()
 
     file = args[0]
+    dotloc = file.rfind(".")
+    if dotloc == 0:
+        usage()
+    if dotloc > 0:
+        stem = file[:dotloc]
+    else:
+        stem = file
+
+    minify = True       # TODO
+
     with open(file) as f:
         js = json.load(f)
-        parse(js, outfmt, minify);
+        parse(js, outfmt, minify, stem + ".png");
 
 if __name__ == "__main__":
     main()

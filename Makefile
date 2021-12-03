@@ -9,7 +9,7 @@ behavior: behavior.py x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny
 	: ./harmony code/qtestconc4.hny
 	python3 behavior.py -Tdot -M x.hco
-	open dfa1.png
+	open x.png
 
 iface: iface.py iface.json
 	./harmony -i 'countLabel(cs)' code/csonebit.hny

@@ -32,7 +32,8 @@ struct edge {
     uint64_t after;          // resulting context
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
-    uint64_t log;            // print output        // TODO: VALUE_CONTEXT if none
+    uint64_t *log;           // history
+    int nlog;                // size of history
 };
 
 enum fail_type { FAIL_NONE, FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE };
@@ -55,7 +56,8 @@ struct node {
     bool interrupt;         // set if gotten here by interrupt
     int weight;             // 1 if context switch; 0 otherwise
     struct access_info *ai; // to detect data races
-    uint64_t log;           // print output      TODO: VALUE_CONTEXT if none
+    uint64_t *log;          // history
+    int nlog;               // size of history
 
     // SCC
     bool visited;           // for Kosaraju algorithm
