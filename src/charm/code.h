@@ -9,7 +9,8 @@
 struct instr_t {
     struct op_info *oi;
     const void *env;
-    bool choose, load, store, del, breakable;
+    bool choose, log, breakable;
+    bool load, store, del;
 };
 
 struct code_t {

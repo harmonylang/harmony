@@ -173,6 +173,7 @@ static bool onestep(
     uint64_t choice_copy = choice;
 
     bool choosing = false, infinite_loop = false;
+    bool log_occurred = global->code.instrs[step->ctx->pc].choose;
     struct dict *infloop = NULL;        // infinite loop detector
     int loopcnt = 0;
     for (;; loopcnt++) {
@@ -277,12 +278,18 @@ static bool onestep(
             }
         }
 
-        if (!step->ctx->atomicFlag && sc->ctxbag != VALUE_DICT &&
-                                    global->code.instrs[step->ctx->pc].breakable) {
+        struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+        if (!step->ctx->atomicFlag && sc->ctxbag != VALUE_DICT && next_instr->breakable) {
             if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
                 step->ctx->atomicFlag = true;
             }
             break;
+        }
+        if (next_instr->log) {
+            if (log_occurred) {
+                break;
+            }
+            log_occurred = true;
         }
     }
 
@@ -335,9 +342,6 @@ static bool onestep(
     next->ai = step->ai;
     step->ai = NULL;
     next->log = step->log;
-    next->nlog = step->nlog;
-    step->log = NULL;
-    step->nlog = 0;
 
     if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -360,6 +364,7 @@ static void make_step(
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.log = VALUE_CONTEXT;           // TODO
 
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -655,6 +660,7 @@ void print_state(
     extern int invariant_cnt(const void *env);
     struct step inv_step;
     memset(&inv_step, 0, sizeof(inv_step));
+    inv_step.log = VALUE_CONTEXT;           // TODO
     inv_step.ctx = new_alloc(struct context);
 
     // uint64_t inv_nv = value_put_atom("name", 4);
@@ -854,6 +860,7 @@ uint64_t twostep(
 
     struct step step;
     memset(&step, 0, sizeof(step));
+    step.log = VALUE_CONTEXT;           // TODO
     step.ctx = value_copy(ctx, NULL);
     if (step.ctx->terminated || step.ctx->failure != 0) {
         free(step.ctx);
@@ -954,7 +961,6 @@ uint64_t twostep(
 
     free(sc);
     free(step.ctx);
-    free(step.log);
 
     return ctx;
 }
@@ -1361,7 +1367,6 @@ void process_results(
         fwd->after = node->after;
         fwd->ai = node->ai;
         fwd->log = node->log;
-        fwd->nlog = node->nlog;
         fwd->next = parent->fwd;
         parent->fwd = fwd;
 
@@ -1375,7 +1380,6 @@ void process_results(
         bwd->after = node->after;
         bwd->ai = node->ai;
         bwd->log = node->log;
-        bwd->nlog = node->nlog;
         bwd->next = node->bwd;
         node->bwd = bwd;
 
@@ -1590,6 +1594,7 @@ int main(int argc, char **argv){
         w->results[1] = minheap_create(node_cmp);
 
         // Create a context for evaluating invariants
+        w->inv_step.log = VALUE_CONTEXT;            // TODO
         w->inv_step.ctx = new_alloc(struct context);
         w->inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
         w->inv_step.ctx->arg = VALUE_DICT;
@@ -1739,17 +1744,6 @@ int main(int argc, char **argv){
             exit(1);
         }
 
-        // Figure out how many extra "intermediate" states we need.
-        int extra = 0;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (edge->nlog > 1) {
-                    extra += edge->nlog - 1;
-                }
-            }
-        }
-
         fprintf(df, "{\n");
         fprintf(df, "  \"nodes\": [\n");
         bool first = true;
@@ -1780,18 +1774,6 @@ int main(int argc, char **argv){
             }
             fprintf(df, "    }");
         }
-        for (int i = 0; i < extra; i++) {
-            if (first) {
-                first = false;
-            }
-            else {
-                fprintf(df, ",\n");
-            }
-            fprintf(df, "    {\n");
-            fprintf(df, "      \"idx\": \"i%d\",\n", i);
-            fprintf(df, "      \"type\": \"intermediate\"\n");
-            fprintf(df, "    }");
-        }
         fprintf(df, "\n");
         fprintf(df, "  ],\n");
         fprintf(df, "  \"edges\": [\n");
@@ -1805,49 +1787,18 @@ int main(int argc, char **argv){
                 else {
                     fprintf(df, ",\n");
                 }
-                if (edge->nlog == 0) {
-                    fprintf(df, "    {\n");
-                    fprintf(df, "      \"src\": %d,\n", node->id);
-                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+                fprintf(df, "    {\n");
+                fprintf(df, "      \"src\": %d,\n", node->id);
+                fprintf(df, "      \"dst\": %d,\n", edge->node->id);
+                if (edge->log == VALUE_CONTEXT) {       // TODO
                     fprintf(df, "      \"log\": \"\"\n");
-                    fprintf(df, "    }");
-                }
-                else if (edge->nlog == 1) {
-                    fprintf(df, "    {\n");
-                    fprintf(df, "      \"src\": %d,\n", node->id);
-                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
-                    char *p = json_escape_value(edge->log[0]);
-                    fprintf(df, "      \"log\": \"%s\"\n", p);
-                    free(p);
-                    fprintf(df, "    }");
                 }
                 else {
-                    fprintf(df, "    {\n");
-                    fprintf(df, "      \"src\": %d,\n", node->id);
-                    fprintf(df, "      \"dst\": \"i%d\",\n", --extra);
-                    char *p = json_escape_value(edge->log[0]);
+                    char *p = json_escape_value(edge->log);
                     fprintf(df, "      \"log\": \"%s\"\n", p);
                     free(p);
-                    fprintf(df, "    },\n");
-
-                    for (int j = 1; j < edge->nlog - 1; j++) {
-                        fprintf(df, "    {\n");
-                        fprintf(df, "      \"src\": \"i%d\",\n", extra);
-                        fprintf(df, "      \"dst\": \"i%d\",\n", --extra);
-                        p = json_escape_value(edge->log[j]);
-                        fprintf(df, "      \"log\": \"%s\"\n", p);
-                        free(p);
-                        fprintf(df, "    },\n");
-                    }
-
-                    fprintf(df, "    {\n");
-                    fprintf(df, "      \"src\": \"i%d\",\n", extra);
-                    fprintf(df, "      \"dst\": %d,\n", edge->node->id);
-                    p = json_escape_value(edge->log[edge->nlog - 1]);
-                    fprintf(df, "      \"log\": \"%s\"\n", p);
-                    free(p);
-                    fprintf(df, "    }");
                 }
+                fprintf(df, "    }");
             }
         }
         fprintf(df, "\n");

@@ -158,6 +158,7 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     // Create a context for evaluating iface
     struct step iface_step;
     memset(&iface_step, 0, sizeof(iface_step));
+    iface_step.log = VALUE_CONTEXT;     // TODO
     iface_step.ctx = new_alloc(struct context);
     iface_step.ctx->name = value_put_atom(&global->values, "__iface__", 8);
     iface_step.ctx->arg = VALUE_DICT;
@@ -255,7 +256,6 @@ struct iface_graph_t *iface_evaluate_spec_graph(struct global_t *global, int ifa
     }
 
     free(iface_step.ctx);
-    free(iface_step.log);
 
     node_vec_deinit(worklist);
 
