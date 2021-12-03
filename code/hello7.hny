@@ -1,6 +1,6 @@
-def helloworld():
-    print("hello")
-    print("world")
+def hello(name):
+    print "hello"
+    print name
 
-spawn helloworld()
-spawn helloworld()
+spawn hello("Lesley")
+spawn hello("Robbert")

@@ -1,6 +1,7 @@
-def helloworld(x, y):
-    print(x)
-    print(y)
+def hello(name):
+    atomically:
+        print "hello"
+        print name
 
-spawn helloworld(1, "A")
-spawn helloworld(2, "B")
+spawn hello("Lesley")
+spawn hello("Robbert")

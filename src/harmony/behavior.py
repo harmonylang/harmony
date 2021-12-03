@@ -56,18 +56,32 @@ def behavior_parse(js, minify, output):
             final_states.add(idx)
         states.add(idx)
 
-    for edge in js['edges']:
-        src = str(edge["src"])
-        dst = str(edge["dst"])
-        if edge["log"] != "":
-            input_symbols.add(edge["log"])
+    def add_edge(src, val, dst):
         assert dst != initial_state
         assert src not in final_states
-        val = edge["log"]
         if val in transitions[src]:
             transitions[src][val].add(dst)
         else:
             transitions[src][val] = {dst}
+
+    intermediate = 0
+    for edge in js['edges']:
+        src = str(edge["src"])
+        dst = str(edge["dst"])
+        if edge["log"] == []:
+            add_edge(src, "", dst)
+        else:
+            for e in edge["log"][:-1]:
+                input_symbols.add(e)
+                inter = "s%d"%intermediate
+                intermediate += 1
+                states.add(inter)
+                transitions[inter] = {}
+                add_edge(src, e, inter)
+                src = inter
+            e = edge["log"][-1]
+            add_edge(src, e, dst)
+            input_symbols.add(e)
 
     # print("states", states, file=sys.stderr)
     # print("final", final_states, file=sys.stderr)

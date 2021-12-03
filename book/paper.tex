@@ -594,54 +594,57 @@ The appendices contain various details about Harmony itself, including
 an appendix that explains how Harmony works (\autoref{app:howitworks}) and
 an appendix on installing and running Harmony (\autoref{app:install}).
 
-\chapter{Hello World}
-\label{ch:helloworld}
+\chapter{Hello World!}
+\label{ch:harmonyintro}
 
-\begin{figure}[h]
+\begin{figure}
 \begin{center}
-\begin{tabular}{ccc}
-\includegraphics[width=0.35\textwidth]{../code/hello1.png}
-& \rule{0.05\linewidth}{0in} &
-\includegraphics[width=0.45\textwidth]{../code/hello2.png} \\
-\begin{tcolorbox}[width=0.4\linewidth]
-\harmonysource{hello1}
-\end{tcolorbox}
-& \rule{0.05\linewidth}{0in} &
-\begin{tcolorbox}[width=0.4\linewidth]
-\harmonysource{hello2}
-\end{tcolorbox}
-\\
-(a) \harmonylink{code/hello1.hny} && (b) \harmonylink{code/hello2.hny}
-\end{tabular}
+\includegraphics[width=0.45\textwidth]{../code/hello1.png}
 \end{center}
-\caption{Hello World!}
+\begin{code}
+\harmonysource{hello1}
+\end{code}
+\caption{\harmonylink{code/hello1.hny} Hello World!}
 \label{fig:helloworld}
 \end{figure}
 
 The first programming book I read cover to cover was \emph{The C Programming
 Language} (first edition) by Brian W. Kernighan and Dennis M. Ritchie, which
-was around 1980.  In 1990, Dennis was my boss at AT\&T Bell Labs, while Brian
-was my colleague in the same lab.  The first program in the book printed
+was around 1980.  I did not know at the time that 10 years later Dennis,
+the designer of the C programming language, would be my boss at AT\&T Bell Labs
+in Murray Hill, NJ, while Brian would be my colleague in the same lab.
+The first C program in the book printed
 the string ``hello, world''.  Since then, most programming tutorials for
-pretty much any programming language start with that example.  Harmony, too,
-has a Hello World program.
-\autoref{fig:helloworld}(a) shows the program and the corresponding output.
+pretty much any programming language start with that example.
+
+Harmony, too, has a Hello World program.
+\autoref{fig:helloworld} shows the program and the corresponding output.
+(The code for examples in this book can be found in the \texttt{code} folder under
+the name listed in the caption of the example.)
 The output is a \emph{Deterministic State Machine} (DFA).  The green circle
 represents the initial state and the double circle represents the final
 state.  There is one \emph{transition}, labeled with the string
 ``hello world''.  The DFA describes (or \emph{recognizes}) all possible
 outputs that the program can generate.  In this case, there is only one.
 
-Now look at \autoref{fig:helloworld}{b).  It has two \texttt{print} statements.
-The output is another DFA, although this time there is an intermediate state.
-Still, there is only one possible output, and it consists of the strings
-``hello'' and ``world''.
-
+\index{choose operator}%
 But programs can usually have more than one execution and produce multiple
-different outputs as a result.  \autoref{fig:choice} demonstrates
+different outputs as a result.  This is usually as a result of different
+inputs, but Harmony programs do not have inputs. Instead,
+\autoref{fig:choice} demonstrates
 \emph{nondetermistic choice} in Harmony programs.  In this case, the
 program chooses to either print ``hello'' or ``world''.  The corresponding
 DFA captures both possibilities.
+You can think of the \texttt{choose} operator as enumerating all the possible
+inputs to the program.
+
+\autoref{fig:hello4} shows a program that has an infinite number of outputs
+by using a loop.  Harmony usually requires that any program must be able
+to terminate, so the loop is conditioned on a nondeterministic choice between
+\texttt{False} and \texttt{True}.  The possible outputs consists of zero or
+more copies of the string ``hello world''.  Note that this single state DFA
+(where the initial state and the final state happend to be the same)
+captures an infinite number of possible outputs.
 
 \begin{figure}
 \begin{center}
@@ -650,7 +653,7 @@ DFA captures both possibilities.
 \begin{code}
 \harmonysource{hello3}
 \end{code}
-\caption{\harmonylink{code/hello3.hny} Nondeterministic choice}
+\caption{\harmonylink{code/hello3.hny} Two possible outputs}
 \label{fig:choice}
 \end{figure}
 
@@ -661,8 +664,7 @@ DFA captures both possibilities.
 \begin{code}
 \harmonysource{hello4}
 \end{code}
-\caption{\harmonylink{code/hello4.hny} Loop for some time, but don't have to
-go on for ever}
+\caption{\harmonylink{code/hello4.hny} An infinite number of outputs}
 \label{fig:hello4}
 \end{figure}
 
@@ -683,9 +685,19 @@ go on for ever}
 (a) \harmonylink{code/hello5.hny} && (b) \harmonylink{code/hello6.hny}
 \end{tabular}
 \end{center}
-\caption{Method calls and threads}
-\label{fig:methodthread}
+\caption{Methods and threads}
+\label{fig:threads}
 \end{figure}
+
+\autoref{fig:threads} demonstrates \emph{methods} and \emph{threads} in Harmony.
+In \autoref{fig:threads}, the code simply prints the string.
+strings ``hello'' and ``world''.  Notice that this leads to an intermediate
+state after ``hello'' is printed but before ``world'' is.  However, there
+is still only one execution possible. \autoref{fig:threads}(b) shows two
+threads, one printing ``hello'' and one printing ``world''.  Because the
+threads run concurrently, the program can either output ``hello world'' or
+``world hello''.  Printing in Harmony is atomic, so ``hweolrllod'' is not
+a possible  output.
 
 \begin{figure}
 \begin{center}
@@ -705,12 +717,21 @@ go on for ever}
 \begin{code}
 \harmonysource{hello8}
 \end{code}
-\caption{\harmonylink{code/hello8.hny} More interleaving}
+\caption{\harmonylink{code/hello8.hny} Less interleaving}
 \label{fig:hello8}
 \end{figure}
 
-\chapter{Introduction to Harmony}
-\label{ch:harmonyintro}
+\autoref{fig:hello7} shows two threads, one printing the strings
+``hello'' and ``Robbert'', while the other prints ``hello'' and
+``Lesley''.  Now there are four possible outputs depending on
+how the two threads are interleaved, including
+``hello hello Lesley Robbert''.  This is probably not what
+the programmer wanted.  \autoref{fig:hello8} shows another
+important feature of Harmony: \emph{atomic blocks}.  The
+program is similar to \autoref{fig:hello7}, but the programmer
+specified that the two print statements in a thread should
+be executed as an atomic unit.  As a result, there are only
+two thread interleavings possible.
 
 Harmony is a programming language that borrows much of
 Python's syntax.
@@ -720,7 +741,7 @@ There are also some important differences:
 \begin{itemize}
 \item Harmony only supports basic operator precedence or associativity.
 Use parentheses liberally to remove ambiguity.
-\item Harmony does not support floating point or I/O;
+\item Harmony does not support floating point;
 \item Python is object-oriented, supporting classes with methods and
 inheritance; Harmony has objects but does not support classes.
 On the other hand, Harmony supports pointers to objects and methods.
@@ -732,13 +753,11 @@ you get more familiar with programming in Harmony.
 \begin{code}
 \harmonysource{triangle}
 \end{code}
-\caption{\harmonylink{code/triangle.hny} Computing triangle numbers.}
+\caption{\harmonylink{code/triangle.hny} Computing triangle numbers}
 \label{fig:triangle}
 \end{figure}
 
-\autoref{fig:triangle} shows a simple example of a Harmony program.
-(The code for examples in this book can be found in the \texttt{code} folder under
-the name listed in the caption of the example.)
+\autoref{fig:triangle} shows another example of a Harmony program.
 The example is a sequential program
 and has a method \texttt{triangle} that takes
 an integer number as argument.  Each method has a variable called
@@ -769,16 +788,13 @@ $
 \end{code}
 
 (For this to work, make sure \texttt{harmony} is in your command shell's search path.)
-Essentially, the $\texttt{choose}($S$)$
-\index{choose operator}%
-operator provides the input to the program by selecting some value from the
-set~$S$, while the $\textbf{assert}$ statement checks that the output is
-correct.  If the program is correct, the output of Harmony is the size of the
+The $\textbf{assert}$ statement checks that the output is
+correct.  If the program is correct, Harmony reports the size of the
 ``state graph'' (13 states in this case).  If not, Harmony also
 reports what went wrong, typically by displaying a summary of an execution in
 which something went wrong.
 
-In Harmony, constants have a default value,
+In Harmony, constants have a default specified value,
 but those can be overridden on the command
 line using the \texttt{-c} option.
 \index{constant}%
@@ -818,7 +834,7 @@ should compute the square of $x$ by adding $x$ to an initial value of 0 $x$ time
 (a) \harmonylink{code/prog1.hny} Sequential && (b) \harmonylink{code/prog2.hny} Concurrent
 \end{tabular}
 \end{center}
-\caption{A sequential and a concurrent program.}
+\caption{A sequential and a concurrent program}
 \label{fig:progs}
 \end{figure}
 
@@ -835,7 +851,7 @@ It sets \textit{shared} to \textbf{True}, asserts that
 If you run the program through Harmony, it will not find any problems
 because there is only one execution possible and 1) in that execution
 the assertion does not fail and 2) the execution terminates.
-Program (b) is concurrent.  It executes methods \texttt{f()} and
+Program (b) is concurrent---it executes methods \texttt{f()} and
 \texttt{g()} in parallel.
 If method \texttt{g()} runs and completes before \texttt{f()}, then
 the assertion in \texttt{f()} will fail when \texttt{f()} runs.
@@ -875,7 +891,7 @@ What would the value of \textit{count} be at the end of that execution?
 \begin{code}
 \harmonysource{Up}
 \end{code}
-\caption{\harmonylink{code/Up.hny} Incrementing twice in parallel.}
+\caption{\harmonylink{code/Up.hny} Incrementing twice in parallel}
 \label{fig:inc}
 \end{figure}
 
@@ -1009,7 +1025,7 @@ time---the important thing is to develop an understanding of concurrency.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/Up.py}
 \end{code}
-\caption{\harmonylink{python/Up.py} Python implementation of \autoref{fig:inc}.}
+\caption{\harmonylink{python/Up.py} Python implementation of \autoref{fig:inc}}
 \label{fig:incpy}
 \end{figure}
 
@@ -1017,7 +1033,7 @@ time---the important thing is to develop an understanding of concurrency.
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/UpMany.py}
 \end{code}
-\caption{\harmonylink{python/UpMany.py} Incrementing \texttt{N} times.}
+\caption{\harmonylink{python/UpMany.py} Incrementing \texttt{N} times}
 \label{fig:incmany}
 \end{figure}
 
@@ -1202,7 +1218,7 @@ code/Up.hny:8     assert count == 2
    31 Return
 \end{verbatim}
 \end{code}
-\caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}.}
+\caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}}
 \label{fig:inccode}
 \end{figure}
 
@@ -1280,7 +1296,7 @@ Harmony assertion failed: 1
 open file:///Users/rvr/github/harmony/harmony.html for more information
 \end{verbatim}
 \end{code}
-\caption{The text output of running Harmony on \autoref{fig:inc}.}
+\caption{The text output of running Harmony on \autoref{fig:inc}}
 \label{fig:incoutput}
 \end{figure}
 
@@ -1502,7 +1518,7 @@ go by very quickly.
 \begin{code}
 \harmonysource{UpEnter}
 \end{code}
-\caption{\harmonylink{code/UpEnter.hny} Broken attempt at fixing the code of \autoref{fig:inc}.}
+\caption{\harmonylink{code/UpEnter.hny} Broken attempt at fixing the code of \autoref{fig:inc}}
 \label{fig:incenter}
 \end{figure}
 
@@ -1513,7 +1529,7 @@ go by very quickly.
 \begin{code}
 \harmonysource{csbarebones}
 \end{code}
-\caption{\harmonylink{code/csbarebones.hny} A bare bones critical section with two threads.}
+\caption{\harmonylink{code/csbarebones.hny} A bare bones critical section with two threads}
 \label{fig:csbarebones}
 \end{figure}
 
@@ -1521,7 +1537,7 @@ go by very quickly.
 \begin{code}
 \harmonysource{cs}
 \end{code}
-\caption{\harmonylink{code/cs.hny} Harmony model of a critical section.}
+\caption{\harmonylink{code/cs.hny} Harmony model of a critical section}
 \label{fig:cs}
 \end{figure}
 
@@ -1655,7 +1671,7 @@ specification.
 \begin{code}
 \harmonysource{naiveLock}
 \end{code}
-\caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock.}
+\caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock}
 \label{fig:naivelock}
 \end{figure}
 
@@ -1663,7 +1679,7 @@ specification.
 \begin{center}
 \includegraphics[width=0.8\textwidth]{figures/naiveLock.pdf}
 \end{center}
-\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:naivelock}}.}
+\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:naivelock}}}
 \label{fig:naiveLockhtml}
 \end{figure}
 
@@ -1671,7 +1687,7 @@ specification.
 \begin{code}
 \harmonysource{naiveFlags}
 \end{code}
-\caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion.}
+\caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion}
 \label{fig:naiveflags}
 \end{figure}
 
@@ -1679,7 +1695,7 @@ specification.
 \begin{center}
 \includegraphics[width=0.8\textwidth]{figures/naiveFlags.pdf}
 \end{center}
-\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:naiveflags}}.}
+\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:naiveflags}}}
 \label{fig:naiveflagshtml}
 \end{figure}
 
@@ -1687,7 +1703,7 @@ specification.
 \begin{code}
 \harmonysource{naiveTurn}
 \end{code}
-\caption{\harmonylink{code/naiveTurn.hny} Na\"{\i}ve use of turn variable to solve mutual exclusion.}
+\caption{\harmonylink{code/naiveTurn.hny} Na\"{\i}ve use of turn variable to solve mutual exclusion}
 \label{fig:naiveturn}
 \end{figure}
 
@@ -1855,7 +1871,7 @@ exclusion and progress.
 \begin{center}
 \includegraphics[width=6in]{figures/states-crop.pdf}
 \end{center}
-\caption{Venn diagram classifying all states and a trace.}
+\caption{Venn diagram classifying all states and a trace}
 \label{fig:states}
 \end{figure}
 
@@ -2172,7 +2188,7 @@ only try to enter the critical section a bounded number of times.
 \begin{code}
 \harmonysource{csonebit}
 \end{code}
-\caption{\harmonylink{code/csonebit.hny} Mutual exclusion using a flag per thread.}
+\caption{\harmonylink{code/csonebit.hny} Mutual exclusion using a flag per thread}
 \label{fig:csonebit}
 \end{figure}
 
@@ -2206,7 +2222,7 @@ the same expression in Harmony.
 \begin{code}
 \harmonysource{PetersonMethod}
 \end{code}
-\caption{\harmonylink{code/PetersonMethod.hny} Peterson's Algorithm accessed through methods.}
+\caption{\harmonylink{code/PetersonMethod.hny} Peterson's Algorithm accessed through methods}
 \label{fig:petersonmethods}
 \end{figure}
 
@@ -2280,7 +2296,7 @@ See \autoref{sec:vars} for more information.
 \begin{code}
 \harmonysource{clock}
 \end{code}
-\caption{\harmonylink{code/clock.hny} Harmony program that finds page replacement anomalies.}
+\caption{\harmonylink{code/clock.hny} Harmony program that finds page replacement anomalies}
 \label{fig:clock}
 \end{figure}
 
@@ -2339,7 +2355,7 @@ reference string: 1 2 3 4 2 1 2 5 1 2.
 \begin{code}
 \harmonysource{lockspec}
 \end{code}
-\caption{\harmonylink{modules/synch.hny} Specification of a lock.}
+\caption{\harmonylink{modules/synch.hny} Specification of a lock}
 \label{fig:lockspec}
 \end{figure}
 
@@ -2348,7 +2364,7 @@ reference string: 1 2 3 4 2 1 2 5 1 2.
 \harmonysource{cssynch}
 \end{code}
 \caption{\harmonylink{code/cssynch.hny} Using a lock to implement a
-critical section.}
+critical section}
 \label{fig:cssynch}
 \end{figure}
 
@@ -2356,7 +2372,7 @@ critical section.}
 \begin{code}
 \harmonysource{UpLock}
 \end{code}
-\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock.}
+\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2446,7 +2462,7 @@ atomically.
 \begin{code}
 \harmonysource{spinlock}
 \end{code}
-\caption{\harmonylink{code/spinlock.hny} Mutual Exclusion using a ``spinlock'' based on test-and-set.}
+\caption{\harmonylink{code/spinlock.hny} Mutual Exclusion using a ``spinlock'' based on test-and-set}
 \label{fig:tas}
 \end{figure}
 
@@ -2607,7 +2623,7 @@ write out the invariants that need to hold and check them using Harmony.
 \end{code}
 \caption{\harmonylink{code/taslock.hny} Implementation of the lock
 specification in \autoref{fig:lockspec} using a spinlock based on
-test-and-set.}
+test-and-set}
 \label{fig:tas2}
 \end{figure}
 
@@ -2616,7 +2632,7 @@ test-and-set.}
 \harmonysource{ticket}
 \end{code}
 \caption{\harmonylink{code/ticket.hny} Implementation of the lock
-specification in \autoref{fig:lockspec} using a ticket lock.}
+specification in \autoref{fig:lockspec} using a ticket lock}
 \label{fig:ticket}
 \end{figure}
 
@@ -2752,7 +2768,7 @@ A thread that is in an infinite loop is also considered blocked.
 \begin{code}
 \harmonysource{locksusp}
 \end{code}
-\caption{\harmonylink{modules/synchS.hny} The lock implementation in the \texttt{synchS} module uses suspension.}
+\caption{\harmonylink{modules/synchS.hny} The lock implementation in the \texttt{synchS} module uses suspension}
 \label{fig:suspension}
 \end{figure}
 
@@ -2866,7 +2882,7 @@ keyword.
 \begin{code}
 \harmonysource{xy}
 \end{code}
-\caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$.}
+\caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$}
 \label{fig:xy}
 \end{figure}
 
@@ -2874,7 +2890,7 @@ keyword.
 \begin{code}
 \harmonysource{atm}
 \end{code}
-\caption{\harmonylink{code/atm.hny} Withdrawing money from an ATM.}
+\caption{\harmonylink{code/atm.hny} Withdrawing money from an ATM}
 \label{fig:atm}
 \end{figure}
 
@@ -2895,7 +2911,7 @@ keyword.
 (a) \harmonylink{code/queuespec.hny} Sequential & (b) \harmonylink{code/queue.hny} Concurrent queue
 \end{tabular}
 \end{center}
-\caption{A sequential and a concurrent specification of a queue.}
+\caption{A sequential and a concurrent specification of a queue}
 \label{fig:queues}
 \end{figure}
 
@@ -2903,7 +2919,7 @@ keyword.
 \begin{code}
 \harmonysource{queuedemo}
 \end{code}
-\caption{\harmonylink{code/queuedemo.hny} Using a concurrent queue.}
+\caption{\harmonylink{code/queuedemo.hny} Using a concurrent queue}
 \label{fig:queuedemo}
 \end{figure}
 
@@ -2989,7 +3005,7 @@ undefined semantics in most environments.
 \begin{code}
 \harmonysource{queueconc}
 \end{code}
-\caption{\harmonylink{code/queueconc.hny} An implementation of a concurrent queue data structure.}
+\caption{\harmonylink{code/queueconc.hny} An implementation of a concurrent queue data structure}
 \label{fig:queueconc}
 \end{figure}
 
@@ -2997,7 +3013,7 @@ undefined semantics in most environments.
 \begin{code}
 \harmonysource{queueMS}
 \end{code}
-\caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items.}
+\caption{\harmonylink{code/queueMS.hny} A queue with separate locks for enqueuing and dequeuing items}
 \label{fig:queueMS}
 \end{figure}
 
@@ -3040,7 +3056,7 @@ queue implementations.
 \harmonysource{setobj}
 \end{code}
 \caption{\harmonylink{code/setobj.hny} Specification of a concurrent
-set object.}
+set object}
 \label{fig:setobj}
 \end{figure}
 
@@ -3048,7 +3064,7 @@ set object.}
 \begin{code}
 \harmonysource{linkedlist}
 \end{code}
-\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking.}
+\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking}
 \label{fig:linkedlist}
 \end{figure}
 
@@ -3056,7 +3072,7 @@ set object.}
 \begin{code}
 \harmonysource{intsettest}
 \end{code}
-\caption{\harmonylink{code/intsettest.hny} Test code for \autoref{fig:linkedlist}.}
+\caption{\harmonylink{code/intsettest.hny} Test code for \autoref{fig:linkedlist}}
 \label{fig:intsettest}
 \end{figure}
 
@@ -3146,7 +3162,7 @@ a lock for each node in the tree.
 \begin{code}
 \harmonysource{cslock}
 \end{code}
-\caption{\harmonylink{code/cslock.hny} Critical section testing without labels.}
+\caption{\harmonylink{code/cslock.hny} Critical section testing without labels}
 \label{fig:cslock}
 \end{figure}
 \end{comment}
@@ -3155,7 +3171,7 @@ a lock for each node in the tree.
 \begin{code}
 \harmonysource{qtestseq}
 \end{code}
-\caption{\harmonylink{code/qtestseq.hny} Sequential queue test.}
+\caption{\harmonylink{code/qtestseq.hny} Sequential queue test}
 \label{fig:qtestseq}
 \end{figure}
 
@@ -3163,7 +3179,7 @@ a lock for each node in the tree.
 \begin{code}
 \harmonysource{queuelin}
 \end{code}
-\caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points.}
+\caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points}
 \label{fig:queuelin}
 \end{figure}
 
@@ -3171,7 +3187,7 @@ a lock for each node in the tree.
 \begin{code}
 \harmonysource{qtestconc}
 \end{code}
-\caption{\harmonylink{code/qtestconc.hny} Concurrent queue test.}
+\caption{\harmonylink{code/qtestconc.hny} Concurrent queue test}
 \label{fig:qtestconc}
 \end{figure}
 
@@ -3357,7 +3373,7 @@ of the concurrent specification.
 \begin{code}
 \harmonysource{qtest1}
 \end{code}
-\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}.}
+\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}}
 \label{fig:qtest1}
 \end{figure}
 
@@ -3383,7 +3399,7 @@ $\{ 0 .. \mathtt{N} - 1 \}$.
 \begin{code}
 \harmonysource{qtest2}
 \end{code}
-\caption{\harmonylink{code/qtest2.hny} Concurrent \texttt{get()}.}
+\caption{\harmonylink{code/qtest2.hny} Concurrent \texttt{get()}}
 \label{fig:qtest2}
 \end{figure}
 
@@ -3404,7 +3420,7 @@ the queue is empty.
 \harmonysource{qtest3}
 \end{code}
 \caption{\harmonylink{code/qtest3.hny} Mix of concurrent
-\texttt{get()} and \texttt{put()} operations.}
+\texttt{get()} and \texttt{put()} operations}
 \label{fig:qtest3}
 \end{figure}
 
@@ -3453,7 +3469,7 @@ tests do not interfere with one another.
 \begin{code}
 \harmonysource{qtest4}
 \end{code}
-\caption{\harmonylink{code/qtest4.hny} Test with multiple queues.}
+\caption{\harmonylink{code/qtest4.hny} Test with multiple queues}
 \label{fig:qtest4}
 \end{figure}
 
@@ -3462,7 +3478,7 @@ tests do not interfere with one another.
 \harmonysource{multitest}
 \end{code}
 \caption{\harmonylink{code/multitest.hny} Running a
-sequential test followed by several concurrent tests.}
+sequential test followed by several concurrent tests}
 \label{fig:multitest}
 \end{figure}
 
@@ -3485,7 +3501,7 @@ is linearizable.
 \begin{code}
 \harmonysource{queuebug}
 \end{code}
-\caption{\harmonylink{code/queuebug.hny} A buggy queue implementation.}
+\caption{\harmonylink{code/queuebug.hny} A buggy queue implementation}
 \label{fig:queuebug}
 \end{figure}
 
@@ -3494,7 +3510,7 @@ is linearizable.
 \includegraphics[width=\textwidth]{figures/queuebug1.pdf}
 \end{center}
 \caption{\harmonyref{queuebug.html}{Harmony output of running \autoref{fig:qtest3} against
-\autoref{fig:queuebug}}.}
+\autoref{fig:queuebug}}}
 \label{fig:queuebug1}
 \end{figure}
 
@@ -3580,7 +3596,7 @@ both for \texttt{put}() and for \texttt{get}().  It passes all tests.
 \begin{code}
 \harmonysource{queuefix}
 \end{code}
-\caption{\harmonylink{code/queuefix.hny} Queue implementation with hand-over-hand locking.}
+\caption{\harmonylink{code/queuefix.hny} Queue implementation with hand-over-hand locking}
 \label{fig:queuefix}
 \end{figure}
 
@@ -3629,7 +3645,7 @@ and \emph{bounded buffers}.
 \begin{code}
 \harmonysource{RW}
 \end{code}
-\caption{\harmonylink{code/RW.hny} Specification of reader/writer locks.}
+\caption{\harmonylink{code/RW.hny} Specification of reader/writer locks}
 \label{fig:rwspec}
 \end{figure}
 
@@ -3637,7 +3653,7 @@ and \emph{bounded buffers}.
 \begin{code}
 \harmonysource{RWtest}
 \end{code}
-\caption{\harmonylink{code/RWtest.hny} Test code for reader/writer locks.}
+\caption{\harmonylink{code/RWtest.hny} Test code for reader/writer locks}
 \label{fig:rwtest}
 \end{figure}
 
@@ -3650,7 +3666,7 @@ and \emph{bounded buffers}.
 \begin{code}
 \harmonysource{RWbusy}
 \end{code}
-\caption{\harmonylink{code/RWbusy.hny} Busy-Waiting Reader/Writer Lock implementation.}
+\caption{\harmonylink{code/RWbusy.hny} Busy-Waiting Reader/Writer Lock implementation}
 \label{fig:rwbusy}
 \end{figure}
 
@@ -3758,7 +3774,7 @@ critical section, any other reader is also able to enter.
 \begin{code}
 \harmonysource{RWbusychk}
 \end{code}
-\caption{\harmonylink{code/RWbusychk.hny} Checking for Busy Waiting.}
+\caption{\harmonylink{code/RWbusychk.hny} Checking for Busy Waiting}
 \label{fig:rwblock}
 \end{figure}
 
@@ -3819,7 +3835,7 @@ for three threads.
 \begin{code}
 \harmonysource{RWlock}
 \end{code}
-\caption{\harmonylink{code/RWlock.hny} Reader/Writer with Two Locks.}
+\caption{\harmonylink{code/RWlock.hny} Reader/Writer with Two Locks}
 \label{fig:rw2lock}
 \end{figure}
 
@@ -3827,7 +3843,7 @@ for three threads.
 \begin{code}
 \harmonysource{RWmulti}
 \end{code}
-\caption{\harmonylink{code/RWmulti.hny} Checking that multiple readers can acquire the read lock.}
+\caption{\harmonylink{code/RWmulti.hny} Checking that multiple readers can acquire the read lock}
 \label{fig:rwmulti}
 \end{figure}
 
@@ -3913,7 +3929,7 @@ of a flag per thread?
 \begin{code}
 \harmonysource{semaphore}
 \end{code}
-\caption{\harmonylink{modules/synch.hny} The \texttt{Semaphore} interface in the \texttt{synch} module.}
+\caption{\harmonylink{modules/synch.hny} The \texttt{Semaphore} interface in the \texttt{synch} module}
 \label{fig:semaphore}
 \end{figure}
 
@@ -3921,7 +3937,7 @@ of a flag per thread?
 \begin{code}
 \harmonysource{DinersSema}
 \end{code}
-\caption{\harmonylink{code/DinersSema.hny} Italian Philosophers.}
+\caption{\harmonylink{code/DinersSema.hny} Italian Philosophers}
 \label{fig:dinerssema}
 \end{figure}
 
@@ -3989,7 +4005,7 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \begin{code}
 \harmonysource{boundedbuffer}
 \end{code}
-\caption{\harmonylink{code/boundedbuffer.hny} Bounded buffer specification.}
+\caption{\harmonylink{code/boundedbuffer.hny} Bounded buffer specification}
 \label{fig:boundedbuffer}
 \end{figure}
 
@@ -4003,7 +4019,7 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \begin{center}
 \includegraphics[width=2.5in]{figures/pc-crop.pdf}
 \end{center}
-\caption{High-level state diagram specification of producers/consumers.}
+\caption{High-level state diagram specification of producers/consumers}
 \label{fig:pc}
 \end{figure}
 
@@ -4011,7 +4027,7 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \begin{code}
 \harmonysource{BBsema}
 \end{code}
-\caption{\harmonylink{code/BBsema.hny} Bounded Buffer implementation using semaphores.}
+\caption{\harmonylink{code/BBsema.hny} Bounded Buffer implementation using semaphores}
 \label{fig:boundedbuffer}
 \end{figure}
 
@@ -4019,7 +4035,7 @@ the solution allows more than one Italian philosopher to eat at the same time?
 \begin{code}
 \harmonysource{BBsematest}
 \end{code}
-\caption{\harmonylink{code/BBsematest.hny} Test program for \autoref{fig:boundedbuffer}.}
+\caption{\harmonylink{code/BBsematest.hny} Test program for \autoref{fig:boundedbuffer}}
 \label{fig:bbtest}
 \end{figure}
 
@@ -4048,7 +4064,7 @@ harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=2 BBsematest.hny
 harmony    -c NSLOTS=2 -c NPRODS=3 -c NCONSS=3 BBsematest.hny
 \end{verbatim}
 \end{code}
-\caption{Script for testing producer/consumer synchronization.}
+\caption{Script for testing producer/consumer synchronization}
 \label{fig:pcscript}
 \end{figure}
 \end{comment}
@@ -4103,7 +4119,7 @@ description there are three items to produce initially.
 \harmonysource{BBsemadata}
 \end{code}
 \caption{\harmonylink{code/BBsemadata.hny} Test whether the bounded buffer delivers the right data in the
-right order.}
+right order}
 \label{fig:BBsemadata}
 \end{figure}
 
@@ -4189,7 +4205,7 @@ exactly the set of tuples that the producers produce.
 \begin{code}
 \harmonysource{RWsbs}
 \end{code}
-\caption{\harmonylink{code/RWsbs.hny} Reader/Writer Lock using Split Binary Semaphores.}
+\caption{\harmonylink{code/RWsbs.hny} Reader/Writer Lock using Split Binary Semaphores}
 \label{fig:RWsplitsema}
 \end{figure}
 
@@ -4386,7 +4402,7 @@ as an argument to \texttt{OLBlock}.
 \begin{code}
 \harmonysource{gpu}
 \end{code}
-\caption{\harmonylink{code/gpu.hny} A thread-unsafe GPU allocator.}
+\caption{\harmonylink{code/gpu.hny} A thread-unsafe GPU allocator}
 \label{fig:gpu}
 \end{figure}
 
@@ -4402,7 +4418,7 @@ as an argument to \texttt{OLBlock}.
 \harmonysource{RWfair}
 }
 \end{code}
-\caption{\harmonylink{code/RWfair.hny} Reader/Writer Lock SBS implementation addressing fairness.}
+\caption{\harmonylink{code/RWfair.hny} Reader/Writer Lock SBS implementation addressing fairness}
 \label{fig:RWfair}
 \end{figure}
 
@@ -4508,7 +4524,7 @@ to release in the order in which they appear in the queue.
 \harmonysource{RWqueue}
 }
 \end{code}
-\caption{\harmonylink{code/RWqueue.hny} Reader/Writer Lock SBS implementation using a queue.}
+\caption{\harmonylink{code/RWqueue.hny} Reader/Writer Lock SBS implementation using a queue}
 \label{fig:RWqueue}
 \end{figure}
 
@@ -4516,7 +4532,7 @@ to release in the order in which they appear in the queue.
 \begin{code}
 \harmonysource{RWqtest}
 \end{code}
-\caption{\harmonylink{code/RWqtest.hny} Test program for \autoref{fig:RWqueue}.}
+\caption{\harmonylink{code/RWqtest.hny} Test program for \autoref{fig:RWqueue}}
 \label{fig:RWqtest}
 \end{figure}
 \end{comment}
@@ -4540,7 +4556,7 @@ to release in the order in which they appear in the queue.
 \begin{code}
 \harmonysource{hoare}
 \end{code}
-\caption{\harmonylink{modules/hoare.hny} Implementation of Hoare monitors.}
+\caption{\harmonylink{modules/hoare.hny} Implementation of Hoare monitors}
 \label{fig:hoare}
 \end{figure}
 
@@ -4549,7 +4565,7 @@ to release in the order in which they appear in the queue.
 \harmonysource{BBhoare}
 \end{code}
 \caption{\harmonylink{code/BBhoare.hny} Bounded Buffer implemented using
-a Hoare monitor.}
+a Hoare monitor}
 \label{fig:hoaretest}
 \end{figure}
 
@@ -4741,7 +4757,7 @@ through libraries.
 \harmonysource{mesa}
 \end{code}
 \caption{\harmonylink{modules/synch.hny}
-Implementation of condition variables in the \texttt{synch} module.}
+Implementation of condition variables in the \texttt{synch} module}
 \label{fig:cv}
 \end{figure}
 
@@ -4749,7 +4765,7 @@ Implementation of condition variables in the \texttt{synch} module.}
 \begin{code}
 \harmonysource{RWcv}
 \end{code}
-\caption{\harmonylink{code/RWcv.hny} Reader/Writer Lock using Mesa-style condition variables.}
+\caption{\harmonylink{code/RWcv.hny} Reader/Writer Lock using Mesa-style condition variables}
 \label{fig:RWcv}
 \end{figure}
 
@@ -4895,7 +4911,7 @@ thread needs to wait until all workers are done.
 \begin{code}
 \harmonysource{qsort}
 \end{code}
-\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation.}
+\caption{\harmonylink{code/qsort.hny} Iterative qsort() implementation}
 \label{fig:qsort}
 \end{figure}
 
@@ -4903,7 +4919,7 @@ thread needs to wait until all workers are done.
 \begin{code}
 \harmonysource{qsorttest}
 \end{code}
-\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}.}
+\caption{\harmonylink{code/qsorttest.hny} Test program for \autoref{fig:qsort}}
 \label{fig:qsorttest}
 \end{figure}
 
@@ -4917,7 +4933,7 @@ thread needs to wait until all workers are done.
 \begin{code}
 \harmonysource{Diners}
 \end{code}
-\caption{\harmonylink{code/Diners.hny} Dining Philosophers.}
+\caption{\harmonylink{code/Diners.hny} Dining Philosophers}
 \label{fig:diners}
 \end{figure}
 
@@ -4959,7 +4975,7 @@ with all five threads being blocked trying to acquire the lock.
 \begin{code}
 \harmonysource{DinersCV}
 \end{code}
-\caption{\harmonylink{code/DinersCV.hny} Dining Philosophers that grab both forks at the same time.}
+\caption{\harmonylink{code/DinersCV.hny} Dining Philosophers that grab both forks at the same time}
 \label{fig:dinerscv}
 \end{figure}
 
@@ -5083,7 +5099,7 @@ wants to allocate, making them generally quite impractical.
 \harmonysource{DinersAvoid}
 \end{code}
 \caption{\harmonylink{code/DinersAvoid.hny} Dining Philosophers that carefully avoid getting into a deadlock
-scenario.}
+scenario}
 \label{fig:dinersavoid}
 \end{figure}
 
@@ -5111,7 +5127,7 @@ held.
 \begin{code}
 \harmonysource{bank}
 \end{code}
-\caption{\harmonylink{code/bank.hny} Bank accounts.}
+\caption{\harmonylink{code/bank.hny} Bank accounts}
 \label{fig:bank}
 \end{figure}
 
@@ -5134,7 +5150,7 @@ held.
 \begin{code}
 \harmonysource{counter}
 \end{code}
-\caption{\harmonylink{code/counter.hny} An illustration of the actor approach.}
+\caption{\harmonylink{code/counter.hny} An illustration of the actor approach}
 \label{fig:actor}
 \end{figure}
 
@@ -5231,7 +5247,7 @@ in the opposite order.  Which do you think is better?
 \begin{code}
 \harmonysource{qbarrier}
 \end{code}
-\caption{\harmonylink{code/qbarrier.hny} Barrier synchronization with queues.}
+\caption{\harmonylink{code/qbarrier.hny} Barrier synchronization with queues}
 \label{fig:barrier}
 \end{figure}
 
@@ -5286,7 +5302,7 @@ are more than one round apart.
 \begin{code}
 \harmonysource{barrier}
 \end{code}
-\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization.}
+\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization}
 \label{fig:genbarrier}
 \end{figure}
 
@@ -5294,7 +5310,7 @@ are more than one round apart.
 \begin{code}
 \harmonysource{barriertest}
 \end{code}
-\caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}.}
+\caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}}
 \label{fig:barriertest}
 \end{figure}
 
@@ -5361,7 +5377,7 @@ Implement a simulation of such a pool hall.
 \begin{code}
 \harmonysource{trap}
 \end{code}
-\caption{\harmonylink{code/trap.hny} How to use \textbf{trap}.}
+\caption{\harmonylink{code/trap.hny} How to use \textbf{trap}}
 \label{fig:trap}
 \end{figure}
 
@@ -5369,7 +5385,7 @@ Implement a simulation of such a pool hall.
 \begin{code}
 \harmonysource{trap2}
 \end{code}
-\caption{\harmonylink{code/trap2.hny} A race condition with interrupts.}
+\caption{\harmonylink{code/trap2.hny} A race condition with interrupts}
 \label{fig:trap2}
 \end{figure}
 
@@ -5377,7 +5393,7 @@ Implement a simulation of such a pool hall.
 \begin{code}
 \harmonysource{trap3}
 \end{code}
-\caption{\harmonylink{code/trap3.hny} Locks do not work with interrupts.}
+\caption{\harmonylink{code/trap3.hny} Locks do not work with interrupts}
 \label{fig:trap3}
 \end{figure}
 
@@ -5385,7 +5401,7 @@ Implement a simulation of such a pool hall.
 \begin{code}
 \harmonysource{trap4}
 \end{code}
-\caption{\harmonylink{code/trap4.hny} Disabling and enabling interrupts.}
+\caption{\harmonylink{code/trap4.hny} Disabling and enabling interrupts}
 \label{fig:trap4}
 \end{figure}
 
@@ -5450,7 +5466,7 @@ to increment the counter.
 \begin{code}
 \harmonysource{trap5}
 \end{code}
-\caption{\harmonylink{code/trap5.hny} Example of an interrupt-safe method.}
+\caption{\harmonylink{code/trap5.hny} Example of an interrupt-safe method}
 \label{fig:trap5}
 \end{figure}
 
@@ -5458,7 +5474,7 @@ to increment the counter.
 \begin{code}
 \harmonysource{trap6}
 \end{code}
-\caption{\harmonylink{code/trap6.hny} Code that is both interrupt-safe and thread-safe.}
+\caption{\harmonylink{code/trap6.hny} Code that is both interrupt-safe and thread-safe}
 \label{fig:trap6}
 \end{figure}
 
@@ -5511,7 +5527,7 @@ The method also needs to be interrupt-safe.
 \begin{code}
 \harmonysource{hw}
 \end{code}
-\caption{\harmonylink{code/hw.hny} Non-blocking queue.}
+\caption{\harmonylink{code/hw.hny} Non-blocking queue}
 \label{fig:hw}
 \end{figure}
 
@@ -5605,7 +5621,7 @@ read-only operation.  Explain how a seqlock can lead to starvation.
 \begin{code}
 \harmonysource{abp}
 \end{code}
-\caption{\harmonylink{code/abp.hny} Alternating Bit Protocol.}
+\caption{\harmonylink{code/abp.hny} Alternating Bit Protocol}
 \label{fig:abp}
 \end{figure}
 
@@ -5613,7 +5629,7 @@ read-only operation.  Explain how a seqlock can lead to starvation.
 \begin{code}
 \harmonysource{abptest}
 \end{code}
-\caption{\harmonylink{code/abptest.hny} Test code for alternating bit protocol.}
+\caption{\harmonylink{code/abptest.hny} Test code for alternating bit protocol}
 \label{fig:abptest}
 \end{figure}
 
@@ -5725,7 +5741,7 @@ for each client, or solve the problem using a single pair of channels.
 \begin{code}
 \harmonysource{leader}
 \end{code}
-\caption{\harmonylink{code/leader.hny} A leader election protocol on a ring.}
+\caption{\harmonylink{code/leader.hny} A leader election protocol on a ring}
 \label{fig:leader}
 \end{figure}
 
@@ -5823,7 +5839,7 @@ What happens if you remove the \textbf{atomically} keyword?  Explain what happen
 \begin{code}
 \harmonysource{2pc1}
 \end{code}
-\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for banks.}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for banks}
 \label{fig:2pc1}
 \end{figure}
 
@@ -5831,7 +5847,7 @@ What happens if you remove the \textbf{atomically} keyword?  Explain what happen
 \begin{code}
 \harmonysource{2pc2}
 \end{code}
-\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for transaction coordinators.}
+\caption{\harmonylink{code/2pc.hny} Two Phase Commit protocol: code for transaction coordinators}
 \label{fig:2pc2}
 \end{figure}
 
@@ -6013,7 +6029,7 @@ the transaction.  Implement this.
 \begin{code}
 \harmonysource{chain}
 \end{code}
-\caption{\harmonylink{code/chain.hny} Checking correctness of Chain Replication.}
+\caption{\harmonylink{code/chain.hny} Checking correctness of Chain Replication}
 \label{fig:chain}
 \end{figure}
 
@@ -6146,7 +6162,7 @@ different histories against one another.
 \begin{code}
 \harmonysource{abd}
 \end{code}
-\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register.}
+\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register}
 \label{fig:abd}
 \end{figure}
 
@@ -6154,7 +6170,7 @@ different histories against one another.
 \begin{code}
 \harmonysource{abdtest}
 \end{code}
-\caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}.}
+\caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}}
 \label{fig:abdtest}
 \end{figure}
 
@@ -6283,7 +6299,7 @@ servers have failed.
 \begin{code}
 \harmonysource{bosco}
 \end{code}
-\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol.}
+\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol}
 \label{fig:bosco}
 \end{figure}
 
@@ -6383,7 +6399,7 @@ Also, it is nice to know that both 0 and 1 can be decided.
 \begin{code}
 \harmonysource{bosco2}
 \end{code}
-\caption{\harmonylink{code/bosco2.hny} Reducing the state space.}
+\caption{\harmonylink{code/bosco2.hny} Reducing the state space}
 \label{fig:bosco2}
 \end{figure}
 
@@ -6429,7 +6445,7 @@ Implement this algorithm.
 \begin{code}
 \harmonysource{paxos1}
 \end{code}
-\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 1.}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 1}
 \label{fig:paxos1}
 \end{figure}
 
@@ -6437,7 +6453,7 @@ Implement this algorithm.
 \begin{code}
 \harmonysource{paxos2}
 \end{code}
-\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 2.}
+\caption{\harmonylink{code/paxos.hny} A version of the Paxos protocol, Part 2}
 \label{fig:paxos2}
 \end{figure}
 
@@ -6530,7 +6546,7 @@ find the problem this causes.
 \begin{code}
 \harmonysource{needhamschroeder}
 \end{code}
-\caption{\harmonylink{code/needhamschroeder.hny} Needham-Schroeder protocol and an attack.}
+\caption{\harmonylink{code/needhamschroeder.hny} Needham-Schroeder protocol and an attack}
 \label{fig:ns}
 \end{figure}
 

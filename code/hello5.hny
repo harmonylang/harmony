@@ -1,8 +1,5 @@
-def hello():
-    print("hello")
+def p(s):
+    print s
 
-def world():
-    print("world")
-
-hello()
-world()
+p("hello")
+p("world")

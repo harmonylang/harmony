@@ -280,8 +280,7 @@ static bool onestep(
 
         // See if we need to break out of this step
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
-        if (!step->ctx->atomicFlag && sc->ctxbag != VALUE_DICT &&
-                                (next_instr->breakable || next_instr->log)) {
+        if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
             if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
                 step->ctx->atomicFlag = true;
             }
@@ -1866,49 +1865,26 @@ int main(int argc, char **argv){
                 else {
                     fprintf(out, ",\n");
                 }
-                if (edge->nlog == 0) {
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
-                    fprintf(out, "      \"log\": \"\"\n");
-                    fprintf(out, "    }");
-                }
-                else if (edge->nlog == 1) {
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
-                    char *p = json_escape_value(edge->log[0]);
-                    fprintf(out, "      \"log\": \"%s\"\n", p);
-                    free(p);
-                    fprintf(out, "    }");
-                }
-                else {
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": %d,\n", node->id);
-                    fprintf(out, "      \"dst\": \"i%d\",\n", --extra);
-                    char *p = json_escape_value(edge->log[0]);
-                    fprintf(out, "      \"log\": \"%s\"\n", p);
-                    free(p);
-                    fprintf(out, "    },\n");
-
-                    for (int j = 1; j < edge->nlog - 1; j++) {
-                        fprintf(out, "    {\n");
-                        fprintf(out, "      \"src\": \"i%d\",\n", extra);
-                        fprintf(out, "      \"dst\": \"i%d\",\n", --extra);
-                        p = json_escape_value(edge->log[j]);
-                        fprintf(out, "      \"log\": \"%s\"\n", p);
-                        free(p);
-                        fprintf(out, "    },\n");
+                fprintf(out, "    {\n");
+                fprintf(out, "      \"src\": %d,\n", node->id);
+                fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+                fprintf(out, "      \"log\": [");
+                bool first_log = true;
+                for (int j = 0; j < edge->nlog; j++) {
+                    if (first_log) {
+                        first_log = false;
+                        fprintf(out, "\n");
                     }
-
-                    fprintf(out, "    {\n");
-                    fprintf(out, "      \"src\": \"i%d\",\n", extra);
-                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
-                    p = json_escape_value(edge->log[edge->nlog - 1]);
-                    fprintf(out, "      \"log\": \"%s\"\n", p);
+                    else {
+                        fprintf(out, ",\n");
+                    }
+                    char *p = json_escape_value(edge->log[j]);
+                    fprintf(out, "        \"%s\"", p);
                     free(p);
-                    fprintf(out, "    }");
                 }
+                fprintf(out, "\n");
+                fprintf(out, "      ]\n");
+                fprintf(out, "    }");
             }
         }
         fprintf(out, "\n");
