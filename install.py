@@ -36,7 +36,7 @@ def install():
     fl = Path("harmony")
     fl.chmod(0o755)
     print("Compiling model checker...")
-    ec = os.system("gcc -O3 -std=c99 -DNDEBUG charm.c -m64 -o charm.exe")
+    ec = os.system("gcc -O3 -std=c99 -DNDEBUG charm.c -m64 -o charm.exe -lpthread")
     if ec != 0 or not os.path.exists("charm.exe"):
         exe = "charm." + platform.system() + ".exe"
         if os.path.exists(exe):
@@ -47,7 +47,7 @@ def install():
         print("  Failed to compile the model checker (using gcc)")
         print("  Please compile charm.c and put the result in charm.exe")
         print("  Use a 64-bit C (C99) compiler")
-        print("  Use the following compilation flags: -std=c99 -DNDEBUG -m64")
+        print("  Use the following compilation flags: -std=c99 -DNDEBUG -m64 -lpthread")
 
 def check():
     url = urllib.request.urlopen('https://harmony.cs.cornell.edu/version.xml')
