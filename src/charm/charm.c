@@ -1365,6 +1365,7 @@ void process_results(
         if ((next = *p) == NULL) {
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
+            assert(node->id != 0);
             minheap_insert(todo[0], node);
             global->enqueued++;
             must_free = false;
@@ -1382,7 +1383,7 @@ void process_results(
             minheap_insert(global->failures, f);
         }
 
-        // printf("ADD %d <=> %d\n", parent->id, node->id);
+        // printf("ADD %d => %d\n", parent->id, next->id);
 
         // Add a forward edge from parent
         struct edge *fwd = new_alloc(struct edge);
@@ -1409,8 +1410,8 @@ void process_results(
         bwd->ai = node->ai;
         bwd->log = node->log;
         bwd->nlog = node->nlog;
-        bwd->next = node->bwd;
-        node->bwd = bwd;
+        bwd->next = next->bwd;
+        next->bwd = bwd;
 
         if (must_free) {
             free(node);
@@ -1740,7 +1741,7 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    if (false) {
+    if (true) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (int i = 0; i < global->graph.size; i++) {
@@ -1760,6 +1761,29 @@ int main(int argc, char **argv){
                 fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+                fprintf(df, "            log:");
+                for (int j = 0; j < edge->nlog; j++) {
+                    char *p = value_string(edge->log[j]);
+                    fprintf(df, " %s", p);
+                    free(p);
+                }
+                fprintf(df, "\n");
+            }
+            fprintf(df, "    bwd:\n");
+            eno = 0;
+            for (struct edge *edge = node->bwd; edge != NULL; edge = edge->next, eno++) {
+                fprintf(df, "        %d:\n", eno);
+                struct context *ctx = value_get(edge->ctx, NULL);
+                fprintf(df, "            context: %s %s %d\n", value_string(ctx->name), value_string(ctx->arg), ctx->pc);
+                fprintf(df, "            choice: %s\n", value_string(edge->choice));
+                fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
+                fprintf(df, "            log:");
+                for (int j = 0; j < edge->nlog; j++) {
+                    char *p = value_string(edge->log[j]);
+                    fprintf(df, " %s", p);
+                    free(p);
+                }
+                fprintf(df, "\n");
             }
         }
         fclose(df);

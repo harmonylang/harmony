@@ -608,7 +608,7 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 \label{fig:helloworld}
 \end{figure}
 
-The first programming book I read cover to cover was \emph{The C Programming
+The first programming book that I read cover to cover was \emph{The C Programming
 Language} (first edition) by Brian W. Kernighan and Dennis M. Ritchie, which
 was around 1980.  I did not know at the time that 10 years later Dennis,
 the designer of the C programming language, would be my boss at AT\&T Bell Labs
@@ -635,7 +635,7 @@ inputs, but Harmony programs do not have inputs. Instead,
 \emph{nondetermistic choice} in Harmony programs.  In this case, the
 program chooses to either print ``hello'' or ``world''.  The corresponding
 DFA captures both possibilities.
-You can think of the \texttt{choose} operator as enumerating all the possible
+You can think of the \texttt{choose} operator as enumerating all possible
 inputs to the program.
 
 \autoref{fig:hello4} shows a program that has an infinite number of outputs
@@ -690,8 +690,9 @@ captures an infinite number of possible outputs.
 \end{figure}
 
 \autoref{fig:threads} demonstrates \emph{methods} and \emph{threads} in Harmony.
-In \autoref{fig:threads}, the code simply prints the string.
-strings ``hello'' and ``world''.  Notice that this leads to an intermediate
+In \autoref{fig:threads}(a), the code simply prints the
+strings ``hello'' and ``world'', in that order.
+Notice that this leads to an intermediate
 state after ``hello'' is printed but before ``world'' is.  However, there
 is still only one execution possible. \autoref{fig:threads}(b) shows two
 threads, one printing ``hello'' and one printing ``world''.  Because the
@@ -767,7 +768,7 @@ also has a bound variable called \textit{n} containing the value of the
 argument.  The \{ \textit{x..y} \} notation generates a set containing the numbers
 from~\textit{x} to~\textit{y} (inclusive).
 (Harmony does not have iterators and in particular does
-not have a \texttt{range} operator.)
+not have a \texttt{range} operator like Python.)
 The last two lines in the program are
 the most interesting.
 The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
@@ -1018,7 +1019,8 @@ How large does \texttt{N} need to be for assertions to fail?
 \item Can you think of a fix to \autoref{fig:inc}?  Try one or two different fixes
 and run them through Harmony.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
-(Also, you do not get to use a \emph{lock}, yet.)
+(Also, you do not get to use the \texttt{atomically} keyword
+or a \emph{lock}, yet.)
 \end{problems}
 
 \begin{figure}

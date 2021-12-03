@@ -101,7 +101,7 @@ def behavior_parse(js, minify, output):
 
     # TODO.  Minifying the DFA can lead to results where not all incoming
     #        edges to a node are labeled the same and other stuff.
-    if minify:
+    if False and minify:
         print("minify %d"%len(intermediate.states), file=sys.stderr)
         dfa = intermediate.minify(retain_names = True)
         print("minify done %d"%len(dfa.states), file=sys.stderr)
