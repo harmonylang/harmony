@@ -478,8 +478,6 @@ algorithms.  Harmony programs are not intended to be ``run'' like programs
 in most other programming languages---instead Harmony programs are
 model checked to test that the program has certain desirable
 properties and does not suffer from bugs.
-Interestingly, Harmony does not have input/output statements, so there is
-no ``Hello World'' program.
 
 The syntax and semantics of Harmony is similar to that of Python.
 Python is familiar to many programmers and is easy to learn and
@@ -620,6 +618,31 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 \label{fig:helloworld}
 \end{figure}
 
+The first programming book I read cover to cover was \emph{The C Programming
+Language} (first edition) by Brian W. Kernighan and Dennis M. Ritchie, which
+was around 1980.  In 1990, Dennis was my boss at AT\&T Bell Labs, while Brian
+was my colleague in the same lab.  The first program in the book printed
+the string ``hello, world''.  Since then, most programming tutorials for
+pretty much any programming language start with that example.  Harmony, too,
+has a Hello World program.
+\autoref{fig:helloworld}(a) shows the program and the corresponding output.
+The output is a \emph{Deterministic State Machine} (DFA).  The green circle
+represents the initial state and the double circle represents the final
+state.  There is one \emph{transition}, labeled with the string
+``hello world''.  The DFA describes (or \emph{recognizes}) all possible
+outputs that the program can generate.  In this case, there is only one.
+
+Now look at \autoref{fig:helloworld}{b).  It has two \texttt{print} statements.
+The output is another DFA, although this time there is an intermediate state.
+Still, there is only one possible output, and it consists of the strings
+``hello'' and ``world''.
+
+But programs can usually have more than one execution and produce multiple
+different outputs as a result.  \autoref{fig:choice} demonstrates
+\emph{nondetermistic choice} in Harmony programs.  In this case, the
+program chooses to either print ``hello'' or ``world''.  The corresponding
+DFA captures both possibilities.
+
 \begin{figure}
 \begin{center}
 \includegraphics[width=0.45\textwidth]{../code/hello3.png}
@@ -628,7 +651,7 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 \harmonysource{hello3}
 \end{code}
 \caption{\harmonylink{code/hello3.hny} Nondeterministic choice}
-\label{fig:hello3}
+\label{fig:choice}
 \end{figure}
 
 \begin{figure}
@@ -661,7 +684,7 @@ go on for ever}
 \end{tabular}
 \end{center}
 \caption{Method calls and threads}
-\label{fig:helloworld}
+\label{fig:methodthread}
 \end{figure}
 
 \begin{figure}
