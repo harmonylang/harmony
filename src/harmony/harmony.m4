@@ -6467,7 +6467,7 @@ def main():
         b = Brief()
         b.run(stem, outputflag)
         gh = GenHTML()
-        gh.run(stem)
+        gh.run(stem, outputflag)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
