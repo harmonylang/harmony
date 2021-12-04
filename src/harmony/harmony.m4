@@ -66,6 +66,7 @@ imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
 
+m4_include(jsonstring.py)
 m4_include(brief.py)
 m4_include(genhtml.py)
 m4_include(behavior.py)

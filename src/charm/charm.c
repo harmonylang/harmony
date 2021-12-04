@@ -1916,6 +1916,22 @@ int main(int argc, char **argv){
                     free(p);
                 }
                 fprintf(out, "\n");
+                fprintf(out, "      ],\n");
+                fprintf(out, "      \"print\": [");
+                first_log = true;
+                for (int j = 0; j < edge->nlog; j++) {
+                    if (first_log) {
+                        first_log = false;
+                        fprintf(out, "\n");
+                    }
+                    else {
+                        fprintf(out, ",\n");
+                    }
+                    char *p = value_json(edge->log[j]);
+                    fprintf(out, "        %s", p);
+                    free(p);
+                }
+                fprintf(out, "\n");
                 fprintf(out, "      ]\n");
                 fprintf(out, "    }");
             }
