@@ -8,6 +8,8 @@
 #include "graph.h"
 #endif
 
+#define CHUNKSIZE   (1 << 12)
+
 struct global_t {
     struct code_t code;
     struct values_t values;
@@ -19,7 +21,8 @@ struct global_t {
     int enqueued;                // #states enqueued
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
-    struct dict *possibly_cnt;
+    struct dfa *dfa;             // for tracking correct behaviors
+    struct dict *possibly_cnt;   // TODO.  This has to go
 };
 
 #endif //SRC_CHARM_H

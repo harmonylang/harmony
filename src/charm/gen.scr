@@ -8,6 +8,7 @@ cat minheap.h
 cat dot.h
 cat global.h
 cat value.h
+cat dfa.h
 cat code.h
 cat graph.h
 cat charm.h
@@ -16,6 +17,7 @@ cat strbuf.h
 cat iface/iface.h
 cat iface/iface_graph.h
 cat iface/iface_graph.c
+cat dfa.c
 cat charm.c
 cat global.c
 cat hashdict.c

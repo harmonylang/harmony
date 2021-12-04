@@ -72,9 +72,6 @@ int pthread_barrier_wait(pthread_barrier_t *barrier) {
 
 #endif // __APPLE__
 
-
-#define CHUNKSIZE   (1 << 12)
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
@@ -1464,6 +1461,7 @@ static void usage(char *prog){
 int main(int argc, char **argv){
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
+    char *dfafile = NULL;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -1478,6 +1476,9 @@ int main(int argc, char **argv){
                 fprintf(stderr, "%s: negative timeout\n", argv[0]);
                 exit(1);
             }
+            break;
+        case 'B':
+            dfafile = &argv[i][2];
             break;
         case 'x':
             printf("Charm model checker working\n");
@@ -1519,7 +1520,15 @@ int main(int argc, char **argv){
     global->dumpfirst = false;
     global->possibly_cnt = dict_new(0);
 
-    // open the file
+    // First read and parse the DFA if any
+    if (dfafile != NULL) {
+        global->dfa = dfa_read(&global->values, dfafile);
+        if (global->dfa == NULL) {
+            exit(1);
+        }
+    }
+
+    // open the HVM file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: can't open %s\n", argv[0], fname);

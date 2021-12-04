@@ -6379,7 +6379,7 @@ def main():
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:ostvp",
+        opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:ostvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -6393,6 +6393,8 @@ def main():
         elif o == "-A":
             printCode = "terse"
             charmflag = False
+        elif o == "-B":
+            charmoptions += ["-B" + a]
         elif o == "-j":
             printCode = "json"
             charmflag = False
