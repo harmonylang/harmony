@@ -42,7 +42,7 @@ class HarmonyTokenStream(CommonTokenStream):
             t: CommonToken = self.LT(idx)
             if t.type == HarmonyParser.FOR:
                 # Do this to avoid possible colons in for variable declarations
-                while t.type != HarmonyParser.IN or bracket_stack:
+                while t.type != HarmonyParser.IN:
                     idx += 1
                     t = self.LT(idx)
                     if t.type == HarmonyParser.INDENT:

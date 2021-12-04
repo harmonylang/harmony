@@ -5,3 +5,8 @@ charm.c
 charm.exe
 env/
 src/harmony/buildversion
+.antlr
+*.hco
+*.htm
+*.hvm
+*.dump
