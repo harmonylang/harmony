@@ -1,0 +1,7 @@
+*.interp
+*.tokens
+__pycache__
+charm.c
+charm.exe
+env/
+src/harmony/buildversion
