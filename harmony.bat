@@ -4,7 +4,8 @@
 python "%~f0" %*
 exit /b 0
 '''
-import harmony
+import sys
+import app
 
 if __name__ == "__main__":
-    harmony.main()
+    sys.exit(app.main())
