@@ -99,7 +99,9 @@ def behavior_parse(js, minify, output):
     print("NFA -> DFA", file=sys.stderr)
     intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
-    if minify:
+    # VOODOO constant warning: 200 is arbitrary, but minimization doesn't
+    # scale so well and we don't really need it usually
+    if minify and len(final_states) != 0 and len(states) < 200:
         print("minify %d"%len(intermediate.states), file=sys.stderr)
         dfa = intermediate.minify(retain_names = True)
         print("minify done %d"%len(dfa.states), file=sys.stderr)

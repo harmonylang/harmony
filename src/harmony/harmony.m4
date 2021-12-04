@@ -3913,12 +3913,16 @@ class LogAST(AST):
         return "Log(" + str(self.token) + ", " + str(self.cond) + ")"
 
     def compile(self, scope, code):
+        # Evaluate the expression in a lazy atomic (and read-only) section
         code.append(ReadonlyIncOp())
         code.append(AtomicIncOp(True))
         self.cond.compile(scope, code)
-        code.append(LogOp(self.token))
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
+
+        # Print outsdie the atomic section so not to cause an unneeded switch
+        # between contexts
+        code.append(LogOp(self.token))
 
 class PossiblyAST(AST):
     def __init__(self, token, atomically, condlist):
