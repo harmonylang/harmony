@@ -8,13 +8,13 @@ from antlr4 import *
 import sys
 import argparse
 
-from harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
+from .harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
-from HarmonyParser import HarmonyParser
-from src.compiler.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
-from src.compiler.parser.HarmonyTokenStream import HarmonyTokenStream
-from HarmonyLexer import HarmonyLexer
-from src.compiler.visitor import HarmonyVisitorImpl
+from harmony_model_checker.HarmonyParser import HarmonyParser
+from harmony_model_checker.compiler.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
+from harmony_model_checker.compiler.parser.HarmonyTokenStream import HarmonyTokenStream
+from harmony_model_checker.HarmonyLexer import HarmonyLexer
+from harmony_model_checker.compiler.visitor import HarmonyVisitorImpl
 
 
 def build_parser(progam_input):
@@ -86,7 +86,7 @@ def do_import(scope, code, module):
 
         found = False
         install_path = os.path.dirname(os.path.realpath(__file__))
-        for directory in [os.path.dirname(namestack[-1]), os.path.join(install_path, "modules"), "."]:
+        for directory in [os.path.dirname(namestack[-1]), os.path.join(install_path, "../modules"), "."]:
             filename = os.path.join(directory, modname + ".hny")
             if os.path.exists(filename):
                 load_file(filename, scope2, code)
@@ -265,7 +265,7 @@ def main():
     # see if there is a configuration file
     if charm_flag:
         # see if there is a configuration file
-        outfile = os.path.join(install_path, "charm.exe")
+        outfile = os.path.join(install_path, "../charm.exe")
         with open(hvm_file, "w") as fd:
             dumpCode("json", code, scope, f=fd)
         r = os.system("%s %s %s" % (outfile, " ".join(charm_options), hvm_file))

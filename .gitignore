@@ -10,3 +10,8 @@ src/harmony/buildversion
 *.htm
 *.hvm
 *.dump
+.idea
+.vscode
+build
+
+*.egg-info

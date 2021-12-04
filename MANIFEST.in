@@ -1,0 +1,4 @@
+include charm.c
+include harmony
+include harmony.bat
+include charm.Windows.exe

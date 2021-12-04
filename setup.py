@@ -1,29 +1,45 @@
 import os
-from distutils.core import setup
 
-requires = [
-    "numpy",
-    "matplotlib",
-    "antlrdenter",
-    "antlr4python3runtime",
-    "automatalib"
-]
+from setuptools import setup
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+import subprocess
 
-modules_files = [os.path.join("modules", f) for f in os.listdir("modules")]
-code_files = [os.path.join("code", f) for f in os.listdir("code")]
+
+def compile_charm():
+    subprocess.call([
+        "gcc", "-g", "-std=c99", "charm.c",
+        "-m64", "-o", "charm.exe", "-lpthread"
+    ])
+
+
+class PostDevelopCommand(develop):
+    """Post-installation for development mode."""
+    def run(self):
+        develop.run(self)
+        compile_charm()
+
+
+class PostInstallCommand(install):
+    def run(self):
+        install.run(self)
+        compile_charm()
+
 
 setup(
-    name='harmony',
-    version='1.2',
-    url='https://harmony.cs.cornell.edu/',
-    author='Robbert van Renesse',
-    author_email='rvr@cs.cornell.edu',
-    description='The Harmony programming language',
-    long_description=open('README.txt').read(),
-    requires=requires,
-    packages=["harmony_lib"],
-    data_files=[
-        ("modules", modules_files),
-        ("code", code_files)
-    ]
+    name="harmony_model_checker",
+    version="1.2.0",
+    packages=["harmony_model_checker"],
+    install_requires=[
+        "numpy",
+        "matplotlib",
+        "antlr-denter",
+        "antlr4-python3-runtime",
+        "automata-lib"
+    ],
+    include_package_data=False,
+    cmdclass={
+        'develop': PostDevelopCommand,
+        'install': PostInstallCommand
+    }
 )
