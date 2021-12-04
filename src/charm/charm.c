@@ -1749,7 +1749,7 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    if (true) {
+    if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (int i = 0; i < global->graph.size; i++) {

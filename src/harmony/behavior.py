@@ -44,6 +44,7 @@ def behavior_parse(js, minify, output):
     final_states = set()
     input_symbols = set()
     transitions = {}
+    labels = {}
 
     for s in js["nodes"]:
         idx = str(s["idx"])
@@ -74,6 +75,7 @@ def behavior_parse(js, minify, output):
             for e in edge["print"][:-1]:
                 symbol = json_string(e)
                 input_symbols.add(symbol)
+                labels[symbol] = e
                 inter = "s%d"%intermediate
                 intermediate += 1
                 states.add(inter)
@@ -84,6 +86,7 @@ def behavior_parse(js, minify, output):
             symbol = json_string(e)
             add_edge(src, symbol, dst)
             input_symbols.add(symbol)
+            labels[symbol] = e
 
     # print("states", states, file=sys.stderr)
     # print("final", final_states, file=sys.stderr)
@@ -110,7 +113,7 @@ def behavior_parse(js, minify, output):
     else:
         dfa = intermediate
 
-    behavior_show_diagram(dfa, path=output)
+    behavior_show_diagram(dfa, path=output + ".png")
 
     if False:
         # Give each state a simple integer name
@@ -143,92 +146,48 @@ def behavior_parse(js, minify, output):
                         print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
 
             print("}")
-        else:       # json format, same as input
-            assert outfmt == "json"
-            print("{")
-            print("  \"nodes\": [")
 
-            first = True
-            for s in dfa.states:
-                if s == "{}":
-                    continue
-                if first:
-                    first = False
-                else:
-                    print(",")
-                print("    {")
-                print("      \"idx\": \"%s\","%names[s])
-                print("      \"value\": \"%s\","%values[s])
-                if s == dfa.initial_state:
-                    t = "initial"
-                elif s in dfa.final_states:
-                    t = "final"
-                else:
-                    t = "normal"
-                print("      \"type\": \"%s\""%t)
-                print("    }", end="")
-            print()
-            print("  ],")
+    with open(output + ".hfa", "w") as fd:
+        names = {}
+        for (idx, s) in enumerate(dfa.states):
+            names[s] = idx
+        print("{", file=fd)
+        print("  \"initial\": \"%s\""%names[dfa.initial_state], file=fd)
+        print("  \"nodes\": [", file=fd)
+        first = True
+        for s in dfa.states:
+            if s == "{}":
+                continue
+            if first:
+                first = False
+            else:
+                print(",", file=fd)
+            print("    {", file=fd)
+            print("      \"idx\": \"%s\","%names[s], file=fd)
+            if s in dfa.final_states:
+                t = "final"
+            else:
+                t = "normal"
+            print("      \"type\": \"%s\""%t, file=fd)
+            print("    }", end="", file=fd)
+        print(file=fd)
+        print("  ],", file=fd)
 
-            print("  \"edges\": [")
-            first = True
-            for (src, edges) in dfa.transitions.items():
-                for (input, dst) in edges.items():
-                    if dst != '{}' and src != dst:
-                        if first:
-                            first = False
-                        else:
-                            print(",")
-                        print("    {")
-                        print("      \"src\": \"%s\","%names[src])
-                        print("      \"dst\": \"%s\""%names[dst])
-                        print("    }", end="")
-            print()
-            print("  ]")
+        print("  \"edges\": [", file=fd)
+        first = True
+        for (src, edges) in dfa.transitions.items():
+            for (input, dst) in edges.items():
+                if dst != '{}':
+                    if first:
+                        first = False
+                    else:
+                        print(",", file=fd)
+                    print("    {", file=fd)
+                    print("      \"src\": \"%s\","%names[src], file=fd)
+                    print("      \"dst\": \"%s\","%names[dst], file=fd)
+                    print("      \"symbol\": %s"%labels[input], file=fd)
+                    print("    }", end="", file=fd)
+        print(file=fd)
+        print("  ]", file=fd)
 
-            print("}")
-
-# def usage():
-#     print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)
-#     sys.exit(1)
-# 
-# def main():
-#     try:
-#         opts, args = getopt.getopt(sys.argv[1:], "MT:",
-#                 ["type=", "minify", "help"])
-#     except getopt.GetoptError as err:
-#         print(str(err))
-#         usage()
-#     outfmt = "dot"
-#     minify = False
-#     for o, a in opts:
-#         if o in [ "-T", "--type"]:
-#             if a not in [ "dot", "json" ]:
-#                 print("type must be dot or json", file=sys.stderr)
-#                 sys.exit(1)
-#             outfmt = a
-#         elif o in [ "-M", "--minify" ]:
-#             minify = True
-#         else:
-#             usage()
-# 
-#     if args == []:
-#         usage()
-# 
-#     file = args[0]
-#     dotloc = file.rfind(".")
-#     if dotloc == 0:
-#         usage()
-#     if dotloc > 0:
-#         stem = file[:dotloc]
-#     else:
-#         stem = file
-# 
-#     minify = True       # TODO
-# 
-#     with open(file) as f:
-#         js = json.load(f)
-#         parse(js, outfmt, minify, stem + ".png");
-# 
-# if __name__ == "__main__":
-#     main()
+        print("}", file=fd)

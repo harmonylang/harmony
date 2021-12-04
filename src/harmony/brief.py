@@ -122,7 +122,7 @@ class Brief:
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
                 if outputflag:
-                    behavior_parse(top, True, stem + ".png");
+                    behavior_parse(top, True, stem);
                 return True
 
             # print("Issue:", top["issue"])
