@@ -4,7 +4,7 @@ def thread(self):
 
         # Critical section is here
         print (self, "entering critical section")
-        # @cs: assert countLabel(cs) == 1
+        @cs: assert countLabel(cs) == 1
         print (self, "leaving critical section")
 
         # Exit critical section

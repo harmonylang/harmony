@@ -282,7 +282,7 @@ static bool onestep(
         // See if we need to break out of this step
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
         if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
-            if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
+            if (!step->ctx->atomicFlag && next_instr->breakable && step->ctx->atomic > 0) {
                 step->ctx->atomicFlag = true;
             }
             if (!step->ctx->atomicFlag && next_instr->log && !log_occurred) {
