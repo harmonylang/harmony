@@ -66,6 +66,7 @@ imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
 
+m4_include(jsonstring.py)
 m4_include(brief.py)
 m4_include(genhtml.py)
 m4_include(behavior.py)
@@ -3913,12 +3914,16 @@ class LogAST(AST):
         return "Log(" + str(self.token) + ", " + str(self.cond) + ")"
 
     def compile(self, scope, code):
+        # Evaluate the expression in a lazy atomic (and read-only) section
         code.append(ReadonlyIncOp())
         code.append(AtomicIncOp(True))
         self.cond.compile(scope, code)
-        code.append(LogOp(self.token))
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
+
+        # Print outsdie the atomic section so not to cause an unneeded switch
+        # between contexts
+        code.append(LogOp(self.token))
 
 class PossiblyAST(AST):
     def __init__(self, token, atomically, condlist):
@@ -6374,7 +6379,7 @@ def main():
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:ostvp",
+        opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:ostvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -6388,6 +6393,8 @@ def main():
         elif o == "-A":
             printCode = "terse"
             charmflag = False
+        elif o == "-B":
+            charmoptions += ["-B" + a]
         elif o == "-j":
             printCode = "json"
             charmflag = False

@@ -72,9 +72,6 @@ int pthread_barrier_wait(pthread_barrier_t *barrier) {
 
 #endif // __APPLE__
 
-
-#define CHUNKSIZE   (1 << 12)
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
@@ -279,10 +276,18 @@ static bool onestep(
             }
         }
 
-        // See if we need to break out of this step
+        // See if we need to break out of this step.  It's complicated.
+        // If the atomicFlag is set, then definitely not.
+        // If the atomicFlag is not set, then it depends on whether the instruction
+        // is "breakable" (Load, Store, or Del), or a print instruction (Log).
+        // If neither, then no need to break---that would lead to unnecessary
+        // state explosion.  Otherwise it depends on whether the atomic counter
+        // is zero or not.  If not zero, then we should set the atomic flag.
+        // For a Log instruction, it also depends on whether one already
+        // happened.  If not, we don't need to break.
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
         if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
-            if (!step->ctx->atomicFlag && next_instr->breakable && step->ctx->atomic > 0) {
+            if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
                 step->ctx->atomicFlag = true;
             }
             if (!step->ctx->atomicFlag && next_instr->log && !log_occurred) {
@@ -1456,6 +1461,7 @@ static void usage(char *prog){
 int main(int argc, char **argv){
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
+    char *dfafile = NULL;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -1470,6 +1476,9 @@ int main(int argc, char **argv){
                 fprintf(stderr, "%s: negative timeout\n", argv[0]);
                 exit(1);
             }
+            break;
+        case 'B':
+            dfafile = &argv[i][2];
             break;
         case 'x':
             printf("Charm model checker working\n");
@@ -1511,7 +1520,15 @@ int main(int argc, char **argv){
     global->dumpfirst = false;
     global->possibly_cnt = dict_new(0);
 
-    // open the file
+    // First read and parse the DFA if any
+    if (dfafile != NULL) {
+        global->dfa = dfa_read(&global->values, dfafile);
+        if (global->dfa == NULL) {
+            exit(1);
+        }
+    }
+
+    // open the HVM file
     FILE *fp = fopen(fname, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: can't open %s\n", argv[0], fname);
@@ -1741,7 +1758,7 @@ int main(int argc, char **argv){
         printf("%d components, %d bad states\n", ncomponents, nbad);
     }
 
-    if (true) {
+    if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         for (int i = 0; i < global->graph.size; i++) {
@@ -1905,6 +1922,22 @@ int main(int argc, char **argv){
                     }
                     char *p = json_escape_value(edge->log[j]);
                     fprintf(out, "        \"%s\"", p);
+                    free(p);
+                }
+                fprintf(out, "\n");
+                fprintf(out, "      ],\n");
+                fprintf(out, "      \"print\": [");
+                first_log = true;
+                for (int j = 0; j < edge->nlog; j++) {
+                    if (first_log) {
+                        first_log = false;
+                        fprintf(out, "\n");
+                    }
+                    else {
+                        fprintf(out, ",\n");
+                    }
+                    char *p = value_json(edge->log[j]);
+                    fprintf(out, "        %s", p);
                     free(p);
                 }
                 fprintf(out, "\n");

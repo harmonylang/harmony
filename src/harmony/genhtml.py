@@ -13,39 +13,6 @@ m4_include(charm.css)
 m4_include(charm.js)
         """
 
-    def json_kv(self, js):
-        return self.json_string(js["key"]) + ": " + self.json_string(js["value"])
-
-    def json_idx(self, js):
-        if js["type"] == "atom":
-            return self.json_string(js)
-        return "[" + self.json_string(js) + "]"
-
-    def json_string(self, js):
-        type = js["type"]
-        v = js["value"]
-        if type in { "bool", "int" }:
-            return v
-        if type == "atom":
-            return "." + v
-        if type == "set":
-            if v == []:
-                return "{}"
-            return "{ " + ", ".join([ self.json_string(val) for val in v]) + " }"
-        if type == "dict":
-            if v == []:
-                return "()"
-            return "{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
-        if type == "pc":
-            return "PC(%s)"%v
-        if type == "address":
-            if v == []:
-                return "None"
-            return "?" + v[0]["value"] + "".join([ self.json_idx(kv) for kv in v[1:] ])
-        if type == "context":
-            return "CONTEXT(" + self.json_string(v["name"]) + ")"
-        assert False
-
     def file_include(self, name, f):
         with open(name) as g:
             print(g.read(), file=f)
@@ -312,10 +279,10 @@ m4_include(charm.js)
 
     def var_convert(self, v):
         if v["type"] != "dict":
-            return self.json_string(v)
+            return json_string(v)
         d = {}
         for kv in v["value"]:
-            k = self.json_string(kv["key"])
+            k = json_string(kv["key"])
             d[k] = self.var_convert(kv["value"])
         return d
 
