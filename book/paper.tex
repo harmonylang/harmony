@@ -1071,12 +1071,6 @@ sets of Harmony values,
 and dictionaries
 \index{dictionary}%
 that map Harmony values to other Harmony values.
-%
-Another type of Harmony value is the \emph{atom}.
-\index{atom}%
-It is essentially
-just a name.  An atom is denoted using a period followed by the
-name.  For example, \texttt{.main} is an atom.
 
 Harmony makes extensive use of dictionaries.
 A dictionary maps keys to values.
@@ -1594,8 +1588,7 @@ specifies that only one (the current) thread can be there.
 Harmony in fact supports this.
 It has an operator \textbf{countLabel}~$L$,
 \index{countLabel operator}%
-where $L$
-is the atom containing the name of the label (in this case, \texttt{cs}).
+where $L$ is the name of the label (in this case, \texttt{cs}).
 The operator returns the number of threads executing at that label.
 Method \textbf{countLabel} only exists for specification purposes---do not
 use it in normal code.
@@ -6674,7 +6667,7 @@ Boolean & \textbf{False}, \textbf{True} \\
 \hline
 Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
-Atom & \texttt{.example}, \texttt{.test1}, \texttt{.0x4A} \\
+String & \texttt{"example"}, \texttt{.example} \\
 \hline
 Program Counter & (method names are program counter constants) \\
 \hline
@@ -6808,19 +6801,12 @@ Operations on integers include:
 \end{tabular}
 \end{center}
 
-\subsection*{Atom}
+\subsection*{String}
 
-Atoms are essentially names and consist of one or more unicode characters.
+A string is a sequence of zero or more unicode characters.
 If they do not contain special characters and do not start with a digit,
-then an atom can be represented by a ``.'' followed by the characters.
-For example, \texttt{.hello} is
-a representation of the atom ``hello''.  A special character can be
-represented by \texttt{.0xXX}, where \texttt{XX} is the hexidecimal
-unicode for the character.
-Atoms should not be confused with strings.
-There are no special operations on atoms.
-(In the future, operators may be introduced that convert between strings
-and atoms.)
+then a string can be represented by a ``.'' followed by the characters.
+For example, \texttt{.hello} is the same as the string \texttt{"hello"}.
 
 \subsection*{Set}
 
@@ -6922,7 +6908,7 @@ Operations on dictionaries include the following:
 
 Because in Harmony brackets are used for parsing purposes only,
 you can write $d[k]$ (or $d(k)$) instead of $d~k$.
-However, if $k$ is an atom, like \texttt{.id}, then you might
+However, if $k$ is a string like \texttt{.id}, then you might
 prefer the notation $k\mathtt{.id}$.
 
 Python users beware: the Harmony \texttt{$v$ in $d$} operator checks
@@ -6990,37 +6976,6 @@ For example, to check if any element in a list $t$ is even, you
 can write:
 
 \texttt{any($(x \% 2) == 0$ for $x$ in $t$)}.
-
-\subsection*{String}
-
-In Harmony, a string is a list of single-character atoms.
-The Python string notations mostly work in Harmony as well.
-For example, \texttt{'abc'} is a three-character string
-consisting of the atoms \texttt{.a}, \texttt{.b}, and
-\texttt{.c}.
-\texttt{"abc"} is the same three-character string.
-Various special characters (including quotes, newlines, etc.)
-can be \emph{escaped} using a backslash.
-Multi-line strings can be terminated by triple quotes or
-triple double-quotes.
-
-Native operations on strings include the following:
-
-\begin{center}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{$s~k$} & indexing \\
-\hline
-\texttt{$s$ + $s$ + ...} & concatenation \\
-\hline
-\texttt{$s$ * $n$} & $n$ copies of $s$ concatenated \\
-\hline
-\texttt{$c$ [not] in $s$} & check if $c$ (a one-character atom) is in $s$ \\
-\hline
-\texttt{len $s$} & the length of $s$ \\
-\hline
-\end{tabular}
-\end{center}
 
 \subsection*{Bag or Multiset}
 
@@ -7676,7 +7631,8 @@ We call this \emph{application}, and application is left-associative.
 So, \textit{a b c} is interpreted as (\textit{a b}) $c$: $b$ is applied to $a$,
 and then $c$ is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
-$a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
+$a[b]$ for indexing.  In case $b$ is a simple string,
+you can also write $a.b$ for indexing.
 
 There are three levels of precedence.
 Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
@@ -8294,7 +8250,7 @@ Details:
 \begin{itemize}
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame pointer and variables, the argument to
-the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
+the method, an ``invocation type'' (\texttt{normal}, \texttt{interrupt}, or
 \texttt{thread}), and the return address (in case of \texttt{normal}).
 \item A thread terminates when it reaches the \texttt{Return} instruction
 of the top-level method (when the stack frame is of type \texttt{thread})
