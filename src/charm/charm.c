@@ -159,6 +159,7 @@ static bool onestep(
     assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
+    int dfa_state = node->dfa_state;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -177,6 +178,7 @@ static bool onestep(
     for (;; loopcnt++) {
         int pc = step->ctx->pc;
 
+        // If I'm phread 0 and it's time, print some stats
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -197,7 +199,19 @@ static bool onestep(
 
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
+        if (global->dfa != NULL && instrs[pc].log) {
+            assert(step->ctx->sp > 0);
+            int nstate = dfa_step(global->dfa, dfa_state, step->ctx->stack[step->ctx->sp - 1]);
+            if (nstate < 0) {
+                char *p = value_string(step->ctx->stack[step->ctx->sp - 1]);
+                value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s\n", p);
+                free(p);
+                break;
+            }
+            dfa_state = nstate;
+        }
         if (instrs[pc].choose) {
+            assert(step->ctx->sp > 0);
             step->ctx->stack[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
@@ -331,6 +345,12 @@ static bool onestep(
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
+    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
+                    step->ctx->failure == 0 &&
+                    !dfa_is_final(global->dfa, dfa_state)) {
+        value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state\n");
+    }
+
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
@@ -344,6 +364,7 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
+    next->dfa_state = dfa_state;
 
     next->ai = step->ai;
     step->ai = NULL;
@@ -1377,6 +1398,13 @@ void process_results(
         }
         else {
             next = *p;
+            if (next->dfa_state != node->dfa_state && node->ftype == FAIL_NONE) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BEHAVIOR;
+                f->choice = node->choice;
+                f->node = next;
+                minheap_insert(global->failures, f);
+            }
             must_free = true;
         }
 
@@ -1582,6 +1610,7 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
+    node->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -1597,6 +1626,7 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
+nworkers = 1;   // TODO
 	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
@@ -1966,6 +1996,10 @@ int main(int argc, char **argv){
         case FAIL_INVARIANT:
             printf("Invariant Violation\n");
             fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            break;
+        case FAIL_BEHAVIOR:
+            printf("Behavior Violation\n");
+            fprintf(out, "  \"issue\": \"Behavior violation\",\n");
             break;
         case FAIL_TERMINATION:
             printf("Non-terminating state\n");
