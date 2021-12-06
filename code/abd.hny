@@ -12,9 +12,9 @@ def server():
     var t, v, received = (0, None), None, {}
     while True:
         atomically when exists m in { m for m in keys network - received
-                            where m.type in {.read, .write} }:
+                            where m.type in {"read", "write"} }:
             received |= { m }
-            if (m.type == .write) and (m.value[0] > t):
+            if (m.type == "write") and (m.value[0] > t):
                 t, v = m.value
             send({ .type: .response, .dst: m.src, .value: (t, v) })
 
@@ -24,19 +24,19 @@ def receive(uid, phase):
         result = bag.combinations(msgs, N - F)
 
 def read(uid):
-    send({ .type: .read, .src: (uid, 1) })
+    send({ .type: "read", .src: (uid, 1) })
     atomically when exists msgs in receive(uid, 1):
         let (t, v) = max(m.value for m in keys msgs):
-            send({ .type: .write, .src: (uid, 2), .value: (t, v) })
+            send({ .type: "write", .src: (uid, 2), .value: (t, v) })
             result = v
     atomically when exists msgs in receive(uid, 2):
         pass
 
 def write(uid, v):
-    send({ .type: .read, .src: (uid, 1) })
+    send({ .type: "read", .src: (uid, 1) })
     atomically when exists msgs in receive(uid, 1):
         let (t, _) = max(m.value for m in keys msgs)
         let nt = (t[0] + 1, uid):
-            send({ .type: .write, .src: (uid, 2), .value: (nt, v) })
+            send({ .type: "write", .src: (uid, 2), .value: (nt, v) })
     atomically when exists msgs in receive(uid, 2):
         pass
