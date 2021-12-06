@@ -1,13 +1,11 @@
-def thread(self):
+def thread():
     while True:
         # Enter critical section
 
         # Critical section is here
-        print (self, "entering critical section")
         @cs: assert countLabel(cs) == 1
-        print (self, "leaving critical section")
 
         # Exit critical section
     
-spawn thread(0)
-spawn thread(1)
+spawn thread()
+spawn thread()
