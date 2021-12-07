@@ -9,9 +9,9 @@ def put(q, v):
         acquire(?q->lock)
         if q->tail == None:
             q->tail = q->head = node
-#        else:
-#            q->tail->next = node
-#            q->tail = node
+        else:
+            q->tail->next = node
+            q->tail = node
         release(?q->lock)
     
 def get(q):
