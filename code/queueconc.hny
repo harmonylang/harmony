@@ -22,7 +22,7 @@ def get(q):
         else:
             result = node->value
             q->head = node->next
-            if q->head == None:
-                q->tail = None
+#            if q->head == None:
+#                q->tail = None
             free(node)
     release(?q->lock)

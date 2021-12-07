@@ -304,8 +304,26 @@ static char *value_string_atom(uint64_t v) {
     void *p = (void *) v;
     int size;
     char *s = dict_retrieve(p, &size), *r;
-    alloc_printf(&r, "\"%.*s\"", size, s);
-    return r;
+	struct strbuf sb;
+
+	strbuf_init(&sb);
+    strbuf_append(&sb, "\"", 1);
+	while (size > 0) {
+		switch (*s) {		// TODO.  More cases
+		case '"':
+			strbuf_append(&sb, "\\\"", 2);
+			break;
+		case '\\':
+			strbuf_append(&sb, "\\\\", 2);
+			break;
+		default:
+			strbuf_append(&sb, s, 1);
+		}
+		s++;
+		size--;
+	}
+    strbuf_append(&sb, "\"", 1);
+	return strbuf_getstr(&sb);
 }
 
 static char *value_json_atom(uint64_t v) {
@@ -483,12 +501,7 @@ char *indices_string(const uint64_t *vec, int size) {
 
     for (int i = 1; i < size; i++) {
         s = value_string(vec[i]);
-        if (*s == '.') {
-            append_printf(&r, "%s", s);
-        }
-        else {
-            append_printf(&r, "[%s]", s);
-        }
+        append_printf(&r, "[%s]", s);
     }
 
     return r;

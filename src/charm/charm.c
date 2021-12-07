@@ -452,6 +452,9 @@ static char *json_escape(const char *s, unsigned int len){
 		case '"':
 			strbuf_append(&sb, "\\\"", 2);
 			break;
+		case '\\':
+			strbuf_append(&sb, "\\\\", 2);
+			break;
 		default:
 			strbuf_append(&sb, s, 1);
 		}
@@ -635,8 +638,7 @@ void print_context(
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-		int len = strlen(s);
-        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, s + 1);
+        fprintf(file, "          \"failure\": %s,\n", s);
         free(s);
     }
 
@@ -833,8 +835,7 @@ void diff_state(
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-		int len = strlen(val);
-        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, val + 1);
+        fprintf(file, "          \"failure\": %s,\n", val);
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
@@ -1900,7 +1901,9 @@ nworkers = 1;   // TODO
             if (node->parent != NULL) {
                 fprintf(out, "      \"parent\": %d,\n", node->parent->id);
             }
-            fprintf(out, "      \"value\": \"%s:%d\",\n", json_escape_value(node->state->vars), node->state->choosing != 0);
+            char *val = json_escape_value(node->state->vars);
+            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+            free(val);
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
             }
