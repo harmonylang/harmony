@@ -157,7 +157,7 @@ def behavior_parse(js, minify, output):
         for (idx, s) in enumerate(dfa.states):
             names[s] = idx
         print("{", file=fd)
-        print("  \"initial\": \"%s\""%names[dfa.initial_state], file=fd)
+        print("  \"initial\": \"%s\","%names[dfa.initial_state], file=fd)
         print("  \"nodes\": [", file=fd)
         first = True
         for s in dfa.states:
@@ -190,7 +190,7 @@ def behavior_parse(js, minify, output):
                     print("    {", file=fd)
                     print("      \"src\": \"%s\","%names[src], file=fd)
                     print("      \"dst\": \"%s\","%names[dst], file=fd)
-                    print("      \"symbol\": %s"%labels[input], file=fd)
+                    print("      \"symbol\": %s"%json.dumps(labels[input]), file=fd)
                     print("    }", end="", file=fd)
         print(file=fd)
         print("  ]", file=fd)

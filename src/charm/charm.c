@@ -204,7 +204,7 @@ static bool onestep(
             int nstate = dfa_step(global->dfa, dfa_state, step->ctx->stack[step->ctx->sp - 1]);
             if (nstate < 0) {
                 char *p = value_string(step->ctx->stack[step->ctx->sp - 1]);
-                value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s\n", p);
+                value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
                 free(p);
                 break;
             }
@@ -348,7 +348,7 @@ static bool onestep(
     if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
                     step->ctx->failure == 0 &&
                     !dfa_is_final(global->dfa, dfa_state)) {
-        value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state\n");
+        value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
     }
 
     // Weight of this step
@@ -1627,7 +1627,6 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
-nworkers = 1;   // TODO
 	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
