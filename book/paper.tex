@@ -3215,7 +3215,7 @@ Mutual exclusion holds if the counter never goes over 1.
 \end{comment}
 
 As with critical sections, when testing a concurrent data structure
-we need a specification for its correctness.
+we need a specification.
 \autoref{fig:queues}(a) shows a sequential specification of a
 queue in Harmony.
 First we can check if the queue implementation
@@ -3291,8 +3291,15 @@ in general.  If you remove all \texttt{acquire()} and
 \texttt{release()} calls from \autoref{fig:queueconc},
 the test program will not (and should not)
 find any errors.
+
 The next step is to test if the queue implementation
 meets the \emph{concurrent} queue specification or not.
+\autoref{fig:queues}(b) shows the concurrent version of
+\autoref{fig:queues}(a)---it simply makes all operations
+(except instantiation itself) atomic.
+
+
+
 But we have not yet shown what the
 concurrent queue specification is.
 
