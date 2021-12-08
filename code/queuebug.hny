@@ -7,9 +7,9 @@ def put(q, v):
         q->tail = i + 1
 
 def get(q):
-    atomically:
-        if q->head == q->tail:
+    let i = q->head:
+        if i == q->tail:
             result = None
         else:
-            result = q->data[q->head]
-            q->head += 1
+            result = q->data[i]
+            q->head = i + 1
