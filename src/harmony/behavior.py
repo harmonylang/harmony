@@ -45,7 +45,10 @@ def behavior_show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
-def behavior_parse(js, minify, output):
+def behavior_parse(js, minify, outputfiles):
+    if outputfiles["hfa"] == None and outputfiles["png"] == None:
+        return
+
     states = set()
     initial_state = None;
     final_states = set()
@@ -118,81 +121,52 @@ def behavior_parse(js, minify, output):
     else:
         dfa = intermediate
 
-    behavior_show_diagram(dfa, path=output + ".png")
+    if outputfiles["png"] != None:
+        behavior_show_diagram(dfa, path=outputfiles["png"])
 
-    if False:
-        # Give each state a simple integer name
-        names = {}
-        values = {}
-        for (idx, s) in enumerate(dfa.states):
-            names[s] = idx
-            values[s] = "???"
-        values[dfa.initial_state] = "initial"
 
-        if outfmt == "dot":
-            print("digraph {")
-
+    if outputfiles["hfa"] != None:
+        with open(outputfiles["hfa"], "w") as fd:
+            names = {}
+            for (idx, s) in enumerate(dfa.states):
+                names[s] = idx
+            print("{", file=fd)
+            print("  \"initial\": \"%s\","%names[dfa.initial_state], file=fd)
+            print("  \"nodes\": [", file=fd)
+            first = True
             for s in dfa.states:
                 if s == "{}":
                     continue
-                if s in dfa.final_states:
-                    if s == dfa.initial_state:
-                        print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], "initial"))
-                    else:
-                        print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
-                elif s == dfa.initial_state:
-                    print("  s%s [label=\"%s\",shape=octagon]"%(names[s], "initial"))
+                if first:
+                    first = False
                 else:
-                    print("  s%s [label=\"%s\",shape=circle]"%(names[s], ""))
+                    print(",", file=fd)
+                print("    {", file=fd)
+                print("      \"idx\": \"%s\","%names[s], file=fd)
+                if s in dfa.final_states:
+                    t = "final"
+                else:
+                    t = "normal"
+                print("      \"type\": \"%s\""%t, file=fd)
+                print("    }", end="", file=fd)
+            print(file=fd)
+            print("  ],", file=fd)
 
+            print("  \"edges\": [", file=fd)
+            first = True
             for (src, edges) in dfa.transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != '{}' and (src != dst or input != ""):
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
+                    if dst != '{}':
+                        if first:
+                            first = False
+                        else:
+                            print(",", file=fd)
+                        print("    {", file=fd)
+                        print("      \"src\": \"%s\","%names[src], file=fd)
+                        print("      \"dst\": \"%s\","%names[dst], file=fd)
+                        print("      \"symbol\": %s"%json.dumps(labels[input]), file=fd)
+                        print("    }", end="", file=fd)
+            print(file=fd)
+            print("  ]", file=fd)
 
-            print("}")
-
-    with open(output + ".hfa", "w") as fd:
-        names = {}
-        for (idx, s) in enumerate(dfa.states):
-            names[s] = idx
-        print("{", file=fd)
-        print("  \"initial\": \"%s\","%names[dfa.initial_state], file=fd)
-        print("  \"nodes\": [", file=fd)
-        first = True
-        for s in dfa.states:
-            if s == "{}":
-                continue
-            if first:
-                first = False
-            else:
-                print(",", file=fd)
-            print("    {", file=fd)
-            print("      \"idx\": \"%s\","%names[s], file=fd)
-            if s in dfa.final_states:
-                t = "final"
-            else:
-                t = "normal"
-            print("      \"type\": \"%s\""%t, file=fd)
-            print("    }", end="", file=fd)
-        print(file=fd)
-        print("  ],", file=fd)
-
-        print("  \"edges\": [", file=fd)
-        first = True
-        for (src, edges) in dfa.transitions.items():
-            for (input, dst) in edges.items():
-                if dst != '{}':
-                    if first:
-                        first = False
-                    else:
-                        print(",", file=fd)
-                    print("    {", file=fd)
-                    print("      \"src\": \"%s\","%names[src], file=fd)
-                    print("      \"dst\": \"%s\","%names[dst], file=fd)
-                    print("      \"symbol\": %s"%json.dumps(labels[input]), file=fd)
-                    print("    }", end="", file=fd)
-        print(file=fd)
-        print("  ]", file=fd)
-
-        print("}", file=fd)
+            print("}", file=fd)

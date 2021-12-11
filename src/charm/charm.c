@@ -1483,14 +1483,14 @@ static void pr_state(struct global_t *global, FILE *fp, struct state *state, int
 }
 
 static void usage(char *prog){
-    fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
+    fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
 }
 
 int main(int argc, char **argv){
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
-    char *dfafile = NULL;
+    char *outfile = NULL, *dfafile = NULL;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -1509,6 +1509,9 @@ int main(int argc, char **argv){
         case 'B':
             dfafile = &argv[i][2];
             break;
+        case 'o':
+            outfile = &argv[i][2];
+            break;
         case 'x':
             printf("Charm model checker working\n");
             return 0;
@@ -1516,23 +1519,10 @@ int main(int argc, char **argv){
             usage(argv[0]);
         }
     }
-    if (argc - i > 1) {
+    if (argc - i != 1 || outfile == NULL) {
         usage(argv[0]);
     }
-    char *fname = i == argc ? "harmony.hvm" : argv[i];
-
-    char *outfile, *dotloc = strrchr(fname, '.');
-    int r;
-    if (dotloc == NULL) {
-        r = asprintf(&outfile, "%s.hco", fname);
-    }
-    else {
-        r = asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
-    }
-    if (r < 0) {       // mostly to suppress asprintf return value warning
-        outfile = "harmony.hco";
-    }
-
+    char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
     // initialize modules

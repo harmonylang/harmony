@@ -6374,12 +6374,18 @@ def main():
     blockflag = False
     charmflag = True
     fulldump = False
-    outputflag = False
+    outputfiles = {
+        "hfa": None,
+        "htm": None,
+        "hco": None,
+        "hvm": None,
+        "png": None
+    }
     testflag = False
     suppressOutput = False
     charmoptions = []
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:ostvp",
+        opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -6411,7 +6417,17 @@ def main():
         elif o in { "-m", "--module" }:
             mods.append(a)
         elif o == "-o":
-            outputflag = True
+            dotloc = a.rfind(".")
+            if dotloc < 0:
+                print("-o flag requires argument with suffix, such as x.hvm", file=sys.stderr)
+                sys.exit(1)
+            suffix = a[(dotloc+1):]
+            if suffix not in outputfiles:
+                print("unknown suffix on '%s'"%a, file=sys.stderr)
+            if outputfiles[suffix] != None:
+                print("duplicate suffix '.%s'"%suffix, file=sys.stderr)
+                sys.exit(1)
+            outputfiles[suffix] = a
         elif o == "-s":
             silent = True
         elif o == "-t":
@@ -6432,27 +6448,29 @@ def main():
         usage()
 
     dotloc = args[0].rfind(".")
-    if dotloc == 0:
+    if dotloc <= 0:
         usage()
-    if dotloc > 0:
-        stem = args[0][:dotloc]
-    else:
-        stem = args[0]
+    stem = args[0][:dotloc]
 
-    hvmfile = stem + ".hvm"
+    if outputfiles["hvm"] == None:
+        outputfiles["hvm"] = stem + ".hvm"
+    if outputfiles["hco"] == None:
+        outputfiles["hco"] = stem + ".hco"
+    if outputfiles["htm"] == None:
+        outputfiles["htm"] = stem + ".htm"
 
     try:
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
         if parse_code_only:
-            with open(hvmfile, "w") as f:
+            with open(outputfiles["hvm"], "w") as f:
                 data = dict(e.token, status="error")
                 f.write(json.dumps(data))
         print(e.message, e.token)
         sys.exit(1)
 
     if parse_code_only:
-        with open(hvmfile, "w") as f:
+        with open(outputfiles["hvm"], "w") as f:
             f.write(json.dumps({"status": "ok"}))
         return
 
@@ -6462,19 +6480,19 @@ def main():
         # see if there is a configuration file
         infile = "%s/charm.c"%install_path
         outfile = "%s/charm.exe"%install_path
-        with open(hvmfile, "w") as fd:
+        with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s %s"%(outfile, " ".join(charmoptions), hvmfile));
+        r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]));
         if r != 0:
             print("charm model checker failed")
             sys.exit(r);
         # TODO
         # if not testflag:
-        #    os.remove(hvmfile)
+        #    os.remove(outputfiles["hvm"])
         b = Brief()
-        b.run(stem, outputflag)
+        b.run(outputfiles)
         gh = GenHTML()
-        gh.run(stem, outputflag)
+        gh.run(outputfiles)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)

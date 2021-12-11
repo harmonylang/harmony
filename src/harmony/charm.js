@@ -95,12 +95,7 @@ function json_string_address(obj) {
   }
   var result = "?" + obj[0].value;
   for (var i = 1; i < obj.length; i++) {
-    if (obj[i].type == "atom") {
-      result += "." + obj[i].value;
-    }
-    else {
-      result += "[" + json_string(obj[i]) + "]";
-    }
+    result += "[" + json_string(obj[i]) + "]";
   }
   return result;
 }
@@ -118,7 +113,7 @@ function json_string(obj) {
     return obj.value;
     break;
   case "atom":
-    return "." + obj.value;
+    return '"' + obj.value + '"';
   case "set":
     return json_string_set(obj.value);
   case "dict":

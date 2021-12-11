@@ -2,8 +2,6 @@ def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
 
 def brief_idx(js):
-    if js["type"] == "atom":
-        return brief_string(js)
     return "[" + brief_string(js) + "]"
 
 def brief_string(js):
@@ -12,7 +10,7 @@ def brief_string(js):
     if type in { "bool", "int" }:
         return v
     if type == "atom":
-        return "." + v
+        return '"' + v + '"'
     if type == "set":
         if v == []:
             return "{}"
@@ -115,14 +113,12 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self, stem, outputflag):
-        fname = stem + ".hco"
-        with open(fname) as f:
+    def run(self, outputfiles):
+        with open(outputfiles["hco"]) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                if outputflag:
-                    behavior_parse(top, True, stem);
+                behavior_parse(top, True, outputfiles);
                 return True
 
             # print("Issue:", top["issue"])
