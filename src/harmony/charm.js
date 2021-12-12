@@ -207,6 +207,13 @@ function stackTrace(tid, trace, failure) {
   }
 }
 
+function addToLog(step, entry) {
+  var table = megasteps[step].log;
+  var row = table.insertRow();
+  var mcell = row.insertCell();
+  mcell.innerHTML = entry;
+}
+
 function handleClick(e, mesIdx) {
   var x = Math.floor(e.offsetX / boxSize);
   var y = Math.floor(e.offsetY / boxSize);
@@ -360,6 +367,12 @@ function init_microstep(masidx, misidx) {
   else {
     microsteps[t].choose = null;
   }
+  if (mis.hasOwnProperty("print")) {
+    microsteps[t].print = json_string(mis["print"]);
+  }
+  else {
+    microsteps[t].print = null;
+  }
 
   if (mis.hasOwnProperty("failure")) {
     microsteps[t].failure = mis.failure;
@@ -496,6 +509,10 @@ function run_microstep(t) {
   if (mis.failure != null) {
     stackTrace(mis.tid, mis.trace, mis.failure);
   }
+  else if (mis.print != null) {
+    stackTrace(mis.tid, mis.trace, "print " + mis.print);
+    addToLog(mis.mesidx, mis.print)
+  }
   else {
     stackTrace(mis.tid, mis.trace, mis.choose);
   }
@@ -538,6 +555,7 @@ function run_microsteps() {
     for (var j = 0; j < vardir.length; j++) {
       mestable.rows[i].cells[j + 4].innerHTML = "";
     }
+    megasteps[i].log.innerHTML = "";
   }
   for (var tid = 0; tid < nthreads; tid++) {
     threadtable.rows[tid].cells[1].innerHTML = "init";
@@ -596,7 +614,8 @@ for (let i = 0; i < nmegasteps; i++) {
     canvas: canvas,
     startTime: 0,
     nsteps: 0,
-    contexts: []
+    contexts: [],
+    log: document.getElementById("log" + i)
   };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
 }

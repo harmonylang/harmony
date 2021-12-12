@@ -40,6 +40,11 @@ m4_include(charm.js)
         for i in range(width):
           print("  <td align='center'>", file=f)
           print("  </td>", file=f)
+
+        print("  <td>", file=f)
+        print("    <table id='log%d' border='1'>"%(step-1), file=f)
+        print("    </table>", file=f)
+        print("  </td>", file=f)
         print("</tr>", file=f)
 
     def vardim(self, d):
@@ -96,6 +101,9 @@ m4_include(charm.js)
         print("      </th>", file=f)
         print("      <th align='center' colspan='%d'>"%width, file=f)
         print("        Shared Variables", file=f)
+        print("      </th>", file=f)
+        print("      <th align='center' colspan='%d'>"%width, file=f)
+        print("        Output", file=f)
         print("      </th>", file=f)
         print("    </tr>", file=f)
 

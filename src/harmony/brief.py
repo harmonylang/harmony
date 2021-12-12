@@ -103,6 +103,12 @@ class Brief:
                 self.steps += brief_print_range(self.start, int(mis[i]["pc"]))
                 self.steps += "(choose %s)"%brief_string(mis[i]["choose"])
                 self.start = int(mis[i]["pc"]) + 1
+            elif "print" in mis[i]:
+                if self.steps != "":
+                    self.steps += ","
+                self.steps += brief_print_range(self.start, int(mis[i]["pc"]))
+                self.steps += "(print %s)"%brief_string(mis[i]["print"])
+                self.start = int(mis[i]["pc"]) + 1
             elif int(mis[i]["pc"]) != int(self.lastmis["pc"]) + 1:
                 if self.steps != "":
                     self.steps += ","

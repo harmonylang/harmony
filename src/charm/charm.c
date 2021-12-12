@@ -784,7 +784,8 @@ void diff_state(
     struct context *newctx,
     bool interrupt,
     bool choose,
-    uint64_t choice
+    uint64_t choice,
+    char *print
 ) {
     if (global->dumpfirst) {
         global->dumpfirst = false;
@@ -805,6 +806,9 @@ void diff_state(
         char *val = value_json(choice);
         fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
+    }
+    if (print != NULL) {
+        fprintf(file, "          \"print\": %s,\n", print);
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newctx->fp != oldctx->fp) {
@@ -877,7 +881,8 @@ void diff_dump(
     struct context *newctx,
     bool interrupt,
     bool choose,
-    uint64_t choice
+    uint64_t choice,
+    char *print
 ) {
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
 
@@ -888,7 +893,7 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice, print);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -923,22 +928,28 @@ uint64_t twostep(
     if (interrupt) {
 		assert(step.ctx->trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = step.ctx->pc;
 
+        char *print = NULL;
         struct op_info *oi = global->code.instrs[pc].oi;
         if (global->code.instrs[pc].choose) {
             step.ctx->stack[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
+        else if (global->code.instrs[pc].log) {
+            print = value_json(step.ctx->stack[step.ctx->sp - 1]);
+            (*oi->op)(global->code.instrs[pc].env, sc, &step, global);
+        }
         else {
             (*oi->op)(global->code.instrs[pc].env, sc, &step, global);
         }
 
+        // Infinite loop detection
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
@@ -959,7 +970,8 @@ uint64_t twostep(
             }
         }
 
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, print);
+        free(print);
         if (step.ctx->terminated || step.ctx->failure != 0 || step.ctx->stopped) {
             break;
         }
@@ -975,13 +987,13 @@ uint64_t twostep(
             assert(step.ctx->sp > 0);
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &global->values, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             uint64_t s = step.ctx->stack[step.ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             int size;
@@ -989,7 +1001,7 @@ uint64_t twostep(
             size /= sizeof(uint64_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             if (size == 1) {
