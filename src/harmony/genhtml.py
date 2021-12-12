@@ -74,10 +74,14 @@ m4_include(charm.js)
             if isinstance(nd, dict):
                 for k in sorted(nd.keys()):
                     (w,h) = self.vardim(nd[k])
-                    if h == 0:
-                        print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,k), file=f)
+                    if k[0] == '"':
+                        key = k[1:-1]
                     else:
-                        print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,k), file=f)
+                        key = k
+                    if h == 0:
+                        print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,key), file=f)
+                    else:
+                        print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,key), file=f)
                     q.put((nd[k], nl+1))
 
     def html_top(self, f):
