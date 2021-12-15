@@ -2978,7 +2978,7 @@ is Lines~7 and~8.
 It would be incorrect to replace these by:
 
 \begin{code}
-\textbf{assert} \texttt{queue.get}(\textit{q}) in \{ \textbf{None}, 1, 2 \}
+\textbf{assert} \texttt{queue.get}($q$) in \{ \textbf{None}, 1, 2 \}
 \end{code}
 
 The reason is that \texttt{queue.get()} changes the state by
@@ -3305,7 +3305,7 @@ behavior DFA is for $\mathtt{NOPS} = 2$.}
 \end{code}
 \caption{\harmonylink{code/queueseq.hny} Sequential but not a concurrent
 queue implementation}
-\label{fig:queuebug}
+\label{fig:queueseq}
 \end{figure}
 
 The next step is to test if the queue implementation
@@ -3530,11 +3530,11 @@ specification.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{figures/queuebug1.pdf}
+\includegraphics[width=\textwidth]{figures/queuebroken1.png}
 \end{center}
-\caption{\harmonyref{queuebug.html}{Harmony output of running \autoref{fig:qtest3} against
-\autoref{fig:queuebroken}}}
-\label{fig:queuebug1}
+\caption{\harmonyref{queuebug.html}{Harmony output of running
+\autoref{fig:qtestpar} against \autoref{fig:queuebroken}}}
+\label{fig:queuebroken1}
 \end{figure}
 
 So you wrote a Harmony program and Harmony reports a bug.
@@ -3552,36 +3552,82 @@ it appends a new one.  The \texttt{get}() method locks the first (dummy)
 node, removes the second from the list and frees it.  The method returns
 the value from the removed node.
 
-Let us run the code through some of the test programs in the last
+Let us run the code through the test programs in the last
 chapter.  Harmony does not detect any issues with the sequential test
 in \autoref{fig:qtestseq}.
 (Run this using the \texttt{-m} flag like this:
 \texttt{harmony -m queue=queuebroken code/qtestseq.hny})
-The concurrent \texttt{put} test of
-\autoref{fig:qtest1} as well as the concurrent \texttt{get} test of
-\autoref{fig:qtest2} also find no problems.  However, when we run
-the new queue code through the test in \autoref{fig:qtest3}, Harmony
-finds a problem.
+However, when we run
+the new queue code through the test in \autoref{fig:qtestpar}, Harmony
+finds a problem (even without specifying a behavior).  The command line
+for this is \texttt{harmony -m queue=queuebroken code/qtestpar.hny})
 
-\autoref{fig:queuebug1} shows the Harmony output of running
-the test in \autoref{fig:qtest3} against the queue code
-in \autoref{fig:queuebroken}.
-There is quite a bit of information in the Harmony output, and it's
-important to learn to navigate through it.
+Before we go look at the details of what went wrong, we want to make
+sure we generate the simplest scenario.  So first we want to explore
+what the smallest \texttt{NOPS} (number of operations or number of
+threads) that causes the bug to occur.  With some experimentation,
+we find that \texttt{NOPS} = 2 does not find a problem, but
+\texttt{NOPS} = 3 does
+(\texttt{harmony -m queue=queuebroken -c NOPS=3 code/qtestpar.hny})).
+\autoref{fig:queuebroken1} shows the Harmony output.
+
+There is quite a bit of information in the Harmony output, and while
+it may seem intimidating, we have to learn to navigate through it
+step-by-step.
 Let's start with looking at the red text.  Harmony found a safety
 violation (something bad happened during one of the possible executions),
-and in particular \texttt{putter}(1) (thread T2) was trying to dereference
-\texttt{alloc}.\textit{pool}[0].\texttt{lock} in turn 5.
+and in particular \texttt{thread}(2) (thread T2) was trying to dereference
+\texttt{?alloc["pool"][0]["lock"]}
+(aka \texttt{?alloc}.\textit{pool}[0].\texttt{lock}).
 
 The \texttt{alloc} module maintains a shared array \textit{pool} that
-it uses for dynamic allocation.  Apparently \texttt{putter}(1) tried to access
+it uses for dynamic allocation.  Apparently T2 tried to access
 \textit{pool}[0], but it does not exist, meaning that either it was not
 yet allocated, or it had been freed since it was allocated.
-When we look at the top half of the figure, we see that in fact
-\texttt{putter}(0) (T1) allocated \textit{pool}[0] in turn 2, while
-\texttt{getter}() (T4) released it in turn 4.
+When we look at the top half of the figure, we see that in fact thread
+T1 allocated \textit{pool}[0] in turn 2, but T3 freed it in turn 4.
+Looking back down, we see that T1 executed \texttt{thread}(1) and has
+since terminated, while T3 is executing \texttt{thread}(3).
 
-So how did we get there?  We can start by single stepping through the
+Looking further at the stack traces, we can see that
+T3 was in the process of executing
+\texttt{release}(?$q$.\texttt{lock}) within
+\texttt{get}(?$q$).  Looking in the top green row,
+we see that the value of $q$ is
+\{ \texttt{.lock}: \texttt{True}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \}.
+T1 is currently executing
+\texttt{acquire}(\texttt{?alloc}.\textit{pool}[0].\texttt{lock})
+within \texttt{put}(?$q$, 2), but 
+\texttt{alloc}.\textit{pool}[0] does not exist.
+The corresponding line of Harmony code is
+\textbf{atomically when not} !\textit{binsema}
+in line 25 of the \texttt{sync} module.
+
+So how did we get there?  In the top we can see that the order of
+events was the following:
+\begin{enumerate}
+\item[0:] initialization completed, leaving the value of $q$ at
+\{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \};
+\item[1:] thread T1 (\texttt{thread}(1)) ran and finished executing
+\texttt{put}(1) (see the output column for that clue: the thread printed that).
+We can see that $q$.\texttt{next} now points to \texttt{alloc}.\textit{pool}[0],
+which the thread must have allocated.  The contents is 
+\{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: 1 \}, as expected;
+\item[2:] thread T2 (\texttt{thread}(1)) started running, calling
+\texttt{put}(?$q$, 2).  We can see it got as far as putting 2 on the queue;
+\item[3:] thread T3 (\texttt{thread}(1)) started running, calling
+\texttt{get}($?q$).  We can also see that it freed \textit{pool}[0].
+We know that it is in the process of releasing $q$.\texttt{lock};
+\item[4:] thread T2 resumes and tries to access \textit{pool}[0], which
+no longer exists because T3 just freed it.
+\end{enumerate}
+
+Clearly there was a race in which T2 was trying to lock
+?\textit{pool}[0].\texttt{lock} (which contained the node with the value 1)
+while T3 was freeing that very same node, and T2 lost the race.
+
+
+We can start by single stepping through the
 actions of \texttt{putter}(0) by clicking on its first block.
 By hitting return repeatedly, we can go through the lines of code that
 it is executing.  Doing so, we can see that it allocates
