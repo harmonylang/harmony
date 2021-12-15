@@ -3625,7 +3625,11 @@ no longer exists because T3 just freed it.
 Clearly there was a race in which T2 was trying to lock
 ?\textit{pool}[0].\texttt{lock} (which contained the node with the value 1)
 while T3 was freeing that very same node, and T2 lost the race.
+More precisely, T2 was executing \texttt{put}(?$q$, 2), when T3
+preempted it with \texttt{get}(?$q$) and removed the node that T2
+was trying to access.  But why did the locks not prevent this?
 
+XXXXXXXX
 
 We can start by single stepping through the
 actions of \texttt{putter}(0) by clicking on its first block.
