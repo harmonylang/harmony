@@ -3647,7 +3647,7 @@ state of T2 in the lower-right corner.  You can see that variable
 \textbf{while} loop and tries to acquire
 $\mathit{nq}$$\rightarrow$$\mathtt{lock}$.  This succeeds, and
 next T2 executes \textbf{let} $n = \mathit{nq}$$\rightarrow$$\mathtt{next}$.
-Now $n = ?\mathtt{alloc}.\mathit{alloc}[0]$, which is not \texttt{None}.
+Now $n =\,?\mathtt{alloc}.\mathit{alloc}[0]$, which is not \texttt{None}.
 It then releases $\mathit{nq}$$\rightarrow$$\mathtt{lock}$
 (\textit{nq} points to $q$).  It then sets \textit{nq} to $n$, which
 is still $?\mathtt{alloc}.\mathit{alloc}[0]$.  Finally, it calls
@@ -3655,42 +3655,16 @@ $\mathtt{acquire}(?\mathit{nq}$$\rightarrow$$\mathtt{lock})$.
 But before it can complete that operation, T3 runs next.
 
 T3 chooses "get" and then goes on to invoke $\mathtt{get}(?q)$.
-This first successfull acquires $q$$\rightarrow$$\texttt{lock}$.
-It then finds out that $q$$\rightarrow$$\texttt{next}$ points to
-$\texttt{alloc}.\textit{pool}[0]$.  It sets \textit{node} to
+This first successfully acquires $q$$\rightarrow$$\texttt{lock}$.
+T3 then finds out that $q$$\rightarrow$$\texttt{next}$ points to
+$\texttt{alloc}.\textit{pool}[0]$.  T3 sets \textit{node} to
 $\texttt{alloc}.\textit{pool}[0]$ as well and sets
 $q$$\rightarrow$$\texttt{next}$ to 
 $\mathtt{node}$$\rightarrow$$\texttt{next}$.
-
-XXXXXXXX
-
-We can start by single stepping through the
-actions of \texttt{putter}(0) by clicking on its first block.
-By hitting return repeatedly, we can go through the lines of code that
-it is executing.  Doing so, we can see that it allocates
-\textit{pool}[0] and uses that as the node to contain value 0 and add
-this node to the queue \textit{qtest}.  At the end of its turn,
-\texttt{putter}(0) has just finished \texttt{put}(0).  Looking at the
-state in the top right, everything looks good.  The first node
-(\textit{testq}) points to the allocated node with the value 0 in it,
-and its \texttt{next} pointer is \textbf{None}.  The locks on both nodes
-are released.  So far so good.
-
-Next \texttt{putter}(1) (thread T2) takes a turn.  It gets to line 10 in
-\autoref{fig:queuebroken} where it's trying to acquire
-$q$$\rightarrow$\texttt{lock}.  If we look at the bottom right,
-we see that $q$ points to \textit{pool}[0], the node that has value 0
-in it.  Again, so far so good.
-
-But before \texttt{putter}(1) obtains
-the lock on \textit{pool}[0], \texttt{getter}() (thread T4) starts
-running.  \texttt{getter}() acquires the lock on \textit{qtest}, which
-still points to \textit{pool}[0].  \texttt{getter} then extracts the
-value from \textit{pool}[0] and then releases it.
-At this point \textit{pool}[0] no longer exists, but then
-\texttt{putter}(1) starts running again from where it left off.
-It was about to acquire the lock on \textit{pool}[0], but now that
-node no longer exists.
+T3 sets \textit{result} to 
+$\mathtt{node}$$\rightarrow$$\texttt{value}$ (which is 1)
+and then frees \textit{node}.  This is where the problem is---T2 is
+about to acquire the lock in that same node.
 
 To fix the code without changing the data structure, we can use
 hand-over-hand locking (\autoref{ch:finegrained}).
