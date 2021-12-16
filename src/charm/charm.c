@@ -293,11 +293,11 @@ static bool onestep(
         // See if we need to break out of this step.  It's complicated.
         // If the atomicFlag is set, then definitely not.
         // If the atomicFlag is not set, then it depends on whether the instruction
-        // is "breakable" (Load, Store, or Del), or a print instruction (Log).
+        // is "breakable" (Load, Store, or Del), or a print instruction (Print).
         // If neither, then no need to break---that would lead to unnecessary
         // state explosion.  Otherwise it depends on whether the atomic counter
         // is zero or not.  If not zero, then we should set the atomic flag.
-        // For a Log instruction, it also depends on whether one already
+        // For a Print instruction, it also depends on whether one already
         // happened.  If not, we don't need to break.
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
         if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {

@@ -1449,18 +1449,18 @@ class AssertOp(Op):
             return
         context.pc += 1
 
-class LogOp(Op):
+class PrintOp(Op):
     def __init__(self, token):
         self.token = token
 
     def __repr__(self):
-        return "Log"
+        return "Print"
 
     def jdump(self):
-        return '{ "op": "Log" }'
+        return '{ "op": "Print" }'
 
     def explain(self):
-        return "pop a value and add to history"
+        return "pop a value and add to print history"
 
     def eval(self, state, context):
         cond = context.pop()
@@ -3904,14 +3904,14 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
-class LogAST(AST):
+class PrintAST(AST):
     def __init__(self, token, atomically, cond):
         AST.__init__(self, token, atomically)
         self.token = token
         self.cond = cond
 
     def __repr__(self):
-        return "Log(" + str(self.token) + ", " + str(self.cond) + ")"
+        return "Print(" + str(self.token) + ", " + str(self.cond) + ")"
 
     def compile(self, scope, code):
         # Evaluate the expression in a lazy atomic (and read-only) section
@@ -3923,7 +3923,7 @@ class LogAST(AST):
 
         # Print outsdie the atomic section so not to cause an unneeded switch
         # between contexts
-        code.append(LogOp(self.token))
+        code.append(PrintOp(self.token))
 
 class PossiblyAST(AST):
     def __init__(self, token, atomically, condlist):
@@ -4773,9 +4773,9 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="log: unexpected token: %s" % str(tokens[0]),
+                    message="print: unexpected token: %s" % str(tokens[0]),
                 )
-            return (LogAST(token, atomically, cond), t)
+            return (PrintAST(token, atomically, cond), t)
         if lexeme == "possibly":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)

@@ -411,7 +411,7 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
     }
 }
 
-void op_Log(const void *env, struct state *state, struct step *step, struct global_t *global){
+void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
     uint64_t v = value_ctx_pop(&step->ctx);
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(v));
     step->log[step->nlog++] = v;
@@ -1310,7 +1310,7 @@ void *init_Continue(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Del(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Dup(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Go(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Log(struct dict *map, struct values_t *values){ return NULL; }
+void *init_Print(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Pop(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct values_t *values){ return NULL; }
@@ -2802,11 +2802,11 @@ struct op_info op_table[] = {
 	{ "JumpCond", init_JumpCond, op_JumpCond },
 	{ "Load", init_Load, op_Load },
 	{ "LoadVar", init_LoadVar, op_LoadVar },
-	{ "Log", init_Log, op_Log },
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
 	{ "Possibly", init_Possibly, op_Possibly },
+	{ "Print", init_Print, op_Print },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
