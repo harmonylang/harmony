@@ -3592,9 +3592,9 @@ since terminated, while T3 is executing \texttt{thread}(3).
 Looking further at the stack traces, we can see that
 T3 was in the process of executing
 \texttt{release}(?$q$.\texttt{lock}) within
-\texttt{get}(?$q$).  Looking in the top green row,
-we see that the value of $q$ is
-\{ \texttt{.lock}: \texttt{True}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \}.
+\texttt{get}(?$q$).
+% Looking in the top green row, we see that the value of $q$ is
+% \{ \texttt{.lock}: \texttt{True}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \}.
 T1 is currently executing
 \texttt{acquire}(\texttt{?alloc}.\textit{pool}[0].\texttt{lock})
 within \texttt{put}(?$q$, 2), but 
@@ -3606,7 +3606,7 @@ in line 25 of the \texttt{sync} module.
 So how did we get there?  In the top we can see that the order of
 events was the following:
 \begin{enumerate}
-\item[0:] initialization completed, leaving the value of $q$ at
+\item[0:] initialization completed, with $q$ being
 \{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \};
 \item[1:] thread T1 (\texttt{thread}(1)) ran and finished executing
 \texttt{put}(1) (see the output column for that clue: the thread printed that).
@@ -3614,12 +3614,14 @@ We can see that $q$.\texttt{next} now points to \texttt{alloc}.\textit{pool}[0],
 which the thread must have allocated.  The contents is 
 \{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: 1 \}, as expected;
 \item[2:] thread T2 (\texttt{thread}(1)) started running, calling
-\texttt{put}(?$q$, 2).  We can see it got as far as putting 2 on the queue;
+\texttt{put}(?$q$, 2).  We can see it got as far as putting 2 on the queue,
+but it is not yet done.  It is currently trying to acquire
+\texttt{alloc}.\textit{pool}[0].\texttt{lock};
 \item[3:] thread T3 (\texttt{thread}(1)) started running, calling
-\texttt{get}($?q$).  We can also see that it freed \textit{pool}[0].
-We know that it is in the process of releasing $q$.\texttt{lock};
+\texttt{get}($?q$).  We can also see that it freed \textit{pool}[0],
+and is now releasing $q$.\texttt{lock};
 \item[4:] thread T2 resumes and tries to access \textit{pool}[0], which
-no longer exists because T3 just freed it.
+no longer exists (because T3 just freed it).
 \end{enumerate}
 
 Clearly there was a race in which T2 was trying to lock
@@ -3628,6 +3630,37 @@ while T3 was freeing that very same node, and T2 lost the race.
 More precisely, T2 was executing \texttt{put}(?$q$, 2), when T3
 preempted it with \texttt{get}(?$q$) and removed the node that T2
 was trying to access.  But why did the locks not prevent this?
+
+\index{reserve debugging}%
+It is time to start stepping through the code that has been executed
+before this happened.  This is sometimes known as
+\emph{reverse debugging}.  In fact, Harmony allows you to step through
+code forwards and backwards.  In this case, we first want to see what
+T2 is doing.  You can click on its first (top-left) orange box to
+time-travel to that part in the execution.  Now by hitting
+$<$return$>$ repeatedly, we can quickly skip through the code.
+T2 first calls \texttt{put}(?$q$, 1) and then allocates a new
+node initialized with a lock.  Keep stepping until it executes
+$\mathit{nq} = q$.  Hit $<$return$>$ once more and inspect the
+state of T2 in the lower-right corner.  You can see that variable
+\textit{nq} is initialized to~?$q$.  T2 then enters into the
+\textbf{while} loop and tries to acquire
+$\mathit{nq}$$\rightarrow$$\mathtt{lock}$.  This succeeds, and
+next T2 executes \textbf{let} $n = \mathit{nq}$$\rightarrow$$\mathtt{next}$.
+Now $n = ?\mathtt{alloc}.\mathit{alloc}[0]$, which is not \texttt{None}.
+It then releases $\mathit{nq}$$\rightarrow$$\mathtt{lock}$
+(\textit{nq} points to $q$).  It then sets \textit{nq} to $n$, which
+is still $?\mathtt{alloc}.\mathit{alloc}[0]$.  Finally, it calls
+$\mathtt{acquire}(?\mathit{nq}$$\rightarrow$$\mathtt{lock})$.
+But before it can complete that operation, T3 runs next.
+
+T3 chooses "get" and then goes on to invoke $\mathtt{get}(?q)$.
+This first successfull acquires $q$$\rightarrow$$\texttt{lock}$.
+It then finds out that $q$$\rightarrow$$\texttt{next}$ points to
+$\texttt{alloc}.\textit{pool}[0]$.  It sets \textit{node} to
+$\texttt{alloc}.\textit{pool}[0]$ as well and sets
+$q$$\rightarrow$$\texttt{next}$ to 
+$\mathtt{node}$$\rightarrow$$\texttt{next}$.
 
 XXXXXXXX
 
