@@ -599,7 +599,7 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.45\textwidth]{../code/hello1.png}
+\includegraphics[width=0.45\textwidth]{figures/hello1.png}
 \end{center}
 \begin{code}
 \harmonysource{hello1}
@@ -660,7 +660,7 @@ captures an infinite number of possible outputs.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.45\textwidth]{../code/hello3.png}
+\includegraphics[width=0.45\textwidth]{figures/hello3.png}
 \end{center}
 \begin{code}
 \harmonysource{hello3}
@@ -671,7 +671,7 @@ captures an infinite number of possible outputs.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.15\textwidth]{../code/hello4.png}
+\includegraphics[width=0.15\textwidth]{figures/hello4.png}
 \end{center}
 \begin{code}
 \harmonysource{hello4}
@@ -683,9 +683,9 @@ captures an infinite number of possible outputs.
 \begin{figure}[h]
 \begin{center}
 \begin{tabular}{ccc}
-\includegraphics[width=0.45\textwidth]{../code/hello5.png}
+\includegraphics[width=0.45\textwidth]{figures/hello5.png}
 & \rule{0.05\linewidth}{0in} &
-\includegraphics[width=0.45\textwidth]{../code/hello6.png} \\
+\includegraphics[width=0.45\textwidth]{figures/hello6.png} \\
 \begin{tcolorbox}[width=0.4\linewidth]
 \harmonysource{hello5}
 \end{tcolorbox}
@@ -714,7 +714,7 @@ a possible  output.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.9\textwidth]{../code/hello7.png}
+\includegraphics[width=0.9\textwidth]{figures/hello7.png}
 \end{center}
 \begin{code}
 \harmonysource{hello7}
@@ -725,7 +725,7 @@ a possible  output.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.8\textwidth]{../code/hello8.png}
+\includegraphics[width=0.8\textwidth]{figures/hello8.png}
 \end{center}
 \begin{code}
 \harmonysource{hello8}
@@ -3515,6 +3515,13 @@ specification.
 % check if the implementation is linearizable.
 % \item Check if the extended queue implementation of \autoref{ex:qremove}
 % is linearizable.
+\item Rewrite \autoref{fig:qtestseq} so it only imports \texttt{queue}
+and runs \texttt{NOPS} nondeterministically chosen operations against
+it (similar in style to \autoref{fig:qtestpar} but without threads).
+Then use behaviors to check that \autoref{fig:queueconc} and
+\autoref{fig:queueseq} are correct sequential implementations of
+the queue.  Check your test program by also trying it on one or two
+buggy queue implementations.
 \end{problems}
 
 \chapter{Debugging}
