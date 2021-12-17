@@ -5886,7 +5886,6 @@ The properties of the statement are as follows:
 \item it is executed atomically;
 \item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
 \end{itemize}
-\index{select statement}%
 
 If a processor receives its own identifier, it knows its the leader.
 The Harmony code checks this using an assertion.
@@ -6059,6 +6058,7 @@ It then waits for responses from each.  If both responses are
 \texttt{.yes}, then it commits the transaction, otherwise it aborts
 the transaction.
 
+\begin{comment}
 Note the use of the \textbf{possibly} statement in this code.
 It is similar to \textbf{assert}, but where \texttt{assert} checks that
 the predicate holds in \emph{all} executions, \texttt{possibly} checks
@@ -6067,6 +6067,7 @@ The purpose is to check that the code doesn't simply always abort---there
 exist executions where the code commits.
 In practice, hopefully \emph{most} executions commit, but Harmony is not
 capable of probabilistic reasoning.
+\end{comment}
 
 The \texttt{check}() method checks if the sum of the balances equals
 \textit{total}, the sum of the initial balances.
@@ -6477,10 +6478,12 @@ The rules of the algorithm are simple:
 \end{itemize}
 After that, proceed with the next round.
 
+\begin{comment}
 The \texttt{possibly} statement checks if there exist executions where 0 is
 decided and if there exist executions where 1 is decided.  Doing so is useful
 because the assertions would certainly not fail if no decision is ever made.
 Also, it is nice to know that both 0 and 1 can be decided.
+\end{comment}
 
 \begin{figure}
 \begin{code}
@@ -7182,6 +7185,8 @@ $e$ & $e$ is an expression\\
 \texttt{\&}, \texttt{|}, \texttt{\^},
 \texttt{and}, \texttt{or}\\
 \hline
+\texttt{@l: S} & \texttt{l} is a label \\
+\hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
 \texttt{await $b$} & $b$ is a boolean\\
@@ -7208,10 +7213,7 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
-\texttt{possibly $b$ [, $b$, ...]} & each $b$ is a boolean \\
-\hline
-\texttt{select $a$ in $e$: S} & $a$ is a bound variable, $e$ is a set,
-                            \texttt{S} a list of statements\\
+\texttt{print $b$ [, $b$, ...]} & each $b$ is a boolean \\
 \hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
@@ -7491,14 +7493,11 @@ XXX\=XXX\=XXX\=XXX\kill
 
 The \textbf{pass} statement does nothing.
 
-\subsection*{\textbf{possibly}}
+\subsection*{\textbf{print}}
 
-The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
-predicates $b_i$.
-At completion, Harmony reports which of the predicates never held.
-While \texttt{assert} statements check that nothing ever goes wrong,
-\texttt{possibly} statements can check that certain things sometimes
-go right.
+The statement \textbf{print $e$} atomically evaluates $e$ in read-only
+mode and adds the result to the print log.  The print log is used to
+create an ``external behavior DFA'' for the Harmony program.
 
 \subsection*{\textbf{sequential}}
 
