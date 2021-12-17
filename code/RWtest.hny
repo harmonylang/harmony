@@ -1,17 +1,19 @@
 import RW
 
+const NOPS = 4
+
 rw = RW.RWlock()
 
 def thread():
     while choose({ False, True }):
-        if choose({ .read, .write }) == .read:
+        if choose({ "read", "write" }) == "read":
             RW.read_acquire(?rw)
             @rcs: assert (countLabel(rcs) >= 1) and (countLabel(wcs) == 0)
             RW.read_release(?rw)
-        else:                       # .write
+        else:                       # write
             RW.write_acquire(?rw)
             @wcs: assert (countLabel(rcs) == 0) and (countLabel(wcs) == 1)
             RW.write_release(?rw)
 
-for i in {1..3}:
+for i in {1..NOPS}:
     spawn thread()

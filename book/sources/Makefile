@@ -91,15 +91,17 @@ CODE = \
     prog2.tex \
     qbarrier.tex \
     queue.tex \
-    queuebug.tex \
+    queuebroken.tex \
     queueconc.tex \
     queuedemo.tex \
     queuefix.tex \
     queuelin.tex \
     queueMS.tex \
+    queueseq.tex \
     queuespec.tex \
     qtestseq.tex \
     qtestconc.tex \
+    qtestpar.tex \
     qtest1.tex \
     qtest2.tex \
     qtest3.tex \

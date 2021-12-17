@@ -1,4 +1,7 @@
-sequential done
+def ok():
+    pass
+
+sequential done, (ok())
 
 count = 0
 done = False

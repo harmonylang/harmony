@@ -1,12 +1,12 @@
 import abd
 
 def reader():
-    let first = abd.read((.reader, 1))
-    let second = abd.read((.reader, 2)):
+    let first = abd.read(("reader", 1))
+    let second = abd.read(("reader", 2)):
         assert (first == .token) => (second == .token)
 
 def writer():
-    abd.write((.writer, 1), .token)
+    abd.write(("writer", 1), .token)
 
 for i in { 1 .. abd.N }:
     spawn eternal abd.server()

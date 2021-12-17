@@ -9,7 +9,7 @@ def send(m):
 
 def receive(predecessor, index):
     result = { payload for (id, payload) in network where (id == predecessor)
-                        and ((payload == .crash) or (payload[0] == index)) }
+                        and ((payload == "crash") or (payload[0] == index)) }
 
 def replica(self, immortal):
     var history, predecessors = [], { 0 .. self - 1 }
@@ -19,7 +19,7 @@ def replica(self, immortal):
             history += [self,]
         else:                   # I'm not the head (yet)
             atomically when exists payload in receive(max(predecessors), len(history)):
-                if payload == .crash:
+                if payload == "crash":
                     predecessors -= { max(predecessors) }
                 else:
                     send(self, payload)
@@ -30,7 +30,7 @@ def replica(self, immortal):
             possibly 0 in history, 1 in history, (NREPLICAS - 1) in history
             final = history
     else:       # replica crashed
-        send(self, .crash)
+        send(self, "crash")
 
 let survivor = choose({ 0 .. NREPLICAS - 1 }):
     for i in { 0 .. NREPLICAS - 1 }:
