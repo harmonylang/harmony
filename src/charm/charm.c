@@ -170,8 +170,8 @@ static bool onestep(
     // Copy the choice
     uint64_t choice_copy = choice;
 
-    // bool log_occurred = global->code.instrs[step->ctx->pc].choose;
-    bool log_occurred = false;
+    // bool print_occurred = global->code.instrs[step->ctx->pc].choose;
+    bool print_occurred = false;
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     int loopcnt = 0;
@@ -290,22 +290,25 @@ static bool onestep(
             }
         }
 
-        // See if we need to break out of this step.  It's complicated.
-        // If the atomicFlag is set, then definitely not.
-        // If the atomicFlag is not set, then it depends on whether the instruction
-        // is "breakable" (Load, Store, or Del), or a print instruction (Print).
-        // If neither, then no need to break---that would lead to unnecessary
-        // state explosion.  Otherwise it depends on whether the atomic counter
-        // is zero or not.  If not zero, then we should set the atomic flag.
-        // For a Print instruction, it also depends on whether one already
-        // happened.  If not, we don't need to break.
+        // See if we need to break out of this step.  If the atomicFlag is
+        // set, then definitely not.  If it is not set, then it gets
+        // complicated.  If the atomic count > 0, then we may have delayed
+        // breaking until strictly necessary (lazy atomic), in the hopes
+        // of not having to at all (because breaking causes an expensive
+        // context switch).  If the instruction is not "breakable" (Load,
+        // Store, Del, eager AtomicInc), or a print instruction (Print),
+        // then there's no need to break yet.  Otherwise, if the atomic
+        // count > 0, we should set the atomicFlag and break.  Otherwise
+        // if it's a breakable instruction, we should just break.  If
+        // it's a print instruction, we should break if it's not the first.
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
         if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
-            if (!step->ctx->atomicFlag && step->ctx->atomic > 0) {
+            if (step->ctx->atomic > 0) {
                 step->ctx->atomicFlag = true;
+                break;
             }
-            if (!step->ctx->atomicFlag && next_instr->log && !log_occurred) {
-                log_occurred = true;
+            if (next_instr->log && !print_occurred) {
+                print_occurred = true;
             }
             else {
                 break;
@@ -931,6 +934,7 @@ uint64_t twostep(
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
 
+    bool print_occurred = false;
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = step.ctx->pc;
@@ -1012,12 +1016,18 @@ uint64_t twostep(
             }
         }
 
-        if (!step.ctx->atomicFlag && sc->ctxbag != VALUE_DICT &&
-                                    global->code.instrs[step.ctx->pc].breakable) {
-            if (!step.ctx->atomicFlag && step.ctx->atomic > 0) {
+        struct instr_t *next_instr = &global->code.instrs[step.ctx->pc];
+        if (!step.ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
+            if (step.ctx->atomic > 0) {
                 step.ctx->atomicFlag = true;
+                break;
             }
-            break;
+            if (next_instr->log && !print_occurred) {
+                print_occurred = true;
+            }
+            else {
+                break;
+            }
         }
     }
 
@@ -1898,6 +1908,7 @@ int main(int argc, char **argv){
             }
             fprintf(out, "    {\n");
             fprintf(out, "      \"idx\": %d,\n", node->id);
+#ifdef notdef
             fprintf(out, "      \"component\": %d,\n", node->component);
             if (node->parent != NULL) {
                 fprintf(out, "      \"parent\": %d,\n", node->parent->id);
@@ -1905,6 +1916,7 @@ int main(int argc, char **argv){
             char *val = json_escape_value(node->state->vars);
             fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
             free(val);
+#endif
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
             }
@@ -1932,6 +1944,7 @@ int main(int argc, char **argv){
         fprintf(out, "  ],\n");
         fprintf(out, "  \"edges\": [\n");
         first = true;
+        bool first_log;
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
@@ -1944,8 +1957,9 @@ int main(int argc, char **argv){
                 fprintf(out, "    {\n");
                 fprintf(out, "      \"src\": %d,\n", node->id);
                 fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+#ifdef notdef
                 fprintf(out, "      \"log\": [");
-                bool first_log = true;
+                first_log = true;
                 for (int j = 0; j < edge->nlog; j++) {
                     if (first_log) {
                         first_log = false;
@@ -1960,6 +1974,7 @@ int main(int argc, char **argv){
                 }
                 fprintf(out, "\n");
                 fprintf(out, "      ],\n");
+#endif
                 fprintf(out, "      \"print\": [");
                 first_log = true;
                 for (int j = 0; j < edge->nlog; j++) {

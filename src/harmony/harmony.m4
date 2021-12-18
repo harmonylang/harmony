@@ -3921,7 +3921,7 @@ class PrintAST(AST):
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
-        # Print outsdie the atomic section so not to cause an unneeded switch
+        # Print outside the atomic section so not to cause an unneeded switch
         # between contexts
         code.append(PrintOp(self.token))
 
@@ -4146,38 +4146,52 @@ class FromAST(AST):
     def getImports(self):
         return [self.module]
 
-class LabelStatAST(AST):
-    def __init__(self, token, labels, ast, file, line):
+class LocationAST(AST):
+    def __init__(self, token, ast, file, line):
         AST.__init__(self, token, True)
-        self.labels = { lb:LabelValue(None, "label") for lb in labels }
         self.ast = ast
         self.file = file
         self.line = line
 
     def __repr__(self):
-        return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
+        return "LocationAST(" + str(self.ast) + ")"
+
+    def compile(self, scope, code):
+        code.location(self.file, self.line)
+        self.ast.compile(scope, code)
+
+    def getLabels(self):
+        return self.ast.getLabels()
+
+    def getImports(self):
+        return self.ast.getImports()
+
+class LabelStatAST(AST):
+    def __init__(self, token, labels, ast):
+        AST.__init__(self, token, True)
+        self.labels = { lb:LabelValue(None, "label") for lb in labels }
+        self.ast = ast
+
+    def __repr__(self):
+        return "LabelStatAST(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     # TODO.  Update label stuff
     def compile(self, scope, code):
-        code.location(self.file, self.line)
-        if self.labels == {}:
-            self.ast.compile(scope, code)
-        else:
-            # root = scope
-            # while root.parent != None:
-            #     root = root.parent
-            for ((lexeme, file, line, column), label) in self.labels.items():
-                code.nextLabel(label)
-                # root.names[lexeme] = ("constant", (label, file, line, column))
-            code.append(AtomicIncOp(False))
-            self.ast.compile(scope, code)
-            code.append(AtomicDecOp())
+        # root = scope
+        # while root.parent != None:
+        #     root = root.parent
+        for ((lexeme, file, line, column), label) in self.labels.items():
+            code.nextLabel(label)
+            # root.names[lexeme] = ("constant", (label, file, line, column))
+        code.append(AtomicIncOp(False))
+        self.ast.compile(scope, code)
+        code.append(AtomicDecOp())
 
     def getLabels(self):
-        return set(self.labels.items()) | self.ast.getLabels();
+        return set(self.labels.items()) | self.ast.getLabels()
 
     def getImports(self):
-        return self.ast.getImports();
+        return self.ast.getImports()
 
 class SequentialAST(AST):
     def __init__(self, token, atomically, vars):
@@ -4240,27 +4254,6 @@ class ConstAST(AST):
             v = ctx.pop()
             self.set(scope, self.const, v)
 
-# Zero or more labels, then a statement, then a semicolon
-class LabelStatRule(Rule):
-    def parse(self, t):
-        token = t[0]
-        (lexeme, thefile, theline, column) = t[0]
-        labels = []
-        while True:
-            (lexeme, file, line, column) = t[0]
-            if lexeme != "@":
-                break
-            label = t[1]
-            (lexeme, file, line, column) = label
-            self.expect("label", isname(lexeme), t[1], "expected name after @")
-            labels.append(label)
-            (lexeme, file, line, column) = t[2]
-            self.expect("label", lexeme == ":", t[2], "expected ':' after label")
-            t = t[3:]
-
-        (ast, t) = StatementRule().parse(t)
-        return (LabelStatAST(token, labels, ast, thefile, theline), t)
-
 class StatListRule(Rule):
     def __init__(self, indent, atomically):
         self.indent = indent
@@ -4295,8 +4288,9 @@ class StatListRule(Rule):
         b = []
         while slice != []:
             try:
-                (ast, slice) = LabelStatRule().parse(slice)
-                b.append(ast)
+                (lexeme, thefile, theline, column) = token = slice[0]
+                (ast, slice) = StatementRule().parse(slice)
+                b.append(LocationAST(token, ast, thefile, theline))
             except IndexError:
                 lexeme, file, line, column = slice[0]
                 raise HarmonyCompilerError(
@@ -4571,6 +4565,12 @@ class StatementRule(Rule):
                     message="del: unexpected token: %s" % str(tokens[0]),
                 )
             return (DelAST(token, atomically, ast), t)
+        if lexeme == "@":
+            name = t[1]
+            (lexeme, file, line, nextColumn) = name
+            self.expect("label", isname(lexeme), name, "expected name")
+            (stat, t) = BlockRule(column, False).parse(t[2:])
+            return (LabelStatAST(token, [name], stat), t)
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, nextColumn) = name
@@ -4724,7 +4724,7 @@ class StatementRule(Rule):
                     items.append(tokens[1])
                     tokens = tokens[2:]
                     if tokens == []:
-                        break;
+                        break
                     (lexeme, file, line, column) = tokens[0]
             if tokens != []:
                 lexeme, file, line, column = tokens[0]
@@ -5186,7 +5186,7 @@ def varvisit(d, vars, name, r):
         r.append("%s: %s"%(name, strValue(vars)))
 
 def strvars(d, vars):
-    r = [];
+    r = []
     for k in sorted(d.keys()):
         varvisit(d[k], vars.d[k], k, r)
     return "{ " + ", ".join(r) + " }"
@@ -5307,7 +5307,7 @@ def invcheck(state, inv):
         old = ctx.pc
         state.code[ctx.pc].eval(state, ctx)
         assert ctx.pc != old, old
-    assert len(ctx.stack) == 1;
+    assert len(ctx.stack) == 1
     assert isinstance(ctx.stack[0], bool)
     return ctx.stack[0]
 
@@ -5383,7 +5383,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # If the current instruction is a "choose" instruction,
         # make the specified choice
         if isinstance(sc.code[cc.pc], ChooseOp):
-            assert choice_copy != None;
+            assert choice_copy != None
             cc.stack[-1] = choice_copy
             cc.pc += 1
             choice_copy = None
@@ -6073,7 +6073,7 @@ def htmlstate(f):
     print("</table>", file=f)
 
 def htmlnode(n, code, scope, f, verbose):
-    print("<div id='div%d' style='display:none'>"%n.uid, file=f);
+    print("<div id='div%d' style='display:none'>"%n.uid, file=f)
     print("<div class='container'>", file=f)
 
     print("<a name='N%d'/>"%n.uid, file=f)
@@ -6102,8 +6102,8 @@ def htmlnode(n, code, scope, f, verbose):
         htmlrow(ctx, n.state.stopbag, n, code, scope, f, verbose)
 
     print("</table>", file=f)
-    print("</div>", file=f);
-    print("</div>", file=f);
+    print("</div>", file=f)
+    print("</div>", file=f)
 
 def htmlcode(code, scope, f):
     assert False
@@ -6287,13 +6287,13 @@ table td, table th {
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
-        print("{", file=f);
-        print('  "labels": {', file=f);
+        print("{", file=f)
+        print('  "labels": {', file=f)
         for (k, v) in scope.labels.items():
             print('    "%s": "%d",'%(k, v), file=f)
         print('    "__end__": "%d"'%len(code.labeled_ops), file=f)
-        print('  },', file=f);
-        print('  "code": [', file=f);
+        print('  },', file=f)
+        print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
             lop = code.labeled_ops[pc]
@@ -6319,15 +6319,15 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         else:
             print(code.labeled_ops[pc].op, file=f)
     if printCode == "json":
-        print("  ],", file=f);
+        print("  ],", file=f)
         print('  "pretty": [', file=f)
         for pc in range(len(code.labeled_ops)):
             if pc < len(code.labeled_ops) - 1:
                 print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
             else:
                 print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
-        print("  ],", file=f);
-        print("  \"locations\": {", file=f, end="");
+        print("  ],", file=f)
+        print("  \"locations\": {", file=f, end="")
         firstTime = True
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
@@ -6340,8 +6340,8 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(",", file=f)
                 print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
         print(file=f)
-        print("  }", file=f);
-        print("}", file=f);
+        print("  }", file=f)
+        print("}", file=f)
 
 config = {
     "compile": "gcc -O3 -std=c99 -DNDEBUG $$infile$$ -m64 -o $$outfile$$"
@@ -6482,10 +6482,10 @@ def main():
         outfile = "%s/charm.exe"%install_path
         with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]));
+        r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")
-            sys.exit(r);
+            sys.exit(r)
         # TODO
         # if not testflag:
         #    os.remove(outputfiles["hvm"])
@@ -6496,7 +6496,7 @@ def main():
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
-        sys.exit(0);
+        sys.exit(0)
 
     if printCode == None:
         (nodes, bad_node) = run(code, scope.labels, blockflag)
