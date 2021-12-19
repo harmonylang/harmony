@@ -159,6 +159,7 @@ static bool onestep(
     assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
+    int dfa_state = node->dfa_state;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -177,6 +178,7 @@ static bool onestep(
     for (;; loopcnt++) {
         int pc = step->ctx->pc;
 
+        // If I'm phread 0 and it's time, print some stats
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -197,7 +199,19 @@ static bool onestep(
 
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
+        if (global->dfa != NULL && instrs[pc].log) {
+            assert(step->ctx->sp > 0);
+            int nstate = dfa_step(global->dfa, dfa_state, step->ctx->stack[step->ctx->sp - 1]);
+            if (nstate < 0) {
+                char *p = value_string(step->ctx->stack[step->ctx->sp - 1]);
+                value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
+                free(p);
+                break;
+            }
+            dfa_state = nstate;
+        }
         if (instrs[pc].choose) {
+            assert(step->ctx->sp > 0);
             step->ctx->stack[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
@@ -279,11 +293,11 @@ static bool onestep(
         // See if we need to break out of this step.  It's complicated.
         // If the atomicFlag is set, then definitely not.
         // If the atomicFlag is not set, then it depends on whether the instruction
-        // is "breakable" (Load, Store, or Del), or a print instruction (Log).
+        // is "breakable" (Load, Store, or Del), or a print instruction (Print).
         // If neither, then no need to break---that would lead to unnecessary
         // state explosion.  Otherwise it depends on whether the atomic counter
         // is zero or not.  If not zero, then we should set the atomic flag.
-        // For a Log instruction, it also depends on whether one already
+        // For a Print instruction, it also depends on whether one already
         // happened.  If not, we don't need to break.
         struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
         if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
@@ -331,6 +345,12 @@ static bool onestep(
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
+    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
+                    step->ctx->failure == 0 &&
+                    !dfa_is_final(global->dfa, dfa_state)) {
+        value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
+    }
+
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
@@ -344,6 +364,7 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
+    next->dfa_state = dfa_state;
 
     next->ai = step->ai;
     step->ai = NULL;
@@ -430,6 +451,9 @@ static char *json_escape(const char *s, unsigned int len){
 		switch (*s) {		// TODO.  More cases
 		case '"':
 			strbuf_append(&sb, "\\\"", 2);
+			break;
+		case '\\':
+			strbuf_append(&sb, "\\\\", 2);
 			break;
 		default:
 			strbuf_append(&sb, s, 1);
@@ -614,8 +638,7 @@ void print_context(
 
     if (c->failure != 0) {
         s = value_string(c->failure);
-		int len = strlen(s);
-        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, s + 1);
+        fprintf(file, "          \"failure\": %s,\n", s);
         free(s);
     }
 
@@ -761,7 +784,8 @@ void diff_state(
     struct context *newctx,
     bool interrupt,
     bool choose,
-    uint64_t choice
+    uint64_t choice,
+    char *print
 ) {
     if (global->dumpfirst) {
         global->dumpfirst = false;
@@ -782,6 +806,9 @@ void diff_state(
         char *val = value_json(choice);
         fprintf(file, "          \"choose\": %s,\n", val);
         free(val);
+    }
+    if (print != NULL) {
+        fprintf(file, "          \"print\": %s,\n", print);
     }
     fprintf(file, "          \"npc\": \"%d\",\n", newctx->pc);
     if (newctx->fp != oldctx->fp) {
@@ -812,8 +839,7 @@ void diff_state(
     }
     if (newctx->failure != 0) {
         char *val = value_string(newctx->failure);
-		int len = strlen(val);
-        fprintf(file, "          \"failure\": \"%.*s\",\n", len - 2, val + 1);
+        fprintf(file, "          \"failure\": %s,\n", val);
         fprintf(file, "          \"mode\": \"failed\",\n");
         free(val);
     }
@@ -855,7 +881,8 @@ void diff_dump(
     struct context *newctx,
     bool interrupt,
     bool choose,
-    uint64_t choice
+    uint64_t choice,
+    char *print
 ) {
     int newsize = sizeof(*newctx) + (newctx->sp * sizeof(uint64_t));
 
@@ -866,7 +893,7 @@ void diff_dump(
     }
 
     // Keep track of old state and context for taking diffs
-    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice);
+    diff_state(global, file, oldstate, newstate, *oldctx, newctx, interrupt, choose, choice, print);
     *oldstate = *newstate;
     free(*oldctx);
     *oldctx = malloc(newsize);
@@ -901,22 +928,28 @@ uint64_t twostep(
     if (interrupt) {
 		assert(step.ctx->trap_pc != 0);
         interrupt_invoke(&step);
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = step.ctx->pc;
 
+        char *print = NULL;
         struct op_info *oi = global->code.instrs[pc].oi;
         if (global->code.instrs[pc].choose) {
             step.ctx->stack[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
+        else if (global->code.instrs[pc].log) {
+            print = value_json(step.ctx->stack[step.ctx->sp - 1]);
+            (*oi->op)(global->code.instrs[pc].env, sc, &step, global);
+        }
         else {
             (*oi->op)(global->code.instrs[pc].env, sc, &step, global);
         }
 
+        // Infinite loop detection
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
@@ -937,7 +970,8 @@ uint64_t twostep(
             }
         }
 
-        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+        diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, print);
+        free(print);
         if (step.ctx->terminated || step.ctx->failure != 0 || step.ctx->stopped) {
             break;
         }
@@ -953,13 +987,13 @@ uint64_t twostep(
             assert(step.ctx->sp > 0);
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &global->values, "can't choose in assertion or invariant");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             uint64_t s = step.ctx->stack[step.ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             int size;
@@ -967,7 +1001,7 @@ uint64_t twostep(
             size /= sizeof(uint64_t);
             if (size == 0) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a non-empty set");
-                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice);
+                diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
             if (size == 1) {
@@ -1377,6 +1411,13 @@ void process_results(
         }
         else {
             next = *p;
+            if (next->dfa_state != node->dfa_state && node->ftype == FAIL_NONE) {
+                struct failure *f = new_alloc(struct failure);
+                f->type = FAIL_BEHAVIOR;
+                f->choice = node->choice;
+                f->node = next;
+                minheap_insert(global->failures, f);
+            }
             must_free = true;
         }
 
@@ -1454,14 +1495,14 @@ static void pr_state(struct global_t *global, FILE *fp, struct state *state, int
 }
 
 static void usage(char *prog){
-    fprintf(stderr, "Usage: %s [-c] [-t maxtime] file.json\n", prog);
+    fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
     exit(1);
 }
 
 int main(int argc, char **argv){
     bool cflag = false;
     int i, maxtime = 300000000 /* about 10 years */;
-    char *dfafile = NULL;
+    char *outfile = NULL, *dfafile = NULL;
     for (i = 1; i < argc; i++) {
         if (*argv[i] != '-') {
             break;
@@ -1480,6 +1521,9 @@ int main(int argc, char **argv){
         case 'B':
             dfafile = &argv[i][2];
             break;
+        case 'o':
+            outfile = &argv[i][2];
+            break;
         case 'x':
             printf("Charm model checker working\n");
             return 0;
@@ -1487,23 +1531,10 @@ int main(int argc, char **argv){
             usage(argv[0]);
         }
     }
-    if (argc - i > 1) {
+    if (argc - i != 1 || outfile == NULL) {
         usage(argv[0]);
     }
-    char *fname = i == argc ? "harmony.hvm" : argv[i];
-
-    char *outfile, *dotloc = strrchr(fname, '.');
-    int r;
-    if (dotloc == NULL) {
-        r = asprintf(&outfile, "%s.hco", fname);
-    }
-    else {
-        r = asprintf(&outfile, "%.*s.hco", (int) (dotloc - fname), fname);
-    }
-    if (r < 0) {       // mostly to suppress asprintf return value warning
-        outfile = "harmony.hco";
-    }
-
+    char *fname = argv[i];
     double timeout = gettime() + maxtime;
 
     // initialize modules
@@ -1582,6 +1613,7 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
+    node->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -1870,7 +1902,9 @@ int main(int argc, char **argv){
             if (node->parent != NULL) {
                 fprintf(out, "      \"parent\": %d,\n", node->parent->id);
             }
-            fprintf(out, "      \"value\": \"%s:%d\",\n", json_escape_value(node->state->vars), node->state->choosing != 0);
+            char *val = json_escape_value(node->state->vars);
+            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+            free(val);
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
             }
@@ -1966,6 +2000,10 @@ int main(int argc, char **argv){
         case FAIL_INVARIANT:
             printf("Invariant Violation\n");
             fprintf(out, "  \"issue\": \"Invariant violation\",\n");
+            break;
+        case FAIL_BEHAVIOR:
+            printf("Behavior Violation\n");
+            fprintf(out, "  \"issue\": \"Behavior violation\",\n");
             break;
         case FAIL_TERMINATION:
             printf("Non-terminating state\n");

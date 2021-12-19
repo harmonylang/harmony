@@ -36,7 +36,15 @@ struct edge {
     int nlog;                // size of history
 };
 
-enum fail_type { FAIL_NONE, FAIL_SAFETY, FAIL_INVARIANT, FAIL_TERMINATION, FAIL_BUSYWAIT, FAIL_RACE };
+enum fail_type {
+    FAIL_NONE,
+    FAIL_SAFETY,
+    FAIL_BEHAVIOR,
+    FAIL_INVARIANT,
+    FAIL_TERMINATION,
+    FAIL_BUSYWAIT,
+    FAIL_RACE
+};
 
 struct node {
     // Information about state
@@ -58,6 +66,7 @@ struct node {
     struct access_info *ai; // to detect data races
     uint64_t *log;          // history
     int nlog;               // size of history
+    int dfa_state;          // state of dfa if any
 
     // SCC
     bool visited;           // for Kosaraju algorithm

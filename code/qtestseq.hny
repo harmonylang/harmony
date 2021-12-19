@@ -7,8 +7,8 @@ specq = queue.Queue()
 implq = queueconc.Queue()
 
 for i in {1..NOPS}:
-    let op = choose({ .get, .put }):
-        if op == .put:
+    let op = choose({ "get", "put" }):
+        if op == "put":
             let v = choose(VALUES):
                 queueconc.put(?implq, v)
                 queue.put(?specq, v)

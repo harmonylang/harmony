@@ -599,7 +599,7 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.45\textwidth]{../code/hello1.png}
+\includegraphics[width=0.45\textwidth]{figures/hello1.png}
 \end{center}
 \begin{code}
 \harmonysource{hello1}
@@ -619,8 +619,20 @@ pretty much any programming language start with that example.
 
 Harmony, too, has a Hello World program.
 \autoref{fig:helloworld} shows the program and the corresponding output.
-(The code for examples in this book can be found in the \texttt{code} folder under
-the name listed in the caption of the example.)
+From the command line, you can run it as follows:
+\begin{code}
+\begin{verbatim}
+$ harmony -o hello1.png code/hello1.hny
+\end{verbatim}
+\end{code}
+For this to work, make sure \texttt{harmony} is in your command shell's
+search path.
+The code for examples in this book can be found in the \texttt{code}
+folder under the name listed in the caption of the example.
+In this case, the file \texttt{code/hello1.hny} contains the
+code in \autoref{fig:helloworld}.
+The \texttt{-o hello1.png} arguments tell harmony to write the output
+in the file \texttt{hello1.png}.
 The output is a \emph{Deterministic State Machine} (DFA).  The green circle
 represents the initial state and the double circle represents the final
 state.  There is one \emph{transition}, labeled with the string
@@ -633,7 +645,7 @@ different outputs as a result.  This is usually as a result of different
 inputs, but Harmony programs do not have inputs. Instead,
 \autoref{fig:choice} demonstrates
 \emph{nondetermistic choice} in Harmony programs.  In this case, the
-program chooses to either print ``hello'' or ``world''.  The corresponding
+program chooses to print either ``hello'' or ``world''.  The corresponding
 DFA captures both possibilities.
 You can think of the \texttt{choose} operator as enumerating all possible
 inputs to the program.
@@ -641,14 +653,14 @@ inputs to the program.
 \autoref{fig:hello4} shows a program that has an infinite number of outputs
 by using a loop.  Harmony usually requires that any program must be able
 to terminate, so the loop is conditioned on a nondeterministic choice between
-\texttt{False} and \texttt{True}.  The possible outputs consists of zero or
+\texttt{False} and \texttt{True}.  The possible outputs consist of zero or
 more copies of the string ``hello world''.  Note that this single state DFA
 (where the initial state and the final state happend to be the same)
 captures an infinite number of possible outputs.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.45\textwidth]{../code/hello3.png}
+\includegraphics[width=0.45\textwidth]{figures/hello3.png}
 \end{center}
 \begin{code}
 \harmonysource{hello3}
@@ -659,7 +671,7 @@ captures an infinite number of possible outputs.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.15\textwidth]{../code/hello4.png}
+\includegraphics[width=0.15\textwidth]{figures/hello4.png}
 \end{center}
 \begin{code}
 \harmonysource{hello4}
@@ -671,9 +683,9 @@ captures an infinite number of possible outputs.
 \begin{figure}[h]
 \begin{center}
 \begin{tabular}{ccc}
-\includegraphics[width=0.45\textwidth]{../code/hello5.png}
+\includegraphics[width=0.45\textwidth]{figures/hello5.png}
 & \rule{0.05\linewidth}{0in} &
-\includegraphics[width=0.45\textwidth]{../code/hello6.png} \\
+\includegraphics[width=0.45\textwidth]{figures/hello6.png} \\
 \begin{tcolorbox}[width=0.4\linewidth]
 \harmonysource{hello5}
 \end{tcolorbox}
@@ -702,7 +714,7 @@ a possible  output.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.9\textwidth]{../code/hello7.png}
+\includegraphics[width=0.9\textwidth]{figures/hello7.png}
 \end{center}
 \begin{code}
 \harmonysource{hello7}
@@ -713,7 +725,7 @@ a possible  output.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.8\textwidth]{../code/hello8.png}
+\includegraphics[width=0.8\textwidth]{figures/hello8.png}
 \end{center}
 \begin{code}
 \harmonysource{hello8}
@@ -774,7 +786,7 @@ the most interesting.
 The first assigns to \textit{x} some unspecified value in the range \texttt{0..N}
 and the second verifies that $\mathtt{triangle}(x)$ equals $x(x+1)/2$.
 
-``Running'' this Harmony program will try all possible executions, which
+Running this Harmony program will try all possible executions, which
 includes all possible values for $x$.  Try it out (here \texttt{\$}
 represents a shell prompt):
 
@@ -788,7 +800,6 @@ $
 \end{verbatim}
 \end{code}
 
-(For this to work, make sure \texttt{harmony} is in your command shell's search path.)
 The $\textbf{assert}$ statement checks that the output is
 correct.  If the program is correct, Harmony reports the size of the
 ``state graph'' (13 states in this case).  If not, Harmony also
@@ -1066,17 +1077,14 @@ Harmony programs, and indeed the HVM,  manipulate Harmony values.
 Harmony values are recursively defined:
 they include booleans (\textbf{False} and \textbf{True}),
 integers (but not floating point numbers),
-strings (enclosed by double quotes),
-sets of Harmony values,
-and dictionaries
+strings (enclosed by single or double quotes),
+sets of Harmony values, and dictionaries
 \index{dictionary}%
 that map Harmony values to other Harmony values.
-%
-Another type of Harmony value is the \emph{atom}.
-\index{atom}%
-It is essentially
-just a name.  An atom is denoted using a period followed by the
-name.  For example, \texttt{.main} is an atom.
+Strings that start with a letter or an underscore and only contain
+letters, digits, and underscores can be written without quotes by
+preceding it with a dot.  So \texttt{.example} is the same string
+as \texttt{"example"}.
 
 Harmony makes extensive use of dictionaries.
 A dictionary maps keys to values.
@@ -1099,8 +1107,9 @@ $d$[$k$]
 \end{code}
 However, if $d = \{ \mathtt{.count}: 3 \}$, then you can write
 $d$.\texttt{count} (which has value 3) instead of having to write
-$d$\texttt{[.count]} (although both will work).
-Thus, using atoms, a dictionary can be made to look much like a Python object.
+$d$\texttt{[.count]} or $d$\texttt{["count"]} (although any of those
+will work).
+Thus a dictionary can be made to look much like a Python object.
 
 Tuples are special forms of dictionaries where the keys are
 the indexes into the tuple.  For example, the tuple
@@ -1226,12 +1235,12 @@ code/Up.hny:8     assert count == 2
 
 It may seem strange that there is only one memory location.
 However, this is not a limitation because Harmony values are unbounded trees.
-The shared memory is a dictionary that maps atoms (names of shared
+The shared memory is a dictionary that maps strings (names of shared
 variables) to other Harmony values.
 We call this a \emph{directory}.
 \index{directory}%
 Thus, a directory represents the state of a collection of variables named
-by the atoms.
+by the strings.
 %
 Because directories are Harmony values themselves,
 directories can be organized into a tree.
@@ -1594,8 +1603,7 @@ specifies that only one (the current) thread can be there.
 Harmony in fact supports this.
 It has an operator \textbf{countLabel}~$L$,
 \index{countLabel operator}%
-where $L$
-is the atom containing the name of the label (in this case, \texttt{cs}).
+where $L$ is the name of the label (in this case, \texttt{cs}).
 The operator returns the number of threads executing at that label.
 Method \textbf{countLabel} only exists for specification purposes---do not
 use it in normal code.
@@ -2970,7 +2978,7 @@ is Lines~7 and~8.
 It would be incorrect to replace these by:
 
 \begin{code}
-\textbf{assert} \texttt{queue.get}(\textit{q}) in \{ \textbf{None}, 1, 2 \}
+\textbf{assert} \texttt{queue.get}($q$) in \{ \textbf{None}, 1, 2 \}
 \end{code}
 
 The reason is that \texttt{queue.get()} changes the state by
@@ -3156,7 +3164,7 @@ lock per binary tree.
 a lock for each node in the tree.
 \end{problems}
 
-\chapter{Testing}
+\chapter{Testing: Checking Behaviors}
 \label{ch:testing}
 
 \begin{comment}
@@ -3175,22 +3183,6 @@ a lock for each node in the tree.
 \end{code}
 \caption{\harmonylink{code/qtestseq.hny} Sequential queue test}
 \label{fig:qtestseq}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{queuelin}
-\end{code}
-\caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points}
-\label{fig:queuelin}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-\harmonysource{qtestconc}
-\end{code}
-\caption{\harmonylink{code/qtestconc.hny} Concurrent queue test}
-\label{fig:qtestconc}
 \end{figure}
 
 Testing is a way to increase confidence in the correctness
@@ -3218,7 +3210,7 @@ Mutual exclusion holds if the counter never goes over 1.
 \end{comment}
 
 As with critical sections, when testing a concurrent data structure
-we need a specification for its correctness.
+we need a specification.
 \autoref{fig:queues}(a) shows a sequential specification of a
 queue in Harmony.
 First we can check if the queue implementation
@@ -3239,10 +3231,10 @@ It maintains two queues:
 \item[] \textit{implq}: the queue of the implementation;
 \item[] \textit{specq}: the queue of the specification
 \end{itemize}
-For each operation, the code first decides whether to
+For each operation, the code first chooses whether to
 perform a \texttt{get} or \texttt{put} operation.
 In the case of a \texttt{put} operation, the code also
-decides which value to append to the queue.
+chooses which value to append to the queue.
 All operations are performed on both the queue implementation
 and the queue specification.
 In the case of \texttt{get}, the results of the operation
@@ -3294,82 +3286,106 @@ in general.  If you remove all \texttt{acquire()} and
 \texttt{release()} calls from \autoref{fig:queueconc},
 the test program will not (and should not)
 find any errors.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/qtestpar.png}
+\end{center}
+\begin{code}
+\harmonysource{qtestpar}
+\end{code}
+\caption{\harmonylink{code/qtestpar.hny} Concurrent queue test.  The
+behavior DFA is for $\mathtt{NOPS} = 2$.}
+\label{fig:qtestpar}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queueseq}
+\end{code}
+\caption{\harmonylink{code/queueseq.hny} Sequential but not a concurrent
+queue implementation}
+\label{fig:queueseq}
+\end{figure}
+
 The next step is to test if the queue implementation
 meets the \emph{concurrent} queue specification or not.
-But we have not yet shown what the
-concurrent queue specification is.
+\autoref{fig:queues}(b) shows the concurrent queue specification.
+It is similar to the sequential specification in \autoref{fig:queues}(a)
+but makes all operations (except instantiation itself) atomic.
+Testing the implementation of a concurrent queue specification is
+trickier than testing the implementation of a sequential one because
+there are many more scenarios to check.
 
-We briefly mentioned the notion of \emph{linearizability}
-in \autoref{ch:cds}.
-Basically, we want a concurrent queue to behave
-consistently with a sequential queue in that all
-\texttt{put}
-and \texttt{get} operations should appear to happen
-in a total order.
-Moreover, we want to make sure that if some
-\texttt{put} or \texttt{get} operation $o_1$ finished
-before another operation $o_2$ started, then $o_1$
-should appear to happen before $o_2$ in the total order.
-If these two conditions are met, then we say that
-the concurrent queue implementation is linearizable.
+We would like a way that systematically compares behaviors of the
+concurrent queue implementation with behaviors of the concurrent
+queue specification.  But we cannot do this by composing the specification
+and the implementation and simply run the same test operations on both as we
+did before---concurrency make the operations non-determistic and thus
+the specification and implementation of a single execution might produce
+different results, even if both are correct.
+Instead, we will create a test program that tries various concurrent
+combinations of queue operations, and run it twice: once against the
+specification of the concurrent queue and once against the
+implementation.  We will then check if the behaviors obtained from
+running the implementation is a subset of the behaviors obtained
+from the specification.
 
-In general, if a data structure is protected by
-a single lock and every operation on that data
-structure starts with acquiring the lock and ends
-with releasing the lock, it will automatically be
-linearizable.
-The queue implementation in \autoref{fig:queueconc} does
-not quite match this pattern, as the \texttt{put}
-operation allocates a new node before acquiring
-the lock.
-However, in this case that is not a problem, as
-the new node has no dependencies on the queue
-when it is allocated.
+We will start with a test program that tries concurrent combinations
+of various queue operations.
+\autoref{fig:qtestpar} shows the test program.  It starts
+\texttt{NOPS} threads and each choose to do either a \texttt{put}
+or a \texttt{get} operation.  In case of a \texttt{put} operation,
+the thread enqueues its own name.  In order to output the behaviors,
+each thread prints what operation it is about to perform,
+and afterwards it prints that the operation has
+completed (including the return value if any).
+The figure shows the deterministic finite automaton when the test
+program is run against the specification in the case
+$\texttt{NOPS} = 2$---for $\texttt{NOPS} = 4$ it would be much
+too large to print here.  Since there are no cycles in the DFA, you
+can follow some paths through this DFA and see that they are valid
+interleavings of the threads.
 
-Still, it would be useful to check in Harmony that
-\autoref{fig:queueconc} is linearizable.
-To do this, instead of applying the operations sequentially,
-we want the test program to invoke the operations concurrently,
-consider all possible interleavings, and see if the result
-is consistent with an appropriate sequential execution of the
-operations.
+If you run the same test program against the implementation
+of \autoref{fig:queueconc}, you will get the same output.  You can
+try this for various $\texttt{NOPS}$, although it gets increasingly
+harder to check by hand that the generated DFAs are the same as
+\texttt{NOPS} increases.
+Now run the test program against \autoref{fig:queueseq}, which is
+clearly an incorrect implementation of the concurrent queue specification
+because it contains no synchronization code.
+However, Harmony does not immediately detect
+any problems.  In fact, for $\mathtt{NOPS} = 2$ it even generates
+the same set of behaviors.
+This is because the test program only outputs the behaviors---it does
+not check if they are correct.
 
-\index{logical timestamp}%
-Harmony provides support for testing linearizability,
-but requires that the programmer
-identifies what are known as \emph{linearization points}
-in the implementation that indicate exactly \emph{which} sequential
-execution the concurrent execution must align with.
-\autoref{fig:queuelin} is a copy of \autoref{fig:queueconc} extended with
-linearization points.
-For each operation (\texttt{get} and \texttt{put}), the corresponding
-linearization point must occur somewhere between acquiring and releasing
-the lock.
-%
-Each linearization point execution is assigned a logical timestamp.
-Logical timestamps are numbered $0, 1, ...$
-To do so, we have added a counter (\texttt{time}) to the \texttt{Queue}.
-Method \texttt{\_linpoint} saves the current counter in
-\textbf{this}.\texttt{qtime} and increments the counter.
-The \textbf{this} dictionary maintains \emph{thread-local state} associated
-with the thread (\autoref{ch:harmonymachine})---it contains variables that
-can be accessed by any method in the thread.
+Harmony does have a way to check the behavior of one program against
+the behavior of another.  In particular, we want to check if the
+behaviors of the implementations we have match the behavior of the
+specification.  The following shows, for example, how to check the
+\texttt{queueconc.hny} implementation on the command line:
 
-Given the linearization points, \autoref{fig:qtestconc} shows how
-linearizability can be tested.
-The test program is similar to the sequential test program
-(\autoref{fig:qtestseq}) but starts a thread for each operation.
-The operations are executed concurrently on the concurrent queue
-implementation of \autoref{fig:queuelin}, but they are executed sequentially
-on the sequential queue specification of \autoref{fig:queues}(a).
-To that end, the test program maintains a global time variable
-\textit{qtime}, and each thread waits until the timestamp assigned to
-the last concurrent queue operation matches \textit{qtime} before invoking
-the sequential operation in the specification.
-Afterward, it atomically increments the shared \textit{qtime} variable.
-This results in the operations being executed sequentially against the
-sequential specification in the same order of the linearization points
-of the concurrent specification.
+\begin{code}
+\begin{verbatim}
+$ harmony -o queue4.hfa code/qtestpar.hny
+$ harmony -B queue4.hfa -m queue=queueconc code/qtestpar.hny
+\end{verbatim}
+\end{code}
+
+The first command runs the \texttt{code/qtestpar.hny} program (with the
+default 4 threads)
+and writes a representation of the output DFA in the file \texttt{queue4.hfa}.
+The second command runs the same test program, but using the queue
+implementation in the file \texttt{code/queueconc.hny}.  Moreover, it reads
+the DFA in \texttt{queue4.hfa} to check if every behavior of the second
+run of the test program is also a behavior of the first run.
+You can try the same using the \texttt{code/queueseq.hny} implementation
+and find that this implementation has behaviors that are not allowed by
+the specification.
+
+\begin{comment}
 
 \begin{figure}
 \begin{code}
@@ -3484,16 +3500,28 @@ sequential test followed by several concurrent tests}
 \label{fig:multitest}
 \end{figure}
 
+\end{comment}
+
 \section*{Exercises}
 \begin{problems}
 \item Write a sequential specification for \autoref{fig:linkedlist}.
 (Hint: it implements a set of integers.)
 Write a Harmony program that checks if \autoref{fig:linkedlist} meets
 the sequential specification.
-\item Extend \autoref{fig:linkedlist} with linearization points and
-check if the implementation is linearizable.
-\item Check if the extended queue implementation of \autoref{ex:qremove}
-is linearizable.
+\item Also create a concurrent specification and a concurrent test program.
+Check if the behaviors of \autoref{fig:linkedlist} match those of the
+specification.
+% \item Extend \autoref{fig:linkedlist} with linearization points and
+% check if the implementation is linearizable.
+% \item Check if the extended queue implementation of \autoref{ex:qremove}
+% is linearizable.
+\item Rewrite \autoref{fig:qtestseq} so it only imports \texttt{queue}
+and runs \texttt{NOPS} nondeterministically chosen operations against
+it (similar in style to \autoref{fig:qtestpar} but without threads).
+Then use behaviors to check that \autoref{fig:queueconc} and
+\autoref{fig:queueseq} are correct sequential implementations of
+the queue.  Check your test program by also trying it on one or two
+buggy queue implementations.
 \end{problems}
 
 \chapter{Debugging}
@@ -3501,19 +3529,19 @@ is linearizable.
 
 \begin{figure}
 \begin{code}
-\harmonysource{queuebug}
+\harmonysource{queuebroken}
 \end{code}
-\caption{\harmonylink{code/queuebug.hny} A buggy queue implementation}
-\label{fig:queuebug}
+\caption{\harmonylink{code/queuebroken.hny} Another buggy queue implementation}
+\label{fig:queuebroken}
 \end{figure}
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{figures/queuebug1.pdf}
+\includegraphics[width=\textwidth]{figures/queuebroken1.png}
 \end{center}
-\caption{\harmonyref{queuebug.html}{Harmony output of running \autoref{fig:qtest3} against
-\autoref{fig:queuebug}}}
-\label{fig:queuebug1}
+\caption{\harmonyref{queuebug.html}{Harmony output of running
+\autoref{fig:qtestpar} against \autoref{fig:queuebroken}}}
+\label{fig:queuebroken1}
 \end{figure}
 
 So you wrote a Harmony program and Harmony reports a bug.
@@ -3521,7 +3549,7 @@ Often you may just be able to figure it out by staring at the code and
 going through some easy scenarios, but what if you don't?
 The output of Harmony can be helpful in that case.
 
-\autoref{fig:queuebug} contains an attempt at a queue implementation
+\autoref{fig:queuebroken} contains an attempt at a queue implementation
 where the queue is implemented by a linked list, with the first node
 being a \texttt{dummy} node to prevent data races.  Each node in the
 list contains a lock.  The \texttt{put}() method walks the list until
@@ -3531,62 +3559,119 @@ it appends a new one.  The \texttt{get}() method locks the first (dummy)
 node, removes the second from the list and frees it.  The method returns
 the value from the removed node.
 
-Let us run the code through some of the test programs in the last
+Let us run the code through the test programs in the last
 chapter.  Harmony does not detect any issues with the sequential test
 in \autoref{fig:qtestseq}.
 (Run this using the \texttt{-m} flag like this:
-\texttt{harmony -m queue=queuebug code/qtestseq.hny})
-The concurrent \texttt{put} test of
-\autoref{fig:qtest1} as well as the concurrent \texttt{get} test of
-\autoref{fig:qtest2} also find no problems.  However, when we run
-the new queue code through the test in \autoref{fig:qtest3}, Harmony
-finds a problem.
+\texttt{harmony -m queue=queuebroken code/qtestseq.hny})
+However, when we run
+the new queue code through the test in \autoref{fig:qtestpar}, Harmony
+finds a problem (even without specifying a behavior).  The command line
+for this is \texttt{harmony -m queue=queuebroken code/qtestpar.hny})
 
-\autoref{fig:queuebug1} shows the Harmony output of running
-the test in \autoref{fig:qtest3} against the queue code
-in \autoref{fig:queuebug}.
-There is quite a bit of information in the Harmony output, and it's
-important to learn to navigate through it.
+Before we go look at the details of what went wrong, we want to make
+sure we generate the simplest scenario.  So first we want to explore
+what the smallest \texttt{NOPS} (number of operations or number of
+threads) that causes the bug to occur.  With some experimentation,
+we find that \texttt{NOPS} = 2 does not find a problem, but
+\texttt{NOPS} = 3 does
+(\texttt{harmony -m queue=queuebroken -c NOPS=3 code/qtestpar.hny})).
+\autoref{fig:queuebroken1} shows the Harmony output.
+
+There is quite a bit of information in the Harmony output, and while
+it may seem intimidating, we have to learn to navigate through it
+step-by-step.
 Let's start with looking at the red text.  Harmony found a safety
 violation (something bad happened during one of the possible executions),
-and in particular \texttt{putter}(1) (thread T2) was trying to dereference
-\texttt{alloc}.\textit{pool}[0].\texttt{lock} in turn 5.
+and in particular \texttt{thread}(2) (thread T2) was trying to dereference
+\texttt{?alloc["pool"][0]["lock"]}
+(aka \texttt{?alloc}.\textit{pool}[0].\texttt{lock}).
 
 The \texttt{alloc} module maintains a shared array \textit{pool} that
-it uses for dynamic allocation.  Apparently \texttt{putter}(1) tried to access
+it uses for dynamic allocation.  Apparently T2 tried to access
 \textit{pool}[0], but it does not exist, meaning that either it was not
 yet allocated, or it had been freed since it was allocated.
-When we look at the top half of the figure, we see that in fact
-\texttt{putter}(0) (T1) allocated \textit{pool}[0] in turn 2, while
-\texttt{getter}() (T4) released it in turn 4.
+When we look at the top half of the figure, we see that in fact thread
+T1 allocated \textit{pool}[0] in turn 2, but T3 freed it in turn 4.
+Looking back down, we see that T1 executed \texttt{thread}(1) and has
+since terminated, while T3 is executing \texttt{thread}(3).
 
-So how did we get there?  We can start by single stepping through the
-actions of \texttt{putter}(0) by clicking on its first block.
-By hitting return repeatedly, we can go through the lines of code that
-it is executing.  Doing so, we can see that it allocates
-\textit{pool}[0] and uses that as the node to contain value 0 and add
-this node to the queue \textit{qtest}.  At the end of its turn,
-\texttt{putter}(0) has just finished \texttt{put}(0).  Looking at the
-state in the top right, everything looks good.  The first node
-(\textit{testq}) points to the allocated node with the value 0 in it,
-and its \texttt{next} pointer is \textbf{None}.  The locks on both nodes
-are released.  So far so good.
+Looking further at the stack traces, we can see that
+T3 was in the process of executing
+\texttt{release}(?$q$.\texttt{lock}) within
+\texttt{get}(?$q$).
+% Looking in the top green row, we see that the value of $q$ is
+% \{ \texttt{.lock}: \texttt{True}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \}.
+T1 is currently executing
+\texttt{acquire}(\texttt{?alloc}.\textit{pool}[0].\texttt{lock})
+within \texttt{put}(?$q$, 2), but 
+\texttt{alloc}.\textit{pool}[0] does not exist.
+The corresponding line of Harmony code is
+\textbf{atomically when not} !\textit{binsema}
+in line 25 of the \texttt{sync} module.
 
-Next \texttt{putter}(1) (thread T2) takes a turn.  It gets to line 10 in
-\autoref{fig:queuebug} where it's trying to acquire
-$q$$\rightarrow$\texttt{lock}.  If we look at the bottom right,
-we see that $q$ points to \textit{pool}[0], the node that has value 0
-in it.  Again, so far so good.
+So how did we get there?  In the top we can see that the order of
+events was the following:
+\begin{enumerate}
+\item[0:] initialization completed, with $q$ being
+\{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: \texttt{None} \};
+\item[1:] thread T1 (\texttt{thread}(1)) ran and finished executing
+\texttt{put}(1) (see the output column for that clue: the thread printed that).
+We can see that $q$.\texttt{next} now points to \texttt{alloc}.\textit{pool}[0],
+which the thread must have allocated.  The contents is 
+\{ \texttt{.lock}: \texttt{False}, \texttt{.next}: \texttt{None}, \texttt{.value}: 1 \}, as expected;
+\item[2:] thread T2 (\texttt{thread}(1)) started running, calling
+\texttt{put}(?$q$, 2).  We can see it got as far as putting 2 on the queue,
+but it is not yet done.  It is currently trying to acquire
+\texttt{alloc}.\textit{pool}[0].\texttt{lock};
+\item[3:] thread T3 (\texttt{thread}(1)) started running, calling
+\texttt{get}($?q$).  We can also see that it freed \textit{pool}[0],
+and is now releasing $q$.\texttt{lock};
+\item[4:] thread T2 resumes and tries to access \textit{pool}[0], which
+no longer exists (because T3 just freed it).
+\end{enumerate}
 
-But before \texttt{putter}(1) obtains
-the lock on \textit{pool}[0], \texttt{getter}() (thread T4) starts
-running.  \texttt{getter}() acquires the lock on \textit{qtest}, which
-still points to \textit{pool}[0].  \texttt{getter} then extracts the
-value from \textit{pool}[0] and then releases it.
-At this point \textit{pool}[0] no longer exists, but then
-\texttt{putter}(1) starts running again from where it left off.
-It was about to acquire the lock on \textit{pool}[0], but now that
-node no longer exists.
+Clearly there was a race in which T2 was trying to lock
+?\textit{pool}[0].\texttt{lock} (which contained the node with the value 1)
+while T3 was freeing that very same node, and T2 lost the race.
+More precisely, T2 was executing \texttt{put}(?$q$, 2), when T3
+preempted it with \texttt{get}(?$q$) and removed the node that T2
+was trying to access.  But why did the locks not prevent this?
+
+\index{reserve debugging}%
+It is time to start stepping through the code that has been executed
+before this happened.  This is sometimes known as
+\emph{reverse debugging}.  In fact, Harmony allows you to step through
+code forwards and backwards.  In this case, we first want to see what
+T2 is doing.  You can click on its first (top-left) orange box to
+time-travel to that part in the execution.  Now by hitting
+$<$return$>$ repeatedly, we can quickly skip through the code.
+T2 first calls \texttt{put}(?$q$, 1) and then allocates a new
+node initialized with a lock.  Keep stepping until it executes
+$\mathit{nq} = q$.  Hit $<$return$>$ once more and inspect the
+state of T2 in the lower-right corner.  You can see that variable
+\textit{nq} is initialized to~?$q$.  T2 then enters into the
+\textbf{while} loop and tries to acquire
+$\mathit{nq}$$\rightarrow$$\mathtt{lock}$.  This succeeds, and
+next T2 executes \textbf{let} $n = \mathit{nq}$$\rightarrow$$\mathtt{next}$.
+Now $n =\,?\mathtt{alloc}.\mathit{alloc}[0]$, which is not \texttt{None}.
+It then releases $\mathit{nq}$$\rightarrow$$\mathtt{lock}$
+(\textit{nq} points to $q$).  It then sets \textit{nq} to $n$, which
+is still $?\mathtt{alloc}.\mathit{alloc}[0]$.  Finally, it calls
+$\mathtt{acquire}(?\mathit{nq}$$\rightarrow$$\mathtt{lock})$.
+But before it can complete that operation, T3 runs next.
+
+T3 chooses "get" and then goes on to invoke $\mathtt{get}(?q)$.
+This first successfully acquires $q$$\rightarrow$$\texttt{lock}$.
+T3 then finds out that $q$$\rightarrow$$\texttt{next}$ points to
+$\texttt{alloc}.\textit{pool}[0]$.  T3 sets \textit{node} to
+$\texttt{alloc}.\textit{pool}[0]$ as well and sets
+$q$$\rightarrow$$\texttt{next}$ to 
+$\mathtt{node}$$\rightarrow$$\texttt{next}$.
+T3 sets \textit{result} to 
+$\mathtt{node}$$\rightarrow$$\texttt{value}$ (which is 1)
+and then frees \textit{node}.  This is where the problem is---T2 is
+about to acquire the lock in that same node.
 
 To fix the code without changing the data structure, we can use
 hand-over-hand locking (\autoref{ch:finegrained}).
@@ -5801,7 +5886,6 @@ The properties of the statement are as follows:
 \item it is executed atomically;
 \item $v$ is selected non-deterministically, like in the \texttt{choose} operator.
 \end{itemize}
-\index{select statement}%
 
 If a processor receives its own identifier, it knows its the leader.
 The Harmony code checks this using an assertion.
@@ -5974,6 +6058,7 @@ It then waits for responses from each.  If both responses are
 \texttt{.yes}, then it commits the transaction, otherwise it aborts
 the transaction.
 
+\begin{comment}
 Note the use of the \textbf{possibly} statement in this code.
 It is similar to \textbf{assert}, but where \texttt{assert} checks that
 the predicate holds in \emph{all} executions, \texttt{possibly} checks
@@ -5982,6 +6067,7 @@ The purpose is to check that the code doesn't simply always abort---there
 exist executions where the code commits.
 In practice, hopefully \emph{most} executions commit, but Harmony is not
 capable of probabilistic reasoning.
+\end{comment}
 
 The \texttt{check}() method checks if the sum of the balances equals
 \textit{total}, the sum of the initial balances.
@@ -6392,10 +6478,12 @@ The rules of the algorithm are simple:
 \end{itemize}
 After that, proceed with the next round.
 
+\begin{comment}
 The \texttt{possibly} statement checks if there exist executions where 0 is
 decided and if there exist executions where 1 is decided.  Doing so is useful
 because the assertions would certainly not fail if no decision is ever made.
 Also, it is nice to know that both 0 and 1 can be decided.
+\end{comment}
 
 \begin{figure}
 \begin{code}
@@ -6674,7 +6762,7 @@ Boolean & \textbf{False}, \textbf{True} \\
 \hline
 Integer & \texttt{-inf, ..., -2, -1, 0, 1, 2, ..., inf} \\
 \hline
-Atom & \texttt{.example}, \texttt{.test1}, \texttt{.0x4A} \\
+String & \texttt{"example"}, \texttt{.example} \\
 \hline
 Program Counter & (method names are program counter constants) \\
 \hline
@@ -6689,15 +6777,12 @@ Context & (generated by \textbf{stop} expression) \\
 \end{tabular}
 \vspace{1em}
 
-Tuples, lists, strings, and bags are all special cases of dictionaries.
+Tuples, lists, and bags are all special cases of dictionaries.
 Both tuples and lists map indexes (starting at 0) to Harmony values.
 Their format is either \texttt{($e$, $e$, ..., $e$,)} or
 \texttt{[$e$, $e$, ..., $e$,]}.
 If the tuple or list has two or more elements, then the final comma
 is optional.
-A string is represented as a tuple of its characters.
-Characters are one-character atoms, which can be expressed
-in hexadecimal unicode using the syntax \texttt{.0xXX}.
 A bag or multiset is a dictionary that maps a value to how many
 times it occurs in the bag.
 
@@ -6709,14 +6794,14 @@ Within types, the following rules apply:
 \begin{itemize}
 \item \texttt{False < True};
 \item integers are ordered in the natural way;
-\item atoms are lexicographically ordered;
+\item strings are lexicographically ordered;
 \item program counters are ordered by their integer values;
 \item dictionaries are first converted into a list of ordered (key, value)
 pairs.  Then two dictionaries are lexicographically ordered by this
 representation;
 \item a set is first converted into an ordered list, then lexicographically
 ordered;
-\item an address is a list of atoms.  \texttt{None} is the empty list of atoms.
+\item an address is a list of Harmony values.  \texttt{None} is the empty list.
 Addresses are lexicographically ordered accordingly;
 \item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content.
 \end{itemize}
@@ -6808,19 +6893,12 @@ Operations on integers include:
 \end{tabular}
 \end{center}
 
-\subsection*{Atom}
+\subsection*{String}
 
-Atoms are essentially names and consist of one or more unicode characters.
+A string is a sequence of zero or more unicode characters.
 If they do not contain special characters and do not start with a digit,
-then an atom can be represented by a ``.'' followed by the characters.
-For example, \texttt{.hello} is
-a representation of the atom ``hello''.  A special character can be
-represented by \texttt{.0xXX}, where \texttt{XX} is the hexidecimal
-unicode for the character.
-Atoms should not be confused with strings.
-There are no special operations on atoms.
-(In the future, operators may be introduced that convert between strings
-and atoms.)
+then a string can be represented by a ``.'' followed by the characters.
+For example, \texttt{.hello} is the same as the string \texttt{"hello"}.
 
 \subsection*{Set}
 
@@ -6922,7 +7000,7 @@ Operations on dictionaries include the following:
 
 Because in Harmony brackets are used for parsing purposes only,
 you can write $d[k]$ (or $d(k)$) instead of $d~k$.
-However, if $k$ is an atom, like \texttt{.id}, then you might
+However, if $k$ is a string like \texttt{.id}, then you might
 prefer the notation $k\mathtt{.id}$.
 
 Python users beware: the Harmony \texttt{$v$ in $d$} operator checks
@@ -6990,37 +7068,6 @@ For example, to check if any element in a list $t$ is even, you
 can write:
 
 \texttt{any($(x \% 2) == 0$ for $x$ in $t$)}.
-
-\subsection*{String}
-
-In Harmony, a string is a list of single-character atoms.
-The Python string notations mostly work in Harmony as well.
-For example, \texttt{'abc'} is a three-character string
-consisting of the atoms \texttt{.a}, \texttt{.b}, and
-\texttt{.c}.
-\texttt{"abc"} is the same three-character string.
-Various special characters (including quotes, newlines, etc.)
-can be \emph{escaped} using a backslash.
-Multi-line strings can be terminated by triple quotes or
-triple double-quotes.
-
-Native operations on strings include the following:
-
-\begin{center}
-\begin{tabular}{|l|l|}
-\hline
-\texttt{$s~k$} & indexing \\
-\hline
-\texttt{$s$ + $s$ + ...} & concatenation \\
-\hline
-\texttt{$s$ * $n$} & $n$ copies of $s$ concatenated \\
-\hline
-\texttt{$c$ [not] in $s$} & check if $c$ (a one-character atom) is in $s$ \\
-\hline
-\texttt{len $s$} & the length of $s$ \\
-\hline
-\end{tabular}
-\end{center}
 
 \subsection*{Bag or Multiset}
 
@@ -7138,6 +7185,8 @@ $e$ & $e$ is an expression\\
 \texttt{\&}, \texttt{|}, \texttt{\^},
 \texttt{and}, \texttt{or}\\
 \hline
+\texttt{@l: S} & \texttt{l} is a label \\
+\hline
 \texttt{assert $b$ [, $e$]} & $b$ is a boolean.  Optionally report value of expression $e$\\
 \hline
 \texttt{await $b$} & $b$ is a boolean\\
@@ -7164,10 +7213,7 @@ $e$ & $e$ is an expression\\
 \hline
 \texttt{pass} & do nothing\\
 \hline
-\texttt{possibly $b$ [, $b$, ...]} & each $b$ is a boolean \\
-\hline
-\texttt{select $a$ in $e$: S} & $a$ is a bound variable, $e$ is a set,
-                            \texttt{S} a list of statements\\
+\texttt{print $b$ [, $b$, ...]} & each $b$ is a boolean \\
 \hline
 \texttt{sequential v, ...} & \texttt{v} has sequential consistency \\
 \hline
@@ -7447,14 +7493,11 @@ XXX\=XXX\=XXX\=XXX\kill
 
 The \textbf{pass} statement does nothing.
 
-\subsection*{\textbf{possibly}}
+\subsection*{\textbf{print}}
 
-The statement \textbf{possibly $b_1, b_2, ...$} atomically evaluates all
-predicates $b_i$.
-At completion, Harmony reports which of the predicates never held.
-While \texttt{assert} statements check that nothing ever goes wrong,
-\texttt{possibly} statements can check that certain things sometimes
-go right.
+The statement \textbf{print $e$} atomically evaluates $e$ in read-only
+mode and adds the result to the print log.  The print log is used to
+create an ``external behavior DFA'' for the Harmony program.
 
 \subsection*{\textbf{sequential}}
 
@@ -7676,7 +7719,8 @@ We call this \emph{application}, and application is left-associative.
 So, \textit{a b c} is interpreted as (\textit{a b}) $c$: $b$ is applied to $a$,
 and then $c$ is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
-$a[b]$ for indexing.  In case $b$ is an atom, you can also write $a.b$ for indexing.
+$a[b]$ for indexing.  In case $b$ is a simple string,
+you can also write $a.b$ for indexing.
 
 There are three levels of precedence.
 Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
@@ -8076,9 +8120,7 @@ has the following state:
 \hline
 code & a list of HVM machine instructions \\
 \hline
-labels & a dictionary of atoms to program counters \\
-\hline
-variables & a dictionary mapping atoms to values \\
+variables & a dictionary mapping strings to values \\
 \hline
 ctxbag & a bag of runnable contexts \\
 \hline
@@ -8183,7 +8225,7 @@ $n$-ary \textit{op} & apply $n$-ary operator \textit{op} to the top $n$ elements
 \hline
 Pop & pop a value of the stack and discard it \\
 \hline
-Possibly $i$ & pop a value to check the $i^{th}$ predicate in a \textbf{possibly} statement \\
+Print & pop a value and add to the print history \\
 \hline
 Push $c$ & push constant $c$ onto the stack \\
 \hline
@@ -8279,9 +8321,9 @@ readonly & if non-zero, the thread is in read-only mode \\
 \hline
 stack & a list of Harmony values \\
 \hline
-method variables & a dictionary mapping atoms (names of method variables) to values \\
+method variables & a dictionary mapping strings (names of method variables) to values \\
 \hline
-thread-local variables & a dictionary mapping atoms (names of thread-local variables) to values \\
+thread-local variables & a dictionary mapping strings (names of thread-local variables) to values \\
 \hline
 stopped & a boolean indicating if the context is stopped \\
 \hline
@@ -8294,7 +8336,7 @@ Details:
 \begin{itemize}
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame pointer and variables, the argument to
-the method, an ``invocation type atom'' (\texttt{normal}, \texttt{interrupt}, or
+the method, an ``invocation type'' (\texttt{normal}, \texttt{interrupt}, or
 \texttt{thread}), and the return address (in case of \texttt{normal}).
 \item A thread terminates when it reaches the \texttt{Return} instruction
 of the top-level method (when the stack frame is of type \texttt{thread})
@@ -8306,7 +8348,7 @@ with that of other threads.
 \item The execution of a thread in \emph{read-only mode} is not allowed
 to update shared variables of spawn threads.
 \item The register of a thread always contains a dictionary, mapping
-atoms to arbitrary values.  The atoms correspond to the variable names
+strings to arbitrary values.  The strings correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
@@ -8476,6 +8518,96 @@ thread is in.  So by examining the initial context of the thread that
 is running from some particular state, it can determine if that context
 corresponds to the current context of some thread that ran previously
 or if the context belongs to a new thread that has not run before.
+
+\chapter{Directly checking linearizability}
+
+\begin{figure}
+\begin{code}
+\harmonysource{queuelin}
+\end{code}
+\caption{\harmonylink{code/queuelin.hny} Queue implementation with linearization points}
+\label{fig:queuelin}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+\harmonysource{qtestconc}
+\end{code}
+\caption{\harmonylink{code/qtestconc.hny} Concurrent queue test}
+\label{fig:qtestconc}
+\end{figure}
+
+We briefly mentioned the notion of \emph{linearizability}
+in \autoref{ch:cds}.
+Basically, we want a concurrent queue to behave
+consistently with a sequential queue in that all
+\texttt{put}
+and \texttt{get} operations should appear to happen
+in a total order.
+Moreover, we want to make sure that if some
+\texttt{put} or \texttt{get} operation $o_1$ finished
+before another operation $o_2$ started, then $o_1$
+should appear to happen before $o_2$ in the total order.
+If these two conditions are met, then we say that
+the concurrent queue implementation is linearizable.
+
+In general, if a data structure is protected by
+a single lock and every operation on that data
+structure starts with acquiring the lock and ends
+with releasing the lock, it will automatically be
+linearizable.
+The queue implementation in \autoref{fig:queueconc} does
+not quite match this pattern, as the \texttt{put}
+operation allocates a new node before acquiring
+the lock.
+However, in this case that is not a problem, as
+the new node has no dependencies on the queue
+when it is allocated.
+
+Still, it would be useful to check in Harmony that
+\autoref{fig:queueconc} is linearizable.
+To do this, instead of applying the operations sequentially,
+we want the test program to invoke the operations concurrently,
+consider all possible interleavings, and see if the result
+is consistent with an appropriate sequential execution of the
+operations.
+
+\index{logical timestamp}%
+Harmony provides support for testing linearizability,
+but requires that the programmer
+identifies what are known as \emph{linearization points}
+in the implementation that indicate exactly \emph{which} sequential
+execution the concurrent execution must align with.
+\autoref{fig:queuelin} is a copy of \autoref{fig:queueconc} extended with
+linearization points.
+For each operation (\texttt{get} and \texttt{put}), the corresponding
+linearization point must occur somewhere between acquiring and releasing
+the lock.
+%
+Each linearization point execution is assigned a logical timestamp.
+Logical timestamps are numbered $0, 1, ...$
+To do so, we have added a counter (\texttt{time}) to the \texttt{Queue}.
+Method \texttt{\_linpoint} saves the current counter in
+\textbf{this}.\texttt{qtime} and increments the counter.
+The \textbf{this} dictionary maintains \emph{thread-local state} associated
+with the thread (\autoref{ch:harmonymachine})---it contains variables that
+can be accessed by any method in the thread.
+
+Given the linearization points, \autoref{fig:qtestconc} shows how
+linearizability can be tested.
+The test program is similar to the sequential test program
+(\autoref{fig:qtestseq}) but starts a thread for each operation.
+The operations are executed concurrently on the concurrent queue
+implementation of \autoref{fig:queuelin}, but they are executed sequentially
+on the sequential queue specification of \autoref{fig:queues}(a).
+To that end, the test program maintains a global time variable
+\textit{qtime}, and each thread waits until the timestamp assigned to
+the last concurrent queue operation matches \textit{qtime} before invoking
+the sequential operation in the specification.
+Afterward, it atomically increments the shared \textit{qtime} variable.
+This results in the operations being executed sequentially against the
+sequential specification in the same order of the linearization points
+of the concurrent specification.
 
 \chapter{Installing and Running Harmony}\label{app:install}
 

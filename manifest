@@ -79,7 +79,7 @@ code/qtest4.hny
 code/qtestconc.hny
 code/qtestseq.hny
 code/queueMS.hny
-code/queuebug.hny
+code/queuebroken.hny
 code/queueconc.hny
 code/queuedemo.hny
 code/queuefix.hny

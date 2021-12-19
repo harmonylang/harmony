@@ -8,23 +8,23 @@ def bank(self, balance):
     while True:
         atomically when exists req in network - received when req.dst == self:
             received |= { req }
-            if req.request == .withdraw:
+            if req.request == "withdraw":
                 if (status != ()) or (req.amount > balance):
-                    send({ .dst: req.src, .src: self, .response: .no })
+                    send({ .dst: req.src, .src: self, .response: "no" })
                 else:
                     status = balance
                     balance -= req.amount
-                    send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
-            elif req.request == .deposit:
+                    send({ .dst: req.src, .src: self, .response: "yes", .funds: balance })
+            elif req.request == "deposit":
                 if status != ():
-                    send({ .dst: req.src, .src: self, .response: .no })
+                    send({ .dst: req.src, .src: self, .response: "no" })
                 else:
                     status = balance
                     balance += req.amount
-                    send({ .dst: req.src, .src: self, .response: .yes, .funds: balance })
-            elif req.request == .commit:
+                    send({ .dst: req.src, .src: self, .response: "yes", .funds: balance })
+            elif req.request == "commit":
                 assert status != ()
                 status = ()
             else:
-                assert (status != ()) and (req.request == .abort)
+                assert (status != ()) and (req.request == "abort")
                 balance, status = status, ()
