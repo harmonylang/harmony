@@ -9,7 +9,7 @@ else:
 
 
 from antlr_denter.DenterHelper import DenterHelper
-from HarmonyParser import HarmonyParser
+from .HarmonyParser import HarmonyParser
 
 
 

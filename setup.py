@@ -28,8 +28,15 @@ class PostInstallCommand(install):
 
 setup(
     name="harmony_model_checker",
-    version="1.2.0",
-    packages=["harmony_model_checker"],
+    version="1.1.0",
+    packages=[
+        "",
+        "harmony_model_checker",
+        "harmony_model_checker.compiler",
+        "harmony_model_checker.compiler.parser",
+        "modules",
+        "code"
+    ],
     install_requires=[
         "numpy",
         "matplotlib",
@@ -37,7 +44,12 @@ setup(
         "antlr4-python3-runtime",
         "automata-lib"
     ],
-    include_package_data=False,
+    include_package_data=True,
+    package_data={
+        "modules": ["modules/*.hny"],
+        "code": ["code/*.hny"],
+        "": ["charm.c", "charm.Windows.exe"],
+    },
     cmdclass={
         'develop': PostDevelopCommand,
         'install': PostInstallCommand

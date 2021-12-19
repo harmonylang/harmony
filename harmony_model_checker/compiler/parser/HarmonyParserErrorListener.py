@@ -1,6 +1,6 @@
 from antlr4.error.ErrorListener import ErrorListener
 
-from harmony import HarmonyCompilerError
+from harmony_model_checker.compiler.exception import HarmonyCompilerError
 
 
 class HarmonyParserErrorListener(ErrorListener):

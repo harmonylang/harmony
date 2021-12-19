@@ -14,7 +14,7 @@ def indentation(self):
 
 @lexer::header{
 from antlr_denter.DenterHelper import DenterHelper
-from HarmonyParser import HarmonyParser
+from .HarmonyParser import HarmonyParser
 }
 @lexer::members {
 class MyCoolDenter(DenterHelper):
