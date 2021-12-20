@@ -1,6 +1,6 @@
 import os
 
-from setuptools import setup
+import setuptools
 from setuptools.command.develop import develop
 from setuptools.command.install import install
 import subprocess
@@ -26,17 +26,13 @@ class PostInstallCommand(install):
         compile_charm()
 
 
-setup(
+setuptools.setup(
     name="harmony_model_checker",
-    version="1.1.0",
-    packages=[
-        "",
-        "harmony_model_checker",
-        "harmony_model_checker.compiler",
-        "harmony_model_checker.compiler.parser",
-        "modules",
-        "code"
-    ],
+    version="0.0.1",
+    author="Robbert van Renesse",
+    author_email="rvr@cs.cornell.edu",
+    description="Harmony Programming Language",
+    packages=setuptools.find_packages(where="src"),
     install_requires=[
         "numpy",
         "matplotlib",
@@ -50,6 +46,7 @@ setup(
         "code": ["code/*.hny"],
         "": ["charm.c", "charm.Windows.exe"],
     },
+    python_requires=">=3.6",
     cmdclass={
         'develop': PostDevelopCommand,
         'install': PostInstallCommand
