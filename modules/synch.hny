@@ -39,10 +39,10 @@ def wait(c, lk):
     var cnt = 0
     let ctx = get_context():
         atomically:
-            cnt = bag.count(!c, ctx)
+            cnt = bag.multiplicity(!c, ctx)
             !c = bag.add(!c, ctx)
             !lk = False
-        atomically when (not !lk) and (bag.count(!c, ctx) <= cnt):
+        atomically when (not !lk) and (bag.multiplicity(!c, ctx) <= cnt):
             !lk = True
 
 def notify(c):

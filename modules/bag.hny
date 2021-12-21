@@ -12,7 +12,7 @@ def fromList(a):
         else:
             result[v] = 1
 
-def count(bg, elt):
+def multiplicity(bg, elt):
     assert 0 not in bg
     if elt in keys(bg):
         result = bg[elt]

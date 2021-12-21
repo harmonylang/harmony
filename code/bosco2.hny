@@ -22,7 +22,7 @@ def processor(proposal):
         atomically when exists msgs in receive(round):
             let choices = bag.combinations(msgs, N - F)
             let quorum = choose(choices)
-            let count = [ bag.count(quorum, i) for i in { 0..1 } ]:
+            let count = [ bag.multiplicity(quorum, i) for i in { 0..1 } ]:
                 assert count[0] != count[1]
                 proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):

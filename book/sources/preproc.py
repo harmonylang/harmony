@@ -34,7 +34,7 @@ def isnumber(s):
     return all(isnumeral(c) for c in s)
 
 def allcaps(s):
-    return all(isupper(c) or c == '_' for c in s)
+    return all(isupper(c) or isnumeral(c) or c == '_' for c in s)
 
 reserved = {
     "all",
@@ -308,12 +308,14 @@ def loadAll(filename):
             all += line
     return all
 
-def doInput(filename):
-    all = loadAll(filename)
+def doInline(s, filename):
     print("\\begin{tabbing}")
     print("X\\=XX\\=XXX\\kill")
-    lexer(all, filename)
+    lexer(s, filename)
     print("\\end{tabbing}")
+
+def doInput(filename):
+    doInline(loadAll(filename), filename)
 
 def parse(s, filename):
     if s == "":
@@ -342,8 +344,16 @@ def doProcess(filename):
         print(all[:i], end="")
         all = all[i+2:]
         j = all.index("}>")
-        parse(all[:j], filename)
+        cmd = all[:j]
         all = all[j+2:]
+        if cmd == ":inline:":
+            if all[0] == "\n":
+                all = all[1:]
+            end = all.index("<{:end:}>")
+            doInline(all[:end], filename)
+            all = all[end+9:]
+        else:
+            parse(cmd, filename)
 
 def main():
     for k in reserved:

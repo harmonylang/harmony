@@ -18,7 +18,7 @@ def process(proposal):
     broadcast(0, proposal)
     for round in {0..NROUNDS-1}:
         atomically when exists quorum in receive(round, N - F):
-            let count = [ bag.count(quorum, i) for i in { 0..1 } ]:
+            let count = [ bag.multiplicity(quorum, i) for i in { 0..1 } ]:
                 assert count[0] != count[1]
                 proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):
