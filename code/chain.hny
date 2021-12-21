@@ -27,7 +27,6 @@ def replica(self, immortal):
     if len(history) == NOPS:    # successful completion
         atomically:
             assert (final == None) or (final == history)
-            possibly 0 in history, 1 in history, (NREPLICAS - 1) in history
             final = history
     else:       # replica crashed
         send(self, "crash")

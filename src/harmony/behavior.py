@@ -1,3 +1,41 @@
+def read_hfa(file, dfa):
+    with open(file) as fd:
+        js = json.load(fd)
+        initial = js["initial"]
+        states = { "{}" }
+        final = set()
+        symbols = set()
+        for e in js["edges"]:
+            symbol = json_string(e["symbol"])
+            symbols.add(symbol)
+        transitions = { "{}": { s: "{}" for s in symbols } }
+        for n in js["nodes"]:
+            idx = n["idx"]
+            states.add(idx)
+            if n["type"] == "final":
+                final.add(idx)
+            transitions[idx] = { s: "{}" for s in symbols }
+        for e in js["edges"]:
+            symbol = json_string(e["symbol"])
+            transitions[e["src"]][symbol] = e["dst"]
+
+    hfa = DFA(
+        states=set(states),
+        input_symbols=symbols,
+        transitions=transitions,
+        initial_state=initial,
+        final_states=final
+    )
+
+    assert dfa.input_symbols <= hfa.input_symbols
+    if dfa.input_symbols < hfa.input_symbols:
+        print("behavior warning: symbols missing from behavior:",
+            hfa.input_symbols - dfa.input_symbols)
+    else:
+        assert dfa <= hfa
+        if dfa < hfa:
+            print("behavior warning: strict subset of specified behavior")
+
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
@@ -45,8 +83,8 @@ def behavior_show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
-def behavior_parse(js, minify, outputfiles):
-    if outputfiles["hfa"] == None and outputfiles["png"] == None:
+def behavior_parse(js, minify, outputfiles, behavior):
+    if outputfiles["hfa"] == None and outputfiles["png"] == None and behavior == None:
         return
 
     states = set()
@@ -124,7 +162,6 @@ def behavior_parse(js, minify, outputfiles):
     if outputfiles["png"] != None:
         behavior_show_diagram(dfa, path=outputfiles["png"])
 
-
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:
             names = {}
@@ -170,3 +207,6 @@ def behavior_parse(js, minify, outputfiles):
             print("  ]", file=fd)
 
             print("}", file=fd)
+
+    if behavior != None:
+        read_hfa(behavior, dfa)

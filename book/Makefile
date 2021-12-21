@@ -1,11 +1,16 @@
-paper.pdf: paper.tex
-	pdflatex paper
+paper.pdf: pp.tex
+	pdflatex pp
+	mv pp.pdf paper.pdf
 
-all:
+pp.tex: paper.tex sources/preproc.py
+	python3 sources/preproc.py paper.tex > pp.tex
+
+all: pp.tex
 	(cd sources; make)
-	pdflatex paper
-	bibtex paper
-	makeindex paper
-	makeglossaries paper
-	pdflatex paper
-	pdflatex paper
+	pdflatex pp
+	bibtex pp
+	makeindex pp
+	makeglossaries pp
+	pdflatex pp
+	pdflatex pp
+	mv pp.pdf paper.pdf

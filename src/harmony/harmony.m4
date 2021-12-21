@@ -505,9 +505,9 @@ def jsonValue(v):
     if isinstance(v, bool):
         return '{ "type": "bool", "value": "%s" }'%str(v)
     if isinstance(v, int) or isinstance(v, float):
-        return '{ "type": "int", "value": "%s" }'%str(v)
+        return '{ "type": "int", "value": %s }'%str(v)
     if isinstance(v, str):
-        return '{ "type": "atom", "value": "%s" }'%str(v)
+        return '{ "type": "atom", "value": %s }'%json.dumps(v)
     assert False, v
 
 def strVars(v):
@@ -1023,7 +1023,7 @@ class PushOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.constant
-        return "Push " + strValue(lexeme)
+        return "Push %s"%strValue(lexeme)
 
     def jdump(self):
         (lexeme, file, line, column) = self.constant
@@ -4424,6 +4424,10 @@ class StatementRule(Rule):
         token = t[0]
         if lexeme == ":":
             return BlockRule(column, atomically).parse(t)
+        if isname(lexeme) and t[1][0] == ":":
+            (lexeme, file, line, nextColumn) = token
+            (stat, t) = BlockRule(column, False).parse(t[1:])
+            return (LabelStatAST(token, [token], stat), t)
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -4565,12 +4569,6 @@ class StatementRule(Rule):
                     message="del: unexpected token: %s" % str(tokens[0]),
                 )
             return (DelAST(token, atomically, ast), t)
-        if lexeme == "@":
-            name = t[1]
-            (lexeme, file, line, nextColumn) = name
-            self.expect("label", isname(lexeme), name, "expected name")
-            (stat, t) = BlockRule(column, False).parse(t[2:])
-            return (LabelStatAST(token, [name], stat), t)
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, nextColumn) = name
@@ -6384,6 +6382,7 @@ def main():
     testflag = False
     suppressOutput = False
     charmoptions = []
+    behavior = None
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
@@ -6401,6 +6400,7 @@ def main():
             charmflag = False
         elif o == "-B":
             charmoptions += ["-B" + a]
+            behavior = a
         elif o == "-j":
             printCode = "json"
             charmflag = False
@@ -6490,7 +6490,7 @@ def main():
         # if not testflag:
         #    os.remove(outputfiles["hvm"])
         b = Brief()
-        b.run(outputfiles)
+        b.run(outputfiles, behavior)
         gh = GenHTML()
         gh.run(outputfiles)
         if not suppressOutput:

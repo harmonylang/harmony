@@ -7,7 +7,7 @@ lock = synch.Lock()
 def thread():
     while choose({ False, True }):
         synch.acquire(?lock)
-        @cs: assert countLabel(cs) == 1
+        cs: assert countLabel(cs) == 1
         synch.release(?lock)
 
 for i in {1..NTHREADS}:

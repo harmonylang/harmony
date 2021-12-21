@@ -5,12 +5,12 @@ const NWRITERS = 3
 
 def reader():
     acquire_rlock()
-    @rcs: assert countLabel(wcs) == 0
+    rcs: assert countLabel(wcs) == 0
     release_rlock()
 
 def writer():
     acquire_wlock()
-    @wcs: assert (countLabel(wcs) == 1) and (countLabel(rcs) == 0)
+    wcs: assert (countLabel(wcs) == 1) and (countLabel(rcs) == 0)
     release_wlock()
 
 for i in {1..NREADERS}:

@@ -6,11 +6,11 @@ def process(self):
     while choose({ False, True }):
         if choose({ .read, .write }) == .read:
             acquire_rlock(?semas[self])
-            @rcs: assert countLabel(wcs) == 0
+            rcs: assert countLabel(wcs) == 0
             release_rlock()
         else:                       # .write
             acquire_wlock(?semas[self])
-            @wcs: assert (countLabel(wcs) == 1) and (countLabel(rcs) == 0)
+            wcs: assert (countLabel(wcs) == 1) and (countLabel(rcs) == 0)
             release_wlock()
 
 semas = [ Semaphore(0) for i in {0..NTHREADS-1} ]

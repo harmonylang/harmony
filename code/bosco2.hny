@@ -27,7 +27,6 @@ def processor(proposal):
                 proposal = 0 if count[0] > count[1] else 1
                 if count[proposal] == (N - F):
                     assert proposal in proposals           # validity
-                    possibly proposal == 0, proposal == 1  # can decide either value
                     decisions |= { proposal }
                     assert len(decisions) <= 1             # agreement
                 broadcast(round + 1, proposal)
