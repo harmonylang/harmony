@@ -3905,24 +3905,16 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp())
 
 class PrintAST(AST):
-    def __init__(self, token, atomically, cond):
+    def __init__(self, token, atomically, expr):
         AST.__init__(self, token, atomically)
         self.token = token
-        self.cond = cond
+        self.expr = expr
 
     def __repr__(self):
-        return "Print(" + str(self.token) + ", " + str(self.cond) + ")"
+        return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        # Evaluate the expression in a lazy atomic (and read-only) section
-        code.append(ReadonlyIncOp())
-        code.append(AtomicIncOp(True))
-        self.cond.compile(scope, code)
-        code.append(AtomicDecOp())
-        code.append(ReadonlyDecOp())
-
-        # Print outside the atomic section so not to cause an unneeded switch
-        # between contexts
+        self.expr.compile(scope, code)
         code.append(PrintOp(self.token))
 
 class PossiblyAST(AST):
