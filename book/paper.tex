@@ -3092,7 +3092,7 @@ should equal <{q->head}>. Moreover,
 \item The length field that you added in \autoref{ex:qlength} should equal the length
 of the list.
 \end{itemize}
-Method <{check(q)>} should not obtain a lock; instead add the following line
+Method <{check(q)}> should not obtain a lock; instead add the following line
 just before releasing the lock in <{put}> and <{get}>:
 <{:const:check}>
 \begin{code}

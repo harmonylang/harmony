@@ -366,3 +366,30 @@ struct json_value *json_lookup_value(struct dict *map, char *key){
 	}
 	return jv;
 }
+
+char *json_escape(const char *s, unsigned int len){
+	struct strbuf sb;
+
+	strbuf_init(&sb);
+	while (len > 0) {
+		switch (*s) {		// TODO.  More cases
+		case '"':
+			strbuf_append(&sb, "\\\"", 2);
+			break;
+		case '\\':
+			strbuf_append(&sb, "\\\\", 2);
+			break;
+        case '\n':
+			strbuf_append(&sb, "\\n", 2);
+			break;
+        case '\r':
+			strbuf_append(&sb, "\\r", 2);
+			break;
+		default:
+			strbuf_append(&sb, s, 1);
+		}
+		s++;
+		len--;
+	}
+	return strbuf_getstr(&sb);
+}

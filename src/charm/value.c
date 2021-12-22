@@ -309,12 +309,18 @@ static char *value_string_atom(uint64_t v) {
 	strbuf_init(&sb);
     strbuf_append(&sb, "\"", 1);
 	while (size > 0) {
-		switch (*s) {		// TODO.  More cases
+		switch (*s) {
 		case '"':
 			strbuf_append(&sb, "\\\"", 2);
 			break;
 		case '\\':
 			strbuf_append(&sb, "\\\\", 2);
+			break;
+		case '\n':
+			strbuf_append(&sb, "\\n", 2);
+			break;
+		case '\r':
+			strbuf_append(&sb, "\\r", 2);
 			break;
 		default:
 			strbuf_append(&sb, s, 1);
@@ -332,7 +338,9 @@ static char *value_json_atom(uint64_t v) {
     char *s = dict_retrieve(p, &size), *r;
     assert(size > 0);
     if (size > 1 || (isprint(s[0]) && s[0] != '"' && s[0] != '\\')) {
-        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%.*s\" }", size, s);
+        char *esc = json_escape(s, size);
+        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
+        free(esc);
     }
     else {
         alloc_printf(&r, "{ \"type\": \"char\", \"value\": \"%02x\" }", s[0]);
