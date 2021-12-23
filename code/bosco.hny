@@ -16,19 +16,19 @@ def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:
         result = bag.combinations(msgs, k)
 
-def processor(prop):
-    var proposal = prop
-    broadcast(0, proposal)
+def processor(proposal):
+    var estimate = proposal
+    broadcast(0, estimate)
     for round in {0..NROUNDS-1}:
         atomically when exists quorum in receive(round, N - F):
             let count = [ bag.multiplicity(quorum, i) for i in { 0..1 } ]:
                 assert count[0] != count[1]
-                proposal = 0 if count[0] > count[1] else 1
-                if count[proposal] == (N - F):
-                    assert proposal in proposals           # validity
-                    decisions |= { proposal }
+                estimate = 0 if count[0] > count[1] else 1
+                if count[estimate] == (N - F):
+                    assert estimate in proposals           # validity
+                    decisions |= { estimate }
                     assert len(decisions) <= 1             # agreement
-                broadcast(round + 1, proposal)
+                broadcast(round + 1, estimate)
 
 for i in {0..N-1}:
     spawn processor(proposals[i])
