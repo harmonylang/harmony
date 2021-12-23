@@ -997,7 +997,8 @@ This would fix the issue,\footnote{Actually, Harmony still complains, this time
 about a \emph{data race}, about which you will learn in \autoref{ch:harmonymachine}.}
 but more likely it is the program that must be fixed, not the specification.
 
-The exercises below have you try the same thing in Python.  As you will
+The exercises below have you try the same thing (having threads
+concurrently increment an integer variable) in Python.  As you will
 see, the bug is not easily triggered when you run a Python version of
 the program.  But in Harmony Murphy's Law applies:
 if something can go wrong, it will.  Usually that is not a good thing,
@@ -1006,9 +1007,9 @@ programs much more easily than with a conventional programming language.
 
 \section*{Exercises}
 
-The following exercises are intended to show you that while it is just
-as easy to write concurrent programs in Python, it is much easier to
-find concurrency bugs using Harmony.
+% The following exercises are intended to show you that while it is just
+% as easy to write concurrent programs in Python, it is much easier to
+% find concurrency bugs using Harmony.
 
 \begin{problems}
 \item Harmony programs can usually be easily translated into
