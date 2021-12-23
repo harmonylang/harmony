@@ -17,7 +17,7 @@ def receive(round, k):
         result = bag.combinations(msgs, k)
 
 def processor(proposal):
-    var estimate = proposal
+    var estimate, decided = proposal, False
     broadcast(0, estimate)
     for round in {0..NROUNDS-1}:
         atomically when exists quorum in receive(round, N - F):
@@ -25,7 +25,9 @@ def processor(proposal):
                 assert count[0] != count[1]
                 estimate = 0 if count[0] > count[1] else 1
                 if count[estimate] == (N - F):
-                    print estimate
+                    if not decided:
+                        print estimate
+                        decided = True
                     assert estimate in proposals           # validity
                     decisions |= { estimate }
                     assert len(decisions) <= 1             # agreement

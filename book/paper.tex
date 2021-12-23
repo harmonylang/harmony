@@ -6295,10 +6295,10 @@ that messages arrive within a particular time.
 We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
-The state of a processor consists
-of its current round number and proposal.  Therefore, messages contain
-a round number and a proposal. To start things, each processor first
-broadcasts its initial round number (0) and proposal.
+The state of a processor consists of its current round number (initially 0)
+and an estimate (initially the proposal).  Therefore, messages contain
+a round number and an estimate. To start things, each processor first
+broadcasts its initial round number and initial estimate.
 The number of rounds that are necessary to achieve consensus is not bounded.  But
 Harmony can only check finite models, so there is a constant \texttt{NROUNDS} that
 limits the number of rounds.  It may be that no decisions are made, but that does not
@@ -6328,17 +6328,10 @@ must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the numbe
 of zeroes and <{count[1]}> stores the number of ones received in the round.
 The rules of the algorithm are simple:
 \begin{itemize}
-\item update \textit{proposal} to be the majority value;
+\item update <{estimate}> to be the majority value;
 \item if the quorum is unanimous, decide the value.
 \end{itemize}
 After that, proceed with the next round.
-
-\begin{comment}
-The \texttt{possibly} statement checks if there exist executions where 0 is
-decided and if there exist executions where 1 is decided.  Doing so is useful
-because the assertions would certainly not fail if no decision is ever made.
-Also, it is nice to know that both 0 and 1 can be decided.
-\end{comment}
 
 \begin{figure}
 \begin{code}
