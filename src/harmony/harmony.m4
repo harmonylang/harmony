@@ -50,9 +50,20 @@ import queue
 import functools
 import json
 import subprocess
-from automata.fa.nfa import NFA
-from automata.fa.dfa import DFA
 from typing import Any
+
+try:
+    import pydot
+    got_pydot = True
+except Exception as e:
+    got_pydot = False
+
+try:
+    from automata.fa.nfa import NFA
+    from automata.fa.dfa import DFA
+    got_automata = True
+except Exception as e:
+    got_automata = False
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
