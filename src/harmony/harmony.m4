@@ -49,7 +49,7 @@ import html
 import queue
 import functools
 import json
-import pydot
+import subprocess
 from automata.fa.nfa import NFA
 from automata.fa.dfa import DFA
 from typing import Any
@@ -6452,6 +6452,8 @@ def main():
         outputfiles["hco"] = stem + ".hco"
     if outputfiles["htm"] == None:
         outputfiles["htm"] = stem + ".htm"
+    if outputfiles["png"] != None and outputfiles["gv"] == None:
+        outputfiles["gv"] = stem + ".gv"
 
     try:
         code, scope = doCompile(args, consts, mods, interface)

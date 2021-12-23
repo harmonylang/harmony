@@ -159,9 +159,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
     else:
         dfa = intermediate
 
-    if outputfiles["png"] != None:
-        behavior_show_diagram(dfa, path=outputfiles["png"])
-
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:
             names = {}
@@ -234,6 +231,14 @@ def behavior_parse(js, minify, outputfiles, behavior):
                     if dst != '{}':
                         print("  s%s -> s%s [label=%s]"%(names[src], names[dst], input), file=fd)
             print("}", file=fd)
+
+    if outputfiles["png"] != None:
+        assert outputfiles["gv"] != None
+        if False:
+            behavior_show_diagram(dfa, path=outputfiles["png"])
+        else:
+            subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
+                                outputfiles["gv"] ])
 
     if behavior != None:
         read_hfa(behavior, dfa)
