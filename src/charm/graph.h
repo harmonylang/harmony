@@ -32,8 +32,8 @@ struct edge {
     uint64_t after;          // resulting context
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
-    uint64_t *log;           // history
-    int nlog;                // size of history
+    uint64_t *log;           // print history
+    int nlog;                // size of print history
 };
 
 enum fail_type {

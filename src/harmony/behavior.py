@@ -1,3 +1,5 @@
+homebrewDFA = False
+
 def read_hfa(file, dfa):
     with open(file) as fd:
         js = json.load(fd)
@@ -20,7 +22,7 @@ def read_hfa(file, dfa):
             transitions[e["src"]][symbol] = e["dst"]
 
     hfa = DFA(
-        states=set(states),
+        states=states,
         input_symbols=symbols,
         transitions=transitions,
         initial_state=initial,
@@ -83,6 +85,22 @@ def behavior_show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
+error_state = frozenset({}) if homebrewDFA else "{}"
+
+def eps_closure_rec(states, transitions, current, output):
+    if current in output:
+        return
+    output.add(current)
+    t = transitions[current]
+    if '' in t:
+        for s in t['']:
+            eps_closure_rec(states, transitions, s, output)
+
+def eps_closure(states, transitions, current):
+    x = set()
+    eps_closure_rec(states, transitions, current, x)
+    return frozenset(x)
+
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
@@ -137,20 +155,58 @@ def behavior_parse(js, minify, outputfiles, behavior):
             labels[symbol] = e
 
     # print("states", states, file=sys.stderr)
+    # print("initial", initial_state, file=sys.stderr)
     # print("final", final_states, file=sys.stderr)
     # print("symbols", input_symbols, file=sys.stderr)
     # print("transitions", transitions, file=sys.stderr)
 
     nfa = NFA(
-        states=set(states),
+        states=states,
         input_symbols=input_symbols,
         transitions=transitions,
         initial_state=initial_state,
         final_states=final_states
     )
-
     print("NFA -> DFA", file=sys.stderr)
-    intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
+
+    if homebrewDFA:
+        # Compute the epsilon closure for each state
+        eps_closures = { s:eps_closure(states, transitions, s) for s in states }
+
+        # Convert the NFA into a DFA
+        dfa_transitions = {}
+        dfa_initial = eps_closures[initial_state]
+        q = [dfa_initial]       # queue of states to handle
+        while q != []:
+            current = q.pop()
+            if current in dfa_transitions:
+                continue
+            dfa_transitions[current] = {}
+            for symbol in input_symbols:
+                ec = set()
+                for nfa_state in current:
+                    if symbol in transitions[nfa_state]:
+                        for next in transitions[nfa_state][symbol]:
+                            ec |= eps_closures[next]
+                n = dfa_transitions[current][symbol] = frozenset(ec)
+                q.append(n)
+        dfa_states = set(dfa_transitions.keys())
+        dfa_final_states = set()
+        for dfa_state in dfa_states:
+            for nfa_state in dfa_state:
+                if nfa_state in final_states:
+                    dfa_final_states.add(dfa_state)
+
+        intermediate = DFA(
+            states=dfa_states,
+            input_symbols=input_symbols,
+            transitions=dfa_transitions,
+            initial_state=dfa_initial,
+            final_states=dfa_final_states
+        )
+
+    else:
+        intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
     if minify and len(final_states) != 0:
         print("minify %d"%len(intermediate.states), file=sys.stderr)
@@ -169,7 +225,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("  \"nodes\": [", file=fd)
             first = True
             for s in dfa.states:
-                if s == "{}":
+                if s == error_state:
                     continue
                 if first:
                     first = False
@@ -190,7 +246,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             first = True
             for (src, edges) in dfa.transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != '{}':
+                    if dst != error_state:
                         if first:
                             first = False
                         else:
@@ -213,11 +269,11 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("digraph {", file=fd)
             print("  rankdir = \"LR\"", file=fd)
             for s in dfa.states:
-                if s == "{}":
+                if s == error_state:
                     continue
                 if s == dfa.initial_state:
                     if s in dfa.final_states:
-                        print("  s%s [style=filled,peripheries=2,fillcolor=\"#66cc33\"]"%names[s], file=fd)
+                        print("  s%s [label=\"initial\",style=filled,peripheries=2,fillcolor=\"#66cc33\"]"%names[s], file=fd)
                     else:
                         print("  s%s [label=\"initial\",style=filled,fillcolor=\"#66cc33\"]"%names[s], file=fd)
                 else:
@@ -228,8 +284,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
             for (src, edges) in dfa.transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != '{}':
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], input), file=fd)
+                    if dst != error_state:
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)), file=fd)
             print("}", file=fd)
 
     if outputfiles["png"] != None:

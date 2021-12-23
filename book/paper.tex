@@ -3816,28 +3816,6 @@ and \emph{bounded buffers}.
 \index{reader/writer lock}%
 \glsadd{reader/writer lock}%
 
-\begin{comment}
-\begin{figure}
-\begin{code}
-<{:input:../code/RWbusy.hny}>
-\end{code}
-\caption{\harmonylink{code/RWbusy.hny} Busy-Waiting Reader/Writer Lock implementation}
-\label{fig:rwbusy}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-\includegraphics[width=2.3in]{figures/rdwr.png}
-\end{center}
-\caption{High-level state diagram specification of reader/writer locks with
-up to two threads.
-The first number in a state gives the number of threads; the second number is the
-number of threads reading in the critical section; the third is the number of
-threads writing in the critical section.}
-\label{fig:rdwr}
-\end{figure}
-\end{comment}
-
 Locks are useful when accessing a shared data structure.  By preventing
 more than one thread from accessing the data structure at the same
 time, conflicting accesses are avoided.  However, not all concurrent
