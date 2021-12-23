@@ -410,7 +410,7 @@ because it is hard to reproduce.
 
 This book is intended to help people with understanding and
 developing concurrent code, which includes programs for distributed
-systems.  In particular, it uses a new tool
+systems.  In particular, it uses a tool
 called Harmony that helps with \emph{testing} concurrent code.
 The approach is based on \emph{model checking}~\cite{CES86}:
 \index{model checking}%
@@ -427,14 +427,14 @@ Formal verification proves that a program is correct.  Model checking only
 verifies that a program is correct for some \emph{model}.  Think of
 a model as a test program.
 Because model checking tries every possible execution, the test
-program needs to be simple. Otherwise it may take longer than we
+program needs to be simple---otherwise it may take longer than we
 care to wait for or run out of memory.
 In particular, the model needs to have a relatively small number of
 reachable states.
 
 If model checking does not prove a program correct, why is it
 useful?
-To answer that question, let us consider a sorting algorithm.
+To answer that question, consider a sorting algorithm.
 Suppose we create a test program, a model, that tries sorting
 \emph{all} lists of up to five numbers chosen from the set
 \{ 1, 2, 3, 4, 5 \}.  Model checking proves that for those particular
@@ -525,7 +525,7 @@ elegant (although not very efficient or practical) solution to implementating a 
 \item \autoref{ch:method} gives some more details on the Harmony
 language needed for the rest of the book.
 \item \autoref{ch:specification} talks about how Harmony can be used as
-a specification language.  It introduces how can can specify atomic
+a specification language.  It introduces how to specify atomic
 constructs.
 \item \autoref{ch:spinlock} introduces atomic \emph{locks}
 for implemented critical sections.
@@ -590,8 +590,7 @@ replicated object that supports only read and write operations.
 algorithm (aka protocol) expressed in Harmony.
 \item \autoref{ch:paxos} shows how one can specify and check the well-known
 Paxos consensus protocol.
-\item \autoref{ch:ns} demonstrates finding a bug in the original Needham-Schroeder
-authentication protocol.
+\item \autoref{ch:ns} demonstrates using Harmony to find a (known) bug in the original Needham-Schroeder authentication protocol.
 \end{itemize}
 
 The appendices contain various details about Harmony itself, including
@@ -662,7 +661,7 @@ by using a loop.  Harmony usually requires that any program must be able
 to terminate, so the loop is conditioned on a nondeterministic choice between
 <{False}> and <{True}>.  The possible outputs consist of zero or
 more copies of the string ``hello world''.  Note that this single state DFA
-(where the initial state and the final state happend to be the same)
+(where the initial state and the final state happen to be the same)
 captures an infinite number of possible outputs.
 
 \begin{figure}
@@ -832,6 +831,9 @@ $
 
 \section*{Exercises}
 \begin{problems}
+\item Add the line <{print(x, triangle(x))}> to the end of the
+program and create an output png file.  Before you look at it, what
+do you think it should look like?
 \item See what happens if, instead of initializing <{result}> to 0,
 you initialize it to 1.  (You do not need to understand the error report at this time.  They will be explained in more detail in \autoref{ch:harmonymachine}.)
 \item Write a Harmony program that computes squares by repeated adding.  So, the program
@@ -870,8 +872,7 @@ threads
 running in parallel while sharing variables.
 \autoref{fig:progs} shows two programs.  Program (a) is sequential.
 It sets <{shared}> to <{True}>, asserts that
-<{shared}> = <{True}>, and finally sets
-<{shared}> to <{False}>.
+<{shared}> = <{True}> and finally sets <{shared}> to <{False}>.
 If you run the program through Harmony, it will not find any problems
 because there is only one execution possible and 1) in that execution
 the assertion does not fail and 2) the execution terminates.
@@ -879,9 +880,11 @@ Program (b) is concurrent---it executes methods <{f()}> and
 <{g()}> in parallel.
 If method <{g()}> runs and completes before <{f()}>, then
 the assertion in <{f()}> will fail when <{f()}> runs.
-Harmony will find this problem.
 This problem is an example of non-determinism: methods <{f()}>
 and <{g()}> can run in either order.
+In one order, the assertion fails, while in the other it does not.
+But since Harmony will find all possible executions, it will find
+the problematic one.
 
 <{:const:incrementer}>
 
@@ -8624,7 +8627,7 @@ Haobin even contributed some code to the Harmony compiler.
 
 Kevin Sun and Anthony Yang built a beautiful VSCode extension for Harmony
 called HarmonyLang and proceeded to build an animator for Harmony
-executions and two cloud-based Harmony offerings, which you can can learn
+executions and two cloud-based Harmony offerings, which you can learn
 about at \url{http://harmony.cs.cornell.edu}.  They also developed much of
 that web site.  Later they were joined by Shi Chong Zhao, who also
 made significant contributions.
