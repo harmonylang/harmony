@@ -84,7 +84,7 @@ def behavior_show_diagram(dfa, path=None):
     return graph
 
 def behavior_parse(js, minify, outputfiles, behavior):
-    if outputfiles["hfa"] == None and outputfiles["png"] == None and behavior == None:
+    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
 
     states = set()
@@ -206,6 +206,33 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print(file=fd)
             print("  ]", file=fd)
 
+            print("}", file=fd)
+
+    if outputfiles["gv"] != None:
+        with open(outputfiles["gv"], "w") as fd:
+            names = {}
+            for (idx, s) in enumerate(dfa.states):
+                names[s] = idx
+            print("digraph {", file=fd)
+            print("  rankdir = \"LR\"", file=fd)
+            for s in dfa.states:
+                if s == "{}":
+                    continue
+                if s == dfa.initial_state:
+                    if s in dfa.final_states:
+                        print("  s%s [style=filled,peripheries=2,fillcolor=\"#66cc33\"]"%names[s], file=fd)
+                    else:
+                        print("  s%s [label=\"initial\",style=filled,fillcolor=\"#66cc33\"]"%names[s], file=fd)
+                else:
+                    if s in dfa.final_states:
+                        print("  s%s [peripheries=2,label=\"final\"]"%names[s], file=fd)
+                    else:
+                        print("  s%s [label=\"\"]"%names[s], file=fd)
+
+            for (src, edges) in dfa.transitions.items():
+                for (input, dst) in edges.items():
+                    if dst != '{}':
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], input), file=fd)
             print("}", file=fd)
 
     if behavior != None:

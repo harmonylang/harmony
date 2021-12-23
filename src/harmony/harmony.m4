@@ -6369,7 +6369,8 @@ def main():
         "htm": None,
         "hco": None,
         "hvm": None,
-        "png": None
+        "png": None,
+        "gv":  None
     }
     testflag = False
     suppressOutput = False
@@ -6416,7 +6417,8 @@ def main():
             suffix = a[(dotloc+1):]
             if suffix not in outputfiles:
                 print("unknown suffix on '%s'"%a, file=sys.stderr)
-            if outputfiles[suffix] != None:
+                sys.exit(1)
+            elif outputfiles[suffix] != None:
                 print("duplicate suffix '.%s'"%suffix, file=sys.stderr)
                 sys.exit(1)
             outputfiles[suffix] = a
