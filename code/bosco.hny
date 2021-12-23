@@ -25,10 +25,12 @@ def processor(proposal):
                 assert count[0] != count[1]
                 estimate = 0 if count[0] > count[1] else 1
                 if count[estimate] == (N - F):
+                    print estimate
                     assert estimate in proposals           # validity
                     decisions |= { estimate }
                     assert len(decisions) <= 1             # agreement
                 broadcast(round + 1, estimate)
 
+print proposals
 for i in {0..N-1}:
     spawn processor(proposals[i])
