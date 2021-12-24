@@ -4303,11 +4303,12 @@ successful and enters.  After the thread leaves, it immediately
 tries to re-enter.  This state is identical to the initial
 state, and there is nothing that prevents the same thread
 from acquiring the lock yet again.
-%
-(It is worth noting that Peterson's Algorithm (\autoref{ch:peterson})
+
+Peterson's Algorithm (\autoref{fig:peterson})
 does not suffer from starvation, thanks to the \texttt{turn} variable
 that alternates between 0 and 1 when two threads are contending for
-the critical section.)
+the critical section.
+Ticket locks (\autoref{fig:ticket}) are also free from starvation.
 
 While spinlocks suffer from starvation, it is a uniform random
 process and each thread has an equal chance of entering the critical
