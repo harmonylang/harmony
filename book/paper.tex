@@ -4057,19 +4057,22 @@ exactly the set of tuples that the producers produce.
 The Split Binary Semaphore (SBS) approach is a general technique for
 implementing conditional waiting.  It was originally proposed by
 Tony Hoare and popularized by Edsger Dijkstra~\cite{EWD703}.
-SBS is an extension of a critical section that is protected by a single
-binary semaphore.
+A \emph{binary semaphore} is a generalization of a lock.  While a lock
+is always initialized in the released state, a binary semaphore---if so
+desired---can be initialized in the acquired state.
+SBS is an extension of a critical section that is protected by a lock.
 If there are $n$ \emph{waiting conditions},
 then SBS uses $n+1$ binary semaphores to protect the critical section.
-An ordinary critical section has no waiting conditions.
-For example, a bounded buffer has two waiting conditions:
+An ordinary critical section has no waiting conditions and therefore
+uses just one binary semaphore (because $n = 0$).
+But, for example, a bounded buffer has two waiting conditions:
 \begin{enumerate}
 \item consumers waiting for the buffer to be non-empty;
 \item producers waiting for an empty slot in the buffer.
 \end{enumerate}
 So, it will require 3 binary semaphores if the SBS technique is applied.
 
-Think of each of these semaphores as a gate that a thread must go
+Think of each of these binary semaphores as a gate that a thread must go
 through in order to enter the critical section.  A gate is either open
 or closed.  Initially, exactly one gate, the main gate, is open.
 Each of the other gates, the \emph{waiting gates}, is associated with a
@@ -4080,20 +4083,20 @@ closing the gate behind it.
 When leaving the critical section, the thread must open exactly one
 of the gates, but it does not have to be the gate that it used to enter
 the critical section.
-In particular, when a thread leaves the critical section it should
+In particular, when a thread leaves the critical section, it should
 check for each waiting gate if its waiting condition holds and if there are
-threads trying to get through the gate.  If there is such a gate,
-it must select one and open that gate.  If there is no such gate,
+threads trying to get through the gate.  If there is such a gate, then
+it must select one and open that gate.  If there is no such gate, then
 it must open the main gate.
 
 Finally, if a thread is executing in the critical section and needs to
-wait for a particular condition, it leaves the critical section and waits
-for the gate associated with that condition to open.
+wait for a particular condition, then it leaves the critical section and
+waits for the gate associated with that condition to open.
 
-Note that the following invariants hold:
+The following invariants hold:
 \begin{itemize}
 \item At any time, at most one gate is open;
-\item If some gate is open, then no thread is in the critical section.  Equivalently, if some thread is in the critical section, all gates are closed;
+\item If some gate is open, then no thread is in the critical section.  Equivalently, if some thread is in the critical section, then all gates are closed;
 \item At any time, at most one thread is in the critical section.
 \end{itemize}
 
@@ -4114,7 +4117,7 @@ have to wait until all readers have left the critical section or until a writer 
 The state of a reader/writer lock thus consists of the following:
 \begin{itemize}
 \item <{nreaders}>: the number of readers in the critical section;
-\item <{nwriters}>: the number of writers in the critical section;
+\item <{nwriters}>: the number of writers in the critical section (0 or 1);
 \item <{mutex}>: the main gate binary semaphore;
 \item \textit{r\_gate}: the waiting gate used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
 \item \textit{w\_gate}: the waiting gate used by writers, similar to the readers' gate.
@@ -4128,7 +4131,7 @@ First they have to acquire the <{mutex}>
 (i.e., enter the main gate).
 After acquiring the <{mutex}>,
 \texttt{read\_acquire} and \texttt{write\_acquire} each must check to see
-if it has to wait.
+if the thread has to wait.
 If so, it increments the count associated with its respective gate,
 opens a gate (using method \texttt{release\_one}), and then blocks until
 its waiting gate opens up.
@@ -4138,18 +4141,18 @@ the critical section.  It must check to see if there is a waiting gate
 that has threads waiting behind it and whose condition is met.
 If so, it selects one and opens that gate.  In the given code,
 <{release_one()}> first checks the readers' gate and then the
-writers' gate, but the other way around would have worked as well.
+writers' gate, but the other way around works as well.
 If neither waiting gate qualifies, then <{release_one()}> 
 has to open the main gate (i.e., release <{mutex}>).
 
 Let us examine \texttt{read\_acquire} more carefully.
-First the method acquires the <{mutex}>.
+First, the method acquires <{mutex}>.
 Then, in the case that the thread
 finds that there is a writer in the critical section
 ($\mathit{nwriters > 0}$), it increments the counter associated with
-the readers' gate, leaves the critical section (\texttt{release\_one}),
-and then tries to acquire the semaphore associated with the waiting gate.
-This will cause it to block until some thread opens that gate.
+the readers' gate, leaves the critical section (\texttt{release\_one}), and
+then tries to acquire the binary semaphore associated with the waiting gate.
+This causes the thread to block until some other thread opens that gate.
 
 Now consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
@@ -4173,7 +4176,7 @@ from~1 to~2.
 \item Finally, the second reader  calls <{release_one()}>.
 This time <{release_one()}> does not find any threads waiting,
 and so it releases <{mutex}>.
-There are now two threads that are holding the reader/writer lock.
+There are now two reader threads that are holding the reader/writer lock.
 \end{enumerate}
 
 <{:const:gpuAlloc}>
@@ -4183,7 +4186,7 @@ There are now two threads that are holding the reader/writer lock.
 \begin{problems}
 % \item Assume that you have only binary semaphores.
 % Implement counting semaphores using the split binary semaphores technique.
-\item Several of the instantiations of <{release_one()}> in
+\item Several of the calls to <{release_one()}> in
 \autoref{fig:RWsplitsema} can be replaced by simply releasing <{mutex}>.
 Which ones?
 \item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
@@ -4212,7 +4215,7 @@ can acquire the bound lock at the same time.
 \autoref{fig:gpu}.
 There are <{N}> GPUs identified by the numbers
 1 through <{N}>.  Method \texttt{gpuAlloc()} returns the identifier
-of an available GPU, blocking if there is currently no available GPU.
+of an available GPU, blocking if there is currently no GPU available.
 Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
 to block.
 \item With reader/writer locks,
