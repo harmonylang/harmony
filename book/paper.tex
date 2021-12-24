@@ -2248,7 +2248,7 @@ shorthand <{p->field}>, which greatly improves readability.
 \autoref{fig:petersonmethods} again shows Peterson's algorithm,
 but this time with methods defined to enter and exit the critical
 section.
-The name \textit{mutex} is often used to denote a variable or value
+The name <{mutex}> is often used to denote a variable or value
 that is used for mutual exclusion.
 \texttt{P\_mutex} is a method that returns a ``mutex,'' which, in this
 case, is a dictionary that contains Peterson's Algorithm's shared memory state:
@@ -2407,7 +2407,7 @@ an actual executable program---such as the one in
 because---on a normal machine---it cannot be directly compiled into
 machine code.
 If we want to make the program executable on hardware,
-we have to show how \texttt{Lock}, <{acquire}>, and <{release}>
+we have to show how <{Lock}>, <{acquire}>, and <{release}>
 are implemented, not just how they are specified.
 \autoref{ch:spinlock} presents such an implementation.
 
@@ -3763,15 +3763,14 @@ Doing so wastes CPU cycles and adds contention to queue access.
 %
 A thread that is busy waiting until the queue is non-empty cannot
 make progress until another thread enqueues an item.
-However, the thread is not considered \emph{blocked} because it is
+However, the thread is not considered blocked because it is
 changing the shared state by repeatedly acquiring and releasing the
 lock.
-We distinguish \emph{passive busy waiting} and \emph{active busy waiting}.
 A process that is waiting for a condition without changing the state
-(like in a spinlock) is passively busy waiting.
+(like in a spinlock) is \emph{blocked}.
 A process that is waiting for a condition while changing the state
 (such as repeatedly trying to dequeue an item, which requires
-acquiring a lock) is actively busy waiting.
+acquiring a lock) is \emph{actively busy waiting}.
 
 We would like to find a solution to \emph{conditional waiting}
 so that a thread blocks until the condition holds---or at least most
@@ -3817,8 +3816,8 @@ a \emph{reader/writer lock}~\cite{CHP71}.
 A reader/writer lock is an object whose abstract (and opaque)
 state contains two integer counters (see \autoref{fig:rwspec}):
 \begin{enumerate}
-\item \textit{nreaders}: the number of readers
-\item \textit{nwriters}: the number of writers
+\item <{nreaders}>: the number of readers
+\item <{nwriters}>: the number of writers
 \end{enumerate}
 satisfying the following invariant:
 \begin{itemize}
@@ -3826,15 +3825,14 @@ satisfying the following invariant:
     (\mathit{nreaders} = 0 \land 0 \le \mathit{nwriters} \le 1)$
 \end{itemize}
 
-There are four operations on a reader/writer lock \textit{rw}:
+There are four operations on a reader/writer lock <{rw}>:
 \begin{itemize}
-\item \texttt{read\_acquire}(\textit{rw}): waits until $\mathit{nwriters} = 0$
-and then increments \textit{nreaders};
-\item \texttt{read\_release}(\textit{rw}): decrements $\mathit{nreaders}$;
-\item \texttt{write\_acquire}(\textit{rw}): waits until
-$\mathit{nreaders} = \mathit{nwriters} = 0$
-and then sets \textit{nwriters} to 1;
-\item \texttt{write\_release}(\textit{rw}): sets $\mathit{nwriters}$ to 0.
+\item <{read_acquire(rw)}>: waits until <{nwriters = 0}>
+and then increments <{nreaders}>;
+\item <{read_release(rw)}>: decrements <{nreaders}>;
+\item <{write_acquire(rw)}>: waits until <{nreaders = nwriters = 0}>
+and then sets <{nwriters}> to 1;
+\item <{write_release(rw)}>: sets <{nwriters}> to 0.
 \end{itemize}
 
 \autoref{fig:rwtest} shows how reader/writer locks operations
@@ -3842,8 +3840,7 @@ may be tested.
 Similar to ordinary locks, a thread is restricted in how it is allowed to
 invoke these operations.
 In particular, a thread can only release a reader/writer lock for reading
-if it acquired it for reading and the same for writing.
-Moreover, a thread is only allowed the acquire a reader/writer lock once.
+if it acquired the lock for reading and the same for writing.
 
 \begin{figure}
 \begin{code}
@@ -3917,8 +3914,8 @@ A \emph{bounded buffer} is
 a queue with the usual \texttt{put/get} interface,
 but implemented using a buffer
 of a certain maximum length.
-If the buffer is full, the enqueuer must wait; if the buffer is empty, the
-dequeuer must wait.
+If the buffer is full, an enqueuer must wait; if the buffer is empty,
+a dequeuer must wait.
 \autoref{fig:boundedbuffer} specifies a bounded buffer.
 It is similar to the implementation in \autoref{fig:queues}(b) but adds
 checking for bounds.
@@ -3985,7 +3982,7 @@ keeps track of the number of filled entries in the buffer and a semaphore
 
 To add an item to the bounded buffer (\texttt{produce}(\textit{item})), the producing
 thread first has to wait until there is room in the bounded buffer.
-To this end, it invokes \texttt{P}(\textit{n\_empty}), which waits until
+To this end, it invokes <{P}>(\textit{n\_empty}), which waits until
 $\mathit{n\_empty} > 0$ and atomically decrements \textit{n\_empty} once this
 is the case.  In other words, the producer procures an empty slot.
 Next, it adds the item to the next position in the buffer.
@@ -4116,9 +4113,9 @@ have to wait until all readers have left the critical section or until a writer 
 %
 The state of a reader/writer lock thus consists of the following:
 \begin{itemize}
-\item \textit{nreaders}: the number of readers in the critical section;
-\item \textit{nwriters}: the number of writers in the critical section;
-\item \textit{mutex}: the main gate binary semaphore;
+\item <{nreaders}>: the number of readers in the critical section;
+\item <{nwriters}>: the number of writers in the critical section;
+\item <{mutex}>: the main gate binary semaphore;
 \item \textit{r\_gate}: the waiting gate used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
 \item \textit{w\_gate}: the waiting gate used by writers, similar to the readers' gate.
 \end{itemize}
@@ -4127,9 +4124,9 @@ Each of the
 \texttt{read\_acquire}, \texttt{read\_release},
 \texttt{write\_acquire}, and \texttt{write\_release} methods must maintain
 this state.
-First they have to acquire the \textit{mutex}
+First they have to acquire the <{mutex}>
 (i.e., enter the main gate).
-After acquiring the \textit{mutex},
+After acquiring the <{mutex}>,
 \texttt{read\_acquire} and \texttt{write\_acquire} each must check to see
 if it has to wait.
 If so, it increments the count associated with its respective gate,
@@ -4143,10 +4140,10 @@ If so, it selects one and opens that gate.  In the given code,
 <{release_one()}> first checks the readers' gate and then the
 writers' gate, but the other way around would have worked as well.
 If neither waiting gate qualifies, then <{release_one()}> 
-has to open the main gate (i.e., release \textit{mutex}).
+has to open the main gate (i.e., release <{mutex}>).
 
 Let us examine \texttt{read\_acquire} more carefully.
-First the method acquires the \textit{mutex}.
+First the method acquires the <{mutex}>.
 Then, in the case that the thread
 finds that there is a writer in the critical section
 ($\mathit{nwriters > 0}$), it increments the counter associated with
@@ -4158,24 +4155,24 @@ Now consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
 the writer calls \texttt{write\_release}:
 \begin{enumerate}
-\item After acquiring \textit{mutex}, the writer decrements
-\textit{nwriters}, which must be 1 at this time, and thus becomes 0.
+\item After acquiring <{mutex}>, the writer decrements
+<{nwriters}>, which must be 1 at this time, and thus becomes 0.
 \item It then calls <{release_one()}>.
 <{release_one()}> finds that there are no writers in the critical section
 and there are two readers waiting.  It therefore releases not
-\textit{mutex} but the readers' gate's binary semaphore.
+<{mutex}> but the readers' gate's binary semaphore.
 \item One of the waiting readers can now re-enter the critical section.
 When it does, the reader decrements the gate's counter (from 2 to 1)
-and increments \textit{nreaders} (from~0 to~1).
+and increments <{nreaders}> (from~0 to~1).
 The reader finally calls <{release_one()}>.
 \item Again, <{release_one()}> finds that there are no writers and
 that there are readers waiting, so again it releases the readers' semaphore.
 \item The second reader can now enter the critical section.
-It decrements the gate's count from 1 to 0 and increments \textit{nreaders}
+It decrements the gate's count from 1 to 0 and increments <{nreaders}>
 from~1 to~2.
 \item Finally, the second reader  calls <{release_one()}>.
 This time <{release_one()}> does not find any threads waiting,
-and so it releases \textit{mutex}.
+and so it releases <{mutex}>.
 There are now two threads that are holding the reader/writer lock.
 \end{enumerate}
 
@@ -4187,7 +4184,7 @@ There are now two threads that are holding the reader/writer lock.
 % \item Assume that you have only binary semaphores.
 % Implement counting semaphores using the split binary semaphores technique.
 \item Several of the instantiations of <{release_one()}> in
-\autoref{fig:RWsplitsema} can be replaced by simply releasing \textit{mutex}.
+\autoref{fig:RWsplitsema} can be replaced by simply releasing <{mutex}>.
 Which ones?
 \item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
 \item \label{ex:bbsbs} Implement a solution to the producer/consumer problem
@@ -4433,7 +4430,7 @@ A monitor is a special version of an object-oriented \emph{class}, comprising
 a set of variables and methods that operate on those variables.
 A monitor also has special variables called \emph{condition variables},
 one per waiting condition.
-There are two operations on condition variables: \texttt{wait}
+There are two operations on condition variables: <{wait}>
 \index{wait}%
 and
 \texttt{signal}.
@@ -4447,7 +4444,7 @@ The mutex semaphore is acquired when entering a monitor and released
 upon exit.
 Each condition variable maintains a binary semaphore and a counter for
 the number of threads waiting on the condition.
-\texttt{wait} increments the condition's counter, releases the monitor mutex,
+<{wait}> increments the condition's counter, releases the monitor mutex,
 blocks while trying to acquire the condition's semaphore, and upon resuming
 decrements the counter---in much the same way as we have seen for split binary
 semaphores (SBS).
@@ -4465,7 +4462,7 @@ that <{put}> guarantees that the queue will be non-empty, and
 \texttt{signal} will check if there are any threads waiting for
 this event.  If so, \texttt{signal} will pass control to one such thread
 and, unlike \texttt{release\_one}, re-enter the critical
-section afterwards by acquiring the \textit{mutex}.
+section afterwards by acquiring the <{mutex}>.
 
 Implementing a reader/writer lock with Hoare monitors is not quite so
 straightforward, unfortunately.  When a writer releases the lock, it
@@ -4495,16 +4492,16 @@ As in Hoare monitors, there is a hidden mutex associated with each Mesa monitor,
 and the mutex must be acquired upon entry to a method and released
 upon exit.
 Mesa monitors also have condition variables that a thread can wait on.
-Like in Hoare monitors, the \texttt{wait} operation releases the mutex.
+Like in Hoare monitors, the <{wait}> operation releases the mutex.
 The most important difference is in what \texttt{signal} does.
 To make the distinction more clear, we shall call the corresponding Mesa
-operation \texttt{notify} rather than \texttt{signal}.
+operation <{notify}> rather than \texttt{signal}.
 \index{notify}%
-When a thread <{p}> invokes \texttt{notify}, it does not immediately pass 
+When a thread <{p}> invokes <{notify}>, it does not immediately pass 
 control to a thread that is waiting on the corresponding condition (if there
 is such a thread).  Instead, <{p}> remains in the critical section
 until it leaves the monitor explicitly
-(by calling either <{release}> or \texttt{wait}).
+(by calling either <{release}> or <{wait}>).
 At that point, any thread that
 was notified will have a chance to enter the critical section, but they compete
 with other threads trying to enter the critical section.
@@ -4564,16 +4561,16 @@ with the waiting gate still holds because no other thread can run in between.
 Not so with Mesa monitors: by the time a thread that was notified enters
 through the main gate, other threads may have entered first and falsified
 the condition.  So, in Mesa, threads always have to check the condition
-again after resuming from the \texttt{wait} operation.  This is accomplished
-by wrapping each \texttt{wait} operation in a <{while}> statement that
+again after resuming from the <{wait}> operation.  This is accomplished
+by wrapping each <{wait}> operation in a <{while}> statement that
 loops until the condition of interest becomes valid.
 A Mesa monitor therefore is more closely related to busy waiting
 than to split binary semaphores.
 
 Mesa monitors also allow notifying multiple threads.
-For example, a thread can invoke \texttt{notify} twice---if there are
+For example, a thread can invoke <{notify}> twice---if there are
 two or more threads waiting on the condition variable, two will be resumed.
-Operation \texttt{notifyAll}
+Operation <{notifyAll}>
 \index{notifyAll}%
 (aka \texttt{broadcast)})
 \index{broadcast}%
@@ -4594,8 +4591,8 @@ calls.
 In Java, each object has a hidden lock \emph{and} a hidden condition variable
 associated with it.
 Methods declared with the \texttt{synchronized} keyword automatically
-obtain the lock.  Java objects also support \texttt{wait}, \texttt{notify},
-and \texttt{notifyAll}.
+obtain the lock.  Java objects also support <{wait}>, <{notify}>,
+and <{notifyAll}>.
 In addition, Java supports explicit allocations of locks
 and condition variables.
 In Python, locks and condition variables must be explicitly declared.
@@ -4628,7 +4625,7 @@ Harmony provides support for Mesa monitors
 through the Harmony <{synch}> module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the <{synch}> module.
-\texttt{Condition}() creates a new condition variable.
+<{Condition}>() creates a new condition variable.
 It is represented by a dictionary containing
 a bag of contexts of threads waiting on the condition variable.
 (The \texttt{synchS} library instead uses a list of contexts.)
@@ -4640,46 +4637,46 @@ with two copies of \texttt{.a} and three copies of \texttt{.b}.
 The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy
 functions on bags.
 
-\texttt{wait} adds the context of the thread to the bag.
+<{wait}> adds the context of the thread to the bag.
 This increments the number of threads in the bag with the same context.
-\texttt{wait} then loops until that count is restored to the
-value that it had upon entry to \texttt{wait}.
-\texttt{notify} removes an arbitrary context from
+<{wait}> then loops until that count is restored to the
+value that it had upon entry to <{wait}>.
+<{notify}> removes an arbitrary context from
 the bag, allowing one of the threads with that context to
 resume and re-acquire the lock associated with the monitor.
-\texttt{notifyAll} empties out the entire bag, allowing all threads
+<{notifyAll}> empties out the entire bag, allowing all threads
 in the bag to resume.
 
 To illustrate how Mesa condition variables are used in practice, we demonstrate using an implementation of reader/writer locks.
-\autoref{fig:RWcv} shows the code.  \textit{mutex} is the shared lock
+\autoref{fig:RWcv} shows the code.  <{mutex}> is the shared lock
 that protects the critical region.
-There are two condition variables: readers wait on \textit{r\_cond} and
-writers wait on \textit{w\_cond}.
+There are two condition variables: readers wait on <{r_cond}> and
+writers wait on <{w_cond}>.
 The implementation also keeps track of the number of
 readers and writers in the critical section.
 
-Note that \texttt{wait} is always invoked within a <{while}>
+Note that <{wait}> is always invoked within a <{while}>
 loop that checks for the condition that the thread is waiting for.
 It is \emph{imperative} that there is always a <{while}> loop
-around any invocation of \texttt{wait} containing the negation of
+around any invocation of <{wait}> containing the negation of
 the condition that the thread is waiting for.  Many implementation
 of Mesa condition variables depend on this, and optimized implementations
 of condition variables often allow so-called ``spurious wakeups,''
-where \texttt{wait} may sometimes return even if the conditon
+where <{wait}> may sometimes return even if the conditon
 variable has not been notified.
-As a rule of thumb, one should always be able to replace \texttt{wait}
+As a rule of thumb, one should always be able to replace <{wait}>
 by <{unlock}> followed by <{lock}>.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
-In \texttt{read\_release}, notice that \texttt{notify}(?\textit{w\_cond})
+In \texttt{read\_release}, notice that <{notify}>(?\textit{w\_cond})
 is invoked when there are no readers left, \emph{without} checking
 if there are writers waiting to enter.  This is
-ok, because calling \texttt{notify} is a no-op if no thread is
+ok, because calling <{notify}> is a no-op if no thread is
 waiting.
 
-\texttt{write\_release} executes \texttt{notifyAll}(?\textit{r\_cond})
-as well as \texttt{notify}(?\textit{w\_cond)}.  Because we
+\texttt{write\_release} executes <{notifyAll}>(?\textit{r\_cond})
+as well as <{notify}>(?\textit{w\_cond)}.  Because we
 do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter,
 or, alternatively, up to one waiting writer can enter.  So
@@ -4688,9 +4685,9 @@ are two things to note here.  First, unlike split binary semaphores
 or Hoare monitors, where multiple waiting readers would have to be
 signaled one at a time in a baton-passing fashion (see
 \autoref{fig:RWsplitsema}), with Mesa monitors all readers are
-awakened in one fell swoop using \texttt{notifyAll}.  Second, both
+awakened in one fell swoop using <{notifyAll}>.  Second, both
 readers and writers are awakened---this is ok because both execute
-\texttt{wait} within a <{while}> loop, re-checking the condition
+<{wait}> within a <{while}> loop, re-checking the condition
 that they are waiting for.  So, if both type of threads are waiting,
 either all the readers get to enter next or one of the writers gets
 to enter next.  (If you want to prevent waking up both readers and
@@ -4702,15 +4699,15 @@ in the code.)
 When using Mesa condition variable you have to be careful to invoke
 \textbf{notify} or \textbf{notifyAll} in the right places.
 Much of the complexity of programming with Mesa condition variables
-is in figuring out when to invoke \texttt{notify} and when to invoke
-\texttt{notifyAll}.  As a rule of thumb: be conservative---it is
+is in figuring out when to invoke <{notify}> and when to invoke
+<{notifyAll}>.  As a rule of thumb: be conservative---it is
 better to wake up too many threads than too few.
-In case of doubt, use \texttt{notifyAll}.
+In case of doubt, use <{notifyAll}>.
 Waking up too
 many threads may lead to some inefficiency, but waking up too few
 may cause the application to get stuck.  Harmony can be particularly
 helpful here, as it examines each and every corner case.
-You can try to replace each \texttt{notifyAll} with \texttt{notify} and see
+You can try to replace each <{notifyAll}> with <{notify}> and see
 if every possible execution of the application still terminates.
 
 Andrew Birrell's paper on Programming with Threads gives an excellent
@@ -4948,9 +4945,9 @@ happening.
 \emph{counting semaphore} to restrict the number of diners at any time to
 four.  A counting semaphore is like a binary semaphore, but can be
 acquired a given number of times.  It is supported by the <{synch}>
-module.  The \texttt{P} or ``procure'' operation acquires a counting
+module.  The <{P}> or ``procure'' operation acquires a counting
 semaphore.  That is, it tries to decrement the semaphore, blocking while
-the semaphore has a value of 0.  The \texttt{V} or ``vacate'' operation
+the semaphore has a value of 0.  The <{V}> or ``vacate'' operation
 increments the semaphore.
 
 This avoidance technique can be generalized using something called the
@@ -5056,14 +5053,14 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item <{put}>(<{q}>, \textit{item}) adds \textit{item} to the queue pointed to by <{q}>;
-\item <{get}>(<{q}>) waits for and returns an item on the queue pointed to by <{q}>.
+\item <{put(q}>, \textit{item}) adds \textit{item} to the queue pointed to by <{q}>;
+\item <{get(q}>) waits for and returns an item on the queue pointed to by <{q}>.
 \end{itemize}
 
 For those familiar with counting semaphores: note that a \texttt{Queue}
 behaves much like a zero-initialized counting semaphore.
-<{put}> is much like \texttt{V}, except that it is accompanied by data.
-<{get}> is much like \texttt{P}, except that it also returns data.
+<{put}> is much like <{V}>, except that it is accompanied by data.
+<{get}> is much like <{P}>, except that it also returns data.
 Thus, synchronized queues can be considered a generalization of
 counting semaphores.
 
@@ -5216,7 +5213,7 @@ $2 \cdot n$ stages:
 
 \autoref{fig:genbarrier} shows code that implements barrier synchronization
 using these stages.
-Method~\texttt{enter}() has two \texttt{wait} loops, one for each
+Method~\texttt{enter}() has two <{wait}> loops, one for each
 waiting condition.
 This is sometimes called \emph{double turnstile}.
 Each loop uses a different condition variable.
@@ -5377,8 +5374,8 @@ for long, interrupts should never be disabled for long.  With locks the issue is
 maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
 handlers must run quickly and cannot wait for other events.  It is ok to invoke
-non-blocking synchronization calls such as \texttt{notify}, but calls such as
-<{acquire}> and \texttt{wait} should only be used if it is certain that they will not
+non-blocking synchronization calls such as <{notify}>, but calls such as
+<{acquire}> and <{wait}> should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
 
@@ -7901,33 +7898,33 @@ The <{synch}> module provides the following methods:
 \hline
 \texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
 \hline
-\texttt{BinSem}(<{v}>) & return a binary semaphore initialized to <{v}> \\
+<{BinSem(v}>) & return a binary semaphore initialized to <{v}> \\
 \hline
-\texttt{Lock}() & return a binary semaphore initialized to <{False}> \\
+<{Lock}>() & return a binary semaphore initialized to <{False}> \\
 \hline
 <{acquire}>(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
 \hline
 <{release}>(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
 \hline
-\texttt{Condition}() & return a condition variable \\
+<{Condition}>() & return a condition variable \\
 \hline
-\texttt{wait}(<{c}>, \textit{lk}) & wait on condition variable \texttt{!}<{c}>
+<{wait(c}>, \textit{lk}) & wait on condition variable \texttt{!}<{c}>
 and lock \textit{lk} \\ \hline
-\texttt{notify}(<{c}>) & notify a thread waiting on condition variable \texttt{!}<{c}> \\
+<{notify(c}>) & notify a thread waiting on condition variable \texttt{!}<{c}> \\
 \hline
-\texttt{notifyAll}(<{c}>) & notify all threads waiting on condition variable \texttt{!}<{c}> \\
+<{notifyAll(c}>) & notify all threads waiting on condition variable \texttt{!}<{c}> \\
 \hline
-\texttt{Semaphore}(\textit{cnt}) & return a counting semaphore initialized to \textit{cnt} \\
+<{Semaphore(cnt}>) & return a counting semaphore initialized to <{cnt}> \\
 \hline
-\texttt{P}(\textit{sema}) & procure \texttt{!}\textit{sema}  \\
+<{P(sema}>) & procure \texttt{!}<{sema}>  \\
 \hline
-\texttt{V}(\textit{sema}) & vacate \texttt{!}\textit{sema}  \\
+<{V(sema}>) & vacate \texttt{!}<{sema}>  \\
 \hline
 \texttt{Queue}() & return a synchronized queue object \\
 \hline
-<{get}>(<{q}>) & return next element of <{q}>, blocking if empty \\
+<{get(q}>) & return next element of <{q}>, blocking if empty \\
 \hline
-<{put}>(<{q}>, \textit{item}) & add \textit{item} to <{a}> \\
+<{put(q}>, \textit{item}) & add \textit{item} to <{a}> \\
 \hline
 \end{tabular}
 
