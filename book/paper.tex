@@ -1034,7 +1034,7 @@ PAUSE
 How many times does the assertion fail (if any)?
 \end{enumerate}
 \item \autoref{fig:incmany} is a version of \autoref{fig:incpy} that has each
-incrementer thread increment <{count}> <{N}> times.  Run \autoref{fig:incmany}
+incrementer thread increment <{count N}> times.  Run \autoref{fig:incmany}
 10 times (using Python).
 Report how many times the assertion fails and what the value of <{count}>
 was for each of the failed runs.
@@ -2401,13 +2401,13 @@ available in the underlying hardware.
 In Harmony, any statement can be preceded by the <{atomically}>
 keyword.  It means that statement as a whole is to be executed atomically.
 The <{atomically}> keyword can be used to specify the behavior of
-methods such as \texttt{acquire} and \texttt{release}.  But
+methods such as <{acquire}> and <{release}>.  But
 an actual executable program---such as the one in
 \autoref{fig:cssynch}---should not use the <{atomically}> keyword
 because---on a normal machine---it cannot be directly compiled into
 machine code.
 If we want to make the program executable on hardware,
-we have to show how \texttt{Lock}, \texttt{acquire}, and \texttt{release}
+we have to show how \texttt{Lock}, <{acquire}>, and <{release}>
 are implemented, not just how they are specified.
 \autoref{ch:spinlock} presents such an implementation.
 
@@ -2571,7 +2571,7 @@ critical section at the same time.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{!}<{p}> = <{True}> upon entry of \texttt{test\_and\_set}
-(because of the condition on the \textbf{while} loop that the
+(because of the condition on the <{while}> loop that the
 \texttt{test\_and\_set} method is invoked in).
 There are two cases:
 \begin{enumerate}
@@ -2810,7 +2810,7 @@ It is implemented as follows:
 lock is currently acquired and a list of contexts of threads that want to
 acquire the lock.
 \item
-\texttt{acquire}()
+<{acquire}>()
 \index{acquire}%
 acquires the lock if available and suspends the invoking thread if not.
 In the latter case, the context of the thread is added to the end of the list of contexts.
@@ -2820,7 +2820,7 @@ While the
 thread is running no other threads can run, but when the thread suspends itself
 other threads can run.
 \item
-\texttt{release}()
+<{release}>()
 \index{release}%
 checks to see if any threads are waiting to acquire the lock.
 If so, it uses the <{head}> and <{tail}>
@@ -2852,7 +2852,7 @@ Report how many states were explored by Harmony for each module.
 should return a pair that sums to 100.  Add the necessary synchronization code.
 \item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
 interface for both the <{synch}> and \texttt{synchS} modules.
-This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
+This interface is like <{acquire}>(\textit{b}) but never blocks.  It
 returns <{True}> if the lock was available (and now acquired) or <{False}>
 if the lock was already acquired.
 Hint: you do not have to change the existing code.
@@ -2955,7 +2955,7 @@ a concurrent queue.
 
 We will first implement the queue as a linked list.
 The implementation in \autoref{fig:queueconc}
-uses the \texttt{alloc} module for dynamic allocation
+uses the <{alloc}> module for dynamic allocation
 \index{dynamic allocation}%
 of nodes in the list using \texttt{malloc}() and \texttt{free}().
 \texttt{malloc}(<{v}>) returns a new memory location initialized to <{v}>,
@@ -3491,7 +3491,7 @@ the queue is empty.
 
 \autoref{fig:qtest3} checks a mixture of
 concurrent <{get}> and <{put}> operations.
-It starts <{N}> <{getter}> threads and
+It starts <{N getter}> threads and
 <{N}> \texttt{putter} threads.
 Thread <{main}> waits until all have finished,
 and then checks to make sure that whatever is left
@@ -3506,7 +3506,7 @@ a globally shared variable in the implementation of
 a concurrent data structure.
 The <{get()}> method of the queue implementation
 uses a local variable <{node}>, declared using
-a \textbf{let} statement, but it would be easy to
+a <{let}> statement, but it would be easy to
 mistakenly use a global variable <{node}> instead.
 If there is only one queue, this is not an issue.
 So, it is important to test not just one queue at a
@@ -3590,7 +3590,7 @@ buggy queue implementations.
 \label{fig:queuebroken1}
 \end{figure}
 
-So, you wrote a Harmony program and Harmony reports a bug.
+So, you wrote a Harmony program and Harmony reports a problem.
 Often you may just be able to figure it out by staring at the code and
 going through some easy scenarios, but what if you don't?
 The output of Harmony can be helpful in that case.
@@ -3612,15 +3612,21 @@ in \autoref{fig:qtestseq}.
 \texttt{harmony -m queue=queuebroken code/qtestseq.hny})
 However, when we run
 the new queue code through the test in \autoref{fig:qtestpar}, Harmony
-finds a problem (even without specifying a behavior).  The command line
-for this is \texttt{harmony -m queue=queuebroken code/qtestpar.hny})
+reports a safety violation (even without specifying a behavior).
+The command line to reproduce this is:
+
+\begin{code}
+\begin{verbatim}
+harmony -m queue=queuebroken code/qtestpar.hny
+\end{verbatim}
+\end{code}
 
 Before we go look at the details of what went wrong, we want to make
-sure we generate the simplest scenario.  So, first we want to explore
+sure that we generate the simplest scenario.  So, first we want to explore
 what the smallest <{NOPS}> (number of operations or number of
 threads) that causes the bug to occur.  With some experimentation,
-we find that <{NOPS}> = 2 does not find a problem, but
-<{NOPS}> = 3 does
+we find that <{NOPS = 2}> does not find a problem, but
+<{NOPS = 3}> does
 (\texttt{harmony -m queue=queuebroken -c NOPS=3 code/qtestpar.hny})).
 \autoref{fig:queuebroken1} shows the Harmony output.
 
@@ -3629,29 +3635,24 @@ it may seem intimidating, we have to learn to navigate through it
 step-by-step.
 Let's start with looking at the red text.  Harmony found a safety
 violation (something bad happened during one of the possible executions),
-and in particular \texttt{thread}(2) (thread T2) was trying to dereference
-\texttt{?alloc["pool"][0]["lock"]}
-(aka \texttt{?alloc}.\textit{pool}[0].\texttt{lock}).
+and in particular <{thread}>(2) (thread T2) was trying to dereference
+the address <{?alloc["pool"][0]["lock"]}> (aka <{?alloc.pool[0].lock}>).
 
-The \texttt{alloc} module maintains a shared array \textit{pool} that
+The <{alloc}> module maintains a shared array <{pool}> that
 it uses for dynamic allocation.  Apparently T2 tried to access
-\textit{pool}[0], but it does not exist, meaning that either it was not
+<{pool}>[0], but it does not exist, meaning that either it was not
 yet allocated, or it had been freed since it was allocated.
 When we look at the top half of the figure, we see that in fact thread
-T1 allocated \textit{pool}[0] in turn 2, but T3 freed it in turn 4.
-Looking back down, we see that T1 executed \texttt{thread}(1) and has
-since terminated, while T3 is executing \texttt{thread}(3).
+T1 allocated <{pool}>[0] in turn 2, but T3 freed it in turn 4.
+Looking back down, we see that T1 executed <{thread(1)}> and has
+since terminated, while T3 is executing <{thread(3)}>.
 
 Looking further at the stack traces, we can see that
 T3 was in the process of executing
-\texttt{release}(?<{q}>.\texttt{lock}) within
-<{get}>(?<{q}>).
-% Looking in the top green row, we see that the value of <{q}> is
-% \{ \texttt{.lock}: <{True}>, \texttt{.next}: <{None}>, \texttt{.value}: <{None}> \}.
-T1 is currently executing
-\texttt{acquire}(\texttt{?alloc}.\textit{pool}[0].\texttt{lock})
-within <{put}>(?<{q}>, 2), but 
-\texttt{alloc}.\textit{pool}[0] does not exist.
+<{release(?q.lock)}> within <{get(?q}>).
+T1 is currently executing <{acquire(?alloc.pool[0].lock)}>
+within <{put(?q, 2)}>, but 
+<{alloc.pool}>[0] does not exist.
 The corresponding line of Harmony code is
 \textbf{atomically when not} !\textit{binsema}
 in line 25 of the \texttt{sync} module.
@@ -3660,58 +3661,58 @@ So, how did we get there?  In the top we can see that the order of
 events was the following:
 \begin{enumerate}
 \item[0:] initialization completed, with <{q}> being
-\{ \texttt{.lock}: <{False}>, \texttt{.next}: <{None}>, \texttt{.value}: <{None}> \};
-\item[1:] thread T1 (\texttt{thread}(1)) ran and finished executing
-<{put}>(1) (see the output column for that clue: the thread printed that).
-We can see that <{q}>.<{next}> now points to \texttt{alloc}.\textit{pool}[0],
+<{{ .lock: False, .next: None, .value: None }}>;
+\item[1:] thread T1 (<{thread(1)}>) ran and finished executing
+<{put(1)}> (see the output column for that clue: the thread printed that).
+We can see that <{q.next}> now points to <{alloc.pool[0]}>,
 which the thread must have allocated.  The contents is 
-\{ \texttt{.lock}: <{False}>, \texttt{.next}: <{None}>, \texttt{.value}: 1 \}, as expected;
-\item[2:] thread T2 (\texttt{thread}(1)) started running, calling
-<{put}>(?<{q}>, 2).  We can see it got as far as putting 2 on the queue,
+<{{ .lock: False, .next: None, .value: 1 }}>, as expected;
+\item[2:] thread T2 (<{thread(1)}>) started running, calling
+<{put(?q, 2)}>.  We can see it got as far as putting 2 on the queue,
 but it is not yet done.  It is currently trying to acquire
-\texttt{alloc}.\textit{pool}[0].\texttt{lock};
-\item[3:] thread T3 (\texttt{thread}(1)) started running, calling
-<{get}>($?q$).  We can also see that it freed \textit{pool}[0],
-and is now releasing <{q}>.\texttt{lock};
-\item[4:] thread T2 resumes and tries to access \textit{pool}[0], which
+<{alloc.pool[0].lock}>;
+\item[3:] thread T3 (<{thread(1)}>) started running, calling
+<{get(?q)}>.  We can also see that it freed <{pool[0]}>,
+and is now releasing <{q.lock}>;
+\item[4:] thread T2 resumes and tries to access <{pool[0]}>, which
 no longer exists (because T3 just freed it).
 \end{enumerate}
 
 Clearly there was a race in which T2 was trying to lock
-?\textit{pool}[0].\texttt{lock} (which contained the node with the value 1)
+<{pool[0].lock}> (which contained the node with the value 1)
 while T3 was freeing that very same node, and T2 lost the race.
-More precisely, T2 was executing <{put}>(?<{q}>, 2), when T3
-preempted it with <{get}>(?<{q}>) and removed the node that T2
+More precisely, T2 was executing <{put(?q, 2)}>, when T3
+preempted it with <{get(?q)}> and removed the node that T2
 was trying to access.  But why did the locks not prevent this?
 
 \index{reserve debugging}%
 It is time to start stepping through the code that has been executed
 before this happened.  This is sometimes known as
 \emph{reverse debugging}.  In fact, Harmony allows you to step through
-code forwards and backwards.  In this case, we first want to see what
+an execution forwards and backwards.
+In this case, we first want to see what
 T2 is doing.  You can click on its first (top-left) orange box to
-time-travel to that part in the execution.  Now by hitting
-$<$return$>$ repeatedly, we can quickly skip through the code.
-T2 first calls <{put}>(?<{q}>, 1) and then allocates a new
-node initialized with a lock.  Keep stepping until it executes
-$\mathit{nq} = q$.  Hit $<$return$>$ once more and inspect the
+time-travel to that part in the execution.
+Now by hitting $\langle\mathtt{return}\rangle$ repeatedly,
+we can quickly skip through the code.
+T2 first calls <{put(?q, 1)}> and then allocates a new
+node initialized with a lock.  Keep stepping until it executes <{nq = q}>.
+Hit $\langle\mathtt{return}\rangle$ once more and inspect the
 state of T2 in the lower-right corner.  You can see that variable
-<{nq}> is initialized to~?<{q}>.  T2 then enters into the
-\textbf{while} loop and tries to acquire
-<{nq->lock}>.  This succeeds, and
-next T2 executes \textbf{let} <{n = nq->next}>.
-Now $n =\,?\mathtt{alloc}.\mathit{alloc}[0]$, which is not <{None}>.
+<{nq}> is initialized to~<{?q}>.  T2 then enters into the
+<{while}> loop and tries to acquire <{nq->lock}>.
+This succeeds, and next T2 executes <{let n = nq->next}>.
+Now <{n = ?alloc.pool[0]}>, which is not <{None}>.
 It then releases <{nq->lock}>
 (<{nq}> points to <{q}>).  It then sets <{nq}> to $n$, which
-is still $?\mathtt{alloc}.\mathit{alloc}[0]$.  Finally, it calls
-<{acquire(?nq->lock)}>.
+is still <{alloc.pool[0]}>.  Finally, it calls <{acquire(?nq->lock)}>.
 But before it can complete that operation, T3 runs next.
 
-T3 chooses "get" and then goes on to invoke $\mathtt{get}(?q)$.
+T3 chooses <{"get"}> and then goes on to invoke <{get(?q)}>.
 This first successfully acquires <{q}->lock}>.
 T3 then finds out that <{q->next}> points to <{alloc.pool[0]}>.
 T3 sets <{node}> to <{alloc.pool[0]}> as well and sets
-<{q->{next}> to <{node->next}>.
+<{q->next}> to <{node->next}>.
 T3 sets <{result}> to <{node->value}> (which is 1)
 and then frees <{node}>.  This is where the problem is---T2 is
 about to acquire the lock in that same node.
@@ -3720,7 +3721,7 @@ To fix the code without changing the data structure, we can use
 hand-over-hand locking (\autoref{ch:finegrained}).
 \autoref{fig:queuefix} shows an implementation
 that uses hand-over-hand locking
-both for <{put}>() and for <{get}>().  It passes all tests.
+both for <{put()}> and for <{get()}>.  It passes all tests.
 
 \begin{figure}
 \begin{code}
@@ -4503,7 +4504,7 @@ When a thread <{p}> invokes \texttt{notify}, it does not immediately pass
 control to a thread that is waiting on the corresponding condition (if there
 is such a thread).  Instead, <{p}> remains in the critical section
 until it leaves the monitor explicitly
-(by calling either \texttt{release} or \texttt{wait}).
+(by calling either <{release}> or \texttt{wait}).
 At that point, any thread that
 was notified will have a chance to enter the critical section, but they compete
 with other threads trying to enter the critical section.
@@ -4564,7 +4565,7 @@ Not so with Mesa monitors: by the time a thread that was notified enters
 through the main gate, other threads may have entered first and falsified
 the condition.  So, in Mesa, threads always have to check the condition
 again after resuming from the \texttt{wait} operation.  This is accomplished
-by wrapping each \texttt{wait} operation in a \textbf{while} statement that
+by wrapping each \texttt{wait} operation in a <{while}> statement that
 loops until the condition of interest becomes valid.
 A Mesa monitor therefore is more closely related to busy waiting
 than to split binary semaphores.
@@ -4657,9 +4658,9 @@ writers wait on \textit{w\_cond}.
 The implementation also keeps track of the number of
 readers and writers in the critical section.
 
-Note that \texttt{wait} is always invoked within a \textbf{while}
+Note that \texttt{wait} is always invoked within a <{while}>
 loop that checks for the condition that the thread is waiting for.
-It is \emph{imperative} that there is always a \textbf{while} loop
+It is \emph{imperative} that there is always a <{while}> loop
 around any invocation of \texttt{wait} containing the negation of
 the condition that the thread is waiting for.  Many implementation
 of Mesa condition variables depend on this, and optimized implementations
@@ -4667,7 +4668,7 @@ of condition variables often allow so-called ``spurious wakeups,''
 where \texttt{wait} may sometimes return even if the conditon
 variable has not been notified.
 As a rule of thumb, one should always be able to replace \texttt{wait}
-by \texttt{unlock} followed by \texttt{lock}.
+by <{unlock}> followed by <{lock}>.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
@@ -4689,7 +4690,7 @@ signaled one at a time in a baton-passing fashion (see
 \autoref{fig:RWsplitsema}), with Mesa monitors all readers are
 awakened in one fell swoop using \texttt{notifyAll}.  Second, both
 readers and writers are awakened---this is ok because both execute
-\texttt{wait} within a \textbf{while} loop, re-checking the condition
+\texttt{wait} within a <{while}> loop, re-checking the condition
 that they are waiting for.  So, if both type of threads are waiting,
 either all the readers get to enter next or one of the writers gets
 to enter next.  (If you want to prevent waking up both readers and
@@ -4732,9 +4733,9 @@ variables.
 have the following API:
 \begin{enumerate}
 \item \textit{tl} = \texttt{TryLock}() \# \emph{create a try lock}
-\item \texttt{acquire}(?\textit{tl}) \# \emph{acquire a try lock}
+\item <{acquire}>(?\textit{tl}) \# \emph{acquire a try lock}
 \item \texttt{tryAcquire}(?\textit{tl}) \# \emph{attempt to acquire a try lock}
-\item \texttt{release}(?\textit{tl}) \# \emph{release a try lock}
+\item <{release}>(?\textit{tl}) \# \emph{release a try lock}
 \end{enumerate}
 \noindent
 \texttt{tryAcquire} should not wait.
@@ -4886,12 +4887,12 @@ But which condition variable to wait on?
 The code demonstrates an important technique to use when waiting for
 multiple conditions.
 \index{multiple conditions, waiting on}%
-The condition in the \textbf{while} statement is the negation of the
+The condition in the <{while}> statement is the negation of the
 condition that the diner is waiting and consists of two disjuncts.
-Within the \textbf{while} statement,
+Within the <{while}> statement,
 there is an \textbf{if} statement for each disjunct.
 The code waits for either or both forks if necessary.  After that, it goes
-back to the top of the \textbf{while} loop.
+back to the top of the <{while}> loop.
 
 A common mistake is to write the following code instead:
 
@@ -4975,7 +4976,7 @@ scenario}
 \item The solution in \autoref{fig:dinerscv} can be simplified by, instead
 of having a condition variable per fork, having a condition variable per
 diner.  It uses the same number of condition variables, but you will not
-need to have \textbf{if} statements nested inside the \textbf{while} loop
+need to have \textbf{if} statements nested inside the <{while}> loop
 waiting for the forks.  See if you can figure it out.
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
@@ -5363,8 +5364,8 @@ To increment <{count}>, the interrupt level must be <{True}> and
 One important rule to remember is that a thread should disable interrupts \emph{before}
 attempting to acquire a lock.
 
-Try moving \texttt{lock}() to the beginning of the \texttt{increment} method
-and \texttt{unlock}() to the end of \texttt{increment} and see what happens.
+Try moving <{lock()}> to the beginning of the <{increment}> method
+and <{unlock()}> to the end of <{increment}> and see what happens.
 While Harmony will only report one faulty run, this incorrect code can lead to
 the assertion failing as well as threads getting blocked indefinitely.
 
@@ -5377,7 +5378,7 @@ maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
 handlers must run quickly and cannot wait for other events.  It is ok to invoke
 non-blocking synchronization calls such as \texttt{notify}, but calls such as
-\texttt{acquire} and \texttt{wait} should only be used if it is certain that they will not
+<{acquire}> and \texttt{wait} should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
 
@@ -7228,7 +7229,7 @@ This, however, excludes constants whose names start with the character
 
 \subsection*{\textbf{go}}
 
-The statement \textbf{go} <{c}> <{e}> starts a thread with context <{c}> that
+The statement \textbf{go} <{c e}> starts a thread with context <{c}> that
 has executed a \textbf{stop} expression.  The \textbf{stop} expression
 returns value <{e}>.
 The same context can be started multiple times, allowing threads to
@@ -7270,19 +7271,19 @@ If it ever evaluates to <{False}> Harmony reports and error.  Harmony
 also reports an error if the expression evaluates to a value other
 than <{False}> or <{True}>.
 
-\subsection*{\textbf{let}}
+\subsection*{<{let}>}
 
 You can introduce new bound variables in a method using the
 <{let}> statement.
-The statement \textbf{let} $a = b: S_1; S_2, ...$ evaluates <{b}>, assigns
+The statement <{let}> $a = b: S_1; S_2, ...$ evaluates <{b}>, assigns
 the result to read-only variable <{a}>, and evaluates statements
-$S_1, S_2, ...$.  \textbf{let} supports pattern matching, so you can
+$S_1, S_2, ...$.  <{let}> supports pattern matching, so you can
 write <{let}> $x, (y, z) = b: S_1; S_2, ...$.  This will only work
 if <{b}> is a tuple with two elements, the second of which also being a
 tuple with two elements---if not, Harmony will report an error.
 
-\textbf{let} statements may be nested, such as
-\textbf{let} $a_1 = b_1$ \textbf{let} $a_2 = b_2: S_1; S_2; ...$.
+<{let}> statements may be nested, such as
+<{let}> $a_1 = b_1$ <{let}> $a_2 = b_2: S_1; S_2; ...$.
 Doing so can improve readability by reducing indentation
 compared to writing them as separate statements.
 Compare the following two examples:
@@ -7330,7 +7331,7 @@ by default, as doing so would lead to high overhead.
 
 \subsection*{\textbf{spawn}}
 
-The statement \texttt{spawn} <{m}> <{a}> starts a new thread that executes
+The statement \texttt{spawn} <{m a}> starts a new thread that executes
 method <{m}> with argument <{a}>. <{m}> must be a program counter constant,
 and <{a}> is typically a tuple containing
 zero or more parameters to be passed to the method.
@@ -7342,11 +7343,11 @@ the initial value of the thread-local state.
 
 Harmony normally checks that all threads eventually terminate.
 If a thread may never terminate, you should spawn it with
-\texttt{spawn eternal} <{m}> <{a}> to suppress those checks.
+\texttt{spawn eternal} <{m a}> to suppress those checks.
 
 \subsection*{\textbf{trap}}
 
-The statement \textbf{trap} <{m}> <{a}> specifies that the current thread
+The statement \textbf{trap} <{m a}> specifies that the current thread
 should execute method <{m}> with argument <{a}> and some future, unspecified,
 time.  It models a timer interrupt or any kind of asynchronous event to
 be handled by the thread.  Such interrupts can be disabled by setting
@@ -7429,7 +7430,7 @@ The statement is particularly useful in programming network protocols
 when having to wait for one or more messages and executing a set
 of actions atomically after the desired messages have arrived.
 
-\subsection*{\textbf{while}}
+\subsection*{<{while}>}
 
 The statement <{while c: S1; S2; ...}> executes statements
 <{S1, S2, ...}> repeatedly as long as <{c}> evaluates to <{True}>.
@@ -7559,7 +7560,7 @@ So, $a[b] + c$
 first evaluates <{a}>, then <{b}> (and then applies <{b}> to <{a}>), and then <{c}>.  The one
 exception is the expression <{a}> \textbf{if} <{c}> \textbf{else} <{b}>, where <{c}> is evaluated
 first.  In that expression, only <{a}> or <{b}> is evaluated depending on the value of <{c}>.
-In the expression <{a}> <{and}> <{b}> <{and}> $...$, evaluation is left
+In the expression <{a and b and}> $...$, evaluation is left
 to right but stops once one of the subexpressions evaluates to <{False}>.
 Similarly for \textbf{or}, where evaluation stops once one of the subexpressions
 evaluates to <{True}>.
@@ -7643,7 +7644,7 @@ works much the same as in Python, but in the case of general dictionaries,
 Python iterates over the keys rather than the values;
 \item If you want to iterate over the keys of a dictionary <{d}>, use either
 \begin{itemize}
-\item <{for}> <{k}> \texttt{in} \texttt{keys} <{d}>; or
+\item <{for k}> \texttt{in} \texttt{keys} <{d}>; or
 \item <{for}> $k:\_$ \texttt{in} <{d}>
 \end{itemize}
 \item The \texttt{list} module (\autoref{ap:list}) provides methods \texttt{values}(),
@@ -7731,7 +7732,7 @@ the list, it replaces the list with a new one for each operation;
 $(v, f)$, where <{v}> is the element on top of the stack and $r$ is a stack
 that is the remainder;
 \item[] \autoref{fig:stack4} implements a stack as a linked list with nodes
-allocated using the \texttt{alloc} module.
+allocated using the <{alloc}> module.
 \end{enumerate}
 
 While the last option is the most versatile (it allows cyclic
@@ -7748,9 +7749,9 @@ of the form \texttt{(* comment *)}.
 \chapter{Modules}
 \label{ap:module}
 
-\section{The \texttt{alloc} module}
+\section{The <{alloc}> module}
 
-The \texttt{alloc} module
+The <{alloc}> module
 \index{alloc module}%
 supports thread-safe (but not interrupt-safe) dynamic allocation of
 shared memory locations.  There are just two methods:
@@ -7904,9 +7905,9 @@ The <{synch}> module provides the following methods:
 \hline
 \texttt{Lock}() & return a binary semaphore initialized to <{False}> \\
 \hline
-\texttt{acquire}(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
+<{acquire}>(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
 \hline
-\texttt{release}(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
+<{release}>(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
 \hline
 \texttt{Condition}() & return a condition variable \\
 \hline
@@ -8025,7 +8026,7 @@ DelVar [<{v}>] & delete thread variable <{v}> \\
 \hline
 Dup & duplicate the top element of the stack \\
 \hline
-Frame <{m}> <{a}> & start method <{m}> with arguments <{a}>,
+Frame <{m a}> & start method <{m}> with arguments <{a}>,
 initializing variables.  \\
 \hline
 Go & pop context and value, push value on context's stack, and add to context bag \\
@@ -8034,7 +8035,7 @@ IncVar <{v}> & increment thread variable <{v}> \\
 \hline
 Jump <{p}> & set program counter to <{p}> \\
 \hline
-JumpCond <{e}> <{p}> & pop expression and, if equal to <{e}>, set program counter to <{p}> \\
+JumpCond <{e p}> & pop expression and, if equal to <{e}>, set program counter to <{p}> \\
 \hline
 Load [<{v}>] & push the value of a shared variable onto the stack \\
 \hline
@@ -8164,9 +8165,9 @@ Details:
 \item The frame pointer points to the current \emph{stack frame},
 which consists of the caller's frame pointer and variables, the argument to
 the method, an ``invocation type'' (\texttt{normal}, \texttt{interrupt}, or
-\texttt{thread}), and the return address (in case of \texttt{normal}).
+<{thread}>), and the return address (in case of \texttt{normal}).
 \item A thread terminates when it reaches the \texttt{Return} instruction
-of the top-level method (when the stack frame is of type \texttt{thread})
+of the top-level method (when the stack frame is of type <{thread}>)
 or when it hits an exception.  Exceptions include divide by zero,
 reading a non-existent key in a dictionary, accessing a non-existent
 variable, as well as when an assertion fails;
