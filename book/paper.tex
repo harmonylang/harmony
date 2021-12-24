@@ -4425,9 +4425,9 @@ a Hoare monitor}
 \label{fig:hoaretest}
 \end{figure}
 
-Tony Hoare, who came up with the concept of split binary semaphores, devised
-an abstraction of the concept in a programming language paradigm called
-\emph{monitors}~\cite{Hoare74}.
+Tony Hoare, who came up with the concept of split binary semaphores (SBS),
+devised an abstraction of the concept in a programming language paradigm
+called \emph{monitors}~\cite{Hoare74}.
 \index{monitor}%
 (A similar construct was independently invented by Per Brinch Hansen~\cite{BH73}.)
 A monitor is a special version of an object-oriented \emph{class}, comprising
@@ -4437,22 +4437,21 @@ one per waiting condition.
 There are two operations on condition variables: <{wait}>
 \index{wait}%
 and
-\texttt{signal}.
+<{signal}>.
 \index{signal}%
 
-Harmony does not have language support for Hoare monitors but it
+Harmony does not have language support for monitors, but it
 has a module called \texttt{hoare}.
 \autoref{fig:hoare} shows its implementation.
-A monitor uses a hidden split binary semaphore.
+A Hoare monitor uses a hidden split binary semaphore.
 The mutex semaphore is acquired when entering a monitor and released
 upon exit.
 Each condition variable maintains a binary semaphore and a counter for
 the number of threads waiting on the condition.
-<{wait}> increments the condition's counter, releases the monitor mutex,
+Method <{wait}> increments the condition's counter, releases the monitor mutex,
 blocks while trying to acquire the condition's semaphore, and upon resuming
-decrements the counter---in much the same way as we have seen for split binary
-semaphores (SBS).
-\texttt{signal} checks to see if the condition's count is non-zero, if so
+decrements the counter---in much the same way as we have seen for SBS.
+Method <{signal}> checks to see if the condition's count is non-zero, if so
 releases the condition's semaphore,
 and then blocks by trying to acquire the mutex again.
 
@@ -4463,8 +4462,8 @@ the SBS technique (see \autoref{ex:bbsbs}).
 However, there is no \texttt{release\_one} method.
 Instead, one can conclude
 that <{put}> guarantees that the queue will be non-empty, and
-\texttt{signal} will check if there are any threads waiting for
-this event.  If so, \texttt{signal} will pass control to one such thread
+<{signal}> will check if there are any threads waiting for
+this event.  If so, <{signal}> will pass control to one such thread
 and, unlike \texttt{release\_one}, re-enter the critical
 section afterwards by acquiring the <{mutex}>.
 
@@ -4476,7 +4475,7 @@ solution would be to peek at the counters inside the respective condition
 variables, but that breaks the abstraction.  The alternative is for the
 reader/writer implementation to keep track of that state explicitly,
 which complicates the code.  Also, it requires a deep understanding of
-the SBS method to remember to place a call to \texttt{signal} in the
+the SBS method to remember to place a call to <{signal}> in the
 \texttt{read\_acquire} method that releases additional readers that
 may be waiting to acquire the lock.
 
@@ -4497,17 +4496,18 @@ and the mutex must be acquired upon entry to a method and released
 upon exit.
 Mesa monitors also have condition variables that a thread can wait on.
 Like in Hoare monitors, the <{wait}> operation releases the mutex.
-The most important difference is in what \texttt{signal} does.
+The most important difference is in what <{signal}> does.
 To make the distinction more clear, we shall call the corresponding Mesa
-operation <{notify}> rather than \texttt{signal}.
+operation <{notify}> rather than <{signal}>.
 \index{notify}%
-When a thread <{p}> invokes <{notify}>, it does not immediately pass 
+Unlike <{signal}>, when a thread <{p}> invokes <{notify}>
+it does not immediately pass 
 control to a thread that is waiting on the corresponding condition (if there
-is such a thread).  Instead, <{p}> remains in the critical section
-until it leaves the monitor explicitly
-(by calling either <{release}> or <{wait}>).
-At that point, any thread that
-was notified will have a chance to enter the critical section, but they compete
+is such a thread).  Instead, <{p}> continues executing in the critical section
+until it leaves the monitor (by calling <{release}>) or
+releases the monitor (by calling <{wait}>).
+Either way, any thread that was notified will now have a chance to enter
+the critical section, but they compete
 with other threads trying to enter the critical section.
 
 \begin{comment}
@@ -4540,12 +4540,12 @@ Importantly, when <{q}> enters the bathroom, the condition that <{q}> was
 waiting for is guaranteed to hold.
 
 On the right is a Mesa monitor.  The only way into the bathroom is through
-the hall.  When thread <{p}> invokes \textbf{notify} on a bedroom, it
+the hall.  When thread <{p}> invokes <{notify}> on a bedroom, it
 selects a thread <{q}> in that bedroom, if any.
 Thread <{q}> goes into the hall,
 joining any other threads that are also waiting to
 enter the bathroom.
-If there are no threads in that bedroom, \textbf{notify} is a no-op.
+If there are no threads in that bedroom, <{notify}> is a no-op.
 Importantly, in either case <{p}> remains in the bathroom.
 Finally, when <{p}> leaves the bathroom, one of the
 threads in the hall can enter the bathroom.  But that may not be <{q}>.
@@ -4636,16 +4636,16 @@ a bag of contexts of threads waiting on the condition variable.
 
 In Harmony, a bag is usually represented by a dictionary that maps
 the elements of the bag to their multiplicities.
-For example, the value \texttt{\{ .a: 2, .b: 3 \}} represents a bag
-with two copies of \texttt{.a} and three copies of \texttt{.b}.
-The \texttt{bag} module (\autoref{ap:bag}) contains a variety of handy
+For example, the value <{{ .a: 2, .b: 3 }}> represents a bag
+with two copies of <{.a}> and three copies of <{.b}>.
+The <{bag}> module (\autoref{ap:bag}) contains a variety of handy
 functions on bags.
 
-<{wait}> adds the context of the thread to the bag.
+Method <{wait}> adds the context of the thread to the bag.
 This increments the number of threads in the bag with the same context.
 <{wait}> then loops until that count is restored to the
 value that it had upon entry to <{wait}>.
-<{notify}> removes an arbitrary context from
+Method <{notify}> removes an arbitrary context from
 the bag, allowing one of the threads with that context to
 resume and re-acquire the lock associated with the monitor.
 <{notifyAll}> empties out the entire bag, allowing all threads
@@ -4669,7 +4669,7 @@ of condition variables often allow so-called ``spurious wakeups,''
 where <{wait}> may sometimes return even if the conditon
 variable has not been notified.
 As a rule of thumb, one should always be able to replace <{wait}>
-by <{unlock}> followed by <{lock}>.
+by <{release}> followed by <{acquirire}>.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
@@ -4700,8 +4700,8 @@ in the code.)
 
 % While Hoare moniters embody the split binary semaphore approach,
 % Mesa monitors are much closer to the busy-waiting approach.
-When using Mesa condition variable you have to be careful to invoke
-\textbf{notify} or \textbf{notifyAll} in the right places.
+When using Mesa condition variables, you have to be careful to invoke
+<{notify}> or <{notifyAll}> in the right places.
 Much of the complexity of programming with Mesa condition variables
 is in figuring out when to invoke <{notify}> and when to invoke
 <{notifyAll}>.  As a rule of thumb: be conservative---it is
