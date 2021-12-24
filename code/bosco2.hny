@@ -17,20 +17,24 @@ def receive(round):
         result = {} if bag.size(msgs) < N else { msgs }
 
 def processor(proposal):
-    broadcast(0, proposal)
+    var estimate, decided = proposal, False
+    broadcast(0, estimate)
     for round in {0..NROUNDS-1}:
         atomically when exists msgs in receive(round):
             let choices = bag.combinations(msgs, N - F)
             let quorum = choose(choices)
-            let count = [ bag.count(quorum, i) for i in { 0..1 } ]:
+            let count = [ bag.multiplicity(quorum, i) for i in { 0..1 } ]:
                 assert count[0] != count[1]
-                proposal = 0 if count[0] > count[1] else 1
-                if count[proposal] == (N - F):
-                    assert proposal in proposals           # validity
-                    possibly proposal == 0, proposal == 1  # can decide either value
-                    decisions |= { proposal }
+                estimate = 0 if count[0] > count[1] else 1
+                if count[estimate] == (N - F):
+                    if not decided:
+                        print estimate
+                        decided = True
+                    assert estimate in proposals           # validity
+                    decisions |= { estimate }
                     assert len(decisions) <= 1             # agreement
-                broadcast(round + 1, proposal)
+                broadcast(round + 1, estimate)
 
+print proposals
 for i in {0..N-1}:
     spawn processor(proposals[i])

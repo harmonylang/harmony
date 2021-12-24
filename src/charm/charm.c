@@ -159,7 +159,7 @@ static bool onestep(
     assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
-    int dfa_state = node->dfa_state;
+    step->dfa_state = node->dfa_state;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -199,17 +199,6 @@ static bool onestep(
 
         struct instr_t *instrs = global->code.instrs;
         struct op_info *oi = instrs[pc].oi;
-        if (global->dfa != NULL && instrs[pc].log) {
-            assert(step->ctx->sp > 0);
-            int nstate = dfa_step(global->dfa, dfa_state, step->ctx->stack[step->ctx->sp - 1]);
-            if (nstate < 0) {
-                char *p = value_string(step->ctx->stack[step->ctx->sp - 1]);
-                value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
-                free(p);
-                break;
-            }
-            dfa_state = nstate;
-        }
         if (instrs[pc].choose) {
             assert(step->ctx->sp > 0);
             step->ctx->stack[step->ctx->sp - 1] = choice;
@@ -348,12 +337,6 @@ static bool onestep(
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
-    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
-                    step->ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, dfa_state)) {
-        value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
-    }
-
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
@@ -367,7 +350,7 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
-    next->dfa_state = dfa_state;
+    next->dfa_state = step->dfa_state;
 
     next->ai = step->ai;
     step->ai = NULL;
@@ -381,6 +364,17 @@ static bool onestep(
     }
     else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
         check_invariants(w, next, &w->inv_step);
+    }
+
+    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
+                    step->ctx->failure == 0 &&
+                    !dfa_is_final(global->dfa, step->dfa_state)) {
+        // value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
+        struct failure *f = new_alloc(struct failure);
+        f->type = FAIL_BEHAVIOR;
+        f->choice = choice_copy;
+        f->node = next;
+        minheap_insert(global->failures, f);
     }
 
     minheap_insert(w->results[weight], next);
@@ -444,27 +438,6 @@ void print_vars(FILE *file, uint64_t v){
         free(v);
     }
     fprintf(file, " }");
-}
-
-static char *json_escape(const char *s, unsigned int len){
-	struct strbuf sb;
-
-	strbuf_init(&sb);
-	while (len > 0) {
-		switch (*s) {		// TODO.  More cases
-		case '"':
-			strbuf_append(&sb, "\\\"", 2);
-			break;
-		case '\\':
-			strbuf_append(&sb, "\\\\", 2);
-			break;
-		default:
-			strbuf_append(&sb, s, 1);
-		}
-		s++;
-		len--;
-	}
-	return strbuf_getstr(&sb);
 }
 
 char *json_escape_value(uint64_t v){
@@ -927,6 +900,7 @@ uint64_t twostep(
         free(step.ctx);
         return ctx;
     }
+    step.dfa_state = node->dfa_state;
 
     if (interrupt) {
 		assert(step.ctx->trap_pc != 0);
@@ -1029,6 +1003,38 @@ uint64_t twostep(
                 break;
             }
         }
+    }
+
+    // Remove old context from the bag
+    uint64_t count = value_dict_load(sc->ctxbag, ctx);
+    assert((count & VALUE_MASK) == VALUE_INT);
+    count -= 1 << VALUE_BITS;
+    if (count == VALUE_INT) {
+        sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
+    }
+    else {
+        sc->ctxbag = value_dict_store(&global->values, sc->ctxbag, ctx, count);
+    }
+
+    uint64_t after = value_put_context(&global->values, step.ctx);
+
+    // Add new context to state unless it's terminated or stopped
+    if (step.ctx->stopped) {
+        sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
+    }
+    else if (!step.ctx->terminated) {
+        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
+    }
+
+    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
+                    step.ctx->failure == 0 &&
+                    !dfa_is_final(global->dfa, step.dfa_state)) {
+        // value_ctx_failure(step.ctx, &global->values, "Behavior failure: not a final state");
+        struct failure *f = new_alloc(struct failure);
+        f->type = FAIL_BEHAVIOR;
+        f->choice = choice;
+        f->node = node;
+        minheap_insert(global->failures, f);
     }
 
     // assert(sc->vars == nextvars);
@@ -1421,7 +1427,9 @@ void process_results(
         }
         else {
             next = *p;
-            if (next->dfa_state != node->dfa_state && node->ftype == FAIL_NONE) {
+            // TODO.  The following may just be incorrect
+            if (0 && next->dfa_state != node->dfa_state &&
+                                            node->ftype == FAIL_NONE) {
                 struct failure *f = new_alloc(struct failure);
                 f->type = FAIL_BEHAVIOR;
                 f->choice = node->choice;
@@ -2017,8 +2025,8 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Invariant violation\",\n");
             break;
         case FAIL_BEHAVIOR:
-            printf("Behavior Violation\n");
-            fprintf(out, "  \"issue\": \"Behavior violation\",\n");
+            printf("Behavior Violation: terminal state not final\n");
+            fprintf(out, "  \"issue\": \"Behavior violation: terminal state not final\",\n");
             break;
         case FAIL_TERMINATION:
             printf("Non-terminating state\n");

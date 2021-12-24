@@ -10,7 +10,7 @@ def brief_string(js):
     if type in { "bool", "int" }:
         return v
     if type == "atom":
-        return '"' + v + '"'
+        return json.dumps(v)
     if type == "set":
         if v == []:
             return "{}"
@@ -119,12 +119,12 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self, outputfiles):
+    def run(self, outputfiles, behavior):
         with open(outputfiles["hco"]) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                behavior_parse(top, True, outputfiles);
+                behavior_parse(top, True, outputfiles, behavior);
                 return True
 
             # print("Issue:", top["issue"])

@@ -27,5 +27,6 @@ void json_map_append(struct json_value *map, json_buf_t key, struct json_value *
 char *json_lookup_string(struct dict *map, char *key);
 struct json_value *json_lookup_map(struct dict *map, char *key);
 struct json_value *json_lookup_value(struct dict *map, char *key);
+char *json_escape(const char *s, unsigned int len);
 
 #endif /* JSON_H */

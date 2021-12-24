@@ -10,7 +10,6 @@ import math
 files = {}              # files that have been read already
 modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
-node_uid = 1            # unique node identifier
 
 def load(f, filename):
     if filename in files:

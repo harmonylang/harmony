@@ -14,9 +14,8 @@ def leader(ballot, proposal):
                     _ , proposal = max(accepted)
             send(ballot, 2, .A, proposal)
         atomically when exists quorum in receive(ballot, 2):
-            if bag.count(quorum, (ballot, proposal)) == (NACCEPTORS - F):
+            if bag.multiplicity(quorum, (ballot, proposal)) == (NACCEPTORS - F):
                 assert proposal in proposals    # validity
-                possibly proposal, not proposal # can decide either False or True
                 decisions |= { proposal }
                 assert len(decisions) <= 1      # agreement
             ballot += NLEADERS

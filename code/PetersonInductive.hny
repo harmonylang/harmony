@@ -7,12 +7,11 @@ def thread(self):
     while choose({ False, True }):
         # Enter critical section
         flags[self] = True
-        @gate: turn = 1 - self
+        gate: turn = 1 - self
         await (not flags[1 - self]) or (turn == self)
 
         # Critical section
-        @cs: assert (not flags[1 - self]) or (turn == self)
-                or (countLabel(gate) == 1)
+        cs: assert (not flags[1 - self]) or (turn == self) or (countLabel(gate) == 1)
 
         # Leave critical section
         flags[self] = False

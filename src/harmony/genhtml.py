@@ -172,10 +172,19 @@ m4_include(charm.js)
         print("  </div>", file=f)
         print("</div>", file=f)
 
+    # output a filename of f1 relative to f2
+    def pathdiff(self, f1, f2):
+        return os.path.relpath(f1, start=os.path.dirname(f2))
+
     def html_botright(self, f, outputfiles):
         if self.nthreads == 0:
-            if outputfiles["png"] != None:
-                print("<img src='%s' alt='DFA image'>"%outputfiles["png"], file=f)
+            png = outputfiles["png"]
+            if png != None:
+                if png[0] == "/":
+                    print("      <img src='%s' alt='DFA image'>"%png, file=f)
+                else:
+                    assert outputfiles["htm"] != None
+                    print("      <img src='%s' alt='DFA image'>"%self.pathdiff(png, outputfiles["htm"]), file=f)
             return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)

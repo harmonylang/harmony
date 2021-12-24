@@ -49,10 +49,21 @@ import html
 import queue
 import functools
 import json
-import pydot
-from automata.fa.nfa import NFA
-from automata.fa.dfa import DFA
+import subprocess
 from typing import Any
+
+try:
+    import pydot
+    got_pydot = True
+except Exception as e:
+    got_pydot = False
+
+try:
+    from automata.fa.nfa import NFA
+    from automata.fa.dfa import DFA
+    got_automata = True
+except Exception as e:
+    got_automata = False
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -505,9 +516,9 @@ def jsonValue(v):
     if isinstance(v, bool):
         return '{ "type": "bool", "value": "%s" }'%str(v)
     if isinstance(v, int) or isinstance(v, float):
-        return '{ "type": "int", "value": "%s" }'%str(v)
+        return '{ "type": "int", "value": %s }'%str(v)
     if isinstance(v, str):
-        return '{ "type": "atom", "value": "%s" }'%str(v)
+        return '{ "type": "atom", "value": %s }'%json.dumps(v)
     assert False, v
 
 def strVars(v):
@@ -1023,7 +1034,7 @@ class PushOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.constant
-        return "Push " + strValue(lexeme)
+        return "Push %s"%strValue(lexeme)
 
     def jdump(self):
         (lexeme, file, line, column) = self.constant
@@ -3905,24 +3916,16 @@ class AssertAST(AST):
         code.append(ReadonlyDecOp())
 
 class PrintAST(AST):
-    def __init__(self, token, atomically, cond):
+    def __init__(self, token, atomically, expr):
         AST.__init__(self, token, atomically)
         self.token = token
-        self.cond = cond
+        self.expr = expr
 
     def __repr__(self):
-        return "Print(" + str(self.token) + ", " + str(self.cond) + ")"
+        return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        # Evaluate the expression in a lazy atomic (and read-only) section
-        code.append(ReadonlyIncOp())
-        code.append(AtomicIncOp(True))
-        self.cond.compile(scope, code)
-        code.append(AtomicDecOp())
-        code.append(ReadonlyDecOp())
-
-        # Print outside the atomic section so not to cause an unneeded switch
-        # between contexts
+        self.expr.compile(scope, code)
         code.append(PrintOp(self.token))
 
 class PossiblyAST(AST):
@@ -4424,6 +4427,10 @@ class StatementRule(Rule):
         token = t[0]
         if lexeme == ":":
             return BlockRule(column, atomically).parse(t)
+        if isname(lexeme) and t[1][0] == ":":
+            (lexeme, file, line, nextColumn) = token
+            (stat, t) = BlockRule(column, False).parse(t[1:])
+            return (LabelStatAST(token, [token], stat), t)
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -4565,12 +4572,6 @@ class StatementRule(Rule):
                     message="del: unexpected token: %s" % str(tokens[0]),
                 )
             return (DelAST(token, atomically, ast), t)
-        if lexeme == "@":
-            name = t[1]
-            (lexeme, file, line, nextColumn) = name
-            self.expect("label", isname(lexeme), name, "expected name")
-            (stat, t) = BlockRule(column, False).parse(t[2:])
-            return (LabelStatAST(token, [name], stat), t)
         if lexeme == "def":
             name = t[1]
             (lexeme, file, line, nextColumn) = name
@@ -6379,11 +6380,13 @@ def main():
         "htm": None,
         "hco": None,
         "hvm": None,
-        "png": None
+        "png": None,
+        "gv":  None
     }
     testflag = False
     suppressOutput = False
     charmoptions = []
+    behavior = None
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
@@ -6401,6 +6404,7 @@ def main():
             charmflag = False
         elif o == "-B":
             charmoptions += ["-B" + a]
+            behavior = a
         elif o == "-j":
             printCode = "json"
             charmflag = False
@@ -6424,7 +6428,8 @@ def main():
             suffix = a[(dotloc+1):]
             if suffix not in outputfiles:
                 print("unknown suffix on '%s'"%a, file=sys.stderr)
-            if outputfiles[suffix] != None:
+                sys.exit(1)
+            elif outputfiles[suffix] != None:
                 print("duplicate suffix '.%s'"%suffix, file=sys.stderr)
                 sys.exit(1)
             outputfiles[suffix] = a
@@ -6458,6 +6463,8 @@ def main():
         outputfiles["hco"] = stem + ".hco"
     if outputfiles["htm"] == None:
         outputfiles["htm"] = stem + ".htm"
+    if outputfiles["png"] != None and outputfiles["gv"] == None:
+        outputfiles["gv"] = stem + ".gv"
 
     try:
         code, scope = doCompile(args, consts, mods, interface)
@@ -6490,7 +6497,7 @@ def main():
         # if not testflag:
         #    os.remove(outputfiles["hvm"])
         b = Brief()
-        b.run(outputfiles)
+        b.run(outputfiles, behavior)
         gh = GenHTML()
         gh.run(outputfiles)
         if not suppressOutput:

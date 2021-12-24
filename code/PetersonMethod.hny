@@ -17,7 +17,7 @@ mutex = P_mutex()
 def thread(self):
     while choose({ False, True }):
         P_enter(?mutex, self)
-        @cs: assert countLabel(cs) == 1
+        cs: assert countLabel(cs) == 1
         P_exit(?mutex, self)
 
 spawn thread(0)
