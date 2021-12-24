@@ -1080,7 +1080,8 @@ which in turn is executed by the Harmony virtual machine (HVM).
 \index{HVM}%
 The Harmony compiler places the bytecode for file <{x}>.\texttt{htm} in
 file <{x}>.\texttt{hvm}.
-The model checker, called \emph{Charm}, places its output in a file
+The model checker, called \emph{Charm}, executes the code in
+<{x}>.\texttt{htm} and places its output in a file
 called <{x}>.\texttt{hco} and a stylized version of the same output
 in an HTML file called <{x}>.\texttt{htm}.
 
@@ -1100,13 +1101,13 @@ sets of Harmony values, and dictionaries
 that map Harmony values to other Harmony values.
 Strings that start with a letter or an underscore and only contain
 letters, digits, and underscores can be written without quotes by
-preceding it with a dot.  So \texttt{.example} is the same string
-as \texttt{"example"}.
+preceding it with a dot.  So <{.example}> is the same string
+as <{"example"}>.
 
 Harmony makes extensive use of dictionaries.
 A dictionary maps keys to values.
-Unlike Python, any Harmony value can be a key, including another
-dictionary.
+Unlike Python, which requires that keys must be hashable,
+any Harmony value can be a key, including another dictionary.
 Dictionaries are written as
 $\{ k_0: v_0, ~ k_1: v_1, ~ ... \}$.
 If <{d}> is a dictionary, and <{k}> is a key, then the
@@ -1157,7 +1158,7 @@ dictionary, then <{keys d}> (or equivalently <{keys(d)}>)
 returns the set of keys and <{len d}> returns the size of
 this set.
 
-\autoref{ap:values} provides details on all the values that
+\autoref{ap:values} provides details on all the types of values that
 Harmony currently supports.
 
 \section*{Harmony Bytecode}
@@ -1168,6 +1169,9 @@ the HVM is not an ordinary virtual machine, but its architecture
 is nonetheless representative of conventional computers and
 virtual machines such as the Java Virtual Machine.
 
+\index{register}%
+\glsadd{context}%
+\index{thread-local}%
 Instead of bits and bytes, a HVM manipulates Harmony values.
 A HVM has the following components:
 \begin{itemize}
@@ -1180,27 +1184,24 @@ can spawn an unbounded number of other threads and threads may terminate.
 Each thread has a program counter that indexes into the code,
 \index{program counter}%
 a stack of Harmony values,
-and two private \emph{registers} that each contain a Harmony value.
-\index{register}%
+and a private \emph{register} that contains a
+Harmony value.\footnote{Currently, another thread register
+contains thread-local data.  We do not use it (yet) in this book.}
 \end{itemize}
 
-\glsadd{context}%
-\index{thread-local}%
-One of the registers of a thread contains the local variables of the
+The register of a thread contains the local variables of the
 method that the thread is currently executing.  It is saved and restored by
-method invocations.  The other register is called \textbf{this} and is
-used for so-called \emph{thread-local state}, which contains variables that
-can be used by all methods.
+method invocations.
 The state of a thread is called a \emph{context} (aka \emph{continuation}):
 \index{context}%
 \index{continuation}%
 it contains the values of its program counter, stack, and registers.
-The state of a HVM
+The HVM state
 consists of the value of its memory and the multiset (or \emph{bag})
 \index{bag}%
 \index{multiset}%
 of contexts.  It is a multiset of contexts because two threads can
-have the same context.
+have the same context at the same time.
 
 \begin{figure}
 \begin{code}
@@ -1266,10 +1267,9 @@ by a sequence of Harmony values, like a path name in the file system
 hierarchy.  We call such a sequence an \emph{address}.
 \index{address}%
 For example, in \autoref{fig:inc} the memory is a dictionary with two
-entries: \texttt{.count} and \texttt{.done}.  And the value of entry
-\texttt{.done} is a dictionary with keys 0 and 1.
-So, for example, the address of \texttt{done[0]} is the sequence
-[ \texttt{.done}, 0 ].
+entries: <{.count}> and <{done}>.  And the value of entry
+<{done}> is a dictionary with keys 0 and 1.
+So, for example, the address of <{done[0]}> is the sequence <{[done, 0]}>.
 An address is itself a Harmony value.
 
 \glsadd{stack machine}%
