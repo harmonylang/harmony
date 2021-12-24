@@ -3084,18 +3084,18 @@ set object}
 
 \begin{figure}
 \begin{code}
-<{:input:../code/linkedlist.hny}>
+<{:input:../code/intsettest.hny}>
 \end{code}
-\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking}
-\label{fig:linkedlist}
+\caption{\harmonylink{code/intsettest.hny} Test code for set objects}
+\label{fig:intsettest}
 \end{figure}
 
 \begin{figure}
 \begin{code}
-<{:input:../code/intsettest.hny}>
+<{:input:../code/linkedlist.hny}>
 \end{code}
-\caption{\harmonylink{code/intsettest.hny} Test code for \autoref{fig:linkedlist}}
-\label{fig:intsettest}
+\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking}
+\label{fig:linkedlist}
 \end{figure}
 
 \index{big lock}%
@@ -3112,33 +3112,38 @@ endowed with its own lock instead.
 
 \autoref{fig:setobj} gives the specification of a concurrent set object.
 \texttt{SetObject()} returns a pointer to a variable that
-contains an empty set, rather than returning an empty set.
-Values can be added using \texttt{insert()} or deleted using \texttt{remove()}.
-Method \texttt{contains()} checks if a particular value is in the list.
+contains an empty set, rather than returning an empty set \emph{value}.
+As such, it is more like an object in an object-oriented language than
+like a value in its own right.
+Values can be added to the set object using
+<{insert()}> or deleted using <{remove()}>.
+Method <{contains()}> checks if a particular value is in the list.
+\autoref{fig:intsettest} contains a simple (although not very thorough)
+test program to demonstrate the use of set objects.
 
-\autoref{fig:linkedlist} implements a concurrent set of integers using
+\autoref{fig:linkedlist} implements a concurrent set object using
 an ordered linked list of integers without duplicates.
-(\autoref{fig:intsettest} contains test code.)
-The list has two dummy ``book-end'' nodes with values \texttt{-inf} and
-\texttt{inf} (similar to the Python \texttt{math.inf} constant).
+The list has two dummy ``book-end'' nodes with values <{-inf}> and
+<{inf}> (similar to the Python \texttt{math.inf} constant).
 An invariant of the algorithm is that at any point in time the
-list is ``valid,'' starting with a \texttt{-inf} node and ending
-with a \texttt{inf} node.
+list is ``valid,'' starting with a <{-inf}> node and ending
+with an <{inf}> node.
 
 \index{hand-over-hand locking}%
-Each node has a lock, a value, and \textit{next}, a pointer to the next node
-(which is <{None}> for the final \texttt{inf} node).
-The \texttt{\_find(\textit{lst}, <{v}>)} helper method first
-finds and locks two consecutive nodes <{before}> and \textit{after}
+Each node has a lock, a value, and <{next}>, a pointer to the next node
+(which is <{None}> for the <{inf}> node).
+The <{_find(lst, v)}> helper method first
+finds and locks two consecutive nodes <{before}> and <{after}>
 such that <{before->data.value < v <= after->data.value}>.
 It does so by performing something called \emph{hand-over-hand locking}.
-It first locks the first node, which is the \texttt{-inf} node.
+It first locks the first node, which is the <{-inf}> node.
 Then, iteratively, it obtains a lock on the next node and release the
-lock on the last one, and so on, similar to climbing a tree
+lock on the last one, and so on, similar to climbing a rope
 hand-over-hand.
-Using \texttt{\_find} the <{insert}>, \texttt{remove}, and \texttt{contains}
-methods are fairly straightforward.
+Using \texttt{\_find}, the <{insert}>, \texttt{remove}, and \texttt{contains}
+methods are fairly straightforward to implement.
 
+\begin{comment}
 \glsadd{linearizable}%
 Like the queue in \autoref{fig:queues}(b), the implementation of the list is
 \emph{linearizable}~\cite{HW90},
@@ -3159,14 +3164,16 @@ execution depends on whether the value is found or not.
 If found, it coincides with retrieving the pointer to the node
 that has the value.
 If not found, it coincides with retrieving the pointer to the
-\texttt{inf} node.
+<{inf}> node.
+\end{comment}
 
 \section*{Exercises}
 \begin{problems}
 \item Add methods to the data structure in \autoref{fig:linkedlist}
 that report the size of the list, the minimum value in the
 list, the maximum value in the list, and the sum of the values in the list.
-Are they linearizable?  If so, what are their linearization points?
+(All these should ignore the two end nodes.)
+% Are they linearizable?  If so, what are their linearization points?
 \item Create a thread-safe sorted binary tree.  Implement a module \texttt{bintree}
 with methods
 $\mathtt{BinTree}()$ to create a new binary tree, $\mathtt{insert}(t, v)$ that inserts <{v}> into
