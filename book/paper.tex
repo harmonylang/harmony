@@ -4817,8 +4817,9 @@ two forks to eat.  To start eating, a philosopher first picks up the fork on
 the left, then the fork on the right.  Each philosopher likes to take breaks
 from eating to think for a while.  To do so, the philosopher puts down both
 forks.  Each philosopher repeats this procedure.  Dijkstra had them repeating
-this for ever, but for the purposes of this book, philosophers can leave
-the table when they are not using any forks.
+this for ever, but for the purposes of this book,
+philosophers can---if they wish---leave the table when they are
+not using any forks.
 
 \autoref{fig:diners} implements the dining philosophers in Harmony, using a
 thread for each philosopher and a lock for each fork.  If you
@@ -4924,7 +4925,14 @@ before the higher numbered fork, like so:
 
 \vspace{1em}
 \begin{code}
-<{:input:../code/dinersfix.hny}>
+<{:inline:}>
+if left < right:
+    synch.acquire(?forks[left])
+    synch.acquire(?forks[right])
+else:
+    synch.acquire(?forks[right])
+    synch.acquire(?forks[left])
+<{:end:}>
 \end{code}
 \vspace{1em}
 
@@ -4932,7 +4940,10 @@ or like so:
 
 \vspace{1em}
 \begin{code}
-<{:input:../code/dinersfix2.hny}>
+<{:inline:}>
+synch.acquire(?forks[min(left, right)])
+synch.acquire(?forks[max(left, right)])
+<{:end:}>
 \end{code}
 \vspace{1em}
 
