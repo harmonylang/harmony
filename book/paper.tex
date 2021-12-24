@@ -2371,7 +2371,7 @@ critical section}
 \label{fig:incfixed}
 \end{figure}
 
-So far we have used Harmony to \emph{implement} various algorithms.
+So far, we have used Harmony to \emph{implement} various algorithms.
 But Harmony can also be used to \emph{specify} what an algorithm is
 supposed to do.
 For example, \autoref{fig:lockspec} specifies the intended behavior
@@ -2406,10 +2406,12 @@ In Harmony, any statement can be preceded by the <{atomically}>
 keyword.  It means that statement as a whole is to be executed atomically.
 The <{atomically}> keyword can be used to specify the behavior of
 methods such as \texttt{acquire} and \texttt{release}.  But
-an actual executable program such as in \autoref{fig:cssynch} should not
-use the <{atomically}> keyword.
-In fact, if we want to make the entire program executable on hardware,
-we have to also show how \texttt{Lock}, \texttt{acquire}, and \texttt{release}
+an actual executable program---such as the one in
+\autoref{fig:cssynch}---should not use the <{atomically}> keyword
+because---on a normal machine---it cannot be directly compiled into
+machine code.
+If we want to make the program executable on hardware,
+we have to show how \texttt{Lock}, \texttt{acquire}, and \texttt{release}
 are implemented, not just how they are specified.
 \autoref{ch:spinlock} presents such an implementation.
 
@@ -2440,7 +2442,7 @@ Atomic statements
 are not intended to replace locks or other synchonization primitives.
 When implementing synchronization solutions you should not directly use
 atomic statements but use the synchronization primitives that are available
-to you.  But if you want to \emph{specify} a new synchronization primitive,
+to you.  But if you want to \emph{specify} a synchronization primitive,
 then use \textbf{atomically} by all means.
 You can also use atomic statements in your test code.
 In fact, as mentioned before, \textbf{assert} statements are included to
