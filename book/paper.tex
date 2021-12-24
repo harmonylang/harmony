@@ -2492,14 +2492,15 @@ operations.
 (out-of-order execution) for improved performance.  On a sequential processor,
 the re-ordering is not a problem as the processor only re-orders
 operations on independent memory locations.  However, as \autoref{ex:reorder}
-showed, Peterson's algorithm breaks down if operations are re-ordered.
+showed, Peterson's algorithm breaks down if such seemingly independent
+operations are re-ordered.
 Some memory caches can also cause non-atomic behavior of memory when shared
 among multiple cores.
 \item Even compilers, in their code generation, may make optimizations
 that can reorder operations, or even eliminate operations, on variables.
 For example, a compiler may decide that it is unnecessary to read the same
 variable more than once, because how could it possibly change if there
-are no store operations?
+are no store operations in between?
 \end{itemize}
 
 Peterson's algorithm relies on a \emph{sequential consistent memory model}
@@ -2516,7 +2517,7 @@ The unfortunately named \texttt{volatile} keyword in Java has
 a similar function as Harmony's \texttt{sequential} keyword.
 Like many constructions in Java, its \texttt{volatile} keyword
 was borrowed from C and C++.
-However, in C and C++ they do \emph{not} provide sequential
+However, in C and C++, they do \emph{not} provide sequential
 consistency, and one cannot implement Peterson's algorithm in
 C or C++ directly.
 
