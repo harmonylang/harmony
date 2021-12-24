@@ -11,8 +11,7 @@ def thread(self):
         await (not flags[1 - self]) or (turn == self)
 
         # Critical section
-        cs: assert (not flags[1 - self]) or (turn == self)
-                or (countLabel(gate) == 1)
+        cs: assert (not flags[1 - self]) or (turn == self) or (countLabel(gate) == 1)
 
         # Leave critical section
         flags[self] = False

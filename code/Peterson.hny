@@ -10,7 +10,7 @@ def thread(self):
         turn = 1 - self
         await (not flags[1 - self]) or (turn == self)
 
-        # critical section is here
+        # Critical section is here
         cs: assert countLabel(cs) == 1
 
         # Leave critical section
