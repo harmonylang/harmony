@@ -903,10 +903,6 @@ It then waits until the other thread is done.
 (<{await c}> is shorthand for <{while not c: pass}>.)
 After that, method <{incrementer}>
 verifies that the value of <{count}> equals~2.
-% Like Python, Harmony supports \textbf{assert} statements with two arguments:
-% the first is a Boolean condition, and the second is a value that is
-% reported if the condition fails, in this case
-% the value of <{count}>.
 
 Note that although the threads are \emph{spawned} one at a time,
 they will execute concurrently.  It is, for example, quite possible
@@ -2546,8 +2542,8 @@ many CPUs have an atomic ``test-and-set'' (TAS)
 \index{TAS}%
 operation.
 Method \texttt{test\_and\_set} in \autoref{fig:tas} shows its specification.
-Here <{s}> points to a shared Boolean variable and <{p}>
-to a private Boolean variable, belonging to some thread.
+Here <{s}> points to a shared boolean variable and <{p}>
+to a private boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
 private variable (the ``test'')
 and then sets the shared variable to <{True}> (``set'').
@@ -2558,20 +2554,20 @@ The approach is called \emph{spinlock},
 \index{spinlock}%
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
-The program uses $\mathtt{N}+1$ variables.
+The program uses $\mathtt{N}+1$ boolean variables.
 Variable <{shared}> is initialized to <{False}> while
 \textit{private}[<{i}>] for each thread <{i}> is initialized to <{True}>.
 
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is <{False}>.
-Another invariant, $\mathcal{I}_2(i)$, is that if thread <{i}> is executing between
-lines $18 \cdots 22$ (which includes the critical section),
+Another invariant, $\mathcal{I}_2(i)$, is that if thread <{i}> is
+in the critical section,
 then \textit{private}[<{i}>] = <{False}>.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
-For those who read through \autoref{ch:peterson}
-$\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
+% For those who read through \autoref{ch:peterson}
+% $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
 \texttt{!}<{p}> = <{True}> upon entry of \texttt{test\_and\_set}
@@ -6608,7 +6604,7 @@ Generic operators on Harmony values include:
 
 \subsection*{Boolean}
 
-The Boolean type has only two possible values: <{False}> and
+The boolean type has only two possible values: <{False}> and
 <{True}>.  Unlike in Python, in Harmony booleans are distinct
 from integers, and in particular $\mathbf{False} < 0$.  In statements
 and expressions where booleans are expected, it is not possible to
