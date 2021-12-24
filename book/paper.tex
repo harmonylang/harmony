@@ -1098,7 +1098,7 @@ sets of Harmony values, and dictionaries
 that map Harmony values to other Harmony values.
 Strings that start with a letter or an underscore and only contain
 letters, digits, and underscores can be written without quotes by
-preceding it with a dot.  So <{.example}> is the same string
+preceding it with a dot.  So, <{.example}> is the same string
 as <{"example"}>.
 
 Harmony makes extensive use of dictionaries.
@@ -3213,6 +3213,8 @@ for an implementation such as the one in \autoref{fig:queueconc}
 and does little to increase our confidence in its correctness.
 To wit, if <{get()}> always returned 1, the program
 would find no problems.
+Similarly, \autoref{fig:intsettest} is not a good test program
+for something as complicated as \autoref{fig:linkedlist}.
 In this chapter, we will look at approaches to testing
 concurrent code.
 
@@ -3229,11 +3231,11 @@ the critical section and decremented after leaving it.
 Mutual exclusion holds if the counter never goes over 1.
 \end{comment}
 
-As with critical sections, when testing a concurrent data structure
-we need a specification.
-\autoref{fig:queues}(a) shows a sequential specification of a
+As with critical sections---when testing a concurrent data structure---we
+need a specification.
+For example, \autoref{fig:queues}(a) shows a sequential specification of a
 queue in Harmony.
-First we can check if the queue implementation
+First, we can check if the queue implementation
 in \autoref{fig:queueconc} meets the sequential
 queue specification in \autoref{fig:queues}(a).
 To check if the queue implementation meets the specification,
@@ -3244,12 +3246,12 @@ We say that the implementation and the specification
 have the same \emph{behavior}.
 %
 \autoref{fig:qtestseq} presents a test program that does
-exactly this, for sequences of up to \texttt{NOPS}
+exactly this, for sequences of up to <{NOPS}>
 queue operations.
 It maintains two queues:
 \begin{itemize}
-\item[] \textit{implq}: the queue of the implementation;
-\item[] \textit{specq}: the queue of the specification
+\item[] \textit{specq}: the queue of the specification;
+\item[] \textit{implq}: the queue of the implementation.
 \end{itemize}
 For each operation, the code first chooses whether to
 perform a <{get}> or <{put}> operation.
@@ -3265,7 +3267,7 @@ Just because a test program works with a particular implementation
 does not mean the implementation is correct---it may be that the implementation
 is incorrect but the test program does not have enough coverage to find any
 bugs in the implementation.
-So run a test program like this with a variety of queue implementations that
+So, run a test program like this with a variety of queue implementations that
 have known bugs in them and make sure that the test program finds them.
 \begin{comment}
 In the case of testing mutual exclusion with atomic counters, you will want
@@ -3274,6 +3276,9 @@ to see if you can use this method to find the problems in \autoref{fig:naivelock
 and \autoref{fig:naiveturn}.
 \end{comment}
 Conversely, a test program may be broken in that it finds bugs that do not exist.
+In my experience, it is often harder to implement the test program than
+the algorithm that the test program tests.
+
 \begin{comment}
 So, in this case,
 you also want to check if an atomic counter solution works with known
@@ -3285,7 +3290,7 @@ As with any other test program,
 \autoref{fig:qtestseq} may not trigger extant bugs, but
 it nonetheless inspires reasonable confidence that the
 queue implementation is correct, at least sequentially.
-The higher \texttt{NOPS}, the higher the confidence.
+The higher <{NOPS}>, the higher the confidence.
 It is possible to write similar programs in other languages
 such as Python, but the <{choose}> expression in Harmony
 makes it relatively easy to explore all corner cases.
@@ -3305,7 +3310,8 @@ is empty, but it is not designed to find concurrency bugs
 in general.  If you remove all \texttt{acquire()} and
 \texttt{release()} calls from \autoref{fig:queueconc},
 the test program will not (and should not)
-find any errors.
+find any errors, but it would be an incorrect implementation
+of a concurrent queue.
 
 \begin{figure}
 \begin{center}
@@ -3337,7 +3343,8 @@ Testing the implementation of a concurrent queue specification is
 trickier than testing the implementation of a sequential one because
 there are many more scenarios to check.
 
-We would like a way that systematically compares behaviors of the
+We would like a way that---similar to the sequential test---systematically
+compares behaviors of the
 concurrent queue implementation with behaviors of the concurrent
 queue specification.  But we cannot do this by composing the specification
 and the implementation and simply run the same test operations on both as we
@@ -3348,30 +3355,50 @@ Instead, we will create a test program that tries various concurrent
 combinations of queue operations, and run it twice: once against the
 specification of the concurrent queue and once against the
 implementation.  We will then check if the behaviors obtained from
-running the implementation is a subset of the behaviors obtained
+running the implementation are also behaviors obtained
 from the specification.
 
 We will start with a test program that tries concurrent combinations
 of various queue operations.
 \autoref{fig:qtestpar} shows the test program.  It starts
-\texttt{NOPS} threads and each choose to do either a <{put}>
+<{NOPS}> threads, and each choose to do either a <{put}>
 or a <{get}> operation.  In case of a <{put}> operation,
-the thread enqueues its own name.  In order to output the behaviors,
+the thread enqueues its own name (which is provided as an argument
+to the thread).  In order to capture the behaviors,
 each thread prints what operation it is about to perform,
 and afterwards it prints that the operation has
 completed (including the return value if any).
-The figure shows the deterministic finite automaton when the test
+This is probably much like you would do if you were trying to find a
+bug in a program.
+
+\autoref{fig:qtestpar} also shows the deterministic finite automaton
+that describes the possible outputs when the test
 program is run against the specification in the case
-$\texttt{NOPS} = 2$---for $\texttt{NOPS} = 4$ it would be much
+$<{NOPS}> = 2$---for $<{NOPS}> = 4$ it would be much
 too large to print here.  Since there are no cycles in the DFA, you
 can follow some paths through this DFA and see that they are valid
 interleavings of the threads.
+You can obtain this output yourself by running
+
+\begin{code}
+\begin{verbatim}
+$ harmony -c NOPS=2 -o spec.png code/qtestpar.hny
+\end{verbatim}
+\end{code}
 
 If you run the same test program against the implementation
-of \autoref{fig:queueconc}, you will get the same output.  You can
-try this for various $\texttt{NOPS}$, although it gets increasingly
+of \autoref{fig:queueconc}, you will get the same output:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -c NOPS=2 -o impl.png -m queue=queueconc code/qtestpar.hny
+\end{verbatim}
+\end{code}
+
+You can
+try this for various $<{NOPS}>$, although it gets increasingly
 harder to check by hand that the generated DFAs are the same as
-\texttt{NOPS} increases.
+<{NOPS}> increases.
 Now run the test program against \autoref{fig:queueseq}, which is
 clearly an incorrect implementation of the concurrent queue specification
 because it contains no synchronization code.
@@ -3381,9 +3408,9 @@ the same set of behaviors.
 This is because the test program only outputs the behaviors---it does
 not check if they are correct.
 
-Harmony does have a way to check the behavior of one program against
-the behavior of another.  In particular, we want to check if the
-behaviors of the implementations we have match the behavior of the
+Harmony does have a way to check the behaviors of one program against
+the behaviors of another.  In particular, we want to check if the
+behaviors of the implementations we have match behaviors of the
 specification.  The following shows, for example, how to check the
 \texttt{queueconc.hny} implementation on the command line:
 
@@ -3524,19 +3551,18 @@ sequential test followed by several concurrent tests}
 
 \section*{Exercises}
 \begin{problems}
-\item Write a sequential specification for \autoref{fig:linkedlist}.
-(Hint: it implements a set of integers.)
-Write a Harmony program that checks if \autoref{fig:linkedlist} meets
-the sequential specification.
-\item Also create a concurrent specification and a concurrent test program.
-Check if the behaviors of \autoref{fig:linkedlist} match those of the
-specification.
+\item Write a Harmony program that checks if
+\autoref{fig:linkedlist} satisfies the specification
+of \autoref{fig:setobj} \emph{sequentially}.
+\item Write a Harmony program that checks if
+\autoref{fig:linkedlist} satisfies the specification
+of \autoref{fig:setobj} \emph{concurrently}.
 % \item Extend \autoref{fig:linkedlist} with linearization points and
 % check if the implementation is linearizable.
 % \item Check if the extended queue implementation of \autoref{ex:qremove}
 % is linearizable.
 \item Rewrite \autoref{fig:qtestseq} so it only imports \texttt{queue}
-and runs \texttt{NOPS} nondeterministically chosen operations against
+and runs <{NOPS}> nondeterministically chosen operations against
 it (similar in style to \autoref{fig:qtestpar} but without threads).
 Then use behaviors to check that \autoref{fig:queueconc} and
 \autoref{fig:queueseq} are correct sequential implementations of
@@ -3564,7 +3590,7 @@ buggy queue implementations.
 \label{fig:queuebroken1}
 \end{figure}
 
-So you wrote a Harmony program and Harmony reports a bug.
+So, you wrote a Harmony program and Harmony reports a bug.
 Often you may just be able to figure it out by staring at the code and
 going through some easy scenarios, but what if you don't?
 The output of Harmony can be helpful in that case.
@@ -3590,11 +3616,11 @@ finds a problem (even without specifying a behavior).  The command line
 for this is \texttt{harmony -m queue=queuebroken code/qtestpar.hny})
 
 Before we go look at the details of what went wrong, we want to make
-sure we generate the simplest scenario.  So first we want to explore
-what the smallest \texttt{NOPS} (number of operations or number of
+sure we generate the simplest scenario.  So, first we want to explore
+what the smallest <{NOPS}> (number of operations or number of
 threads) that causes the bug to occur.  With some experimentation,
-we find that \texttt{NOPS} = 2 does not find a problem, but
-\texttt{NOPS} = 3 does
+we find that <{NOPS}> = 2 does not find a problem, but
+<{NOPS}> = 3 does
 (\texttt{harmony -m queue=queuebroken -c NOPS=3 code/qtestpar.hny})).
 \autoref{fig:queuebroken1} shows the Harmony output.
 
@@ -3630,7 +3656,7 @@ The corresponding line of Harmony code is
 \textbf{atomically when not} !\textit{binsema}
 in line 25 of the \texttt{sync} module.
 
-So how did we get there?  In the top we can see that the order of
+So, how did we get there?  In the top we can see that the order of
 events was the following:
 \begin{enumerate}
 \item[0:] initialization completed, with <{q}> being
@@ -5971,7 +5997,7 @@ The immortality of one of the replicas is only used for modeling the system.
 
 Each replica maintains its history and a set of its predecessors.
 It then loops until either it fails or it has applied all
-\texttt{NOPS} operations to its history.
+<{NOPS}> operations to its history.
 $\mathbf{choose}(\{ \mathit{immortal}, <{True}> \})$ can only
 evaluate to <{False}> in case $\textit{immortal}$ is false; otherwise
 it will always evaluate to <{True}>.
@@ -6002,7 +6028,7 @@ to its history in the order received.
 We are not modeling clients of the service.
 Instead, in the model, the head adds its identifier \textit{self} to the
 history until the
-history has \texttt{NOPS} operations on it or until the head crashes,
+history has <{NOPS}> operations on it or until the head crashes,
 whichever comes first.  The head also broadcasts each update, which
 are intended for its successor.  Because of failures, it may be that
 at different times a replica has different successors, hence the
@@ -6019,7 +6045,7 @@ is a tuple, then it must be the case that it contains the next operation
 to add to its history.  The replica adds the operation to its history
 and broadcasts the update, again intended for its successor.
 
-When the replica successfully adds all \texttt{NOPS} updates to its
+When the replica successfully adds all <{NOPS}> updates to its
 history without crashing, the code makes sure that any other such replica
 ends in the same state.  Variable \textit{final} is used to check the
 different histories against one another.
@@ -6111,7 +6137,7 @@ In case of a write operation, the client then computes a new unique
 timestamp that is strictly higher than the highest it has seen.
 To make this work, timestamps are actually lexicographically ordered
 tuples consisting of an integer and the unique identifier of the
-client that writes the value.  So if $(t, c)$ is the highest timestamp
+client that writes the value.  So, if $(t, c)$ is the highest timestamp
 observed by client $c'$, and $c'$  needs to create a new timestamp,
 it can select $(t + 1, c')$.
 After all $(t + 1, c') > (t, u)$ and no other client
@@ -6285,7 +6311,7 @@ One way to reduce the state space to explore is the following realization:
 each processor only considers messages for the round that it is in.
 If a message is for an old round, the processor will ignore it;
 if a message is for a future round, the processor will buffer it.
-So one can simplify the model and have each processor wait
+So, one can simplify the model and have each processor wait
 for \emph{all} <{N}> messages in a round
 instead of $\mathtt{N} - \mathtt{F}$.
 It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
@@ -6523,7 +6549,7 @@ communicate with Bob.
 \end{enumerate}
 The security property is violated.  In particular, Bob, duped by Corey, finished
 the protocol with Alice and received $A_N$, and even though Bob and Alice
-are both honest, Corey has a copy of $A_N$.  So Corey is now able to impersonate
+are both honest, Corey has a copy of $A_N$.  So, Corey is now able to impersonate
 Alice to Bob (but not vice versa because Alice did not try to authenticate Bob).
 
 \section*{Exercises}
@@ -8230,7 +8256,7 @@ method variables, and thread-local state variables).
 That state is called the \emph{context} of the thread.
 The context of a thread cannot be accessed by other
 threads, nor by \textbf{invariant} statements.
-So the model checker only interleaves threads at \textbf{Load},
+So, the model checker only interleaves threads at \textbf{Load},
 \textbf{Store}, and \textbf{Del} instructions where a thread
 interacts with global
 variables.
@@ -8325,7 +8351,7 @@ spawned thread that executes.  This seems to contradict the fact that
 Harmony threads are anonymous.  The output analyzer assigns these
 identifiers \emph{a posteriori} to the threads in the state graph
 by keeping track, along the reported execution path, what state each
-thread is in.  So by examining the initial context of the thread that
+thread is in.  So, by examining the initial context of the thread that
 is running from some particular state, it can determine if that context
 corresponds to the current context of some thread that ran previously
 or if the context belongs to a new thread that has not run before.
@@ -8539,7 +8565,7 @@ that runs in the cloud.  An important advantage of using \texttt{Harmony IDE}
 is that you do not have to install anything.  You can even run in on your
 smartphone.  However, since Harmony programs can use significant compute
 resources, \texttt{Harmony IDE} must put a limit on the amount of compute
-resources you can use.  So while \texttt{Harmony IDE} is currently a great
+resources you can use.  So, while \texttt{Harmony IDE} is currently a great
 way to try out Harmony, if you become a serious user of Harmony you
 will probably want to install either the command-line version or
 \texttt{HarmonyLang}.
