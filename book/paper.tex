@@ -1569,7 +1569,8 @@ time.
 Critical sections are useful when accessing a shared data
 structure, particularly when that access requires multiple underlying
 machine instructions.  A counter is a very simple example of
-a data structure, but as we have seen it too requires multiple instructions.
+a data structure (it is an array of bits), but---as we have
+seen---incrementing it requires multiple instructions.
 A more involved one would be accessing a binary tree.
 Adding a node to a binary tree, or re-balancing a tree, often requires
 multiple operations.  Maintaining ``consistency'' is certainly much easier
@@ -1581,7 +1582,7 @@ the invariant may be temporarily broken---this is not a problem as critical
 sections guarantee that no other
 thread will be able to see it.
 An implementation of a data structure that can be safely accessed by multiple
-threads and free of race conditions is called \emph{thread-safe}.
+threads and is free of race conditions is called \emph{thread-safe}.
 \index{thread safety}%
 \index{thread}%
 
@@ -1590,19 +1591,19 @@ threads and free of race conditions is called \emph{thread-safe}.
 A critical section is often modeled as threads in an infinite loop
 entering and exiting the critical section.
 \autoref{fig:csbarebones} shows the Harmony code.
-Here \texttt{cs} is a \emph{label},
+Here <{cs}> is a \emph{label},
 \index{label}%
 identifying a location in the HVM bytecode.  The first thing we need to
 ensure is that there can never be two threads in the critical section.
 This property is called \emph{mutual exclusion}.
 \index{mutual exclusion}%
-We would like to place an assertion at the \texttt{cs} label that
+We would like to place an assertion at the <{cs}> label that
 specifies that only one (the current) thread can be there.
 
 Harmony in fact supports this.
 It has an operator \textbf{countLabel}~$L$,
 \index{countLabel operator}%
-where $L$ is the name of the label (in this case, \texttt{cs}).
+where $L$ is the name of the label (in this case, <{cs}>).
 The operator returns the number of threads executing at that label.
 Method \textbf{countLabel} only exists for specification purposes---do not
 use it in normal code.
@@ -1616,7 +1617,7 @@ critical section:
 <{await False}>
 \end{code}
 This code will surely prevent two or more threads from being
-at label \texttt{cs} at the same time.
+at label <{cs}> at the same time.
 But it does so by preventing \emph{any} thread from reaching
 the critical section.
 We clearly need another property besides mutual exclusion.
@@ -1649,30 +1650,10 @@ critical section more than once, but it can also choose to terminate, even
 without entering the critical section ever.
 (Recall that Harmony will try every possible execution, and so it will evaluate
 both choices.)
+As it turns out, there is an advantage to doing it this way: we can also
+test if a thread can enter when there is no other thread trying to enter
+the critical section.  As we will see below, this is not always obvious.
 
-\begin{comment}
-\begin{figure}
-\begin{center}
-\includegraphics[width=3.5in]{figures/mutex-crop.pdf}
-\end{center}
-\caption{High-level state diagram specification of mutual exclusion with up to two threads.
-The first number in a state gives the number of threads; the second number is the
-number of threads in the critical section.}
-\label{fig:mutex}
-\end{figure}
-
-\autoref{fig:mutex} shows a high-level state diagram
-\index{state diagram}%
-of mutual exclusion and progress.
-The circles represent states, while the arrows represent possible state
-transitions (high-level steps).  The label in each circle summarizes the state;
-the label on an arrow describes the transition.  In this case,
-the label contains two numbers: the total number of threads and the number
-of threads in the critical section.
-\end{comment}
-
-A thread that is in the critical
-section cannot terminate until after leaving the critical section.
 We will now consider various approaches toward implementing this
 specification.
 
@@ -1680,32 +1661,22 @@ specification.
 \begin{code}
 <{:input:../code/naiveLock.hny}>
 \end{code}
-\caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock}
-\label{fig:naivelock}
-\end{figure}
-
-\begin{figure}
 \begin{center}
-\includegraphics[width=0.8\textwidth]{figures/naiveLock.pdf}
+\includegraphics[width=0.8\textwidth]{figures/naiveLock.png}
 \end{center}
-\caption{The \harmonyref{naiveLock.html}{HTML output of running Harmony on \autoref{fig:naivelock}}}
-\label{fig:naiveLockhtml}
+\caption{\harmonylink{code/naiveLock.hny} Na\"{\i}ve implementation of a shared lock and the \harmonyref{naiveLock.html}{HTML output} of running Harmony on \autoref{fig:naivelock}}
+\label{fig:naivelock}
 \end{figure}
 
 \begin{figure}
 \begin{code}
 <{:input:../code/naiveFlags.hny}>
 \end{code}
-\caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion}
-\label{fig:naiveflags}
-\end{figure}
-
-\begin{figure}
 \begin{center}
-\includegraphics[width=0.8\textwidth]{figures/naiveFlags.pdf}
+\includegraphics[width=0.8\textwidth]{figures/naiveFlags.png}
 \end{center}
-\caption{The \harmonyref{naiveFlags.html}{HTML output of running Harmony on \autoref{fig:naiveflags}}}
-\label{fig:naiveflagshtml}
+\caption{\harmonylink{code/naiveFlags.hny} Na\"{\i}ve use of flags to solve mutual exclusion and the \harmonyref{naiveFlags.html}{HTML output} of running Harmony on \autoref{fig:naiveflags}}
+\label{fig:naiveflags}
 \end{figure}
 
 \begin{figure}
@@ -1730,35 +1701,29 @@ lock first and release it upon exiting the critical section.
 % is more like a baton or token that only one thread can hold.
 
 Using a lock is a good thought, but how does one implement one?
-\autoref{fig:naivelock} presents a mutual exclusion attempt based on a
-na\"{\i}ve (and, as it turns out, broken) implementation of a lock.
+\autoref{fig:naivelock} presents an attempt at mutual exclusion based on a
+na\"{\i}ve (and, as it turns out, incorrect) implementation of a lock.
 Initially the lock is not owned, indicated by <{lockTaken}> being <{False}>.
 To enter the critical section, a thread waits until <{lockTaken}> is <{False}>
 and then sets it to <{True}> to indicate that the lock has been taken.
-The thread then executes the critical section.  Finally the thread
+The thread then executes the critical section.  Finally, the thread
 releases the lock by setting <{lockTaken}> back to <{False}>.
 
-Unfortunately, if we run the program through Harmony,
-we find that the assertion fails.
-\autoref{fig:naiveLockhtml} shows the Harmony output.
-Thread~0 finds that the lock is available, but just before it stores
-<{True}> in <{lockTaken}> in instruction~9, thread~1 gets
-to run.
-(Recall that you can hover your mouse over a machine instruction in order
-to see what it does.)
-Because <{lockTaken}> is still <{False}>, it too
-believes it can acquire the lock, and stores <{True}> in
-<{lockTaken}> and moves on to the critical section.
-Finally, thread~0 moves on, also stores <{True}>
-into <{lockTaken}> and also moves
-into the critical section.  Thread~0 is the one that detects the
-problem.
-The <{lockTaken}> variable
-suffers from the same sort of race condition as the <{count}> variable
-in \autoref{fig:inc}: testing and setting the lock
-consists of several instructions.  It is thus possible
-for both threads to believe the lock is available and to obtain the lock
-at the same time.
+Unfortunately, if we run the program through Harmony, we find that
+the assertion fails.  \autoref{fig:naivelock} also shows the Harmony
+output.  <{thread(1)}> finds that the lock is available, but just
+before it stores <{True}> in <{lockTaken}>, <{thread(0)}> gets to
+run.  (Recall that you can hover your mouse over a machine instruction
+in order to see what it does.) Because <{lockTaken}> is still
+<{False}>, it too believes it can acquire the lock, and stores
+<{True}> in <{lockTaken}> and moves on to the critical section.
+Finally, <{thread(1)}> moves on, also stores <{True}> into <{lockTaken}>
+and also moves into the critical section.  <{thread(1)}> is the one
+that detects the problem.  The <{lockTaken}> variable suffers from
+the same sort of race condition as the <{count}> variable in
+\autoref{fig:inc}: testing and setting the lock consists of several
+instructions.  It is thus possible for both threads to believe the
+lock is available and to obtain the lock at the same time.
 
 Preventing multiple threads from updating the same variable,
 \autoref{fig:naiveflags} presents a solution based on each thread having
@@ -1788,7 +1753,7 @@ it would first have to set <{flags[1]}> to <{True}> and
 then wait until <{flags[0] = False}>.  But that does not happen
 until time $t_2$.
 
-However, if you run the program through Harmony (\autoref{fig:naiveflagshtml}),
+However, if you run the program through Harmony,
 it turns out the solution
 does have a problem: if both try to enter the critical section at the same
 time, they may end up waiting for one another indefinitely.
@@ -1800,10 +1765,10 @@ solution violates \emph{progress}.
 The final na\"{\i}ve solution that we propose
 is based on a variable called <{turn}>.
 Each thread politely lets the other thread have a turn first.
-When <{turn}> = <{i}>, thread~<{i}> can
+When <{turn = i}>, thread~<{i}> can
 enter the critical section, while thread $1-i$ has to wait.
 An invariant of this solution is that while thread~<{i}> is in the critical
-section, $\mathit{turn} = i$.
+section, <{turn = i}>.
 Since <{turn}> cannot be 0 and 1 at
 the same time, mutual exclusion is satisfied.
 The solution also has the nice property that the thread that has been waiting the
@@ -1982,7 +1947,7 @@ After all, it certainly holds over the initial state.
 And as Harmony has already determined, exclusivity is an invariant:
 it holds over every reachable state.
 Unfortunately, exclusivity is not an \emph{inductive} invariant.
-To see why, consider the following state <{s}>: let thread~0 be at label \texttt{cs}
+To see why, consider the following state <{s}>: let thread~0 be at label <{cs}>
 and thread~1 be at the start of the \textbf{await} statement.
 Also, in state <{s}>, $\mathit{turn} = 1$.  Now let
 thread~1 make a step.  Because $\mathit{turn} = 1$,
@@ -2076,7 +2041,7 @@ symmetric for both threads).  We still have to show that if we are in a state
 in which $\mathcal{G}(0)$ holds, then any step will result in a
 state in which $\mathcal{G}(0)$ still holds.
 
-First consider the case that thread~0 is at label \texttt{cs}.  If thread~0
+First consider the case that thread~0 is at label <{cs}>.  If thread~0
 were to take a step, then in the next state thread~0 would be no longer
 at that label and $\mathcal{G}(0)$ would hold trivially over the next state.
 Therefore we only need to consider a step by thread~1.
@@ -2614,7 +2579,7 @@ Harmony can check these invariants as well.
 $\mathcal{I}_2(i)$ is checked by the \textbf{assert} statement.
 But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
-For $\mathcal{I}_2$ we only need an assertion at label \texttt{cs} because the
+For $\mathcal{I}_2$ we only need an assertion at label <{cs}> because the
 premise is that there is a thread at that label.  However, we would
 like to check $\mathcal{I}_1$ in \emph{every state} (after the variables have
 been initialized).
@@ -4123,13 +4088,13 @@ If so, it increments the count associated with its respective gate,
 opens a gate (using method \texttt{release\_one}), and then blocks until
 its waiting gate opens up.
 
-\texttt{release\_one()} is the function that a thread uses when leaving
+<{release_one()}> is the function that a thread uses when leaving
 the critical section.  It must check to see if there is a waiting gate
 that has threads waiting behind it and whose condition is met.
 If so, it selects one and opens that gate.  In the given code,
-\texttt{release\_one()} first checks the readers' gate and then the
+<{release_one()}> first checks the readers' gate and then the
 writers' gate, but the other way around would have worked as well.
-If neither waiting gate qualifies, then \texttt{release\_one()} 
+If neither waiting gate qualifies, then <{release_one()}> 
 has to open the main gate (i.e., release \textit{mutex}).
 
 Let us examine \texttt{read\_acquire} more carefully.
@@ -4147,21 +4112,21 @@ the writer calls \texttt{write\_release}:
 \begin{enumerate}
 \item After acquiring \textit{mutex}, the writer decrements
 \textit{nwriters}, which must be 1 at this time, and thus becomes 0.
-\item It then calls \texttt{release\_one()}.
-\texttt{release\_one()} finds that there are no writers in the critical section
+\item It then calls <{release_one()}>.
+<{release_one()}> finds that there are no writers in the critical section
 and there are two readers waiting.  It therefore releases not
 \textit{mutex} but the readers' gate's binary semaphore.
 \item One of the waiting readers can now re-enter the critical section.
 When it does, the reader decrements the gate's counter (from 2 to 1)
 and increments \textit{nreaders} (from~0 to~1).
-The reader finally calls \texttt{release\_one()}.
-\item Again, \texttt{release\_one()} finds that there are no writers and
+The reader finally calls <{release_one()}>.
+\item Again, <{release_one()}> finds that there are no writers and
 that there are readers waiting, so again it releases the readers' semaphore.
 \item The second reader can now enter the critical section.
 It decrements the gate's count from 1 to 0 and increments \textit{nreaders}
 from~1 to~2.
-\item Finally, the second reader  calls \texttt{release\_one()}.
-This time \texttt{release\_one()} does not find any threads waiting,
+\item Finally, the second reader  calls <{release_one()}>.
+This time <{release_one()}> does not find any threads waiting,
 and so it releases \textit{mutex}.
 There are now two threads that are holding the reader/writer lock.
 \end{enumerate}
@@ -4173,7 +4138,7 @@ There are now two threads that are holding the reader/writer lock.
 \begin{problems}
 % \item Assume that you have only binary semaphores.
 % Implement counting semaphores using the split binary semaphores technique.
-\item Several of the instantiations of \texttt{release\_one()} in
+\item Several of the instantiations of <{release_one()}> in
 \autoref{fig:RWsplitsema} can be replaced by simply releasing \textit{mutex}.
 Which ones?
 \item Optimize your solutions to \autoref{ex:qcontains} to use reader/writer locks.
