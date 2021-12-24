@@ -600,6 +600,7 @@ an appendix on installing and running Harmony (\autoref{app:install}).
 \chapter{Hello World!}
 \label{ch:harmonyintro}
 
+<{:const:__init__}>
 <{:const:p}>
 <{:const:hello}>
 
@@ -1825,7 +1826,7 @@ The algorithm is an amalgam of the (incorrect) algorithms in
 \autoref{fig:naiveflags} and \autoref{fig:naiveturn}, and is presented
 in \autoref{fig:peterson}.
 (The first line specifies that the \textit{flags} and <{turn}>
-variables should have \emph{sequential consistency}---it prevents
+variables are assumed to satisfy \emph{sequential consistency}---it prevents
 Harmony from complaining about data races involving these variables,
 explained in \autoref{ch:spinlock}.)
 
@@ -1836,8 +1837,7 @@ enter the critical section---if both do so at the same time one will
 win because writes to memory in Harmony are atomic.
 The thread continues to be polite, waiting
 until either the other thread is nowhere near the critical section
-($\mathit{flag}[1 - \mathit{self}] = \mathbf{False}$) or has given way
-($\mathit{turn} = \mathit{self}$).
+(<{flag[1 - self] = False}>) or has given way (<{turn = self}>).
 Running the algorithm with Harmony shows that it satisfies both mutual
 exclusion and progress.
 
@@ -1878,7 +1878,8 @@ Steps in Harmony are atomic.
 \glsadd{trace}%
 
 The HVM starts in an initial state in which there is only
-one thread and its program counter is~0.  A \emph{trace}
+one thread (<{__init__}>()) and its program counter is~0.
+A \emph{trace}
 \index{trace}%
 is a sequence of steps starting from the initial state.
 When making a step, there are two sources of non-determinism
