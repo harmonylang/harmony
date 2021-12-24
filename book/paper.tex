@@ -2382,7 +2382,7 @@ for the lock to become available and taking it is executed as an
 atomic operation.
 
 The code in \autoref{fig:lockspec} is similar to the code in
-Harmony's \texttt{synch} module.
+Harmony's <{synch}> module.
 (The module generalizes locks to \emph{binary semaphores}
 (\autoref{ch:sbs}), but the lock interface is the same.)
 \autoref{fig:cssynch} shows how locks may be used to implement
@@ -2664,7 +2664,7 @@ concurrent access to the specified variables is intended.
 Second, if the accesses are within an atomic statement block, then they
 are not considered part of a data race.
 
-In \autoref{fig:tas} we have shown a lock implementation based on a shared
+\autoref{fig:tas} shows a lock implementation based on a shared
 variable and a private variable for each thread.   The private
 variables themselves are actually implemented as shared variables,
 but they are accessed only by their respective threads.
@@ -2683,22 +2683,22 @@ This approach is general for any number of threads.
 You can test the spinlock with the program in \autoref{fig:cssynch}
 using the command \texttt{harmony -m synch=taslock code/cssynch.hny}.
 The \texttt{-m} flag tells Harmony to use the \texttt{taslock.hny} file
-rather than the standard \texttt{synch} module (which only contains
-a specification of the lock methods).
+for the <{synch}> module rather than the standard <{synch}> module
+(which contains only a specification of the lock methods).
 
 \index{starvation}%
 The spinlock implementation suffers potentially from \emph{starvation}:
 an unlucky thread may never be able to get the lock while other threads
 successfully acquire the lock one after another.  It could even happen
 with just two threads: one thread might successfully acquire the lock
-repeatedly in a loop, while another thread is never lucky enough the
-acquire the thread in between.
+repeatedly in a loop, while another thread is never lucky enough to
+acquire the lock in between.
 % \autoref{ch:starvation} will talk more about starvation and how
 % to prevent it.
 
 A \emph{ticket lock} (\autoref{fig:ticket} is an implementation of a
 lock that prevents starvation using an atomic \emph{fetch-and-increment}
-operator.  It is inspired by European bakeries.  A European bakery has a
+operator.  It is inspired by European bakeries.  A European bakery often has a
 clearly displayed counter (usually just two digits) and a ticket dispenser.
 Tickets are numbered 0 through 99 and repeat over and over again
 (in the case of a two digit counter).
@@ -2715,8 +2715,8 @@ modulo \texttt{MAX\_THREADS}, all in one atomic operation.
 In practice, \texttt{MAX\_THREADS} would
 be a number like $2^{32}$ or $2^{64}$, but since the Harmony model checker
 checks every possible state, limiting \texttt{MAX\_THREADS}
-to a small number such as done
-here will significantly reduce the time to model check a Harmony program.
+to a small number
+significantly reduces the time to model check a Harmony program.
 Plus it is easier to check that it fails when you run it with more than
 \texttt{MAX\_THREADS} threads.
 You can test the implementation using the command
@@ -2777,7 +2777,8 @@ For example, a thread that is trying to acquire a lock can be suspended until th
 available.
 In Harmony, a thread can suspend itself and save its context (state) in a
 shared variable.  Recall that the context of a thread contains
-its program counter, stack, and registers.
+its program counter, stack, and register (containing the current
+method's variables).
 A context is a regular (if complex) Harmony value.
 The syntax of the expression that a thread executes to suspend itself
 is as follows:
@@ -2833,7 +2834,7 @@ have picked the last one, and yet another implementation could have used
 choice in lock implementations as it prevents starvation.
 
 You will find that using the \emph{implementation} of a lock instead
-of the \emph{specification} of a lock (in the \texttt{synch} module)
+of the \emph{specification} of a lock (in the <{synch}> module)
 often leads to the model checker searching a
 significantly larger state space.
 Thus it makes sense to model check larger programs in a modular fashion:
@@ -2843,17 +2844,17 @@ specifications for the other modules.
 \section*{Exercises}
 \begin{problems}
 \item
-Run \autoref{fig:incfixed} using (i) \texttt{synch} and (ii) \texttt{synchS}.
+Run \autoref{fig:incfixed} using (i) <{synch}> and (ii) \texttt{synchS}.
 Report how many states were explored by Harmony for each module.
 \item \label{ex:xy} \autoref{fig:xy} shows a Harmony program with two variables <{x}>
 (initially 0) and <{y}> (initially 100) that can be accessed through methods
 \texttt{setX} and \texttt{getXY}.  An application invariant is that \texttt{getXY}
 should return a pair that sums to 100.  Add the necessary synchronization code.
 \item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
-interface for both the \texttt{synch} and \texttt{synchS} modules.
+interface for both the <{synch}> and \texttt{synchS} modules.
 This interface is like \texttt{acquire}(\textit{b}) but never blocks.  It
-returns <{True}> if the binary semaphore was available (and now acquired) or <{False}>
-if the binary semaphore was already acquired.
+returns <{True}> if the lock was available (and now acquired) or <{False}>
+if the lock was already acquired.
 Hint: you do not have to change the existing code.
 \item People who use an ATM often first check their balance and then withdraw
 a certain amount of money not exceeding their balance.  A negative balance
@@ -4577,7 +4578,7 @@ through libraries.
 <{:input:../code/mesa.hny}>
 \end{code}
 \caption{\harmonylink{modules/synch.hny}
-Implementation of condition variables in the \texttt{synch} module}
+Implementation of condition variables in the <{synch}> module}
 \label{fig:cv}
 \end{figure}
 
@@ -4590,9 +4591,9 @@ Implementation of condition variables in the \texttt{synch} module}
 \end{figure}
 
 Harmony provides support for Mesa monitors
-through the Harmony \texttt{synch} module.
+through the Harmony <{synch}> module.
 \autoref{fig:cv} shows the implementation of
-condition variables in the \texttt{synch} module.
+condition variables in the <{synch}> module.
 \texttt{Condition}() creates a new condition variable.
 It is represented by a dictionary containing
 a bag of contexts of threads waiting on the condition variable.
@@ -4911,7 +4912,7 @@ happening.
 \autoref{fig:dinersavoid} demonstrates this concept.  It uses a
 \emph{counting semaphore} to restrict the number of diners at any time to
 four.  A counting semaphore is like a binary semaphore, but can be
-acquired a given number of times.  It is supported by the \texttt{synch}
+acquired a given number of times.  It is supported by the <{synch}>
 module.  The \texttt{P} or ``procure'' operation acquires a counting
 semaphore.  That is, it tries to decrement the semaphore, blocking while
 the semaphore has a value of 0.  The \texttt{V} or ``vacate'' operation
@@ -5014,7 +5015,7 @@ Each thread would have one such queue for receiving messages.
 Dequeuing from an empty synchronized queue blocks the thread until
 another thread enqueues a message on the queue.
 
-The \texttt{synch} library supports a synchronized message queue,
+The <{synch}> library supports a synchronized message queue,
 similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
@@ -5509,7 +5510,7 @@ Also, the network does not create messages out of nothing: if
 message <{m}> is received, then message <{m}> was sent.
 
 It is useful to create an abstract network that reliably sends messages
-between threads, much like the FIFO queue in the \texttt{synch} module.
+between threads, much like the FIFO queue in the <{synch}> module.
 For this, we need a network protocol that Alice and Bob can run.
 In particular, it has to be the case that if Alice sends application
 messages $m_1, ..., m_n$ in that order, then if Bob receives an
@@ -7852,10 +7853,10 @@ implements the following methods:
 For Python programmers: note that <{s <= t}> does not check if <{s}> is a subset of
 <{t}> when <{s}> and <{t}> are sets, as ``<{<=}>'' implements a total order on all Harmony values including sets (and the subset relation is not a total order).
 
-\section{The \texttt{synch} module}
+\section{The <{synch}> module}
 
 \index{synch module}%
-The \texttt{synch} module provides the following methods:
+The <{synch}> module provides the following methods:
 
 \vspace{1em}
 \begin{tabular}{|l|l|}
