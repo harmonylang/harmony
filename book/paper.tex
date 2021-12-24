@@ -1214,37 +1214,13 @@ code/Up.hny:2 done = [ False, False ]
    3 Push [False, False]
    4 Store done
 code/Up.hny:4 def incrementer(self):
-   5 Jump 32
+   5 Jump 35
    6 Frame incrementer self
 code/Up.hny:5     count = count + 1
    7 Load count
    8 Push 1
    9 2-ary +
    10 Store count
-code/Up.hny:6     done[self] = True
-   11 Push ?done
-   12 LoadVar self
-   13 Address
-   14 Push True
-   15 Store
-code/Up.hny:7     await done[1 - self]
-   16 Push 1
-   17 LoadVar self
-   18 2-ary -
-   19 Load done
-   20 Apply
-   21 JumpCond False 16
-code/Up.hny:8     assert count == 2
-   22 ReadonlyInc
-   23 AtomicInc
-   24 Load count
-   25 Push 2
-   26 2-ary ==
-   27 Load count
-   28 Assert2
-   29 AtomicDec
-   30 ReadonlyDec
-   31 Return
 \end{verbatim}
 \end{code}
 \caption{The first part of the HVM bytecode corresponding to \autoref{fig:inc}}
@@ -1285,13 +1261,10 @@ harmony -a Up.hny
 \end{code}
 Each thread in the HVM is predominantly a \emph{stack machine},
 \index{stack machine}%
-but it also has two registers.
-Like shared memory, the registers usually contain dictionaries so they
+but it also a register.
+Like shared memory, the register contains a dictionary so it
 can represent the values of multiple named variables.
-As mentioned before, one register contains a dictionary with the local
-variables of the method that the thread is currently executing,
-while the other contains thread-local state.
-
+%
 \index{sequential consistency}%
 All instructions are atomically executed.
 The Harmony memory model is \emph{sequentially consistent}: all
@@ -1303,10 +1276,10 @@ It starts executing at instruction 0 and keeps executing until
 it reaches the last instruction in the program.
 In this case, it executes instructions 0 through 5 first.
 The last instruction in that sequence is a \texttt{JUMP}
-instruction that sets the program counter to 32
+instruction that sets the program counter to 35
 (skipping over the code for <{incrementer}> method).
-The \texttt{\_\_init\_\_} thread then executes instructions
-32 through 40 and finishes.
+The \texttt{\_\_init\_\_} thread then executes the
+remaining instructions and finishes.
 Once initialization completes, any threads that were spawned
 (in this case <{incrementer(0)}> and \texttt{incrementer(1)})
 can run.
@@ -1314,14 +1287,14 @@ can run.
 \begin{figure}
 \begin{code}
 \begin{verbatim}
-#states 32
+#states 44 (time 0.001+0.001)
 Safety Violation
-T0: __init__() [0-5,32-40] { count: 0, done: [ False, False ] }
-T1: incrementer(0) [ 6- 9] { count: 0, done: [ False, False ] }
-T2: incrementer(1) [ 6-18] { count: 1, done: [ False, True  ] }
-T1: incrementer(0) [10-28] { count: 1, done: [ True,  True  ] }
-Harmony assertion failed: 1
-open file:///Users/rvr/github/harmony/harmony.html for more information
+T0: __init__()     [0-5,35-43]   { count: 0, done: [ False, False ] }
+T2: incrementer(1) [6-9]         { count: 0, done: [ False, False ] }
+T1: incrementer(0) [6-20]        { count: 1, done: [ True,  False ] }
+T2: incrementer(1) [10-24,26-31] { count: 1, done: [ True,  True  ] }
+Harmony assertion failed
+open code/Up.htm for more information
 \end{verbatim}
 \end{code}
 \caption{The text output of running Harmony on \autoref{fig:inc}}
@@ -1370,14 +1343,14 @@ from which there does not exist an execution such that all threads
 terminate.  Harmony will not only print the non-terminating state with
 the shortest trace, but also the list of threads
 at that state, along with their program counters.
-\item \texttt{Behavior Violation}:  The program terminated in a state
-not allowed by the behavioral specification.
+\item \texttt{Behavior Violation}:  The program can terminate in a state
+not allowed by the behavioral specification (\autoref{ch:testing}).
 \item \texttt{Active Busy Waiting}:  There are states in which
-some thread cannot make progress without the help of another thread but
-does not block;
+some thread cannot make progress without the help of another thread,
+but does not block (\autoref{ch:condwait}).
 \item \texttt{Data Race}: There are states in which two or more threads
 concurrently access a shared variable, at least one of which is a store
-operation.
+operation (\autoref{ch:synch}).
 % \item \texttt{Stopped States}: Similar to non-terminating states,
 % these are states in which some threads are left that cannot
 % terminate.  \autoref{ch:synch} will explain what it means for
@@ -1387,22 +1360,19 @@ operation.
 Harmony checks for these types of failure conditions in the given
 order: if there are multiple failure conditions, only the first is
 reported.
-You will learn about behavioral violations in \autoref{ch:testing}.
 \emph{Active busy waiting} (\autoref{ch:condwait}) is not
 technically an indication of a synchronization problem, but instead an
 indication of an inefficient solution to a synchronization problem---
-one that uses up significantly CPU cycles.
-A \emph{data race} (\autoref{ch:synch}) may not be a bug either---whether or
+one that uses up CPU cycles unnecessarily.
+A \emph{data race} may not be a bug either---whether or
 not it is might depend on the semantics of the underlying memory
 operations and are therefore generally undesirable.
 Harmony may also warn about behaviors, in particular if the generated
 behavior is only a subset of the provided behavior.
 
 Going back to our example, Harmony reports a safety violation.
-In particular, it reports that the assertion failed
-because <{count}> has value 1 instead of 2.
-Next it reports an execution that failed this assertion.
-The program got to the failed assertion in 4 ``turns.''
+In particular, it reports that an assertion failed.
+The program got to the failed assertion in four ``turns.''
 The output has four columns:
 \begin{enumerate}
 \item A thread identifier;
@@ -1413,7 +1383,7 @@ The output has four columns:
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.9\textwidth]{figures/Up1.pdf}
+\includegraphics[width=0.9\textwidth]{figures/Up1.png}
 \end{center}
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
@@ -1421,8 +1391,8 @@ There are four sections.
 The top shows the turns to the problematic state.
 Each turn shows a thread identifier, the method the thread is executing,
 a ``timeline'' containing a block for each instruction executed, the
-program counter of the thread, and the values of the shared variables
-at those turns.
+program counter of the thread, the values of the shared variables
+at those turns, and any values the program may have printed.
 The middle section shows the line of code that is being executed.
 The bottom left shows the bytecode of the program.
 The bottom right shows the state of each thread.
@@ -1436,21 +1406,21 @@ The four turns in the execution are as follows:
 
 \begin{enumerate}
 \item Thread \texttt{\_\_init\_\_} (with identifier T0)
-sets shared variable <{count}> to 0 and
-shared variable <{done}> to \texttt{[False, False]}.
-\item Thread <{incrementer(0)}> (with identifier T1)
+executes instructions 0 through 5 and 35 through 43, setting
+shared variable <{count}> to 0 and
+shared variable <{done}> to <{[False, False]}>.
+\item Thread <{incrementer(0)}> (with identifier T2)
 executes instructions 6 through 9, loading the value of
 <{count}> but stopping just before storing 1 into <{count}>;
-\item Thread \texttt{incrementer(1)} (with identifier T2)
-executes instructions 6 through 18, storing 1 into
+\item Thread \texttt{incrementer(1)} (with identifier T1)
+executes instructions 6 through 20, storing 1 into
 <{count}> and storing <{True}> into <{done[1]}>;
-\item Thread <{incrementer(0)}>
-continues execution, executing instructions 10 through 28
+\item Thread <{incrementer(0)}> (T2)
+continues execution, executing instructions 10 through 24
 storing value 1 into <{count}> (instruction 10),
-storing <{True}> into <{done[0]}> (instructions 11 through 15)
-finding that <{done[1]}> is <{True}> (instructions 16 through 21),
-and finally detecting that the assertion is violated
-(instructions 22 through 28).
+storing <{True}> into <{done[0]}>,
+finding that <{done[1]}> is <{True}>,
+and finally detecting that the assertion is violated.
 \end{enumerate}
 
 Harmony also generates an HTML file that allows exploring more details
@@ -1467,8 +1437,9 @@ You can click on such a block to see the state of the Harmony
 virtual machine just after executing the corresponding instruction.
 The turn that is being executed is highlighted in green.
 The table also lists the program counter of the thread at each turn,
-and the values of the shared variables.
-
+the values of the shared variables, and any values the thread
+may have printed (none in this case).
+%
 Underneath the table it shows the line of Harmony code that is being
 executed in blue.
 
