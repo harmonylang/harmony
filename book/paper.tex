@@ -2185,7 +2185,7 @@ only try to enter the critical section a bounded number of times.
 \index{Harmony method}%
 
 A method <{m}> with argument <{a}> is invoked in its
-most basic form as follows (assigning the result to~\texttt{r}).
+most basic form as follows (assigning the result to~<{r}>).
 \begin{code}
 <{r = m a}>
 \end{code}
@@ -2224,9 +2224,9 @@ to a method by setting the <{result}> variable.)  Neither does it support
 \textbf{break} or \textbf{continue} statements in loops.  One reason for their absence is
 that, particularly in concurrent programming, such control flow directions are highly
 error-prone.  It's too easy to forget to, say, release a lock when returning a value in the
-middle of a method, a major source of bugs in practice.
+middle of a method---a major source of bugs in practice.
 
-Harmony is not an object-oriented language like Python is.  In Python
+Harmony is not an object-oriented language like Python is.  In Python,
 you can pass a reference to an object to a method, and that method
 can then update the object.  In Harmony, it is also sometimes convenient
 to have a method update a shared variable specified as an argument.
@@ -2271,7 +2271,7 @@ This would make the code usable by multiple applications.
 Finally, methods can have local variables.
 Different from Python, Harmony local variables must be
 explicitly bound within a scope.
-Method variables are either mutable or immutable.
+Method variables are either mutable (writable) or immutable (read-only).
 The arguments to a method and the bound variable (or
 variables) within a <{for}> statement are immutable;
 the variable <{result}> is mutable.
@@ -2300,26 +2300,26 @@ you can now skip the rest of this chapter.  But if you would like to
 see a cool example of using the concepts introduced in this chapter,
 hang on for a sequential Harmony program that finds anomalies in page
 replacement algorithms.
-In 1969, B\'{e}l\'{a}ady et al. published a paper~\cite{Belady69}
+In 1969, B\'{e}l\'{a}dy et al.~published a paper~\cite{Belady69}
 that showed that making a
 cache larger does not necessarily lead to a higher hit ratio.  He showed
 this for a scenario using a FIFO replacement policy when the cache is full. 
 The program in \autoref{fig:clock} will find exactly the same scenario
-if you define \texttt{FIFO} to be <{True}>.  Moreover, if you define
-\texttt{FIFO} to be <{False}>, it will find a scenario for the
+if you define <{FIFO}> to be <{True}>.  Moreover, if you define
+<{FIFO}> to be <{False}>, it will find a scenario for the
 CLOCK replacement policy~\cite{clock}, often used in modern operating systems.
 
-In this program, \texttt{CLOCK} maintains the state of a cache
+In this program, <{CLOCK}> maintains the state of a cache
 (in practice, typically pages in memory).
-The set \texttt{recent} maintains whether an access to the cache
+The set <{recent}> maintains whether an access to the cache
 for a particular reference was recent or not.
-(It is not used if \texttt{FIFO} is <{True}>.)
-The integer \texttt{misses} maintains the number of cache misses.
-Method \texttt{ref}(\textit{ck}, <{x}>) is invoked when <{x}> is
-referenced and checked against the cache \textit{ck}.
+(It is not used if <{FIFO}> is <{True}>.)
+The integer <{misses}> maintains the number of cache misses.
+Method <{ref(ck, x)}> is invoked when <{x}> is
+referenced and checked against the cache <{ck}>.
 
-The program declares two caches: one with 3 entries (\textit{clock3})
-and one with 4 entries (\textit{clock4}).
+The program declares two caches: one with 3 entries (<{clock3}>)
+and one with 4 entries (<{clock4}>).
 The interesting part is in the last block of code.
 It runs every sequence of references of up to 100 entries, using
 references in the range 1 through 5.
@@ -2328,19 +2328,19 @@ are the result of some experimentation---you can try other ones.
 To reduce the search space, the first four references are pinned
 to 1, 2, 3, and 4.
 Further reducing the search space, the program never repeats the
-same reference twice in a row (using the local variable \texttt{last}).
+same reference twice in a row (using the local variable <{last}>).
 
 The two things to note here is the use of the \textbf{choose}
-expression and the \textbf{assert} statement.  Using <{choose}>
+expression and the \textbf{assert} statement.  Using <{choose}>,
 we are able to express searching through all possible strings of
 references without a complicated nested iteration.
-Using \texttt{assert} we are able to express the anomaly we are
+Using \texttt{assert}, we are able to express the anomaly we are
 looking for.
 
-In case you want to check if you get the right results.  For \texttt{FIFO},
-the program finds (in a few minutes) the same anomaly that
-B\'{e}l\'{a}dy et al. found: 1 2 3 4 1 2 5 1 2 3 4 5.
-For the \texttt{CLOCK} algorithm the program actually finds a shorter
+In case you want to check if you get the right results.  For <{FIFO}>,
+the program finds the same anomaly that
+B\'{e}l\'{a}dy et al.~found: 1 2 3 4 1 2 5 1 2 3 4 5.
+For the <{CLOCK}> algorithm the program actually finds a shorter
 reference string: 1 2 3 4 2 1 2 5 1 2.
 
 \chapter{Specification}
