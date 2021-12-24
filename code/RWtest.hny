@@ -7,19 +7,13 @@ rw = RW.RWlock()
 def thread():
     while choose({ False, True }):
         if choose({ "read", "write" }) == "read":
-            print "acquiring read lock"
             RW.read_acquire(?rw)
-            print "acquired read lock"
             rcs: assert (countLabel(rcs) >= 1) and (countLabel(wcs) == 0)
             RW.read_release(?rw)
-            print "released read lock"
         else:                       # write
-            print "acquiring write lock"
             RW.write_acquire(?rw)
-            print "acquired write lock"
             wcs: assert (countLabel(rcs) == 0) and (countLabel(wcs) == 1)
             RW.write_release(?rw)
-            print "released write lock"
 
 for i in {1..NOPS}:
     spawn thread()

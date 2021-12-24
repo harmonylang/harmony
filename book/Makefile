@@ -5,8 +5,8 @@ paper.pdf: pp.tex
 pp.tex: paper.tex sources/preproc.py
 	python3 sources/preproc.py paper.tex > pp.tex
 
-all: pp.tex
-	(cd sources; make)
+all: paper.tex sources/preproc.py
+	python3 sources/preproc.py paper.tex > pp.tex
 	pdflatex pp
 	bibtex pp
 	makeindex pp
