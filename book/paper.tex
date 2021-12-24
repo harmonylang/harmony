@@ -1034,13 +1034,13 @@ PAUSE
 How many times does the assertion fail (if any)?
 \end{enumerate}
 \item \autoref{fig:incmany} is a version of \autoref{fig:incpy} that has each
-incrementer thread increment <{count}> \texttt{N} times.  Run \autoref{fig:incmany}
+incrementer thread increment <{count}> <{N}> times.  Run \autoref{fig:incmany}
 10 times (using Python).
 Report how many times the assertion fails and what the value of <{count}>
 was for each of the failed runs.
-Also experiment with lower values of \texttt{N}.
-How large does \texttt{N} need to be for assertions to fail?
-(Try powers of 10 for \texttt{N}.)
+Also experiment with lower values of <{N}>.
+How large does <{N}> need to be for assertions to fail?
+(Try powers of 10 for <{N}>.)
 \item Can you think of a fix to \autoref{fig:inc}?  Try one or two different fixes
 and run them through Harmony.  Do not worry about having to come up with a correct fix at this
 time---the important thing is to develop an understanding of concurrency.
@@ -1060,7 +1060,7 @@ or a \emph{lock}, yet.)
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/UpMany.py}
 \end{code}
-\caption{\harmonylink{python/UpMany.py} Incrementing \texttt{N} times}
+\caption{\harmonylink{python/UpMany.py} Incrementing <{N}> times}
 \label{fig:incmany}
 \end{figure}
 
@@ -2549,7 +2549,7 @@ private variable (the ``test'')
 and then sets the shared variable to <{True}> (``set'').
 
 \autoref{fig:tas} goes on to implement mutual exclusion for
-a set of \texttt{N} threads.
+a set of <{N}> threads.
 The approach is called \emph{spinlock},
 \index{spinlock}%
 because each thread is ``spinning'' (executing a tight loop) until
@@ -2823,7 +2823,7 @@ other threads can run.
 \texttt{release}()
 \index{release}%
 checks to see if any threads are waiting to acquire the lock.
-If so, it uses the \texttt{head} and \texttt{tail}
+If so, it uses the <{head}> and <{tail}>
 methods from the \texttt{list} module (see \autoref{ap:module})
 to resume the first thread that got
 suspended and to remove its context from the list.
@@ -2919,7 +2919,7 @@ keyword.
 <{:input:../code/queue.hny}>
 \end{tcolorbox}
 \\
-(a) \harmonylink{code/queuespec.hny} Sequential & (b) \harmonylink{code/queue.hny} Concurrent queue
+(a) \harmonylink{code/queuespec.hny} Sequential & (b) \harmonylink{code/queue.hny} Concurrent
 \end{tabular}
 \end{center}
 \caption{A sequential and a concurrent specification of a queue}
@@ -2936,12 +2936,12 @@ keyword.
 
 The most common use for locks is in building concurrent data structures.
 By way of example, we will first demonstrate how to build a concurrent queue.
-The \texttt{queue} module has the following API:
+The \texttt{queue} module can be used as follows:
 \begin{itemize}
-\item $q = \mathtt{Queue}()$: allocate a new queue;
-\item $\mathtt{put}(q, v)$: add <{v}> to the tail of the queue;
-\item $r = \mathtt{get}(q)$: returns $r = \mathtt{None}$
-if <{q}> is empty or $r = v$ if <{v}> was at the head of the queue.
+\item <{x = Queue()}>: initialize a new queue <{x}>;
+\item <{put(?x, v)}>: add <{v}> to the tail of <{x}>;
+\item <{r = get(?x)}>: returns <{r = None}>
+if <{x}> is empty or <{r = v}> if <{v}> was at the head of <{x}>.
 \end{itemize}
 
 \noindent
@@ -2960,15 +2960,15 @@ uses the \texttt{alloc} module for dynamic allocation
 of nodes in the list using \texttt{malloc}() and \texttt{free}().
 \texttt{malloc}(<{v}>) returns a new memory location initialized to <{v}>,
 which should be released with \texttt{free}() when it is no longer in use.
-The queue maintains a \texttt{head} pointer to the first element in the list
-and a \texttt{tail} pointer to the last element in the list.
-The \texttt{head} pointer is <{None}> if and only if the queue is empty.
+The queue maintains a <{head}> pointer to the first element in the list
+and a <{tail}> pointer to the last element in the list.
+The <{head}> pointer is <{None}> if and only if the queue is empty.
 (<{None}> is a special address value that is not the address of any
 memory location.)
 
-\texttt{Queue()} returns a new queue object consisting of a <{None}> head
-and tail pointer and a lock.
-The $\mathtt{put}(q, v)$ and $\mathtt{get}(q)$ methods both take a pointer <{q}> to the
+\texttt{Queue()} returns the initial value for a queue object
+consisting of a <{None}> head and tail pointer and a lock.
+The <{put(q, v)}> and <{get(q)}> methods both take a pointer <{q}> to the
 queue object because both may modify the queue.
 Before they access the value of the head or tail of the queue they first obtain
 the lock.
@@ -2986,30 +2986,27 @@ The reason is that \texttt{queue.get()} changes the state by
 acquiring a lock, but the expressions in \textbf{assert}
 statements (or \textbf{invariant} statements)
 are not allowed to change the state.
-In general, when calling methods in \textbf{assert} or
-\textbf{invariant} statements, one has to be convinced that
-those methods cannot change the state in any way.
 
 \autoref{fig:queueMS} shows another
 concurrent queue implementation~\cite{MS96}.
 It is well-known, but what is not often realized is that
 it requires sequentially consistent memory, which is not
 said explicitly in the paper.
-As a result, the algorithm is not guaranteed to work
-correctly with most modern programming languages and
-computer hardware.  But it is still useful to study it.
+As a result, the algorithm is must be coded very carefully to work
+correctly with modern programming languages and
+computer hardware.
 The implementation uses separate
 locks for the head and the tail,
 allowing a <{put}> and a <{get}> operation
 to proceed concurrently.  To avoid contention between the head and the tail,
 the queue uses a dummy node at the head of the linked list.
 Except initially, the dummy node is the last node that was dequeued.
-Note that neither the \texttt{head} nor \texttt{tail} pointer are
+Note that neither the <{head}> nor <{tail}> pointer are
 ever <{None}>.
 The problem is when the queue is empty and there are concurrent
 <{get}> and <{put}> operations.
 They obtain separate locks and then concurrently access the
-\texttt{next} field in the dummy node---a data race with
+<{next}> field in the dummy node---a data race with
 undefined semantics in most environments.
 
 \begin{figure}
@@ -3028,14 +3025,18 @@ undefined semantics in most environments.
 \label{fig:queueMS}
 \end{figure}
 
+<{:const:contains}>
+<{:const:check}>
+<{:const:length}>
+
 \section*{Exercises}
 \begin{problems}
-\item \label{ex:qcontains} Add a method $\mathtt{contains}(q, v)$ to \autoref{fig:queues}(b)
-that checks to see if <{v}> is in queue <{q}>.
-\item Add a method $\mathtt{length}(q)$ to \autoref{fig:queueconc} that returns the length of the given queue.
+\item \label{ex:qcontains} Add a method <{contains(q, v)}> to
+\autoref{fig:queues}(b) that checks to see if <{v}> is in queue <{q}>.
+\item Add a method <{length(q)}> to \autoref{fig:queueconc} that returns the length of the given queue.
 The complexity of the method should be $O(1)$, which is to say that you should maintain
 the length of the queue as a field member and update it in <{put}> and <{get}>.
-\item \label{ex:qlength} Write a method $\mathtt{check}(q)$
+\item \label{ex:qlength} Write a method <{check(q)}>
 that checks the integrity of the queue in \autoref{fig:queueconc}.
 In particular, it should check the following integrity properties:
 \begin{itemize}
@@ -3048,16 +3049,15 @@ of the list.
 \end{itemize}
 Method <{check(q)}> should not obtain a lock; instead add the following line
 just before releasing the lock in <{put}> and <{get}>:
-<{:const:check}>
 \begin{code}
 <{assert check()}>
 \end{code}
 \item \label{ex:qremove} Add a method $\mathtt{remove}(q, v)$ to \autoref{fig:queueconc}
 that removes all occurrences of <{v}>, if any, from queue <{q}>.
-\item The test program in \autoref{fig:queuedemo} is a not thorough test program.
+\item The test program in \autoref{fig:queuedemo} is not a thorough test program.
 Design and implement a test program for \autoref{fig:queuedemo}.
 Make sure you \emph{test} the test program by trying it out against some buggy
-queue implementations.
+queue implementations.  (You will learn more about testing concurrent programs in \autoref{ch:testing}.)
 \end{problems}
 
 \chapter{Fine-Grained Locking}
@@ -3204,7 +3204,7 @@ of an implementation.
 may be used, but it is not a very thorough test program
 for an implementation such as the one in \autoref{fig:queueconc}
 and does little to increase our confidence in its correctness.
-To wit, if \texttt{get()} always returned 1, the program
+To wit, if <{get()}> always returned 1, the program
 would find no problems.
 In this chapter, we will look at approaches to testing
 concurrent code.
@@ -3284,7 +3284,7 @@ such as Python, but the <{choose}> expression in Harmony
 makes it relatively easy to explore all corner cases.
 %
 For example, a common programming mistake is to forget to
-update the \texttt{tail} pointer in \texttt{get()} in case
+update the <{tail}> pointer in <{get()}> in case
 the queue becomes empty.  Normally, it is a surprisingly
 tricky bug to find.  You can comment out those lines
 in \autoref{fig:queueconc} and run the test program---it should
@@ -3416,10 +3416,10 @@ a black box queue implementation in the presence of concurrency.
 
 \autoref{fig:qtest1} shows a program that
 checks concurrent <{put}> operations using
-\texttt{N} threads.  Thread \texttt{putter(<{v}>)}
+<{N}> threads.  Thread \texttt{putter(<{v}>)}
 adds <{v}> to the queue.
 Thread \texttt{main()} waits until all \texttt{putter}
-threads have finished, and then dequeues \texttt{N}
+threads have finished, and then dequeues <{N}>
 items, verifying that they form the set
 $\{ 0 .. \mathtt{N} - 1 \}$.
 % Note that it is perfectly fine to use \textbf{sequential}
@@ -3430,19 +3430,19 @@ $\{ 0 .. \mathtt{N} - 1 \}$.
 \begin{code}
 <{:input:../code/qtest2.hny}>
 \end{code}
-\caption{\harmonylink{code/qtest2.hny} Concurrent \texttt{get()}}
+\caption{\harmonylink{code/qtest2.hny} Concurrent <{get()}>}
 \label{fig:qtest2}
 \end{figure}
 
 Similarly, \autoref{fig:qtest2} shows a program that
 checks concurrent <{get}> operations using
-\texttt{N} threads.
+<{N}> threads.
 The queue is initialized with the sequence
 $0 .. \mathtt{N} - 1$.
 Thread \texttt{getter(<{v}>)} removes an entry from the
 queue and makes sure that no other thread got the
 same entry.
-Thread \texttt{main()} waits until all \texttt{getter}
+Thread \texttt{main()} waits until all <{getter}>
 threads have finished and checks to make sure that
 the queue is empty.
 
@@ -3451,18 +3451,18 @@ the queue is empty.
 <{:input:../code/qtest3.hny}>
 \end{code}
 \caption{\harmonylink{code/qtest3.hny} Mix of concurrent
-\texttt{get()} and \texttt{put()} operations}
+<{get()}> and \texttt{put()} operations}
 \label{fig:qtest3}
 \end{figure}
 
 \autoref{fig:qtest3} checks a mixture of
 concurrent <{get}> and <{put}> operations.
-It starts \texttt{N} \texttt{getter} threads and
-\texttt{N} \texttt{putter} threads.
-Thread \texttt{main} waits until all have finished,
+It starts <{N}> <{getter}> threads and
+<{N}> \texttt{putter} threads.
+Thread <{main}> waits until all have finished,
 and then checks to make sure that whatever is left
 on the queue was not also consumed by some
-\texttt{getter} thread.
+<{getter}> thread.
 Finally, it makes sure that the queue is empty
 once all the values that were added
 to it by the \texttt{putter} threads have been consumed.
@@ -3470,7 +3470,7 @@ to it by the \texttt{putter} threads have been consumed.
 A common mistake that people make is to use
 a globally shared variable in the implementation of
 a concurrent data structure.
-The \texttt{get()} method of the queue implementation
+The <{get()}> method of the queue implementation
 uses a local variable <{node}>, declared using
 a \textbf{let} statement, but it would be easy to
 mistakenly use a global variable <{node}> instead.
@@ -3630,7 +3630,7 @@ events was the following:
 \{ \texttt{.lock}: <{False}>, \texttt{.next}: <{None}>, \texttt{.value}: <{None}> \};
 \item[1:] thread T1 (\texttt{thread}(1)) ran and finished executing
 <{put}>(1) (see the output column for that clue: the thread printed that).
-We can see that <{q}>.\texttt{next} now points to \texttt{alloc}.\textit{pool}[0],
+We can see that <{q}>.<{next}> now points to \texttt{alloc}.\textit{pool}[0],
 which the thread must have allocated.  The contents is 
 \{ \texttt{.lock}: <{False}>, \texttt{.next}: <{None}>, \texttt{.value}: 1 \}, as expected;
 \item[2:] thread T2 (\texttt{thread}(1)) started running, calling
@@ -4159,19 +4159,19 @@ Which ones?
 \item \label{ex:bbsbs} Implement a solution to the producer/consumer problem
 using split binary semaphores.
 \item \label{ex:boundlock} Using busy waiting, implement a ``bound lock'' that allows
-up to \texttt{M} threads to acquire it at the same time.\footnote{A bound lock is a restricted version of a \emph{counting} semaphore.}
+up to <{M}> threads to acquire it at the same time.\footnote{A bound lock is a restricted version of a \emph{counting} semaphore.}
 A bound lock
 with \texttt{M = 1} is an ordinary lock.
-You should define a constant \texttt{M} and two methods:
+You should define a constant <{M}> and two methods:
 \texttt{acquire\_bound\_lock()}
 and \texttt{release\_bound\_lock()}.
 (Bound locks are useful for situations where too many threads working
 at the same time might exhaust some resource such as a cache.)
 \item Write a test program for your bound lock
-that checks that no more than \texttt{M} threads can acquire the
+that checks that no more than <{M}> threads can acquire the
 bound lock.
 \item Write a test program for bound locks
-that checks that up to \texttt{M} threads
+that checks that up to <{M}> threads
 can acquire the bound lock at the same time.
 % \item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
 % should block if the stack is full.  Method \texttt{pop()} should block
@@ -4179,8 +4179,8 @@ can acquire the bound lock at the same time.
 % Also implement test programs for your solution.
 \item \label{ex:gpu} Implement a thread-safe \emph{GPU allocator} by modifying
 \autoref{fig:gpu}.
-There are \texttt{N} GPUs identified by the numbers
-1 through \texttt{N}.  Method \texttt{gpuAlloc()} returns the identifier
+There are <{N}> GPUs identified by the numbers
+1 through <{N}>.  Method \texttt{gpuAlloc()} returns the identifier
 of an available GPU, blocking if there is currently no available GPU.
 Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
 to block.
@@ -4688,6 +4688,7 @@ introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 <{:const:partition}>
 <{:const:sortrange}>
 <{:const:sort}>
+<{:const:main}>
 
 \section*{Exercises}
 \begin{problems}
@@ -4723,15 +4724,15 @@ it is fair.
 \item \label{ex:qsort}
 Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and \autoref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in shared variable \textit{textqs}.\texttt{arr}.
-Another shared variable, \textit{testqs}.\texttt{todo}, contains the ranges of the
+The array to be sorted is stored in shared variable <{textqs.arr}>.
+Another shared variable, <{testqs.todo}>, contains the ranges of the
 array that need to be sorted (initially the entire array).
 Re-using as much of this code as you can, implement a parallel version of
-this.  You should not have to change the methods \texttt{swap}, \texttt{partition},
-or \texttt{sortrange} for this.  Create \texttt{NWORKERS} ``worker threads''
-that should replace the \texttt{qsort} code.
-Each worker loops until \textit{todo}
-is empty and sorts the ranges that it finds until then.  The \texttt{main}
+this.  You should not have to change the methods <{swap}>, <{partition}>,
+or <{sortrange}> for this.  Create <{NWORKERS}> ``worker threads''
+that should replace the <{qsort}> code.
+Each worker loops until <{todo}>
+is empty and sorts the ranges that it finds until then.  The <{main}>
 thread needs to wait until all workers are done.
 \end{problems}
 
@@ -4792,7 +4793,7 @@ with all five threads being blocked trying to acquire the lock.
 \begin{quote}
 \begin{itemize}
 \item Do you see what the problem is?
-\item Does it depend on \texttt{N}, the number of philosophers?
+\item Does it depend on <{N}>, the number of philosophers?
 \item Does it matter in what order the philosophers lay down their forks?
 \end{itemize}
 \end{quote}
@@ -4934,6 +4935,7 @@ scenario}
 \end{figure}
 
 <{:const:transfer}>
+<{:const:total}>
 
 \section*{Exercises}
 \begin{problems}
@@ -4946,7 +4948,7 @@ waiting for the forks.  See if you can figure it out.
 accounts and transfers between those accounts.
 Unfortunately, running the test reveals that it sometimes leaves unterminated
 threads.  Can you fix the problem?
-\item Add a method \texttt{total()} to the solution of the previous question
+\item Add a method <{total()}> to the solution of the previous question
 that computes the total over all balances.
 It needs to obtain a lock on all accounts.  Make sure that
 it cannot cause deadlock.
@@ -5061,7 +5063,7 @@ can be a web server, and its clients are web browsers.
 Develop a pipeline that computes Mersenne primes (primes that are one less
 than a power of two).  Write four actors:
 \begin{enumerate}
-\item an actor that generates a sequence of integers 1 through \texttt{N};
+\item an actor that generates a sequence of integers 1 through <{N}>;
 \item an actor that receives integers and forwards only those that are prime;
 \item an actor that receives integers and forwards only those that are one
 less than a power of two;
@@ -5123,7 +5125,7 @@ current round.
 
 Blocking queues work well for implementing barrier synchronization.
 \autoref{fig:barrier} shows an example.  There is a queue
-for each of the \texttt{N} threads.
+for each of the <{N}> threads.
 Before thread <{i}> enters a round, it first sends a message to every
 other thread and then waits until it receives a message from
 every other thread.
@@ -5191,7 +5193,7 @@ that all threads within the barrier are in the same round.
 
 \section*{Exercises}
 \begin{problems}
-\item Implement barrier synchronization for \texttt{N} threads
+\item Implement barrier synchronization for <{N}> threads
 with just three binary semaphores.  Busy waiting is not allowed.
 Can you implement barrier synchronization with two binary semaphores?
 (As always, the Little Book of Semaphores~\cite{Downey09} is a good resource
@@ -5199,7 +5201,7 @@ for solving synchronization problems with semaphores.
 Look for the \emph{double turnstile}
 \index{double turnstile}%
 solution.)
-\item Imagine a pool hall with \texttt{N} tables.  A table is \emph{full}
+\item Imagine a pool hall with <{N}> tables.  A table is \emph{full}
 from the time there are two players until both players have left.
 When someone arrives, they can join a table that is not full, preferably
 one that has a player ready to start playing.
@@ -6090,7 +6092,7 @@ timestamp of its corresponding write operation.
 
 Each read and write operation consists of two \emph{phases}.  In a phase,
 a client broadcasts a request to all servers and waits for responses
-from a majority ($\texttt{N} - \texttt{F}$ or equivalently
+from a majority ($<{N}> - \texttt{F}$ or equivalently
 $\texttt{F} + 1$ servers).  Note that because we are assuming that no
 more than \texttt{F} servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
@@ -6187,7 +6189,7 @@ fewer than $1/3^{rd}$ of processors failing by crashing.
 
 More precisely,
 constant \texttt{F} contains the maximum number of failures, and
-we will assume there are $\texttt{N} = 3\texttt{F} + 1$ processors.
+we will assume there are $<{N}> = 3\texttt{F} + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
 By the usual definition of consensus, we want the following two properties:
@@ -6213,15 +6215,15 @@ and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions
 $\emptyset$, the invariants clearly hold initially.
 
 The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
-$\texttt{N} - \texttt{F}$ messages, update their state based on the messages, and
+$<{N}> - \texttt{F}$ messages, update their state based on the messages, and
 broadcast messages containing their new state.
-The reason that a processor waits for $\texttt{N} - \texttt{F}$ rather than \texttt{N}
+The reason that a processor waits for $<{N}> - \texttt{F}$ rather than <{N}>
 messages is because of failures: up to $\texttt{F}$ processors may never send a message
-and so it would be unwise to wait for all $\texttt{N}$.  You might be tempted to use
+and so it would be unwise to wait for all $<{N}>$.  You might be tempted to use
 a timer and time out on waiting for a particular processor.  But how would you initialize
 that timer?  While we will assume that the network is reliable, there is no guarantee
 that messages arrive within a particular time.
-We call a set of $\texttt{N} - \texttt{F}$ processors a \emph{quorum}.
+We call a set of $<{N}> - \texttt{F}$ processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
 The state of a processor consists of its current round number (initially 0)
@@ -6234,11 +6236,11 @@ limits the number of rounds.  It may be that no decisions are made, but that doe
 violate either Validity or Agreement.  We only check that \emph{if} decisions are
 made, they satisfy Validity and Agreement.
 
-In Line~22, a processor waits for $\texttt{N} - \texttt{F}$ messages using
+In Line~22, a processor waits for $<{N}> - \texttt{F}$ messages using
 the Harmony \textbf{atomically when exists} statement.
 Since Harmony has to check all possible executions of the protocol, the
 \texttt{receive}(\textit{round}, <{k}>) method returns all \emph{subbags} of messages
-for the given round that have size $k = \texttt{N} - \texttt{F}$.  The method uses a
+for the given round that have size $k = <{N}> - \texttt{F}$.  The method uses a
 dictionary comprehension to filter out all messages for the given \textit{round}
 and then uses the \texttt{bag.combinations} method to find all combinations of size <{k}>.
 The \textbf{atomically when exists} statement waits until there is at least one such combination and
@@ -6251,7 +6253,7 @@ unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
 The body of the \textbf{atomically when exists} statement contains the core of the algorithm.
-Note that $\texttt{N} - \texttt{F} = 2\texttt{F} + 1$, so that the number of
+Note that $<{N}> - \texttt{F} = 2\texttt{F} + 1$, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the number
 of zeroes and <{count[1]}> stores the number of ones received in the round.
@@ -6277,10 +6279,10 @@ each processor only considers messages for the round that it is in.
 If a message is for an old round, the processor will ignore it;
 if a message is for a future round, the processor will buffer it.
 So one can simplify the model and have each processor wait
-for \emph{all} \texttt{N} messages in a round
+for \emph{all} <{N}> messages in a round
 instead of $\mathtt{N} - \mathtt{F}$.
 It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
-out of those \texttt{N} messages, but executions in which some processors
+out of those <{N}> messages, but executions in which some processors
 are left behind in all rounds are no longer considered.
 It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
 processors only choose each other messages and essentially ignore the
@@ -6354,7 +6356,7 @@ this Paxos protocol.  Paxos is perhaps best understood starting
 with the second phase.  At the end of the first phase the leader
 broadcasts a \texttt{2.A} message (Phase 2, Type A) to the acceptors
 containing the ballot number and a proposal and then waits for
-$\texttt{N} - \texttt{F}$ matching \texttt{2.B} responses from the
+$<{N}> - \texttt{F}$ matching \texttt{2.B} responses from the
 acceptors.  If each response contains the ballot number and the
 proposal, then the proposal is deemed decided.  But one or more of
 the responses can contain a higher ballot number, in which case the
@@ -7099,15 +7101,15 @@ It is intended to improve readability of your code.
 
 \subsection*{\textbf{const}}
 
-The expression \textbf{const} \texttt{N = 3} introduces a new constant
-\texttt{N} with the value 3.  Evaluating \texttt{N} does not lead to
+The expression <{const N = 3}> introduces a new constant
+<{N}> with the value 3.  Evaluating <{N}> does not lead to
 loading from a memory location.  The assignment can be overridden with
 the \texttt{-c} flag: \texttt{harmony -cN=4} executes the model checker
-with 4 assigned to \texttt{N} instead of 3.
-Harmony also supports \textbf{const} \texttt{N, M = 3, 4}, which
-assigns 3 to \texttt{N} and 4 to \texttt{M}.
+with 4 assigned to <{N}> instead of 3.
+Harmony also supports <{const N, M = 3, 4}>, which
+assigns 3 to <{N}> and 4 to <{M}>.
 Harmony has limited support for \emph{constant folding}.  For example,
-\textbf{const} \texttt{N = 3 + 4} assigns value 7 to constant \texttt{N}.
+<{const N = 3 + 4}> assigns value 7 to constant <{N}>.
 
 \subsection*{\textbf{def}}
 
@@ -7116,7 +7118,7 @@ defines a new program counter constant <{m}> referring to
 a method that takes an argument <{a}> and executes the statements
 <{S1, S2, ...}>.  The argument <{a}> can be a tuple pattern similar
 to those used in <{let}> and <{for}> statements.
-Examples include <{()}>, $(x,)$, $(x, y)$, and $(x, (y, z))$.
+Examples include <{()}>, <{(x,)}>, <{(x, y)}>, and <{(x, (y, z))}>.
 The given local variable names are assigned upon application and
 are read-only.
 Each method has a predefined local variable
