@@ -301,7 +301,7 @@ self.getTokenStream().handle_compound()
 one_line_stmt:
     simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
-label: (AT NAME COLON)+;
+label: (NAME COLON)+;
 stmt: label? ATOMICALLY? (
           SEMI_COLON* NL
         | one_line_stmt

@@ -12,7 +12,7 @@ else:
 def serializedATN():
     with StringIO() as buf:
         buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3x")
-        buf.write("\u0264\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
+        buf.write("\u0263\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
         buf.write("\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16")
         buf.write("\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22\4\23\t\23")
         buf.write("\4\24\t\24\4\25\t\25\4\26\t\26\4\27\t\27\4\30\t\30\4\31")
@@ -66,12 +66,12 @@ def serializedATN():
         buf.write("\n8\38\38\39\39\39\39\59\u0221\n9\39\39\39\59\u0226\n")
         buf.write("9\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\3:\5:\u0238")
         buf.write("\n:\3;\3;\3;\3;\3;\3;\5;\u0240\n;\3<\3<\5<\u0244\n<\3")
-        buf.write("<\3<\3<\5<\u0249\n<\3=\3=\3=\6=\u024e\n=\r=\16=\u024f")
-        buf.write("\3>\5>\u0253\n>\3>\5>\u0256\n>\3>\7>\u0259\n>\f>\16>\u025c")
-        buf.write("\13>\3>\3>\3>\3>\5>\u0262\n>\3>\2\3.?\2\4\6\b\n\f\16\20")
+        buf.write("<\3<\3<\5<\u0249\n<\3=\3=\6=\u024d\n=\r=\16=\u024e\3>")
+        buf.write("\5>\u0252\n>\3>\5>\u0255\n>\3>\7>\u0258\n>\f>\16>\u025b")
+        buf.write("\13>\3>\3>\3>\3>\5>\u0261\n>\3>\2\3.?\2\4\6\b\n\f\16\20")
         buf.write("\22\24\26\30\32\34\36 \"$&(*,.\60\62\64\668:<>@BDFHJL")
         buf.write("NPRTVXZ\\^`bdfhjlnprtvxz\2\b\4\2\3\3??\4\2\4\22==\3\2")
-        buf.write("\23\30\6\2\n\n\31&AAJJ\3\2(\66\4\2XXhh\2\u0289\2\177\3")
+        buf.write("\23\30\6\2\n\n\31&AAJJ\3\2(\66\4\2XXhh\2\u0288\2\177\3")
         buf.write("\2\2\2\4\u0084\3\2\2\2\6\u008b\3\2\2\2\b\u008e\3\2\2\2")
         buf.write("\n\u00a6\3\2\2\2\f\u00a8\3\2\2\2\16\u00ad\3\2\2\2\20\u00b8")
         buf.write("\3\2\2\2\22\u00c0\3\2\2\2\24\u00cb\3\2\2\2\26\u00d2\3")
@@ -88,8 +88,8 @@ def serializedATN():
         buf.write("\3\2\2\2^\u01e4\3\2\2\2`\u01e8\3\2\2\2b\u01f2\3\2\2\2")
         buf.write("d\u01f7\3\2\2\2f\u01fc\3\2\2\2h\u0200\3\2\2\2j\u020e\3")
         buf.write("\2\2\2l\u0214\3\2\2\2n\u0216\3\2\2\2p\u021c\3\2\2\2r\u0237")
-        buf.write("\3\2\2\2t\u023f\3\2\2\2v\u0241\3\2\2\2x\u024d\3\2\2\2")
-        buf.write("z\u0252\3\2\2\2|~\5z>\2}|\3\2\2\2~\u0081\3\2\2\2\177}")
+        buf.write("\3\2\2\2t\u023f\3\2\2\2v\u0241\3\2\2\2x\u024c\3\2\2\2")
+        buf.write("z\u0251\3\2\2\2|~\5z>\2}|\3\2\2\2~\u0081\3\2\2\2\177}")
         buf.write("\3\2\2\2\177\u0080\3\2\2\2\u0080\3\3\2\2\2\u0081\177\3")
         buf.write("\2\2\2\u0082\u0085\5\6\4\2\u0083\u0085\5\b\5\2\u0084\u0082")
         buf.write("\3\2\2\2\u0084\u0083\3\2\2\2\u0085\u0087\3\2\2\2\u0086")
@@ -286,25 +286,24 @@ def serializedATN():
         buf.write("\u0242\3\2\2\2\u0243\u0244\3\2\2\2\u0244\u0245\3\2\2\2")
         buf.write("\u0245\u0249\7\67\2\2\u0246\u0247\7u\2\2\u0247\u0249\5")
         buf.write("v<\2\u0248\u0243\3\2\2\2\u0248\u0246\3\2\2\2\u0249w\3")
-        buf.write("\2\2\2\u024a\u024b\7^\2\2\u024b\u024c\7l\2\2\u024c\u024e")
-        buf.write("\7f\2\2\u024d\u024a\3\2\2\2\u024e\u024f\3\2\2\2\u024f")
-        buf.write("\u024d\3\2\2\2\u024f\u0250\3\2\2\2\u0250y\3\2\2\2\u0251")
-        buf.write("\u0253\5x=\2\u0252\u0251\3\2\2\2\u0252\u0253\3\2\2\2\u0253")
-        buf.write("\u0255\3\2\2\2\u0254\u0256\7h\2\2\u0255\u0254\3\2\2\2")
-        buf.write("\u0255\u0256\3\2\2\2\u0256\u0261\3\2\2\2\u0257\u0259\7")
-        buf.write("u\2\2\u0258\u0257\3\2\2\2\u0259\u025c\3\2\2\2\u025a\u0258")
-        buf.write("\3\2\2\2\u025a\u025b\3\2\2\2\u025b\u025d\3\2\2\2\u025c")
-        buf.write("\u025a\3\2\2\2\u025d\u0262\7\67\2\2\u025e\u0262\5v<\2")
-        buf.write("\u025f\u0262\5t;\2\u0260\u0262\5\4\3\2\u0261\u025a\3\2")
-        buf.write("\2\2\u0261\u025e\3\2\2\2\u0261\u025f\3\2\2\2\u0261\u0260")
-        buf.write("\3\2\2\2\u0262{\3\2\2\2?\177\u0084\u0087\u0092\u0099\u009b")
-        buf.write("\u00a4\u00ab\u00b2\u00b6\u00bd\u00cb\u00d2\u00e5\u00ea")
-        buf.write("\u00ef\u00f4\u0101\u0104\u010d\u0110\u0115\u0117\u0120")
-        buf.write("\u012e\u0132\u0134\u0138\u0141\u014e\u0151\u0163\u016d")
-        buf.write("\u016f\u017d\u018e\u019e\u01ae\u01bf\u01cf\u01d8\u01db")
-        buf.write("\u01df\u01e2\u01ec\u0207\u020b\u0210\u0214\u0218\u0220")
-        buf.write("\u0225\u0237\u023f\u0243\u0248\u024f\u0252\u0255\u025a")
-        buf.write("\u0261")
+        buf.write("\2\2\2\u024a\u024b\7l\2\2\u024b\u024d\7f\2\2\u024c\u024a")
+        buf.write("\3\2\2\2\u024d\u024e\3\2\2\2\u024e\u024c\3\2\2\2\u024e")
+        buf.write("\u024f\3\2\2\2\u024fy\3\2\2\2\u0250\u0252\5x=\2\u0251")
+        buf.write("\u0250\3\2\2\2\u0251\u0252\3\2\2\2\u0252\u0254\3\2\2\2")
+        buf.write("\u0253\u0255\7h\2\2\u0254\u0253\3\2\2\2\u0254\u0255\3")
+        buf.write("\2\2\2\u0255\u0260\3\2\2\2\u0256\u0258\7u\2\2\u0257\u0256")
+        buf.write("\3\2\2\2\u0258\u025b\3\2\2\2\u0259\u0257\3\2\2\2\u0259")
+        buf.write("\u025a\3\2\2\2\u025a\u025c\3\2\2\2\u025b\u0259\3\2\2\2")
+        buf.write("\u025c\u0261\7\67\2\2\u025d\u0261\5v<\2\u025e\u0261\5")
+        buf.write("t;\2\u025f\u0261\5\4\3\2\u0260\u0259\3\2\2\2\u0260\u025d")
+        buf.write("\3\2\2\2\u0260\u025e\3\2\2\2\u0260\u025f\3\2\2\2\u0261")
+        buf.write("{\3\2\2\2?\177\u0084\u0087\u0092\u0099\u009b\u00a4\u00ab")
+        buf.write("\u00b2\u00b6\u00bd\u00cb\u00d2\u00e5\u00ea\u00ef\u00f4")
+        buf.write("\u0101\u0104\u010d\u0110\u0115\u0117\u0120\u012e\u0132")
+        buf.write("\u0134\u0138\u0141\u014e\u0151\u0163\u016d\u016f\u017d")
+        buf.write("\u018e\u019e\u01ae\u01bf\u01cf\u01d8\u01db\u01df\u01e2")
+        buf.write("\u01ec\u0207\u020b\u0210\u0214\u0218\u0220\u0225\u0237")
+        buf.write("\u023f\u0243\u0248\u024e\u0251\u0254\u0259\u0260")
         return buf.getvalue()
 
 
@@ -618,7 +617,7 @@ class HarmonyParser ( Parser ):
             self.state = 125
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while (((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__7) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF) | (1 << HarmonyParser.IMPORT) | (1 << HarmonyParser.PRINT))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.POSSIBLY - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.ATOMIC - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.AT - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0):
+            while (((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__7) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF) | (1 << HarmonyParser.IMPORT) | (1 << HarmonyParser.PRINT))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.POSSIBLY - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.ATOMIC - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0):
                 self.state = 122
                 self.stmt()
                 self.state = 127
@@ -4173,7 +4172,7 @@ class HarmonyParser ( Parser ):
                 self.state = 526 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__7) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF) | (1 << HarmonyParser.IMPORT) | (1 << HarmonyParser.PRINT))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.POSSIBLY - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.ATOMIC - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.AT - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0)):
+                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__7) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF) | (1 << HarmonyParser.IMPORT) | (1 << HarmonyParser.PRINT))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.POSSIBLY - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.ATOMIC - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0)):
                     break
 
             self._ctx.stop = self._input.LT(-1)
@@ -4356,7 +4355,7 @@ class HarmonyParser ( Parser ):
             self.state = 542
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [HarmonyParser.T__7, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.POSSIBLY, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.ATOMIC, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.AT, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
+            if token in [HarmonyParser.T__7, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.POSSIBLY, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.ATOMIC, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
                 self.state = 539
                 self.block_stmts()
                 pass
@@ -4768,12 +4767,6 @@ class HarmonyParser ( Parser ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
-        def AT(self, i:int=None):
-            if i is None:
-                return self.getTokens(HarmonyParser.AT)
-            else:
-                return self.getToken(HarmonyParser.AT, i)
-
         def NAME(self, i:int=None):
             if i is None:
                 return self.getTokens(HarmonyParser.NAME)
@@ -4802,24 +4795,23 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.LabelContext(self, self._ctx, self.state)
         self.enterRule(localctx, 118, self.RULE_label)
-        self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 587 
+            self.state = 586 
             self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while True:
-                self.state = 584
-                self.match(HarmonyParser.AT)
-                self.state = 585
-                self.match(HarmonyParser.NAME)
-                self.state = 586
-                self.match(HarmonyParser.COLON)
-                self.state = 589 
+            _alt = 1
+            while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                if _alt == 1:
+                    self.state = 584
+                    self.match(HarmonyParser.NAME)
+                    self.state = 585
+                    self.match(HarmonyParser.COLON)
+
+                else:
+                    raise NoViableAltException(self)
+                self.state = 588 
                 self._errHandler.sync(self)
-                _la = self._input.LA(1)
-                if not (_la==HarmonyParser.AT):
-                    break
+                _alt = self._interp.adaptivePredict(self._input,56,self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re
@@ -4884,49 +4876,49 @@ class HarmonyParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 592
+            self.state = 591
             self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            if _la==HarmonyParser.AT:
-                self.state = 591
+            la_ = self._interp.adaptivePredict(self._input,57,self._ctx)
+            if la_ == 1:
+                self.state = 590
                 self.label()
 
 
-            self.state = 595
+            self.state = 594
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,58,self._ctx)
             if la_ == 1:
-                self.state = 594
+                self.state = 593
                 self.match(HarmonyParser.ATOMICALLY)
 
 
-            self.state = 607
+            self.state = 606
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [HarmonyParser.NL, HarmonyParser.SEMI_COLON]:
-                self.state = 600
+                self.state = 599
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 while _la==HarmonyParser.SEMI_COLON:
-                    self.state = 597
+                    self.state = 596
                     self.match(HarmonyParser.SEMI_COLON)
-                    self.state = 602
+                    self.state = 601
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
 
-                self.state = 603
+                self.state = 602
                 self.match(HarmonyParser.NL)
                 pass
             elif token in [HarmonyParser.T__7, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.POINTER_OF, HarmonyParser.PRINT, HarmonyParser.SETINTLEVEL, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.POSSIBLY, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.NONE, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.STRING]:
-                self.state = 604
+                self.state = 603
                 self.one_line_stmt()
                 pass
             elif token in [HarmonyParser.ATOMIC, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.ATOMICALLY]:
-                self.state = 605
+                self.state = 604
                 self.compound_stmt()
                 pass
             elif token in [HarmonyParser.IMPORT, HarmonyParser.FROM]:
-                self.state = 606
+                self.state = 605
                 self.import_stmt()
                 pass
             else:

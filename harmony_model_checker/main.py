@@ -21,8 +21,8 @@ def build_parser(progam_input):
     lexer = HarmonyLexer(progam_input)
     parser = HarmonyParser(None)
 
-    lexer.removeErrorListeners()
-    parser.removeErrorListeners()
+    # lexer.removeErrorListeners()
+    # parser.removeErrorListeners()
 
     stream = HarmonyTokenStream(lexer, parser)
     parser._input = stream
@@ -137,7 +137,6 @@ def parse_string(string: str):
 def parse(filename: str):
     _input = FileStream(filename)
     parser = build_parser(_input)
-    visitor = HarmonyVisitorImpl(filename)
     parser.addErrorListener(HarmonyParserErrorListener(filename))
 
     try:
@@ -145,6 +144,8 @@ def parse(filename: str):
     except Exception as e:
         print(e)
         return None
+
+    visitor = HarmonyVisitorImpl(filename)
     return visitor.visit(tree)
 
 
@@ -174,7 +175,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
         load_file(fname, scope, code)
     if interface is not None:
         load_string("def __iface__(): result = (%s)" % interface, scope, code)
-
+    
     code.append(ReturnOp())  # to terminate "__init__" process
 
     # Analyze liveness of variables
@@ -291,9 +292,9 @@ def main():
             print("charm model checker failed")
             return r
         b = Brief()
-        b.run(outputfiles, output_flag)
+        b.run(outputfiles, behavior)
         gh = GenHTML()
-        gh.run(outputfiles, output_flag)
+        gh.run(outputfiles)
         if not suppress_output:
             p = pathlib.Path(outputfiles["hvm"]).resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
