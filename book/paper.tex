@@ -2233,7 +2233,7 @@ If <{x}> is a shared variable, then the expression <{?x}> is the address of <{x}
 If a variable contains an address, we call that variable a \emph{pointer}.
 \index{pointer}%
 If <{p}> is a pointer to a shared variable, then the
-expression \texttt{!}<{p}> is the value of the shared variable.
+expression <{!p}> is the value of the shared variable.
 In particular, <{!?x = x}>.
 This is similar to how C pointers work (\texttt{*\string&}<{x = x}>).
 
@@ -5311,13 +5311,15 @@ non-blocking synchronization calls such as <{notify}>, but calls such as
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
 
+<{:const:i_put}>
+
 \section*{Exercises}
 \begin{problems}
 \item The <{put}> method you implemented in \autoref{ex:bbmesa} cannot be used
 in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
-Implement a new method \texttt{i\_put}(<{item}>) that does not
+Implement a new method <{i_put(item)}> that does not
 block.  Instead, it should return <{False}> if the buffer is full and <{True}>
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
@@ -5364,10 +5366,9 @@ entry initialized to <{None}>.  <{back}> is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two atomic operations:
 \begin{itemize}
-\item <{inc(p)}>: atomically increments \texttt{!}<{p}> and returns
+\item <{inc(p)}>: atomically increments <{!p}> and returns
 the old value;
-\item <{exch(p)}>: sets \texttt{!}<{p}> to <{None}> and returns
-the old value.
+\item <{exch(p)}>: sets <{!p}> to <{None}> and returns the old value.
 \end{itemize}
 
 Method <{produce(item)}> uses <{inc(?back)}> to allocate
@@ -7466,9 +7467,8 @@ $a[b]$ for indexing.  In case <{b}> is a simple string,
 you can also write $a.b$ for indexing.
 
 There are three levels of precedence.
-Application has the highest precedence.  So, \texttt{!}<{a b}> is interpreted as
-\texttt{!}(<{a b}>) and <{a b}> \texttt{+} <{c d}> is interpreted as
-(<{a b}>) \texttt{+} (<{c d}>).
+Application has the highest precedence.  So, <{!a b}> is interpreted as
+<{!(a b)}> and <{a b + c d}> is interpreted as <{(a b) + (c d)}>.
 Unary operators have the next highest precedence,
 and the remaining operators have the lowest precedence.
 For example, $-2 + 3$ evaluates to 1, not $-5$.
@@ -7830,23 +7830,23 @@ The <{synch}> module provides the following methods:
 \hline
 <{Lock()}> & return a binary semaphore initialized to <{False}> \\
 \hline
-<{acquire(bs)}> & acquire binary semaphore \texttt{!}<{bs}> \\
+<{acquire(bs)}> & acquire binary semaphore <{!bs}> \\
 \hline
-<{release(bs)}> & release binary semaphore \texttt{!}<{bs}> \\
+<{release(bs)}> & release binary semaphore <{!bs}> \\
 \hline
 <{Condition()}> & return a condition variable \\
 \hline
-<{wait(c, lk)}> & wait on condition variable \texttt{!}<{c}>
+<{wait(c, lk)}> & wait on condition variable <{!c}>
 and lock <{lk}> \\ \hline
-<{notify(c)}> & notify a thread waiting on condition variable \texttt{!}<{c}> \\
+<{notify(c)}> & notify a thread waiting on condition variable <{!c}> \\
 \hline
-<{notifyAll(c)}> & notify all threads waiting on condition variable \texttt{!}<{c}> \\
+<{notifyAll(c)}> & notify all threads waiting on condition variable <{!c}> \\
 \hline
 <{Semaphore(cnt)}> & return a counting semaphore initialized to <{cnt}> \\
 \hline
-<{P(sema)}> & procure \texttt{!}<{sema}>  \\
+<{P(sema)}> & procure <{!sema}>  \\
 \hline
-<{V(sema)}> & vacate \texttt{!}<{sema}>  \\
+<{V(sema)}> & vacate <{!sema}>  \\
 \hline
 <{Queue}>() & return a synchronized queue object \\
 \hline
