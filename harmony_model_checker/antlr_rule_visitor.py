@@ -141,7 +141,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitPrint_stmt(self, ctx: HarmonyParser.Print_stmtContext):
         cond = self.visit(ctx.expr())
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return LogAST(tkn, False, cond)
+        return PrintAST(tkn, False, cond)
 
     # Visit a parse tree produced by HarmonyParser#none.
     def visitNone(self, ctx: HarmonyParser.NoneContext):
