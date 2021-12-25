@@ -455,7 +455,7 @@ five numbers or for lists that have values other than the numbers
 are bugs remaining in the sorting algorithm is small.
 That said, it would be easy to write a program
 that sorts all lists of up to five numbers correctly but fails to
-do so for a list of 6 numbers.  (Hint: simply use an \textbf{if}
+do so for a list of 6 numbers.  (Hint: simply use an <{if}>
 statement.)
 
 \glsadd{invariant}%
@@ -809,7 +809,7 @@ $
 \end{verbatim}
 \end{code}
 
-The $\textbf{assert}$ statement checks that the output is
+The <{assert}> statement checks that the output is
 correct.  If the program is correct, Harmony reports the size of the
 ``state graph'' (13 states in this case).  If not, Harmony also
 reports what went wrong, typically by displaying a summary of an execution in
@@ -873,7 +873,7 @@ threads
 running in parallel while sharing variables.
 \autoref{fig:progs} shows two programs.  Program (a) is sequential.
 It sets <{shared}> to <{True}>, asserts that
-<{shared}> = <{True}> and finally sets <{shared}> to <{False}>.
+<{shared = True}> and finally sets <{shared}> to <{False}>.
 If you run the program through Harmony, it will not find any problems
 because there is only one execution possible and 1) in that execution
 the assertion does not fail and 2) the execution terminates.
@@ -1512,7 +1512,7 @@ go by very quickly.
     \autoref{fig:inc}.  Run it through Harmony and see what happens.  Based on
     the error output, describe in English what is wrong with the code by describing,
     in broad steps, how running the program can get into a bad state.
-\item What if we moved line~5 of \autoref{fig:incenter} to after the \textbf{if}
+\item What if we moved line~5 of \autoref{fig:incenter} to after the <{if}>
     statement (between lines~7 and~8)?  Do you think that would work?  Run it through
     Harmony and describe either why it works or why it does not work.
 \end{problems}
@@ -1821,7 +1821,7 @@ problem, now known as ``Peterson's Algorithm''~\cite{Peterson81}.
 The algorithm is an amalgam of the (incorrect) algorithms in
 \autoref{fig:naiveflags} and \autoref{fig:naiveturn}, and is presented
 in \autoref{fig:peterson}.
-(The first line specifies that the \textit{flags} and <{turn}>
+(The first line specifies that the <{flags}> and <{turn}>
 variables are assumed to satisfy \emph{sequential consistency}---it prevents
 Harmony from complaining about data races involving these variables,
 explained in \autoref{ch:spinlock}.)
@@ -1874,7 +1874,7 @@ Steps in Harmony are atomic.
 \glsadd{trace}%
 
 The HVM starts in an initial state in which there is only
-one thread (<{__init__}>()) and its program counter is~0.
+one thread (<{__init__()}>) and its program counter is~0.
 A \emph{trace}
 \index{trace}%
 is a sequence of steps starting from the initial state,
@@ -2030,7 +2030,7 @@ $\mathcal{G}(i) =
 That is, if thread <{i}> is at the critical section, then
 either $\mathcal{C}(i)$ holds or thread $1-i$ is about to execute line 10.
 \autoref{fig:petersonproof} formalizes $\mathcal{G}(i)$ in Harmony.
-The label \texttt{gate} refers to line 10, that is,
+The label <{gate}> refers to line 10, that is,
 the step that sets <{turn}> to $1-i$.
 You can run \autoref{fig:petersonproof} to determine
 that $\mathcal{G}(i)$ is an invariant for $i = 0, 1$.
@@ -2038,8 +2038,8 @@ Moreover, if $\mathcal{F}(i)$ and $\mathcal{G}(i)$ both hold for $i = 0, 1$,
 then mutual exclusion holds.  We can show this using proof by
 contradiction.  Suppose mutual exclusion is violated and thus both threads are in
 the critical section.  By $\mathcal{F}$ it must be the case that both
-\textit{flags} are true.  By $\mathcal{G}$ and the fact that neither thread
-is at label \texttt{gate}, we know that both $C(0)$ and $C(1)$ must hold.
+<{flags}> are true.  By $\mathcal{G}$ and the fact that neither thread
+is at label <{gate}>, we know that both $C(0)$ and $C(1)$ must hold.
 This then implies that $\mathit{turn} = 0 \land \mathit{turn} = 1$, providing
 the desired contradiction.
 
@@ -2059,9 +2059,9 @@ Therefore we only need to consider a step by thread~1.
 From $\mathcal{G}$ we know that one of the following three cases must hold before
 thread~1 takes a step:
 \begin{enumerate}
-\item \textit{flags}[1] = <{False}>;
-\item <{turn}> = 0;
-\item thread~1 is at label \texttt{gate}.
+\item <{flags[1] = False}>;
+\item <{turn = 0}>;
+\item thread~1 is at label <{gate}>.
 \end{enumerate}
 
 Let us consider each of these cases.
@@ -2070,11 +2070,11 @@ cases must hold after the step.
 In the first case, if thread~1 takes a step, there are two possibilities:
 either $flags[1]$ will still be <{False}> (in which case the first case
 continues to hold), or $flags[1]$ will be <{True}>
-and thread~1 will be at label \texttt{gate} (in which case the third case
+and thread~1 will be at label <{gate}> (in which case the third case
 will hold).
 We know that thread~1 never sets <{turn}> to 1, so
 if the second case holds before the step, it will also hold after the step.
-Finally, if thread~1 is at label \texttt{gate} before the step, then after
+Finally, if thread~1 is at label <{gate}> before the step, then after
 the step <{turn}> will equal 0, and therefore the second case will hold
 after the step.
 
@@ -2108,7 +2108,7 @@ A cool anecdote is the following.  When the author of Harmony had to teach
 Peterson's Algorithm, he refreshed his memory by looking at the Wikipedia
 page.  The page claimed that the following predicate is invariant:
 if thread <{i}> is in the critical section, then $\mathcal{C}(i)$ (i.e.,
-$\mathcal{G}$ without the disjunct that thread $1-i$ is at label \texttt{gate}).
+$\mathcal{G}$ without the disjunct that thread $1-i$ is at label <{gate}>).
 We already saw that this is not an invariant.
 (The author fixed the Wikipedia page with the help of Fred B.~Schneider.)
 
@@ -2235,7 +2235,7 @@ If a variable contains an address, we call that variable a \emph{pointer}.
 If <{p}> is a pointer to a shared variable, then the
 expression \texttt{!}<{p}> is the value of the shared variable.
 In particular, <{!?x = x}>.
-This is similar to how C pointers work (\texttt{*\string&}<{x}> = <{x}>).
+This is similar to how C pointers work (\texttt{*\string&}<{x = x}>).
 
 Often, pointers point to dictionaries, and so if <{p}> is such a pointer,
 then <{(!p).field}> would evaluate to the specified field in the dictionary.
@@ -2414,8 +2414,8 @@ are implemented, not just how they are specified.
 The code in \autoref{fig:lockspec} also uses the Harmony <{when}>
 statement.  A <{when}> statement waits until a time in which
 condition holds (not necessarily the first time) and then executes the
-statement block.  The ``\texttt{await} \textit{condition}'' statement is
-the same as ``<{when}> \textit{condition}: <{pass}>''.
+statement block.  The ``<{await condition}>'' statement is
+the same as ``<{when condition: pass}>''.
 Combined with the <{atomically}> keyword, the entire statement
 is executed atomically at a time that the condition holds.
 
@@ -2541,7 +2541,7 @@ many CPUs have an atomic ``test-and-set'' (TAS)
 \index{test-and-set}%
 \index{TAS}%
 operation.
-Method \texttt{test\_and\_set} in \autoref{fig:tas} shows its specification.
+Method <{test_and_set}> in \autoref{fig:tas} shows its specification.
 Here <{s}> points to a shared boolean variable and <{p}>
 to a private boolean variable, belonging to some thread.
 The operation copies the value of the shared variable to the
@@ -2556,13 +2556,12 @@ because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
 The program uses $\mathtt{N}+1$ boolean variables.
 Variable <{shared}> is initialized to <{False}> while
-\textit{private}[<{i}>] for each thread <{i}> is initialized to <{True}>.
+<{private}[i]}> for each thread <{i}> is initialized to <{True}>.
 
 An important invariant, $\mathcal{I}_1$, of the program is that at any time at most
 one of these variables is <{False}>.
 Another invariant, $\mathcal{I}_2(i)$, is that if thread <{i}> is
-in the critical section,
-then \textit{private}[<{i}>] = <{False}>.
+in the critical section, then <{private}[i] = False}>.
 Between the two (i.e., $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$),
 it is clear that only one thread can be in the
 critical section at the same time.
@@ -2570,23 +2569,23 @@ critical section at the same time.
 % $\mathcal{I}_1 \land \forall i: \mathcal{I}_2(i)$ is an inductive invariant.
 
 To see that invariant $\mathcal{I}_1$ is maintained, note that
-\texttt{!}<{p}> = <{True}> upon entry of \texttt{test\_and\_set}
+<{!p = True}> upon entry of <{test_and_set}>
 (because of the condition on the <{while}> loop that the
-\texttt{test\_and\_set} method is invoked in).
+<{test_and_set}> method is invoked in).
 There are two cases:
 \begin{enumerate}
-\item \texttt{!}<{s}> is <{False}> upon entry to \texttt{test\_and\_set}.
-Then upon exit \texttt{!}<{p}> = <{False}> and \texttt{!}<{s}> = <{True}>,
+\item <{!s}> is <{False}> upon entry to <{test_and_set}>.
+Then upon exit <{!p = False}> and <{!s = True}>,
 maintaining the invariant.
-\item \texttt{!}<{s}> is <{True}> upon entry to \texttt{test\_and\_set}.
+\item <{!s}> is <{True}> upon entry to <{test_and_set}>.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
-because we can assume, by the induction hypothesis, that $\textit{private}[i]$ is
+because we can assume, by the induction hypothesis, that $<{private}>[i]$ is
 <{True}> just before exiting the critical section.
 Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread <{i}> only proceeds to the critical
-section if \textit{private}[<{i}>] is <{False}>, and (ii) no other thread modifies
-\textit{private}[<{i}>].
+section if <{private}>[<{i}>] is <{False}>, and (ii) no other thread modifies
+<{private}>[<{i}>].
 
 Harmony can check these invariants as well.
 $\mathcal{I}_2(i)$ is checked by the \textbf{assert} statement.
@@ -2672,7 +2671,7 @@ A thread usually does not keep explicit track of whether it has a lock
 or not, because it is implied by the control flow of the program---a
 thread implicitly \emph{knows} that when it is executing in a critical
 section it has the lock.
-There is no need to keep \textit{private} as a shared
+There is no need to keep <{private}> as a shared
 variable---we only did so to be able to show and check the invariants.
 \autoref{fig:tas2} shows a more straightforward implementation of a spinlock.
 % The solution is similar to the na\"{i}ve solution of \autoref{fig:naivelock},
@@ -2709,16 +2708,16 @@ Every time a customer has been helped, the counter is incremented.
 the bakery at a time.)
 
 \autoref{fig:ticket} similarly uses two variables for a lock,
-\textit{counter} and \textit{dispenser}.  When a thread acquires the
+<{counter}> and <{dispenser}>.  When a thread acquires the
 lock, it fetches the current dispenser value and increments it
-modulo \texttt{MAX\_THREADS}, all in one atomic operation.
-In practice, \texttt{MAX\_THREADS} would
+modulo <{MAX_THREADS}>, all in one atomic operation.
+In practice, <{MAX_THREADS}> would
 be a number like $2^{32}$ or $2^{64}$, but since the Harmony model checker
-checks every possible state, limiting \texttt{MAX\_THREADS}
+checks every possible state, limiting <{MAX_THREADS}>
 to a small number
 significantly reduces the time to model check a Harmony program.
 Plus it is easier to check that it fails when you run it with more than
-\texttt{MAX\_THREADS} threads.
+<{MAX_THREADS}> threads.
 You can test the implementation using the command
 \texttt{harmony -m synch=ticket code/cssynch.hny}.
 To see it fail, try
@@ -2767,7 +2766,7 @@ A thread that is in an infinite loop is also considered blocked.
 \begin{code}
 <{:input:../code/locksusp.hny}>
 \end{code}
-\caption{\harmonylink{modules/synchS.hny} The lock implementation in the \texttt{synchS} module uses suspension}
+\caption{\harmonylink{modules/synchS.hny} The lock implementation in the <{synchS}> module uses suspension}
 \label{fig:suspension}
 \end{figure}
 
@@ -2810,7 +2809,7 @@ It is implemented as follows:
 lock is currently acquired and a list of contexts of threads that want to
 acquire the lock.
 \item
-<{acquire}>()
+<{acquire()}>
 \index{acquire}%
 acquires the lock if available and suspends the invoking thread if not.
 In the latter case, the context of the thread is added to the end of the list of contexts.
@@ -2820,7 +2819,7 @@ While the
 thread is running no other threads can run, but when the thread suspends itself
 other threads can run.
 \item
-<{release}>()
+<{release()}>
 \index{release}%
 checks to see if any threads are waiting to acquire the lock.
 If so, it uses the <{head}> and <{tail}>
@@ -2844,15 +2843,15 @@ specifications for the other modules.
 \section*{Exercises}
 \begin{problems}
 \item
-Run \autoref{fig:incfixed} using (i) <{synch}> and (ii) \texttt{synchS}.
+Run \autoref{fig:incfixed} using (i) <{synch}> and (ii) <{synchS}>.
 Report how many states were explored by Harmony for each module.
 \item \label{ex:xy} \autoref{fig:xy} shows a Harmony program with two variables <{x}>
 (initially 0) and <{y}> (initially 100) that can be accessed through methods
 \texttt{setX} and \texttt{getXY}.  An application invariant is that \texttt{getXY}
 should return a pair that sums to 100.  Add the necessary synchronization code.
-\item \label{ex:trylock} Implement \texttt{tryAcquire}(\textit{b}) as an additional
-interface for both the <{synch}> and \texttt{synchS} modules.
-This interface is like <{acquire}>(\textit{b}) but never blocks.  It
+\item \label{ex:trylock} Implement <{tryAcquire(b)}> as an additional
+interface for both the <{synch}> and <{synchS}> modules.
+This interface is like <{acquire(b)}> but never blocks.  It
 returns <{True}> if the lock was available (and now acquired) or <{False}>
 if the lock was already acquired.
 Hint: you do not have to change the existing code.
@@ -2957,9 +2956,9 @@ We will first implement the queue as a linked list.
 The implementation in \autoref{fig:queueconc}
 uses the <{alloc}> module for dynamic allocation
 \index{dynamic allocation}%
-of nodes in the list using \texttt{malloc}() and \texttt{free}().
-\texttt{malloc}(<{v}>) returns a new memory location initialized to <{v}>,
-which should be released with \texttt{free}() when it is no longer in use.
+of nodes in the list using <{malloc()}> and <{free()}>.
+<{malloc(v}>) returns a new memory location initialized to <{v}>,
+which should be released with <{free()}> when it is no longer in use.
 The queue maintains a <{head}> pointer to the first element in the list
 and a <{tail}> pointer to the last element in the list.
 The <{head}> pointer is <{None}> if and only if the queue is empty.
@@ -3140,7 +3139,7 @@ It first locks the first node, which is the <{-inf}> node.
 Then, iteratively, it obtains a lock on the next node and release the
 lock on the last one, and so on, similar to climbing a rope
 hand-over-hand.
-Using \texttt{\_find}, the <{insert}>, \texttt{remove}, and \texttt{contains}
+Using \texttt{\_find}, the <{insert}>, <{remove}>, and \texttt{contains}
 methods are fairly straightforward to implement.
 
 \begin{comment}
@@ -3250,8 +3249,8 @@ exactly this, for sequences of up to <{NOPS}>
 queue operations.
 It maintains two queues:
 \begin{itemize}
-\item[] \textit{specq}: the queue of the specification;
-\item[] \textit{implq}: the queue of the implementation.
+\item[] <{specq}>: the queue of the specification;
+\item[] <{implq}>: the queue of the implementation.
 \end{itemize}
 For each operation, the code first chooses whether to
 perform a <{get}> or <{put}> operation.
@@ -3598,10 +3597,10 @@ The output of Harmony can be helpful in that case.
 \autoref{fig:queuebroken} contains an attempt at a queue implementation
 where the queue is implemented by a linked list, with the first node
 being a \texttt{dummy} node to prevent data races.  Each node in the
-list contains a lock.  The <{put}>() method walks the list until
+list contains a lock.  The <{put()}> method walks the list until
 it gets to the last node, each time acquiring the lock to access the
-node's fields.  When <{put}>() gets to the last node in the list,
-it appends a new one.  The <{get}>() method locks the first (dummy)
+node's fields.  When <{put()}> gets to the last node in the list,
+it appends a new one.  The <{get()}> method locks the first (dummy)
 node, removes the second from the list and frees it.  The method returns
 the value from the removed node.
 
@@ -3640,10 +3639,10 @@ the address <{?alloc["pool"][0]["lock"]}> (aka <{?alloc.pool[0].lock}>).
 
 The <{alloc}> module maintains a shared array <{pool}> that
 it uses for dynamic allocation.  Apparently T2 tried to access
-<{pool}>[0], but it does not exist, meaning that either it was not
+<{pool[0]}>, but it does not exist, meaning that either it was not
 yet allocated, or it had been freed since it was allocated.
 When we look at the top half of the figure, we see that in fact thread
-T1 allocated <{pool}>[0] in turn 2, but T3 freed it in turn 4.
+T1 allocated <{pool[0]}> in turn 2, but T3 freed it in turn 4.
 Looking back down, we see that T1 executed <{thread(1)}> and has
 since terminated, while T3 is executing <{thread(3)}>.
 
@@ -3652,9 +3651,9 @@ T3 was in the process of executing
 <{release(?q.lock)}> within <{get(?q}>).
 T1 is currently executing <{acquire(?alloc.pool[0].lock)}>
 within <{put(?q, 2)}>, but 
-<{alloc.pool}>[0] does not exist.
+<{alloc.pool[0]}> does not exist.
 The corresponding line of Harmony code is
-\textbf{atomically when not} !\textit{binsema}
+<{atomically when not !binsema}>
 in line 25 of the \texttt{sync} module.
 
 So, how did we get there?  In the top we can see that the order of
@@ -3948,96 +3947,6 @@ consumers can deal with, the producers are blocked.  While a buffer of size 1
 already provides those properties, a larger buffer is able to deal with short
 spikes without blocking anybody.
 
-\begin{comment}
-\autoref{fig:pc} gives a high-level description.  The
-two numbers in a state specify
-the number of items that the producers still can produce and
-the number of items that the consumers have consumed.  In this
-description there are three items to produce initially.
-
-\begin{figure}
-\begin{code}
-<{:input:../code/BBsemadata.hny}>
-\end{code}
-\caption{\harmonylink{code/BBsemadata.hny} Test whether the bounded buffer delivers the right data in the
-right order}
-\label{fig:BBsemadata}
-\end{figure}
-
-\autoref{fig:boundedbuffer} presents the implementation of a bounded
-buffer using semaphores.  It features a circular bounded buffer \textit{buf} with
-slots numbered 1 through \texttt{NSLOTS}.  There are two indexes into
-the buffer: \textit{b\_in} specifies where the next produced item is inserted,
-while \textit{b\_out} specifies from where the next can be consumed.
-As there may be multiple producers and multiple
-consumers, updates to the indexes, which are shared variables, must be protected.
-To this end, we use two semaphores as locks: \textit{l\_in} for \textit{b\_in}
-and \textit{l\_out} for \textit{b\_out}.
-
-Without additional synchronization, the indexes may overflow and point to invalid
-entries in the circular buffer.
-For this, there is a semaphore \textit{n\_full} that
-keeps track of the number of filled entries in the buffer and a semaphore
-\textit{n\_empty} that keeps track of the number of empty entries in the buffer.
-
-To add an item to the bounded buffer (\texttt{produce}(\textit{item})), the producing
-thread first has to wait until there is room in the bounded buffer.
-To this end, it invokes <{P}>(\textit{n\_empty}), which waits until
-$\mathit{n\_empty} > 0$ and atomically decrements \textit{n\_empty} once this
-is the case.  In other words, the producer procures an empty slot.
-Next, it adds the item to the next position in the buffer.
-Since there may be more than one empty slot, multiple producers may attempt
-to do the same thing concurrently.  Hence the use of the \textit{l\_in}
-semaphore used as a lock.  Finally, once the item is added, the thread
-increments the \textit{n\_full} semaphore to signal to consumers that
-an item is available.
-The consumer code is symmetric.
-
-Note the quite different usage of the \textit{l\_} semaphores and \textit{n\_}
-semaphores.
-People often call semaphores that are used as locks \emph{binary semaphores},
-\index{binary semaphore}%
-as they only take on the values 0 and 1.
-They protect critical sections.
-The second type of semaphores are called \emph{counting semaphores}.
-\index{counting semaphore}%
-They can be used to send signals between threads.
-However, binary and counting semaphores are implemented the same way.
-
-\autoref{fig:bbtest} invokes the code of \autoref{fig:boundedbuffer}.
-We can run this through Harmony, but what would it test?  There are
-no assert statements in the code.  We can split the functionality
-of this code into two and test each separately.  One is the
-synchronization part: producers should never run more than
-\texttt{NSLOTS} ahead of the consumers, but they should be able to
-produce up to \texttt{NSLOTS} items even if there are no consumers.
-The other part is the data: we want to make sure that the items are
-sent through the buffer in order and without loss.  We will first
-focus on the synchronization.
-
-The first part can be tested with the code given in \autoref{fig:pc}, by
-experimenting with different non-negative values for the three constants.
-In particular, any run with a positive \texttt{NSLOTS} and
-$\mathtt{NCONSS} \le \mathtt{NPRODS} \le \mathtt{NCONSS} + \mathtt{NSLOTS}$
-should terminate, while other values should lead to threads blocking.
-To this this, one can write a script like the one in \autoref{fig:pcscript}.
-
-\autoref{fig:BBsemadata} tests whether the correct data is sent in
-the correct order.  There are the same number of producers and consumers.
-Each producer <{i}> produces two tuples: $(i, 0)$ and $(i, 1)$ in that order.
-Each consumer consumes two tuples and checks that the tuples are different
-and that, if the two tuples come from the same producer, then they have to
-be in the order sent.
-Moreover, consumers add the tuples they received to the set
-\textit{received} (atomically---a lock could have been used here as well).
-The \texttt{main()} thread waits for all consumers to have received
-exactly the set of tuples that the producers produce.
-
-\section*{Exercises}
-\begin{problems}
-\end{problems}
-\end{comment}
-
 \chapter{Split Binary Semaphores}
 \label{ch:sbs}
 \index{split binary semaphore}%
@@ -4119,18 +4028,18 @@ The state of a reader/writer lock thus consists of the following:
 \item <{nreaders}>: the number of readers in the critical section;
 \item <{nwriters}>: the number of writers in the critical section (0 or 1);
 \item <{mutex}>: the main gate binary semaphore;
-\item \textit{r\_gate}: the waiting gate used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
-\item \textit{w\_gate}: the waiting gate used by writers, similar to the readers' gate.
+\item <{r_gate}>: the waiting gate used by readers, consisting of a binary semaphore and the number of readers waiting to enter;
+\item <{w_gate}>: the waiting gate used by writers, similar to the readers' gate.
 \end{itemize}
 
 Each of the
-\texttt{read\_acquire}, \texttt{read\_release},
-\texttt{write\_acquire}, and \texttt{write\_release} methods must maintain
+<{read_acquire}>, <{read_release}>,
+<{write_acquire}>, and <{write_release}> methods must maintain
 this state.
 First they have to acquire the <{mutex}>
 (i.e., enter the main gate).
 After acquiring the <{mutex}>,
-\texttt{read\_acquire} and \texttt{write\_acquire} each must check to see
+<{read_acquire}> and <{write_acquire}> each must check to see
 if the thread has to wait.
 If so, it increments the count associated with its respective gate,
 opens a gate (using method \texttt{release\_one}), and then blocks until
@@ -4145,7 +4054,7 @@ writers' gate, but the other way around works as well.
 If neither waiting gate qualifies, then <{release_one()}> 
 has to open the main gate (i.e., release <{mutex}>).
 
-Let us examine \texttt{read\_acquire} more carefully.
+Let us examine <{read_acquire}> more carefully.
 First, the method acquires <{mutex}>.
 Then, in the case that the thread
 finds that there is a writer in the critical section
@@ -4156,7 +4065,7 @@ This causes the thread to block until some other thread opens that gate.
 
 Now consider the case where there is a writer in the critical
 section and there are two readers waiting.  Let us see what happens when
-the writer calls \texttt{write\_release}:
+the writer calls <{write_release}>:
 \begin{enumerate}
 \item After acquiring <{mutex}>, the writer decrements
 <{nwriters}>, which must be 1 at this time, and thus becomes 0.
@@ -4207,21 +4116,21 @@ bound lock.
 \item Write a test program for bound locks
 that checks that up to <{M}> threads
 can acquire the bound lock at the same time.
-% \item Implement a \emph{bounded stack}.  Method \texttt{push}(\textit{item})
+% \item Implement a \emph{bounded stack}.  Method <{push(item}>)
 % should block if the stack is full.  Method \texttt{pop()} should block
 % until the stack is non-empty and then return an item.
 % Also implement test programs for your solution.
 \item \label{ex:gpu} Implement a thread-safe \emph{GPU allocator} by modifying
 \autoref{fig:gpu}.
 There are <{N}> GPUs identified by the numbers
-1 through <{N}>.  Method \texttt{gpuAlloc()} returns the identifier
+1 through <{N}>.  Method <{gpuAlloc()}> returns the identifier
 of an available GPU, blocking if there is currently no GPU available.
-Method \texttt{gpuRelease}(\textit{gpu}) releases the given GPU.  It never needs
+Method <{gpuRelease(gpu}>) releases the given GPU.  It never needs
 to block.
 \item With reader/writer locks,
 concurrency can be improved if a thread \emph{downgrades} its write lock
 to a read lock when its done writing but not done reading.  Add
-a \texttt{downgrade} method to the code in \autoref{fig:RWsplitsema}.
+a <{downgrade}> method to the code in \autoref{fig:RWsplitsema}.
 (Similarly, you may want to try to implement an \emph{upgrade} of a
 read lock to a write lock.  Why is this problematic?)
 % How easy or hard would it be to do the same for the code in
@@ -4343,7 +4252,7 @@ if there are writers in the critical section, but also if there are writers
 waiting to enter the critical section;
 \item Instead of a one-size-fits-all \texttt{release\_one} method, each
 method has a custom way of selecting which gate to open.  In particular,
-\texttt{read\_release} prefers the write gate, while \texttt{write\_release}
+<{read_release}> prefers the write gate, while <{write_release}>
 prefers the read gate.
 \end{enumerate}
 
@@ -4476,7 +4385,7 @@ variables, but that breaks the abstraction.  The alternative is for the
 reader/writer implementation to keep track of that state explicitly,
 which complicates the code.  Also, it requires a deep understanding of
 the SBS method to remember to place a call to <{signal}> in the
-\texttt{read\_acquire} method that releases additional readers that
+<{read_acquire}> method that releases additional readers that
 may be waiting to acquire the lock.
 
 In the late 70s, researchers at Xerox PARC,
@@ -4629,10 +4538,10 @@ Harmony provides support for Mesa monitors
 through the Harmony <{synch}> module.
 \autoref{fig:cv} shows the implementation of
 condition variables in the <{synch}> module.
-<{Condition}>() creates a new condition variable.
+<{Condition()}> creates a new condition variable.
 It is represented by a dictionary containing
 a bag of contexts of threads waiting on the condition variable.
-(The \texttt{synchS} library instead uses a list of contexts.)
+(The <{synchS}> library instead uses a list of contexts.)
 
 In Harmony, a bag is usually represented by a dictionary that maps
 the elements of the bag to their multiplicities.
@@ -4673,18 +4582,18 @@ by <{release}> followed by <{acquirire}>.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
-In \texttt{read\_release}, notice that <{notify}>(?\textit{w\_cond})
+In <{read_release}>, notice that <{notify(?w_cond)}>
 is invoked when there are no readers left, \emph{without} checking
 if there are writers waiting to enter.  This is
 ok, because calling <{notify}> is a no-op if no thread is
 waiting.
 
-\texttt{write\_release} executes <{notifyAll}>(?\textit{r\_cond})
-as well as <{notify}>(?\textit{w\_cond)}.  Because we
+<{write_release}> executes <{notifyAll(?r_cond)}>
+as well as <{notify(?w_cond)}>.  Because we
 do not keep track of the number of waiting readers or writers, we
 have to conservatively assume that all waiting readers can enter,
 or, alternatively, up to one waiting writer can enter.  So
-\texttt{write\_release} wakes up all potential candidates.  There
+<{write_release}> wakes up all potential candidates.  There
 are two things to note here.  First, unlike split binary semaphores
 or Hoare monitors, where multiple waiting readers would have to be
 signaled one at a time in a baton-passing fashion (see
@@ -4733,13 +4642,13 @@ variables.
 (see also \autoref{ex:trylock}).  It should
 have the following API:
 \begin{enumerate}
-\item \textit{tl} = \texttt{TryLock}() \# \emph{create a try lock}
-\item <{acquire}>(?\textit{tl}) \# \emph{acquire a try lock}
-\item \texttt{tryAcquire}(?\textit{tl}) \# \emph{attempt to acquire a try lock}
-\item <{release}>(?\textit{tl}) \# \emph{release a try lock}
+\item <{tl = TryLock()}> \# \emph{create a try lock}
+\item <{acquire(?tl}>) \# \emph{acquire a try lock}
+\item <{tryAcquire(?tl}>) \# \emph{attempt to acquire a try lock}
+\item <{release(?tl}>) \# \emph{release a try lock}
 \end{enumerate}
 \noindent
-\texttt{tryAcquire} should not wait.
+<{tryAcquire}> should not wait.
 Instead it should return <{True}> if the lock was successfully
 acquired and <{False}> if the lock was not available.
 % \item Implement semaphores using Mesa condition variables.
@@ -4892,7 +4801,7 @@ multiple conditions.
 The condition in the <{while}> statement is the negation of the
 condition that the diner is waiting and consists of two disjuncts.
 Within the <{while}> statement,
-there is an \textbf{if} statement for each disjunct.
+there is an <{if}> statement for each disjunct.
 The code waits for either or both forks if necessary.  After that, it goes
 back to the top of the <{while}> loop.
 
@@ -4988,7 +4897,7 @@ scenario}
 \item The solution in \autoref{fig:dinerscv} can be simplified by, instead
 of having a condition variable per fork, having a condition variable per
 diner.  It uses the same number of condition variables, but you will not
-need to have \textbf{if} statements nested inside the <{while}> loop
+need to have <{if}> statements nested inside the <{while}> loop
 waiting for the forks.  See if you can figure it out.
 \item \label{ex:bank} \autoref{fig:bank} shows an implementation of a bank with various
 accounts and transfers between those accounts.
@@ -5068,7 +4977,7 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item <{put(q}>, \textit{item}) adds \textit{item} to the queue pointed to by <{q}>;
+\item <{put(q}>, <{item}>) adds <{item}> to the queue pointed to by <{q}>;
 \item <{get(q}>) waits for and returns an item on the queue pointed to by <{q}>.
 \end{itemize}
 
@@ -5178,7 +5087,7 @@ every other thread.
 In this simple case, each message contains <{None}>, but in practice useful
 information may be exchanged between the threads.
 
-The \textit{round} array is kept to check the correctness of this
+The <{round}> array is kept to check the correctness of this
 approach.  Each thread increments its entry every time it enters
 a round.  If the algorithm is correct, it can never be that two threads
 are more than one round apart.
@@ -5266,7 +5175,7 @@ Implement a simulation of such a pool hall.
 \begin{code}
 <{:input:../code/trap.hny}>
 \end{code}
-\caption{\harmonylink{code/trap.hny} How to use \textbf{trap}}
+\caption{\harmonylink{code/trap.hny} How to use <{trap}>}
 \label{fig:trap}
 \end{figure}
 
@@ -5307,23 +5216,24 @@ Harmony allows modeling interrupts using the \texttt{trap} statement:
 \begin{code}
 <{trap handler argument}>
 \end{code}
-invokes \textit{handler argument} at some later, unspecified time.
-Thus you can think of \textbf{trap} as setting a timer.
+invokes <{handler argument}> at some later, unspecified time.
+Thus you can think of <{trap}> as setting a timer.
 Only one of these asynchronous events can be outstanding at a time;
-a new call to \textbf{trap} overwrites any outstanding one.
-\autoref{fig:trap} gives an example of how \textbf{trap} might be used.
-Here, the \textit{main}() thread loops until the interrupt has occurred and
+a new call to <{trap}> overwrites any outstanding one.
+\autoref{fig:trap} gives an example of how <{trap}> might be used.
+Here, the <{main()}> thread loops until the interrupt has occurred and
 the <{done}> flag has been set.
 
 But now consider \autoref{fig:trap2}.  The difference with \autoref{fig:trap} is
-that both the \textit{main}() and \textit{handler}() methods increment <{count}>.
+that both the <{main()}> and <{handler()}> methods increment <{count}>.
 This is not unlike the example we gave in \autoref{fig:inc}, except that only a single
 thread is involved now.  And, indeed, it suffers from a similar race condition; run
-it through Harmony to see for yourself.  If the interrupt occurs after \textit{main}()
-reads <{count}> (and thus still has value 0) but before \textit{main()} writes the
+it through Harmony to see for yourself.
+If the interrupt occurs after <{main()}>
+reads <{count}> (and thus still has value 0) but before <{main()}> writes the
 updated value~1, then the interrupt handler will also read value~0 and write value~1.
-We say that the code in \autoref{fig:trap2} is not \textit{interrupt-safe} (as opposed
-to not being \textit{thread-safe}).
+We say that the code in \autoref{fig:trap2} is not \emph{interrupt-safe} (as opposed
+to not being \emph{thread-safe}).
 \index{interrupt-safety}
 
 You would be excused if you wanted to solve the problem using locks, similar to
@@ -5331,21 +5241,21 @@ You would be excused if you wanted to solve the problem using locks, similar to
 But locks are intended to solve synchronization issues between multiple threads.
 If you run the code through Harmony, you will find that the code may not terminate.
 The issue is that a thread can only acquire a lock once.  If the interrupt happens
-after \textit{main}() acquires the lock but before \textit{main}() releases it, the
-\textit{handler}() method will block trying to acquire the lock, even though
+after <{main()}> acquires the lock but before <{main()}> releases it, the
+<{handler}>() method will block trying to acquire the lock, even though
 it is being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
-temporarily.  In Harmony, this can be done by setting the \textit{interrupt level}
-of a thread to <{True}> using the \textbf{setintlevel} interface.
+temporarily.  In Harmony, this can be done by setting the \emph{interrupt level}
+of a thread to <{True}> using the <{setintlevel}> interface.
 \autoref{fig:trap4} illustrates how this is done.
 Note that it is not necessary to change the interrupt level during servicing an
 interrupt, because it is automatically set to <{True}> upon entry to the interrupt
 handler and restored to <{False}> upon exit.
-It is important that the \textit{main}() code re-enables interrupts after incrementing
-<{count}>.  What would happen if \textit{main}() left interrupts disabled?
+It is important that the <{main()}> code re-enables interrupts after incrementing
+<{count}>.  What would happen if <{main()}> left interrupts disabled?
 
-\textbf{setintlevel}(\textit{il}) sets the interrupt level to \textit{il} and returns
+<{setintlevel(il}>) sets the interrupt level to <{il}> and returns
 the prior interrupt level.  Returning the old level is handy when writing interrupt-safe
 methods that can be called from ordinary code as well as from an interrupt handler.
 \autoref{fig:trap5} shows how one might write a interrupt-safe method
@@ -5371,7 +5281,7 @@ It will often be necessary to write code that is both interrupt-safe \emph{and}
 thread-safe.  As you might expect, this involves both managing locks and
 interrupt levels.
 To increment <{count}>, the interrupt level must be <{True}> and
-\textit{countlock} must be held.
+<{countlock}> must be held.
 \autoref{fig:trap6} gives an example of how this might be done.
 One important rule to remember is that a thread should disable interrupts \emph{before}
 attempting to acquire a lock.
@@ -5400,7 +5310,7 @@ block for long.  Informally, interrupt handlers can be
 in interrupt handlers for two reasons: (1) it is not interrupt-safe, and (2)
 it may block for a long time if the buffer is full.  Yet, it would be useful if,
 say, a keyboard interrupt handler could place an event on a shared queue.
-Implement a new method \texttt{i\_put}(\textit{item}) that does not
+Implement a new method \texttt{i\_put}(<{item}>) that does not
 block.  Instead, it should return <{False}> if the buffer is full and <{True}>
 if the item was successfully enqueued.
 The method also needs to be interrupt-safe.
@@ -5442,24 +5352,24 @@ The code in \autoref{fig:hw} is based on code developed by Herlihy and
 Wing~\cite{HW87}.
 The code is a ``proof of existence'' for non-blocking synchronization; it
 is not necessarily practical.
-There are two variables.  \textit{items} is an unbounded array with each
-entry initialized to <{None}>.  \textit{back} is an index into the
+There are two variables.  <{items}> is an unbounded array with each
+entry initialized to <{None}>.  <{back}> is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two atomic operations:
 \begin{itemize}
-\item \texttt{inc}(<{p}>): atomically increments \texttt{!}<{p}> and returns
+\item <{inc(p}>): atomically increments \texttt{!}<{p}> and returns
 the old value;
-\item \texttt{exch}(<{p}>): sets \texttt{!}<{p}> to <{None}> and returns
+\item <{exch(p}>): sets \texttt{!}<{p}> to <{None}> and returns
 the old value.
 \end{itemize}
 
-Method \texttt{produce}(\textit{item}) uses \texttt{inc}(?\textit{back})
+Method <{produce(item}>) uses <{inc}>(?<{back}>)
 to allocate
-the next available slot in the \textit{items} array.
+the next available slot in the <{items}> array.
 It stores the item as a singleton tuple.
-Method \texttt{consume()} repeatedly scans the array, up to the
-\textit{back} index, trying to find an item to return.
-To check an entry, it uses \texttt{exch()}
+Method <{consume()}> repeatedly scans the array, up to the
+<{back}> index, trying to find an item to return.
+To check an entry, it uses <{exch()}>
 to atomically remove an item from a slot if there is one.
 This way, if two or more threads attempt to extract an item from
 the same slot, at most one will succeed.
@@ -5470,10 +5380,10 @@ would with solutions based on critical sections.
 On the contrary, it helps them because it creates less contention.
 Unfortunately, the solution is not practical for the following reasons:
 \begin{itemize}
-\item The \textit{items} array must be of infinite size if an unbounded number
+\item The <{items}> array must be of infinite size if an unbounded number
 of items may be produced;
 \item Each slot in the array is only used once, which is inefficient;
-\item the \texttt{inc} and \texttt{exch} atomic operations are not
+\item the <{inc}> and <{exch}> atomic operations are not
 universally available on existing processors.
 \end{itemize}
 However, in the literature you can find examples of practical
@@ -5574,7 +5484,7 @@ to Bob and one from Bob to Alice.
 Alice and Bob each maintain a zero-initialized
 \emph{sequence number},
 \index{sequence number}%
-\textit{s\_seq} and \textit{r\_seq} resp.
+<{s_seq}> and <{r_seq}> resp.
 Alice sends a network message to Bob containing an
 application message as \emph{payload} and Alice's sequence number
 as \emph{header}.
@@ -5597,28 +5507,26 @@ Because of the network properties,  a one-bit sequence number suffices.
 
 We can model each
 channel as a variable that either contains a network message or nothing
-(we use <{()}> in the model).  Let \textit{s\_chan} be the channel
-from Alice to Bob and \textit{r\_chan} the channel from Bob to Alice.
-\texttt{net\_send}(\textit{pchan}, <{m}>, \textit{reliable}) models sending
-a message <{m}> to
-\texttt{!}\textit{pchan}, where \textit{pchan} is either ?\textit{s\_chan}
-or ?\textit{r\_chan}.
+(we use <{()}> in the model).  Let <{s_chan}> be the channel
+from Alice to Bob and <{r_chan}> the channel from Bob to Alice.
+<{net_send(pchan, m, reliable)}> models sending a message <{m}> to
+<{!pchan}>, where <{pchan}> is either <{?s_chan}> or <{?r_chan}>.
 The method places either <{m}> (to model a successful send)
-or <{()}> (to model loss) in \texttt{!}\textit{pchan}.
-The use of the \textit{reliable} flag will be explained later.
-\texttt{net\_recv}(\textit{pchan}) models checking \texttt{!pchan} for
+or <{()}> (to model loss) in <{!pchan}>.
+The use of the <{reliable}> flag will be explained later.
+\texttt{net\_recv}(<{pchan}>) models checking <{!pchan}> for
 the next message.
 
-Method \texttt{app\_send}(<{m}>) retransmits <{m}> until
+Method <{app_send(m}>) retransmits <{m}> until
 an acknowledgment is received.
-Method \texttt{app\_recv}(\textit{reliable}) returns the next successfully received
+Method <{app_recv(reliable}>) returns the next successfully received
 message.
 \autoref{fig:abptest} shows how the methods may be used to send and receive
 a stream of \texttt{NMSGS} messages reliably.
 It has to be bounded, because model checking requires a finite model.
 
-Only the last invocation of \texttt{app\_recv}(\textit{reliable}) is invoked with
-\textit{reliable} = <{True}>.  It causes the last acknowledgment to be sent
+Only the last invocation of <{app_recv(reliable)}> is invoked with
+<{reliable = True}>.  It causes the last acknowledgment to be sent
 reliably.  It allows the receiver (Bob) to stop, as well as the sender (Alice)
 once the last acknowledgment has been received.
 Without something like this, either the sender may be left hanging waiting
@@ -5673,22 +5581,22 @@ which one can model a network using shared variables.
 Here, we model the network as a set of messages.
 The \texttt{send} method atomically adds a message to this set.
 Messages are tuples with three fields:
-(\textit{dst}, \textit{id}, \textit{found}).
-\textit{dst} is the identifier of the destination processor;
-\textit{id} is the identifier that is being forwarded; and
-\textit{found} is a boolean indicating the second phase of the protocol.
-The \texttt{receive}(\textit{self}) method looks for all messages
-destined for the processor with identifier \textit{self}.
+(<{dst}>, <{id}>, <{found}>).
+<{dst}> is the identifier of the destination processor;
+<{id}> is the identifier that is being forwarded; and
+<{found}> is a boolean indicating the second phase of the protocol.
+The \texttt{receive}(<{self}>) method looks for all messages
+destined for the processor with identifier <{self}>.
 
 To test the protocol, the code first chooses the number of processors
 and generates an identifier for each
 processor, chosen non-deterministically from a set of \texttt{NIDS}
-identifiers.  It also keeps track in the variable \textit{leader} of
+identifiers.  It also keeps track in the variable <{leader}> of
 what the highest identifier is so it can later be checked.
 
-Method \texttt{processor}(\textit{self}, \textit{succ}) is the
-code for a processor with identifier \textit{self} and successor
-\textit{succ}.
+Method \texttt{processor}(<{self}>, <{succ}>) is the
+code for a processor with identifier <{self}> and successor
+<{succ}>.
 It starts simply by sending its own identifier to its successor.
 The processor then loops until it discovers the identifier of the
 leader in the second phase of the protocol.
@@ -5821,12 +5729,12 @@ implementation, each bank and each coordinator is a thread.
 \autoref{fig:2pc1} shows the code for a bank.
 The state of a bank consists of the following local variables:
 \begin{itemize}
-\item \textit{self}: the bank's identifier;
-\item \textit{balance}: the current balance in the account;
-\item \textit{status}: either contains () if the bank is not involved in an
+\item <{self}>: the bank's identifier;
+\item <{balance}>: the current balance in the account;
+\item <{status}>: either contains () if the bank is not involved in an
 ongoing transaction or contains the balance
 just before the transaction started;
-\item \textit{received}: the set of messages received and handled so far.
+\item <{received}>: the set of messages received and handled so far.
 \end{itemize}
 
 \noindent
@@ -5843,7 +5751,7 @@ $\{ \mathtt{.dst}, \mathtt{.src}, \mathtt{.request}, \mathtt{.amount} \}$:
 \noindent
 A bank waits for a message destined to itself that it has not yet received.
 In case of a withdrawal when the bank is idle and there are sufficient
-funds, the bank saves the current balance in \textit{status} to indicate
+funds, the bank saves the current balance in <{status}> to indicate
 an ongoing transaction and what its original balance was.
 The bank then responds with a \texttt{.yes} message to the coordinator,
 including the new balance.
@@ -5852,7 +5760,7 @@ Deposits are similar, except that it is not necessary to check for
 sufficient funds.
 In case of a \texttt{.commit} message, the bank changes its status
 to (), indicating that there is no ongoing transaction.  In case of
-a \texttt{.abort} message, the bank restores \textit{balance} first.
+a \texttt{.abort} message, the bank restores <{balance}> first.
 
 \autoref{fig:2pc2} contains the code for transfers and inquiries, as well
 as tests.
@@ -5866,12 +5774,12 @@ Otherwise it returns a singleton set containing the set of responses,
 one for each source.
 
 The \texttt{transfer}() method contains the code for the transfer
-transaction.  Argument \textit{self} is the identifier of the coordinator,
-\textit{b1} is the source bank, \textit{b2} is the destination bank,
-and \textit{amt} is the amount to transfer.
+transaction.  Argument <{self}> is the identifier of the coordinator,
+<{b1}> is the source bank, <{b2}> is the destination bank,
+and <{amt}> is the amount to transfer.
 The coordinator sends a \texttt{PREPARE} message containing a
-\texttt{.withdraw} request to \textit{b1} and a \texttt{PREPARE}
-message containing a \texttt{.deposit} request to \textit{b2}.
+\texttt{.withdraw} request to <{b1}> and a \texttt{PREPARE}
+message containing a \texttt{.deposit} request to <{b2}>.
 It then waits for responses from each.  If both responses are
 \texttt{.yes}, then it commits the transaction, otherwise it aborts
 the transaction.
@@ -5888,8 +5796,8 @@ capable of probabilistic reasoning.
 \end{comment}
 
 The \texttt{check}() method checks if the sum of the balances equals
-\textit{total}, the sum of the initial balances.
-The code is similar to \textit{transfer}, except that it always
+<{total}>, the sum of the initial balances.
+The code is similar to <{transfer}>, except that it always
 aborts the transaction---there is no need to ever commit it.
 As a code-saving hack: the balance inquiry is done by withdrawing \$0.
 
@@ -5901,7 +5809,7 @@ case of a transfer, it also chooses the source bank and the destination
 bank.
 
 While the protocol perhaps seems simple enough, there are a lot of
-\textbf{if} statements in the code, making it hard to reason about
+<{if}> statements in the code, making it hard to reason about
 correctness.
 Model checking is useful to see if there are corner
 cases where the code does not work.
@@ -6012,7 +5920,7 @@ Each replica maintains its history and a set of its predecessors.
 It then loops until either it fails or it has applied all
 <{NOPS}> operations to its history.
 $\mathbf{choose}(\{ \mathit{immortal}, <{True}> \})$ can only
-evaluate to <{False}> in case $\textit{immortal}$ is false; otherwise
+evaluate to <{False}> in case $<{immortal}>$ is false; otherwise
 it will always evaluate to <{True}>.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.
@@ -6023,8 +5931,8 @@ detected all its predecessors having failed, eventually some replica
 thinks it is the head.
 
 Messages have the format $(\mathit{source}, \mathit{payload})$,
-where \textit{source} is the identifier of the replica that generated
-the message and \textit{payload} has information about the state of
+where <{source}> is the identifier of the replica that generated
+the message and <{payload}> has information about the state of
 the replica.  The payload can take one of two forms.  The first is
 \texttt{.crash}, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
@@ -6039,7 +5947,7 @@ In practice this would be some operation that the head would have received
 from a client.  Clients send their operations to the head, which adds them
 to its history in the order received.
 We are not modeling clients of the service.
-Instead, in the model, the head adds its identifier \textit{self} to the
+Instead, in the model, the head adds its identifier <{self}> to the
 history until the
 history has <{NOPS}> operations on it or until the head crashes,
 whichever comes first.  The head also broadcasts each update, which
@@ -6060,7 +5968,7 @@ and broadcasts the update, again intended for its successor.
 
 When the replica successfully adds all <{NOPS}> updates to its
 history without crashing, the code makes sure that any other such replica
-ends in the same state.  Variable \textit{final} is used to check the
+ends in the same state.  Variable <{final}> is used to check the
 different histories against one another.
 
 \chapter{Replicated Atomic Read/Write Register}
@@ -6127,7 +6035,7 @@ receive and process all write operations in the same order.
 \index{logical timestamp}%
 We present a protocol preserving these properties that is based on the
 work by Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
-In order to tolerate \texttt{F} failures,
+In order to tolerate <{F}> failures,
 it uses $\mathtt{N} = 2\mathtt{F} + 1$ servers.
 In other words, the register survives as long as a strict majority of
 its copies survive.
@@ -6138,9 +6046,9 @@ timestamp of its corresponding write operation.
 
 Each read and write operation consists of two \emph{phases}.  In a phase,
 a client broadcasts a request to all servers and waits for responses
-from a majority ($<{N}> - \texttt{F}$ or equivalently
-$\texttt{F} + 1$ servers).  Note that because we are assuming that no
-more than \texttt{F} servers can fail, doing so is safe, in that a client
+from a majority ($<{N}> - <{F}>$ or equivalently
+$<{F}> + 1$ servers).  Note that because we are assuming that no
+more than <{F}> servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
 
 In the first phase, a client asks each server for its current
@@ -6183,7 +6091,7 @@ so it doesn't handle the same request twice.
 The rest of the code is fairly straightforward.
 
 Read and write operations are both invoked with a unique identifier
-\textit{uid}.  Both start by broadcasting a \texttt{.read}
+<{uid}>.  Both start by broadcasting a \texttt{.read}
 request to all servers and then waiting for a response from
 $\mathtt{N} - \mathtt{F}$ servers.
 The \texttt{receive()} function uses the \texttt{bag.combinations} method
@@ -6202,7 +6110,7 @@ see what goes wrong.
 One may wonder how failures can occur in this model.  They are not
 explicitly modeled, but Harmony tries every possible execution.
 This includes executions in which the clients terminate before
-$\texttt{F}$ of the servers start executing.  To the clients, this
+$<{F}>$ of the servers start executing.  To the clients, this
 is indistinguishable from executions in which those
 servers have failed.
 
@@ -6234,8 +6142,8 @@ In this chapter, we will present a simple consensus algorithm that can tolerate
 fewer than $1/3^{rd}$ of processors failing by crashing.
 
 More precisely,
-constant \texttt{F} contains the maximum number of failures, and
-we will assume there are $<{N}> = 3\texttt{F} + 1$ processors.
+constant <{F}> contains the maximum number of failures, and
+we will assume there are $<{N}> = 3<{F}> + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
 By the usual definition of consensus, we want the following two properties:
@@ -6256,20 +6164,20 @@ proposes 1.
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
 The invariants we want to maintain
-on those variables is that $\textit{decisions} \subseteq \textit{proposals}$
-and $|\textit{decisions}| \leq 1$.  Since the initial value of \textit{decisions} is
+on those variables is that $<{decisions}> \subseteq <{proposals}>$
+and $|<{decisions}>| \leq 1$.  Since the initial value of <{decisions}> is
 $\emptyset$, the invariants clearly hold initially.
 
 The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
-$<{N}> - \texttt{F}$ messages, update their state based on the messages, and
+$<{N}> - <{F}>$ messages, update their state based on the messages, and
 broadcast messages containing their new state.
-The reason that a processor waits for $<{N}> - \texttt{F}$ rather than <{N}>
-messages is because of failures: up to $\texttt{F}$ processors may never send a message
+The reason that a processor waits for $<{N}> - <{F}>$ rather than <{N}>
+messages is because of failures: up to $<{F}>$ processors may never send a message
 and so it would be unwise to wait for all $<{N}>$.  You might be tempted to use
 a timer and time out on waiting for a particular processor.  But how would you initialize
 that timer?  While we will assume that the network is reliable, there is no guarantee
 that messages arrive within a particular time.
-We call a set of $<{N}> - \texttt{F}$ processors a \emph{quorum}.
+We call a set of $<{N}> - <{F}>$ processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
 The state of a processor consists of its current round number (initially 0)
@@ -6282,15 +6190,15 @@ limits the number of rounds.  It may be that no decisions are made, but that doe
 violate either Validity or Agreement.  We only check that \emph{if} decisions are
 made, they satisfy Validity and Agreement.
 
-In Line~22, a processor waits for $<{N}> - \texttt{F}$ messages using
+In Line~22, a processor waits for $<{N}> - <{F}>$ messages using
 the Harmony \textbf{atomically when exists} statement.
 Since Harmony has to check all possible executions of the protocol, the
-\texttt{receive}(\textit{round}, <{k}>) method returns all \emph{subbags} of messages
-for the given round that have size $k = <{N}> - \texttt{F}$.  The method uses a
-dictionary comprehension to filter out all messages for the given \textit{round}
+\texttt{receive}(<{round}>, <{k}>) method returns all \emph{subbags} of messages
+for the given round that have size $k = <{N}> - <{F}>$.  The method uses a
+dictionary comprehension to filter out all messages for the given <{round}>
 and then uses the \texttt{bag.combinations} method to find all combinations of size <{k}>.
 The \textbf{atomically when exists} statement waits until there is at least one such combination and
-then chooses an element, which is bound to the \textit{quorum} variable.
+then chooses an element, which is bound to the <{quorum}> variable.
 The body of the statement is then executed atomically.
 This is usually how distributed algorithms are modeled, because they can only interact
 through the network.  There is no need to interleave the different processes other
@@ -6299,7 +6207,7 @@ unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
 The body of the \textbf{atomically when exists} statement contains the core of the algorithm.
-Note that $<{N}> - \texttt{F} = 2\texttt{F} + 1$, so that the number of
+Note that $<{N}> - <{F}> = 2<{F}> + 1$, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the number
 of zeroes and <{count[1]}> stores the number of ones received in the round.
@@ -6332,7 +6240,7 @@ out of those <{N}> messages, but executions in which some processors
 are left behind in all rounds are no longer considered.
 It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
 processors only choose each other messages and essentially ignore the
-messages of the remaining \texttt{F} processors, so the resulting model
+messages of the remaining <{F}> processors, so the resulting model
 is just as good.
 
 \autoref{fig:bosco2} shows the code for this model.  Running this with
@@ -6344,7 +6252,7 @@ many).
 \begin{problems}
 \item The algorithm as given works in the face of crash failures.
 A more challenging class to tolerate are \emph{arbitrary failures} in
-which up to \texttt{F} processors may send arbitrary messages, including
+which up to <{F}> processors may send arbitrary messages, including
 conflicting messages to different peers (equivocation).
 The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
 \item In 1983, Michael Ben-Or presented a randomized algorithm that can
@@ -6380,9 +6288,9 @@ environments in which few or no assumptions are made about timing.
 In this chapter we present a basic version of a Paxos protocol, one that is
 \emph{single-decree} (only tries to make a single decision).
 It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
-In order to tolerate \texttt{F} crash failures, you need at least $\texttt{F}+1$ leaders
-and $2\texttt{F} + 1$ acceptors, but leaders and acceptors can be colocated, so
-in total only $2\texttt{F} + 1$ independently failing processors are needed.
+In order to tolerate <{F}> crash failures, you need at least $<{F}>+1$ leaders
+and $2<{F}> + 1$ acceptors, but leaders and acceptors can be colocated, so
+in total only $2<{F}> + 1$ independently failing processors are needed.
 Here we provide only a rudimentary introduction to Paxos; for more detailed
 information refer to~\cite{Paxos}.
 
@@ -6402,7 +6310,7 @@ this Paxos protocol.  Paxos is perhaps best understood starting
 with the second phase.  At the end of the first phase the leader
 broadcasts a \texttt{2.A} message (Phase 2, Type A) to the acceptors
 containing the ballot number and a proposal and then waits for
-$<{N}> - \texttt{F}$ matching \texttt{2.B} responses from the
+<{N - F}> matching \texttt{2.B} responses from the
 acceptors.  If each response contains the ballot number and the
 proposal, then the proposal is deemed decided.  But one or more of
 the responses can contain a higher ballot number, in which case the
@@ -6411,8 +6319,8 @@ where the first phase comes in.
 
 It is not possible that an acceptor responds with a smaller ballot
 number.  This is because acceptors maintain two state variables.
-One is \textit{ballot}, the highest ballot number they have seen.
-Second is a variable called \textit{last\_accepted} that, if not
+One is <{ballot}>, the highest ballot number they have seen.
+Second is a variable called <{last_accepted}> that, if not
 <{None}>, contains the last proposal the acceptor has
 \emph{accepted} and the corresponding ballot number.  The acceptor
 also contains a set \emph{received} that contains (ballot, phase)
@@ -6421,15 +6329,14 @@ in.  An acceptor waits for a message for a round that is not in
 \emph{received}.  If its ballot number is higher than what it has
 seen before, the acceptor moves into that ballot.  If the phase is
 2, then the acceptor accepts the proposal and remembers when it did
-so by saving the (ballot, proposal) tuple in \textit{last\_accepted}.
+so by saving the (ballot, proposal) tuple in <{last_accepted}>.
 In all cases, the acceptor responds with the current values of
-\textit{ballot} and \textit{last\_accepted}.
+<{ballot}> and <{last_accepted}>.
 
 In its first phase, a leader of a ballot must come up with a proposal that
 cannot conflict with a proposal of an earlier ballot that may already
 have been decided.  To this end, the leader broadcasts a \texttt{2.A}
-message to the acceptors and awaits $\mathtt{N} - \mathtt{F}$ of their
-\textit{last\_accepted}
+message to the acceptors and awaits <{N - F}> of their <{last_accepted}>
 values.  If all those acceptors responded with <{None}>, then the leader
 is free to choose its own proposal.  Otherwise the leader updates
 its proposal with the one corresponding to the highest ballot number.
@@ -7249,17 +7156,17 @@ The same context can be started multiple times, allowing threads to
 
 \subsection*{\textbf{if ... [elif ...]* [else]}}
 
-Harmony supports \textbf{if} statements.
-In its most basic form, \textbf{if} $c: S_1; S_2; ...$ evaluates <{c}>
+Harmony supports <{if}> statements.
+In its most basic form, <{if}> $c: S_1; S_2; ...$ evaluates <{c}>
 and executes statements $S_1, S_2, ...$ if and only if boolean expression
 <{c}> evaluated to true.
 Harmony checks that <{c}> is either <{False}> or <{True}>---if neither
 is the case, Harmony reports an error.
-The statement \textbf{if} $c: S_1, S_2, ...$ \textbf{else}:
+The statement <{if}> $c: S_1, S_2, ...$ <{else}>:
 $T_1; T_2; ...$ is similar, but executes statements $T_1, T_2, ...$
 if and only if <{c}> evaluated to false.
 You can think of \textbf{elif} $c:$ as shorthand for
-\textbf{else}: \textbf{if} $c:$.
+<{else}>: <{if}> $c:$.
 
 \subsection*{\textbf{import}}
 
@@ -7343,37 +7250,37 @@ by default, as doing so would lead to high overhead.
 
 \subsection*{\textbf{spawn}}
 
-The statement \texttt{spawn} <{m a}> starts a new thread that executes
+The statement <{spawn}> <{m a}> starts a new thread that executes
 method <{m}> with argument <{a}>. <{m}> must be a program counter constant,
 and <{a}> is typically a tuple containing
 zero or more parameters to be passed to the method.
 
-The default thread-local state of the thread, called \textit{self},
+The default thread-local state of the thread, called <{self}>,
 is the empty dictionary by default.  It can be specified by adding
-a parameter: \texttt{spawn} <{m}> $a, e$ specifies that <{e}> should be
+a parameter: <{spawn}> <{m}> $a, e$ specifies that <{e}> should be
 the initial value of the thread-local state.
 
 Harmony normally checks that all threads eventually terminate.
 If a thread may never terminate, you should spawn it with
 \texttt{spawn eternal} <{m a}> to suppress those checks.
 
-\subsection*{\textbf{trap}}
+\subsection*{<{trap}>}
 
-The statement \textbf{trap} <{m a}> specifies that the current thread
+The statement <{trap m a}> specifies that the current thread
 should execute method <{m}> with argument <{a}> and some future, unspecified,
 time.  It models a timer interrupt or any kind of asynchronous event to
 be handled by the thread.  Such interrupts can be disabled by setting
 the interrupt level of the thread to <{True}> using the
-\textbf{setintlevel} operator.
+<{setintlevel}> operator.
 
-\subsection*{\textbf{var}}
+\subsection*{<{var}>}
 
 You can introduce new local variables in a method using the
 <{var}> statement.
-The statement \textbf{var} $a = b$ evaluates <{b}> and assigns
+The statement <{var a = b}> evaluates <{b}> and assigns
 the result to local variable <{a}>.
-\textbf{var} supports pattern matching, so you can
-write <{var}> $x, (y, z) = b$.  This will only work
+<{var}> supports pattern matching, so you can
+write <{var x, (y, z) = b}>.  This will only work
 if <{b}> is a tuple with two elements, the second of which also being a
 tuple with two elements---if not, Harmony will report an error.
 
@@ -7515,7 +7422,7 @@ x = y = ?lock
 The second reason for Harmony not being object-oriented is that
 many concurrency solutions in the literature are
 expressed in C or some other low-level language that does not support
-object-orientation, but instead use \texttt{malloc} and \texttt{free}.
+object-orientation, but instead use <{malloc}> and <{free}>.
 
 \section{Constants, Global and Local Variables}\label{sec:vars}
 
@@ -7532,7 +7439,7 @@ Bound variables can be declared in
 Mutable variables can be declared with the <{var}> statement.
 Also, each method has an implicitly declared
 <{result}> variable, which is initialized to <{None}>.
-Each thread has a mutable variable called \textit{this} that contains
+Each thread has a mutable variable called <{this}> that contains
 the thread-local state.
 Local variables are tightly scoped and cannot be shared
 between threads.
@@ -7544,18 +7451,18 @@ before any threads are spawned.
 \section{Operator Precedence}
 
 In Harmony, there is no syntactic difference between applying an argument to a function
-or an index to a dictionary.  Both use the syntax \textit{a b c ...}.
+or an index to a dictionary.  Both use the syntax <{a b c ...}>.
 We call this \emph{application}, and application is left-associative.
-So, \textit{a b c} is interpreted as (\textit{a b}) <{c}>: <{b}> is applied to <{a}>,
+So, <{a b c}> is interpreted as (<{a b}>) <{c}>: <{b}> is applied to <{a}>,
 and then <{c}> is applied to the result.
 For readability, it may help to write $a(b)$ for function application and
 $a[b]$ for indexing.  In case <{b}> is a simple string,
 you can also write $a.b$ for indexing.
 
 There are three levels of precedence.
-Application has the highest precedence.  So, \texttt{!}\textit{a b} is interpreted as
-\texttt{!}(\textit{a b}) and \textit{a b} \texttt{+} \textit{c d} is interpreted as
-(\textit{a b}) \texttt{+} (\textit{c d}).
+Application has the highest precedence.  So, \texttt{!}<{a b}> is interpreted as
+\texttt{!}(<{a b}>) and <{a b}> \texttt{+} <{c d}> is interpreted as
+(<{a b}>) \texttt{+} (<{c d}>).
 Unary operators have the next highest precedence,
 and the remaining operators have the lowest precedence.
 For example, $-2 + 3$ evaluates to 1, not $-5$.
@@ -7568,9 +7475,9 @@ In such cases you have to add parentheses or brackets to indicate what
 the intended evaluation order is, such as $(a + b) < c$.
 
 In almost all expressions, subexpressions are evaluated left to right.
-So, $a[b] + c$
+So, <{a[b] + c}>
 first evaluates <{a}>, then <{b}> (and then applies <{b}> to <{a}>), and then <{c}>.  The one
-exception is the expression <{a}> \textbf{if} <{c}> \textbf{else} <{b}>, where <{c}> is evaluated
+exception is the expression <{a if c else b}>, where <{c}> is evaluated
 first.  In that expression, only <{a}> or <{b}> is evaluated depending on the value of <{c}>.
 In the expression <{a and b and}> $...$, evaluation is left
 to right but stops once one of the subexpressions evaluates to <{False}>.
@@ -7737,11 +7644,11 @@ We present four different stack implementations to illustrate
 options for dynamic allocation:
 \begin{enumerate}
 \item[] \autoref{fig:stack1} uses a single list to represent the
-stack.  It is updated to perform \texttt{push} and \texttt{pop} operations;
+stack.  It is updated to perform <{push}> and <{pop}> operations;
 \item[] \autoref{fig:stack2} also uses a list but, instead of updating
 the list, it replaces the list with a new one for each operation;
 \item[] \autoref{fig:stack3} represents a stack as a recursively nested tuple
-$(v, f)$, where <{v}> is the element on top of the stack and $r$ is a stack
+$(v, f)$, where <{v}> is the element on top of the stack and <{r}> is a stack
 that is the remainder;
 \item[] \autoref{fig:stack4} implements a stack as a linked list with nodes
 allocated using the <{alloc}> module.
@@ -7750,7 +7657,7 @@ allocated using the <{alloc}> module.
 While the last option is the most versatile (it allows cyclic
 data structures), Harmony does not support garbage collection
 for memory allocated this way and so allocated memory that is no
-longer in use must be explicitly released using \texttt{free}.
+longer in use must be explicitly released using <{free}>.
 
 \section{Comments}
 
@@ -7771,15 +7678,15 @@ shared memory locations.  There are just two methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{malloc(<{v}>)} & return a pointer to a memory location initialized to <{v}> \\
+<{malloc(v)}> & return a pointer to a memory location initialized to <{v}> \\
 \hline
-\texttt{free(<{p}>)} & free an allocated memory location <{p}> \\
+<{free(p)}> & free an allocated memory location <{p}> \\
 \hline
 \end{tabular}
 \vspace{1em}
 
-The usage is similar to \texttt{malloc} and \texttt{free} in C.
-\texttt{malloc}() is specified to return <{None}> when running out of
+The usage is similar to <{malloc}> and <{free}> in C.
+<{malloc()}> is specified to return <{None}> when running out of
 memory, although this is an impossible outcome in the current
 implementation of the module.
 
@@ -7794,7 +7701,7 @@ multisets:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{empty()} & returns an empty bag\\
+<{empty()}> & returns an empty bag\\
 \hline
 \texttt{fromSet(<{s}>)} & create a bag from set <{s}>\\
 \hline
@@ -7804,11 +7711,11 @@ multisets:
 \hline
 \texttt{bchoose(<{b}>)} & like \texttt{choose(s)}, but applied to a bag\\
 \hline
-\texttt{add}(<{b}>, <{e}>) & add one copy of <{e}> to bag <{b}> \\
+<{add(b, e)}> & add one copy of <{e}> to bag <{b}> \\
 \hline
-\texttt{remove}(<{b}>, <{e}>) & remove one copy of <{e}> from bag <{b}> \\
+<{remove(b, e)}> & remove one copy of <{e}> from bag <{b}> \\
 \hline
-\texttt{combinations}(<{b}>, <{k}>) & return set of all \emph{subbags} of size <{k}> \\
+<{combinations(b, k)}> & return set of all \emph{subbags} of size <{k}> \\
 \hline
 \end{tabular}
 
@@ -7885,15 +7792,15 @@ implements the following methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{issubset(<{s}>, <{t}>)} & returns whether <{s}> is a subset of <{t}> \\
+<{issubset(s, t)}> & returns whether <{s}> is a subset of <{t}> \\
 \hline
-\texttt{issuperset(<{s}>, <{t}>)} & returns whether <{s}> is a superset of <{t}> \\
+<{issuperset(s, t)}> & returns whether <{s}> is a superset of <{t}> \\
 \hline
-\texttt{add}(<{s}>, <{e}>) & returns $s \cup \{ e \}$ \\
+<{add(s, e)}> & returns $s \cup \{ e \}$ \\
 \hline
-\texttt{remove}(<{s}>, <{e}>) & returns $s \backslash \{ e \}$ \\
+<{remove(s, e)}> & returns $s \backslash \{ e \}$ \\
 \hline
-\texttt{combinations}(<{b}>, <{k}>) & returns set of all subsets of size <{k}> \\
+<{combinations(b, k)}> & returns set of all subsets of size <{k}> \\
 \hline
 \end{tabular}
 
@@ -7909,37 +7816,37 @@ The <{synch}> module provides the following methods:
 \vspace{1em}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{tas}(\textit{lk}) & test-and-set on \texttt{!}\textit{lk} \\
+<{tas(lk)}> & test-and-set on <{!lk}> \\
 \hline
-\texttt{cas}(\textit{ptr}, \textit{old}, \textit{new}) & compare-and-swap on \texttt{!}\textit{ptr} \\
+<{cas}(ptr, old, new)}> & compare-and-swap on <{!ptr}> \\
 \hline
-<{BinSem(v}>) & return a binary semaphore initialized to <{v}> \\
+<{BinSem(v)}> & return a binary semaphore initialized to <{v}> \\
 \hline
-<{Lock}>() & return a binary semaphore initialized to <{False}> \\
+<{Lock()}> & return a binary semaphore initialized to <{False}> \\
 \hline
-<{acquire}>(\textit{bs}) & acquire binary semaphore \texttt{!}\textit{bs} \\
+<{acquire(bs)}> & acquire binary semaphore \texttt{!}<{bs}> \\
 \hline
-<{release}>(\textit{bs}) & release binary semaphore \texttt{!}\textit{bs} \\
+<{release(bs)}> & release binary semaphore \texttt{!}<{bs}> \\
 \hline
-<{Condition}>() & return a condition variable \\
+<{Condition()}> & return a condition variable \\
 \hline
-<{wait(c}>, \textit{lk}) & wait on condition variable \texttt{!}<{c}>
-and lock \textit{lk} \\ \hline
-<{notify(c}>) & notify a thread waiting on condition variable \texttt{!}<{c}> \\
+<{wait(c}>, <{lk}>) & wait on condition variable \texttt{!}<{c}>
+and lock <{lk}> \\ \hline
+<{notify(c)}> & notify a thread waiting on condition variable \texttt{!}<{c}> \\
 \hline
-<{notifyAll(c}>) & notify all threads waiting on condition variable \texttt{!}<{c}> \\
+<{notifyAll(c)}> & notify all threads waiting on condition variable \texttt{!}<{c}> \\
 \hline
-<{Semaphore(cnt}>) & return a counting semaphore initialized to <{cnt}> \\
+<{Semaphore(cnt)}> & return a counting semaphore initialized to <{cnt}> \\
 \hline
-<{P(sema}>) & procure \texttt{!}<{sema}>  \\
+<{P(sema)}> & procure \texttt{!}<{sema}>  \\
 \hline
-<{V(sema}>) & vacate \texttt{!}<{sema}>  \\
+<{V(sema)}> & vacate \texttt{!}<{sema}>  \\
 \hline
 \texttt{Queue}() & return a synchronized queue object \\
 \hline
 <{get(q}>) & return next element of <{q}>, blocking if empty \\
 \hline
-<{put(q}>, \textit{item}) & add \textit{item} to <{a}> \\
+<{put(q, item)}> & add <{item}> to <{a}> \\
 \hline
 \end{tabular}
 
@@ -7966,10 +7873,10 @@ choosing & if not <{None}>, indicates a context that is choosing \\
 \vspace{1em}
 
 There is initially a single context with name
-\texttt{\_\_init\_\_()} and program counter 0.  It starts executing
+<{__init__()}> and program counter 0.  It starts executing
 in atomic mode until it finishes executing the last
 \texttt{Return} instruction.
-Other threads, created through \texttt{spawn} statements, do not
+Other threads, created through <{spawn}> statements, do not
 start executing until then.
 
 A \emph{step} is the execution of a single HVM machine instruction
@@ -8467,10 +8374,10 @@ The operations are executed concurrently on the concurrent queue
 implementation of \autoref{fig:queuelin}, but they are executed sequentially
 on the sequential queue specification of \autoref{fig:queues}(a).
 To that end, the test program maintains a global time variable
-\textit{qtime}, and each thread waits until the timestamp assigned to
-the last concurrent queue operation matches \textit{qtime} before invoking
+<{qtime}>, and each thread waits until the timestamp assigned to
+the last concurrent queue operation matches <{qtime}> before invoking
 the sequential operation in the specification.
-Afterward, it atomically increments the shared \textit{qtime} variable.
+Afterward, it atomically increments the shared <{qtime}> variable.
 This results in the operations being executed sequentially against the
 sequential specification in the same order of the linearization points
 of the concurrent specification.
