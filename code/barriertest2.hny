@@ -6,12 +6,17 @@ const NROUNDS = 4
 round = [0,] * NTHREADS
 invariant (max(round) - min(round)) <= 1
 
+phase = 0
 barr = barrier.Barrier(NTHREADS)
 
 def thread(self):
     for r in {0..NROUNDS-1}:
-        barrier.bwait(?barr)
+        if self == 0:                # coordinator prepares
+            phase += 1
+        barrier.bwait(?barr)         # enter parallel work
         round[self] += 1
+        assert round[self] == phase
+        barrier.bwait(?barr)         # exit parallel work
 
 for i in {0..NTHREADS-1}:
     spawn thread(i)

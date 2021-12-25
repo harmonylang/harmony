@@ -732,7 +732,7 @@ a possible  output.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=0.8\textwidth]{figures/hello8.png}
+\includegraphics[width=0.9\textwidth]{figures/hello8.png}
 \end{center}
 \begin{code}
 <{:input:../code/hello8.hny}>
@@ -5038,16 +5038,33 @@ in the opposite order.  Which do you think is better?
 \index{barrier synchronization}%
 
 <{:const:Barrier}>
-
-\glsadd{barrier synchronization}%
+<{:const:bwait}>
 
 \begin{figure}
 \begin{code}
-<{:input:../code/qbarrier.hny}>
+<{:input:../code/barrier.hny}>
 \end{code}
-\caption{\harmonylink{code/qbarrier.hny} Barrier synchronization with queues}
-\label{fig:barrier}
+\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization}
+\label{fig:genbarrier}
 \end{figure}
+
+\begin{figure}
+\begin{code}
+<{:input:../code/barriertest.hny}>
+\end{code}
+\caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}}
+\label{fig:barriertest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+<{:input:../code/barriertest2.hny}>
+\end{code}
+\caption{\harmonylink{code/barriertest2.hny} Demonstrating double-barrier pattern}
+\label{fig:barriertest2}
+\end{figure}
+
+\glsadd{barrier synchronization}%
 
 Barrier synchronization is a problem that comes up in high-performance
 parallel computing.
@@ -5095,22 +5112,6 @@ The <{round}> array is kept to check the correctness of this
 approach.  Each thread increments its entry every time it enters
 a round.  If the algorithm is correct, it can never be that two threads
 are more than one round apart.
-
-\begin{figure}
-\begin{code}
-<{:input:../code/barrier.hny}>
-\end{code}
-\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization}
-\label{fig:genbarrier}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-<{:input:../code/barriertest.hny}>
-\end{code}
-\caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}}
-\label{fig:barriertest}
-\end{figure}
 
 More generally, barrier synchronization can be abstracted as follows.
 We want to create a \texttt{Barrier}$(n)$ object, with operations
