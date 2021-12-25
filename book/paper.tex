@@ -2959,7 +2959,7 @@ The implementation in \autoref{fig:queueconc}
 uses the <{alloc}> module for dynamic allocation
 \index{dynamic allocation}%
 of nodes in the list using <{malloc()}> and <{free()}>.
-<{malloc(v}>) returns a new memory location initialized to <{v}>,
+<{malloc(v)}> returns a new memory location initialized to <{v}>,
 which should be released with <{free()}> when it is no longer in use.
 The queue maintains a <{head}> pointer to the first element in the list
 and a <{tail}> pointer to the last element in the list.
@@ -4123,7 +4123,7 @@ bound lock.
 \item Write a test program for bound locks
 that checks that up to <{M}> threads
 can acquire the bound lock at the same time.
-% \item Implement a \emph{bounded stack}.  Method <{push(item}>)
+% \item Implement a \emph{bounded stack}.  Method <{push(item)}>
 % should block if the stack is full.  Method \texttt{pop()} should block
 % until the stack is non-empty and then return an item.
 % Also implement test programs for your solution.
@@ -4132,7 +4132,7 @@ can acquire the bound lock at the same time.
 There are <{N}> GPUs identified by the numbers
 1 through <{N}>.  Method <{gpuAlloc()}> returns the identifier
 of an available GPU, blocking if there is currently no GPU available.
-Method <{gpuRelease(gpu}>) releases the given GPU.  It never needs
+Method <{gpuRelease(gpu)}> releases the given GPU.  It never needs
 to block.
 \item With reader/writer locks,
 concurrency can be improved if a thread \emph{downgrades} its write lock
@@ -4985,8 +4985,8 @@ similar to the \texttt{Queue} object in Python.
 Its interface is as follows:
 \begin{itemize}
 \item \texttt{Queue()} returns a new message queue;
-\item <{put(q}>, <{item}>) adds <{item}> to the queue pointed to by <{q}>;
-\item <{get(q}>) waits for and returns an item on the queue pointed to by <{q}>.
+\item <{put(q, item)}> adds <{item}> to the queue pointed to by <{q}>;
+\item <{get(q)}> waits for and returns an item on the queue pointed to by <{q}>.
 \end{itemize}
 
 For those familiar with counting semaphores: note that a \texttt{Queue}
@@ -5263,7 +5263,7 @@ handler and restored to <{False}> upon exit.
 It is important that the <{main()}> code re-enables interrupts after incrementing
 <{count}>.  What would happen if <{main()}> left interrupts disabled?
 
-<{setintlevel(il}>) sets the interrupt level to <{il}> and returns
+<{setintlevel(il)}> sets the interrupt level to <{il}> and returns
 the prior interrupt level.  Returning the old level is handy when writing interrupt-safe
 methods that can be called from ordinary code as well as from an interrupt handler.
 \autoref{fig:trap5} shows how one might write a interrupt-safe method
@@ -5365,14 +5365,13 @@ entry initialized to <{None}>.  <{back}> is an index into the
 array and points to the next slot where a new value is inserted.
 The code uses two atomic operations:
 \begin{itemize}
-\item <{inc(p}>): atomically increments \texttt{!}<{p}> and returns
+\item <{inc(p)}>: atomically increments \texttt{!}<{p}> and returns
 the old value;
-\item <{exch(p}>): sets \texttt{!}<{p}> to <{None}> and returns
+\item <{exch(p)}>: sets \texttt{!}<{p}> to <{None}> and returns
 the old value.
 \end{itemize}
 
-Method <{produce(item}>) uses <{inc}>(?<{back}>)
-to allocate
+Method <{produce(item)}> uses <{inc(?back)}> to allocate
 the next available slot in the <{items}> array.
 It stores the item as a singleton tuple.
 Method <{consume()}> repeatedly scans the array, up to the
@@ -5525,9 +5524,9 @@ The use of the <{reliable}> flag will be explained later.
 \texttt{net\_recv}(<{pchan}>) models checking <{!pchan}> for
 the next message.
 
-Method <{app_send(m}>) retransmits <{m}> until
+Method <{app_send(m)}> retransmits <{m}> until
 an acknowledgment is received.
-Method <{app_recv(reliable}>) returns the next successfully received
+Method <{app_recv(reliable)}> returns the next successfully received
 message.
 \autoref{fig:abptest} shows how the methods may be used to send and receive
 a stream of \texttt{NMSGS} messages reliably.
@@ -7838,7 +7837,7 @@ The <{synch}> module provides the following methods:
 \hline
 <{Condition()}> & return a condition variable \\
 \hline
-<{wait(c}>, <{lk}>) & wait on condition variable \texttt{!}<{c}>
+<{wait(c, lk)}> & wait on condition variable \texttt{!}<{c}>
 and lock <{lk}> \\ \hline
 <{notify(c)}> & notify a thread waiting on condition variable \texttt{!}<{c}> \\
 \hline
@@ -7852,7 +7851,7 @@ and lock <{lk}> \\ \hline
 \hline
 \texttt{Queue}() & return a synchronized queue object \\
 \hline
-<{get(q}>) & return next element of <{q}>, blocking if empty \\
+<{get(q)}> & return next element of <{q}>, blocking if empty \\
 \hline
 <{put(q, item)}> & add <{item}> to <{a}> \\
 \hline
