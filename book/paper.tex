@@ -5042,14 +5042,6 @@ in the opposite order.  Which do you think is better?
 
 \begin{figure}
 \begin{code}
-<{:input:../code/barrier.hny}>
-\end{code}
-\caption{\harmonylink{code/barrier.hny} Generalized barrier synchronization}
-\label{fig:genbarrier}
-\end{figure}
-
-\begin{figure}
-\begin{code}
 <{:input:../code/barriertest.hny}>
 \end{code}
 \caption{\harmonylink{code/barriertest.hny} Test program for \autoref{fig:genbarrier}}
@@ -5058,9 +5050,17 @@ in the opposite order.  Which do you think is better?
 
 \begin{figure}
 \begin{code}
+<{:input:../code/barrier.hny}>
+\end{code}
+\caption{\harmonylink{code/barrier.hny} Barrier implementation}
+\label{fig:genbarrier}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 <{:input:../code/barriertest2.hny}>
 \end{code}
-\caption{\harmonylink{code/barriertest2.hny} Demonstrating double-barrier pattern}
+\caption{\harmonylink{code/barriertest2.hny} Demonstrating the double-barrier pattern}
 \label{fig:barriertest2}
 \end{figure}
 
@@ -5068,88 +5068,58 @@ in the opposite order.  Which do you think is better?
 
 Barrier synchronization is a problem that comes up in high-performance
 parallel computing.
-It is used, among others, for scalable simulation.
+The Harmony model checker uses it.
 A barrier is almost the opposite of a critical section:
 the intention is to get a group of threads to run some code at the
 same time, instead of having them execute it one at a time.
-More precisely, with barrier synchronization the threads execute in rounds.
-Between each round there is a so-called \emph{barrier} where threads wait
-until all threads have completed the previous round, before they start the
-next one.
+More precisely, with barrier synchronization, the threads execute in rounds.
+Between each round, there is a so-called \emph{barrier} where threads wait
+until all threads have completed the previous round and reached the
+barrier---before they start the next round.
 For example, in an iterative matrix algorithm, the matrix may be
 cut up into fragments.  During a round, the threads run concurrently,
 one for each fragment.  The next round is not allowed to start
 until all threads have completed processing their fragment.
 
-\begin{comment}
-\begin{figure}
-\begin{center}
-\includegraphics[width=\textwidth]{figures/barrier-crop.pdf}
-\end{center}
-\caption{High-level state diagram specification of barrier synchronization
-with three threads and two rounds.  The three numbers specify how many
-rounds each thread has completed.}
-\label{fig:barrierdiagram}
-\end{figure}
-
-\autoref{fig:barrierdiagram} shows a high-level depiction of barrier synchronization
-with three and threads.  Initially all threads are in round~0.  Then each thread
-can start and finish the round.  However, none of the threads can
-progress to the next round until all threads have finished the
-current round.
-\end{comment}
-
-Blocking queues work well for implementing barrier synchronization.
-\autoref{fig:barrier} shows an example.  There is a queue
-for each of the <{N}> threads.
-Before thread <{i}> enters a round, it first sends a message to every
-other thread and then waits until it receives a message from
-every other thread.
-In this simple case, each message contains <{None}>, but in practice useful
-information may be exchanged between the threads.
-
-The <{round}> array is kept to check the correctness of this
-approach.  Each thread increments its entry every time it enters
-a round.  If the algorithm is correct, it can never be that two threads
-are more than one round apart.
-
-More generally, barrier synchronization can be abstracted as follows.
-We want to create a \texttt{Barrier}$(n)$ object, with operations
-\texttt{enter()} and \texttt{exit()}.  It is helpful to use
-a roller coaster car with $n$ seats as a metaphor:
+A barrier is used as follows:
 \begin{itemize}
-\item the car cannot contain more than $n$ people;
-\item the car won't take off until $n$ people are in the car;
-\item no new people can enter the car until all $n$ people have left it.
-\end{itemize}
-Notice there are two different waiting conditions:
-\begin{enumerate}
-\item waiting for the car to empty out;
-\item waiting for the car to fill up.
-\end{enumerate}
-
-But this poses a complication.  Suppose, for example, that there are two
-seats in the car, and there is one person in the car.  Does that mean that
-the car is not yet full, or not yet empty?  We have to distinguish
-those situations.  To this end, it is useful to think of the car as going through
-$2 \cdot n$ stages:
-\begin{itemize}
-\item[] Stage 0: the car is empty;
-\item[] Stage $1 ... n-1$: the car is filling up;
-\item[] Stage $n$: the car is full;
-\item[] Stage $n+1 ... 2n - 1$: the car is emptying out.
+\item <{b = Barrier(n)}>: initialize a barrier <{b}> for a collection of
+<{n}> threads;
+\item <{bwait(?b)}>: wait until all threads have reached the barrier
 \end{itemize}
 
-\autoref{fig:genbarrier} shows code that implements barrier synchronization
-using these stages.
-Method~\texttt{enter}() has two <{wait}> loops, one for each
-waiting condition.
-This is sometimes called \emph{double turnstile}.
-Each loop uses a different condition variable.
-The first loop waits until the car has emptied out, while
-the second waits for the car to fill up.
-\autoref{fig:barriertest} is a test program.  The threads check
-that all threads within the barrier are in the same round.
+\autoref{fig:barriertest} is a test program for barriers.
+It uses an integer array <{round}> with one entry per thread.
+Each thread, in a loop, waits for all threads to get to the barrier
+before incrementing its round number.  If the barrier works as
+advertised, two threads should never be more than one round apart.
+
+When implementing a barrier, a complication to worry about is that
+a barrier can be used over and over again.  If this were not the
+case, then a solution based on a lock, a condition variable,
+and a counter initialized to the number of threads could be used.
+The threads would decrement the counter and wait on the condition
+variable until the counter reaches 0.
+
+\autoref{fig:genbarrier} shows how one might implement a reusable barrier.
+Besides a counter <{.left}> that counts how many threads still have to
+reach the barrier, it uses a counter <{.cycle}> that is incremented
+after each use of the barrier---to deal with the complication above.
+The last thread that reaches the barrier restores
+<{.left}> to the number of threads
+(<{.required}>) and increments the cycle counter.
+The other threads are waiting for the cycle counter to be incremented.
+The cycle counter is allowed to wrap around---in fact, a single bit
+suffices for the counter.
+
+A common design pattern with barriers in parallel programs,
+demonstrated in \autoref{fig:barriertest2}, is to use the barrier
+twice in each round.  Before a round starts, one of the threads---let's
+call it the coordinator---sets up the work that needs to be done
+while the other threads wait.  Then all threads do the work and go
+on until they reach a second barrier.  The second barrier is used
+so the coordinator can wait for all threads to be done before setting
+up the work for the next round.
 
 \section*{Exercises}
 \begin{problems}

@@ -8,7 +8,6 @@ def Barrier(required):
 
 def bwait(b):
     acquire(?b->mutex)
-    assert 0 <= b->left <= b->required
     b->left -= 1
     if b->left == 0:
         b->cycle = (b->cycle + 1) % 2

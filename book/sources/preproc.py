@@ -101,6 +101,7 @@ constants = {
     "inf",
     "synch",
     "synchS",
+    "barrier",
     "queue",
     "list",
     "bag",
