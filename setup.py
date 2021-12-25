@@ -42,17 +42,17 @@ class PostInstallCommand(install):
 
 setuptools.setup(
     name=PACKAGE_NAME,
-    version="0.0.1",
+    version="0.0.5",
     author="Robbert van Renesse",
     author_email="rvr@cs.cornell.edu",
     description="Harmony Programming Language",
     packages=setuptools.find_packages(),
     install_requires=[
-        "numpy",
-        "matplotlib",
-        "antlr-denter",
-        "antlr4-python3-runtime",
-        "automata-lib"
+        'numpy; python_version >= "1.21"',
+        'matplotlib; python_version >= "3.5"',
+        'antlr-denter; python_version >= "1.3.1"',
+        'antlr4-python3-runtime; python_version == "4.9.3"',
+        'automata-lib; python_version >= "5.0"'
     ],
     include_package_data=True,
     package_data={

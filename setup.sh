@@ -14,4 +14,4 @@ turn_into_package "$PACKAGE_DIR/modules"
 # harmony and harmony.bat do not need to be copied
 # as pip creates a console script when the package is installed.
 
-python setup.py install
+python setup.py sdist bdist_wheel
