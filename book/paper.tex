@@ -2840,6 +2840,8 @@ Thus it makes sense to model check larger programs in a modular fashion:
 model check one module implementation at a time, using
 specifications for the other modules.
 
+<{:const:tryAcquire}>
+
 \section*{Exercises}
 \begin{problems}
 \item
@@ -4090,6 +4092,12 @@ There are now two reader threads that are holding the reader/writer lock.
 
 <{:const:gpuAlloc}>
 <{:const:gpuRelease}>
+<{:const:acquire_bound_lock}>
+<{:const:release_bound_lock}>
+<{:const:nb_enter}>
+<{:const:nb_leave}>
+<{:const:sb_enter}>
+<{:const:sb_leave}>
 
 \section*{Exercises}
 \begin{problems}
@@ -4106,8 +4114,7 @@ up to <{M}> threads to acquire it at the same time.\footnote{A bound lock is a r
 A bound lock
 with \texttt{M = 1} is an ordinary lock.
 You should define a constant <{M}> and two methods:
-\texttt{acquire\_bound\_lock()}
-and \texttt{release\_bound\_lock()}.
+<{acquire_bound_lock()}> and <{release_bound_lock()}>.
 (Bound locks are useful for situations where too many threads working
 at the same time might exhaust some resource such as a cache.)
 \item Write a test program for your bound lock
@@ -4146,9 +4153,9 @@ The bridge allows arbitrary many cars, as long as they're going in the
 same direction.
 Implement a lock that observes this requirement using SBS.
 Write methods \texttt{OLBlock()} to create a new ``one lane bridge'' lock,
-\texttt{nb\_enter()} that a car must invoke before going northbound on
-the bridge and \texttt{nb\_leave()} that the car must invoke after leaving
-the bridge.  Similarly write \texttt{sb\_enter()} and \texttt{sb\_leave()}
+<{nb_enter()}> that a car must invoke before going northbound on
+the bridge and <{nb_leave()}> that the car must invoke after leaving
+the bridge.  Similarly write <{sb_enter()}> and <{sb_leave()}>
 for southbound cars.
 \item Extend the solution to \autoref{ex:onelane} by implementing the
 requirement that at most $n$ cars are allowed on the bridge.  Add $n$
@@ -4578,7 +4585,7 @@ of condition variables often allow so-called ``spurious wakeups,''
 where <{wait}> may sometimes return even if the conditon
 variable has not been notified.
 As a rule of thumb, one should always be able to replace <{wait}>
-by <{release}> followed by <{acquirire}>.
+by <{release}> followed by <{acquire}>.
 This turns the solution into a busy-waiting one, inefficient but still
 correct.
 
@@ -4626,6 +4633,7 @@ if every possible execution of the application still terminates.
 Andrew Birrell's paper on Programming with Threads gives an excellent
 introduction to working with Mesa-style condition variables~\cite{Birrell89}.
 
+<{:const:TryLock}>
 <{:module:qsort}>
 <{:const:Qsort}>
 <{:const:swap}>
@@ -4668,7 +4676,7 @@ it is fair.
 \item \label{ex:qsort}
 Bonus problem: \autoref{fig:qsort} shows an iterative implementation of the Qsort
 algorithm, and \autoref{fig:qsorttest} an accompanying test program.
-The array to be sorted is stored in shared variable <{textqs.arr}>.
+The array to be sorted is stored in shared variable <{testqs.arr}>.
 Another shared variable, <{testqs.todo}>, contains the ranges of the
 array that need to be sorted (initially the entire array).
 Re-using as much of this code as you can, implement a parallel version of

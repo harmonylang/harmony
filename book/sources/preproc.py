@@ -100,6 +100,7 @@ constants = {
     "None",
     "inf",
     "synch",
+    "synchS",
     "queue",
     "list",
     "bag",
