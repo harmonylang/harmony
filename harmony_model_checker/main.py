@@ -239,6 +239,16 @@ def main():
     charm_options = ns.cf or []
     output_flag = ns.o
 
+    outputfiles = {
+        "hfa": None,
+        "htm": None,
+        "hco": None,
+        "hvm": None,
+        "png": None,
+        "gv":  None
+    }
+    behavior = None
+
     filenames = [str(f) for f in ns.files]
     if not filenames:
         print("harmony: fatal error: no input files")
@@ -248,22 +258,21 @@ def main():
             print("harmony: error: file named '" + f + "' does not exist.")
             return 1
     stem = os.path.splitext(os.path.basename(filenames[0]))[0]
-    hvm_file = stem + ".hvm"
-    htm_file = stem + ".htm"
-    hco_file = stem + ".hco"
-    outputfiles = {
-        "hfa": None,
-        "htm": htm_file,
-        "hco": hco_file,
-        "hvm": hvm_file,
-        "png": None,
-        "gv":  None
-    }
+
+    if outputfiles["hvm"] is None:
+        outputfiles["hvm"] = stem + ".hvm"
+    if outputfiles["hco"] is None:
+        outputfiles["hco"] = stem + ".hco"
+    if outputfiles["htm"] is None:
+        outputfiles["htm"] = stem + ".htm"
+    if outputfiles["png"] is not None and outputfiles["gv"] == None:
+        outputfiles["gv"] = stem + ".gv"
+
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
     except HarmonyCompilerError as e:
         if parse_code_only:
-            with open(hvm_file, "w") as f:
+            with open(outputfiles["hvm"], "w") as f:
                 data = dict(e.token, status="error")
                 f.write(json.dumps(data))
         print(e.message, e.token)
@@ -275,9 +284,9 @@ def main():
     if charm_flag:
         # see if there is a configuration file
         outfile = os.path.join(install_path, "charm.exe")
-        with open(hvm_file, "w") as fd:
+        with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), hco_file, hvm_file))
+        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")
             return r
@@ -286,7 +295,7 @@ def main():
         gh = GenHTML()
         gh.run(outputfiles, output_flag)
         if not suppress_output:
-            p = pathlib.Path(htm_file).resolve()
+            p = pathlib.Path(outputfiles["hvm"]).resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
         return 0
     if print_code is None:
