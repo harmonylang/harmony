@@ -15,5 +15,3 @@ turn_into_package "$PACKAGE_DIR/modules"
 # as pip creates a console script when the package is installed.
 
 python setup.py install
-
-rm -rf "$PACKAGE_DIR.egg-info"
