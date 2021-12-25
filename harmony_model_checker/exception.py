@@ -1,5 +1,19 @@
-from typing import Any
+from typing import Any, List
+from dataclasses import dataclass
 
+@dataclass
+class ErrorToken:
+    line: int
+    message: int
+    column: int
+    lexeme: str
+    filename: str
+    is_eof_error: bool
+
+class HarmonyCompilerErrorCollection(Exception):
+    def __init__(self, errors: List[ErrorToken]) -> None:
+        super().__init__()
+        self.errors = errors
 
 class HarmonyCompilerError(Exception):
     """
@@ -8,12 +22,13 @@ class HarmonyCompilerError(Exception):
 
     def __init__(self, message: str, filename: str = None, line: int = None,
                  column: int = None, lexeme: Any = None, is_eof_error=False):
+        super().__init__()
         self.message = message
-        self.token = {
-            "line": line,
-            "message": message,
-            "column": column,
-            "lexeme": str(lexeme),
-            "filename": filename,
-            "is_eof_error": is_eof_error
-        }
+        self.token = ErrorToken(
+            line=line,
+            message=message,
+            column=column,
+            lexeme=str(lexeme),
+            filename=filename,
+            is_eof_error=is_eof_error
+        )

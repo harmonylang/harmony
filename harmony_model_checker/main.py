@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 import pathlib
@@ -7,6 +8,7 @@ from antlr4 import *
 
 import sys
 import argparse
+from harmony_model_checker.exception import ErrorToken, HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
@@ -21,8 +23,8 @@ def build_parser(progam_input):
     lexer = HarmonyLexer(progam_input)
     parser = HarmonyParser(None)
 
-    # lexer.removeErrorListeners()
-    # parser.removeErrorListeners()
+    lexer.removeErrorListeners()
+    parser.removeErrorListeners()
 
     stream = HarmonyTokenStream(lexer, parser)
     parser._input = stream
@@ -53,7 +55,10 @@ def load_file(filename: str, scope: Scope, code: Code):
 
     ast = parse(filename)
     if ast is None:
-        sys.exit(1)
+        raise HarmonyCompilerError(
+            message="Unknown error: unable to parse Harmony file",
+            filename=filename
+        )
 
     for mod in ast.getImports():
         do_import(scope, code, mod)
@@ -137,13 +142,12 @@ def parse_string(string: str):
 def parse(filename: str):
     _input = FileStream(filename)
     parser = build_parser(_input)
-    parser.addErrorListener(HarmonyParserErrorListener(filename))
+    error_listener = HarmonyParserErrorListener(filename)
+    parser.addErrorListener(error_listener)
 
-    try:
-        tree = parser.program()
-    except Exception as e:
-        print(e)
-        return None
+    tree = parser.program()
+    if error_listener.errors:
+        raise HarmonyCompilerErrorCollection(error_listener.errors)
 
     visitor = HarmonyVisitorImpl(filename)
     return visitor.visit(tree)
@@ -271,12 +275,19 @@ def main():
 
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
-    except HarmonyCompilerError as e:
+    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
+        if isinstance(e, HarmonyCompilerErrorCollection):
+                errors = e.errors
+        else:
+            errors = [e.token]
         if parse_code_only:
-            with open(outputfiles["hvm"], "w") as f:
-                data = dict(e.token, status="error")
-                f.write(json.dumps(data))
-        print(e.message, e.token)
+            with open(outputfiles["hvm"], "w") as fp:
+                data = dict(errors=[dataclasses.asdict(e) for e in errors], status="error")
+                json.dump(data, fp)
+        else:
+            for e in errors:
+                print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
+                print()
         return 1
 
     # Analyze liveness of variables
