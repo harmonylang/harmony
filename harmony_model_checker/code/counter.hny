@@ -21,7 +21,6 @@ def client(client_queue):
     let response = synch.get(client_queue):     # await response
         done[response] = True
     await all(done)
-    assert done == ([True,] * NCLIENTS)
 
 alice_queue = synch.Queue()
 spawn client(?alice_queue)

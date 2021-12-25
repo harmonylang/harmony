@@ -3,8 +3,8 @@ from synch import Queue, put, get
 const NTHREADS = 3
 const NROUNDS = 4
 
-sequential round
 round = [0,] * NTHREADS
+invariant (max(round) - min(round)) <= 1
 
 q = [Queue(),] * NTHREADS
 
@@ -15,7 +15,6 @@ def thread(self):
         for i in {0..NTHREADS-1} where i != self:
             get(?q[self])
         round[self] += 1
-        assert (max(round) - min(round)) <= 1
 
 for i in {0..NTHREADS-1}:
     spawn thread(i)
