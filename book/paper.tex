@@ -5211,14 +5211,17 @@ We say that the code in \autoref{fig:trap2} is not \emph{interrupt-safe} (as opp
 to not being \emph{thread-safe}).
 \index{interrupt-safety}
 
-You would be excused if you wanted to solve the problem using locks, similar to
-\autoref{fig:incfixed}.  \autoref{fig:trap3} shows how one might go about this.
-But locks are intended to solve synchronization issues between multiple threads.
-If you run the code through Harmony, you will find that the code may not terminate.
-The issue is that a thread can only acquire a lock once.  If the interrupt happens
-after <{main()}> acquires the lock but before <{main()}> releases it, the
-<{handler}>() method will block trying to acquire the lock, even though
-it is being acquired by the same thread that already holds the lock.
+You would be excused if you wanted to solve the problem using locks,
+similar to \autoref{fig:incfixed}.  \autoref{fig:trap3} shows how
+one might go about this.  But locks are intended to solve synchronization
+issues between multiple threads.  But an interrupt handler is not
+run by another thread---it is run by the same thread that experienced
+the interrupt.  If you run the code through Harmony, you will find
+that the code may not terminate.  The issue is that a thread can
+only acquire a lock once.  If the interrupt happens after <{main()}>
+acquires the lock but before <{main()}> releases it, the <{handler}>()
+method will block trying to acquire the lock, even though it is
+being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \emph{interrupt level}
@@ -5273,11 +5276,14 @@ There is another important rule to keep in mind.  Just like locks should never b
 for long, interrupts should never be disabled for long.  With locks the issue is to
 maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
-handlers must run quickly and cannot wait for other events.  It is ok to invoke
+handlers must run quickly and cannot wait for other events.
+\begin{comment}
+It is ok to invoke
 non-blocking synchronization calls such as <{notify}>, but calls such as
 <{acquire}> and <{wait}> should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
+\end{comment}
 
 <{:const:i_put}>
 
