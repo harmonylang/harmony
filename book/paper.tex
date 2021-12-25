@@ -2967,7 +2967,7 @@ The <{head}> pointer is <{None}> if and only if the queue is empty.
 (<{None}> is a special address value that is not the address of any
 memory location.)
 
-\texttt{Queue()} returns the initial value for a queue object
+<{Queue()}> returns the initial value for a queue object
 consisting of a <{None}> head and tail pointer and a lock.
 The <{put(q, v)}> and <{get(q)}> methods both take a pointer <{q}> to the
 queue object because both may modify the queue.
@@ -4981,15 +4981,15 @@ Dequeuing from an empty synchronized queue blocks the thread until
 another thread enqueues a message on the queue.
 
 The <{synch}> library supports a synchronized message queue,
-similar to the \texttt{Queue} object in Python.
+similar to the <{Queue}> object in Python.
 Its interface is as follows:
 \begin{itemize}
-\item \texttt{Queue()} returns a new message queue;
+\item <{Queue()}> returns an empty queue;
 \item <{put(q, item)}> adds <{item}> to the queue pointed to by <{q}>;
 \item <{get(q)}> waits for and returns an item on the queue pointed to by <{q}>.
 \end{itemize}
 
-For those familiar with counting semaphores: note that a \texttt{Queue}
+For those familiar with counting semaphores: note that a <{Queue}>
 behaves much like a zero-initialized counting semaphore.
 <{put}> is much like <{V}>, except that it is accompanied by data.
 <{get}> is much like <{P}>, except that it also returns data.
@@ -5011,7 +5011,6 @@ of simply the queue to which the server must send the response.
 The server maintains a local, zero-initialized counter variable.
 Upon receiving a request, it returns a response with the value of
 the counter and increments the counter.  No lock is required.
-The code is tested using the <{done}> array.
 
 This illustration is an example of the \emph{client/server} model.
 Here a single actor implements some service, and clients send request
@@ -7849,7 +7848,7 @@ and lock <{lk}> \\ \hline
 \hline
 <{V(sema)}> & vacate \texttt{!}<{sema}>  \\
 \hline
-\texttt{Queue}() & return a synchronized queue object \\
+<{Queue}>() & return a synchronized queue object \\
 \hline
 <{get(q)}> & return next element of <{q}>, blocking if empty \\
 \hline
@@ -8366,7 +8365,7 @@ the lock.
 %
 Each linearization point execution is assigned a logical timestamp.
 Logical timestamps are numbered $0, 1, ...$
-To do so, we have added a counter (\texttt{time}) to the \texttt{Queue}.
+To do so, we have added a counter (\texttt{time}) to the <{Queue}>.
 Method \texttt{\_linpoint} saves the current counter in
 \textbf{this}.\texttt{qtime} and increments the counter.
 The \textbf{this} dictionary maintains \emph{thread-local state} associated
