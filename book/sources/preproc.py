@@ -100,6 +100,8 @@ constants = {
     "None",
     "inf",
     "synch",
+    "synchS",
+    "barrier",
     "queue",
     "list",
     "bag",
@@ -238,6 +240,8 @@ def nextLine(s):
 
         if s[0] in ["&", "%", "{", "}"]:
             print("\\" + s[0], end="")
+        elif s[0] == "~":
+            print("\\string~", end="")
         elif s[0] == "^":
             print("\\^{}", end="")
         elif s[0] == "|":
