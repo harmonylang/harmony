@@ -1,9 +1,13 @@
-# Generated from Harmony.g4 by ANTLR 4.7.2
+# Generated from Harmony.g4 by ANTLR 4.9.3
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO
-from typing.io import TextIO
 import sys
+if sys.version_info[1] > 5:
+	from typing import TextIO
+else:
+	from typing.io import TextIO
+
 
 def serializedATN():
     with StringIO() as buf:
@@ -562,7 +566,7 @@ class HarmonyParser ( Parser ):
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
-        self.checkVersion("4.7.2")
+        self.checkVersion("4.9.3")
         self._interp = ParserATNSimulator(self, self.atn, self.decisionsToDFA, self.sharedContextCache)
         self._predicates = None
 
@@ -577,7 +581,9 @@ class HarmonyParser ( Parser ):
             return self._indentation
 
 
+
     class ProgramContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -627,7 +633,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Import_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -698,7 +706,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Import_nameContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -741,7 +751,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Import_fromContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -873,7 +885,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Import_as_nameContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -910,7 +924,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Dotted_as_nameContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -965,7 +981,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Import_as_namesContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1034,7 +1052,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Dotted_as_namesContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1094,7 +1114,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Dotted_nameContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1131,7 +1153,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Tuple_boundContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1210,7 +1234,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class BoundContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1270,7 +1296,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Arith_opContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1313,7 +1341,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Comp_opContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1354,7 +1384,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Unary_opContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1400,7 +1432,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Basic_exprContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1707,7 +1741,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Set_ruleContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1832,7 +1868,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Iter_parseContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1903,7 +1941,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class For_parseContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -1979,7 +2019,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Where_parseContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2022,7 +2064,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Tuple_ruleContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2107,7 +2151,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Nary_exprContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2240,7 +2286,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Expr_ruleContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2358,7 +2406,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class ApplicationContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2449,7 +2499,9 @@ class HarmonyParser ( Parser ):
             self.unrollRecursionContexts(_parentctx)
         return localctx
 
+
     class ExprContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2487,7 +2539,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Aug_assign_opContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2528,7 +2582,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Expr_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2566,7 +2622,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Assign_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2629,7 +2687,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Aug_assign_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2678,7 +2738,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Const_assign_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2732,7 +2794,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Assert_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2792,7 +2856,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Await_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2835,7 +2901,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Var_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2889,7 +2957,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Possibly_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2954,7 +3024,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Trap_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -2997,7 +3069,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Pass_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3034,7 +3108,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Invariant_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3077,7 +3153,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Del_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3120,7 +3198,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Spawn_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3175,7 +3255,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Go_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3223,7 +3305,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Print_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3266,7 +3350,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Sequential_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3331,7 +3417,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Atomic_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3388,7 +3476,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class For_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3437,7 +3527,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Let_declContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3503,7 +3595,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class When_declContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3586,7 +3680,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Let_when_declContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3653,7 +3749,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Let_when_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3702,7 +3800,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Method_declContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3778,7 +3878,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class While_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3832,7 +3934,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Elif_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3886,7 +3990,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Else_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -3934,7 +4040,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class If_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4018,7 +4126,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Block_stmtsContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4078,7 +4188,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class BlockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4133,7 +4245,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Simple_stmt_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4188,7 +4302,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Normal_blockContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4273,7 +4389,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Simple_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4471,7 +4589,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class Compound_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4565,7 +4685,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class One_line_stmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4638,7 +4760,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class LabelContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)
@@ -4705,7 +4829,9 @@ class HarmonyParser ( Parser ):
             self.exitRule()
         return localctx
 
+
     class StmtContext(ParserRuleContext):
+        __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
             super().__init__(parent, invokingState)

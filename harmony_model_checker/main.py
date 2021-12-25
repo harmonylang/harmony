@@ -86,7 +86,7 @@ def do_import(scope, code, module):
 
         found = False
         install_path = os.path.dirname(os.path.realpath(__file__))
-        for directory in [os.path.dirname(namestack[-1]), os.path.join(install_path, "../modules"), "."]:
+        for directory in [os.path.dirname(namestack[-1]), os.path.join(install_path, "modules"), "."]:
             filename = os.path.join(directory, modname + ".hny")
             if os.path.exists(filename):
                 load_file(filename, scope2, code)
@@ -250,6 +250,15 @@ def main():
     stem = os.path.splitext(os.path.basename(filenames[0]))[0]
     hvm_file = stem + ".hvm"
     htm_file = stem + ".htm"
+    hco_file = stem + ".hco"
+    outputfiles = {
+        "hfa": None,
+        "htm": htm_file,
+        "hco": hco_file,
+        "hvm": hvm_file,
+        "png": None,
+        "gv":  None
+    }
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
     except HarmonyCompilerError as e:
@@ -265,17 +274,17 @@ def main():
     # see if there is a configuration file
     if charm_flag:
         # see if there is a configuration file
-        outfile = os.path.join(install_path, "../charm.exe")
+        outfile = os.path.join(install_path, "charm.exe")
         with open(hvm_file, "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s %s" % (outfile, " ".join(charm_options), hvm_file))
+        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), hco_file, hvm_file))
         if r != 0:
             print("charm model checker failed")
             return r
         b = Brief()
-        b.run(stem, output_flag)
+        b.run(outputfiles, output_flag)
         gh = GenHTML()
-        gh.run(stem, output_flag)
+        gh.run(outputfiles, output_flag)
         if not suppress_output:
             p = pathlib.Path(htm_file).resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
