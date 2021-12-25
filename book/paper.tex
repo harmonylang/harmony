@@ -1946,7 +1946,7 @@ And as Harmony has already determined, exclusivity is an invariant:
 it holds over every reachable state.
 Unfortunately, exclusivity is not an \emph{inductive} invariant.
 To see why, consider the following state <{s}>: let thread~0 be at label <{cs}>
-and thread~1 be at the start of the \textbf{await} statement.
+and thread~1 be at the start of the <{await}> statement.
 Also, in state <{s}>, $\mathit{turn} = 1$.  Now let
 thread~1 make a step.  Because $\mathit{turn} = 1$,
 thread~1 will stop waiting and also enter the critical
@@ -1999,7 +1999,7 @@ We will use a similar technique to prove the exclusivity is invariant.
 We need a stronger inductive invariant than $\mathcal{F}(i)$ to prove mutual exclusion.
 What else do we know when thread <{i}> is in the critical section?
 Let $\mathcal{C}(i) = \lnot\mathit{flags}[1 - i] \lor \mathit{turn} = i$, that is,
-the condition on the \textbf{await} statement for thread~<{i}>.
+the condition on the <{await}> statement for thread~<{i}>.
 In a sequential program, $\mathcal{C}(i)$ would clearly hold if thread <{i}> is in
 the critical section: $\mathtt{thread}(i)@cs \Rightarrow \mathcal{C}(i)$.
 However, because thread $1-i$ is executing concurrently, this property does not
@@ -2327,7 +2327,7 @@ Further reducing the search space, the program never repeats the
 same reference twice in a row (using the local variable <{last}>).
 
 The two things to note here is the use of the \textbf{choose}
-expression and the \textbf{assert} statement.  Using <{choose}>,
+expression and the <{assert}> statement.  Using <{choose}>,
 we are able to express searching through all possible strings of
 references without a complicated nested iteration.
 Using \texttt{assert}, we are able to express the anomaly we are
@@ -2439,9 +2439,9 @@ are not intended to replace locks or other synchonization primitives.
 When implementing synchronization solutions you should not directly use
 atomic statements but use the synchronization primitives that are available
 to you.  But if you want to \emph{specify} a synchronization primitive,
-then use \textbf{atomically} by all means.
+then use <{atomically}> by all means.
 You can also use atomic statements in your test code.
-In fact, as mentioned before, \textbf{assert} statements are included to
+In fact, as mentioned before, <{assert}> statements are included to
 test if certain conditions hold in every execution and are executed
 atomically.
 
@@ -2588,7 +2588,7 @@ section if <{private}>[<{i}>] is <{False}>, and (ii) no other thread modifies
 <{private}>[<{i}>].
 
 Harmony can check these invariants as well.
-$\mathcal{I}_2(i)$ is checked by the \textbf{assert} statement.
+$\mathcal{I}_2(i)$ is checked by the <{assert}> statement.
 But how would one go about checking an
 invariant like $\mathcal{I}_1$?  Invariants must hold for every state.
 For $\mathcal{I}_2$ we only need an assertion at label <{cs}> because the
@@ -2875,7 +2875,7 @@ In this case, by the time the withdraw operation is performed,
 the balance can have changed.
 Fix the code in \autoref{fig:atm}.  Note, you should leave the
 customer code the same. You are only allowed to change the
-\texttt{atm\_} methods, and you cannot use the \textbf{atomically}
+\texttt{atm\_} methods, and you cannot use the <{atomically}>
 keyword.
 \end{problems}
 
@@ -2984,7 +2984,7 @@ It would be incorrect to replace these by:
 \end{code}
 
 The reason is that \texttt{queue.get()} changes the state by
-acquiring a lock, but the expressions in \textbf{assert}
+acquiring a lock, but the expressions in <{assert}>
 statements (or \textbf{invariant} statements)
 are not allowed to change the state.
 
@@ -4280,7 +4280,7 @@ arrival order, the solution uses a semaphore per thread and a queue.
 The \texttt{acquire\_} methods take a pointer to
 the semaphore of the thread as argument.
 Each entry in the queue is a pair consisting of a type of access
-(\texttt{.read} or \texttt{.write}) and a pointer to the semaphore of the
+(<{.read}> or <{.write}>) and a pointer to the semaphore of the
 thread that is waiting.  Method \texttt{release\_one} considers semaphores
 to release in the order in which they appear in the queue.
 
@@ -5646,7 +5646,7 @@ not share memory, it is not necessary to check those interleavings.
 \begin{problems}
 \item Check if the code finds a unique leader if identifiers are not unique.
 \item Messages are added atomically to the network.  Is this necessary?
-What happens if you remove the \textbf{atomically} keyword?  Explain what happens.
+What happens if you remove the <{atomically}> keyword?  Explain what happens.
 \end{problems}
 
 \chapter{Transactions and Two Phase Commit}
@@ -5718,7 +5718,7 @@ get more complicated with multiple concurrent transfers.
 The Two-Phase Commit protocol~\cite{Gray78} is a protocol that can be
 used to implement transactions across multiple database servers---banks
 in this case.
-Each transaction has a \emph{coordinator} that sends a \texttt{PREPARE}
+Each transaction has a \emph{coordinator} that sends a <{PREPARE}>
 message to each of the servers involved in the transaction, asking them
 to prepare to commit to their part in a particular transaction.
 A server can either respond with
@@ -5745,14 +5745,13 @@ just before the transaction started;
 \end{itemize}
 
 \noindent
-Messages sent to a bank have the following dictionary format:
-$\{ \mathtt{.dst}, \mathtt{.src}, \mathtt{.request}, \mathtt{.amount} \}$:
+Messages sent to a bank are dictionaries with the following fields:
 \begin{itemize}
-\item \texttt{.dst}: identifier of the bank;
-\item \texttt{.src}: identifier of the coordinator that sent the message;
-\item \texttt{.request}: request type, which is either
-\texttt{.withdraw}, \texttt{.deposit}, \texttt{.commit}, or \texttt{.abort};
-\item \texttt{.amount}: amount to withdraw or deposit.
+\item <{.dst}>: identifier of the bank;
+\item <{.src}>: identifier of the coordinator that sent the message;
+\item <{.request}>: request type, which is either
+<{.withdraw}>, <{.deposit}>, <{.commit}>, or <{.abort}>;
+\item <{.amount}>: amount to withdraw or deposit.
 \end{itemize}
 
 \noindent
@@ -5760,18 +5759,18 @@ A bank waits for a message destined to itself that it has not yet received.
 In case of a withdrawal when the bank is idle and there are sufficient
 funds, the bank saves the current balance in <{status}> to indicate
 an ongoing transaction and what its original balance was.
-The bank then responds with a \texttt{.yes} message to the coordinator,
+The bank then responds with a <{.yes}> message to the coordinator,
 including the new balance.
-Otherwise, the bank responds with a \texttt{.no} message.
+Otherwise, the bank responds with a <{.no}> message.
 Deposits are similar, except that it is not necessary to check for
 sufficient funds.
-In case of a \texttt{.commit} message, the bank changes its status
+In case of a <{.commit}> message, the bank changes its status
 to (), indicating that there is no ongoing transaction.  In case of
-a \texttt{.abort} message, the bank restores <{balance}> first.
+a <{.abort}> message, the bank restores <{balance}> first.
 
 \autoref{fig:2pc2} contains the code for transfers and inquiries, as well
 as tests.
-The \texttt{receive()} method is used by coordinators in an
+The <{receive()}> method is used by coordinators in an
 \textbf{atomically when exists}
 statement to wait for a response from each bank involved in a transaction.
 Argument \texttt{self} is the
@@ -5784,16 +5783,16 @@ The \texttt{transfer}() method contains the code for the transfer
 transaction.  Argument <{self}> is the identifier of the coordinator,
 <{b1}> is the source bank, <{b2}> is the destination bank,
 and <{amt}> is the amount to transfer.
-The coordinator sends a \texttt{PREPARE} message containing a
-\texttt{.withdraw} request to <{b1}> and a \texttt{PREPARE}
-message containing a \texttt{.deposit} request to <{b2}>.
+The coordinator sends a <{PREPARE}> message containing a
+<{.withdraw}> request to <{b1}> and a <{PREPARE}>
+message containing a <{.deposit}> request to <{b2}>.
 It then waits for responses from each.  If both responses are
-\texttt{.yes}, then it commits the transaction, otherwise it aborts
+<{.yes}>, then it commits the transaction, otherwise it aborts
 the transaction.
 
 \begin{comment}
 Note the use of the \textbf{possibly} statement in this code.
-It is similar to \textbf{assert}, but where \texttt{assert} checks that
+It is similar to <{assert}>, but where \texttt{assert} checks that
 the predicate holds in \emph{all} executions, \texttt{possibly} checks
 that the predicate holds in at least one execution.
 The purpose is to check that the code doesn't simply always abort---there
@@ -5941,9 +5940,9 @@ Messages have the format $(\mathit{source}, \mathit{payload})$,
 where <{source}> is the identifier of the replica that generated
 the message and <{payload}> has information about the state of
 the replica.  The payload can take one of two forms.  The first is
-\texttt{.crash}, indicating that the source of the message has
+<{.crash}>, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
-a \texttt{.crash} message on the network.
+a <{.crash}> message on the network.
 The other form of payload is a tuple
 $(\mathit{index}, \mathit{operation})$, which means that the source
 placed the given operation at the given index in its history.
@@ -5964,7 +5963,7 @@ broadcast.
 
 Otherwise, the replica does not believe it is the head and
 awaits a message from its direct predecessor.
-If the payload is \texttt{.crash}, then the replica removes this
+If the payload is <{.crash}>, then the replica removes this
 predecessor from its set of predecessors.  For example, if there
 are initially three replicas numbered 0, 1, and 2, and replica~1
 crashes, then replica~2 removes~1 from its set of predecessors, making
@@ -6098,18 +6097,18 @@ so it doesn't handle the same request twice.
 The rest of the code is fairly straightforward.
 
 Read and write operations are both invoked with a unique identifier
-<{uid}>.  Both start by broadcasting a \texttt{.read}
+<{uid}>.  Both start by broadcasting a <{.read}>
 request to all servers and then waiting for a response from
-$\mathtt{N} - \mathtt{F}$ servers.
-The \texttt{receive()} function uses the \texttt{bag.combinations} method
+<{N - F}> servers.
+The <{receive()}> function uses the <{bag.combinations}> method
 to find all combinations of subsets of responses of size
 $\mathtt{N} - \mathtt{F}$.
 The second phase of each operation is similar.
 
 \autoref{fig:abdtest} tests the third property of the properties listed
-above.  The \texttt{writer()} method writes a new value \texttt{.token}.
+above.  The <{writer()}> method writes a new value <{.token}>.
 The \texttt{reader()} method reads twice and makes sure that if the
-first read operation returns \texttt{.token}, then so does the second.
+first read operation returns <{.token}>, then so does the second.
 This illustrates the importance of the second phase of the \texttt{read}
 operation.  You can comment out Lines~32 and~33 in \autoref{fig:abd} and
 see what goes wrong.
@@ -6556,11 +6555,11 @@ Generic operators on Harmony values include:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{<{e}> == <{e}>} & equivalence \\
+<{e == e}> & equivalence \\
 \hline
-\texttt{<{e}> != <{e}>} & inequivalence \\
+<{e != e}> & inequivalence \\
 \hline
-\texttt{<{e}> < <{e}>, <{e}> <= <{e}>, <{e}> > <{e}>, <{e}> >= <{e}>} & comparison\\
+<{e < e, e <= e, e > e, e >= e}> & comparison\\
 \hline
 \end{tabular}
 \end{center}
@@ -6577,17 +6576,17 @@ Operations on booleans include:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{<{e}> and <{e}> and ...} & conjuction \\
+<{e and e and ...}> & conjuction \\
 \hline
-\texttt{<{e}> or <{e}> or ...} & disjunction \\
+<{e or e or ...}> & disjunction \\
 \hline
-\texttt{<{e}> => <{e}>, <{e}> not => <{e}>} & implication \\
+<{e => e, e not => e}> & implication \\
 \hline
-\texttt{not <{e}>} & negation \\
+<{not e}> & negation \\
 \hline
-\texttt{<{v}> if <{e}> else $v'$} & <{v}> or $v'$ depending on <{e}> \\
+<{v if e else v'}> & <{v}> or <{v'}> depending on <{e}> \\
 \hline
-\texttt{any <{s}>, all <{s}>} & disjunction / conjunction for set or list <{s}> \\
+<{any s, all s}> & disjunction / conjunction for set or list <{s}> \\
 \hline
 \end{tabular}
 \end{center}
@@ -6605,35 +6604,35 @@ Operations on integers include:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{-<{e}>} & negation \\
+<{-e}> & negation \\
 \hline
-\texttt{abs(<{e}>)} & absolute value \\
+<{abs(e)}> & absolute value \\
 \hline
-\texttt{<{e}> + <{e}> + ...} & sum \\
+<{e + e + ...}> & sum \\
 \hline
-\texttt{<{e}> - <{e}>} & difference \\
+<{e - e}> & difference \\
 \hline
-\texttt{<{e}> * <{e}> * <{e}> ...} & product \\
+<{e * e * e ...}> & product \\
 \hline
-\texttt{<{e}> / <{e}>, <{e}> // <{e}>} & integer division \\
+<{e / e, e // e}> & integer division \\
 \hline
-\texttt{<{e}> \% <{e}>, <{e}> mod <{e}>} & integer division remainder \\
+<{e % e, e mod e}> & integer division remainder \\
 \hline
-\texttt{<{e}> ** <{e}>} & power \\
+<{e ** e}> & power \\
 \hline
-\texttt{\string~<{e}>} & binary inversion \\
+<{~e}> & binary inversion \\
 \hline
-\texttt{<{e}> \& <{e}> \& ...} & binary and \\
+<{e & e & ...}> & binary and \\
 \hline
-\texttt{<{e}> | <{e}> | ...} & binary or \\
+<{e | e | ...}> & binary or \\
 \hline
-\texttt{<{e}> \string^ <{e}> \string^ ...} & binary exclusive or \\
+<{e ^ e ^ ...}> & binary exclusive or \\
 \hline
-\texttt{$e << e$} & binary shift left \\
+<{e << e}> & binary shift left \\
 \hline
-\texttt{$e >> e$} & binary shift right \\
+<{e >> e}> & binary shift right \\
 \hline
-\texttt{$\{ e..e' \}$} & set of integers from <{e}> to $e'$ inclusive \\
+<{{ e..e' }}> & set of integers from <{e}> to $e'$ inclusive \\
 \hline
 \end{tabular}
 \end{center}
@@ -6658,25 +6657,25 @@ Native operations on sets include:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{len <{s}>} & cardinality \\
+<{len s}> & cardinality \\
 \hline
-\texttt{<{s}> - <{s}>} & set difference \\
+<{s - s}> & set difference \\
 \hline
-\texttt{<{s}> \& <{s}> \& ...} & intersection \\
+<{s & s & ...}> & intersection \\
 \hline
-\texttt{<{s}> | <{s}> | ...} & union \\
+<{s | s | ...}> & union \\
 \hline
-\texttt{<{s}> \string^ <{s}> \string^ ...} & inclusion/exclusion (elements in odd number of sets) \\
+<{s ^ s ^ ...}> & inclusion/exclusion (elements in odd number of sets) \\
 \hline
-\texttt{choose <{s}>} & select an element (Harmony will try all) \\
+<{choose s}> & select an element (Harmony will try all) \\
 \hline
-\texttt{min <{s}>} & minimum element \\
+<{min s}> & minimum element \\
 \hline
-\texttt{max <{s}>} & maximum element \\
+<{max s}> & maximum element \\
 \hline
-\texttt{any <{s}>} & <{True}> if any value is <{True}> \\
+<{any s}> & <{True}> if any value is <{True}> \\
 \hline
-\texttt{all <{s}>} & <{True}> if all values are <{True}> \\
+<{all s}> & <{True}> if all values are <{True}> \\
 \hline
 \end{tabular}
 \end{center}
@@ -6718,34 +6717,34 @@ Operations on dictionaries include the following:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{$d~k$} & indexing \\
+<{d k}> & indexing \\
 \hline
-\texttt{len <{d}>} & the number of keys in <{d}> \\
+<{len d}> & the number of keys in <{d}> \\
 \hline
-\texttt{keys <{d}>} & the set of keys in <{d}> \\
+<{keys d}> & the set of keys in <{d}> \\
 \hline
-\texttt{<{v}> [not] in keys <{d}>} & check if <{v}> is a \emph{key} in <{d}> \\
+<{<{v [not] in keys d}> & check if <{v}> is [not] a key in <{d}> \\
 \hline
-\texttt{<{v}> [not] in <{d}>} & check if <{v}> is a \emph{value} in <{d}> \\
+<{v [not] in d}> & check if <{v}> is [not] a value in <{d}> \\
 \hline
-\texttt{min <{d}>} & the minimum value in <{d}> \\
+<{min d}> & the minimum value in <{d}> \\
 \hline
-\texttt{max <{d}>} & the maximum value in <{d}> \\
+<{max d}> & the maximum value in <{d}> \\
 \hline
-\texttt{any <{d}>} & <{True}> if any value is <{True}> \\
+<{any d}> & <{True}> if any value is <{True}> \\
 \hline
-\texttt{all <{d}>} & <{True}> if all values are <{True}> \\
+<{all d}> & <{True}> if all values are <{True}> \\
 \hline
-\texttt{<{d}> \& <{d}> \& ...} & dictionary intersection \\
+<{d & d & ...}> & dictionary intersection \\
 \hline
-\texttt{<{d}> | <{d}> | ...} & dictionary union \\
+<{d | d | ...}> & dictionary union \\
 \hline
 \end{tabular}
 \end{center}
 
 Because in Harmony brackets are used for parsing purposes only,
 you can write $d[k]$ (or $d(k)$) instead of $d~k$.
-However, if <{k}> is a string like \texttt{.id}, then you might
+However, if <{k}> is a string like <{.id}>, then you might
 prefer the notation $k\mathtt{.id}$.
 
 Python users beware: the Harmony \texttt{<{v}> in <{d}>} operator checks
@@ -6782,27 +6781,27 @@ Native operations on lists or tuples include the following:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{$t~k$} & indexing \\
+<{t k}> & indexing \\
 \hline
-\texttt{<{t}> + <{t}> + ...} & concatenation \\
+<{t + t + ...}> & concatenation \\
 \hline
-\texttt{<{t}> * $n$} & $n$ copies of <{t}> concatenated \\
+<{t * n}> & <{n}> copies of <{t}> concatenated \\
 \hline
-\texttt{<{v}> [not] in <{t}>} & check if <{v}> is a \emph{value} in <{t}> \\
+<{v [not] in t}> & check if <{v}> is [not] a value in <{t}> \\
 \hline
-\texttt{len <{t}>} & the length of <{t}> \\
+<{len t}> & the length of <{t}> \\
 \hline
-\texttt{min <{t}>} & the minimum value in <{t}> \\
+<{min t}> & the minimum value in <{t}> \\
 \hline
-\texttt{max <{t}>} & the maximum value in <{t}> \\
+<{max t}> & the maximum value in <{t}> \\
 \hline
-\texttt{any <{t}>} & <{True}> if any value is <{True}> \\
+<{any t}> & <{True}> if any value is <{True}> \\
 \hline
-\texttt{all <{t}>} & <{True}> if all values are <{True}> \\
+<{all t}> & <{True}> if all values are <{True}> \\
 \hline
-\texttt{<{t}> \& <{t}> \& ...} & pairwise list minimum \\
+<{t & t & ...}> & pairwise list minimum \\
 \hline
-\texttt{<{t}> | <{t}> | ...} & pairwise list maximum \\
+<{t | t | ...}> & pairwise list maximum \\
 \hline
 \end{tabular}
 \end{center}
@@ -6825,11 +6824,11 @@ Native operations on bags include the following:
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
-\texttt{<{v}> [not] in keys <{b}>} & check if <{v}> is in <{b}> \\
+<{v [not] in keys b}> & check if <{v}> is [not] in <{b}> \\
 \hline
-\texttt{<{t}> \& <{t}> \& ...} & bag intersection\\
+<{t & t & ...}> & bag intersection\\
 \hline
-\texttt{<{t}> | <{t}> | ...} & bag union \\
+<{t | t | ...}> & bag union \\
 \hline
 \end{tabular}
 \end{center}
@@ -6859,14 +6858,13 @@ You can create lambda functions similarly to Python.  For example:
 
 In Harmony, each shared variable has an address, which is essentially
 a list of Harmony values.
-For example, the address of variable $d.\mathtt{v}[3]$ consists of the
-list \texttt{.d}, \texttt{.v}, and 3.  The only way to construct an
-address in Harmony is using the $?$ operator.
-$?d.\mathtt{v}[3]$ returns the address of variable $d.\mathtt{v}[3]$.
+For example, the address of variable <{d.v[3]}> consists of the
+list <{.d}>, <{.v}>, and 3.  The only way to construct an
+address in Harmony is using the <{?}> operator.
+<{?d.v[3]}> returns the address of variable <{d.v[3]}>.
 An address can be dereferenced to return the value of the variable.
-If <{a}> is an address, then $!a$ returns the value.
-Like C, Harmony supports the shorthand \texttt{<{a}>->v} for 
-the expression \texttt{($!a$).v}.
+If <{a}> is an address, then <{!a}> returns the value.
+Like C, Harmony supports the shorthand <{a->v}> for the expression <{(!a).v}>.
 
 \subsection*{Context}
 
@@ -7017,13 +7015,13 @@ $x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
 (In Python, the following two compound statements lead to different results
 for <{y}>: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
 
-\subsection*{\textbf{assert}}
+\subsection*{<{assert}>}
 
-The statement \textbf{assert <{b}>} evaluates <{b}> and reports an error
+The statement <{assert b}> evaluates <{b}> and reports an error
 if <{b}> is false.  It should be considered a no-op---it is part of the
 \emph{specification}, not part of the \emph{implementation} of the algorithm.
 In particular, it specifies an invariant: whenever the program counter is
-at the location where the \textbf{assert} statement is, then <{b}> is
+at the location where the <{assert}> statement is, then <{b}> is
 always true.
 
 If <{b}> is an expression, then it is evaluated atomically.
@@ -7031,10 +7029,10 @@ Moreover, the expression is not allowed to change the state.
 If it does change the state, Harmony will report an error as well.
 
 As in Python, you can specify an additional expression:
-\textbf{assert <{b}>, <{e}>}.  The value of <{e}> will be reported as part
+<{assert b, e}>.  The value of <{e}> will be reported as part
 of the error should <{b}> evaluate to false.
 
-\subsection*{\textbf{atomically}}
+\subsection*{<{atomically}>}
 
 A statement can be preceded by the <{atomically}> keyword to
 make the statement atomic.
@@ -7047,19 +7045,19 @@ In this case, another thread can run.  When the original thread
 is resumed (using a \textbf{go} statement), it is once again
 atomically executing.
 
-\textbf{atomically} statements are useful for specification and
+<{atomically}> statements are useful for specification and
 implementing synchronization primitives such as test-and-set.
 It is also useful for testing.
 It is not a replacement for lock/unlock, and should not generally be used
 for synchronization otherwise.  Lock/unlock does allow other
 threads to run concurrently---just not in the same critical section.
 
-\subsection*{\textbf{await}}
+\subsection*{<{await}>}
 
-The statement \textbf{await <{b}>} is equivalent to \textbf{when <{b}>: pass}.
+The statement <{await b}> is equivalent to \textbf{when <{b}>: pass}.
 It is intended to improve readability of your code.
 
-\subsection*{\textbf{const}}
+\subsection*{<{const}>}
 
 The expression <{const N = 3}> introduces a new constant
 <{N}> with the value 3.  Evaluating <{N}> does not lead to
@@ -7071,7 +7069,7 @@ assigns 3 to <{N}> and 4 to <{M}>.
 Harmony has limited support for \emph{constant folding}.  For example,
 <{const N = 3 + 4}> assigns value 7 to constant <{N}>.
 
-\subsection*{\textbf{def}}
+\subsection*{<{def}>}
 
 The statement <{def m a: S1; S2: ...}>
 defines a new program counter constant <{m}> referring to
@@ -7087,12 +7085,12 @@ that is returned by the method.  Harmony does
 not support a \texttt{return} statement that \emph{breaks out}
 of the code before executing the last statement.
 
-\subsection*{\textbf{del}}
+\subsection*{<{del}>}
 
-The statement \textbf{del} <{x}> removes variable <{x}> from the
+The statement <{del x}> removes variable <{x}> from the
 state.  <{x}> can be either a local or a shared variable.  For
-example, the statement \textbf{del} $x.\texttt{age}$ removes
-the \texttt{.age} field from dictionary <{x}>.
+example, the statement <{del x.age}> removes
+the <{.age}> field from dictionary <{x}>.
 Harmony automatically removes top-level local variables that
 are no longer in use
 from the state in order to attempt to reduce the number of states
@@ -7100,8 +7098,8 @@ that are evaluated during model checking.
 
 Because Harmony lists are dictionaries, deleting from lists is different
 from Python:
-$x = [\mathtt{.a}, \mathtt{.b}]; \mathbf{del}~x[0]$ results in <{x}> having value
-$\{1: \mathtt{.b}\}$ rather than $[\mathtt{.b}]$ (which is $\{0: \mathtt{b}\}$).
+<{x = [.a, .b]; del x[0]}> results in <{x}> having value
+<{{1: .b}}> rather than <{[.b]}> (which is <{{0: .b}}>).
 
 \subsection*{\textbf{for ... in ... [where ...]}}
 
