@@ -403,12 +403,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         assert stmt is not None
         if isinstance(stmt, AST):
             stmt.atomically = is_atomically
-            return [LabelStatAST(tkn, labels, stmt)]
+            stmt_block = [LocationAST(tkn, stmt, self.file, tkn[2])]
         elif isinstance(stmt, list):
             for s in stmt:
                 if isinstance(s, AST):
                     s.atomically = is_atomically
-            return [LabelStatAST(tkn, labels, s) for s in stmt]
+            stmt_block = [LocationAST(tkn, s, self.file, tkn[2]) for s in stmt]
+        if labels:
+            block = BlockAST(tkn, False, stmt_block)
+            return [LabelStatAST(tkn, labels, block)]
+        return stmt_block
 
     # Visit a parse tree produced by HarmonyParser#one_line_stmt.
     def visitOne_line_stmt(self, ctx: HarmonyParser.One_line_stmtContext):
