@@ -5,7 +5,7 @@ python "%~f0" %*
 exit /b 0
 '''
 import sys
-import app
+from harmony_model_checker.main import main
 
 if __name__ == "__main__":
-    sys.exit(app.main())
+    sys.exit(main())
