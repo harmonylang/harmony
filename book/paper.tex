@@ -5402,6 +5402,7 @@ read-only operation.  Explain how a seqlock can lead to starvation.
 \index{protocol}%
 \index{distributed system}%
 
+<{:module:abp}>
 <{:const:net_send}>
 <{:const:net_recv}>
 <{:const:app_send}>
@@ -5454,8 +5455,9 @@ For this, we need a network protocol that Alice and Bob can run.
 In particular, it has to be the case that if Alice sends application
 messages $m_1, ..., m_n$ in that order, then if Bob receives an
 application message
-<{m}>, then $m = m_i$ for some <{i}> and Bob will already have received
-application messages $m_1, ..., m_i$ (safety).
+<{m}>, then $m = m_i$ for some <{i}> and, unless $m$ is the very first
+message, Bob will already have received
+application messages $m_1, ..., m_{i-1}$ (safety).
 Also, if the network is fair and Alice sends application message
 <{m}>, then eventually Bob should deliver <{m}> (liveness).
 
