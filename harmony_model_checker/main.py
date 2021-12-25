@@ -8,13 +8,13 @@ from antlr4 import *
 import sys
 import argparse
 
-from .harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
+from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.HarmonyParser import HarmonyParser
-from harmony_model_checker.compiler.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
-from harmony_model_checker.compiler.parser.HarmonyTokenStream import HarmonyTokenStream
+from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
+from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.HarmonyLexer import HarmonyLexer
-from harmony_model_checker.compiler.visitor import HarmonyVisitorImpl
+from harmony_model_checker.antlr_rule_visitor import HarmonyVisitorImpl
 
 
 def build_parser(progam_input):
@@ -288,7 +288,3 @@ def main():
             return 1
     else:
         dumpCode(print_code, code, scope)
-
-
-if __name__ == '__main__':
-    sys.exit(main())

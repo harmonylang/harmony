@@ -33,7 +33,7 @@
 """
 
 version = [
-1,2, 105
+1,2, 1944
 
 ]
 
@@ -50,10 +50,21 @@ import html
 import queue
 import functools
 import json
-import pydot
-from automata.fa.nfa import NFA
-from automata.fa.dfa import DFA
+import subprocess
 from typing import Any
+
+try:
+    import pydot
+    got_pydot = True
+except Exception as e:
+    got_pydot = False
+
+try:
+    from automata.fa.nfa import NFA
+    from automata.fa.dfa import DFA
+    got_automata = True
+except Exception as e:
+    got_automata = False
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -67,12 +78,43 @@ imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
 
+def json_idx(js):
+    if js["type"] == "atom":
+        return json_string(js)
+    return "[" + json_string(js) + "]"
+
+def json_string(js):
+    type = js["type"]
+    v = js["value"]
+    if type in { "bool", "int" }:
+        return v
+    if type == "atom":
+        return '"' + v + '"'
+    if type == "set":
+        if v == []:
+            return "{}"
+        return "{ " + ", ".join([ json_string(val) for val in v]) + " }"
+    if type == "dict":
+        if v == []:
+            return "()"
+        lst = [ (json_string(js["key"]), json_string(js["value"])) for js in v ]
+        if [ k for k,_ in lst ] == [ str(i) for i in range(len(v)) ]:
+            return "[ " + ", ".join([ x for _,x in lst ]) + " ]" 
+        return "{ " + ", ".join([ k + ": " + x for k,x in lst ]) + " }" 
+    if type == "pc":
+        return "PC(%s)"%v
+    if type == "address":
+        if v == []:
+            return "None"
+        return "?" + v[0]["value"] + "".join([ json_idx(kv) for kv in v[1:] ])
+    if type == "context":
+        return "CONTEXT(" + json_string(v["name"]) + ")"
+    assert False
+
 def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
 
 def brief_idx(js):
-    if js["type"] == "atom":
-        return brief_string(js)
     return "[" + brief_string(js) + "]"
 
 def brief_string(js):
@@ -81,7 +123,7 @@ def brief_string(js):
     if type in { "bool", "int" }:
         return v
     if type == "atom":
-        return "." + v
+        return json.dumps(v)
     if type == "set":
         if v == []:
             return "{}"
@@ -174,6 +216,12 @@ class Brief:
                 self.steps += brief_print_range(self.start, int(mis[i]["pc"]))
                 self.steps += "(choose %s)"%brief_string(mis[i]["choose"])
                 self.start = int(mis[i]["pc"]) + 1
+            elif "print" in mis[i]:
+                if self.steps != "":
+                    self.steps += ","
+                self.steps += brief_print_range(self.start, int(mis[i]["pc"]))
+                self.steps += "(print %s)"%brief_string(mis[i]["print"])
+                self.start = int(mis[i]["pc"]) + 1
             elif int(mis[i]["pc"]) != int(self.lastmis["pc"]) + 1:
                 if self.steps != "":
                     self.steps += ","
@@ -184,14 +232,12 @@ class Brief:
                 self.failure = self.lastmis["failure"]
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
-    def run(self, stem, outputflag):
-        fname = stem + ".hco"
-        with open(fname) as f:
+    def run(self, outputfiles, behavior):
+        with open(outputfiles["hco"]) as f:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                if outputflag:
-                    behavior_parse(top, True, stem + ".png");
+                behavior_parse(top, True, outputfiles, behavior);
                 return True
 
             # print("Issue:", top["issue"])
@@ -339,12 +385,7 @@ function json_string_address(obj) {
   }
   var result = "?" + obj[0].value;
   for (var i = 1; i < obj.length; i++) {
-    if (obj[i].type == "atom") {
-      result += "." + obj[i].value;
-    }
-    else {
-      result += "[" + json_string(obj[i]) + "]";
-    }
+    result += "[" + json_string(obj[i]) + "]";
   }
   return result;
 }
@@ -362,7 +403,7 @@ function json_string(obj) {
     return obj.value;
     break;
   case "atom":
-    return "." + obj.value;
+    return '"' + obj.value + '"';
   case "set":
     return json_string_set(obj.value);
   case "dict":
@@ -454,6 +495,13 @@ function stackTrace(tid, trace, failure) {
     fcell.colSpan = 2;
     fcell.style.color = "red";
   }
+}
+
+function addToLog(step, entry) {
+  var table = megasteps[step].log;
+  var row = table.insertRow();
+  var mcell = row.insertCell();
+  mcell.innerHTML = entry;
 }
 
 function handleClick(e, mesIdx) {
@@ -609,6 +657,12 @@ function init_microstep(masidx, misidx) {
   else {
     microsteps[t].choose = null;
   }
+  if (mis.hasOwnProperty("print")) {
+    microsteps[t].print = json_string(mis["print"]);
+  }
+  else {
+    microsteps[t].print = null;
+  }
 
   if (mis.hasOwnProperty("failure")) {
     microsteps[t].failure = mis.failure;
@@ -745,6 +799,10 @@ function run_microstep(t) {
   if (mis.failure != null) {
     stackTrace(mis.tid, mis.trace, mis.failure);
   }
+  else if (mis.print != null) {
+    stackTrace(mis.tid, mis.trace, "print " + mis.print);
+    addToLog(mis.mesidx, mis.print)
+  }
   else {
     stackTrace(mis.tid, mis.trace, mis.choose);
   }
@@ -787,6 +845,7 @@ function run_microsteps() {
     for (var j = 0; j < vardir.length; j++) {
       mestable.rows[i].cells[j + 4].innerHTML = "";
     }
+    megasteps[i].log.innerHTML = "";
   }
   for (var tid = 0; tid < nthreads; tid++) {
     threadtable.rows[tid].cells[1].innerHTML = "init";
@@ -845,7 +904,8 @@ for (let i = 0; i < nmegasteps; i++) {
     canvas: canvas,
     startTime: 0,
     nsteps: 0,
-    contexts: []
+    contexts: [],
+    log: document.getElementById("log" + i)
   };
   canvas.addEventListener('mousedown', function(e){handleClick(e, i)});
 }
@@ -858,39 +918,6 @@ run_microsteps();
 document.addEventListener('keydown', handleKeyPress);
 
         """
-
-    def json_kv(self, js):
-        return self.json_string(js["key"]) + ": " + self.json_string(js["value"])
-
-    def json_idx(self, js):
-        if js["type"] == "atom":
-            return self.json_string(js)
-        return "[" + self.json_string(js) + "]"
-
-    def json_string(self, js):
-        type = js["type"]
-        v = js["value"]
-        if type in { "bool", "int" }:
-            return v
-        if type == "atom":
-            return "." + v
-        if type == "set":
-            if v == []:
-                return "{}"
-            return "{ " + ", ".join([ self.json_string(val) for val in v]) + " }"
-        if type == "dict":
-            if v == []:
-                return "()"
-            return "{ " + ", ".join([ self.json_kv(kv) for kv in v ]) + " }" 
-        if type == "pc":
-            return "PC(%s)"%v
-        if type == "address":
-            if v == []:
-                return "None"
-            return "?" + v[0]["value"] + "".join([ self.json_idx(kv) for kv in v[1:] ])
-        if type == "context":
-            return "CONTEXT(" + self.json_string(v["name"]) + ")"
-        assert False
 
     def file_include(self, name, f):
         with open(name) as g:
@@ -919,6 +946,11 @@ document.addEventListener('keydown', handleKeyPress);
         for i in range(width):
           print("  <td align='center'>", file=f)
           print("  </td>", file=f)
+
+        print("  <td>", file=f)
+        print("    <table id='log%d' border='1'>"%(step-1), file=f)
+        print("    </table>", file=f)
+        print("  </td>", file=f)
         print("</tr>", file=f)
 
     def vardim(self, d):
@@ -948,10 +980,14 @@ document.addEventListener('keydown', handleKeyPress);
             if isinstance(nd, dict):
                 for k in sorted(nd.keys()):
                     (w,h) = self.vardim(nd[k])
-                    if h == 0:
-                        print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,k), file=f)
+                    if k[0] == '"':
+                        key = k[1:-1]
                     else:
-                        print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,k), file=f)
+                        key = k
+                    if h == 0:
+                        print("<td align='center' style='font-style: italic' colspan='%d' rowspan='%d'>%s</td>"%(w,nrows-nl,key), file=f)
+                    else:
+                        print("<td align='center' style='font-style: italic' colspan='%d'>%s</td>"%(w,key), file=f)
                     q.put((nd[k], nl+1))
 
     def html_top(self, f):
@@ -975,6 +1011,9 @@ document.addEventListener('keydown', handleKeyPress);
         print("      </th>", file=f)
         print("      <th align='center' colspan='%d'>"%width, file=f)
         print("        Shared Variables", file=f)
+        print("      </th>", file=f)
+        print("      <th align='center' colspan='%d'>"%width, file=f)
+        print("        Output", file=f)
         print("      </th>", file=f)
         print("    </tr>", file=f)
 
@@ -1039,10 +1078,19 @@ document.addEventListener('keydown', handleKeyPress);
         print("  </div>", file=f)
         print("</div>", file=f)
 
-    def html_botright(self, f, stem, outputflag):
+    # output a filename of f1 relative to f2
+    def pathdiff(self, f1, f2):
+        return os.path.relpath(f1, start=os.path.dirname(f2))
+
+    def html_botright(self, f, outputfiles):
         if self.nthreads == 0:
-            if outputflag:
-                print("<img src='%s.png' alt='DFA image'>"%pathlib.PurePosixPath(stem).name, file=f)
+            png = outputfiles["png"]
+            if png != None:
+                if png[0] == "/":
+                    print("      <img src='%s' alt='DFA image'>"%png, file=f)
+                else:
+                    assert outputfiles["htm"] != None
+                    print("      <img src='%s' alt='DFA image'>"%self.pathdiff(png, outputfiles["htm"]), file=f)
             return
         print("<table border='1'", file=f)
         print("  <thead>", file=f)
@@ -1084,7 +1132,7 @@ document.addEventListener('keydown', handleKeyPress);
         print("  </tbody>", file=f)
         print("</table>", file=f)
 
-    def html_outer(self, f, stem, outputflag):
+    def html_outer(self, f, outputfiles):
         print("<table>", file=f)
         print("  <tr>", file=f)
         print("    <td colspan='2'>", file=f)
@@ -1106,7 +1154,7 @@ document.addEventListener('keydown', handleKeyPress);
         self.html_botleft(f)
         print("    </td>", file=f)
         print("    <td valign='top'>", file=f)
-        self.html_botright(f, stem, outputflag)
+        self.html_botright(f, outputfiles)
         print("    </td>", file=f)
         print("  </tr>", file=f)
         print("</table>", file=f)
@@ -1121,7 +1169,7 @@ document.addEventListener('keydown', handleKeyPress);
         print("  " + str(path), end="", file=f)
         return index + 1
 
-    def html_script(self, f, stem):
+    def html_script(self, f, outputfiles):
         print("<script>", file=f)
         print("var nthreads = %d;"%self.nthreads, file=f)
         print("var nmegasteps = %d;"%self.nmegasteps, file=f)
@@ -1130,16 +1178,16 @@ document.addEventListener('keydown', handleKeyPress);
         print(file=f)
         print("];", file=f)
         print("var state =", file=f)
-        self.file_include(stem + ".hco", f)
+        self.file_include(outputfiles["hco"], f)
         print(";", file=f)
         print(self.js, file=f)
         # file_include("charm.js", f)
         print("</script>", file=f)
 
-    def html_body(self, f, stem, outputflag):
+    def html_body(self, f, outputfiles):
         print("<body>", file=f)
-        self.html_outer(f, stem, outputflag)
-        self.html_script(f, stem)
+        self.html_outer(f, outputfiles)
+        self.html_script(f, outputfiles)
         print("</body>", file=f)
 
     def html_head(self, f):
@@ -1150,18 +1198,18 @@ document.addEventListener('keydown', handleKeyPress);
         print("  </style>", file=f)
         print("</head>", file=f)
 
-    def html(self, f, stem, outputflag):
+    def html(self, f, outputfiles):
         print("<html>", file=f)
         self.html_head(f)
-        self.html_body(f, stem, outputflag)
+        self.html_body(f, outputfiles)
         print("</html>", file=f)
 
     def var_convert(self, v):
         if v["type"] != "dict":
-            return self.json_string(v)
+            return json_string(v)
         d = {}
         for kv in v["value"]:
-            k = self.json_string(kv["key"])
+            k = json_string(kv["key"])
             d[k] = self.var_convert(kv["value"])
         return d
 
@@ -1184,10 +1232,10 @@ document.addEventListener('keydown', handleKeyPress);
                 d[k] = val
         self.dict_merge(vardir, d)
 
-    def run(self, stem, outputflag):
+    def run(self, outputfiles):
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
-        with open(stem + ".hco") as f:
+        with open(outputfiles["hco"]) as f:
             self.top = json.load(f)
             assert isinstance(self.top, dict)
             if "macrosteps" in self.top:
@@ -1208,40 +1256,85 @@ document.addEventListener('keydown', handleKeyPress);
                         if tid >= self.nthreads:
                             self.nthreads = tid + 1
 
-        with open(stem + ".htm", "w") as out:
-            self.html(out, stem, outputflag)
+        with open(outputfiles["htm"], "w") as out:
+            self.html(out, outputfiles)
+
+def read_hfa(file, dfa):
+    with open(file) as fd:
+        js = json.load(fd)
+        initial = js["initial"]
+        states = { "{}" }
+        final = set()
+        symbols = set()
+        for e in js["edges"]:
+            symbol = json_string(e["symbol"])
+            symbols.add(symbol)
+        transitions = { "{}": { s: "{}" for s in symbols } }
+        for n in js["nodes"]:
+            idx = n["idx"]
+            states.add(idx)
+            if n["type"] == "final":
+                final.add(idx)
+            transitions[idx] = { s: "{}" for s in symbols }
+        for e in js["edges"]:
+            symbol = json_string(e["symbol"])
+            transitions[e["src"]][symbol] = e["dst"]
+
+    hfa = DFA(
+        states=states,
+        input_symbols=symbols,
+        transitions=transitions,
+        initial_state=initial,
+        final_states=final
+    )
+
+    assert dfa.input_symbols <= hfa.input_symbols
+    if dfa.input_symbols < hfa.input_symbols:
+        print("behavior warning: symbols missing from behavior:",
+            hfa.input_symbols - dfa.input_symbols)
+    else:
+        assert dfa <= hfa
+        if dfa < hfa:
+            print("behavior warning: strict subset of specified behavior")
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
     nodes = {}
+    rename = {}
+    next_idx = 0
     for state in dfa.states:
+        if state in rename:
+            idx = rename[state]
+        else:
+            rename[state] = idx = next_idx
+            next_idx += 1
         if state == "{}":
             continue
         if state == dfa.initial_state:
             # color start state with green
             if state in dfa.final_states:
                 initial_state_node = pydot.Node(
-                    state,
+                    str(idx),
                     style='filled',
                     peripheries=2,
                     fillcolor='#66cc33', label="initial")
             else:
                 initial_state_node = pydot.Node(
-                    state, style='filled', fillcolor='#66cc33', label="initial")
+                    str(idx), style='filled', fillcolor='#66cc33', label="initial")
             nodes[state] = initial_state_node
             graph.add_node(initial_state_node)
         else:
             if state in dfa.final_states:
-                state_node = pydot.Node(state, peripheries=2, label="final")
+                state_node = pydot.Node(str(idx), peripheries=2, label="final")
             else:
-                state_node = pydot.Node(state, label="")
+                state_node = pydot.Node(str(idx), label="")
             nodes[state] = state_node
             graph.add_node(state_node)
     # adding edges
     for from_state, lookup in dfa.transitions.items():
         for to_label, to_state in lookup.items():
-            if to_state != '{}' and (from_state != to_state or to_label != ""):
+            if to_state != '{}' and to_label != "":
                 graph.add_edge(pydot.Edge(
                     nodes[from_state],
                     nodes[to_state],
@@ -1251,12 +1344,32 @@ def behavior_show_diagram(dfa, path=None):
         graph.write_png(path)
     return graph
 
-def behavior_parse(js, minify, output):
+error_state = "{}" if got_automata else frozenset({})
+
+def eps_closure_rec(states, transitions, current, output):
+    if current in output:
+        return
+    output.add(current)
+    t = transitions[current]
+    if '' in t:
+        for s in t['']:
+            eps_closure_rec(states, transitions, s, output)
+
+def eps_closure(states, transitions, current):
+    x = set()
+    eps_closure_rec(states, transitions, current, x)
+    return frozenset(x)
+
+def behavior_parse(js, minify, outputfiles, behavior):
+    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
+        return
+
     states = set()
     initial_state = None;
     final_states = set()
     input_symbols = set()
     transitions = {}
+    labels = {}
 
     for s in js["nodes"]:
         idx = str(s["idx"])
@@ -1281,166 +1394,166 @@ def behavior_parse(js, minify, output):
     for edge in js['edges']:
         src = str(edge["src"])
         dst = str(edge["dst"])
-        if edge["log"] == []:
+        if edge["print"] == []:
             add_edge(src, "", dst)
         else:
-            for e in edge["log"][:-1]:
-                input_symbols.add(e)
+            for e in edge["print"][:-1]:
+                symbol = json_string(e)
+                input_symbols.add(symbol)
+                labels[symbol] = e
                 inter = "s%d"%intermediate
                 intermediate += 1
                 states.add(inter)
                 transitions[inter] = {}
-                add_edge(src, e, inter)
+                add_edge(src, symbol, inter)
                 src = inter
-            e = edge["log"][-1]
-            add_edge(src, e, dst)
-            input_symbols.add(e)
+            e = edge["print"][-1]
+            symbol = json_string(e)
+            add_edge(src, symbol, dst)
+            input_symbols.add(symbol)
+            labels[symbol] = e
 
     # print("states", states, file=sys.stderr)
+    # print("initial", initial_state, file=sys.stderr)
     # print("final", final_states, file=sys.stderr)
     # print("symbols", input_symbols, file=sys.stderr)
     # print("transitions", transitions, file=sys.stderr)
 
-    nfa = NFA(
-        states=set(states),
-        input_symbols=input_symbols,
-        transitions=transitions,
-        initial_state=initial_state,
-        final_states=final_states
-    )
-
     print("NFA -> DFA", file=sys.stderr)
-    intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
 
-    if minify:
-        print("minify %d"%len(intermediate.states), file=sys.stderr)
-        dfa = intermediate.minify(retain_names = True)
-        print("minify done %d"%len(dfa.states), file=sys.stderr)
+    if got_automata:
+        nfa = NFA(
+            states=states,
+            input_symbols=input_symbols,
+            transitions=transitions,
+            initial_state=initial_state,
+            final_states=final_states
+        )
+        intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
+        if minify and len(final_states) != 0:
+            print("minify %d"%len(intermediate.states), file=sys.stderr)
+            dfa = intermediate.minify(retain_names = True)
+            print("minify done %d"%len(dfa.states), file=sys.stderr)
+        else:
+            dfa = intermediate
+        dfa_states = dfa.states
+        (dfa_transitions,) = dfa.transitions,
+        dfa_initial_state = dfa.initial_state,
+        dfa_final_states = dfa.final_states
     else:
-        dfa = intermediate
+        # Compute the epsilon closure for each state
+        eps_closures = { s:eps_closure(states, transitions, s) for s in states }
 
-    behavior_show_diagram(dfa, path=output)
+        # Convert the NFA into a DFA
+        dfa_transitions = {}
+        dfa_initial_state = eps_closures[initial_state]
+        q = [dfa_initial_state]       # queue of states to handle
+        while q != []:
+            current = q.pop()
+            if current in dfa_transitions:
+                continue
+            dfa_transitions[current] = {}
+            for symbol in input_symbols:
+                ec = set()
+                for nfa_state in current:
+                    if symbol in transitions[nfa_state]:
+                        for next in transitions[nfa_state][symbol]:
+                            ec |= eps_closures[next]
+                n = dfa_transitions[current][symbol] = frozenset(ec)
+                q.append(n)
+        dfa_states = set(dfa_transitions.keys())
+        dfa_final_states = set()
+        for dfa_state in dfa_states:
+            for nfa_state in dfa_state:
+                if nfa_state in final_states:
+                    dfa_final_states.add(dfa_state)
 
-    if False:
-        # Give each state a simple integer name
-        names = {}
-        values = {}
-        for (idx, s) in enumerate(dfa.states):
-            names[s] = idx
-            values[s] = "???"
-        values[dfa.initial_state] = "initial"
-
-        if outfmt == "dot":
-            print("digraph {")
-
-            for s in dfa.states:
-                if s == "{}":
-                    continue
-                if s in dfa.final_states:
-                    if s == dfa.initial_state:
-                        print("  s%s [label=\"%s\",shape=doubleoctagon]"%(names[s], "initial"))
-                    else:
-                        print("  s%s [label=\"%s\",shape=doublecircle]"%(names[s], "final"))
-                elif s == dfa.initial_state:
-                    print("  s%s [label=\"%s\",shape=octagon]"%(names[s], "initial"))
-                else:
-                    print("  s%s [label=\"%s\",shape=circle]"%(names[s], ""))
-
-            for (src, edges) in dfa.transitions.items():
-                for (input, dst) in edges.items():
-                    if dst != '{}' and (src != dst or input != ""):
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)))
-
-            print("}")
-        else:       # json format, same as input
-            assert outfmt == "json"
-            print("{")
-            print("  \"nodes\": [")
-
+    if outputfiles["hfa"] != None:
+        with open(outputfiles["hfa"], "w") as fd:
+            names = {}
+            for (idx, s) in enumerate(dfa_states):
+                names[s] = idx
+            print("{", file=fd)
+            print("  \"initial\": \"%s\","%names[dfa_initial_state], file=fd)
+            print("  \"nodes\": [", file=fd)
             first = True
-            for s in dfa.states:
-                if s == "{}":
+            for s in dfa_states:
+                if s == error_state:
                     continue
                 if first:
                     first = False
                 else:
-                    print(",")
-                print("    {")
-                print("      \"idx\": \"%s\","%names[s])
-                print("      \"value\": \"%s\","%values[s])
-                if s == dfa.initial_state:
-                    t = "initial"
-                elif s in dfa.final_states:
+                    print(",", file=fd)
+                print("    {", file=fd)
+                print("      \"idx\": \"%s\","%names[s], file=fd)
+                if s in dfa_final_states:
                     t = "final"
                 else:
                     t = "normal"
-                print("      \"type\": \"%s\""%t)
-                print("    }", end="")
-            print()
-            print("  ],")
+                print("      \"type\": \"%s\""%t, file=fd)
+                print("    }", end="", file=fd)
+            print(file=fd)
+            print("  ],", file=fd)
 
-            print("  \"edges\": [")
+            print("  \"edges\": [", file=fd)
             first = True
-            for (src, edges) in dfa.transitions.items():
+            for (src, edges) in dfa_transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != '{}' and src != dst:
+                    if dst != error_state:
                         if first:
                             first = False
                         else:
-                            print(",")
-                        print("    {")
-                        print("      \"src\": \"%s\","%names[src])
-                        print("      \"dst\": \"%s\""%names[dst])
-                        print("    }", end="")
-            print()
-            print("  ]")
+                            print(",", file=fd)
+                        print("    {", file=fd)
+                        print("      \"src\": \"%s\","%names[src], file=fd)
+                        print("      \"dst\": \"%s\","%names[dst], file=fd)
+                        print("      \"symbol\": %s"%json.dumps(labels[input]), file=fd)
+                        print("    }", end="", file=fd)
+            print(file=fd)
+            print("  ]", file=fd)
 
-            print("}")
+            print("}", file=fd)
 
-# def usage():
-#     print("Usage: iface [-T type] [-M] file.json", file=sys.stderr)
-#     sys.exit(1)
-# 
-# def main():
-#     try:
-#         opts, args = getopt.getopt(sys.argv[1:], "MT:",
-#                 ["type=", "minify", "help"])
-#     except getopt.GetoptError as err:
-#         print(str(err))
-#         usage()
-#     outfmt = "dot"
-#     minify = False
-#     for o, a in opts:
-#         if o in [ "-T", "--type"]:
-#             if a not in [ "dot", "json" ]:
-#                 print("type must be dot or json", file=sys.stderr)
-#                 sys.exit(1)
-#             outfmt = a
-#         elif o in [ "-M", "--minify" ]:
-#             minify = True
-#         else:
-#             usage()
-# 
-#     if args == []:
-#         usage()
-# 
-#     file = args[0]
-#     dotloc = file.rfind(".")
-#     if dotloc == 0:
-#         usage()
-#     if dotloc > 0:
-#         stem = file[:dotloc]
-#     else:
-#         stem = file
-# 
-#     minify = True       # TODO
-# 
-#     with open(file) as f:
-#         js = json.load(f)
-#         parse(js, outfmt, minify, stem + ".png");
-# 
-# if __name__ == "__main__":
-#     main()
+    if outputfiles["gv"] != None:
+        with open(outputfiles["gv"], "w") as fd:
+            names = {}
+            for (idx, s) in enumerate(dfa_states):
+                names[s] = idx
+            print("digraph {", file=fd)
+            print("  rankdir = \"LR\"", file=fd)
+            for s in dfa_states:
+                if s == error_state:
+                    continue
+                if s == dfa_initial_state:
+                    if s in dfa_final_states:
+                        print("  s%s [label=\"initial\",style=filled,peripheries=2,fillcolor=\"#66cc33\"]"%names[s], file=fd)
+                    else:
+                        print("  s%s [label=\"initial\",style=filled,fillcolor=\"#66cc33\"]"%names[s], file=fd)
+                else:
+                    if s in dfa_final_states:
+                        print("  s%s [peripheries=2,label=\"final\"]"%names[s], file=fd)
+                    else:
+                        print("  s%s [label=\"\"]"%names[s], file=fd)
+
+            for (src, edges) in dfa_transitions.items():
+                for (input, dst) in edges.items():
+                    if dst != error_state:
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)), file=fd)
+            print("}", file=fd)
+
+    if outputfiles["png"] != None:
+        if got_pydot and got_automata:
+            behavior_show_diagram(dfa, path=outputfiles["png"])
+        else:
+            assert outputfiles["gv"] != None
+            subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
+                                outputfiles["gv"] ])
+
+    if behavior != None:
+        if got_automata:
+            read_hfa(behavior, dfa)
+        else:
+            print("Can't check behavior subset because automata-lib is not available")
 
 
 class HarmonyCompilerError(Exception):
@@ -1877,9 +1990,9 @@ def jsonValue(v):
     if isinstance(v, bool):
         return '{ "type": "bool", "value": "%s" }'%str(v)
     if isinstance(v, int) or isinstance(v, float):
-        return '{ "type": "int", "value": "%s" }'%str(v)
+        return '{ "type": "int", "value": %s }'%str(v)
     if isinstance(v, str):
-        return '{ "type": "atom", "value": "%s" }'%str(v)
+        return '{ "type": "atom", "value": %s }'%json.dumps(v)
     assert False, v
 
 def strVars(v):
@@ -2395,7 +2508,7 @@ class PushOp(Op):
 
     def __repr__(self):
         (lexeme, file, line, column) = self.constant
-        return "Push " + strValue(lexeme)
+        return "Push %s"%strValue(lexeme)
 
     def jdump(self):
         (lexeme, file, line, column) = self.constant
@@ -2821,18 +2934,18 @@ class AssertOp(Op):
             return
         context.pc += 1
 
-class LogOp(Op):
+class PrintOp(Op):
     def __init__(self, token):
         self.token = token
 
     def __repr__(self):
-        return "Log"
+        return "Print"
 
     def jdump(self):
-        return '{ "op": "Log" }'
+        return '{ "op": "Print" }'
 
     def explain(self):
-        return "pop a value and add to history"
+        return "pop a value and add to print history"
 
     def eval(self, state, context):
         cond = context.pop()
@@ -5276,22 +5389,18 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
-class LogAST(AST):
-    def __init__(self, token, atomically, cond):
+class PrintAST(AST):
+    def __init__(self, token, atomically, expr):
         AST.__init__(self, token, atomically)
         self.token = token
-        self.cond = cond
+        self.expr = expr
 
     def __repr__(self):
-        return "Log(" + str(self.token) + ", " + str(self.cond) + ")"
+        return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
-        code.append(ReadonlyIncOp())
-        code.append(AtomicIncOp(True))
-        self.cond.compile(scope, code)
-        code.append(LogOp(self.token))
-        code.append(AtomicDecOp())
-        code.append(ReadonlyDecOp())
+        self.expr.compile(scope, code)
+        code.append(PrintOp(self.token))
 
 class PossiblyAST(AST):
     def __init__(self, token, atomically, condlist):
@@ -5514,38 +5623,52 @@ class FromAST(AST):
     def getImports(self):
         return [self.module]
 
-class LabelStatAST(AST):
-    def __init__(self, token, labels, ast, file, line):
+class LocationAST(AST):
+    def __init__(self, token, ast, file, line):
         AST.__init__(self, token, True)
-        self.labels = { lb:LabelValue(None, "label") for lb in labels }
         self.ast = ast
         self.file = file
         self.line = line
 
     def __repr__(self):
-        return "LabelStat(" + str(self.labels) + ", " + str(self.ast) + ")"
+        return "LocationAST(" + str(self.ast) + ")"
+
+    def compile(self, scope, code):
+        code.location(self.file, self.line)
+        self.ast.compile(scope, code)
+
+    def getLabels(self):
+        return self.ast.getLabels()
+
+    def getImports(self):
+        return self.ast.getImports()
+
+class LabelStatAST(AST):
+    def __init__(self, token, labels, ast):
+        AST.__init__(self, token, True)
+        self.labels = { lb:LabelValue(None, "label") for lb in labels }
+        self.ast = ast
+
+    def __repr__(self):
+        return "LabelStatAST(" + str(self.labels) + ", " + str(self.ast) + ")"
 
     # TODO.  Update label stuff
     def compile(self, scope, code):
-        code.location(self.file, self.line)
-        if self.labels == {}:
-            self.ast.compile(scope, code)
-        else:
-            # root = scope
-            # while root.parent != None:
-            #     root = root.parent
-            for ((lexeme, file, line, column), label) in self.labels.items():
-                code.nextLabel(label)
-                # root.names[lexeme] = ("constant", (label, file, line, column))
-            code.append(AtomicIncOp(False))
-            self.ast.compile(scope, code)
-            code.append(AtomicDecOp())
+        # root = scope
+        # while root.parent != None:
+        #     root = root.parent
+        for ((lexeme, file, line, column), label) in self.labels.items():
+            code.nextLabel(label)
+            # root.names[lexeme] = ("constant", (label, file, line, column))
+        code.append(AtomicIncOp(False))
+        self.ast.compile(scope, code)
+        code.append(AtomicDecOp())
 
     def getLabels(self):
-        return set(self.labels.items()) | self.ast.getLabels();
+        return set(self.labels.items()) | self.ast.getLabels()
 
     def getImports(self):
-        return self.ast.getImports();
+        return self.ast.getImports()
 
 class SequentialAST(AST):
     def __init__(self, token, atomically, vars):
@@ -5608,27 +5731,6 @@ class ConstAST(AST):
             v = ctx.pop()
             self.set(scope, self.const, v)
 
-# Zero or more labels, then a statement, then a semicolon
-class LabelStatRule(Rule):
-    def parse(self, t):
-        token = t[0]
-        (lexeme, thefile, theline, column) = t[0]
-        labels = []
-        while True:
-            (lexeme, file, line, column) = t[0]
-            if lexeme != "@":
-                break
-            label = t[1]
-            (lexeme, file, line, column) = label
-            self.expect("label", isname(lexeme), t[1], "expected name after @")
-            labels.append(label)
-            (lexeme, file, line, column) = t[2]
-            self.expect("label", lexeme == ":", t[2], "expected ':' after label")
-            t = t[3:]
-
-        (ast, t) = StatementRule().parse(t)
-        return (LabelStatAST(token, labels, ast, thefile, theline), t)
-
 class StatListRule(Rule):
     def __init__(self, indent, atomically):
         self.indent = indent
@@ -5663,8 +5765,9 @@ class StatListRule(Rule):
         b = []
         while slice != []:
             try:
-                (ast, slice) = LabelStatRule().parse(slice)
-                b.append(ast)
+                (lexeme, thefile, theline, column) = token = slice[0]
+                (ast, slice) = StatementRule().parse(slice)
+                b.append(LocationAST(token, ast, thefile, theline))
             except IndexError:
                 lexeme, file, line, column = slice[0]
                 raise HarmonyCompilerError(
@@ -5798,6 +5901,10 @@ class StatementRule(Rule):
         token = t[0]
         if lexeme == ":":
             return BlockRule(column, atomically).parse(t)
+        if isname(lexeme) and t[1][0] == ":":
+            (lexeme, file, line, nextColumn) = token
+            (stat, t) = BlockRule(column, False).parse(t[1:])
+            return (LabelStatAST(token, [token], stat), t)
         if lexeme == "const":
             (tokens, t) = self.slice(t[1:], column)
             (const, tokens) = BoundVarRule().parse(tokens)
@@ -6092,7 +6199,7 @@ class StatementRule(Rule):
                     items.append(tokens[1])
                     tokens = tokens[2:]
                     if tokens == []:
-                        break;
+                        break
                     (lexeme, file, line, column) = tokens[0]
             if tokens != []:
                 lexeme, file, line, column = tokens[0]
@@ -6141,9 +6248,9 @@ class StatementRule(Rule):
                     lexeme=lexeme,
                     line=line,
                     column=column,
-                    message="log: unexpected token: %s" % str(tokens[0]),
+                    message="print: unexpected token: %s" % str(tokens[0]),
                 )
-            return (LogAST(token, atomically, cond), t)
+            return (PrintAST(token, atomically, cond), t)
         if lexeme == "possibly":
             (tokens, t) = self.slice(t[1:], column)
             (cond, tokens) = NaryRule({","}).parse(tokens)
@@ -6554,7 +6661,7 @@ def varvisit(d, vars, name, r):
         r.append("%s: %s"%(name, strValue(vars)))
 
 def strvars(d, vars):
-    r = [];
+    r = []
     for k in sorted(d.keys()):
         varvisit(d[k], vars.d[k], k, r)
     return "{ " + ", ".join(r) + " }"
@@ -6675,7 +6782,7 @@ def invcheck(state, inv):
         old = ctx.pc
         state.code[ctx.pc].eval(state, ctx)
         assert ctx.pc != old, old
-    assert len(ctx.stack) == 1;
+    assert len(ctx.stack) == 1
     assert isinstance(ctx.stack[0], bool)
     return ctx.stack[0]
 
@@ -6751,7 +6858,7 @@ def onestep(node, ctx, choice, interrupt, nodes, visited, todo):
         # If the current instruction is a "choose" instruction,
         # make the specified choice
         if isinstance(sc.code[cc.pc], ChooseOp):
-            assert choice_copy != None;
+            assert choice_copy != None
             cc.stack[-1] = choice_copy
             cc.pc += 1
             choice_copy = None
@@ -7441,7 +7548,7 @@ def htmlstate(f):
     print("</table>", file=f)
 
 def htmlnode(n, code, scope, f, verbose):
-    print("<div id='div%d' style='display:none'>"%n.uid, file=f);
+    print("<div id='div%d' style='display:none'>"%n.uid, file=f)
     print("<div class='container'>", file=f)
 
     print("<a name='N%d'/>"%n.uid, file=f)
@@ -7470,8 +7577,8 @@ def htmlnode(n, code, scope, f, verbose):
         htmlrow(ctx, n.state.stopbag, n, code, scope, f, verbose)
 
     print("</table>", file=f)
-    print("</div>", file=f);
-    print("</div>", file=f);
+    print("</div>", file=f)
+    print("</div>", file=f)
 
 def htmlcode(code, scope, f):
     assert False
@@ -7655,13 +7762,13 @@ table td, table th {
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
     if printCode == "json":
-        print("{", file=f);
-        print('  "labels": {', file=f);
+        print("{", file=f)
+        print('  "labels": {', file=f)
         for (k, v) in scope.labels.items():
             print('    "%s": "%d",'%(k, v), file=f)
         print('    "__end__": "%d"'%len(code.labeled_ops), file=f)
-        print('  },', file=f);
-        print('  "code": [', file=f);
+        print('  },', file=f)
+        print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):
         if printCode == "verbose":
             lop = code.labeled_ops[pc]
@@ -7687,15 +7794,15 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         else:
             print(code.labeled_ops[pc].op, file=f)
     if printCode == "json":
-        print("  ],", file=f);
+        print("  ],", file=f)
         print('  "pretty": [', file=f)
         for pc in range(len(code.labeled_ops)):
             if pc < len(code.labeled_ops) - 1:
                 print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
             else:
                 print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
-        print("  ],", file=f);
-        print("  \"locations\": {", file=f, end="");
+        print("  ],", file=f)
+        print("  \"locations\": {", file=f, end="")
         firstTime = True
         for pc in range(len(code.labeled_ops)):
             lop = code.labeled_ops[pc]
@@ -7708,8 +7815,8 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(",", file=f)
                 print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
         print(file=f)
-        print("  }", file=f);
-        print("}", file=f);
+        print("  }", file=f)
+        print("}", file=f)
 
 config = {
     "compile": "gcc -O3 -std=c99 -DNDEBUG $$infile$$ -m64 -o $$outfile$$"
@@ -7742,12 +7849,20 @@ def main():
     blockflag = False
     charmflag = True
     fulldump = False
-    outputflag = False
+    outputfiles = {
+        "hfa": None,
+        "htm": None,
+        "hco": None,
+        "hvm": None,
+        "png": None,
+        "gv":  None
+    }
     testflag = False
     suppressOutput = False
     charmoptions = []
+    behavior = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "Aabc:dfhi:jm:ostvp",
+        opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
     except getopt.GetoptError as err:
         print(str(err))
@@ -7761,6 +7876,9 @@ def main():
         elif o == "-A":
             printCode = "terse"
             charmflag = False
+        elif o == "-B":
+            charmoptions += ["-B" + a]
+            behavior = a
         elif o == "-j":
             printCode = "json"
             charmflag = False
@@ -7777,7 +7895,18 @@ def main():
         elif o in { "-m", "--module" }:
             mods.append(a)
         elif o == "-o":
-            outputflag = True
+            dotloc = a.rfind(".")
+            if dotloc < 0:
+                print("-o flag requires argument with suffix, such as x.hvm", file=sys.stderr)
+                sys.exit(1)
+            suffix = a[(dotloc+1):]
+            if suffix not in outputfiles:
+                print("unknown suffix on '%s'"%a, file=sys.stderr)
+                sys.exit(1)
+            elif outputfiles[suffix] != None:
+                print("duplicate suffix '.%s'"%suffix, file=sys.stderr)
+                sys.exit(1)
+            outputfiles[suffix] = a
         elif o == "-s":
             silent = True
         elif o == "-t":
@@ -7798,27 +7927,31 @@ def main():
         usage()
 
     dotloc = args[0].rfind(".")
-    if dotloc == 0:
+    if dotloc <= 0:
         usage()
-    if dotloc > 0:
-        stem = args[0][:dotloc]
-    else:
-        stem = args[0]
+    stem = args[0][:dotloc]
 
-    hvmfile = stem + ".hvm"
+    if outputfiles["hvm"] == None:
+        outputfiles["hvm"] = stem + ".hvm"
+    if outputfiles["hco"] == None:
+        outputfiles["hco"] = stem + ".hco"
+    if outputfiles["htm"] == None:
+        outputfiles["htm"] = stem + ".htm"
+    if outputfiles["png"] != None and outputfiles["gv"] == None:
+        outputfiles["gv"] = stem + ".gv"
 
     try:
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
         if parse_code_only:
-            with open(hvmfile, "w") as f:
+            with open(outputfiles["hvm"], "w") as f:
                 data = dict(e.token, status="error")
                 f.write(json.dumps(data))
         print(e.message, e.token)
         sys.exit(1)
 
     if parse_code_only:
-        with open(hvmfile, "w") as f:
+        with open(outputfiles["hvm"], "w") as f:
             f.write(json.dumps({"status": "ok"}))
         return
 
@@ -7828,23 +7961,23 @@ def main():
         # see if there is a configuration file
         infile = "%s/charm.c"%install_path
         outfile = "%s/charm.exe"%install_path
-        with open(hvmfile, "w") as fd:
+        with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s %s"%(outfile, " ".join(charmoptions), hvmfile));
+        r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")
-            sys.exit(r);
+            sys.exit(r)
         # TODO
         # if not testflag:
-        #    os.remove(hvmfile)
+        #    os.remove(outputfiles["hvm"])
         b = Brief()
-        b.run(stem, outputflag)
+        b.run(outputfiles, behavior)
         gh = GenHTML()
-        gh.run(stem, outputflag)
+        gh.run(outputfiles)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
-        sys.exit(0);
+        sys.exit(0)
 
     if printCode == None:
         (nodes, bad_node) = run(code, scope.labels, blockflag)

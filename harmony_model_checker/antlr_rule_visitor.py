@@ -1,4 +1,5 @@
 
+from typing import Any
 from antlr4.Token import CommonToken
 
 from harmony_model_checker.HarmonyVisitor import HarmonyVisitor

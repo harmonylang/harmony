@@ -5,34 +5,48 @@ from setuptools.command.develop import develop
 from setuptools.command.install import install
 import subprocess
 
+PACKAGE_NAME = 'harmony_model_checker'
 
-def compile_charm():
-    subprocess.call([
+# Source: https://stackoverflow.com/questions/33168482/compiling-installing-c-executable-using-pythons-setuptools-setup-py
+def compile_and_install_software():
+    """
+    Used the subprocess module to compile/install the C software.
+    """
+    src_path = PACKAGE_NAME
+
+    # compile the software
+    result = subprocess.call([
         "gcc", "-g", "-std=c99", "charm.c",
         "-m64", "-o", "charm.exe", "-lpthread"
-    ])
+    ], cwd=src_path, shell=True)
+    if result == 0:
+        print("Successfully compiled model checker")
+    else:
+        print("Failed to compile model checker")
 
 
 class PostDevelopCommand(develop):
-    """Post-installation for development mode."""
+    """
+    Post-installation for development mode.
+    """
     def run(self):
-        develop.run(self)
-        compile_charm()
+        compile_and_install_software()
+        super().run()
 
 
 class PostInstallCommand(install):
     def run(self):
-        install.run(self)
-        compile_charm()
+        compile_and_install_software()
+        super().run()
 
 
 setuptools.setup(
-    name="harmony_model_checker",
+    name=PACKAGE_NAME,
     version="0.0.1",
     author="Robbert van Renesse",
     author_email="rvr@cs.cornell.edu",
     description="Harmony Programming Language",
-    packages=setuptools.find_packages(where="src"),
+    packages=setuptools.find_packages(),
     install_requires=[
         "numpy",
         "matplotlib",
@@ -42,9 +56,13 @@ setuptools.setup(
     ],
     include_package_data=True,
     package_data={
-        "modules": ["modules/*.hny"],
-        "code": ["code/*.hny"],
-        "": ["charm.c", "charm.Windows.exe"],
+        PACKAGE_NAME: [
+            "charm.c",
+            "charm.Windows.exe",
+            "charm.exe",
+            "modules/*.hny",
+            "code/*.hny"
+        ]
     },
     python_requires=">=3.6",
     cmdclass={

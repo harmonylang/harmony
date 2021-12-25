@@ -47,4 +47,4 @@ else
 	echo 'harmony requires python3 to run' >&2; exit 1
 fi
 
-$PYTHON `dirname $0`/app.py $@
+$PYTHON `dirname $0`/compiler.py $@

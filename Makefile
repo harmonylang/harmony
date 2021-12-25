@@ -1,8 +1,8 @@
 all:
-	java -jar ~/antlr4/antlr-4.9.2-complete.jar -Dlanguage=Python3 -o harmony_model_checker -visitor Harmony.g4 -no-listener
-	(cd src/harmony; sh gen.scr) > harmony.py
-	(cd src/charm; sh gen.scr) > charm.c
-	gcc -g -std=c99 charm.c -m64 -o charm.exe -lpthread
+	antlr4 -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker -no-listener
+	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
+	(cd src/charm; sh gen.scr) > harmony_model_checker/charm.c
+	gcc -g -std=c99 harmony_model_checker/charm.c -m64 -o harmony_model_checker/charm.exe -lpthread
 	chmod +x harmony
 
 behavior: x.hny
