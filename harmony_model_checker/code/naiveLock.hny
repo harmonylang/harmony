@@ -1,0 +1,16 @@
+lockTaken = False
+
+def thread(self):
+    while choose({ False, True }):
+        # Enter critical section
+        await not lockTaken
+        lockTaken = True
+
+        # Critical section
+        cs: assert countLabel(cs) == 1
+
+        # Leave critical section
+        lockTaken = False
+    
+spawn thread(0)
+spawn thread(1)

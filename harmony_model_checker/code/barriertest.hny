@@ -1,0 +1,20 @@
+import barrier
+
+const NROUNDS = 3
+const NTHREADS = 3
+
+barr = barrier.Barrier(NTHREADS)
+
+sequential round
+round = [None,] * NTHREADS
+
+def thread(self):
+    for r in {0..NROUNDS-1}:
+        barrier.enter(?barr)
+        round[self] = r
+        assert { x for x in round where x != None } == { r }
+        round[self] = None
+        barrier.exit(?barr)
+
+for i in {0..NTHREADS-1}:
+    spawn thread(i)

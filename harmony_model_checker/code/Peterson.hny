@@ -1,0 +1,20 @@
+sequential flags, turn
+
+flags = [ False, False ]
+turn = choose({0, 1})
+
+def thread(self):
+    while choose({ False, True }):
+        # Enter critical section
+        flags[self] = True
+        turn = 1 - self
+        await (not flags[1 - self]) or (turn == self)
+
+        # Critical section is here
+        cs: assert countLabel(cs) == 1
+
+        # Leave critical section
+        flags[self] = False
+
+spawn thread(0)
+spawn thread(1)

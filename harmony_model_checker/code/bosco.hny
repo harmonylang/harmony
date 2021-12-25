@@ -1,0 +1,38 @@
+import bag
+
+const F = 1
+const N = (3 * F) + 1
+const NROUNDS = 3
+
+network = bag.empty()
+let n_zeroes = choose({ 0 .. N / 2 }):
+    proposals = [ 0 if i <= n_zeroes else 1 for i in { 1 .. N } ]
+decisions = {}
+
+def broadcast(msg):
+    atomically network = bag.add(network, msg)
+
+def receive(round, k):
+    let msgs = { e:c for (r,e):c in network where r == round }:
+        result = bag.combinations(msgs, k)
+
+def processor(proposal):
+    var estimate, decided = proposal, False
+    broadcast(0, estimate)
+    for round in {0..NROUNDS-1}:
+        atomically when exists quorum in receive(round, N - F):
+            let count = [ bag.multiplicity(quorum, i) for i in { 0..1 } ]:
+                assert count[0] != count[1]
+                estimate = 0 if count[0] > count[1] else 1
+                if count[estimate] == (N - F):
+                    if not decided:
+                        print estimate
+                        decided = True
+                    assert estimate in proposals           # validity
+                    decisions |= { estimate }
+                    assert len(decisions) <= 1             # agreement
+                broadcast(round + 1, estimate)
+
+print proposals
+for i in {0..N-1}:
+    spawn processor(proposals[i])

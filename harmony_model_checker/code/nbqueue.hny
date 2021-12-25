@@ -1,0 +1,44 @@
+from alloc import malloc, free
+from synch import cas
+
+def Queue():
+    let node = malloc({.next: {.ptr: None, .cnt: 0}}):
+        result = {
+            .head: { .ptr: node, .cnt: 0 },
+            .tail: { .ptr: node, .cnt: 0 }
+        }
+
+def put(q, v):
+    let node = malloc({ .value: v, .next: { .ptr: None, .cnt: 0 } }):
+        var tail, done = None, False
+        while not done:
+            tail = q->tail
+            let next = tail.ptr->next:
+                if tail == q->tail:
+                    if next.ptr == None:
+                        done = cas(?tail.ptr->next, next,
+                            { .ptr: node, .cnt: next.cnt + 1 })
+                    else:
+                        cas(?q->tail, tail,
+                            { .ptr: next.ptr, .cnt: tail.cnt + 1 })
+        cas(?q->tail, tail, { .ptr: node, .cnt: tail.cnt + 1 })
+
+def get(q):
+    var done = False
+    while not done:
+        let head, tail = q->head, q->tail
+        let next = head.ptr->next:
+            if head == q->head:
+                if head.ptr == tail.ptr:
+                    if next.ptr == None:
+                        result = None
+                        done = True
+                    else:
+                        cas(?q->tail, tail,
+                            { .ptr: next.ptr, .cnt: tail.cnt + 1 })
+                else:
+                    result = next.ptr->value
+                    done = cas(?q->head, head,
+                            { .ptr: next.ptr, .cnt: head.cnt + 1 })
+                    # if done:
+                    #     free(head.ptr)

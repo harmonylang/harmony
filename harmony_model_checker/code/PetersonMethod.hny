@@ -1,0 +1,24 @@
+def P_enter(pm, pid):
+    pm->flags[pid] = True
+    pm->turn = 1 - pid
+    await (not pm->flags[1 - pid]) or (pm->turn == pid)
+
+def P_exit(pm, pid):
+    pm->flags[pid] = False
+
+def P_mutex():
+    result = { .turn: choose({0, 1}), .flags: [ False, False ] }
+
+#### The code above can go into its own Harmony module ####
+
+sequential mutex
+mutex = P_mutex()
+
+def thread(self):
+    while choose({ False, True }):
+        P_enter(?mutex, self)
+        cs: assert countLabel(cs) == 1
+        P_exit(?mutex, self)
+
+spawn thread(0)
+spawn thread(1)

@@ -1,0 +1,6 @@
+import spinlock;
+
+invariant len([ x
+    for x in [spinlock.shared,] + spinlock.private
+    where not x ]) <= 1
+;

@@ -1,0 +1,12 @@
+import queue
+
+q1 = q2 = queue.Queue()
+queue.put(?q1, 1)
+queue.put(?q2, 2)
+
+def getter(q, v):
+    let x = queue.get(q):
+        assert x == v
+
+spawn getter(?q1, 1)
+spawn getter(?q2, 2)

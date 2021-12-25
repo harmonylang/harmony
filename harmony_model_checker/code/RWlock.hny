@@ -1,0 +1,27 @@
+import synch;
+
+def acquire_rlock():
+    lock(?rlock);
+    if nreaders == 0:
+        lock(?rwlock);
+    ;
+    nreaders += 1;
+    unlock(?rlock);
+;
+def release_rlock():
+    lock(?rlock);
+    nreaders -= 1;
+    if nreaders == 0:
+        unlock(?rwlock);
+    ;
+    unlock(?rlock);
+;
+def acquire_wlock():
+    lock(?rwlock);
+;
+def release_wlock():
+    unlock(?rwlock);
+;
+rwlock = Lock();
+rlock = Lock();
+nreaders = 0;

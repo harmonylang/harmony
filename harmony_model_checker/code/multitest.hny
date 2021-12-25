@@ -1,0 +1,15 @@
+def seq_test():
+    pass
+
+def conc_test1():
+    pass
+
+def conc_test2():
+    pass
+
+def conc_test3():
+    pass
+
+seq_test()
+let test = choose({ conc_test1, conc_test2, conc_test3 }):
+    test()

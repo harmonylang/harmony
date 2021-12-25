@@ -1,0 +1,50 @@
+from synch import Queue, put, get
+
+const NROUNDS = 3
+const NTHREADS = 3
+
+queues = [ Queue(), ] * NTHREADS
+
+def barrier_enter(self):
+    for i in {0..NTHREADS-1} where i != self:
+        put(?queues[i], i)
+    for i in {1..NTHREADS-1}:
+        get(?queues[self])
+
+def barrier_exit(self):
+    pass
+
+sequential round, done
+
+round = [None,] * NTHREADS
+done = [False,] * NTHREADS
+
+# check that all non-None values in round are the same
+def check():
+    result = True
+    var x = None
+    for i in {0..NTHREADS-1}:
+        if result and (round[i] != None):
+            if x != None:
+                result = round[i] == x
+            x = round[i]
+
+round = [None,] * NTHREADS
+done = [False,] * NTHREADS
+
+def process(self):
+    for r in {0..NROUNDS-1}:
+        barrier_enter(self)
+        round[self] = r
+        assert check()
+        round[self] = None
+        barrier_exit(self)
+    done[self] = True
+
+def main():
+    await all(done)
+
+for i in {0..NTHREADS-1}:
+    spawn process(i)
+
+spawn main()

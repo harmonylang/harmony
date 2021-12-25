@@ -1,0 +1,4 @@
+while forks[left]:
+    synch.wait(?conds[left], ?mutex)
+while forks[right]:
+    synch.wait(?conds[right], ?mutex)

@@ -1,0 +1,18 @@
+sequential done
+
+count = 0
+done = False
+
+def handler():
+    count += 1
+    done = True
+
+def main():
+    trap handler()
+    setintlevel(True)
+    count += 1
+    setintlevel(False)
+    await done
+    assert count == 2
+
+spawn main()

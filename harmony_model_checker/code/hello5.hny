@@ -1,0 +1,5 @@
+def p(s):
+    print s
+
+p("hello")
+p("world")

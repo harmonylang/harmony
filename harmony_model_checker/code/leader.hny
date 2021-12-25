@@ -1,0 +1,34 @@
+const NIDS = 5      # number of identifiers
+
+network = {}        # the network is a set of messages
+leader = 0          # used for checking correctness
+
+def send(m):
+    atomically network |= { m }
+
+def receive(self):
+    result = { (id, found) for (dst, id, found) in network where dst == self }
+
+def processor(self, succ):
+    send(succ, self, False)
+    var working = True
+    while working:
+        atomically when exists (id, found) in receive(self):
+            if id == self:
+                assert self == leader
+                send(succ, id, True)
+            elif id > self:
+                assert self != leader
+                send(succ, id, found)
+            if found:
+                working = False
+
+var ids, nprocs, procs = { 1 .. NIDS }, choose({ 1 .. NIDS }), []
+for i in { 0 .. nprocs - 1 }:
+    let next = choose(ids):
+        ids -= { next }
+        procs += [ next, ]
+        if next > leader:
+            leader = next
+for i in { 0 .. nprocs - 1 }:
+    spawn processor(procs[i], procs[(i + 1) % nprocs])

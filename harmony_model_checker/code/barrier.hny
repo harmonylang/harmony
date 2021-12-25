@@ -1,0 +1,28 @@
+from synch import *
+
+def Barrier(limit):
+    result = {
+        .limit: limit, .stage: 0, .mutex: Lock(),
+        .empty: Condition(), .full: Condition()
+    }
+
+def enter(b):
+    acquire(?b->mutex)
+    while b->stage >= b->limit:     # wait for car to empty out
+        wait(?b->empty, ?b->mutex)
+    b->stage += 1
+    if b->stage < b->limit:         # wait for car to fill up
+        while b->stage < b->limit:
+            wait(?b->full, ?b->mutex)
+    else:                             
+        notifyAll(?b->full)         # car is full and ready to go
+    release(?b->mutex)
+
+def exit(b):
+    acquire(?b->mutex)
+    assert b->limit <= b->stage < (2 * b->limit)
+    b->stage += 1
+    if b->stage == (2 * b->limit):  # everybody left
+        b->stage = 0
+        notifyAll(?b->empty)        # let next group in
+    release(?b->mutex)

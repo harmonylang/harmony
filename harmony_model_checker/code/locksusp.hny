@@ -1,0 +1,21 @@
+import list
+
+def Lock():
+    result = { .acquired: False, .suspended: [] }
+
+def acquire(lk):
+    atomically:
+        if lk->acquired:
+            stop lk->suspended[len lk->suspended]
+            assert lk->acquired
+        else:
+            lk->acquired = True
+
+def release(lk):
+    atomically:
+        assert lk->acquired
+        if lk->suspended == []:
+            lk->acquired = False
+        else:
+            go (list.head(lk->suspended)) ()
+            lk->suspended = list.tail(lk->suspended)

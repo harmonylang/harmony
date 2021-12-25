@@ -1,0 +1,43 @@
+from synch import Lock, acquire, release
+from alloc import malloc, free
+
+def _node(v, n):     # allocate and initialize a new list node
+    result = malloc({ .lock: Lock(), .value: v, .next: n })
+
+def _find(lst, v):
+    var before = lst
+    acquire(?before->lock)
+    var after = before->next
+    acquire(?after->lock)
+    while after->value < v:
+        release(?before->lock)
+        before = after
+        after = before->next
+        acquire(?after->lock)
+    result = (before, after)
+
+def SetObject():
+    result = _node(-inf, _node(inf, None))
+
+def insert(lst, v):
+    let before, after = _find(lst, v):
+        if after->value != v:
+            before->next = _node(v, after)
+        release(?after->lock)
+        release(?before->lock)
+
+def remove(lst, v):
+    let before, after = _find(lst, v):
+        if after->value == v:
+            before->next = after->next
+            release(?after->lock)
+            free(after)
+        else:
+            release(?after->lock)
+        release(?before->lock)
+
+def contains(lst, v):
+    let before, after = _find(lst, v):
+        result = after->value == v
+        release(?after->lock)
+        release(?before->lock)

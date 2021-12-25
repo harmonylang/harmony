@@ -1,0 +1,15 @@
+import queue
+
+const NTHREADS = 4
+
+myq = queue.Queue()
+
+def thread(v):
+    if choose({.put, .get}) == .put:
+        queue.put(?myq, v)
+    else:
+        let v = queue.get(?myq):
+            assert (v == None) or (v in {1..NTHREADS})
+
+for i in {1..NTHREADS}:
+    spawn thread(i)

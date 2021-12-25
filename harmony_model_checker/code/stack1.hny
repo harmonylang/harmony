@@ -1,0 +1,10 @@
+def Stack():
+    result = []
+
+def push(st, v):
+    (!st)[len(!st)] = v
+
+def pop(st):
+    let n = len(!st) - 1:
+        result = (!st)[n]
+        del (!st)[n]

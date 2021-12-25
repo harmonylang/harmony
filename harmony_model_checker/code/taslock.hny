@@ -1,0 +1,14 @@
+def test_and_set(s):
+    atomically:
+        result = !s
+        !s = True
+
+def Lock():
+    result = False
+
+def acquire(lk):
+    while test_and_set(lk):
+        pass
+
+def release(lk):
+    atomically !lk = False

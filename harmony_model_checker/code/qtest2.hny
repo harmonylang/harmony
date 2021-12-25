@@ -1,0 +1,26 @@
+import queue
+
+const N = 3
+
+sequential gotten
+
+testq = queue.Queue()
+for i in {0..N-1}:
+    queue.put(?testq, i)
+gotten = {}
+
+def getter():
+    let v = queue.get(?testq):
+        atomically:
+            assert v not in gotten
+            assert v != None
+            gotten |= {v}
+
+def main():
+    await gotten == {0..N-1}
+    let v = queue.get(?testq):
+        assert v == None
+
+for i in {0..N-1}:
+    spawn getter()
+spawn main()
