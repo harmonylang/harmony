@@ -597,6 +597,11 @@ The appendices contain various details about Harmony itself, including
 an appendix that explains how Harmony works (\autoref{app:howitworks}) and
 an appendix on installing and running Harmony (\autoref{app:install}).
 
+<{:const:tas}>
+<{:const:cas}>
+<{:const:BinSem}>
+<{:const:Semaphore}>
+
 \chapter{Hello World!}
 \label{ch:harmonyintro}
 
@@ -7794,7 +7799,7 @@ The <{synch}> module provides the following methods:
 \hline
 <{tas(lk)}> & test-and-set on <{!lk}> \\
 \hline
-<{cas}(ptr, old, new)}> & compare-and-swap on <{!ptr}> \\
+<{cas(ptr, old, new)}> & compare-and-swap on <{!ptr}> \\
 \hline
 <{BinSem(v)}> & return a binary semaphore initialized to <{v}> \\
 \hline
