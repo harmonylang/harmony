@@ -4,7 +4,7 @@ PACKAGE_NAME = 'harmony_model_checker'
 
 setuptools.setup(
     name=PACKAGE_NAME,
-    version="0.0.10",
+    version="0.0.14",
     author="Robbert van Renesse",
     author_email="rvr@cs.cornell.edu",
     description="Harmony Programming Language",

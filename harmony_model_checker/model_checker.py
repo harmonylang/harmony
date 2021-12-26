@@ -11,7 +11,7 @@ def build_model_checker():
     ec = subprocess.call([
         "gcc", "-O3", "-std=c99", "-DNDEBUG", str(CHARM_SOURCE_FILE),
         "-m64", "-o", str(CHARM_EXECUTABLE_FILE), "-lpthread"
-    ])
+    ], shell=True)
     if ec != 0 or not CHARM_EXECUTABLE_FILE.exists():
         exe = Path(__file__).parent / ("charm." + platform.system() + ".exe")
         if exe.exists():

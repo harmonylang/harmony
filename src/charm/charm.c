@@ -1,4 +1,11 @@
 #include <sys/time.h>
+
+#ifdef _WIN32
+    // Accessing the number of available processors is not cross-platform-friendly
+    // On Windows, we can use the sysinfoapi header to access that value instead.
+    #include <sysinfoapi.h>
+#endif
+
 #include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -1646,7 +1653,16 @@ int main(int argc, char **argv){
     results[1] = minheap_create(node_cmp);
 
     // Determine how many worker threads to use
-    int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
+    #ifdef _WIN32
+        // Accessing the number of available processors is not cross-platform-friendly
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        int nworkers = sysinfo.dwNumberOfProcessors;
+    #else
+        // The following is not defined in Windows
+        int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
+    #endif
+
 	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
