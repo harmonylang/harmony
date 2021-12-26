@@ -1,37 +1,40 @@
 const NREPLICAS = 3     # number of replicas
-const NOPS = 5          # number of operations
+const NOPS = 3          # number of operations
 
 network = {}            # the network is a set of messages
-final = None            # this is used to check correctness
 
 def send(m):
     atomically network |= { m }
 
-def receive(predecessor, index):
-    result = { payload for (id, payload) in network where (id == predecessor)
-                        and ((payload == "crash") or (payload[0] == index)) }
+def receive(predecessor):
+    result = { payload for (id, payload) in network where (id == predecessor) }
 
 def replica(self, immortal):
-    var history, predecessors = [], { 0 .. self - 1 }
-    while choose({ immortal, True }) and (len(history) < NOPS):
+    var hist, predecessors = [], { 0 .. self - 1 }
+    while choose({ immortal, True }) and (len(hist) < NOPS):
         if predecessors == {}:  # I'm the head
-            send(self, (len(history), self))
-            history += [self,]
+            atomically when exists update in receive("client"):
+                if update not in hist:
+                    hist += [update,]
+                    send(self, hist)
         else:                   # I'm not the head (yet)
-            atomically let pred = max(predecessors)
-            when exists payload in receive(pred, len(history)):
+            atomically when exists payload in receive(max(predecessors)):
                 if payload == "crash":
-                    predecessors -= { pred }
-                else:
-                    send(self, payload)
-                    history += [payload[1],]
-    if len(history) == NOPS:    # successful completion
-        atomically:
-            assert (final == None) or (final == history)
-            final = history
+                    predecessors -= { max(predecessors) }
+                elif (len(payload) > len(hist)) and
+                        all(hist[i] == payload[i] for i in {0..len(hist)-1}):
+                    hist = payload
+                    send(self, hist)
+    if len(hist) == NOPS:    # successful completion
+        print hist
     else:       # replica crashed
         send(self, "crash")
+
+def client(self):
+    send("client", self)
 
 let survivor = choose({ 0 .. NREPLICAS - 1 }):
     for i in { 0 .. NREPLICAS - 1 }:
         spawn replica(i, i == survivor)
+for i in {1..NOPS}:
+    spawn client(i)

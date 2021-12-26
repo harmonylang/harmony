@@ -5823,9 +5823,17 @@ the transaction.  Implement this.
 
 \begin{figure}
 \begin{code}
+<{:input:../code/rsmspec.hny}>
+\end{code}
+\caption{\harmonylink{code/rsmspec.hny} Replicated State Machine}
+\label{fig:rsmspec}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 <{:input:../code/chain.hny}>
 \end{code}
-\caption{\harmonylink{code/chain.hny} Checking correctness of Chain Replication}
+\caption{\harmonylink{code/chain.hny} Chain Replication}
 \label{fig:chain}
 \end{figure}
 
@@ -5852,10 +5860,33 @@ machine.  The replicas each run a copy of the state machine, started
 in the same state.  As long as the replicas handle the same inputs
 in the same order, determinism guarantees that they produce the same
 outputs in the same order.
-Therefore, the trick is to ensure that all replicas handle the
+
+\autoref{fig:rsmspec} presents a Harmony specification of state machine
+replication.
+We model the state machine as a \emph{history}: a sequence of operations.
+Each replica has a local copy of the history.
+The network is modeled as an ordered queue of messages.
+<{NOPS}> clients each place an operation on the network.
+All but one of the replicas is allowed to crash.
+The model chooses one of the replicas that is not allowed to crash.
+Of course, a replica does not know whether it is immortal
+or not in practice---it should just assume that it is.
+The immortality of one of the replicas is only used for modeling
+the assumptions we make about the system.
+A replica loops until either it fails or it has received all operations.
+<{choose({ immortal, True })}> can only
+evaluate to <{False}> in case <{immortal = False}>; otherwise
+it will always evaluate to <{True}>.
+After a replica has received all <{NOPS}> operations, the replica
+finishes and prints its history.
+All replicas will print the same history (which should be the same
+as the network).
+
+But in reality the network is not an ordered queue and better modeled
+as a set of messages.
+The trick now is to ensure that all replicas handle the
 same requests in the same order and to do so in a way that continues
 to work even if some strict subset of replicas crash.
-
 \emph{Chain Replication}~\cite{vRS04} is such a replication protocol.
 In Chain Replication, the replicas are organized in a linear chain.
 Each replica monitors its direct predecessor in the chain.  If a replica has
@@ -5864,14 +5895,13 @@ time, as a head may crash and replaced by another, but at any point in
 time there is only one head
 (and only one \emph{tail}, possibly the same replica).
 
-We model the state machine as a \emph{history}: a sequence of operations.
-Only the head is allowed to introduce new updates.
-When it does so, it advertises the new update along with its position
-in the history.  When the direct successor receives the next update
-it is expecting, it appends the update to its history and likewise
-advertises the new update.  When the update is applied to the history
-of the tail replica (the replica that has no live successors),
-then the update is considered final.
+Only the head is allowed to accept new updates from clients.
+When it does so, it adds the update to the end of its history
+and sends the history to its successor on the chain.
+When the direct successor receives such a history, it makes sure
+that the history is an extension of its own and, if so, replaces its own
+history with the one received.
+It then sends the history on to its successor, if any.
 
 So, when a replica fails, its successors should find out about it.
 In practice, one server can detect the failure of another server by
@@ -5883,27 +5913,12 @@ when the timer expires.
 Nonetheless, we will assume here that failure detection does not make
 mistakes and that eventually every failure is eventually detected.
 This is called the \emph{Fail-Stop} failure model~\cite{SS83},
-which is distinct from the often more realistic \emph{Crash} failure model
+which is distinct from the often more realistic \emph{Crash Failure} model
 where processes can crash but accurate detection is not available.
-We will consider that failure model in the upcoming chapters.
+We will consider that more realistic failure model in the upcoming chapters.
 
 \autoref{fig:chain} shows an implemenation of chain replication.
-The code starts \texttt{NREPLICAS} \texttt{replica} threads numbered
-0 through $\mathtt{NREPLICAS} - 1$, with initially 0 being the head
-and $\mathtt{NREPLICAS} - 1$ being the tail.  At least one of the replicas 
-must be immortal---the code selects one of them although none of the
-replicas is required to fail during execution.
-Of course, a replica does not know whether it is immortal
-or not in practice---it should just assume that it is.
-The immortality of one of the replicas is only used for modeling
-the assumptions we make about the system.
-
 Each replica maintains its history and a set of its predecessors.
-It then loops until either it fails or it has applied all
-<{NOPS}> operations to its history.
-<{choose({ immortal, True })}> can only
-evaluate to <{False}> in case <{immortal = False}>; otherwise
-it will always evaluate to <{True}>.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.
 Because failure detection is accurate, at most one replica can think
@@ -5919,21 +5934,11 @@ the replica.  The payload can take one of two forms.  The first is
 <{.crash}>, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
 a <{.crash}> message on the network.
-The other form of payload is a tuple
-$(\mathit{index}, \mathit{operation})$, which means that the source
-placed the given operation at the given index in its history.
+The other form is a history of operations.
 
 If a replica thinks it is the head, it adds an operation to its
-history.
-In practice this would be some operation that the head would have received
-from a client.  Clients send their operations to the head, which adds them
-to its history in the order received.
-We are not modeling clients of the service.
-Instead, in the model, the head adds its identifier <{self}> to the
-history until the
-history has <{NOPS}> operations on it or until the head crashes,
-whichever comes first.  The head also broadcasts each update, which
-are intended for its successor.  Because of failures, it may be that
+history.  The head then broadcasts its history, which
+is intended for its successor.  Because of failures, it may be that
 at different times a replica has different successors, hence the
 broadcast.
 
@@ -5943,15 +5948,42 @@ If the payload is <{.crash}>, then the replica removes this
 predecessor from its set of predecessors.  For example, if there
 are initially three replicas numbered 0, 1, and 2, and replica~1
 crashes, then replica~2 removes~1 from its set of predecessors, making
-replica~0 its direct (and only) predecessor.  If, instead, the payload
-is a tuple, then it must be the case that it contains the next operation
-to add to its history.  The replica adds the operation to its history
-and broadcasts the update, again intended for its successor.
+replica~0 its direct (and only) predecessor.
+Otherwise, the payload must be a history.
+The replica only accepts the history if it is an extension of its own
+history.
+When the replica successfully received all <{NOPS}> updates
+without crashing, it prints its history.
 
-When the replica successfully adds all <{NOPS}> updates to its
-history without crashing, the code makes sure that any other such replica
-ends in the same state.  Variable <{final}> is used to check the
-different histories against one another.
+The question is whether \autoref{fig:chain} has the same behavior as
+the replicated state machine specification of \autoref{fig:rsmspec}.
+This can be checked using the following two Harmony commands:
+\begin{code}
+\begin{verbatim}
+$ harmony -o rsm.hfa code/rsmspec.hny
+$ harmony -B rsm.hfa code/chain.hny
+\end{verbatim}
+\end{code}
+
+The first command outputs the behavior DFA of \texttt{code/rsmspec.hny}
+in the file \texttt{rsm.hfa}.
+The second command checks that the behavior of \texttt{code/chain.hny}
+satisfies the DFA in \texttt{rsm.hfa}.
+The DFA can also be visualized using the command
+\texttt{harmony -o rsm.png code/rsmspec.hny}
+(\autoref{fig:rsmdfa}).
+It shows all permutations of the operations are possible outputs.
+Moreover, each is output at least once, and at most
+<{NREPLICAS}> times.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/rsmspec.png}
+\end{center}
+\caption{The DFA generated by both
+\autoref{fig:rsmspec} and \autoref{fig:chain}}
+\label{fig:rsmdfa}
+\end{figure}
 
 \chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}

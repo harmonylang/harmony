@@ -1,0 +1,26 @@
+const NREPLICAS = 3     # number of replicas
+const NOPS = 3          # number of operations
+
+network = []            # the network is a queue of messages
+
+def send(m):
+    atomically network += [m,]
+
+def replica(immortal):
+    var hist = []
+    while choose({ immortal, True }) and (len(hist) < NOPS):
+        atomically when len(network) > len(hist):
+            hist += [network[len(hist)],]
+    if len(hist) == NOPS:    # successful completion
+        assert hist == network
+        assert choose({1..NOPS}) in hist
+        print hist
+
+def client(self):
+    send(self)
+
+let survivor = choose({ 0 .. NREPLICAS - 1 }):
+    for i in { 0 .. NREPLICAS - 1 }:
+        spawn replica(i == survivor)
+for i in {1..NOPS}:
+    spawn client(i)
