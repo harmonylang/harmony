@@ -225,7 +225,7 @@ def main():
             print()
         return
 
-    if check_charm_model_checker_status_is_ok():
+    if not check_charm_model_checker_status_is_ok():
         return 1
 
     consts = ns.const or []

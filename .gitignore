@@ -17,5 +17,6 @@ build
 *.egg-info
 harmony.py
 harmony_model_checker/harmony.py
+package_buildversion
 
 dist/

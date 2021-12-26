@@ -1,10 +1,11 @@
 import setuptools
 
 PACKAGE_NAME = 'harmony_model_checker'
+PACKAGE_VERSION = "0.0.18"
 
 setuptools.setup(
     name=PACKAGE_NAME,
-    version="0.0.16",
+    version=PACKAGE_VERSION,
     author="Robbert van Renesse",
     author_email="rvr@cs.cornell.edu",
     description="Harmony Programming Language",
@@ -21,6 +22,7 @@ setuptools.setup(
         PACKAGE_NAME: [
             "charm.c",
             "charm.Windows.exe",
+            "package_buildversion",
             "charm.exe",
             "modules/*.hny",
             "code/*.hny"
