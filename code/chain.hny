@@ -13,10 +13,10 @@ def replica(self, immortal):
     var hist, predecessors = [], { 0 .. self - 1 }
     while choose({ immortal, True }) and (len(hist) < NOPS):
         if predecessors == {}:  # I'm the head
-            atomically when exists update in receive("client"):
-                if update not in hist:
-                    hist += [update,]
-                    send(self, hist)
+            atomically when exists update in receive("client")
+                                    when update not in hist:
+                hist += [update,]
+                send(self, hist)
         else:                   # I'm not the head (yet)
             atomically when exists payload in receive(max(predecessors)):
                 if payload == "crash":
