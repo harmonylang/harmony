@@ -177,7 +177,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             dfa = intermediate
         dfa_states = dfa.states
         (dfa_transitions,) = dfa.transitions,
-        dfa_initial_state = dfa.initial_state,
+        dfa_initial_state = dfa.initial_state
         dfa_final_states = dfa.final_states
     else:
         # Compute the epsilon closure for each state
