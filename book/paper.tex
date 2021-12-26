@@ -2560,7 +2560,7 @@ The approach is called \emph{spinlock},
 \index{spinlock}%
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
-The program uses $\mathtt{N}+1$ boolean variables.
+The program uses $<{N}>+1$ boolean variables.
 Variable <{shared}> is initialized to <{False}> while
 <{private}[i]}> for each thread <{i}> is initialized to <{True}>.
 
@@ -3462,7 +3462,7 @@ adds <{v}> to the queue.
 Thread \texttt{main()} waits until all \texttt{putter}
 threads have finished, and then dequeues <{N}>
 items, verifying that they form the set
-$\{ 0 .. \mathtt{N} - 1 \}$.
+$\{ 0 .. <{N}> - 1 \}$.
 
 \begin{figure}
 \begin{code}
@@ -3476,7 +3476,7 @@ Similarly, \autoref{fig:qtest2} shows a program that
 checks concurrent <{get}> operations using
 <{N}> threads.
 The queue is initialized with the sequence
-$0 .. \mathtt{N} - 1$.
+$0 .. <{N}> - 1$.
 Thread \texttt{getter(<{v}>)} removes an entry from the
 queue and makes sure that no other thread got the
 same entry.
@@ -6058,7 +6058,7 @@ receive and process all write operations in the same order.
 We present a protocol preserving these properties that is based on the
 work by Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
 In order to tolerate <{F}> failures,
-it uses $\mathtt{N} = 2\mathtt{F} + 1$ servers.
+it uses $<{N}> = 2<{F}> + 1$ servers.
 In other words, the register survives as long as a strict majority of
 its copies survive.
 All write operation will be ordered by a unique \emph{logical timestamp}
@@ -6074,7 +6074,7 @@ more than <{F}> servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
 
 In the first phase, a client asks each server for its current
-timestamp and value.  After receiving $\mathtt{N} - \mathtt{F}$ responses,
+timestamp and value.  After receiving $<{N}> - <{F}>$ responses,
 the client determines the response with the highest timestamp.
 In case of a write operation, the client then computes a new unique
 timestamp that is strictly higher than the highest it has seen.
@@ -6092,7 +6092,7 @@ and <{v}>.  Each server that receives the request compares $(t+1, c')$ against
 its current timestamp.  If $(t+1, c')$ is larger than its current timestamp,
 it adopts the new timestamp and its corresponding value <{v}>.  In either case,
 the server responds to the client.
-Upon $c'$ receiving a response from $\mathtt{N} - \mathtt{F}$ servers,
+Upon $c'$ receiving a response from $<{N}> - <{F}>$ servers,
 the write operation completes.
 In case of a read operation, client $c'$ simply \emph{writes back} the
 highest timestamp it saw in the first phase along with its corresponding value.
@@ -6118,7 +6118,7 @@ request to all servers and then waiting for a response from
 <{N - F}> servers.
 The <{receive()}> function uses the <{bag.combinations}> method
 to find all combinations of subsets of responses of size
-$\mathtt{N} - \mathtt{F}$.
+$<{N}> - <{F}>$.
 The second phase of each operation is similar.
 
 \autoref{fig:abdtest} tests the third property of the properties listed
@@ -6146,11 +6146,14 @@ servers have failed.
 <{:const:combinations}>
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/consensus.png}
+\end{center}
 \begin{code}
-<{:input:../code/bosco.hny}>
+<{:input:../code/consensus.hny}>
 \end{code}
-\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol}
-\label{fig:bosco}
+\caption{\harmonylink{code/consensus.hny} Distributed consensus code and DFA}
+\label{fig:consensus}
 \end{figure}
 
 Distributed consensus is the problem of having a collection of processors agree
@@ -6160,46 +6163,78 @@ on which operation to apply next.
 Without failures, this can be solved using leader election: first elect a leader, then have that leader decide a value.
 But consensus often has to be done in adverse circumstances,
 for example in the face of processor failures.
-In this chapter, we will present a simple consensus algorithm that can tolerate
-fewer than $1/3^{rd}$ of processors failing by crashing.
 
-More precisely,
-constant <{F}> contains the maximum number of failures, and
-we will assume there are $<{N}> = 3<{F}> + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
-By the usual definition of consensus, we want the following two properties:
+By the usual definition of consensus, we want the following three properties:
 \begin{enumerate}
 \item \emph{Validity}: a processor can only decide a value that has been proposed;
 \item \emph{Agreement}: if two processors decide, then they decide the same value.
+\item \emph{Termination}: each processor eventually decides.
 \end{enumerate}
-The consensus problem is surprisingly tricky to solve in the face of processor
+The consensus problem is impossible to solve in the face of processor
 failures and without making assumptions about how long it takes to send
-and receive a message.
+and receive a message~\cite{FLP85}.
+Here we will not worry about \emph{Termination}.
 
-\autoref{fig:bosco} presents our algorithm.  Besides the network variable, it uses a
-shared list of proposals and a shared set of decisions.
-To reduce the state space to explore, not all permutations of zeroes and ones are
-explored.  With 5 processors ($\mathtt{F} = 2)$, say, we only explore the cases where
-no processors propose 1, where exactly one processors proposes 1, and where 2 processors
-proposes 1.
+\autoref{fig:consensus} presents a specification for binary
+consensus---the proposals are from the set <{{0, 2}}>
+In this case there are four processors.  The proposal of processor <{i}>
+is in <{proposals[i]}>.
+The <{decision}> is chosen from the set of proposals.
+Each processor may or may not print the decision---capturing the
+absence of the \emph{Termination} property.
+It may be that no decisions are made, but that does not
+violate either Validity or Agreement.
+Thus the behavior of the program is to first print the array of
+proposals, followed by some subset of processors printing their decision.
+Notice the following properties:
+\begin{itemize}
+\item there are $16 = 2^4$ possible proposal configurations;
+\item all processors that decide decide the same value;
+\item if all processors propose 0, then all processors that decide decide 0;
+\item if all processors propose 1, then all processors that decide decide 1.
+\end{itemize}
+
+This is just the specification---in practice we do not have a shared
+variable in which we can store the decision a priori.
+We will present a simple consensus algorithm that can tolerate
+fewer than $1/3^{rd}$ of processors failing by crashing.
+More precisely,
+constant <{F}> contains the maximum number of failures, and
+we will assume there are $<{N}> = 3<{F}> + 1$ processors.
+
+\begin{figure}
+\begin{code}
+<{:input:../code/bosco.hny}>
+\end{code}
+\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol}
+\label{fig:bosco}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.95\textwidth]{figures/bosco.png}
+\end{center}
+\caption{The DFA for \autoref{fig:bosco}}
+\label{fig:boscodfa}
+\end{figure}
+
+\autoref{fig:bosco} presents our algorithm.  Besides the <{network}>
+variable,
+it uses a shared list of proposals and a shared set of decisions.
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
-The invariants we want to maintain
-on those variables is that $<{decisions}> \subseteq <{proposals}>$
-and $|<{decisions}>| \leq 1$.  Since the initial value of <{decisions}> is
-$\emptyset$, the invariants clearly hold initially.
-
-The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
-$<{N}> - <{F}>$ messages, update their state based on the messages, and
+The $<{N}>$ processors go through a sequence of \emph{rounds} in which they wait for
+<{N - F}> messages, update their state based on the messages, and
 broadcast messages containing their new state.
-The reason that a processor waits for $<{N}> - <{F}>$ rather than <{N}>
-messages is because of failures: up to $<{F}>$ processors may never send a message
-and so it would be unwise to wait for all $<{N}>$.  You might be tempted to use
+The reason that a processor waits for <{N - F}> rather than <{N}>
+messages is because of failures: up to <{F}> processors may never send a message
+and so it would be unwise to wait for all <{N}>.  You might be tempted to use
 a timer and time out on waiting for a particular processor.  But how would you initialize
 that timer?  While we will assume that the network is reliable, there is no guarantee
 that messages arrive within a particular time.
-We call a set of $<{N}> - <{F}>$ processors a \emph{quorum}.
+We call a set of <{N - F}> processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
 The state of a processor consists of its current round number (initially 0)
@@ -6208,11 +6243,9 @@ a round number and an estimate. To start things, each processor first
 broadcasts its initial round number and initial estimate.
 The number of rounds that are necessary to achieve consensus is not bounded.  But
 Harmony can only check finite models, so there is a constant \texttt{NROUNDS} that
-limits the number of rounds.  It may be that no decisions are made, but that does not
-violate either Validity or Agreement.  We only check that \emph{if} decisions are
-made, they satisfy Validity and Agreement.
+limits the number of rounds.
 
-In Line~22, a processor waits for <{N - F}> messages using
+In Line~21, a processor waits for <{N - F}> messages using
 the Harmony <{atomically when exists}> statement.
 Since Harmony has to check all possible executions of the protocol, the
 <{receive(round, k)}> method returns all \emph{subbags} of messages
@@ -6229,7 +6262,7 @@ unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
 The body of the <{atomically when exists}> statement contains the core of the algorithm.
-Note that <{N - F = 2F + 1}>, so that the number of
+Note that $<{N}> - <{F}> = 2<{F}> + 1$, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the number
 of zeroes and <{count[1]}> stores the number of ones received in the round.
@@ -6240,6 +6273,25 @@ The rules of the algorithm are simple:
 \end{itemize}
 After that, proceed with the next round.
 
+To check for correct behavior, run the following two commands:
+\begin{code}
+\begin{verbatim}
+$ harmony -o consensus.hfa code/consensus.hny
+$ harmony -B consensus.hfa code/bosco.hny
+\end{verbatim}
+\end{code}
+
+You will note that the second command prints a warning:
+``\texttt{behavior warning: strict subset of specified behavior}.''
+Thus, the set of behaviors that our algorithm generates is a subset
+of the behavior that the specification allows.
+\autoref{fig:boscodfa} shows the behavior, and indeed it is not the
+same as the behavior of \autoref{fig:consensus}.
+This is because in our algorithm the outcome is decided a priori if more than
+twothirds of the processors have the same proposal, whereas in the
+consensus specification the outcome is only decided a priori if the
+processors are initially unanimous.
+
 \begin{figure}
 \begin{code}
 <{:input:../code/bosco2.hny}>
@@ -6248,27 +6300,34 @@ After that, proceed with the next round.
 \label{fig:bosco2}
 \end{figure}
 
-While one can run this code within little time for $\mathtt{F} = 2$, for
-$\mathtt{F} = 3$ the state space to explore is already quite large.
+While one can run this code within little time for <{F = 1}>, for
+<{F = 2}> the state space to explore is already quite large.
 One way to reduce the state space to explore is the following realization:
 each processor only considers messages for the round that it is in.
 If a message is for an old round, the processor will ignore it;
 if a message is for a future round, the processor will buffer it.
 So, one can simplify the model and have each processor wait
 for \emph{all} <{N}> messages in a round
-instead of $\mathtt{N} - \mathtt{F}$.
-It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
+instead of <{N - F}>.
+It would still have to choose to consider just <{N - F}>
 out of those <{N}> messages, but executions in which some processors
 are left behind in all rounds are no longer considered.
-It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
+It still includes executions where some subset of <{N - F}>
 processors only choose each other messages and essentially ignore the
 messages of the remaining <{F}> processors, so the resulting model
 is just as good.
 
-\autoref{fig:bosco2} shows the code for this model.  Running this with
-$\mathtt{F} = 3$ does not take very long and this approach is a good
-blueprint for testing other round-based protocols (of which there are
-many).
+Another way to reduce the state space to explore is to leverage
+symmetry.  First of all, it does not matter who proposes a particular
+value.  Also, the values 0 and 1 are not important to how the
+protocol operates.  So, with 5 processors (<{F = 2}>), say, we only
+need to explore the cases where no processors propose 1, where
+exactly one processors proposes 1, and where 2 processors proposes 1.
+
+\autoref{fig:bosco2} shows the code for this optimized model.
+Running this with <{F = 2}> does not take very long and this approach
+is a good blueprint for testing other round-based protocols (of
+which there are many).
 
 \section*{Exercises}
 \begin{problems}
@@ -6276,10 +6335,10 @@ many).
 A more challenging class to tolerate are \emph{arbitrary failures} in
 which up to <{F}> processors may send arbitrary messages, including
 conflicting messages to different peers (equivocation).
-The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
+The algorithm can tolerate those failures if you use $<{N}> = 5<{F}> - 1$ processors instead of $<{N}> = 3<{F}> - 1$.  Check that.
 \item In 1983, Michael Ben-Or presented a randomized algorithm that can
 tolerate crash failures with
-just $\mathtt{N} = 2\mathtt{F} - 1$ processors~\cite{BenOr83}.
+just $<{N}> = 2<{F}> - 1$ processors~\cite{BenOr83}.
 Implement this algorithm.
 \end{problems}
 
@@ -6310,7 +6369,7 @@ environments in which few or no assumptions are made about timing.
 In this chapter we present a basic version of a Paxos protocol, one that is
 \emph{single-decree} (only tries to make a single decision).
 It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
-In order to tolerate <{F}> crash failures, you need at least $<{F}>+1$ leaders
+In order to tolerate <{F}> crash failures, you need at least $<{F}> + 1$ leaders
 and $2<{F}> + 1$ acceptors, but leaders and acceptors can be colocated, so
 in total only $2<{F}> + 1$ independently failing processors are needed.
 Here we provide only a rudimentary introduction to Paxos; for more detailed

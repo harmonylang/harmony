@@ -4,10 +4,8 @@ const F = 1
 const N = (3 * F) + 1
 const NROUNDS = 3
 
+proposals = [ choose({0, 1}) for i in {0..N-1} ]
 network = bag.empty()
-let n_zeroes = choose({ 0 .. N / 2 }):
-    proposals = [ 0 if i <= n_zeroes else 1 for i in { 1 .. N } ]
-decisions = {}
 
 def broadcast(msg):
     atomically network = bag.add(network, msg)
@@ -28,9 +26,7 @@ def processor(proposal):
                     if not decided:
                         print estimate
                         decided = True
-                    assert estimate in proposals           # validity
-                    decisions |= { estimate }
-                    assert len(decisions) <= 1             # agreement
+                    assert estimate in proposals   # check validity
                 broadcast(round + 1, estimate)
 
 print proposals
