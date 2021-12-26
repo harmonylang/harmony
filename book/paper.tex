@@ -846,6 +846,7 @@ should compute the square of <{x}> by adding <{x}> to an initial value of 0 <{x}
 
 <{:const:f}>
 <{:const:g}>
+<{:const:h}>
 
 \begin{figure}[h]
 \begin{center}
@@ -5651,7 +5652,7 @@ What happens if you remove the <{atomically}> keyword?  Explain what happens.
 Modern databases support multiple clients concurrently accessing the data.
 They store data on disk, but we will ignore that in this book.
 (If you want to model a disk, this is probably best done as a separate
-thread.)
+thread that maintains the contents of the disk.)
 The complication we address here is that databases may be \emph{sharded},
 where different parts of the data are stored on different servers.
 The different servers may even be under different
@@ -5660,7 +5661,7 @@ clients.
 
 In database terminology, a \emph{transaction} is an operation on a database.
 The operation can be quite complex, and the execution of a transaction
-should have at least the following two properties:
+should have the following two properties:
 \begin{itemize}
 \item \emph{all-or-nothing}: a transaction should either complete, or it should
 be a no-op.  It should never partially execute and then give up because of
@@ -5673,9 +5674,10 @@ should not be able to witness the intermediate state of another transaction
 in execution.
 \end{itemize}
 
-We will use as an example a distributed database that maintains accounts.
-For simplicity we will model this as a collection of banks, each maintaining a
-single account.  There are two kinds of transactions: \emph{transfer}
+We will use as an example a distributed database that maintains bank accounts.
+For simplicity, we will model this as a collection of banks,
+each maintaining a single account.
+There are two kinds of transactions: \emph{transfer}
 (similar to \autoref{ex:bank}) and \emph{check}.  In this example, a transfer
 is a transaction that moves some funds between two accounts.
 A check is a transaction over all accounts and checks that the sum of the
@@ -5700,13 +5702,13 @@ Each transaction has a \emph{coordinator} that sends a <{PREPARE}>
 message to each of the servers involved in the transaction, asking them
 to prepare to commit to their part in a particular transaction.
 A server can either respond with
-\texttt{YES} if it is ready to commit and will avoid doing anything
+<{YES}> if it is ready to commit and will avoid doing anything
 that might jeopardize this (like committing a conflicting transaction),
-or with \texttt{NO} if it does not want to participate in the transaction.
-If all servers respond with \texttt{YES}, then the coordinator can
+or with <{NO}> if it does not want to participate in the transaction.
+If all servers respond with <{YES}>, then the coordinator can
 decide to \emph{commit} the transaction.  Otherwise the coordinator
 must decide to \emph{abort} the transaction.  In the second phase, the
-servers that responded with \texttt{YES} (if any) must be notified
+servers that responded with <{YES}> (if any) must be notified
 to inform them of the coordinator's decision.
 
 Different transactions can have different coordinators.  In our
@@ -6514,7 +6516,7 @@ representation;
 ordered;
 \item an address is a list of Harmony values.  <{None}> is the empty list.
 Addresses are lexicographically ordered accordingly;
-\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content.
+\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -6537,7 +6539,7 @@ The boolean type has only two possible values: <{False}> and
 <{True}>.  Unlike in Python, in Harmony booleans are distinct
 from integers, and in particular $\mathbf{False} < 0$.  In statements
 and expressions where booleans are expected, it is not possible to
-substibute values of other types.
+substitute values of other types.
 
 Operations on booleans include:
 \begin{center}
@@ -6607,7 +6609,8 @@ Operations on integers include:
 \subsection*{String}
 
 A string is a sequence of zero or more unicode characters.
-If they do not contain special characters and do not start with a digit,
+If it consists entirely of alphanumerical characters or underscore
+characters and does not start with a digit,
 then a string can be represented by a ``.'' followed by the characters.
 For example, <{.example}> is the same as the string <{"example"}>.
 
@@ -6666,14 +6669,14 @@ A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
 The generic syntax of a dictionary is
 $\{ k_0:v_0, k_1:v_1, ... \}$.
-Different from Python, the empty dictionary is either <{()}> or $[]$
-(because $\{\}$ is the empty set in Harmony).
+Different from Python, the empty dictionary is either <{()}> or <{[]}>
+(because <{{}}> is the empty set in Harmony).
 If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
 
 Dictionaries support comprehension.  The basic form is:
-\texttt{\{ f(<{k}>):g(<{k}>) for <{k}> in <{s}> \}}.
+<{{ f(k):g(k) for k in s }}>.
 
 There are various special cases of dictionaries,
 including lists, tuples, strings,
@@ -6690,7 +6693,7 @@ Operations on dictionaries include the following:
 \hline
 <{keys d}> & the set of keys in <{d}> \\
 \hline
-<{<{v [not] in keys d}> & check if <{v}> is [not] a key in <{d}> \\
+<{v [not] in keys d}> & check if <{v}> is [not] a key in <{d}> \\
 \hline
 <{v [not] in d}> & check if <{v}> is [not] a value in <{d}> \\
 \hline
@@ -6710,12 +6713,12 @@ Operations on dictionaries include the following:
 \end{center}
 
 Because in Harmony brackets are used for parsing purposes only,
-you can write $d[k]$ (or $d(k)$) instead of $d~k$.
+you can write <{d[k]}> (or <{d(k)}>) instead of <{d k}>.
 However, if <{k}> is a string like <{.id}>, then you might
-prefer the notation $k\mathtt{.id}$.
+prefer the notation <{k.id}>.
 
-Python users beware: the Harmony \texttt{<{v}> in <{d}>} operator checks
-if there is some key <{k}> such that $d[k] = v$.  In Python, the same
+Python users beware: the Harmony <{v in d}> operator checks
+if there is some key <{k}> such that <{d[k] = v}>.  In Python, the same
 syntax checks if <{v}> is a key in <{d}>.  The difference exists because
 in Harmony a list is a special case of a dictionary.
 
@@ -6774,11 +6777,9 @@ Native operations on lists or tuples include the following:
 \end{center}
 
 Lists and tuples support comprehension as well.
-In their most basic form: \texttt{f(<{v}>) for <{v}> in <{s}>}.
+In their most basic form: <{(f(v) for v in s)}>.
 For example, to check if any element in a list <{t}> is even, you
-can write:
-
-\texttt{any($(x \% 2) == 0$ for <{x}> in <{t}>)}.
+can write: <{any((x % 2) == 0 for x in t)}>.
 
 \subsection*{Bag or Multiset}
 
@@ -6818,8 +6819,9 @@ Operations on program counters include the following:
 \end{tabular}
 \end{center}
 
-You can create lambda functions similarly to Python.  For example:
-\texttt{lambda$(x,y)$:$x+y$}.
+You can create lambda functions similarly to Python, except that the
+expression has to end on the keyword <{end}>.  For example:
+<{lambda(x,y): x+y end}>.
 
 \subsection*{Address}
 
@@ -6875,7 +6877,7 @@ The possible modes of a context are as follows:
 \end{center}
 \end{comment}
 
-A thread can call \texttt{get\_context()} to retrieve its current
+A thread can call <{get_context()}> to retrieve its current
 context.
 
 \section{Statements}
@@ -6918,7 +6920,7 @@ Harmony currently supports the following statements
 \hline
 <{invariant e}> & <{e}> is an invariant\\
 \hline
-<{let a = e: S} & <{a}> is a bound variable, <{e}> is an expression\\
+<{let a = e: S}> & <{a}> is a bound variable, <{e}> is an expression\\
 \hline
 <{pass}> & do nothing\\
 \hline
@@ -6962,25 +6964,29 @@ It is equivalent to the assignment statement $\_ = \mathtt{f}()$.
 The statement <{x = 3}> changes the state by assigning~3 to
 variable <{x}> (assuming~<{x}> was not already~3).
 <{x}> may be a local variable or a shared variable.
-The statement $x = y = 3$ first updates~<{y}>, then~<{x}>.
-The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = \mathtt{h}()$ first computes
-the address of $x[\mathtt{f}()]$, then computes the address of
-$y[\mathtt{g}()]$, then evaluates $\mathtt{h}()$, then assigns the resulting value to $y[\mathtt{g}()]$ (using its previously computed address), and finally assigns the same value to $x[\mathtt{f}()]$ (again using its previously computed address).
-The statement $a,b = c$ assumes that <{c}> is a tuple with two values.
+The statement <{x = y = 3}> first updates~<{y}>, then~<{x}>.
+The statement <{x[f()] = y[g()] = h()}> first computes
+the address of <{x[f()]}>, then computes the address of
+<{y[g()]}>, then evaluates <{h()}>,
+then assigns the resulting value to <{y[g()]}>
+(using its previously computed address),
+and finally assigns the same value to <{x[f()]}>
+(again using its previously computed address).
+The statement <{a,b = c}> assumes that <{c}> is a tuple with two values.
 It first evaluates the addresses of <{a}> and <{b}> and first assigns to
 the latter and then the former.
 If <{c}> is not a tuple with two values, then Harmony will report an error.
 
-Assigning to $\_$ evaluates the righthand side expression but is otherwise
+Assigning to <{_}> evaluates the righthand side expression but is otherwise
 a no-op.
 
 The statement $x~+$$= 3$ loads <{x}>, adds 3, and then stores the
 results in <{x}>.  In this case, it is equivalent to $x = x + 3$.
-However, in general this is not so.  For example, $x[\mathtt{f}()]~+$$= 3$
-only evaluates $\mathtt{f}()$ once.  Unlike Python, however,
-$x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
+However, in general this is not so.  For example, <{x[f()] += 3}>
+only evaluates <{f()}> once.  Unlike Python, however,
+<{x += [3,]}> is equivalent to <{x = x + [3,]}> in Harmony.
 (In Python, the following two compound statements lead to different results
-for <{y}>: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
+for <{y}>: <{x = y = []; x += [3]}> and <{x = y = []; x = x + [3]}>.)
 
 \subsection*{<{assert}>}
 
