@@ -6290,7 +6290,8 @@ same as the behavior of \autoref{fig:consensus}.
 This is because in our algorithm the outcome is decided a priori if more than
 twothirds of the processors have the same proposal, whereas in the
 consensus specification the outcome is only decided a priori if the
-processors are initially unanimous.
+processors are initially unanimous.  Another difference is that if the
+outcome is decided a priori, all processors are guaranteed to decide.
 
 \begin{figure}
 \begin{code}
