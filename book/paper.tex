@@ -5852,7 +5852,7 @@ machine.  The replicas each run a copy of the state machine, started
 in the same state.  As long as the replicas handle the same inputs
 in the same order, determinism guarantees that they produce the same
 outputs in the same order.
-The trick then is to ensure that all replicas handle the
+Therefore, the trick is to ensure that all replicas handle the
 same requests in the same order and to do so in a way that continues
 to work even if some strict subset of replicas crash.
 
@@ -5863,6 +5863,7 @@ no predecessors, we call it the \emph{head}.  The head may change over
 time, as a head may crash and replaced by another, but at any point in
 time there is only one head
 (and only one \emph{tail}, possibly the same replica).
+
 We model the state machine as a \emph{history}: a sequence of operations.
 Only the head is allowed to introduce new updates.
 When it does so, it advertises the new update along with its position
@@ -5893,14 +5894,15 @@ and $\mathtt{NREPLICAS} - 1$ being the tail.  At least one of the replicas
 must be immortal---the code selects one of them although none of the
 replicas is required to fail during execution.
 Of course, a replica does not know whether it is immortal
-or not in practice---it should just assume so.
-The immortality of one of the replicas is only used for modeling the system.
+or not in practice---it should just assume that it is.
+The immortality of one of the replicas is only used for modeling
+the assumptions we make about the system.
 
 Each replica maintains its history and a set of its predecessors.
 It then loops until either it fails or it has applied all
 <{NOPS}> operations to its history.
-$\mathbf{choose}(\{ \mathit{immortal}, <{True}> \})$ can only
-evaluate to <{False}> in case $<{immortal}>$ is false; otherwise
+<{choose({ immortal, True })}> can only
+evaluate to <{False}> in case <{immortal = False}>; otherwise
 it will always evaluate to <{True}>.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.

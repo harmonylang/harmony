@@ -1,4 +1,4 @@
-const NREPLICAS = 4     # number of replicas
+const NREPLICAS = 3     # number of replicas
 const NOPS = 5          # number of operations
 
 network = {}            # the network is a set of messages
@@ -18,9 +18,10 @@ def replica(self, immortal):
             send(self, (len(history), self))
             history += [self,]
         else:                   # I'm not the head (yet)
-            atomically when exists payload in receive(max(predecessors), len(history)):
+            atomically let pred = max(predecessors)
+            when exists payload in receive(pred, len(history)):
                 if payload == "crash":
-                    predecessors -= { max(predecessors) }
+                    predecessors -= { pred }
                 else:
                     send(self, payload)
                     history += [payload[1],]
