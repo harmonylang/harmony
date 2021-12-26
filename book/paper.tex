@@ -5985,6 +5985,14 @@ Moreover, each is output at least once, and at most
 \label{fig:rsmdfa}
 \end{figure}
 
+The model has each replica send its entire history each time it extends
+its history.  This is fine for modeling, but in practice that would not
+scale.  In practice, a predecessor would set up a TCP connection to
+its successor and only send updates to its history along the TCP
+connection.  Because TCP connections guarantee FIFO order, this would
+be identical to the predecessor sending a series of histories, but
+much more efficient.
+
 \chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}
 
