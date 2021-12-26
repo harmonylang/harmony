@@ -13,6 +13,7 @@ from harmony_model_checker.exception import ErrorToken, HarmonyCompilerErrorColl
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.HarmonyParser import HarmonyParser
+from harmony_model_checker.model_checker import CHARM_EXECUTABLE_FILE, build_model_checker
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.HarmonyLexer import HarmonyLexer
@@ -223,6 +224,14 @@ def main():
             parse(str(f))
             print()
         return
+
+    if not CHARM_EXECUTABLE_FILE.exists():
+        print("Model checker is not detected")
+        print("Compiling model checker...")
+        build_model_checker()
+        if not CHARM_EXECUTABLE_FILE.exists():
+            print("Failed to compile the model checker (using gcc).")
+            return 1
 
     consts = ns.const or []
     interface = ns.intf
