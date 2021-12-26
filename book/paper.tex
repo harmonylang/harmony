@@ -5549,43 +5549,45 @@ already looked into the problem of how to make the network reliable,
 we assume here that each processor can reliably send messages to
 its successor.
 
-The protocol that we present elects as leader the processor with the
-highest identifier~\cite{CR79} and works in two phases: in the first
-phase, each processor sends its identifier to its successor.  When
-a processor receives an identifier that is larger than its own
-identifier, it forward that to its successor as well.  If a processor
-receives its own identifier, it discovers that it is the leader.  That
-processor then starts the second phase by sending a message around the
-ring notifying the other processors of the leader's identifier.
+The protocol that we present elects as leader the processor with
+the highest identifier~\cite{CR79} and works in two phases: in the
+first phase, each processor sends its identifier to its successor.
+When a processor receives an identifier that is larger than its own
+identifier, it forwards that identifier to its successor as well.
+If a processor receives its own identifier, it discovers that it
+is the leader.  That processor then starts the second phase by
+sending a message around the ring notifying the other processors
+of the leader's identifier.
 
-\autoref{fig:leader} describes the protocol and its test cases in Harmony.
-In Harmony, processors can be modeled by threads and there are a variety of ways in
-which one can model a network using shared variables.
-Here, we model the network as a set of messages.
-The \texttt{send} method atomically adds a message to this set.
-Messages are tuples with three fields:
-(<{dst}>, <{id}>, <{found}>).
-<{dst}> is the identifier of the destination processor;
-<{id}> is the identifier that is being forwarded; and
-<{found}> is a boolean indicating the second phase of the protocol.
-The <{receive}>(<{self}>) method looks for all messages
-destined for the processor with identifier <{self}>.
+\autoref{fig:leader} describes the protocol and its test cases in
+Harmony.  In Harmony, processors can be modeled by threads and there
+are a variety of ways in which one can model a network using shared
+variables.  Here, we model the network as a set of messages.  The
+\texttt{send} method atomically adds a message to this set.  Messages
+are tuples with three fields: (<{dst}>, <{id}>, <{found}>).  <{dst}>
+is the identifier of the destination processor; <{id}> is the
+identifier that is being forwarded; and <{found}> is a boolean
+indicating the second phase of the protocol.  The <{receive}>(<{self}>)
+method looks for all messages destined for the processor with
+identifier <{self}>.
 
 To test the protocol, the code first chooses the number of processors
 and generates an identifier for each
 processor, chosen non-deterministically from a set of \texttt{NIDS}
 identifiers.  It also keeps track in the variable <{leader}> of
-what the highest identifier is so it can later be checked.
+what the highest identifier is, so it can later be checked.
 
-Method \texttt{processor}(<{self}>, <{succ}>) is the
-code for a processor with identifier <{self}> and successor
-<{succ}>.
+Method <{processor(self, succ)}> is the code for a processor with
+identifier <{self}> and successor <{succ}>.
 It starts simply by sending its own identifier to its successor.
 The processor then loops until it discovers the identifier of the
 leader in the second phase of the protocol.
 A processor waits for a message using the Harmony
 <{atomically when exists}> statement.
-This statement takes the form <{atomically when exists v in s}>: \emph{statement block}
+This statement takes the form
+\begin{code}
+<{atomically when exists v in s}>: \emph{statement block}
+\end{code}
 where <{s}> is a set and <{v}> is variable that is bound to an element of <{s}>.
 The properties of the statement are as follows:
 \begin{itemize}
