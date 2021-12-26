@@ -8,12 +8,12 @@ from antlr4 import *
 
 import sys
 import argparse
-from harmony_model_checker.exception import ErrorToken, HarmonyCompilerErrorCollection
+from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.HarmonyParser import HarmonyParser
-from harmony_model_checker.model_checker import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
+from harmony_model_checker.model_checker import check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.HarmonyLexer import HarmonyLexer
