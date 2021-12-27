@@ -33,4 +33,3 @@ bool hashset_contains(struct hashset_t set, const void *key, unsigned int keylen
 void hashset_delete(struct hashset_t set) {
     dict_delete(set.dict);
 }
-

@@ -416,6 +416,20 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(v));
     step->log[step->nlog++] = v;
 
+#ifdef PRINTLOG
+    // Add to the print log in the state
+    uint64_t pl = value_dict_load(state->vars, global->printlog);
+    int size;
+    uint64_t *indices = value_copy(pl, &size);
+    indices = realloc(indices, size + 2 * sizeof(uint64_t));
+    size /= sizeof(uint64_t);
+    indices[size] = (size << VALUE_BITS) | VALUE_INT;
+    indices[size + 1] = v;
+    size += 2;
+    state->vars = value_dict_store(&global->values, state->vars, global->printlog,
+        value_put_dict(&global->values, indices, size * sizeof(uint64_t)));
+#endif
+
     if (global->dfa != NULL) {
         int nstate = dfa_step(global->dfa, step->dfa_state, v);
         if (nstate < 0) {
@@ -427,18 +441,6 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         step->dfa_state = nstate;
     }
 
-    step->ctx->pc++;
-}
-
-void op_Possibly(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t v = value_ctx_pop(&step->ctx);
-    if ((v & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &global->values, "possibly can only be applied to bool values");
-    }
-    if (v == VALUE_TRUE) {
-        void **p = dict_insert(global->possibly_cnt, &step->ctx->pc, sizeof(step->ctx->pc));
-        (* (uint64_t *) p)++;
-    }
     step->ctx->pc++;
 }
 
@@ -1515,19 +1517,6 @@ void *init_JumpCond(struct dict *map, struct values_t *values){
     assert(cond->type == JV_MAP);
     env->cond = value_from_json(values, cond->u.map);
 
-    return env;
-}
-
-void *init_Possibly(struct dict *map, struct values_t *values){
-    struct env_Possibly *env = new_alloc(struct env_Possibly);
-
-    struct json_value *index = dict_lookup(map, "index", 5);
-    assert(index->type == JV_ATOM);
-    char *copy = malloc(index->u.atom.len + 1);
-    memcpy(copy, index->u.atom.base, index->u.atom.len);
-    copy[index->u.atom.len] = 0;
-    env->index = atoi(copy);
-    free(copy);
     return env;
 }
 
@@ -2817,7 +2806,6 @@ struct op_info op_table[] = {
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
-	{ "Possibly", init_Possibly, op_Possibly },
 	{ "Print", init_Print, op_Print },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },

@@ -1,4 +1,4 @@
-def read_hfa(file, dfa):
+def read_hfa(file, dfa, nfa):
     with open(file) as fd:
         js = json.load(fd)
         initial = js["initial"]
@@ -31,10 +31,70 @@ def read_hfa(file, dfa):
     if dfa.input_symbols < hfa.input_symbols:
         print("behavior warning: symbols missing from behavior:",
             hfa.input_symbols - dfa.input_symbols)
-    else:
-        assert dfa <= hfa
-        if dfa < hfa:
-            print("behavior warning: strict subset of specified behavior")
+        return
+    
+    if dfa < hfa:
+        print("behavior warning: strict subset of specified behavior")
+        return
+
+    if dfa == hfa:
+        return
+
+    print("behavior error: got a bad behavior")
+    diff = dfa.difference(hfa)
+
+    # find the shortest path to a final state using BFS
+    final = None
+    parents = { diff.initial_state: None }
+    q = [ diff.initial_state ]
+    while q != []:
+        current = q.pop(0)
+        for (symbol, next) in diff.transitions[current].items():
+            if next not in parents:
+                parents[next] = (current, symbol)
+                if next in diff.final_states:
+                    final = next
+                    break
+                q.append(next)
+    assert final != None
+    path = []
+    while parents[final] != None:
+        (state, symbol) = parents[final]
+        path.append(symbol)
+        final = state
+    path.reverse()
+    print("==>", path)
+
+    # now figure out how to follow this path in the original NFA
+    # use BFS to find it
+    final = None
+    q = [ (nfa.initial_state, 0) ]
+    parents = { nfa.initial_state: None }
+    while q != []:
+        (current, index) = q.pop(0)
+        if index == len(path):
+            final = current
+            break
+        for (symbol, next) in nfa.transitions[current].items():
+            if symbol == '':
+                for n in next:
+                    if n not in parents:
+                        parents[n] = (current, symbol)
+                        q.append((n, index))
+            elif symbol == path[index]:
+                for n in next:
+                    if n not in parents:
+                        parents[n] = (current, symbol)
+                        q.append((n, index + 1))
+    assert final != None
+    path = []
+    while parents[final] != None:
+        (state, symbol) = parents[final]
+        path.append((state, symbol))
+        final = state
+    path.reverse()
+    for state, symbol in path:
+        print("-->", state, symbol)
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
@@ -123,7 +183,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     def add_edge(src, val, dst):
         assert dst != initial_state
-        assert src not in final_states
+        # assert src not in final_states
         if val in transitions[src]:
             transitions[src][val].add(dst)
         else:
@@ -206,6 +266,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             for nfa_state in dfa_state:
                 if nfa_state in final_states:
                     dfa_final_states.add(dfa_state)
+        print("conversion done")
 
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:
@@ -290,6 +351,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     if behavior != None:
         if got_automata:
-            read_hfa(behavior, dfa)
+            read_hfa(behavior, dfa, nfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")

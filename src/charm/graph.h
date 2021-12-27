@@ -71,6 +71,9 @@ struct node {
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
+
+    // NFA
+    struct dict *closure;   // epsilon closure
 };
 
 struct failure {

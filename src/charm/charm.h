@@ -22,7 +22,9 @@ struct global_t {
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
-    struct dict *possibly_cnt;   // TODO.  This has to go
+#ifdef PRINT_LOG
+    uint64_t printlog;           // atom for __log__
+#endif
 };
 
 #endif //SRC_CHARM_H

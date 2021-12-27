@@ -171,7 +171,7 @@ static bool onestep(
     uint64_t choice_copy = choice;
 
     // bool print_occurred = global->code.instrs[step->ctx->pc].choose;
-    bool print_occurred = false;
+    bool print_occurred = true;
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     int loopcnt = 0;
@@ -1323,21 +1323,6 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
-void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
-    const struct env_Possibly *ep = code->instrs[pc].env;
-
-    void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
-    if (cnt == 0) {
-        char *loc = dict_lookup(code->code_map, &pc, sizeof(pc));
-        if (loc == NULL) {
-            printf("invalidated possibly pc=%d/%d\n", pc, ep->index);
-        }
-        else {
-            printf("invalidated possibly %s/%d\n", loc, ep->index);
-        }
-    }
-}
-
 static void do_work(struct worker *w){
 	while (!minheap_empty(w->todo)) {
 		struct node *node = minheap_getmin(w->todo);
@@ -1506,6 +1491,71 @@ char *state_string(struct state *state){
     return r;
 }
 
+static void closure_union(void *env, const void *key, unsigned int size,
+                                    void *value){
+    assert(sizeof(size) == sizeof(int));
+    struct dict *closure = env;
+    const int *idx = key;
+    void **p = dict_insert(closure, &idx, sizeof(idx));
+    *p = (void *) 1;
+}
+
+static bool eps_closure_rec(struct node *node, struct dict *visiting,
+                                                struct dict **output) {
+    // See if it was already computed
+    if (node->closure != NULL) {
+        *output = node->closure;
+        return true;
+    }
+
+    // If we hit a node we're already processing, stop
+    void **visit = dict_insert(visiting, &node->id, sizeof(node->id));
+    if (*visit != NULL) {
+        *output = NULL;
+        return false;
+    }
+    *visit = (void *) 1;
+
+    // Create a new closure for this node
+    struct dict *closure = dict_new(0);
+    void **p = dict_insert(closure, &node->id, sizeof(node->id));
+    *p = (void *) 1;
+
+    // Now recursively visit neighboring epsilon nodes
+    bool result = true;
+    for (struct edge *e = node->fwd; e != NULL; e = e->next) {
+        if (e->nlog == 0) {
+            struct dict *neighbor;
+            bool r = eps_closure_rec(e->node, visiting, &neighbor);
+            dict_iter(neighbor, closure_union, closure);
+            if (!r) {
+                result = false;
+            }
+        }
+    }
+
+    if (result) {
+        node->closure = closure;
+    }
+    *visit = NULL;
+    *output = closure;
+    return result;
+}
+
+static void eps_closure_all(struct graph_t *graph){
+    struct dict *visiting = dict_new(0);
+    for (int i = 0; i < graph->size; i++) {
+        printf("EC %d/%d\n", i, graph->size);
+        struct node *n = graph->nodes[i];
+        struct dict *closure;
+        if (!eps_closure_rec(n, visiting, &closure)) {
+            assert(n->closure == NULL);
+            n->closure = closure;
+        }
+        assert(n->closure == closure);
+    }
+}
+
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
@@ -1567,7 +1617,6 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
-    global->possibly_cnt = dict_new(0);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -1605,7 +1654,6 @@ int main(int argc, char **argv){
     global->code = code_init_parse(&global->values, jc);
 
     // Create an initial state
-	uint64_t this = value_put_atom(&global->values, "this", 4);
     struct context *init_ctx = new_alloc(struct context);
     init_ctx->name = value_put_atom(&global->values, "__init__", 8);
     init_ctx->arg = VALUE_DICT;
@@ -1616,7 +1664,12 @@ int main(int argc, char **argv){
     value_ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     value_ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
+#ifdef PRINTLOG
+	global->printlog = value_put_atom(&global->values, "__log__", 7);
+    state->vars = value_dict_store(&global->values, VALUE_DICT, global->printlog, VALUE_DICT);
+#else
     state->vars = VALUE_DICT;
+#endif
     state->seqs = VALUE_SET;
     uint64_t ictx = value_put_context(&global->values, init_ctx);
     state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
@@ -1892,6 +1945,8 @@ int main(int argc, char **argv){
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
+        eps_closure_all(&global->graph);
+
         // Figure out how many extra "intermediate" states we need.
         int extra = 0;
         for (int i = 0; i < global->graph.size; i++) {
@@ -1928,7 +1983,7 @@ int main(int argc, char **argv){
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
             }
-            else if (node->state->ctxbag == VALUE_DICT) {
+            else if (value_ctx_all_eternal(node->state->ctxbag)) {
                 fprintf(out, "      \"type\": \"terminal\"\n");
             }
             else {
@@ -2035,7 +2090,6 @@ int main(int argc, char **argv){
         case FAIL_BUSYWAIT:
             printf("Active busy waiting\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
-            no_issues = true;       // to report possibly stuff
             break;
         case FAIL_RACE:
             assert(bad->address != VALUE_ADDRESS);
@@ -2045,7 +2099,6 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
-            no_issues = true;       // to report possibly stuff
             break;
         default:
             panic("main: bad fail type");
@@ -2110,16 +2163,7 @@ int main(int argc, char **argv){
     fprintf(out, "}\n");
 	fclose(out);
 
-    if (no_issues) {
-        for (int i = 0; i < global->code.len; i++) {
-            if (strcmp(global->code.instrs[i].oi->name, "Possibly") == 0) {
-                possibly_check(global->possibly_cnt, &global->code, i);
-            }
-        }
-    }
-
     iface_write_spec_graph_to_file(global, "iface.gv");
-
     iface_write_spec_graph_to_json_file(global, "iface.json");
 
     free(global);

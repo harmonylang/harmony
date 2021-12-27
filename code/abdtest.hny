@@ -1,14 +1,20 @@
-import abd
+import register
 
-def reader():
-    let first = abd.read(("reader", 1))
-    let second = abd.read(("reader", 2)):
-        assert (first == .token) => (second == .token)
+const NREADERS = 2
+const NWRITERS = 1
 
-def writer():
-    abd.write(("writer", 1), .token)
-
-for i in { 1 .. abd.N }:
-    spawn eternal abd.server()
-spawn reader()
-spawn writer()
+def reader(i):
+    print(i, "reads")
+    let v = register.read(i):
+        print(i, "read", v)
+ 
+def writer(i):
+    print(i, "writes")
+    register.write(i, i)
+    print(i, "wrote")
+        
+register.init()
+for i in { 1 .. NREADERS }:
+    spawn reader("reader", i)
+for i in { 1 .. NWRITERS }:
+    spawn writer("writer", i)
