@@ -74,6 +74,7 @@ struct node {
 
     // NFA
     struct dict *closure;   // epsilon closure
+	bool closure_visited;
 };
 
 struct failure {

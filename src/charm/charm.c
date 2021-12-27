@@ -1494,65 +1494,39 @@ char *state_string(struct state *state){
 static void closure_union(void *env, const void *key, unsigned int size,
                                     void *value){
     assert(sizeof(size) == sizeof(int));
-    struct dict *closure = env;
-    const int *idx = key;
-    void **p = dict_insert(closure, &idx, sizeof(idx));
+    void **p = dict_insert(env, key, size);
     *p = (void *) 1;
 }
 
-static bool eps_closure_rec(struct node *node, struct dict *visiting,
-                                                struct dict **output) {
-    // See if it was already computed
+static void eps_closure_rec(struct node *node, struct dict *closure) {
+    // See if it was already computed.  If so, just add the closure.
     if (node->closure != NULL) {
-        *output = node->closure;
-        return true;
+		dict_iter(closure, closure_union, node->closure);
+		return;
     }
 
-    // If we hit a node we're already processing, stop
-    void **visit = dict_insert(visiting, &node->id, sizeof(node->id));
-    if (*visit != NULL) {
-        *output = NULL;
-        return false;
-    }
-    *visit = (void *) 1;
-
-    // Create a new closure for this node
-    struct dict *closure = dict_new(0);
+	// See if this nodes was already visited
     void **p = dict_insert(closure, &node->id, sizeof(node->id));
+	if (*p != NULL) {
+		return;
+	}
     *p = (void *) 1;
 
     // Now recursively visit neighboring epsilon nodes
-    bool result = true;
     for (struct edge *e = node->fwd; e != NULL; e = e->next) {
         if (e->nlog == 0) {
-            struct dict *neighbor;
-            bool r = eps_closure_rec(e->node, visiting, &neighbor);
-            dict_iter(neighbor, closure_union, closure);
-            if (!r) {
-                result = false;
-            }
+            eps_closure_rec(e->node, closure);
         }
     }
-
-    if (result) {
-        node->closure = closure;
-    }
-    *visit = NULL;
-    *output = closure;
-    return result;
 }
 
 static void eps_closure_all(struct graph_t *graph){
-    struct dict *visiting = dict_new(0);
-    for (int i = 0; i < graph->size; i++) {
-        printf("EC %d/%d\n", i, graph->size);
+    for (int i = graph->size; --i >= 0;) {
+		printf("EC %d/%d\n", i, graph->size);
         struct node *n = graph->nodes[i];
-        struct dict *closure;
-        if (!eps_closure_rec(n, visiting, &closure)) {
-            assert(n->closure == NULL);
-            n->closure = closure;
-        }
-        assert(n->closure == closure);
+		struct dict *closure = dict_new(0);
+        eps_closure_rec(n, closure);
+		n->closure = closure;
     }
 }
 
@@ -1945,7 +1919,7 @@ int main(int argc, char **argv){
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        eps_closure_all(&global->graph);
+        // eps_closure_all(&global->graph);
 
         // Figure out how many extra "intermediate" states we need.
         int extra = 0;
