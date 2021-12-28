@@ -1530,56 +1530,46 @@ static void eps_closure_all(struct graph_t *graph){
     }
 }
 
+static int nalloc;
+
+static void walk(struct node *node, bool *visited, struct edge **pnewfwd){
+    for (struct edge *e = node->fwd; e != NULL; e = e->next) {
+        if (e->nlog == 0) {
+            if (!visited[e->node->id]) {
+                walk(e->node, visited, pnewfwd);
+            }
+        }
+        else {
+            struct edge *f = malloc(sizeof(*f));
+            *f = *e;
+            f->next = *pnewfwd;
+            *pnewfwd = f;
+            nalloc++;
+        }
+    }
+}
+
 static void destutter(struct graph_t *graph){
     struct node *init = graph->nodes[0];
     init->next = NULL;
+    bool *visited = calloc(graph->size, sizeof(*visited));
     struct node *todo = init;
-    int cnt = 0;
+    int cnt = 0, nfree = 0;
 
     while (todo != NULL) {
+        // Find all the non-epsilon steps reachable from this node
         struct node *n = todo;
-        n->destutter_visited = true;
         todo = n->next;
-        printf("NEXT %d %d\n", cnt++, n->id);
-        struct edge *new_list = NULL, *next;
-        for (struct edge *e = n->fwd; e != NULL; e = next) {
-            next = e->next;
-
-            // see if it's an epsilon edge.  If so, copy its outgoing edges.
-            if (e->nlog == 0) {
-                // copy the outgoing edges
-                struct node *d = e->node;
-				if (d != n) {			// don't create epsilon self loops
-					if (d->final) {
-						n->final = true;
-					}
-					for (struct edge *f = d->fwd; f != NULL; f = f->next) {
-						if (!f->node->destutter_visited) {
-							f->node->next = todo;
-							f->node->destutter_visited = true;
-							todo = f->node;
-						}
-						struct edge *g = malloc(sizeof(struct edge));
-						*g = *f;
-						g->next = new_list;
-						new_list = g;
-					}
-				}
-                free(e);
-            }
-
-            // if not an epsilon edge, just leave it be
-            else {
-                if (!e->node->destutter_visited) {
-                    e->node->next = todo;
-                    e->node->destutter_visited = true;
-                    todo = e->node;
-                }
-                e->next = new_list;
-                new_list = e;
-            }
+        struct edge *newfwd = NULL;
+        printf("NEXT %d %d %d\n", cnt, nalloc, nfree);
+        memset(visited, 0, graph->size * sizeof(*visited));
+        walk(n, visited, &newfwd);
+        struct edge *e;
+        while ((e = n->fwd) != NULL) {
+            n->fwd = e;
+            free(e);
+            nfree++;
         }
-        n->fwd = new_list;
     }
 }
 
