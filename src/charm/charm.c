@@ -1534,12 +1534,13 @@ static void destutter(struct graph_t *graph){
     struct node *init = graph->nodes[0];
     init->next = NULL;
     struct node *todo = init;
+    int cnt = 0;
 
     while (todo != NULL) {
         struct node *n = todo;
         n->destutter_visited = true;
         todo = n->next;
-        printf("NEXT %d\n", n->id);
+        printf("NEXT %d %d\n", cnt++, n->id);
         struct edge *new_list = NULL, *next;
         for (struct edge *e = n->fwd; e != NULL; e = next) {
             next = e->next;
