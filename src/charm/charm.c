@@ -1536,15 +1536,24 @@ static void walk(struct node *node, bool *visited, struct edge **pnewfwd){
     for (struct edge *e = node->fwd; e != NULL; e = e->next) {
         if (e->nlog == 0) {
             if (!visited[e->node->id]) {
+				visited[e->node->id] = true;
                 walk(e->node, visited, pnewfwd);
             }
         }
         else {
-            struct edge *f = malloc(sizeof(*f));
-            *f = *e;
-            f->next = *pnewfwd;
-            *pnewfwd = f;
-            nalloc++;
+			struct edge *f;
+			for (struct edge *f = *pnewfwd; f != NULL; f = f->next) {
+				if (f->nlog == e->nlog && memcmp(f->log, e->log, e->nlog * sizeof(*e->log)) == 0) {
+					break;
+				}
+			}
+			if (f == NULL) {
+				f = malloc(sizeof(*f));
+				*f = *e;
+				f->next = *pnewfwd;
+				*pnewfwd = f;
+				nalloc++;
+			}
         }
     }
 }
@@ -1552,6 +1561,7 @@ static void walk(struct node *node, bool *visited, struct edge **pnewfwd){
 static void destutter(struct graph_t *graph){
     struct node *init = graph->nodes[0];
     init->next = NULL;
+	init->destutter_visited = true;
     bool *visited = calloc(graph->size, sizeof(*visited));
     struct node *todo = init;
     int cnt = 0, nfree = 0;
@@ -1561,16 +1571,25 @@ static void destutter(struct graph_t *graph){
         struct node *n = todo;
         todo = n->next;
         struct edge *newfwd = NULL;
-        printf("NEXT %d %d %d\n", cnt, nalloc, nfree);
+        printf("NEXT %d %d %d\n", cnt++, nalloc, nfree);
         memset(visited, 0, graph->size * sizeof(*visited));
         walk(n, visited, &newfwd);
         struct edge *e;
         while ((e = n->fwd) != NULL) {
-            n->fwd = e;
+            n->fwd = e->next;
             free(e);
             nfree++;
         }
+		n->fwd = newfwd;
+		for (e = n->fwd; e != NULL; e = e->next) {
+			if (!e->node->destutter_visited) {
+				e->node->destutter_visited = true;
+				e->node->next = todo;
+				todo = e->node;
+			}
+		}
     }
+	printf("DONE\n");
 }
 
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
