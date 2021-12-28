@@ -64,6 +64,7 @@ struct node {
     bool interrupt;         // set if gotten here by interrupt
     int weight;             // 1 if context switch; 0 otherwise
     struct access_info *ai; // to detect data races
+    bool final;             // only eternal threads left
     uint64_t *log;          // history
     int nlog;               // size of history
     int dfa_state;          // state of dfa if any
@@ -75,6 +76,8 @@ struct node {
     // NFA
     struct dict *closure;   // epsilon closure
 	bool closure_visited;
+    struct node *next;
+	bool destutter_visited;
 };
 
 struct failure {

@@ -31,7 +31,6 @@ typedef struct
     unsigned int cycle;
 } pthread_barrier_t;
 
-
 int pthread_barrier_init(
     pthread_barrier_t *barrier,
     const pthread_barrierattr_t *attr,
@@ -350,6 +349,7 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
+    next->final = value_ctx_all_eternal(sc->ctxbag);
     next->dfa_state = step->dfa_state;
 
     next->ai = step->ai;
@@ -908,7 +908,7 @@ uint64_t twostep(
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
 
-    bool print_occurred = false;
+    bool print_occurred = true;         // TODO
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = step.ctx->pc;
@@ -1530,6 +1530,56 @@ static void eps_closure_all(struct graph_t *graph){
     }
 }
 
+static void destutter(struct graph_t *graph){
+    struct node *init = graph->nodes[0];
+    init->next = NULL;
+    struct node *todo = init;
+
+    while (todo != NULL) {
+        struct node *n = todo;
+        n->destutter_visited = true;
+        todo = n->next;
+        printf("NEXT %d\n", n->id);
+        struct edge *new_list = NULL, *next;
+        for (struct edge *e = n->fwd; e != NULL; e = next) {
+            next = e->next;
+
+            // see if it's an epsilon edge.  If so, copy its outgoing edges.
+            if (e->nlog == 0) {
+                // copy the outgoing edges
+                struct node *d = e->node;
+                if (d->final) {
+                    n->final = true;
+                }
+                for (struct edge *f = d->fwd; f != NULL; f = f->next) {
+                    if (!f->node->destutter_visited) {
+                        f->node->next = todo;
+                        f->node->destutter_visited = true;
+                        todo = f->node;
+                    }
+                    struct edge *g = new_alloc(struct edge);
+                    *g = *f;
+                    g->next = new_list;
+                    new_list = g;
+                }
+                free(e);
+            }
+
+            // if not an epsilon edge, just leave it be
+            else {
+                if (!e->node->destutter_visited) {
+                    e->node->next = todo;
+                    e->node->destutter_visited = true;
+                    todo = e->node;
+                }
+                e->next = new_list;
+                new_list = e;
+            }
+        }
+        n->fwd = new_list;
+    }
+}
+
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
@@ -1794,7 +1844,7 @@ int main(int argc, char **argv){
                 continue;
             }
             // TODO.  In case of ctxbag, all contexts should probably be blocked
-            if (value_ctx_all_eternal(node->state->ctxbag) && value_ctx_all_eternal(node->state->stopbag)) {
+            if (node->final && value_ctx_all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }
@@ -1920,6 +1970,7 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
         // eps_closure_all(&global->graph);
+        destutter(&global->graph);
 
         // Figure out how many extra "intermediate" states we need.
         int extra = 0;
@@ -1957,7 +2008,7 @@ int main(int argc, char **argv){
             if (i == 0) {
                 fprintf(out, "      \"type\": \"initial\"\n");
             }
-            else if (value_ctx_all_eternal(node->state->ctxbag)) {
+            else if (node->final) {
                 fprintf(out, "      \"type\": \"terminal\"\n");
             }
             else {
