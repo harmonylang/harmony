@@ -1491,45 +1491,6 @@ char *state_string(struct state *state){
     return r;
 }
 
-static void closure_union(void *env, const void *key, unsigned int size,
-                                    void *value){
-    assert(sizeof(size) == sizeof(int));
-    void **p = dict_insert(env, key, size);
-    *p = (void *) 1;
-}
-
-static void eps_closure_rec(struct node *node, struct dict *closure) {
-    // See if it was already computed.  If so, just add the closure.
-    if (node->closure != NULL) {
-		dict_iter(closure, closure_union, node->closure);
-		return;
-    }
-
-	// See if this nodes was already visited
-    void **p = dict_insert(closure, &node->id, sizeof(node->id));
-	if (*p != NULL) {
-		return;
-	}
-    *p = (void *) 1;
-
-    // Now recursively visit neighboring epsilon nodes
-    for (struct edge *e = node->fwd; e != NULL; e = e->next) {
-        if (e->nlog == 0) {
-            eps_closure_rec(e->node, closure);
-        }
-    }
-}
-
-static void eps_closure_all(struct graph_t *graph){
-    for (int i = graph->size; --i >= 0;) {
-		printf("EC %d/%d\n", i, graph->size);
-        struct node *n = graph->nodes[i];
-		struct dict *closure = dict_new(0);
-        eps_closure_rec(n, closure);
-		n->closure = closure;
-    }
-}
-
 static int nalloc;
 
 static void walk(struct node *node, bool *visited, struct edge **pnewfwd){
@@ -1569,6 +1530,7 @@ static void destutter(struct graph_t *graph){
     while (todo != NULL) {
         // Find all the non-epsilon steps reachable from this node
         struct node *n = todo;
+        n->reachable = true;
         todo = n->next;
         struct edge *newfwd = NULL;
         printf("NEXT %d %d %d\n", cnt++, nalloc, nfree);
@@ -1981,16 +1943,17 @@ int main(int argc, char **argv){
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        // eps_closure_all(&global->graph);
         destutter(&global->graph);
 
         // Figure out how many extra "intermediate" states we need.
         int extra = 0;
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (edge->nlog > 1) {
-                    extra += edge->nlog - 1;
+            if (node->reachable) {
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                    if (edge->nlog > 1) {
+                        extra += edge->nlog - 1;
+                    }
                 }
             }
         }
@@ -2000,33 +1963,35 @@ int main(int argc, char **argv){
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
-            if (first) {
-                first = false;
+            if (node->reachable) {
+                if (first) {
+                    first = false;
+                }
+                else {
+                    fprintf(out, ",\n");
+                }
+                fprintf(out, "    {\n");
+                fprintf(out, "      \"idx\": %d,\n", node->id);
+    #ifdef notdef
+                fprintf(out, "      \"component\": %d,\n", node->component);
+                if (node->parent != NULL) {
+                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
+                }
+                char *val = json_escape_value(node->state->vars);
+                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                free(val);
+    #endif
+                if (i == 0) {
+                    fprintf(out, "      \"type\": \"initial\"\n");
+                }
+                else if (node->final) {
+                    fprintf(out, "      \"type\": \"terminal\"\n");
+                }
+                else {
+                    fprintf(out, "      \"type\": \"normal\"\n");
+                }
+                fprintf(out, "    }");
             }
-            else {
-                fprintf(out, ",\n");
-            }
-            fprintf(out, "    {\n");
-            fprintf(out, "      \"idx\": %d,\n", node->id);
-#ifdef notdef
-            fprintf(out, "      \"component\": %d,\n", node->component);
-            if (node->parent != NULL) {
-                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-            }
-            char *val = json_escape_value(node->state->vars);
-            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
-            free(val);
-#endif
-            if (i == 0) {
-                fprintf(out, "      \"type\": \"initial\"\n");
-            }
-            else if (node->final) {
-                fprintf(out, "      \"type\": \"terminal\"\n");
-            }
-            else {
-                fprintf(out, "      \"type\": \"normal\"\n");
-            }
-            fprintf(out, "    }");
         }
         for (int i = 0; i < extra; i++) {
             if (first) {
@@ -2047,51 +2012,54 @@ int main(int argc, char **argv){
         bool first_log;
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (first) {
-                    first = false;
-                }
-                else {
-                    fprintf(out, ",\n");
-                }
-                fprintf(out, "    {\n");
-                fprintf(out, "      \"src\": %d,\n", node->id);
-                fprintf(out, "      \"dst\": %d,\n", edge->node->id);
-#ifdef notdef
-                fprintf(out, "      \"log\": [");
-                first_log = true;
-                for (int j = 0; j < edge->nlog; j++) {
-                    if (first_log) {
-                        first_log = false;
-                        fprintf(out, "\n");
+            if (node->reachable) {
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                    assert(edge->node->reachable);
+                    if (first) {
+                        first = false;
                     }
                     else {
                         fprintf(out, ",\n");
                     }
-                    char *p = json_escape_value(edge->log[j]);
-                    fprintf(out, "        \"%s\"", p);
-                    free(p);
-                }
-                fprintf(out, "\n");
-                fprintf(out, "      ],\n");
-#endif
-                fprintf(out, "      \"print\": [");
-                first_log = true;
-                for (int j = 0; j < edge->nlog; j++) {
-                    if (first_log) {
-                        first_log = false;
-                        fprintf(out, "\n");
+                    fprintf(out, "    {\n");
+                    fprintf(out, "      \"src\": %d,\n", node->id);
+                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+    #ifdef notdef
+                    fprintf(out, "      \"log\": [");
+                    first_log = true;
+                    for (int j = 0; j < edge->nlog; j++) {
+                        if (first_log) {
+                            first_log = false;
+                            fprintf(out, "\n");
+                        }
+                        else {
+                            fprintf(out, ",\n");
+                        }
+                        char *p = json_escape_value(edge->log[j]);
+                        fprintf(out, "        \"%s\"", p);
+                        free(p);
                     }
-                    else {
-                        fprintf(out, ",\n");
+                    fprintf(out, "\n");
+                    fprintf(out, "      ],\n");
+    #endif
+                    fprintf(out, "      \"print\": [");
+                    first_log = true;
+                    for (int j = 0; j < edge->nlog; j++) {
+                        if (first_log) {
+                            first_log = false;
+                            fprintf(out, "\n");
+                        }
+                        else {
+                            fprintf(out, ",\n");
+                        }
+                        char *p = value_json(edge->log[j]);
+                        fprintf(out, "        %s", p);
+                        free(p);
                     }
-                    char *p = value_json(edge->log[j]);
-                    fprintf(out, "        %s", p);
-                    free(p);
+                    fprintf(out, "\n");
+                    fprintf(out, "      ]\n");
+                    fprintf(out, "    }");
                 }
-                fprintf(out, "\n");
-                fprintf(out, "      ]\n");
-                fprintf(out, "    }");
             }
         }
         fprintf(out, "\n");

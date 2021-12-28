@@ -74,10 +74,9 @@ struct node {
     unsigned int component; // strongly connected component id
 
     // NFA
-    struct dict *closure;   // epsilon closure
-	bool closure_visited;
-    struct node *next;
+    struct node *next;      // to remove epsilon transitions
 	bool destutter_visited;
+    bool reachable;
 };
 
 struct failure {

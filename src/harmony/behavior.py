@@ -159,32 +159,6 @@ def eps_closure(states, transitions, current):
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
 
-# Get rid of epsilon transitions
-def destutter(states, transitions, final_states):
-    updated = False
-    for (i, src) in enumerate(states):
-        print(i, len(states), src)
-        updates = {}
-        tx = transitions[src]
-        while '' in tx:
-            q = list(tx[''])
-            while q != []:
-                updated = True
-                dst = q.pop()
-                if dst in final_states:
-                    final_states.add(src)
-                for (symbol, next) in transitions[dst].items():
-                    if symbol not in tx:
-                        tx[symbol] = set()
-                    tx[symbol].update(next)
-                if dst in tx['']:
-                    tx[''].remove(dst)
-            if src in tx['']:
-                tx[''].remove(src)
-            if len(tx['']) == 0:
-                del tx['']
-    return updated
-
 def behavior_parse(js, minify, outputfiles, behavior):
     if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
@@ -243,13 +217,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
     # print("final", final_states, file=sys.stderr)
     # print("symbols", input_symbols, file=sys.stderr)
     # print("transitions", transitions, file=sys.stderr)
-
-    # First "destutter" the NFA, removing epsilon transitions
-    # Doing epsilon closures does not scale well enough
-    if False:
-        print("eNFA -> NFA", file=sys.stderr)
-        while destutter(states, transitions, final_states):
-            print("do some more")
 
     print("NFA -> DFA", file=sys.stderr)
 
