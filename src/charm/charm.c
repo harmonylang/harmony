@@ -1548,20 +1548,22 @@ static void destutter(struct graph_t *graph){
             if (e->nlog == 0) {
                 // copy the outgoing edges
                 struct node *d = e->node;
-                if (d->final) {
-                    n->final = true;
-                }
-                for (struct edge *f = d->fwd; f != NULL; f = f->next) {
-                    if (!f->node->destutter_visited) {
-                        f->node->next = todo;
-                        f->node->destutter_visited = true;
-                        todo = f->node;
-                    }
-                    struct edge *g = new_alloc(struct edge);
-                    *g = *f;
-                    g->next = new_list;
-                    new_list = g;
-                }
+				if (d != n) {			// don't create epsilon self loops
+					if (d->final) {
+						n->final = true;
+					}
+					for (struct edge *f = d->fwd; f != NULL; f = f->next) {
+						if (!f->node->destutter_visited) {
+							f->node->next = todo;
+							f->node->destutter_visited = true;
+							todo = f->node;
+						}
+						struct edge *g = malloc(sizeof(struct edge));
+						*g = *f;
+						g->next = new_list;
+						new_list = g;
+					}
+				}
                 free(e);
             }
 
@@ -1630,7 +1632,7 @@ int main(int argc, char **argv){
     double timeout = gettime() + maxtime;
 
     // initialize modules
-    struct global_t *global = malloc(sizeof(struct global_t));
+    struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values);
     ops_init(global);
     graph_init(&global->graph, 1024);
