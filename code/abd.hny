@@ -29,17 +29,12 @@ def receive(uid, phase):
 
 def read(uid):
     send({ .type: "read", .src: (uid, 1) })
-    if True:
-        atomically when exists msgs in receive(uid, 1):
-            let (t, v) = max(m.value for m in keys msgs):
-                send({ .type: "write", .src: (uid, 2), .value: (t, v) })
-                result = v
-        atomically when exists msgs in receive(uid, 2):
-            pass
-    else:
-        atomically when exists msgs in receive(uid, 1):
-            let (t, v) = max(m.value for m in keys msgs):
-                result = v
+    atomically when exists msgs in receive(uid, 1):
+        let (t, v) = max(m.value for m in keys msgs):
+            send({ .type: "write", .src: (uid, 2), .value: (t, v) })
+            result = v
+    atomically when exists msgs in receive(uid, 2):
+        pass
 
 def write(uid, v):
     send({ .type: "read", .src: (uid, 1) })
