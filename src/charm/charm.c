@@ -1490,6 +1490,10 @@ static void destutter1(struct graph_t *graph){
         if (n->bwd != NULL && n->bwd->next == NULL && n->bwd->nlog == 0) {
             struct node *parent = n->bwd->node;
 
+            if (n->final) {
+                parent->final = true;
+            }
+
             // Remove the edge from the parent
             struct edge **pe, *e;
             for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->next) {
@@ -2059,6 +2063,7 @@ int main(int argc, char **argv){
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
+#ifdef notdef
         fprintf(out, "  \"edges\": [\n");
         first = true;
         bool first_log;
@@ -2098,6 +2103,7 @@ int main(int argc, char **argv){
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
+#endif // notdef
     }
     else {
         // Find shortest "bad" path

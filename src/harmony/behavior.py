@@ -166,7 +166,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
     states = set()
     initial_state = None;
     final_states = set()
-    input_symbols = set()
     transitions = {}
     labels = {}
 
@@ -190,27 +189,28 @@ def behavior_parse(js, minify, outputfiles, behavior):
             transitions[src][val] = {dst}
 
     intermediate = 0
-    for edge in js['edges']:
-        src = str(edge["src"])
-        dst = str(edge["dst"])
-        if edge["print"] == []:
-            add_edge(src, "", dst)
-        else:
-            for e in edge["print"][:-1]:
-                symbol = json_string(e)
-                input_symbols.add(symbol)
-                labels[symbol] = e
-                inter = "s%d"%intermediate
-                intermediate += 1
-                states.add(inter)
-                transitions[inter] = {}
-                add_edge(src, symbol, inter)
-                src = inter
-            e = edge["print"][-1]
-            symbol = json_string(e)
-            add_edge(src, symbol, dst)
-            input_symbols.add(symbol)
-            labels[symbol] = e
+    symbols = js['symbols']
+    labels = { k:json_string(v) for k,v in symbols.items() }
+    input_symbols = set(labels.values())
+    for s in js['nodes']:
+        for [path, dsts] in s["transitions"]:
+            for dest_node in dsts:
+                src = str(s["idx"])
+                dst = str(dest_node)
+                if path == []:
+                    add_edge(src, "", dst)
+                else:
+                    for e in path[:-1]:
+                        symbol = json_string(symbols[str(e)])
+                        inter = "s%d"%intermediate
+                        intermediate += 1
+                        states.add(inter)
+                        transitions[inter] = {}
+                        add_edge(src, symbol, inter)
+                        src = inter
+                    e = path[-1]
+                    symbol = json_string(symbols[str(e)])
+                    add_edge(src, symbol, dst)
 
     # print("states", states, file=sys.stderr)
     # print("initial", initial_state, file=sys.stderr)
