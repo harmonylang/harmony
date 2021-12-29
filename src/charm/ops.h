@@ -15,7 +15,6 @@ struct op_info *ops_get(char *opname, int size);
 struct step {
     struct context *ctx;
     struct access_info *ai;
-    int dfa_state;          // behavior DFA
     uint64_t *log;
     int nlog;
 };

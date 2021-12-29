@@ -67,15 +67,12 @@ struct node {
     bool final;             // only eternal threads left
     uint64_t *log;          // history
     int nlog;               // size of history
-    int dfa_state;          // state of dfa if any
 
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
 
-    // NFA
-    struct node *next;      // to remove epsilon transitions
-	bool destutter_visited;
+    // NFA compression
     bool reachable;
 };
 

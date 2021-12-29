@@ -431,14 +431,14 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
 #endif
 
     if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, step->dfa_state, v);
+        int nstate = dfa_step(global->dfa, state->dfa_state, v);
         if (nstate < 0) {
             char *p = value_string(v);
             value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
             free(p);
             return;
         }
-        step->dfa_state = nstate;
+        state->dfa_state = nstate;
     }
 
     step->ctx->pc++;

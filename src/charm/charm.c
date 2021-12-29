@@ -158,7 +158,6 @@ static bool onestep(
     assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
-    step->dfa_state = node->dfa_state;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -350,7 +349,6 @@ static bool onestep(
     next->steps = node->steps + loopcnt;
     next->weight = weight;
     next->final = value_ctx_all_eternal(sc->ctxbag);
-    next->dfa_state = step->dfa_state;
 
     next->ai = step->ai;
     step->ai = NULL;
@@ -366,9 +364,10 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
+    // TODO.  Should it check if all thread are internal?
     if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
                     step->ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, step->dfa_state)) {
+                    !dfa_is_final(global->dfa, sc->dfa_state)) {
         // value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_BEHAVIOR;
@@ -900,7 +899,6 @@ uint64_t twostep(
         free(step.ctx);
         return ctx;
     }
-    step.dfa_state = node->dfa_state;
 
     if (interrupt) {
 		assert(step.ctx->trap_pc != 0);
@@ -1028,7 +1026,7 @@ uint64_t twostep(
 
     if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
                     step.ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, step.dfa_state)) {
+                    !dfa_is_final(global->dfa, sc->dfa_state)) {
         // value_ctx_failure(step.ctx, &global->values, "Behavior failure: not a final state");
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_BEHAVIOR;
@@ -1412,15 +1410,6 @@ void process_results(
         }
         else {
             next = *p;
-            // TODO.  The following may just be incorrect
-            if (0 && next->dfa_state != node->dfa_state &&
-                                            node->ftype == FAIL_NONE) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_BEHAVIOR;
-                f->choice = node->choice;
-                f->node = next;
-                minheap_insert(global->failures, f);
-            }
             must_free = true;
         }
 
@@ -1491,67 +1480,48 @@ char *state_string(struct state *state){
     return r;
 }
 
-static int nalloc;
+// This routine removes all node that have a single incoming edge and it's
+// an "epsilon" edge (empty print log).  These are essentially useless nodes.
+// Typically about half of the nodes can be removed this way.
+static void destutter1(struct graph_t *graph){
+    for (int i = 0; i < graph->size; i++) {
+        struct node *n = graph->nodes[i];
 
-static void walk(struct node *node, bool *visited, struct edge **pnewfwd){
-    for (struct edge *e = node->fwd; e != NULL; e = e->next) {
-        if (e->nlog == 0) {
-            if (!visited[e->node->id]) {
-				visited[e->node->id] = true;
-                walk(e->node, visited, pnewfwd);
+        if (n->bwd->next == NULL && n->bwd->nlog == 0) {
+            struct node *parent = n->bwd->node;
+
+            // Remove the edge from the parent
+            struct edge **pe, *e;
+            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->next) {
+                if (e->node == n && e->nlog == 0) {
+                    *pe = e->next;
+                    free(e);
+                    break;
+                }
             }
+
+            struct edge *next;
+            for (struct edge *e = n->fwd; e != NULL; e = next) {
+                // Move the outgoing edge to the parent.
+                next = e->next;
+                e->next = parent->fwd;
+                parent->fwd = e;
+
+                // Fix the corresponding backwards edge
+                for (struct edge *f = e->node->bwd; f != NULL; f = f->next) {
+                    if (f->node == n && f->nlog == e->nlog &&
+                            memcmp(f->log, e->log, f->nlog * sizeof(*f->log)) == 0) {
+                        f->node = parent;
+                        break;
+                    }
+                }
+            }
+            n->reachable = false;
         }
         else {
-			struct edge *f;
-			for (struct edge *f = *pnewfwd; f != NULL; f = f->next) {
-				if (f->nlog == e->nlog && memcmp(f->log, e->log, e->nlog * sizeof(*e->log)) == 0) {
-					break;
-				}
-			}
-			if (f == NULL) {
-				f = malloc(sizeof(*f));
-				*f = *e;
-				f->next = *pnewfwd;
-				*pnewfwd = f;
-				nalloc++;
-			}
+            n->reachable = true;
         }
     }
-}
-
-static void destutter(struct graph_t *graph){
-    struct node *init = graph->nodes[0];
-    init->next = NULL;
-	init->destutter_visited = true;
-    bool *visited = calloc(graph->size, sizeof(*visited));
-    struct node *todo = init;
-    int cnt = 0, nfree = 0;
-
-    while (todo != NULL) {
-        // Find all the non-epsilon steps reachable from this node
-        struct node *n = todo;
-        n->reachable = true;
-        todo = n->next;
-        struct edge *newfwd = NULL;
-        printf("NEXT %d %d %d\n", cnt++, nalloc, nfree);
-        memset(visited, 0, graph->size * sizeof(*visited));
-        walk(n, visited, &newfwd);
-        struct edge *e;
-        while ((e = n->fwd) != NULL) {
-            n->fwd = e->next;
-            free(e);
-            nfree++;
-        }
-		n->fwd = newfwd;
-		for (e = n->fwd; e != NULL; e = e->next) {
-			if (!e->node->destutter_visited) {
-				e->node->destutter_visited = true;
-				e->node->next = todo;
-				todo = e->node;
-			}
-		}
-    }
-	printf("DONE\n");
 }
 
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
@@ -1673,6 +1643,7 @@ int main(int argc, char **argv){
     state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
+    state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     global->processes = new_alloc(uint64_t);
     *global->processes = ictx;
     global->nprocesses = 1;
@@ -1682,7 +1653,6 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
-    node->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -1943,7 +1913,7 @@ int main(int argc, char **argv){
         printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        destutter(&global->graph);
+        destutter1(&global->graph);
 
         // Figure out how many extra "intermediate" states we need.
         int extra = 0;
