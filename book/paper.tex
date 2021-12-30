@@ -27,6 +27,11 @@
 \setlist[problems,1]{label=\thechapter.\arabic*, font=\bfseries, wide=0pt}
 \setlist[problems,2]{label=(\alph*), wide =0.5em, topsep=2pt, itemsep=2pt}
 
+% \renewcommand{\dblfloatpagefraction}{0.99}
+% \renewcommand{\floatpagefraction}{.99}
+% \renewcommand{\dblfloatpagefraction}{0.99}
+% \renewcommand{\floatpagefraction}{.99}
+
 \widowpenalty 10000
 \clubpenalty 10000
 \tolerance=9999
@@ -2560,7 +2565,7 @@ The approach is called \emph{spinlock},
 \index{spinlock}%
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
-The program uses $<{N}>+1$ boolean variables.
+The program uses <{N + 1}> boolean variables.
 Variable <{shared}> is initialized to <{False}> while
 <{private}[i]}> for each thread <{i}> is initialized to <{True}>.
 
@@ -2587,7 +2592,7 @@ maintaining the invariant.
 Then upon exit nothing has changed, maintaining the invariant.
 \end{enumerate}
 Invariant $\mathcal{I}_1$ is also easy to verify for exiting the critical section
-because we can assume, by the induction hypothesis, that $<{private}>[i]$ is
+because we can assume, by the induction hypothesis, that <{private[i]}> is
 <{True}> just before exiting the critical section.
 Invariant $\mathcal{I}_2(i)$ is obvious as (i) thread <{i}> only proceeds to the critical
 section if <{private}>[<{i}>] is <{False}>, and (ii) no other thread modifies
@@ -3381,7 +3386,7 @@ bug in a program.
 \autoref{fig:qtestpar} also shows the deterministic finite automaton
 that describes the possible outputs when the test
 program is run against the specification in the case
-$<{NOPS}> = 2$---for $<{NOPS}> = 4$ it would be much
+<{NOPS = 2}>---for <{NOPS = 4}> it would be much
 too large to print here.  Since there are no cycles in the DFA, you
 can follow some paths through this DFA and see that they are valid
 interleavings of the threads.
@@ -3403,7 +3408,7 @@ $ harmony -c NOPS=2 -o impl.png -m queue=queueconc code/qtestpar.hny
 \end{code}
 
 You can
-try this for various $<{NOPS}>$, although it gets increasingly
+try this for various <{NOPS}>, although it gets increasingly
 harder to check by hand that the generated DFAs are the same as
 <{NOPS}> increases.
 Now run the test program against \autoref{fig:queueseq}, which is
@@ -6062,7 +6067,7 @@ much more efficient.
 \begin{code}
 <{:input:../code/abdtest.hny}>
 \end{code}
-\caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}}
+\caption{\harmonylink{code/abdtest.hny} Behavioral test for atomic read/write registers and the output for the case that <{NREADERS = NWRITERS = 1}>}
 \label{fig:abdtest}
 \end{figure}
 
@@ -6095,8 +6100,20 @@ then $r_2$ cannot return a value that is older than the value returned
 by $r_1$.
 \end{enumerate}
 
+It is instructive to look at the test program and its output in
+\autoref{fig:abdtest}.  This is for the case when there is only
+a single reader thread (identified as ``1'') and a single writer
+thread (identified as ``$-1$''), but already
+there are many cases to consider.  Each thread prints information
+just before and just after doing their single operation.  The output
+shows all possible interleavings in the form of a DFA.  Note
+that if the read operation starts after the write operation
+has completed, then the read operaion must return the new value.
+However, if the two operations interleave in some way, then the
+read operation can return either the old or the new value.
+
 \index{single point of failure}%
-Unfortunately, however, the server is a \emph{single point of failure}:
+Unfortunately, a server is a \emph{single point of failure}:
 if it fails, all its clients suffer.
 We would therefore like to find a solution that can survive the crash
 of a server.
@@ -6116,7 +6133,7 @@ receive and process all write operations in the same order.
 We present a protocol preserving these properties that is based on the
 work by Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
 In order to tolerate <{F}> failures,
-it uses $<{N}> = 2<{F}> + 1$ servers.
+it uses <{N}> = 2<{F}> + 1 servers.
 In other words, the register survives as long as a strict majority of
 its copies survive.
 All write operation will be ordered by a unique \emph{logical timestamp}
@@ -6126,13 +6143,13 @@ timestamp of its corresponding write operation.
 
 Each read and write operation consists of two \emph{phases}.  In a phase,
 a client broadcasts a request to all servers and waits for responses
-from a majority ($<{N}> - <{F}>$ or equivalently
-$<{F}> + 1$ servers).  Note that because we are assuming that no
+from a majority (<{N - F}> or equivalently
+<{F + 1}> servers).  Note that because we are assuming that no
 more than <{F}> servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
 
 In the first phase, a client asks each server for its current
-timestamp and value.  After receiving $<{N}> - <{F}>$ responses,
+timestamp and value.  After receiving <{N - F}> responses,
 the client determines the response with the highest timestamp.
 In case of a write operation, the client then computes a new unique
 timestamp that is strictly higher than the highest it has seen.
@@ -6150,7 +6167,7 @@ and <{v}>.  Each server that receives the request compares $(t+1, c')$ against
 its current timestamp.  If $(t+1, c')$ is larger than its current timestamp,
 it adopts the new timestamp and its corresponding value <{v}>.  In either case,
 the server responds to the client.
-Upon $c'$ receiving a response from $<{N}> - <{F}>$ servers,
+Upon $c'$ receiving a response from <{N - F}> servers,
 the write operation completes.
 In case of a read operation, client $c'$ simply \emph{writes back} the
 highest timestamp it saw in the first phase along with its corresponding value.
@@ -6175,22 +6192,22 @@ Read and write operations are both invoked with a unique identifier
 request to all servers and then waiting for a response from
 <{N - F}> servers.
 The <{receive()}> function uses the <{bag.combinations}> method
-to find all combinations of subsets of responses of size
-$<{N}> - <{F}>$.
+to find all combinations of subsets of responses of size <{N - F}>.
 The second phase of each operation is similar.
 
-\autoref{fig:abdtest} tests the third property of the properties listed
-above.  The <{writer()}> method writes a new value <{.token}>.
-The \texttt{reader()} method reads twice and makes sure that if the
-first read operation returns <{.token}>, then so does the second.
-This illustrates the importance of the second phase of the \texttt{read}
-operation.  You can comment out Lines~32 and~33 in \autoref{fig:abd} and
-see what goes wrong.
+\autoref{fig:abdtest} can be used to test this protocol, although
+you will notice that the model checker cannot deal with cases involving
+more than three client threads.
+Three is just enough to check the third property listed above
+(using one writer and two readers).
+Doing so illustrates the importance of the second phase of the \texttt{read}
+operation.  You can comment out Lines~34, 36, and~37 in \autoref{fig:abd}
+and to elide the second phase and see what goes wrong.
 
 One may wonder how failures can occur in this model.  They are not
 explicitly modeled, but Harmony tries every possible execution.
 This includes executions in which the clients terminate before
-$<{F}>$ of the servers start executing.  To the clients, this
+<{F}> of the servers start executing.  To the clients, this
 is indistinguishable from executions in which those
 servers have failed.
 
@@ -6260,7 +6277,7 @@ We will present a simple consensus algorithm that can tolerate
 fewer than $1/3^{rd}$ of processors failing by crashing.
 More precisely,
 constant <{F}> contains the maximum number of failures, and
-we will assume there are $<{N}> = 3<{F}> + 1$ processors.
+we will assume there are <{N}> = 3<{F}> + 1 processors.
 
 \begin{figure}
 \begin{code}
@@ -6283,7 +6300,7 @@ variable,
 it uses a shared list of proposals and a shared set of decisions.
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
-The $<{N}>$ processors go through a sequence of \emph{rounds} in which they wait for
+The <{N}> processors go through a sequence of \emph{rounds} in which they wait for
 <{N - F}> messages, update their state based on the messages, and
 broadcast messages containing their new state.
 The reason that a processor waits for <{N - F}> rather than <{N}>
@@ -6320,7 +6337,7 @@ unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
 The body of the <{atomically when exists}> statement contains the core of the algorithm.
-Note that $<{N}> - <{F}> = 2<{F}> + 1$, so that the number of
+Note that <{N - F}> = 2<{F}> + 1, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the number
 of zeroes and <{count[1]}> stores the number of ones received in the round.
@@ -6428,7 +6445,7 @@ environments in which few or no assumptions are made about timing.
 In this chapter we present a basic version of a Paxos protocol, one that is
 \emph{single-decree} (only tries to make a single decision).
 It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
-In order to tolerate <{F}> crash failures, you need at least $<{F}> + 1$ leaders
+In order to tolerate <{F}> crash failures, you need at least <{F}> + 1 leaders
 and $2<{F}> + 1$ acceptors, but leaders and acceptors can be colocated, so
 in total only $2<{F}> + 1$ independently failing processors are needed.
 Here we provide only a rudimentary introduction to Paxos; for more detailed
