@@ -40,62 +40,6 @@ def read_hfa(file, dfa, nfa):
     if dfa == hfa:
         return
 
-    print("behavior error: got a bad behavior")
-    diff = dfa.difference(hfa)
-
-    # find the shortest path to a final state using BFS
-    final = None
-    parents = { diff.initial_state: None }
-    q = [ diff.initial_state ]
-    while q != []:
-        current = q.pop(0)
-        for (symbol, next) in diff.transitions[current].items():
-            if next not in parents:
-                parents[next] = (current, symbol)
-                if next in diff.final_states:
-                    final = next
-                    break
-                q.append(next)
-    assert final != None
-    path = []
-    while parents[final] != None:
-        (state, symbol) = parents[final]
-        path.append(symbol)
-        final = state
-    path.reverse()
-    print("==>", path)
-
-    # now figure out how to follow this path in the original NFA
-    # use BFS to find it
-    final = None
-    q = [ (nfa.initial_state, 0) ]
-    parents = { nfa.initial_state: None }
-    while q != []:
-        (current, index) = q.pop(0)
-        if index == len(path):
-            final = current
-            break
-        for (symbol, next) in nfa.transitions[current].items():
-            if symbol == '':
-                for n in next:
-                    if n not in parents:
-                        parents[n] = (current, symbol)
-                        q.append((n, index))
-            elif symbol == path[index]:
-                for n in next:
-                    if n not in parents:
-                        parents[n] = (current, symbol)
-                        q.append((n, index + 1))
-    assert final != None
-    path = []
-    while parents[final] != None:
-        (state, symbol) = parents[final]
-        path.append((state, symbol))
-        final = state
-    path.reverse()
-    for state, symbol in path:
-        print("-->", state, symbol)
-
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
