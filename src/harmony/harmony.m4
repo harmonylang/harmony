@@ -6385,6 +6385,7 @@ def main():
     }
     testflag = False
     suppressOutput = False
+    behavior = None
     charmoptions = []
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
@@ -6403,6 +6404,7 @@ def main():
             charmflag = False
         elif o == "-B":
             charmoptions += ["-B" + a]
+            behavior = a
         elif o == "-j":
             printCode = "json"
             charmflag = False
@@ -6495,7 +6497,7 @@ def main():
         # if not testflag:
         #    os.remove(outputfiles["hvm"])
         b = Brief()
-        b.run(outputfiles)
+        b.run(outputfiles, behavior)
         gh = GenHTML()
         gh.run(outputfiles)
         if not suppressOutput:

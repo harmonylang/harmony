@@ -2038,7 +2038,7 @@ int main(int argc, char **argv){
             }
         }
 
-        if (global->dfa_trie != NULL) {
+        if (0 && global->dfa_trie != NULL) {
             dfa_check_trie(global);
         }
 
