@@ -3,7 +3,7 @@ from setuptools.command.install import install
 from setuptools.command.build_py import build_py
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.19a5"
+PACKAGE_VERSION = "0.0.19a7"
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""

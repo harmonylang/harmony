@@ -1,4 +1,4 @@
-include charm.c
-include charm.Windows.exe
-include modules/*.hny
-include code/*.hny
+include harmony_model_checker/charm.c
+include harmony_model_checker/charm.Windows.exe
+include harmony_model_checker/modules/*.hny
+include harmony_model_checker/code/*.hny
