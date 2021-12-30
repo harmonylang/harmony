@@ -1,6 +1,6 @@
 #/usr/bin/env sh
 
-rm -rf dist
+rm -rf dist/
 
 ./setup.sh
 
