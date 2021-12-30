@@ -434,6 +434,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         }
         else {
             step->dfa_trie = *p = new_alloc(struct dfa_trie);
+			step->dfa_trie->children = dict_new(0);
         }
     }
 

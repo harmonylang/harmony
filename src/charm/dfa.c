@@ -129,8 +129,6 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
         // printf("EDGE %d %d %s\n", src_state, dt->dst, value_string(dt->symbol));
     }
 
-    fclose(fp);
-
     return dfa;
 }
 

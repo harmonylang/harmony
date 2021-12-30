@@ -1573,7 +1573,7 @@ static void print_symbol(void *env, const void *key, unsigned int key_size, void
     else {
         fprintf(se->out, ",\n");
     }
-    fprintf(se->out, "     \"%llu\": %s", (uint64_t) value, p);
+    fprintf(se->out, "     \"%"PRIu64"\": %s", (uint64_t) value, p);
     free(p);
 }
 
@@ -1602,7 +1602,7 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
         if (i != 0) {
             fprintf(pte->out, ",");
         }
-        fprintf(pte->out, "%llu", (uint64_t) p);
+        fprintf(pte->out, "%"PRIu64, (uint64_t) p);
     }
     fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
     strbuf_deinit(sb);
@@ -1763,12 +1763,7 @@ int main(int argc, char **argv){
     value_ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     value_ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
-#ifdef PRINTLOG
-	global->printlog = value_put_atom(&global->values, "__log__", 7);
-    state->vars = value_dict_store(&global->values, VALUE_DICT, global->printlog, VALUE_DICT);
-#else
     state->vars = VALUE_DICT;
-#endif
     state->seqs = VALUE_SET;
     uint64_t ictx = value_put_context(&global->values, init_ctx);
     state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
