@@ -13,7 +13,7 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.HarmonyParser import HarmonyParser
-from harmony_model_checker.model_checker import check_charm_model_checker_status_is_ok
+from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.HarmonyLexer import HarmonyLexer
@@ -210,6 +210,7 @@ args.add_argument("-A", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-j", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-o", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--suppress", action="store_true", help=argparse.SUPPRESS)
+args.add_argument("--model-checker", type=pathlib.Path, nargs=1, help=argparse.SUPPRESS)
 args.add_argument("--grammar", action="store_true", help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
@@ -295,11 +296,9 @@ def main():
         return 1
 
     # Analyze liveness of variables
-    install_path = os.path.dirname(os.path.realpath(__file__))
-    # see if there is a configuration file
     if charm_flag:
         # see if there is a configuration file
-        outfile = os.path.join(install_path, "charm.exe")
+        outfile = CHARM_EXECUTABLE_FILE
         with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
         r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), outputfiles["hco"], outputfiles["hvm"]))
