@@ -10,6 +10,8 @@ struct dfa_state {
     int idx;                     // name of state
     bool final;                  // terminal state
     struct dfa_transition *transitions;     // transition map
+
+    // TODO.  Maybe should make transitions a dict
 };
 
 struct dfa {
@@ -158,6 +160,55 @@ int dfa_step(struct dfa *dfa, int current, uint64_t symbol, bool *transitions){
     return -1;
 }
 
+// TODO.  May not need this.
 int dfa_ntransitions(struct dfa *dfa){
     return dfa->ntransitions;
+}
+
+// See if each of the transitions is in the list of children.
+static void dfa_check_missing(struct dfa_state *ds, struct dict *children){
+    for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        void *p = dict_lookup(children, &dt->symbol, sizeof(dt->symbol));
+        if (p == NULL) {
+            printf("MISSING TRANSITION ON %s\n", value_string(dt->symbol));
+        }
+    }
+}
+
+struct ddt_env {
+    struct global_t *global;
+    int level;
+    int dfa_state;
+};
+
+static void ddt_visit(void *env, const void *key, unsigned int key_size, void *value){
+    struct ddt_env *de = env;
+    assert(key_size == sizeof(uint64_t));
+    const uint64_t *symbol = key;
+    struct dfa_trie *dt = value;
+
+    for (int i = 0; i < de->level; i++) {
+        printf("    ");
+    }
+    char *p = value_string(*symbol);
+    printf("%d: %s\n", de->dfa_state, p);
+    free(p);
+
+    struct ddt_env de2 = {
+        .global = de->global,
+        .dfa_state = dfa_step(de->global->dfa, de->dfa_state, *symbol, NULL),
+        .level = de->level + 1
+    };
+    dfa_check_missing(&de->global->dfa->states[de2.dfa_state], dt->children);
+    dict_iter(dt->children, ddt_visit, &de2);
+}
+
+void dfa_dump_trie(struct global_t *global){
+    struct ddt_env de = {
+        .global = global,
+        .level = 0,
+        .dfa_state = dfa_initial(global->dfa)
+    };
+    dfa_check_missing(&global->dfa->states[de.dfa_state], global->dfa_trie->children);
+    dict_iter(global->dfa_trie->children, ddt_visit, &de);
 }

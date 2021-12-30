@@ -8,10 +8,10 @@ cat minheap.h
 cat dot.h
 cat global.h
 cat value.h
-cat dfa.h
 cat code.h
 cat graph.h
 cat charm.h
+cat dfa.h
 cat ops.h
 cat strbuf.h
 cat iface/iface.h

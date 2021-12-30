@@ -1633,25 +1633,6 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     fprintf(out, "      ],\n");
 }
 
-static void ddt_visit(void *env, const void *key, unsigned int key_size, void *value){
-    uint64_t level = (uint64_t) env;
-    assert(key_size == sizeof(uint64_t));
-    const uint64_t *symbol = key;
-    struct dfa_trie *dt = value;
-
-    for (int i = 0; i < level; i++) {
-        printf("    ");
-    }
-    char *p = value_string(*symbol);
-    printf("%s\n", p);
-    free(p);
-    dict_iter(dt->children, ddt_visit, (void *) (level + 1));
-}
-
-static void dump_dfa_trie(struct dfa_trie *dt, uint64_t level){
-    dict_iter(dt->children, ddt_visit, (void *) level);
-}
-
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
@@ -2055,7 +2036,7 @@ int main(int argc, char **argv){
 
         if (global->dfa_trie != NULL) {
             printf("DFA TRIE:\n");
-            dump_dfa_trie(global->dfa_trie, 0);
+            dfa_dump_trie(global);
         }
 
         fprintf(out, "  \"issue\": \"No issues\",\n");
