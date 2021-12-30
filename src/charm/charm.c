@@ -366,21 +366,7 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    // TODO.  Should it check if all thread are internal?
-    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
-                    step->ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, sc->dfa_state)) {
-        // value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_BEHAVIOR;
-        f->choice = choice_copy;
-        f->node = next;
-        minheap_insert(global->failures, f);
-    }
-	else {
-		minheap_insert(w->results[weight], next);
-	}
-
+    minheap_insert(w->results[weight], next);
     return true;
 }
 
@@ -1027,17 +1013,6 @@ uint64_t twostep(
     }
     else if (!step.ctx->terminated) {
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
-    }
-
-    if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
-                    step.ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, sc->dfa_state)) {
-        // value_ctx_failure(step.ctx, &global->values, "Behavior failure: not a final state");
-        struct failure *f = new_alloc(struct failure);
-        f->type = FAIL_BEHAVIOR;
-        f->choice = choice;
-        f->node = node;
-        minheap_insert(global->failures, f);
     }
 
     // assert(sc->vars == nextvars);
@@ -1882,6 +1857,7 @@ int main(int argc, char **argv){
     if (minheap_empty(global->failures)) {
         // find the strongly connected components
         int ncomponents = graph_find_scc(&global->graph);
+        printf("%d components\n", ncomponents);
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(ncomponents, sizeof(*components));
@@ -1918,36 +1894,45 @@ int main(int argc, char **argv){
             if (value_ctx_all_eternal(node->state->ctxbag)) {
                 comp->good = true;
                 node->final = true;
-            }
-        }
-
-        // now count the nodes that are in bad components
-        int nbad = 0;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            if (!components[node->component].good) {
-                nbad++;
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_TERMINATION;
-                f->choice = node->choice;
-                f->node = node;
-                minheap_insert(global->failures, f);
-            }
-        }
-
-        if (nbad == 0 && !cflag) {
-            for (int i = 0; i < global->graph.size; i++) {
-				global->graph.nodes[i]->visited = false;
-			}
-            for (int i = 0; i < global->graph.size; i++) {
-                struct node *node = global->graph.nodes[i];
-                if (components[node->component].size > 1) {
-                    detect_busywait(global->failures, node);
+                if (!dfa_is_final(global->dfa, node->state->dfa_state)) {
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_BEHAVIOR;
+                    f->choice = node->choice;
+                    f->node = node;
+                    minheap_insert(global->failures, f);
+                    break;
                 }
             }
         }
 
-        printf("%d components, %d bad states\n", ncomponents, nbad);
+        if (minheap_empty(global->failures)) {
+            // now count the nodes that are in bad components
+            int nbad = 0;
+            for (int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                if (!components[node->component].good) {
+                    nbad++;
+                    struct failure *f = new_alloc(struct failure);
+                    f->type = FAIL_TERMINATION;
+                    f->choice = node->choice;
+                    f->node = node;
+                    minheap_insert(global->failures, f);
+                    break;
+                }
+            }
+
+            if (nbad == 0 && !cflag) {
+                for (int i = 0; i < global->graph.size; i++) {
+                    global->graph.nodes[i]->visited = false;
+                }
+                for (int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
+                    if (components[node->component].size > 1) {
+                        detect_busywait(global->failures, node);
+                    }
+                }
+            }
+        }
     }
 
     if (false) {
