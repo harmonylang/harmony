@@ -1,0 +1,16 @@
+import synch
+
+def RWlock():
+    result = synch.Lock()
+
+def read_acquire(rw):
+    synch.acquire(rw);
+
+def read_release(rw):
+    synch.release(rw);
+
+def write_acquire(rw):
+    synch.acquire(rw);
+
+def write_release(rw):
+    synch.release(rw);
