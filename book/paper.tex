@@ -597,6 +597,11 @@ The appendices contain various details about Harmony itself, including
 an appendix that explains how Harmony works (\autoref{app:howitworks}) and
 an appendix on installing and running Harmony (\autoref{app:install}).
 
+<{:const:tas}>
+<{:const:cas}>
+<{:const:BinSem}>
+<{:const:Semaphore}>
+
 \chapter{Hello World!}
 \label{ch:harmonyintro}
 
@@ -846,6 +851,7 @@ should compute the square of <{x}> by adding <{x}> to an initial value of 0 <{x}
 
 <{:const:f}>
 <{:const:g}>
+<{:const:h}>
 
 \begin{figure}[h]
 \begin{center}
@@ -2554,7 +2560,7 @@ The approach is called \emph{spinlock},
 \index{spinlock}%
 because each thread is ``spinning'' (executing a tight loop) until
 it can acquire the lock.
-The program uses $\mathtt{N}+1$ boolean variables.
+The program uses $<{N}>+1$ boolean variables.
 Variable <{shared}> is initialized to <{False}> while
 <{private}[i]}> for each thread <{i}> is initialized to <{True}>.
 
@@ -3456,7 +3462,7 @@ adds <{v}> to the queue.
 Thread \texttt{main()} waits until all \texttt{putter}
 threads have finished, and then dequeues <{N}>
 items, verifying that they form the set
-$\{ 0 .. \mathtt{N} - 1 \}$.
+$\{ 0 .. <{N}> - 1 \}$.
 
 \begin{figure}
 \begin{code}
@@ -3470,7 +3476,7 @@ Similarly, \autoref{fig:qtest2} shows a program that
 checks concurrent <{get}> operations using
 <{N}> threads.
 The queue is initialized with the sequence
-$0 .. \mathtt{N} - 1$.
+$0 .. <{N}> - 1$.
 Thread \texttt{getter(<{v}>)} removes an entry from the
 queue and makes sure that no other thread got the
 same entry.
@@ -5211,14 +5217,17 @@ We say that the code in \autoref{fig:trap2} is not \emph{interrupt-safe} (as opp
 to not being \emph{thread-safe}).
 \index{interrupt-safety}
 
-You would be excused if you wanted to solve the problem using locks, similar to
-\autoref{fig:incfixed}.  \autoref{fig:trap3} shows how one might go about this.
-But locks are intended to solve synchronization issues between multiple threads.
-If you run the code through Harmony, you will find that the code may not terminate.
-The issue is that a thread can only acquire a lock once.  If the interrupt happens
-after <{main()}> acquires the lock but before <{main()}> releases it, the
-<{handler}>() method will block trying to acquire the lock, even though
-it is being acquired by the same thread that already holds the lock.
+You would be excused if you wanted to solve the problem using locks,
+similar to \autoref{fig:incfixed}.  \autoref{fig:trap3} shows how
+one might go about this.  But locks are intended to solve synchronization
+issues between multiple threads.  But an interrupt handler is not
+run by another thread---it is run by the same thread that experienced
+the interrupt.  If you run the code through Harmony, you will find
+that the code may not terminate.  The issue is that a thread can
+only acquire a lock once.  If the interrupt happens after <{main()}>
+acquires the lock but before <{main()}> releases it, the <{handler}>()
+method will block trying to acquire the lock, even though it is
+being acquired by the same thread that already holds the lock.
 
 Instead, the way one fixes interrupt-safety issues is through disabling interrupts
 temporarily.  In Harmony, this can be done by setting the \emph{interrupt level}
@@ -5273,11 +5282,14 @@ There is another important rule to keep in mind.  Just like locks should never b
 for long, interrupts should never be disabled for long.  With locks the issue is to
 maximize concurrent performance.  For interrupts the issue is fast response to
 asynchronous events.  Because interrupts may be disabled only briefly, interrupt
-handlers must run quickly and cannot wait for other events.  It is ok to invoke
+handlers must run quickly and cannot wait for other events.
+\begin{comment}
+It is ok to invoke
 non-blocking synchronization calls such as <{notify}>, but calls such as
 <{acquire}> and <{wait}> should only be used if it is certain that they will not
 block for long.  Informally, interrupt handlers can be
 \emph{producers} but not \emph{consumers} of synchronization events.
+\end{comment}
 
 <{:const:i_put}>
 
@@ -5396,6 +5408,7 @@ read-only operation.  Explain how a seqlock can lead to starvation.
 \index{protocol}%
 \index{distributed system}%
 
+<{:module:abp}>
 <{:const:net_send}>
 <{:const:net_recv}>
 <{:const:app_send}>
@@ -5448,8 +5461,9 @@ For this, we need a network protocol that Alice and Bob can run.
 In particular, it has to be the case that if Alice sends application
 messages $m_1, ..., m_n$ in that order, then if Bob receives an
 application message
-<{m}>, then $m = m_i$ for some <{i}> and Bob will already have received
-application messages $m_1, ..., m_i$ (safety).
+<{m}>, then $m = m_i$ for some <{i}> and, unless $m$ is the very first
+message, Bob will already have received
+application messages $m_1, ..., m_{i-1}$ (safety).
 Also, if the network is fair and Alice sends application message
 <{m}>, then eventually Bob should deliver <{m}> (liveness).
 
@@ -5541,43 +5555,45 @@ already looked into the problem of how to make the network reliable,
 we assume here that each processor can reliably send messages to
 its successor.
 
-The protocol that we present elects as leader the processor with the
-highest identifier~\cite{CR79} and works in two phases: in the first
-phase, each processor sends its identifier to its successor.  When
-a processor receives an identifier that is larger than its own
-identifier, it forward that to its successor as well.  If a processor
-receives its own identifier, it discovers that it is the leader.  That
-processor then starts the second phase by sending a message around the
-ring notifying the other processors of the leader's identifier.
+The protocol that we present elects as leader the processor with
+the highest identifier~\cite{CR79} and works in two phases: in the
+first phase, each processor sends its identifier to its successor.
+When a processor receives an identifier that is larger than its own
+identifier, it forwards that identifier to its successor as well.
+If a processor receives its own identifier, it discovers that it
+is the leader.  That processor then starts the second phase by
+sending a message around the ring notifying the other processors
+of the leader's identifier.
 
-\autoref{fig:leader} describes the protocol and its test cases in Harmony.
-In Harmony, processors can be modeled by threads and there are a variety of ways in
-which one can model a network using shared variables.
-Here, we model the network as a set of messages.
-The \texttt{send} method atomically adds a message to this set.
-Messages are tuples with three fields:
-(<{dst}>, <{id}>, <{found}>).
-<{dst}> is the identifier of the destination processor;
-<{id}> is the identifier that is being forwarded; and
-<{found}> is a boolean indicating the second phase of the protocol.
-The <{receive}>(<{self}>) method looks for all messages
-destined for the processor with identifier <{self}>.
+\autoref{fig:leader} describes the protocol and its test cases in
+Harmony.  In Harmony, processors can be modeled by threads and there
+are a variety of ways in which one can model a network using shared
+variables.  Here, we model the network as a set of messages.  The
+\texttt{send} method atomically adds a message to this set.  Messages
+are tuples with three fields: (<{dst}>, <{id}>, <{found}>).  <{dst}>
+is the identifier of the destination processor; <{id}> is the
+identifier that is being forwarded; and <{found}> is a boolean
+indicating the second phase of the protocol.  The <{receive}>(<{self}>)
+method looks for all messages destined for the processor with
+identifier <{self}>.
 
 To test the protocol, the code first chooses the number of processors
 and generates an identifier for each
 processor, chosen non-deterministically from a set of \texttt{NIDS}
 identifiers.  It also keeps track in the variable <{leader}> of
-what the highest identifier is so it can later be checked.
+what the highest identifier is, so it can later be checked.
 
-Method \texttt{processor}(<{self}>, <{succ}>) is the
-code for a processor with identifier <{self}> and successor
-<{succ}>.
+Method <{processor(self, succ)}> is the code for a processor with
+identifier <{self}> and successor <{succ}>.
 It starts simply by sending its own identifier to its successor.
 The processor then loops until it discovers the identifier of the
 leader in the second phase of the protocol.
 A processor waits for a message using the Harmony
 <{atomically when exists}> statement.
-This statement takes the form <{atomically when exists v in s}>: \emph{statement block}
+This statement takes the form
+\begin{code}
+<{atomically when exists v in s}>: \emph{statement block}
+\end{code}
 where <{s}> is a set and <{v}> is variable that is bound to an element of <{s}>.
 The properties of the statement are as follows:
 \begin{itemize}
@@ -5641,7 +5657,7 @@ What happens if you remove the <{atomically}> keyword?  Explain what happens.
 Modern databases support multiple clients concurrently accessing the data.
 They store data on disk, but we will ignore that in this book.
 (If you want to model a disk, this is probably best done as a separate
-thread.)
+thread that maintains the contents of the disk.)
 The complication we address here is that databases may be \emph{sharded},
 where different parts of the data are stored on different servers.
 The different servers may even be under different
@@ -5650,7 +5666,7 @@ clients.
 
 In database terminology, a \emph{transaction} is an operation on a database.
 The operation can be quite complex, and the execution of a transaction
-should have at least the following two properties:
+should have the following two properties:
 \begin{itemize}
 \item \emph{all-or-nothing}: a transaction should either complete, or it should
 be a no-op.  It should never partially execute and then give up because of
@@ -5663,9 +5679,10 @@ should not be able to witness the intermediate state of another transaction
 in execution.
 \end{itemize}
 
-We will use as an example a distributed database that maintains accounts.
-For simplicity we will model this as a collection of banks, each maintaining a
-single account.  There are two kinds of transactions: \emph{transfer}
+We will use as an example a distributed database that maintains bank accounts.
+For simplicity, we will model this as a collection of banks,
+each maintaining a single account.
+There are two kinds of transactions: \emph{transfer}
 (similar to \autoref{ex:bank}) and \emph{check}.  In this example, a transfer
 is a transaction that moves some funds between two accounts.
 A check is a transaction over all accounts and checks that the sum of the
@@ -5690,13 +5707,13 @@ Each transaction has a \emph{coordinator} that sends a <{PREPARE}>
 message to each of the servers involved in the transaction, asking them
 to prepare to commit to their part in a particular transaction.
 A server can either respond with
-\texttt{YES} if it is ready to commit and will avoid doing anything
+<{YES}> if it is ready to commit and will avoid doing anything
 that might jeopardize this (like committing a conflicting transaction),
-or with \texttt{NO} if it does not want to participate in the transaction.
-If all servers respond with \texttt{YES}, then the coordinator can
+or with <{NO}> if it does not want to participate in the transaction.
+If all servers respond with <{YES}>, then the coordinator can
 decide to \emph{commit} the transaction.  Otherwise the coordinator
 must decide to \emph{abort} the transaction.  In the second phase, the
-servers that responded with \texttt{YES} (if any) must be notified
+servers that responded with <{YES}> (if any) must be notified
 to inform them of the coordinator's decision.
 
 Different transactions can have different coordinators.  In our
@@ -5806,9 +5823,17 @@ the transaction.  Implement this.
 
 \begin{figure}
 \begin{code}
+<{:input:../code/rsmspec.hny}>
+\end{code}
+\caption{\harmonylink{code/rsmspec.hny} Replicated State Machine}
+\label{fig:rsmspec}
+\end{figure}
+
+\begin{figure}
+\begin{code}
 <{:input:../code/chain.hny}>
 \end{code}
-\caption{\harmonylink{code/chain.hny} Checking correctness of Chain Replication}
+\caption{\harmonylink{code/chain.hny} Chain Replication}
 \label{fig:chain}
 \end{figure}
 
@@ -5835,10 +5860,33 @@ machine.  The replicas each run a copy of the state machine, started
 in the same state.  As long as the replicas handle the same inputs
 in the same order, determinism guarantees that they produce the same
 outputs in the same order.
-The trick then is to ensure that all replicas handle the
+
+\autoref{fig:rsmspec} presents a Harmony specification of state machine
+replication.
+We model the state machine as a \emph{history}: a sequence of operations.
+Each replica has a local copy of the history.
+The network is modeled as an ordered queue of messages.
+<{NOPS}> clients each place an operation on the network.
+All but one of the replicas is allowed to crash.
+The model chooses one of the replicas that is not allowed to crash.
+Of course, a replica does not know whether it is immortal
+or not in practice---it should just assume that it is.
+The immortality of one of the replicas is only used for modeling
+the assumptions we make about the system.
+A replica loops until either it fails or it has received all operations.
+<{choose({ immortal, True })}> can only
+evaluate to <{False}> in case <{immortal = False}>; otherwise
+it will always evaluate to <{True}>.
+After a replica has received all <{NOPS}> operations, the replica
+finishes and prints its history.
+All replicas will print the same history (which should be the same
+as the network).
+
+But in reality the network is not an ordered queue and better modeled
+as a set of messages.
+The trick now is to ensure that all replicas handle the
 same requests in the same order and to do so in a way that continues
 to work even if some strict subset of replicas crash.
-
 \emph{Chain Replication}~\cite{vRS04} is such a replication protocol.
 In Chain Replication, the replicas are organized in a linear chain.
 Each replica monitors its direct predecessor in the chain.  If a replica has
@@ -5846,14 +5894,14 @@ no predecessors, we call it the \emph{head}.  The head may change over
 time, as a head may crash and replaced by another, but at any point in
 time there is only one head
 (and only one \emph{tail}, possibly the same replica).
-We model the state machine as a \emph{history}: a sequence of operations.
-Only the head is allowed to introduce new updates.
-When it does so, it advertises the new update along with its position
-in the history.  When the direct successor receives the next update
-it is expecting, it appends the update to its history and likewise
-advertises the new update.  When the update is applied to the history
-of the tail replica (the replica that has no live successors),
-then the update is considered final.
+
+Only the head is allowed to accept new updates from clients.
+When it does so, it adds the update to the end of its history
+and sends the history to its successor on the chain.
+When the direct successor receives such a history, it makes sure
+that the history is an extension of its own and, if so, replaces its own
+history with the one received.
+It then sends the history on to its successor, if any.
 
 So, when a replica fails, its successors should find out about it.
 In practice, one server can detect the failure of another server by
@@ -5865,26 +5913,12 @@ when the timer expires.
 Nonetheless, we will assume here that failure detection does not make
 mistakes and that eventually every failure is eventually detected.
 This is called the \emph{Fail-Stop} failure model~\cite{SS83},
-which is distinct from the often more realistic \emph{Crash} failure model
+which is distinct from the often more realistic \emph{Crash Failure} model
 where processes can crash but accurate detection is not available.
-We will consider that failure model in the upcoming chapters.
+We will consider that more realistic failure model in the upcoming chapters.
 
 \autoref{fig:chain} shows an implemenation of chain replication.
-The code starts \texttt{NREPLICAS} \texttt{replica} threads numbered
-0 through $\mathtt{NREPLICAS} - 1$, with initially 0 being the head
-and $\mathtt{NREPLICAS} - 1$ being the tail.  At least one of the replicas 
-must be immortal---the code selects one of them although none of the
-replicas is required to fail during execution.
-Of course, a replica does not know whether it is immortal
-or not in practice---it should just assume so.
-The immortality of one of the replicas is only used for modeling the system.
-
 Each replica maintains its history and a set of its predecessors.
-It then loops until either it fails or it has applied all
-<{NOPS}> operations to its history.
-$\mathbf{choose}(\{ \mathit{immortal}, <{True}> \})$ can only
-evaluate to <{False}> in case $<{immortal}>$ is false; otherwise
-it will always evaluate to <{True}>.
 What it does within the loop depends on whether it is the head
 (has no alive predecessors) or not.
 Because failure detection is accurate, at most one replica can think
@@ -5900,21 +5934,11 @@ the replica.  The payload can take one of two forms.  The first is
 <{.crash}>, indicating that the source of the message has
 crashed.  The code models a replica crashing by that replica broadcasting
 a <{.crash}> message on the network.
-The other form of payload is a tuple
-$(\mathit{index}, \mathit{operation})$, which means that the source
-placed the given operation at the given index in its history.
+The other form is a history of operations.
 
 If a replica thinks it is the head, it adds an operation to its
-history.
-In practice this would be some operation that the head would have received
-from a client.  Clients send their operations to the head, which adds them
-to its history in the order received.
-We are not modeling clients of the service.
-Instead, in the model, the head adds its identifier <{self}> to the
-history until the
-history has <{NOPS}> operations on it or until the head crashes,
-whichever comes first.  The head also broadcasts each update, which
-are intended for its successor.  Because of failures, it may be that
+history.  The head then broadcasts its history, which
+is intended for its successor.  Because of failures, it may be that
 at different times a replica has different successors, hence the
 broadcast.
 
@@ -5924,15 +5948,50 @@ If the payload is <{.crash}>, then the replica removes this
 predecessor from its set of predecessors.  For example, if there
 are initially three replicas numbered 0, 1, and 2, and replica~1
 crashes, then replica~2 removes~1 from its set of predecessors, making
-replica~0 its direct (and only) predecessor.  If, instead, the payload
-is a tuple, then it must be the case that it contains the next operation
-to add to its history.  The replica adds the operation to its history
-and broadcasts the update, again intended for its successor.
+replica~0 its direct (and only) predecessor.
+Otherwise, the payload must be a history.
+The replica only accepts the history if it is an extension of its own
+history.
+When the replica successfully received all <{NOPS}> updates
+without crashing, it prints its history.
 
-When the replica successfully adds all <{NOPS}> updates to its
-history without crashing, the code makes sure that any other such replica
-ends in the same state.  Variable <{final}> is used to check the
-different histories against one another.
+The question is whether \autoref{fig:chain} has the same behavior as
+the replicated state machine specification of \autoref{fig:rsmspec}.
+This can be checked using the following two Harmony commands:
+\begin{code}
+\begin{verbatim}
+$ harmony -o rsm.hfa code/rsmspec.hny
+$ harmony -B rsm.hfa code/chain.hny
+\end{verbatim}
+\end{code}
+
+The first command outputs the behavior DFA of \texttt{code/rsmspec.hny}
+in the file \texttt{rsm.hfa}.
+The second command checks that the behavior of \texttt{code/chain.hny}
+satisfies the DFA in \texttt{rsm.hfa}.
+The DFA can also be visualized using the command
+\texttt{harmony -o rsm.png code/rsmspec.hny}
+(\autoref{fig:rsmdfa}).
+It shows all permutations of the operations are possible outputs.
+Moreover, each is output at least once, and at most
+<{NREPLICAS}> times.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.8\textwidth]{figures/rsmspec.png}
+\end{center}
+\caption{The DFA generated by both
+\autoref{fig:rsmspec} and \autoref{fig:chain}}
+\label{fig:rsmdfa}
+\end{figure}
+
+The model has each replica send its entire history each time it extends
+its history.  This is fine for modeling, but in practice that would not
+scale.  In practice, a predecessor would set up a TCP connection to
+its successor and only send updates to its history along the TCP
+connection.  Because TCP connections guarantee FIFO order, this would
+be identical to the predecessor sending a series of histories, but
+much more efficient.
 
 \chapter{Replicated Atomic Read/Write Register}
 \label{ch:abd}
@@ -5945,18 +6004,29 @@ different histories against one another.
 
 \begin{figure}
 \begin{code}
-<{:input:../code/abd.hny}>
+<{:input:../code/register.hny}>
 \end{code}
-\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register}
-\label{fig:abd}
+\caption{\harmonylink{code/register.hny} An atomic read/write register}
+\label{fig:register}
 \end{figure}
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{figures/abdtest.png}
+\end{center}
 \begin{code}
 <{:input:../code/abdtest.hny}>
 \end{code}
 \caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}}
 \label{fig:abdtest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+<{:input:../code/abd.hny}>
+\end{code}
+\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register}
+\label{fig:abd}
 \end{figure}
 
 A \emph{register} is an object that you can read or write.  In a distributed
@@ -5999,7 +6069,7 @@ receive and process all write operations in the same order.
 We present a protocol preserving these properties that is based on the
 work by Hagit Attiya, Amotz Bar-Noy, and Danny Dolev~\cite{ABD95}.
 In order to tolerate <{F}> failures,
-it uses $\mathtt{N} = 2\mathtt{F} + 1$ servers.
+it uses $<{N}> = 2<{F}> + 1$ servers.
 In other words, the register survives as long as a strict majority of
 its copies survive.
 All write operation will be ordered by a unique \emph{logical timestamp}
@@ -6015,7 +6085,7 @@ more than <{F}> servers can fail, doing so is safe, in that a client
 cannot indefinitely block as long as that assumption holds.
 
 In the first phase, a client asks each server for its current
-timestamp and value.  After receiving $\mathtt{N} - \mathtt{F}$ responses,
+timestamp and value.  After receiving $<{N}> - <{F}>$ responses,
 the client determines the response with the highest timestamp.
 In case of a write operation, the client then computes a new unique
 timestamp that is strictly higher than the highest it has seen.
@@ -6033,7 +6103,7 @@ and <{v}>.  Each server that receives the request compares $(t+1, c')$ against
 its current timestamp.  If $(t+1, c')$ is larger than its current timestamp,
 it adopts the new timestamp and its corresponding value <{v}>.  In either case,
 the server responds to the client.
-Upon $c'$ receiving a response from $\mathtt{N} - \mathtt{F}$ servers,
+Upon $c'$ receiving a response from $<{N}> - <{F}>$ servers,
 the write operation completes.
 In case of a read operation, client $c'$ simply \emph{writes back} the
 highest timestamp it saw in the first phase along with its corresponding value.
@@ -6059,7 +6129,7 @@ request to all servers and then waiting for a response from
 <{N - F}> servers.
 The <{receive()}> function uses the <{bag.combinations}> method
 to find all combinations of subsets of responses of size
-$\mathtt{N} - \mathtt{F}$.
+$<{N}> - <{F}>$.
 The second phase of each operation is similar.
 
 \autoref{fig:abdtest} tests the third property of the properties listed
@@ -6087,11 +6157,14 @@ servers have failed.
 <{:const:combinations}>
 
 \begin{figure}
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/consensus.png}
+\end{center}
 \begin{code}
-<{:input:../code/bosco.hny}>
+<{:input:../code/consensus.hny}>
 \end{code}
-\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol}
-\label{fig:bosco}
+\caption{\harmonylink{code/consensus.hny} Distributed consensus code and DFA}
+\label{fig:consensus}
 \end{figure}
 
 Distributed consensus is the problem of having a collection of processors agree
@@ -6101,46 +6174,78 @@ on which operation to apply next.
 Without failures, this can be solved using leader election: first elect a leader, then have that leader decide a value.
 But consensus often has to be done in adverse circumstances,
 for example in the face of processor failures.
-In this chapter, we will present a simple consensus algorithm that can tolerate
-fewer than $1/3^{rd}$ of processors failing by crashing.
 
-More precisely,
-constant <{F}> contains the maximum number of failures, and
-we will assume there are $<{N}> = 3<{F}> + 1$ processors.
 Each processor \emph{proposes} a value, which we assume here to be from the
 set \{ 0, 1 \}.
-By the usual definition of consensus, we want the following two properties:
+By the usual definition of consensus, we want the following three properties:
 \begin{enumerate}
 \item \emph{Validity}: a processor can only decide a value that has been proposed;
 \item \emph{Agreement}: if two processors decide, then they decide the same value.
+\item \emph{Termination}: each processor eventually decides.
 \end{enumerate}
-The consensus problem is surprisingly tricky to solve in the face of processor
+The consensus problem is impossible to solve in the face of processor
 failures and without making assumptions about how long it takes to send
-and receive a message.
+and receive a message~\cite{FLP85}.
+Here we will not worry about \emph{Termination}.
 
-\autoref{fig:bosco} presents our algorithm.  Besides the network variable, it uses a
-shared list of proposals and a shared set of decisions.
-To reduce the state space to explore, not all permutations of zeroes and ones are
-explored.  With 5 processors ($\mathtt{F} = 2)$, say, we only explore the cases where
-no processors propose 1, where exactly one processors proposes 1, and where 2 processors
-proposes 1.
+\autoref{fig:consensus} presents a specification for binary
+consensus---the proposals are from the set <{{0, 2}}>
+In this case there are four processors.  The proposal of processor <{i}>
+is in <{proposals[i]}>.
+The <{decision}> is chosen from the set of proposals.
+Each processor may or may not print the decision---capturing the
+absence of the \emph{Termination} property.
+It may be that no decisions are made, but that does not
+violate either Validity or Agreement.
+Thus the behavior of the program is to first print the array of
+proposals, followed by some subset of processors printing their decision.
+Notice the following properties:
+\begin{itemize}
+\item there are $16 = 2^4$ possible proposal configurations;
+\item all processors that decide decide the same value;
+\item if all processors propose 0, then all processors that decide decide 0;
+\item if all processors propose 1, then all processors that decide decide 1.
+\end{itemize}
+
+This is just the specification---in practice we do not have a shared
+variable in which we can store the decision a priori.
+We will present a simple consensus algorithm that can tolerate
+fewer than $1/3^{rd}$ of processors failing by crashing.
+More precisely,
+constant <{F}> contains the maximum number of failures, and
+we will assume there are $<{N}> = 3<{F}> + 1$ processors.
+
+\begin{figure}
+\begin{code}
+<{:input:../code/bosco.hny}>
+\end{code}
+\caption{\harmonylink{code/bosco.hny} A crash-tolerant consensus protocol}
+\label{fig:bosco}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=0.95\textwidth]{figures/bosco.png}
+\end{center}
+\caption{The DFA for \autoref{fig:bosco}}
+\label{fig:boscodfa}
+\end{figure}
+
+\autoref{fig:bosco} presents our algorithm.  Besides the <{network}>
+variable,
+it uses a shared list of proposals and a shared set of decisions.
 In this particular algorithm, all messages are broadcast to all processors, so they do
 not require a destination address.
-The invariants we want to maintain
-on those variables is that $<{decisions}> \subseteq <{proposals}>$
-and $|<{decisions}>| \leq 1$.  Since the initial value of <{decisions}> is
-$\emptyset$, the invariants clearly hold initially.
-
-The $\mathtt{N}$ processors go through a sequence of \emph{rounds} in which they wait for
-$<{N}> - <{F}>$ messages, update their state based on the messages, and
+The $<{N}>$ processors go through a sequence of \emph{rounds} in which they wait for
+<{N - F}> messages, update their state based on the messages, and
 broadcast messages containing their new state.
-The reason that a processor waits for $<{N}> - <{F}>$ rather than <{N}>
-messages is because of failures: up to $<{F}>$ processors may never send a message
-and so it would be unwise to wait for all $<{N}>$.  You might be tempted to use
+The reason that a processor waits for <{N - F}> rather than <{N}>
+messages is because of failures: up to <{F}> processors may never send a message
+and so it would be unwise to wait for all <{N}>.  You might be tempted to use
 a timer and time out on waiting for a particular processor.  But how would you initialize
 that timer?  While we will assume that the network is reliable, there is no guarantee
 that messages arrive within a particular time.
-We call a set of $<{N}> - <{F}>$ processors a \emph{quorum}.
+We call a set of <{N - F}> processors a \emph{quorum}.
 A quorum must suffice for the algorithm to make progress.
 
 The state of a processor consists of its current round number (initially 0)
@@ -6149,11 +6254,9 @@ a round number and an estimate. To start things, each processor first
 broadcasts its initial round number and initial estimate.
 The number of rounds that are necessary to achieve consensus is not bounded.  But
 Harmony can only check finite models, so there is a constant \texttt{NROUNDS} that
-limits the number of rounds.  It may be that no decisions are made, but that does not
-violate either Validity or Agreement.  We only check that \emph{if} decisions are
-made, they satisfy Validity and Agreement.
+limits the number of rounds.
 
-In Line~22, a processor waits for <{N - F}> messages using
+In Line~21, a processor waits for <{N - F}> messages using
 the Harmony <{atomically when exists}> statement.
 Since Harmony has to check all possible executions of the protocol, the
 <{receive(round, k)}> method returns all \emph{subbags} of messages
@@ -6170,7 +6273,7 @@ unnecessary interleavings are avoided and this reduces the state space that must
 be explored by the model checker significantly.
 
 The body of the <{atomically when exists}> statement contains the core of the algorithm.
-Note that <{N - F = 2F + 1}>, so that the number of
+Note that $<{N}> - <{F}> = 2<{F}> + 1$, so that the number of
 messages is guaranteed to be odd.  Also, because there are only 0 and 1 values, there
 must exist a majority of zeroes or ones.  Variable <{count[0]}> stores the number
 of zeroes and <{count[1]}> stores the number of ones received in the round.
@@ -6181,6 +6284,26 @@ The rules of the algorithm are simple:
 \end{itemize}
 After that, proceed with the next round.
 
+To check for correct behavior, run the following two commands:
+\begin{code}
+\begin{verbatim}
+$ harmony -o consensus.hfa code/consensus.hny
+$ harmony -B consensus.hfa code/bosco.hny
+\end{verbatim}
+\end{code}
+
+Note that the second command prints a warning:
+``\texttt{behavior warning: strict subset of specified behavior}.''
+Thus, the set of behaviors that our algorithm generates is a subset
+of the behavior that the specification allows.
+\autoref{fig:boscodfa} shows the behavior, and indeed it is not the
+same as the behavior of \autoref{fig:consensus}.
+This is because in our algorithm the outcome is decided a priori if more than
+twothirds of the processors have the same proposal, whereas in the
+consensus specification the outcome is only decided a priori if the
+processors are initially unanimous.  Another difference is that if the
+outcome is decided a priori, all processors are guaranteed to decide.
+
 \begin{figure}
 \begin{code}
 <{:input:../code/bosco2.hny}>
@@ -6189,27 +6312,34 @@ After that, proceed with the next round.
 \label{fig:bosco2}
 \end{figure}
 
-While one can run this code within little time for $\mathtt{F} = 2$, for
-$\mathtt{F} = 3$ the state space to explore is already quite large.
+While one can run this code within little time for <{F = 1}>, for
+<{F = 2}> the state space to explore is already quite large.
 One way to reduce the state space to explore is the following realization:
 each processor only considers messages for the round that it is in.
 If a message is for an old round, the processor will ignore it;
 if a message is for a future round, the processor will buffer it.
 So, one can simplify the model and have each processor wait
 for \emph{all} <{N}> messages in a round
-instead of $\mathtt{N} - \mathtt{F}$.
-It would still have to choose to consider just $\mathtt{N} - \mathtt{F}$
+instead of <{N - F}>.
+It would still have to choose to consider just <{N - F}>
 out of those <{N}> messages, but executions in which some processors
 are left behind in all rounds are no longer considered.
-It still includes executions where some subset of $\mathtt{N} - \mathtt{F}$
+It still includes executions where some subset of <{N - F}>
 processors only choose each other messages and essentially ignore the
 messages of the remaining <{F}> processors, so the resulting model
 is just as good.
 
-\autoref{fig:bosco2} shows the code for this model.  Running this with
-$\mathtt{F} = 3$ does not take very long and this approach is a good
-blueprint for testing other round-based protocols (of which there are
-many).
+Another way to reduce the state space to explore is to leverage
+symmetry.  First of all, it does not matter who proposes a particular
+value.  Also, the values 0 and 1 are not important to how the
+protocol operates.  So, with 5 processors (<{F = 2}>), say, we only
+need to explore the cases where no processors propose 1, where
+exactly one processors proposes 1, and where 2 processors proposes 1.
+
+\autoref{fig:bosco2} shows the code for this optimized model.
+Running this with <{F = 2}> does not take very long and this approach
+is a good blueprint for testing other round-based protocols (of
+which there are many).
 
 \section*{Exercises}
 \begin{problems}
@@ -6217,10 +6347,10 @@ many).
 A more challenging class to tolerate are \emph{arbitrary failures} in
 which up to <{F}> processors may send arbitrary messages, including
 conflicting messages to different peers (equivocation).
-The algorithm can tolerate those failures if you use $\mathtt{N} = 5\mathtt{F} - 1$ processors instead of $\mathtt{N} = 3\mathtt{F} - 1$.  Check that.
+The algorithm can tolerate those failures if you use $<{N}> = 5<{F}> - 1$ processors instead of $<{N}> = 3<{F}> - 1$.  Check that.
 \item In 1983, Michael Ben-Or presented a randomized algorithm that can
 tolerate crash failures with
-just $\mathtt{N} = 2\mathtt{F} - 1$ processors~\cite{BenOr83}.
+just $<{N}> = 2<{F}> - 1$ processors~\cite{BenOr83}.
 Implement this algorithm.
 \end{problems}
 
@@ -6251,7 +6381,7 @@ environments in which few or no assumptions are made about timing.
 In this chapter we present a basic version of a Paxos protocol, one that is
 \emph{single-decree} (only tries to make a single decision).
 It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
-In order to tolerate <{F}> crash failures, you need at least $<{F}>+1$ leaders
+In order to tolerate <{F}> crash failures, you need at least $<{F}> + 1$ leaders
 and $2<{F}> + 1$ acceptors, but leaders and acceptors can be colocated, so
 in total only $2<{F}> + 1$ independently failing processors are needed.
 Here we provide only a rudimentary introduction to Paxos; for more detailed
@@ -6504,7 +6634,7 @@ representation;
 ordered;
 \item an address is a list of Harmony values.  <{None}> is the empty list.
 Addresses are lexicographically ordered accordingly;
-\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content.
+\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -6527,7 +6657,7 @@ The boolean type has only two possible values: <{False}> and
 <{True}>.  Unlike in Python, in Harmony booleans are distinct
 from integers, and in particular $\mathbf{False} < 0$.  In statements
 and expressions where booleans are expected, it is not possible to
-substibute values of other types.
+substitute values of other types.
 
 Operations on booleans include:
 \begin{center}
@@ -6597,7 +6727,8 @@ Operations on integers include:
 \subsection*{String}
 
 A string is a sequence of zero or more unicode characters.
-If they do not contain special characters and do not start with a digit,
+If it consists entirely of alphanumerical characters or underscore
+characters and does not start with a digit,
 then a string can be represented by a ``.'' followed by the characters.
 For example, <{.example}> is the same as the string <{"example"}>.
 
@@ -6656,14 +6787,14 @@ A dictionary maps a set of values (known as \emph{keys})
 to another set of values.
 The generic syntax of a dictionary is
 $\{ k_0:v_0, k_1:v_1, ... \}$.
-Different from Python, the empty dictionary is either <{()}> or $[]$
-(because $\{\}$ is the empty set in Harmony).
+Different from Python, the empty dictionary is either <{()}> or <{[]}>
+(because <{{}}> is the empty set in Harmony).
 If there are duplicate keys in the list, then only the one with
 the maximum value survives.
 Therefore the order of the keys in the dictionary does not matter.
 
 Dictionaries support comprehension.  The basic form is:
-\texttt{\{ f(<{k}>):g(<{k}>) for <{k}> in <{s}> \}}.
+<{{ f(k):g(k) for k in s }}>.
 
 There are various special cases of dictionaries,
 including lists, tuples, strings,
@@ -6680,7 +6811,7 @@ Operations on dictionaries include the following:
 \hline
 <{keys d}> & the set of keys in <{d}> \\
 \hline
-<{<{v [not] in keys d}> & check if <{v}> is [not] a key in <{d}> \\
+<{v [not] in keys d}> & check if <{v}> is [not] a key in <{d}> \\
 \hline
 <{v [not] in d}> & check if <{v}> is [not] a value in <{d}> \\
 \hline
@@ -6700,12 +6831,12 @@ Operations on dictionaries include the following:
 \end{center}
 
 Because in Harmony brackets are used for parsing purposes only,
-you can write $d[k]$ (or $d(k)$) instead of $d~k$.
+you can write <{d[k]}> (or <{d(k)}>) instead of <{d k}>.
 However, if <{k}> is a string like <{.id}>, then you might
-prefer the notation $k\mathtt{.id}$.
+prefer the notation <{k.id}>.
 
-Python users beware: the Harmony \texttt{<{v}> in <{d}>} operator checks
-if there is some key <{k}> such that $d[k] = v$.  In Python, the same
+Python users beware: the Harmony <{v in d}> operator checks
+if there is some key <{k}> such that <{d[k] = v}>.  In Python, the same
 syntax checks if <{v}> is a key in <{d}>.  The difference exists because
 in Harmony a list is a special case of a dictionary.
 
@@ -6764,11 +6895,9 @@ Native operations on lists or tuples include the following:
 \end{center}
 
 Lists and tuples support comprehension as well.
-In their most basic form: \texttt{f(<{v}>) for <{v}> in <{s}>}.
+In their most basic form: <{(f(v) for v in s)}>.
 For example, to check if any element in a list <{t}> is even, you
-can write:
-
-\texttt{any($(x \% 2) == 0$ for <{x}> in <{t}>)}.
+can write: <{any((x % 2) == 0 for x in t)}>.
 
 \subsection*{Bag or Multiset}
 
@@ -6808,8 +6937,9 @@ Operations on program counters include the following:
 \end{tabular}
 \end{center}
 
-You can create lambda functions similarly to Python.  For example:
-\texttt{lambda$(x,y)$:$x+y$}.
+You can create lambda functions similarly to Python, except that the
+expression has to end on the keyword <{end}>.  For example:
+<{lambda(x,y): x+y end}>.
 
 \subsection*{Address}
 
@@ -6865,7 +6995,7 @@ The possible modes of a context are as follows:
 \end{center}
 \end{comment}
 
-A thread can call \texttt{get\_context()} to retrieve its current
+A thread can call <{get_context()}> to retrieve its current
 context.
 
 \section{Statements}
@@ -6908,7 +7038,7 @@ Harmony currently supports the following statements
 \hline
 <{invariant e}> & <{e}> is an invariant\\
 \hline
-<{let a = e: S} & <{a}> is a bound variable, <{e}> is an expression\\
+<{let a = e: S}> & <{a}> is a bound variable, <{e}> is an expression\\
 \hline
 <{pass}> & do nothing\\
 \hline
@@ -6952,25 +7082,29 @@ It is equivalent to the assignment statement $\_ = \mathtt{f}()$.
 The statement <{x = 3}> changes the state by assigning~3 to
 variable <{x}> (assuming~<{x}> was not already~3).
 <{x}> may be a local variable or a shared variable.
-The statement $x = y = 3$ first updates~<{y}>, then~<{x}>.
-The statement $x[\mathtt{f}()] = y[\mathtt{g}()] = \mathtt{h}()$ first computes
-the address of $x[\mathtt{f}()]$, then computes the address of
-$y[\mathtt{g}()]$, then evaluates $\mathtt{h}()$, then assigns the resulting value to $y[\mathtt{g}()]$ (using its previously computed address), and finally assigns the same value to $x[\mathtt{f}()]$ (again using its previously computed address).
-The statement $a,b = c$ assumes that <{c}> is a tuple with two values.
+The statement <{x = y = 3}> first updates~<{y}>, then~<{x}>.
+The statement <{x[f()] = y[g()] = h()}> first computes
+the address of <{x[f()]}>, then computes the address of
+<{y[g()]}>, then evaluates <{h()}>,
+then assigns the resulting value to <{y[g()]}>
+(using its previously computed address),
+and finally assigns the same value to <{x[f()]}>
+(again using its previously computed address).
+The statement <{a,b = c}> assumes that <{c}> is a tuple with two values.
 It first evaluates the addresses of <{a}> and <{b}> and first assigns to
 the latter and then the former.
 If <{c}> is not a tuple with two values, then Harmony will report an error.
 
-Assigning to $\_$ evaluates the righthand side expression but is otherwise
+Assigning to <{_}> evaluates the righthand side expression but is otherwise
 a no-op.
 
 The statement $x~+$$= 3$ loads <{x}>, adds 3, and then stores the
 results in <{x}>.  In this case, it is equivalent to $x = x + 3$.
-However, in general this is not so.  For example, $x[\mathtt{f}()]~+$$= 3$
-only evaluates $\mathtt{f}()$ once.  Unlike Python, however,
-$x~+$$= [3,]$ is equivalent to $x = x + [3,]$ in Harmony.
+However, in general this is not so.  For example, <{x[f()] += 3}>
+only evaluates <{f()}> once.  Unlike Python, however,
+<{x += [3,]}> is equivalent to <{x = x + [3,]}> in Harmony.
 (In Python, the following two compound statements lead to different results
-for <{y}>: $x = y = []; x~+$$= [3]$ and $x = y = []; x = x + [3]$.)
+for <{y}>: <{x = y = []; x += [3]}> and <{x = y = []; x = x + [3]}>.)
 
 \subsection*{<{assert}>}
 
@@ -7778,7 +7912,7 @@ The <{synch}> module provides the following methods:
 \hline
 <{tas(lk)}> & test-and-set on <{!lk}> \\
 \hline
-<{cas}(ptr, old, new)}> & compare-and-swap on <{!ptr}> \\
+<{cas(ptr, old, new)}> & compare-and-swap on <{!ptr}> \\
 \hline
 <{BinSem(v)}> & return a binary semaphore initialized to <{v}> \\
 \hline

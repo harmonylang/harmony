@@ -64,13 +64,19 @@ struct node {
     bool interrupt;         // set if gotten here by interrupt
     int weight;             // 1 if context switch; 0 otherwise
     struct access_info *ai; // to detect data races
+    bool final;             // only eternal threads left
     uint64_t *log;          // history
     int nlog;               // size of history
-    int dfa_state;          // state of dfa if any
 
     // SCC
     bool visited;           // for Kosaraju algorithm
     unsigned int component; // strongly connected component id
+
+    // NFA compression
+    bool reachable;
+
+    // DFA
+    struct dfa_trie *dfa_trie;
 };
 
 struct failure {

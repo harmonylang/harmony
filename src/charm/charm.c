@@ -38,7 +38,6 @@ typedef struct
     unsigned int cycle;
 } pthread_barrier_t;
 
-
 int pthread_barrier_init(
     pthread_barrier_t *barrier,
     const pthread_barrierattr_t *attr,
@@ -166,7 +165,6 @@ static bool onestep(
     assert(step->ctx->failure == 0);
 
     struct global_t *global = w->global;
-    step->dfa_state = node->dfa_state;
 
     // See if we should also try an interrupt.
     if (interrupt) {
@@ -178,7 +176,7 @@ static bool onestep(
     uint64_t choice_copy = choice;
 
     // bool print_occurred = global->code.instrs[step->ctx->pc].choose;
-    bool print_occurred = false;
+    bool print_occurred = true;
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
     int loopcnt = 0;
@@ -357,7 +355,9 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
-    next->dfa_state = step->dfa_state;
+
+    // TODO.  Probably shouldn't set this until very end
+    next->final = value_ctx_all_eternal(sc->ctxbag);
 
     next->ai = step->ai;
     step->ai = NULL;
@@ -366,6 +366,9 @@ static bool onestep(
     step->log = NULL;
     step->nlog = 0;
 
+    next->dfa_trie = step->dfa_trie;
+    step->dfa_trie = NULL;
+
     if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
     }
@@ -373,9 +376,10 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
+    // TODO.  Should it check if all thread are internal?
     if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
                     step->ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, step->dfa_state)) {
+                    !dfa_is_final(global->dfa, sc->dfa_state)) {
         // value_ctx_failure(step->ctx, &global->values, "Behavior failure: not a final state");
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_BEHAVIOR;
@@ -383,8 +387,9 @@ static bool onestep(
         f->node = next;
         minheap_insert(global->failures, f);
     }
-
-    minheap_insert(w->results[weight], next);
+	else {
+		minheap_insert(w->results[weight], next);
+	}
 
     return true;
 }
@@ -405,6 +410,8 @@ static void make_step(
 
     // Make a copy of the context
     step.ctx = value_copy(ctx, NULL);
+
+    step.dfa_trie = node->dfa_trie;
 
     // See if we need to interrupt
     if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
@@ -907,7 +914,6 @@ uint64_t twostep(
         free(step.ctx);
         return ctx;
     }
-    step.dfa_state = node->dfa_state;
 
     if (interrupt) {
 		assert(step.ctx->trap_pc != 0);
@@ -915,7 +921,7 @@ uint64_t twostep(
         diff_dump(global, file, oldstate, sc, oldctx, step.ctx, true, false, 0, NULL);
     }
 
-    bool print_occurred = false;
+    bool print_occurred = true;         // TODO
     struct dict *infloop = NULL;        // infinite loop detector
     for (int loopcnt = 0;; loopcnt++) {
         int pc = step.ctx->pc;
@@ -1035,7 +1041,7 @@ uint64_t twostep(
 
     if (sc->ctxbag == VALUE_DICT && global->dfa != NULL &&
                     step.ctx->failure == 0 &&
-                    !dfa_is_final(global->dfa, step.dfa_state)) {
+                    !dfa_is_final(global->dfa, sc->dfa_state)) {
         // value_ctx_failure(step.ctx, &global->values, "Behavior failure: not a final state");
         struct failure *f = new_alloc(struct failure);
         f->type = FAIL_BEHAVIOR;
@@ -1330,21 +1336,6 @@ static int fail_cmp(void *f1, void *f2){
     return node_cmp(fail1->node, fail2->node);
 }
 
-void possibly_check(struct dict *possibly_cnt, struct code_t *code, int pc) {
-    const struct env_Possibly *ep = code->instrs[pc].env;
-
-    void *cnt = dict_lookup(possibly_cnt, &pc, sizeof(pc));
-    if (cnt == 0) {
-        char *loc = dict_lookup(code->code_map, &pc, sizeof(pc));
-        if (loc == NULL) {
-            printf("invalidated possibly pc=%d/%d\n", pc, ep->index);
-        }
-        else {
-            printf("invalidated possibly %s/%d\n", loc, ep->index);
-        }
-    }
-}
-
 static void do_work(struct worker *w){
 	while (!minheap_empty(w->todo)) {
 		struct node *node = minheap_getmin(w->todo);
@@ -1434,15 +1425,6 @@ void process_results(
         }
         else {
             next = *p;
-            // TODO.  The following may just be incorrect
-            if (0 && next->dfa_state != node->dfa_state &&
-                                            node->ftype == FAIL_NONE) {
-                struct failure *f = new_alloc(struct failure);
-                f->type = FAIL_BEHAVIOR;
-                f->choice = node->choice;
-                f->node = next;
-                minheap_insert(global->failures, f);
-            }
             must_free = true;
         }
 
@@ -1513,6 +1495,152 @@ char *state_string(struct state *state){
     return r;
 }
 
+// This routine removes all node that have a single incoming edge and it's
+// an "epsilon" edge (empty print log).  These are essentially useless nodes.
+// Typically about half of the nodes can be removed this way.
+static void destutter1(struct graph_t *graph){
+    for (int i = 0; i < graph->size; i++) {
+        struct node *n = graph->nodes[i];
+
+        if (n->bwd != NULL && n->bwd->next == NULL && n->bwd->nlog == 0) {
+            struct node *parent = n->bwd->node;
+
+            if (n->final) {
+                parent->final = true;
+            }
+
+            // Remove the edge from the parent
+            struct edge **pe, *e;
+            for (pe = &parent->fwd; (e = *pe) != NULL; pe = &e->next) {
+                if (e->node == n && e->nlog == 0) {
+                    *pe = e->next;
+                    free(e);
+                    break;
+                }
+            }
+
+            struct edge *next;
+            for (struct edge *e = n->fwd; e != NULL; e = next) {
+                // Move the outgoing edge to the parent.
+                next = e->next;
+                e->next = parent->fwd;
+                parent->fwd = e;
+
+                // Fix the corresponding backwards edge
+                for (struct edge *f = e->node->bwd; f != NULL; f = f->next) {
+                    if (f->node == n && f->nlog == e->nlog &&
+                            memcmp(f->log, e->log, f->nlog * sizeof(*f->log)) == 0) {
+                        f->node = parent;
+                        break;
+                    }
+                }
+            }
+            n->reachable = false;
+        }
+        else {
+            n->reachable = true;
+        }
+    }
+}
+
+static struct dict *collect_symbols(struct graph_t *graph){
+    struct dict *symbols = dict_new(0);
+    uint64_t symbol_id = 0;
+
+    for (int i = 0; i < graph->size; i++) {
+        struct node *n = graph->nodes[i];
+        if (!n->reachable) {
+            continue;
+        }
+        for (struct edge *e = n->fwd; e != NULL; e = e->next) {
+            for (int j = 0; j < e->nlog; j++) {
+                void **p = dict_insert(symbols, &e->log[j], sizeof(e->log[j]));
+                if (*p == NULL) {
+                    *p = (void *) ++symbol_id;
+                }
+            }
+        }
+    }
+    return symbols;
+}
+
+struct symbol_env {
+    FILE *out;
+    bool first;
+};
+
+static void print_symbol(void *env, const void *key, unsigned int key_size, void *value){
+    struct symbol_env *se = env;
+    const uint64_t *symbol = key;
+
+    assert(key_size == sizeof(*symbol));
+    char *p = value_json(*symbol);
+    if (se->first) {
+        se->first = false;
+    }
+    else {
+        fprintf(se->out, ",\n");
+    }
+    fprintf(se->out, "     \"%"PRIu64"\": %s", (uint64_t) value, p);
+    free(p);
+}
+
+struct print_trans_env {
+    FILE *out;
+    bool first;
+    struct dict *symbols;
+};
+
+static void print_trans_upcall(void *env, const void *key, unsigned int key_size, void *value){
+    struct print_trans_env *pte = env;
+    const uint64_t *log = key;
+    unsigned int nkeys = key_size / sizeof(uint64_t);
+    struct strbuf *sb = value;
+
+    if (pte->first) {
+        pte->first = false;
+    }
+    else {
+        fprintf(pte->out, ",\n");
+    }
+    fprintf(pte->out, "        [[");
+    for (unsigned int i = 0; i < nkeys; i++) {
+        void *p = dict_lookup(pte->symbols, &log[i], sizeof(log[i]));
+        assert(p != NULL);
+        if (i != 0) {
+            fprintf(pte->out, ",");
+        }
+        fprintf(pte->out, "%"PRIu64, (uint64_t) p);
+    }
+    fprintf(pte->out, "],[%s]]", strbuf_getstr(sb));
+    strbuf_deinit(sb);
+    free(sb);
+}
+
+static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
+    struct dict *d = dict_new(0);
+
+    fprintf(out, "      \"transitions\": [\n");
+    for (struct edge *e = edges; e != NULL; e = e->next) {
+        void **p = dict_insert(d, e->log, e->nlog * sizeof(*e->log));
+        struct strbuf *sb = *p;
+        if (sb == NULL) {
+            *p = sb = malloc(sizeof(struct strbuf));
+            strbuf_init(sb);
+            strbuf_printf(sb, "%d", e->node->id);
+        }
+        else {
+            strbuf_printf(sb, ",%d", e->node->id);
+        }
+    }
+    struct print_trans_env pte = {
+        .out = out, .first = true, .symbols = symbols
+    };
+    dict_iter(d, print_trans_upcall, &pte);
+    fprintf(out, "\n");
+    fprintf(out, "      ],\n");
+}
+
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
@@ -1563,7 +1691,7 @@ int main(int argc, char **argv){
     double timeout = gettime() + maxtime;
 
     // initialize modules
-    struct global_t *global = malloc(sizeof(struct global_t));
+    struct global_t *global = new_alloc(struct global_t);
     value_init(&global->values);
     ops_init(global);
     graph_init(&global->graph, 1024);
@@ -1574,7 +1702,6 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
-    global->possibly_cnt = dict_new(0);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -1582,6 +1709,12 @@ int main(int argc, char **argv){
         if (global->dfa == NULL) {
             exit(1);
         }
+        global->transitions = calloc(dfa_ntransitions(global->dfa), sizeof(bool));
+        struct dfa_trie *dt = new_alloc(struct dfa_trie);
+        pthread_mutex_init(&dt->lock, NULL);
+        dt->children = dict_new(0);
+        dt->dfa_state = dfa_initial(global->dfa);
+        global->dfa_trie = dt;
     }
 
     // open the HVM file
@@ -1612,7 +1745,6 @@ int main(int argc, char **argv){
     global->code = code_init_parse(&global->values, jc);
 
     // Create an initial state
-	uint64_t this = value_put_atom(&global->values, "this", 4);
     struct context *init_ctx = new_alloc(struct context);
     init_ctx->name = value_put_atom(&global->values, "__init__", 8);
     init_ctx->arg = VALUE_DICT;
@@ -1629,6 +1761,7 @@ int main(int argc, char **argv){
     state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
+    state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
     global->processes = new_alloc(uint64_t);
     *global->processes = ictx;
     global->nprocesses = 1;
@@ -1638,7 +1771,7 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
-    node->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
+    node->dfa_trie = global->dfa_trie;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -1783,7 +1916,7 @@ int main(int argc, char **argv){
                 continue;
             }
             // TODO.  In case of ctxbag, all contexts should probably be blocked
-            if (value_ctx_all_eternal(node->state->ctxbag) && value_ctx_all_eternal(node->state->stopbag)) {
+            if (node->final && value_ctx_all_eternal(node->state->stopbag)) {
                 comp->good = true;
                 continue;
             }
@@ -1906,72 +2039,43 @@ int main(int argc, char **argv){
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
         printf("No issues\n");
-        fprintf(out, "  \"issue\": \"No issues\",\n");
 
-        // Figure out how many extra "intermediate" states we need.
-        int extra = 0;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
-                if (edge->nlog > 1) {
-                    extra += edge->nlog - 1;
+        if (0 && global->dfa != NULL) {
+            int n = dfa_ntransitions(global->dfa);
+            bool warning = false;
+            for (int i = 0; i < n; i++) {
+                if (!global->transitions[i]) {
+                    printf("DFA transition %d never taken\n", i);
+                    warning = true;
                 }
             }
+            if (warning) {
+                printf("behavior warning: strict subset of specified behavior.]n");
+            }
         }
+
+        if (0 && global->dfa_trie != NULL) {
+            dfa_check_trie(global);
+        }
+
+        fprintf(out, "  \"issue\": \"No issues\",\n");
+
+        destutter1(&global->graph);
+
+        // Output the symbols;
+        struct dict *symbols = collect_symbols(&global->graph);
+        fprintf(out, "  \"symbols\": {\n");
+        struct symbol_env se = { .out = out, .first = true };
+        dict_iter(symbols, print_symbol, &se);
+        fprintf(out, "\n");
+        fprintf(out, "  },\n");
 
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
-            if (first) {
-                first = false;
-            }
-            else {
-                fprintf(out, ",\n");
-            }
-            fprintf(out, "    {\n");
-            fprintf(out, "      \"idx\": %d,\n", node->id);
-#ifdef notdef
-            fprintf(out, "      \"component\": %d,\n", node->component);
-            if (node->parent != NULL) {
-                fprintf(out, "      \"parent\": %d,\n", node->parent->id);
-            }
-            char *val = json_escape_value(node->state->vars);
-            fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
-            free(val);
-#endif
-            if (i == 0) {
-                fprintf(out, "      \"type\": \"initial\"\n");
-            }
-            else if (node->state->ctxbag == VALUE_DICT) {
-                fprintf(out, "      \"type\": \"terminal\"\n");
-            }
-            else {
-                fprintf(out, "      \"type\": \"normal\"\n");
-            }
-            fprintf(out, "    }");
-        }
-        for (int i = 0; i < extra; i++) {
-            if (first) {
-                first = false;
-            }
-            else {
-                fprintf(out, ",\n");
-            }
-            fprintf(out, "    {\n");
-            fprintf(out, "      \"idx\": \"i%d\",\n", i);
-            fprintf(out, "      \"type\": \"intermediate\"\n");
-            fprintf(out, "    }");
-        }
-        fprintf(out, "\n");
-        fprintf(out, "  ],\n");
-        fprintf(out, "  \"edges\": [\n");
-        first = true;
-        bool first_log;
-        for (int i = 0; i < global->graph.size; i++) {
-            struct node *node = global->graph.nodes[i];
-            for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+            if (node->reachable) {
                 if (first) {
                     first = false;
                 }
@@ -1979,47 +2083,72 @@ int main(int argc, char **argv){
                     fprintf(out, ",\n");
                 }
                 fprintf(out, "    {\n");
-                fprintf(out, "      \"src\": %d,\n", node->id);
-                fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+                fprintf(out, "      \"idx\": %d,\n", node->id);
+                fprintf(out, "      \"component\": %d,\n", node->component);
 #ifdef notdef
-                fprintf(out, "      \"log\": [");
-                first_log = true;
-                for (int j = 0; j < edge->nlog; j++) {
-                    if (first_log) {
-                        first_log = false;
-                        fprintf(out, "\n");
-                    }
-                    else {
-                        fprintf(out, ",\n");
-                    }
-                    char *p = json_escape_value(edge->log[j]);
-                    fprintf(out, "        \"%s\"", p);
-                    free(p);
+                if (node->parent != NULL) {
+                    fprintf(out, "      \"parent\": %d,\n", node->parent->id);
                 }
-                fprintf(out, "\n");
-                fprintf(out, "      ],\n");
+                char *val = json_escape_value(node->state->vars);
+                fprintf(out, "      \"value\": \"%s:%d\",\n", val, node->state->choosing != 0);
+                free(val);
 #endif
-                fprintf(out, "      \"print\": [");
-                first_log = true;
-                for (int j = 0; j < edge->nlog; j++) {
-                    if (first_log) {
-                        first_log = false;
-                        fprintf(out, "\n");
-                    }
-                    else {
-                        fprintf(out, ",\n");
-                    }
-                    char *p = value_json(edge->log[j]);
-                    fprintf(out, "        %s", p);
-                    free(p);
+                print_transitions(out, symbols, node->fwd);
+                if (i == 0) {
+                    fprintf(out, "      \"type\": \"initial\"\n");
                 }
-                fprintf(out, "\n");
-                fprintf(out, "      ]\n");
+                else if (node->final) {
+                    fprintf(out, "      \"type\": \"terminal\"\n");
+                }
+                else {
+                    fprintf(out, "      \"type\": \"normal\"\n");
+                }
                 fprintf(out, "    }");
             }
         }
         fprintf(out, "\n");
         fprintf(out, "  ],\n");
+#ifdef notdef
+        fprintf(out, "  \"edges\": [\n");
+        first = true;
+        bool first_log;
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            if (node->reachable) {
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {
+                    assert(edge->node->reachable);
+                    if (first) {
+                        first = false;
+                    }
+                    else {
+                        fprintf(out, ",\n");
+                    }
+                    fprintf(out, "    {\n");
+                    fprintf(out, "      \"src\": %d,\n", node->id);
+                    fprintf(out, "      \"dst\": %d,\n", edge->node->id);
+                    fprintf(out, "      \"print\": [");
+                    first_log = true;
+                    for (int j = 0; j < edge->nlog; j++) {
+                        if (first_log) {
+                            first_log = false;
+                            fprintf(out, "\n");
+                        }
+                        else {
+                            fprintf(out, ",\n");
+                        }
+                        char *p = value_json(edge->log[j]);
+                        fprintf(out, "        %s", p);
+                        free(p);
+                    }
+                    fprintf(out, "\n");
+                    fprintf(out, "      ]\n");
+                    fprintf(out, "    }");
+                }
+            }
+        }
+        fprintf(out, "\n");
+        fprintf(out, "  ],\n");
+#endif // notdef
     }
     else {
         // Find shortest "bad" path
@@ -2051,7 +2180,6 @@ int main(int argc, char **argv){
         case FAIL_BUSYWAIT:
             printf("Active busy waiting\n");
             fprintf(out, "  \"issue\": \"Active busy waiting\",\n");
-            no_issues = true;       // to report possibly stuff
             break;
         case FAIL_RACE:
             assert(bad->address != VALUE_ADDRESS);
@@ -2061,7 +2189,6 @@ int main(int argc, char **argv){
             fprintf(out, "  \"issue\": \"Data race (%s)\",\n", json);
             free(json);
             free(addr);
-            no_issues = true;       // to report possibly stuff
             break;
         default:
             panic("main: bad fail type");
@@ -2126,16 +2253,7 @@ int main(int argc, char **argv){
     fprintf(out, "}\n");
 	fclose(out);
 
-    if (no_issues) {
-        for (int i = 0; i < global->code.len; i++) {
-            if (strcmp(global->code.instrs[i].oi->name, "Possibly") == 0) {
-                possibly_check(global->possibly_cnt, &global->code, i);
-            }
-        }
-    }
-
     iface_write_spec_graph_to_file(global, "iface.gv");
-
     iface_write_spec_graph_to_json_file(global, "iface.json");
 
     free(global);

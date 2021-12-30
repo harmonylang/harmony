@@ -1099,6 +1099,9 @@ uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *f
 }
 
 bool value_ctx_all_eternal(uint64_t ctxbag) {
+    if (ctxbag == VALUE_DICT) {     // optimization
+        return true;
+    }
     int size;
     uint64_t *vals = value_get(ctxbag, &size);
     size /= sizeof(uint64_t);

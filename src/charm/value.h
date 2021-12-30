@@ -11,6 +11,7 @@ struct state {
     uint64_t stopbag;     // bag of stopped contexts
     uint64_t termbag;     // bag of terminated contexts
     uint64_t invariants;  // set of invariants that must hold
+    uint64_t dfa_state;
 };
 
 struct context {          // context value

@@ -96,7 +96,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
-	assert(keyn > 0);
+	// assert(keyn > 0);
 	int n = hash_func((const char*)key, keyn) % dict->length;
     struct dict_bucket *db = &dict->table[n];
 

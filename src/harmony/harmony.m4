@@ -6385,8 +6385,8 @@ def main():
     }
     testflag = False
     suppressOutput = False
-    charmoptions = []
     behavior = None
+    charmoptions = []
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
                 ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])

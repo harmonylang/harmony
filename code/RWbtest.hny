@@ -1,0 +1,27 @@
+import RW
+
+const NOPS = 3
+
+rw = RW.RWlock()
+
+def thread(self):
+    while choose({ False, True }):
+        if choose({ "read", "write" }) == "read":
+            print(self, "enter ra")
+            RW.read_acquire(?rw)
+            print(self, "exit ra")
+            rcs: assert (countLabel(rcs) >= 1) and (countLabel(wcs) == 0)
+            print(self, "enter rr")
+            RW.read_release(?rw)
+            print(self, "exit rr")
+        else:                       # write
+            print(self, "enter wa")
+            RW.write_acquire(?rw)
+            print(self, "exit wa")
+            wcs: assert (countLabel(rcs) == 0) and (countLabel(wcs) == 1)
+            print(self, "enter wr")
+            RW.write_release(?rw)
+            print(self, "enter wr")
+
+for i in {1..NOPS}:
+    spawn thread(i)

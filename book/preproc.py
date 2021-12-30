@@ -169,7 +169,7 @@ def nextLine(s):
             elif found == "->":
                 print("$\\rightarrow$", end="")
             elif found == "[]":
-                print("[~]", end="")
+                print("[\,]", end="")
             else:
                 print(found, end="")
             s = s[len(found):]

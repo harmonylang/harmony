@@ -1,4 +1,4 @@
-def read_hfa(file, dfa):
+def read_hfa(file, dfa, nfa):
     with open(file) as fd:
         js = json.load(fd)
         initial = js["initial"]
@@ -31,10 +31,13 @@ def read_hfa(file, dfa):
     if dfa.input_symbols < hfa.input_symbols:
         print("behavior warning: symbols missing from behavior:",
             hfa.input_symbols - dfa.input_symbols)
-    else:
-        assert dfa <= hfa
-        if dfa < hfa:
-            print("behavior warning: strict subset of specified behavior")
+        return
+    
+    print("comparing behaviors", len(dfa.states), len(hfa.states))
+    if dfa < hfa:
+        print("behavior warning: strict subset of specified behavior")
+        return
+    assert dfa == hfa
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
@@ -106,7 +109,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
     states = set()
     initial_state = None;
     final_states = set()
-    input_symbols = set()
     transitions = {}
     labels = {}
 
@@ -123,34 +125,35 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     def add_edge(src, val, dst):
         assert dst != initial_state
-        assert src not in final_states
+        # assert src not in final_states
         if val in transitions[src]:
             transitions[src][val].add(dst)
         else:
             transitions[src][val] = {dst}
 
     intermediate = 0
-    for edge in js['edges']:
-        src = str(edge["src"])
-        dst = str(edge["dst"])
-        if edge["print"] == []:
-            add_edge(src, "", dst)
-        else:
-            for e in edge["print"][:-1]:
-                symbol = json_string(e)
-                input_symbols.add(symbol)
-                labels[symbol] = e
-                inter = "s%d"%intermediate
-                intermediate += 1
-                states.add(inter)
-                transitions[inter] = {}
-                add_edge(src, symbol, inter)
-                src = inter
-            e = edge["print"][-1]
-            symbol = json_string(e)
-            add_edge(src, symbol, dst)
-            input_symbols.add(symbol)
-            labels[symbol] = e
+    symbols = js['symbols']
+    input_symbols = { json_string(v) for v in symbols.values() }
+    labels = { json_string(v):v for v in symbols.values() }
+    for s in js['nodes']:
+        for [path, dsts] in s["transitions"]:
+            for dest_node in dsts:
+                src = str(s["idx"])
+                dst = str(dest_node)
+                if path == []:
+                    add_edge(src, "", dst)
+                else:
+                    for e in path[:-1]:
+                        symbol = json_string(symbols[str(e)])
+                        inter = "s%d"%intermediate
+                        intermediate += 1
+                        states.add(inter)
+                        transitions[inter] = {}
+                        add_edge(src, symbol, inter)
+                        src = inter
+                    e = path[-1]
+                    symbol = json_string(symbols[str(e)])
+                    add_edge(src, symbol, dst)
 
     # print("states", states, file=sys.stderr)
     # print("initial", initial_state, file=sys.stderr)
@@ -177,7 +180,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             dfa = intermediate
         dfa_states = dfa.states
         (dfa_transitions,) = dfa.transitions,
-        dfa_initial_state = dfa.initial_state,
+        dfa_initial_state = dfa.initial_state
         dfa_final_states = dfa.final_states
     else:
         # Compute the epsilon closure for each state
@@ -206,6 +209,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             for nfa_state in dfa_state:
                 if nfa_state in final_states:
                     dfa_final_states.add(dfa_state)
+        print("conversion done")
 
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:
@@ -290,6 +294,6 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     if behavior != None:
         if got_automata:
-            read_hfa(behavior, dfa)
+            read_hfa(behavior, dfa, nfa)
         else:
             print("Can't check behavior subset because automata-lib is not available")

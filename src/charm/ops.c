@@ -412,33 +412,42 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 }
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t v = value_ctx_pop(&step->ctx);
-    step->log = realloc(step->log, (step->nlog + 1) * sizeof(v));
-    step->log[step->nlog++] = v;
-
+    uint64_t symbol = value_ctx_pop(&step->ctx);
+    step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
+    step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, step->dfa_state, v);
+        int nstate = dfa_step(global->dfa, state->dfa_state, symbol, global->transitions);
         if (nstate < 0) {
-            char *p = value_string(v);
+            char *p = value_string(symbol);
             value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
             free(p);
             return;
         }
-        step->dfa_state = nstate;
+        state->dfa_state = nstate;
+
+        struct dfa_trie *dt = step->dfa_trie;
+        if (dt != NULL) {
+            pthread_mutex_lock(&dt->lock);
+            void **p = dict_insert(dt->children, &symbol, sizeof(symbol));
+			struct dfa_trie *child = *p;
+            if (child != 0) {
+                assert(child->dfa_state == nstate);
+                assert(child->parent == step->dfa_trie);
+                assert(child->symbol == symbol);
+            }
+            else {
+                child = *p = new_alloc(struct dfa_trie);
+                pthread_mutex_init(&child->lock, NULL);
+                child->children = dict_new(0);
+                child->dfa_state = nstate;
+                child->parent = step->dfa_trie;
+                child->symbol = symbol;
+            }
+            step->dfa_trie = child;
+            pthread_mutex_unlock(&dt->lock);
+        }
     }
 
-    step->ctx->pc++;
-}
-
-void op_Possibly(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t v = value_ctx_pop(&step->ctx);
-    if ((v & VALUE_MASK) != VALUE_BOOL) {
-        value_ctx_failure(step->ctx, &global->values, "possibly can only be applied to bool values");
-    }
-    if (v == VALUE_TRUE) {
-        void **p = dict_insert(global->possibly_cnt, &step->ctx->pc, sizeof(step->ctx->pc));
-        (* (uint64_t *) p)++;
-    }
     step->ctx->pc++;
 }
 
@@ -1515,19 +1524,6 @@ void *init_JumpCond(struct dict *map, struct values_t *values){
     assert(cond->type == JV_MAP);
     env->cond = value_from_json(values, cond->u.map);
 
-    return env;
-}
-
-void *init_Possibly(struct dict *map, struct values_t *values){
-    struct env_Possibly *env = new_alloc(struct env_Possibly);
-
-    struct json_value *index = dict_lookup(map, "index", 5);
-    assert(index->type == JV_ATOM);
-    char *copy = malloc(index->u.atom.len + 1);
-    memcpy(copy, index->u.atom.base, index->u.atom.len);
-    copy[index->u.atom.len] = 0;
-    env->index = atoi(copy);
-    free(copy);
     return env;
 }
 
@@ -2817,7 +2813,6 @@ struct op_info op_table[] = {
 	{ "Move", init_Move, op_Move },
 	{ "Nary", init_Nary, op_Nary },
 	{ "Pop", init_Pop, op_Pop },
-	{ "Possibly", init_Possibly, op_Possibly },
 	{ "Print", init_Print, op_Print },
 	{ "Push", init_Push, op_Push },
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },

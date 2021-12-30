@@ -2,6 +2,7 @@ struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
     uint64_t symbol;             // transition symbol
     int dst;                     // destination state
+    int idy;                     // unique id for transition
 };
 
 struct dfa_state {
@@ -9,10 +10,12 @@ struct dfa_state {
     int idx;                     // name of state
     bool final;                  // terminal state
     struct dfa_transition *transitions;     // transition map
+
+    // TODO.  Maybe should make transitions a dict
 };
 
 struct dfa {
-    int nstates;
+    int nstates, ntransitions;
     int initial;
     struct dfa_state *states;
 };
@@ -120,13 +123,13 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
         assert(symbol->type == JV_MAP);
         dt->symbol = value_from_json(values, symbol->u.map);
 
+        dt->idy = dfa->ntransitions++;
+
         dt->next = dfa->states[src_state].transitions;
         dfa->states[src_state].transitions = dt;
 
         // printf("EDGE %d %d %s\n", src_state, dt->dst, value_string(dt->symbol));
     }
-
-    fclose(fp);
 
     return dfa;
 }
@@ -141,14 +144,63 @@ bool dfa_is_final(struct dfa *dfa, int state){
     return dfa->states[state].final;
 }
 
-// make a step.  Return -1 upon error
-int dfa_step(struct dfa *dfa, int current, uint64_t symbol){
+// make a step.  Return -1 upon error.  Record transition in
+// transitions if requested
+int dfa_step(struct dfa *dfa, int current, uint64_t symbol, bool *transitions){
     struct dfa_state *ds = &dfa->states[current];
 
     for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
         if (dt->symbol == symbol) {
+            if (transitions != NULL) {
+                transitions[dt->idy] = true;
+            }
             return dt->dst;
         }
     }
     return -1;
+}
+
+// TODO.  May not need this.
+int dfa_ntransitions(struct dfa *dfa){
+    return dfa->ntransitions;
+}
+
+static void dfa_dump_path(struct dfa_trie *trie){
+    if (trie->parent != NULL) {
+        dfa_dump_path(trie->parent);
+        printf(" %s ->", value_string(trie->symbol));
+    }
+}
+
+// See if each of the transitions is in the list of children.
+static bool dfa_check_missing(struct dfa_state *ds, struct dfa_trie *trie) {
+    for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
+        void *p = dict_lookup(trie->children, &dt->symbol, sizeof(dt->symbol));
+        if (p == NULL) {
+            printf("Warning: missing behavior:");
+            dfa_dump_path(trie);
+            printf(" %s\n", value_string(dt->symbol));
+            return true;
+        }
+    }
+    return false;
+}
+
+static void ddt_visit(void *env, const void *key, unsigned int key_size, void *value){
+    assert(key_size == sizeof(uint64_t));
+    queue_add(env, value);
+}
+
+void dfa_check_trie(struct global_t *global){
+    struct queue q;
+
+    queue_init(&q);
+    queue_add(&q, global->dfa_trie);
+    while (!queue_empty(&q)) {
+        struct dfa_trie *dt = queue_get(&q);
+        if (dfa_check_missing(&global->dfa->states[dt->dfa_state], dt)) {
+            break;
+        }
+        dict_iter(dt->children, ddt_visit, &q);
+    }
 }

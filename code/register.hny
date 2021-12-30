@@ -1,0 +1,10 @@
+register = None
+
+def init():
+    pass
+
+def read(uid):
+    atomically result = register
+
+def write(uid, v):
+    atomically register = v
