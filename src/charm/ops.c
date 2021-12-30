@@ -428,20 +428,20 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         struct dfa_trie *dt = step->dfa_trie;
         if (dt != NULL) {
             pthread_mutex_lock(&dt->lock);
-            struct dfa_trie *dt;
             void **p = dict_insert(dt->children, &v, sizeof(v));
-            if ((dt = *p) != 0) {
-                assert(dt->dfa_state == nstate);
-                assert(dt->parent == step->dfa_trie);
+			struct dfa_trie *child = *p;
+            if (child != 0) {
+                assert(child->dfa_state == nstate);
+                assert(child->parent == step->dfa_trie);
             }
             else {
-                dt = *p = new_alloc(struct dfa_trie);
-                pthread_mutex_init(&dt->lock, NULL);
-                dt->children = dict_new(0);
-                dt->dfa_state = nstate;
-                dt->parent = step->dfa_trie;
+                child = *p = new_alloc(struct dfa_trie);
+                pthread_mutex_init(&child->lock, NULL);
+                child->children = dict_new(0);
+                child->dfa_state = nstate;
+                child->parent = step->dfa_trie;
             }
-            step->dfa_trie = dt;
+            step->dfa_trie = child;
             pthread_mutex_unlock(&dt->lock);
         }
     }
