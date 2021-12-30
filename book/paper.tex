@@ -6074,8 +6074,10 @@ much more efficient.
 \label{fig:abd}
 \end{figure}
 
-A \emph{register} is an object that you can read or write.  In a distributed
-system, it can be useful to have registers that are shared.
+A \emph{register} is an object that you can read or write.
+In a distributed system, examples include a shared file system
+(each file is a register) or a key/value store (each key corresponds
+to a register).
 A simple shared register implementation
 would have its value maintained by a server, and clients can read or write the
 shared register by exchanging messages with the server.
