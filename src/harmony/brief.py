@@ -121,6 +121,7 @@ class Brief:
 
     def run(self, outputfiles, behavior):
         with open(outputfiles["hco"]) as f:
+            print("Loading", outputfiles["hco"])
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":

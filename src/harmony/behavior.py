@@ -33,12 +33,11 @@ def read_hfa(file, dfa, nfa):
             hfa.input_symbols - dfa.input_symbols)
         return
     
+    print("comparing behaviors", len(dfa.states), len(hfa.states))
     if dfa < hfa:
         print("behavior warning: strict subset of specified behavior")
         return
-
-    if dfa == hfa:
-        return
+    assert dfa == hfa
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
