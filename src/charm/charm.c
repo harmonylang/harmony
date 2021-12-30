@@ -1702,8 +1702,11 @@ int main(int argc, char **argv){
             exit(1);
         }
         global->transitions = calloc(dfa_ntransitions(global->dfa), sizeof(bool));
-        global->dfa_trie = new_alloc(struct dfa_trie);
-        global->dfa_trie->children = dict_new(0);
+        struct dfa_trie *dt = new_alloc(struct dfa_trie);
+        pthread_mutex_init(&dt->lock, NULL);
+        dt->children = dict_new(0);
+        dt->dfa_state = dfa_initial(global->dfa);
+        global->dfa_trie = dt;
     }
 
     // open the HVM file
@@ -2020,7 +2023,7 @@ int main(int argc, char **argv){
     if (no_issues) {
         printf("No issues\n");
 
-        if (global->dfa != NULL) {
+        if (0 && global->dfa != NULL) {
             int n = dfa_ntransitions(global->dfa);
             bool warning = false;
             for (int i = 0; i < n; i++) {
@@ -2035,8 +2038,8 @@ int main(int argc, char **argv){
         }
 
         if (global->dfa_trie != NULL) {
-            printf("DFA TRIE:\n");
-            dfa_dump_trie(global);
+            printf("Checking DFA trie\n");
+            dfa_check_trie(global);
         }
 
         fprintf(out, "  \"issue\": \"No issues\",\n");

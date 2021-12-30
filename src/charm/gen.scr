@@ -5,6 +5,7 @@ cat hashdict.h
 cat hashset.h
 cat json.h
 cat minheap.h
+cat queue.h
 cat dot.h
 cat global.h
 cat value.h
@@ -25,6 +26,7 @@ cat hashset.c
 cat json.c
 cat ops.c
 cat minheap.c
+cat queue.c
 cat value.c
 cat code.c
 cat graph.c

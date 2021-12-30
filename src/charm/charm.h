@@ -10,10 +10,6 @@
 
 #define CHUNKSIZE   (1 << 12)
 
-struct dfa_trie {
-    struct dict *children;      // symbol to child mapping
-};
-
 struct global_t {
     struct code_t code;
     struct values_t values;
