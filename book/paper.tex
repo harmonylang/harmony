@@ -3848,6 +3848,51 @@ if it acquired the lock for reading and the same for writing.
 
 \begin{figure}
 \begin{code}
+<{:input:../code/RWcheat.hny}>
+\end{code}
+\caption{\harmonylink{code/RWcheat.hny} "Cheating" reader/writer lock}
+\label{fig:rwcheat}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+<{:input:../code/RWbtest.hny}>
+\end{code}
+\caption{\harmonylink{code/RWbtest.hny} A behavioral test of reader/writer locks}
+\label{fig:rwbtest}
+\end{figure}
+
+A problem with this test is that it does not find a problem
+with an implementation like the one in \autoref{fig:rwcheat}.
+This implementation implements a reader/writer lock as an ordinary
+lock, and thus lets only one thread in the critical section at a time.
+In some sense, the implementation is correct because it satisfies
+the requirements, but it is clearly not a desirable implementation.
+For a case like this one, it is better to compare behaviors between
+the specification and the implementation.
+
+\autoref{fig:rwbtest} is the same test as \autoref{fig:rwtest} but
+prints identifying information before and every lock operation.
+Now we can compare behaviors as follows:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -o rw.hfa -o rwspec.png -cNOPS=2 code/RWbtest.hny
+$ harmony -B rw.hfa -o rwimpl.png -cNOPS=2 -m RW=RWcheat code/RWbtest.hny
+\end{verbatim}
+\end{code}
+
+The second command will print a warning that there are behaviors in the
+specification that are not achieved by the implementation.
+We set <{NOPS}> to 2 to make the behaviors relatively small and easier
+to compare.
+It is now possible to compare the outputs in \texttt{rwspec.png}
+and \texttt{rwimpl.png} and see what behaviors are allowed by the
+specification that are not allowed by the implementation.
+(Harmony does not yet have a mechanism to do this automatically.)
+
+\begin{figure}
+\begin{code}
 <{:input:../code/boundedbuffer.hny}>
 \end{code}
 \caption{\harmonylink{code/boundedbuffer.hny} Bounded buffer specification}
