@@ -13,7 +13,7 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.HarmonyParser import HarmonyParser
-from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, check_charm_model_checker_status_is_ok
+from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.HarmonyLexer import HarmonyLexer
@@ -201,6 +201,7 @@ args.add_argument("-i", "--intf", type=str, metavar="expr", help="specify in int
 args.add_argument("-s", action="store_true", help="silent (do not print periodic status updates)")
 args.add_argument("-v", help="print version number")
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
+args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker.")
 
 # Internal flags
 args.add_argument("-b", action="store_true", help=argparse.SUPPRESS)
@@ -211,7 +212,6 @@ args.add_argument("-j", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-o", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--suppress", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--model-checker", type=pathlib.Path, nargs=1, help=argparse.SUPPRESS)
-args.add_argument("--grammar", action="store_true", help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
 
@@ -219,12 +219,14 @@ args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*',
 def main():
     ns = args.parse_args()
 
-    if ns.grammar:
-        for f in ns.files:
-            print("Parsing", f)
-            parse(str(f))
-            print()
-        return
+    if ns.build_model_checker:
+        successfully_built = build_model_checker()
+        if successfully_built:
+            print("Successfully built model checker")
+            return 0
+        else:
+            print("Failed to build model checker")
+            return 1
 
     if not check_charm_model_checker_status_is_ok():
         return 1
