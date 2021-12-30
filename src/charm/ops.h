@@ -17,6 +17,7 @@ struct step {
     struct access_info *ai;
     uint64_t *log;
     int nlog;
+    struct dfa_trie *dfa_trie;
 };
 
 struct op_info {

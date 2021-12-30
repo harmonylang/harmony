@@ -74,6 +74,9 @@ struct node {
 
     // NFA compression
     bool reachable;
+
+    // DFA
+    struct dfa_trie *dfa_trie;
 };
 
 struct failure {

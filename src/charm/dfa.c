@@ -2,6 +2,7 @@ struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
     uint64_t symbol;             // transition symbol
     int dst;                     // destination state
+    int idy;                     // unique id for transition
 };
 
 struct dfa_state {
@@ -12,7 +13,7 @@ struct dfa_state {
 };
 
 struct dfa {
-    int nstates;
+    int nstates, ntransitions;
     int initial;
     struct dfa_state *states;
 };
@@ -120,6 +121,8 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
         assert(symbol->type == JV_MAP);
         dt->symbol = value_from_json(values, symbol->u.map);
 
+        dt->idy = dfa->ntransitions++;
+
         dt->next = dfa->states[src_state].transitions;
         dfa->states[src_state].transitions = dt;
 
@@ -141,14 +144,22 @@ bool dfa_is_final(struct dfa *dfa, int state){
     return dfa->states[state].final;
 }
 
-// make a step.  Return -1 upon error
-int dfa_step(struct dfa *dfa, int current, uint64_t symbol){
+// make a step.  Return -1 upon error.  Record transition in
+// transitions if requested
+int dfa_step(struct dfa *dfa, int current, uint64_t symbol, bool *transitions){
     struct dfa_state *ds = &dfa->states[current];
 
     for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
         if (dt->symbol == symbol) {
+            if (transitions != NULL) {
+                transitions[dt->idy] = true;
+            }
             return dt->dst;
         }
     }
     return -1;
+}
+
+int dfa_ntransitions(struct dfa *dfa){
+    return dfa->ntransitions;
 }

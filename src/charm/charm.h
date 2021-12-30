@@ -10,6 +10,10 @@
 
 #define CHUNKSIZE   (1 << 12)
 
+struct dfa_trie {
+    struct dict *children;      // symbol to child mapping
+};
+
 struct global_t {
     struct code_t code;
     struct values_t values;
@@ -22,9 +26,9 @@ struct global_t {
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
-#ifdef PRINT_LOG
-    uint64_t printlog;           // atom for __log__
-#endif
+    bool *transitions;           // keeps track of which transitions taken
+
+    struct dfa_trie *dfa_trie;
 };
 
 #endif //SRC_CHARM_H

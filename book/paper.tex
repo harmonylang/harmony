@@ -6004,10 +6004,10 @@ much more efficient.
 
 \begin{figure}
 \begin{code}
-<{:input:../code/abd.hny}>
+<{:input:../code/register.hny}>
 \end{code}
-\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register}
-\label{fig:abd}
+\caption{\harmonylink{code/register.hny} An atomic read/write register}
+\label{fig:register}
 \end{figure}
 
 \begin{figure}
@@ -6019,6 +6019,14 @@ much more efficient.
 \end{code}
 \caption{\harmonylink{code/abdtest.hny} Testing the code in \autoref{fig:abd}}
 \label{fig:abdtest}
+\end{figure}
+
+\begin{figure}
+\begin{code}
+<{:input:../code/abd.hny}>
+\end{code}
+\caption{\harmonylink{code/abd.hny} An implementation of a replicated atomic read/write register}
+\label{fig:abd}
 \end{figure}
 
 A \emph{register} is an object that you can read or write.  In a distributed
@@ -6284,7 +6292,7 @@ $ harmony -B consensus.hfa code/bosco.hny
 \end{verbatim}
 \end{code}
 
-You will note that the second command prints a warning:
+Note that the second command prints a warning:
 ``\texttt{behavior warning: strict subset of specified behavior}.''
 Thus, the set of behaviors that our algorithm generates is a subset
 of the behavior that the specification allows.

@@ -1,101 +1,3 @@
-def read_hfa(file, dfa, nfa):
-    with open(file) as fd:
-        js = json.load(fd)
-        initial = js["initial"]
-        states = { "{}" }
-        final = set()
-        symbols = set()
-        for e in js["edges"]:
-            symbol = json_string(e["symbol"])
-            symbols.add(symbol)
-        transitions = { "{}": { s: "{}" for s in symbols } }
-        for n in js["nodes"]:
-            idx = n["idx"]
-            states.add(idx)
-            if n["type"] == "final":
-                final.add(idx)
-            transitions[idx] = { s: "{}" for s in symbols }
-        for e in js["edges"]:
-            symbol = json_string(e["symbol"])
-            transitions[e["src"]][symbol] = e["dst"]
-
-    hfa = DFA(
-        states=states,
-        input_symbols=symbols,
-        transitions=transitions,
-        initial_state=initial,
-        final_states=final
-    )
-
-    assert dfa.input_symbols <= hfa.input_symbols
-    if dfa.input_symbols < hfa.input_symbols:
-        print("behavior warning: symbols missing from behavior:",
-            hfa.input_symbols - dfa.input_symbols)
-        return
-    
-    if dfa < hfa:
-        print("behavior warning: strict subset of specified behavior")
-        return
-
-    if dfa == hfa:
-        return
-
-    print("behavior error: got a bad behavior")
-    diff = dfa.difference(hfa)
-
-    # find the shortest path to a final state using BFS
-    final = None
-    parents = { diff.initial_state: None }
-    q = [ diff.initial_state ]
-    while q != []:
-        current = q.pop(0)
-        for (symbol, next) in diff.transitions[current].items():
-            if next not in parents:
-                parents[next] = (current, symbol)
-                if next in diff.final_states:
-                    final = next
-                    break
-                q.append(next)
-    assert final != None
-    path = []
-    while parents[final] != None:
-        (state, symbol) = parents[final]
-        path.append(symbol)
-        final = state
-    path.reverse()
-    print("==>", path)
-
-    # now figure out how to follow this path in the original NFA
-    # use BFS to find it
-    final = None
-    q = [ (nfa.initial_state, 0) ]
-    parents = { nfa.initial_state: None }
-    while q != []:
-        (current, index) = q.pop(0)
-        if index == len(path):
-            final = current
-            break
-        for (symbol, next) in nfa.transitions[current].items():
-            if symbol == '':
-                for n in next:
-                    if n not in parents:
-                        parents[n] = (current, symbol)
-                        q.append((n, index))
-            elif symbol == path[index]:
-                for n in next:
-                    if n not in parents:
-                        parents[n] = (current, symbol)
-                        q.append((n, index + 1))
-    assert final != None
-    path = []
-    while parents[final] != None:
-        (state, symbol) = parents[final]
-        path.append((state, symbol))
-        final = state
-    path.reverse()
-    for state, symbol in path:
-        print("-->", state, symbol)
-
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
     graph = pydot.Dot(graph_type='digraph', rankdir='LR')
@@ -159,8 +61,8 @@ def eps_closure(states, transitions, current):
     eps_closure_rec(states, transitions, current, x)
     return frozenset(x)
 
-def behavior_parse(js, minify, outputfiles, behavior):
-    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
+def behavior_parse(js, minify, outputfiles):
+    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None:
         return
 
     states = set()
@@ -190,8 +92,8 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
     intermediate = 0
     symbols = js['symbols']
-    labels = { k:json_string(v) for k,v in symbols.items() }
-    input_symbols = set(labels.values())
+    input_symbols = { json_string(v) for v in symbols.values() }
+    labels = { json_string(v):v for v in symbols.values() }
     for s in js['nodes']:
         for [path, dsts] in s["transitions"]:
             for dest_node in dsts:
@@ -348,9 +250,3 @@ def behavior_parse(js, minify, outputfiles, behavior):
             assert outputfiles["gv"] != None
             subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
                                 outputfiles["gv"] ])
-
-    if behavior != None:
-        if got_automata:
-            read_hfa(behavior, dfa, nfa)
-        else:
-            print("Can't check behavior subset because automata-lib is not available")

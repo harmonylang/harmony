@@ -415,23 +415,8 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     uint64_t v = value_ctx_pop(&step->ctx);
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(v));
     step->log[step->nlog++] = v;
-
-#ifdef PRINTLOG
-    // Add to the print log in the state
-    uint64_t pl = value_dict_load(state->vars, global->printlog);
-    int size;
-    uint64_t *indices = value_copy(pl, &size);
-    indices = realloc(indices, size + 2 * sizeof(uint64_t));
-    size /= sizeof(uint64_t);
-    indices[size] = (size << VALUE_BITS) | VALUE_INT;
-    indices[size + 1] = v;
-    size += 2;
-    state->vars = value_dict_store(&global->values, state->vars, global->printlog,
-        value_put_dict(&global->values, indices, size * sizeof(uint64_t)));
-#endif
-
     if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, state->dfa_state, v);
+        int nstate = dfa_step(global->dfa, state->dfa_state, v, global->transitions);
         if (nstate < 0) {
             char *p = value_string(v);
             value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
@@ -439,6 +424,17 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
             return;
         }
         state->dfa_state = nstate;
+    }
+
+    struct dfa_trie *dt = step->dfa_trie;
+    if (dt != NULL) {
+        void **p = dict_insert(dt->children, &v, sizeof(v));
+        if (*p != 0) {
+            step->dfa_trie = *p;
+        }
+        else {
+            step->dfa_trie = *p = new_alloc(struct dfa_trie);
+        }
     }
 
     step->ctx->pc++;

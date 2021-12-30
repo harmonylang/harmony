@@ -348,6 +348,8 @@ static bool onestep(
     next->len = node->len + weight;
     next->steps = node->steps + loopcnt;
     next->weight = weight;
+
+    // TODO.  Probably shouldn't set this until very end
     next->final = value_ctx_all_eternal(sc->ctxbag);
 
     next->ai = step->ai;
@@ -356,6 +358,9 @@ static bool onestep(
     next->nlog = step->nlog;
     step->log = NULL;
     step->nlog = 0;
+
+    next->dfa_trie = step->dfa_trie;
+    step->dfa_trie = NULL;
 
     if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -397,6 +402,8 @@ static void make_step(
 
     // Make a copy of the context
     step.ctx = value_copy(ctx, NULL);
+
+    step.dfa_trie = node->dfa_trie;
 
     // See if we need to interrupt
     if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
@@ -1626,6 +1633,25 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     fprintf(out, "      ],\n");
 }
 
+static void ddt_visit(void *env, const void *key, unsigned int key_size, void *value){
+    uint64_t level = (uint64_t) env;
+    assert(key_size == sizeof(uint64_t));
+    const uint64_t *symbol = key;
+    struct dfa_trie *dt = value;
+
+    for (int i = 0; i < level; i++) {
+        printf("    ");
+    }
+    char *p = value_string(*symbol);
+    printf("%s\n", p);
+    free(p);
+    dict_iter(dt->children, ddt_visit, (void *) (level + 1));
+}
+
+static void dump_dfa_trie(struct dfa_trie *dt, uint64_t level){
+    dict_iter(dt->children, ddt_visit, (void *) level);
+}
+
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
@@ -1694,6 +1720,9 @@ int main(int argc, char **argv){
         if (global->dfa == NULL) {
             exit(1);
         }
+        global->transitions = calloc(dfa_ntransitions(global->dfa), sizeof(bool));
+        global->dfa_trie = new_alloc(struct dfa_trie);
+        global->dfa_trie->children = dict_new(0);
     }
 
     // open the HVM file
@@ -1755,6 +1784,7 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
+    node->dfa_trie = global->dfa_trie;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -2013,6 +2043,26 @@ int main(int argc, char **argv){
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
         printf("No issues\n");
+
+        if (global->dfa != NULL) {
+            int n = dfa_ntransitions(global->dfa);
+            bool warning = false;
+            for (int i = 0; i < n; i++) {
+                if (!global->transitions[i]) {
+                    printf("DFA transition %d never taken\n", i);
+                    warning = true;
+                }
+            }
+            if (warning) {
+                printf("behavior warning: strict subset of specified behavior.]n");
+            }
+        }
+
+        if (global->dfa_trie != NULL) {
+            printf("DFA TRIE:\n");
+            dump_dfa_trie(global->dfa_trie, 0);
+        }
+
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
         destutter1(&global->graph);
