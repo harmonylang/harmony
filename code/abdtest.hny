@@ -15,6 +15,6 @@ def writer(i):
         
 register.init()
 for i in { 1 .. NREADERS }:
-    spawn reader("reader", i)
+    spawn reader(i)
 for i in { 1 .. NWRITERS }:
-    spawn writer("writer", i)
+    spawn writer(-i)
