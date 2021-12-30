@@ -349,9 +349,6 @@ static bool onestep(
     next->steps = node->steps + loopcnt;
     next->weight = weight;
 
-    // TODO.  Probably shouldn't set this until very end
-    next->final = value_ctx_all_eternal(sc->ctxbag);
-
     next->ai = step->ai;
     step->ai = NULL;
     next->log = step->log;
@@ -1886,7 +1883,7 @@ int main(int argc, char **argv){
         // find the strongly connected components
         int ncomponents = graph_find_scc(&global->graph);
 
-        // mark the ones that are good
+        // mark the components that are "good" because they have a way out
         struct component *components = calloc(ncomponents, sizeof(*components));
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
@@ -1899,16 +1896,28 @@ int main(int argc, char **argv){
             if (comp->good) {
                 continue;
             }
-            // TODO.  In case of ctxbag, all contexts should probably be blocked
-            if (node->final && value_ctx_all_eternal(node->state->stopbag)) {
-                comp->good = true;
-                continue;
-            }
+            // if this component has a way out, it is good
             for (struct edge *edge = node->fwd;
                             edge != NULL && !comp->good; edge = edge->next) {
                 if (edge->node->component != node->component) {
                     comp->good = true;
+                    break;
                 }
+            }
+        }
+
+        // components that have only one state with only eternal threads
+        // are also good
+        for (int i = 0; i < ncomponents; i++) {
+            struct component *comp = &components[i];
+            assert(comp->size > 0);
+            if (comp->size > 1) {
+                continue;
+            }
+            struct node *node = global->graph.nodes[comp->representative];
+            if (value_ctx_all_eternal(node->state->ctxbag)) {
+                comp->good = true;
+                node->final = true;
             }
         }
 
