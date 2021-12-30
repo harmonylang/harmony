@@ -380,8 +380,9 @@ static bool onestep(
         f->node = next;
         minheap_insert(global->failures, f);
     }
-
-    minheap_insert(w->results[weight], next);
+	else {
+		minheap_insert(w->results[weight], next);
+	}
 
     return true;
 }
