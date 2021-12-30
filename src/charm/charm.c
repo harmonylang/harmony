@@ -1894,7 +1894,8 @@ int main(int argc, char **argv){
             if (value_ctx_all_eternal(node->state->ctxbag)) {
                 comp->good = true;
                 node->final = true;
-                if (!dfa_is_final(global->dfa, node->state->dfa_state)) {
+                if (global->dfa != NULL &&
+						!dfa_is_final(global->dfa, node->state->dfa_state)) {
                     struct failure *f = new_alloc(struct failure);
                     f->type = FAIL_BEHAVIOR;
                     f->choice = node->choice;
