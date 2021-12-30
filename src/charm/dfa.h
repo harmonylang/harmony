@@ -1,6 +1,7 @@
 struct dfa_trie {
     pthread_mutex_t lock;
     struct dfa_trie *parent;
+    uint64_t symbol;            // invalid if parent == NULL
     int dfa_state;
     struct dict *children;      // symbol to child mapping
 };

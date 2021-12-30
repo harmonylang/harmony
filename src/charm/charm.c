@@ -2038,7 +2038,6 @@ int main(int argc, char **argv){
         }
 
         if (global->dfa_trie != NULL) {
-            printf("Checking DFA trie\n");
             dfa_check_trie(global);
         }
 

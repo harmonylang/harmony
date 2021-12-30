@@ -165,14 +165,25 @@ int dfa_ntransitions(struct dfa *dfa){
     return dfa->ntransitions;
 }
 
+static void dfa_dump_path(struct dfa_trie *trie){
+    if (trie->parent != NULL) {
+        dfa_dump_path(trie->parent);
+        printf(" %s ->", value_string(trie->symbol));
+    }
+}
+
 // See if each of the transitions is in the list of children.
-static void dfa_check_missing(struct dfa_state *ds, struct dict *children){
+static bool dfa_check_missing(struct dfa_state *ds, struct dfa_trie *trie) {
     for (struct dfa_transition *dt = ds->transitions; dt != NULL; dt = dt->next) {
-        void *p = dict_lookup(children, &dt->symbol, sizeof(dt->symbol));
+        void *p = dict_lookup(trie->children, &dt->symbol, sizeof(dt->symbol));
         if (p == NULL) {
-            printf("MISSING TRANSITION ON %s\n", value_string(dt->symbol));
+            printf("Warning: missing behavior:");
+            dfa_dump_path(trie);
+            printf(" %s\n", value_string(dt->symbol));
+            return true;
         }
     }
+    return false;
 }
 
 static void ddt_visit(void *env, const void *key, unsigned int key_size, void *value){
@@ -187,7 +198,9 @@ void dfa_check_trie(struct global_t *global){
     queue_add(&q, global->dfa_trie);
     while (!queue_empty(&q)) {
         struct dfa_trie *dt = queue_get(&q);
-        dfa_check_missing(&global->dfa->states[dt->dfa_state], dt->children);
+        if (dfa_check_missing(&global->dfa->states[dt->dfa_state], dt)) {
+            break;
+        }
         dict_iter(dt->children, ddt_visit, &q);
     }
 }
