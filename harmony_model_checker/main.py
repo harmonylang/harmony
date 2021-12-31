@@ -24,8 +24,8 @@ def build_parser(progam_input):
     lexer = HarmonyLexer(progam_input)
     parser = HarmonyParser(None)
 
-    lexer.removeErrorListeners()
-    parser.removeErrorListeners()
+    # lexer.removeErrorListeners()
+    # parser.removeErrorListeners()
 
     stream = HarmonyTokenStream(lexer, parser)
     parser._input = stream
@@ -55,6 +55,7 @@ def load_file(filename: str, scope: Scope, code: Code):
         files[filename] = f.read().split("\n")
 
     ast = parse(filename)
+    print(ast)
     if ast is None:
         raise HarmonyCompilerError(
             message="Unknown error: unable to parse Harmony file",

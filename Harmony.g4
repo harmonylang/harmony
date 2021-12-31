@@ -260,7 +260,7 @@ simple_stmt_block:
 ;
 
 normal_block:
-                     // handles the case of "dummy blocks"
+    // handles the case of "dummy blocks"
     INDENT (block_stmts | INDENT block) DEDENT (SEMI_COLON NL)?
 ;
 
@@ -307,6 +307,7 @@ stmt: label? ATOMICALLY? (
         | one_line_stmt
         | compound_stmt
         | import_stmt
+        | block
     );
 
 COMMENT_START: '#';
