@@ -1604,6 +1604,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_iter(d, print_trans_upcall, &pte);
     fprintf(out, "\n");
     fprintf(out, "      ],\n");
+    dict_delete(d);
 }
 
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
