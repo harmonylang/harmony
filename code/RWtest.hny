@@ -1,6 +1,6 @@
 import RW
 
-const NOPS = 4
+const NOPS = 3
 
 rw = RW.RWlock()
 
