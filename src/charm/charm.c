@@ -1866,7 +1866,12 @@ int main(int argc, char **argv){
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
-                comp->representative = i;
+                comp->rep = node;
+                comp->all_same = value_ctx_all_eternal(node->state->ctxbag);
+            }
+            else if (node->state->vars != comp->rep->state->vars ||
+                        !value_ctx_all_eternal(node->state->ctxbag)) {
+                comp->all_same = false;
             }
             comp->size++;
             if (comp->good) {
@@ -1882,17 +1887,23 @@ int main(int argc, char **argv){
             }
         }
 
-        // components that have only one state with only eternal threads
-        // are also good
+        // components that have only one shared state and only eternal
+        // threads are good because it means all its threads are blocked
         for (int i = 0; i < ncomponents; i++) {
             struct component *comp = &components[i];
             assert(comp->size > 0);
-            if (comp->size > 1) {
-                continue;
-            }
-            struct node *node = global->graph.nodes[comp->representative];
-            if (value_ctx_all_eternal(node->state->ctxbag)) {
+            if (!comp->good && comp->all_same) {
                 comp->good = true;
+                comp->final = true;
+            }
+        }
+
+        // Look for states in final components
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+			assert(node->component < ncomponents);
+            struct component *comp = &components[node->component];
+            if (comp->final) {
                 node->final = true;
                 if (global->dfa != NULL &&
 						!dfa_is_final(global->dfa, node->state->dfa_state)) {

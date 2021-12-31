@@ -11,7 +11,9 @@
 struct component {
     bool good;              // terminating or out-going edge
     int size;               // #states
-    int representative;     // lowest numbered state in the component
+    struct node *rep;       // lowest numbered state in the component
+    bool all_same;          // shared state in component is the same
+    bool final;             // all states in this component are final
 };
 
 struct access_info {
