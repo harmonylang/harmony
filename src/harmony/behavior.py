@@ -1,3 +1,12 @@
+# an error state is a non-final state all of whose outgoing transitions
+# point only to itself
+def find_error_states(transitions):
+    error_states = set()
+    for s, d in transitions.items():
+        if all(v == s for v in d.values()):
+            error_states.add(s)
+    return error_states
+
 def read_hfa(file, dfa, nfa):
     with open(file) as fd:
         js = json.load(fd)
@@ -36,6 +45,8 @@ def read_hfa(file, dfa, nfa):
     print("comparing behaviors", len(dfa.states), len(hfa.states))
     if dfa < hfa:
         print("behavior warning: strict subset of specified behavior")
+        diff = hfa - dfa
+        behavior_show_diagram(diff, "diff.png")
         return
     assert dfa == hfa
 
@@ -45,13 +56,14 @@ def behavior_show_diagram(dfa, path=None):
     nodes = {}
     rename = {}
     next_idx = 0
+    error_states = find_error_states(dfa.transitions)
     for state in dfa.states:
         if state in rename:
             idx = rename[state]
         else:
             rename[state] = idx = next_idx
             next_idx += 1
-        if state == "{}":
+        if state in error_states:
             continue
         if state == dfa.initial_state:
             # color start state with green
@@ -76,7 +88,7 @@ def behavior_show_diagram(dfa, path=None):
     # adding edges
     for from_state, lookup in dfa.transitions.items():
         for to_label, to_state in lookup.items():
-            if to_state != '{}' and to_label != "":
+            if to_state not in error_states and to_label != "":
                 graph.add_edge(pydot.Edge(
                     nodes[from_state],
                     nodes[to_state],
@@ -85,8 +97,6 @@ def behavior_show_diagram(dfa, path=None):
     if path:
         graph.write_png(path)
     return graph
-
-error_state = "{}" if got_automata else frozenset({})
 
 def eps_closure_rec(states, transitions, current, output):
     if current in output:
@@ -210,6 +220,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                 if nfa_state in final_states:
                     dfa_final_states.add(dfa_state)
         print("conversion done")
+    dfa_error_states = find_error_states(dfa_transitions)
 
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:
@@ -221,7 +232,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("  \"nodes\": [", file=fd)
             first = True
             for s in dfa_states:
-                if s == error_state:
+                if s in dfa_error_states:
                     continue
                 if first:
                     first = False
@@ -242,7 +253,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             first = True
             for (src, edges) in dfa_transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != error_state:
+                    if dst not in dfa_error_states:
                         if first:
                             first = False
                         else:
@@ -265,7 +276,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("digraph {", file=fd)
             print("  rankdir = \"LR\"", file=fd)
             for s in dfa_states:
-                if s == error_state:
+                if s in dfa_error_states:
                     continue
                 if s == dfa_initial_state:
                     if s in dfa_final_states:
@@ -280,7 +291,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
 
             for (src, edges) in dfa_transitions.items():
                 for (input, dst) in edges.items():
-                    if dst != error_state:
+                    if dst not in dfa_error_states:
                         print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)), file=fd)
             print("}", file=fd)
 
