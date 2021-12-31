@@ -1868,10 +1868,12 @@ int main(int argc, char **argv){
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
                 comp->rep = node;
-                comp->all_same = value_ctx_all_eternal(node->state->ctxbag);
+                comp->all_same = value_ctx_all_eternal(node->state->ctxbag)
+                    && value_ctx_all_eternal(node->state->stopbag);
             }
             else if (node->state->vars != comp->rep->state->vars ||
-                        !value_ctx_all_eternal(node->state->ctxbag)) {
+                        !value_ctx_all_eternal(node->state->ctxbag) ||
+                        !value_ctx_all_eternal(node->state->stopbag)) {
                 comp->all_same = false;
             }
             comp->size++;
