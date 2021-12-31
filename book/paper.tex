@@ -1561,7 +1561,7 @@ go by very quickly.
 
 Hopefully you have started thinking of how to solve the concurrency
 problem and you may already have prototyped some solutions.
-In this chapter we will go through a few reasonable but broken attempts.
+In this chapter, we will go through a few reasonable but broken attempts.
 At the heart of the problem is that we would like make sure that, when
 the <{count}> variable is being updated, no other thread is
 trying to do the same thing.  This is called a \emph{critical section}
@@ -6442,7 +6442,7 @@ Implement this algorithm.
 
 Paxos~\cite{Paxos} is the most well-known family of consensus protocols for
 environments in which few or no assumptions are made about timing.
-In this chapter we present a basic version of a Paxos protocol, one that is
+In this chapter, we present a basic version of a Paxos protocol, one that is
 \emph{single-decree} (only tries to make a single decision).
 It uses two kinds of processors: \emph{leaders} and \emph{acceptors}.
 In order to tolerate <{F}> crash failures, you need at least <{F}> + 1 leaders
@@ -6464,7 +6464,7 @@ messages.
 
 \autoref{fig:paxos1} and \autoref{fig:paxos2} contain the code for
 this Paxos protocol.  Paxos is perhaps best understood starting
-with the second phase.  At the end of the first phase the leader
+with the second phase.  At the end of the first phase, the leader
 broadcasts a \texttt{2.A} message (Phase 2, Type A) to the acceptors
 containing the ballot number and a proposal and then waits for
 <{N - F}> matching \texttt{2.B} responses from the
@@ -6484,8 +6484,8 @@ also contains a set \emph{received} that contains (ballot, phase)
 tuples identifiying all rounds that the ballot has already participated
 in.  An acceptor waits for a message for a round that is not in
 \emph{received}.  If its ballot number is higher than what it has
-seen before, the acceptor moves into that ballot.  If the phase is
-2, then the acceptor accepts the proposal and remembers when it did
+seen before, the acceptor moves into that ballot.  If the phase is~2,
+then the acceptor accepts the proposal and remembers when it did
 so by saving the (ballot, proposal) tuple in <{last_accepted}>.
 In all cases, the acceptor responds with the current values of
 <{ballot}> and <{last_accepted}>.
@@ -6499,16 +6499,25 @@ is free to choose its own proposal.  Otherwise the leader updates
 its proposal with the one corresponding to the highest ballot number.
 The leader then moves on to the second round.
 
-In the initialization, the \texttt{proposals} variable is initialized
-to either $[\mathbf{False}, \mathbf{False}]$ or
-to $[\mathbf{True}, \mathbf{False}]$ (in case $\texttt{NBALLOTS} = 2$).
-The other combinations of <{True}> and <{False}> are symmetric,
-so there is no need to run the model checker through those scenarios as
-well, halving the running time.
+To run and check the Paxos code, do the following (leveraging the
+consensus specification of \autoref{fig:consensus}):
+\begin{code}
+\begin{verbatim}
+$ harmony -o consensus.hfa -cN=2 code/consensus.hny
+$ harmony -B consensus.hfa code/paxos.hny
+\end{verbatim}
+\end{code}
+
+You should get a warning that our implementation of Paxos does not
+generate all possible behaviors.
+This is because we only run the protocol for a finite number of ballots,
+and therefore at least one of the ballots will be successful.
+With an unlimited number of ballots, Paxos may never decide unless you
+make some liveness assumptions.
 
 \section*{Exercises}
 \begin{problems}
-\item Perhaps the trickiest detail of the algorithm is that, in Line~14
+\item Perhaps the trickiest detail of the algorithm is that, in Line~8
 of \autoref{fig:paxos2}, the leader selects the proposal with the highest
 ballot number it receives.  Replace the \texttt{max} operator in that statement
 with <{choose}> and see if it finds a problem.  First try with

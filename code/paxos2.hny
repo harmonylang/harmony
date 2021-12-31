@@ -1,35 +1,28 @@
-import bag
-
-const F = 1
-const NACCEPTORS = (2 * F) + 1
-const NLEADERS = F + 1
-const NBALLOTS = 2
-
-def leader(ballot, proposal):
-    send(ballot, 1, .A, None)
+def leader(self, proposal):
+    var ballot, estimate = self, proposal
+    send(ballot, 1, "A", None)
     while ballot <= NBALLOTS:
         atomically when exists quorum in receive(ballot, 1):
             let accepted = { e for e:_ in quorum where e != None }:
                 if accepted != {}:
-                    _ , proposal = max(accepted)
-            send(ballot, 2, .A, proposal)
+                    _, estimate = max(accepted)
+            send(ballot, 2, "A", estimate)
         atomically when exists quorum in receive(ballot, 2):
-            if bag.multiplicity(quorum, (ballot, proposal)) == (NACCEPTORS - F):
-                assert proposal in proposals    # validity
-                decisions |= { proposal }
-                assert len(decisions) <= 1      # agreement
+            if bag.multiplicity(quorum, (ballot, estimate)) == (NACCEPTORS - F):
+                assert estimate in proposals    # validity
+                print estimate
             ballot += NLEADERS
             if ballot <= NBALLOTS:
-                send(ballot, 1, .A, None)
+                send(ballot, 1, "A", None)
 
 def acceptor():
     var ballot, last_accepted, received = 0, None, {}
     while True:
         atomically when exists b,p,e in { (b,p,e) for b,p,t,e:_ in network
-                    where ((b,p) not in received) and (t == .A) }:
+                    where ((b,p) not in received) and (t == "A") }:
             received |= { (b, p) }
             if b >= ballot:
                 ballot = b
                 if p == 2:
                     last_accepted = (ballot, e)
-            send(b, p, .B, last_accepted)
+            send(b, p, "B", last_accepted)
