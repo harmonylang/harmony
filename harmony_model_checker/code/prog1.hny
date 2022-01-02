@@ -1,7 +1,0 @@
-shared = True
-
-def f(): assert shared
-def g(): shared = False
-
-f()
-g()

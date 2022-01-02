@@ -1,5 +1,0 @@
-def p(s):
-    print s
-
-spawn p("hello")
-spawn p("world")

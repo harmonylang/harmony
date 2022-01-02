@@ -1,5 +1,0 @@
-def atomic_inc(ptr):
-    atomically !ptr += 1
-    
-count = 0
-atomic_inc(?count)

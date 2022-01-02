@@ -1,7 +1,0 @@
-def hello(name):
-    atomically:
-        print "hello"
-        print name
-
-spawn hello("Lesley")
-spawn hello("Robbert")
