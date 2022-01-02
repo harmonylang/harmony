@@ -1,9 +1,9 @@
 # an error state is a non-final state all of whose outgoing transitions
 # point only to itself
-def find_error_states(transitions):
+def find_error_states(transitions, final_states):
     error_states = set()
     for s, d in transitions.items():
-        if all(v == s for v in d.values()):
+        if s not in final_states and all(v == s for v in d.values()):
             error_states.add(s)
     return error_states
 
@@ -56,7 +56,7 @@ def behavior_show_diagram(dfa, path=None):
     nodes = {}
     rename = {}
     next_idx = 0
-    error_states = find_error_states(dfa.transitions)
+    error_states = find_error_states(dfa.transitions, dfa.final_states)
     for state in dfa.states:
         if state in rename:
             idx = rename[state]
@@ -220,7 +220,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                 if nfa_state in final_states:
                     dfa_final_states.add(dfa_state)
         print("conversion done")
-    dfa_error_states = find_error_states(dfa_transitions)
+    dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
 
     if outputfiles["hfa"] != None:
         with open(outputfiles["hfa"], "w") as fd:

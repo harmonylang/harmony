@@ -1,3 +1,10 @@
+#ifdef _WIN32
+#include <windows.h>
+#elif MACOS
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#endif
+
 #include <sys/time.h>
 
 #ifdef _WIN32
@@ -23,6 +30,30 @@
 #include "strbuf.h"
 #include "iface/iface.h"
 #endif
+
+int getNumCores() {
+#ifdef WIN32
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+#elif MACOS
+    int nm[2];
+    size_t len = 4;
+    uint32_t count;
+
+    nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
+    sysctl(nm, 2, &count, &len, NULL, 0);
+
+    if(count < 1) {
+        nm[1] = HW_NCPU;
+        sysctl(nm, 2, &count, &len, NULL, 0);
+        if(count < 1) { count = 1; }
+    }
+    return count;
+#else
+    return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+}
 
 #ifdef __APPLE__
 
@@ -1611,6 +1642,7 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_iter(d, print_trans_upcall, &pte);
     fprintf(out, "\n");
     fprintf(out, "      ],\n");
+    dict_delete(d);
 }
 
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
@@ -1758,16 +1790,7 @@ int main(int argc, char **argv){
     results[1] = minheap_create(node_cmp);
 
     // Determine how many worker threads to use
-    #ifdef _WIN32
-        // Accessing the number of available processors is not cross-platform-friendly
-        SYSTEM_INFO sysinfo;
-        GetSystemInfo(&sysinfo);
-        int nworkers = sysinfo.dwNumberOfProcessors;
-    #else
-        // The following is not defined in Windows
-        int nworkers = sysconf(_SC_NPROCESSORS_ONLN);
-    #endif
-
+    int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
@@ -1882,7 +1905,14 @@ int main(int argc, char **argv){
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
             if (comp->size == 0) {
-                comp->representative = i;
+                comp->rep = node;
+                comp->all_same = value_ctx_all_eternal(node->state->ctxbag)
+                    && value_ctx_all_eternal(node->state->stopbag);
+            }
+            else if (node->state->vars != comp->rep->state->vars ||
+                        !value_ctx_all_eternal(node->state->ctxbag) ||
+                        !value_ctx_all_eternal(node->state->stopbag)) {
+                comp->all_same = false;
             }
             comp->size++;
             if (comp->good) {
@@ -1898,17 +1928,23 @@ int main(int argc, char **argv){
             }
         }
 
-        // components that have only one state with only eternal threads
-        // are also good
+        // components that have only one shared state and only eternal
+        // threads are good because it means all its threads are blocked
         for (int i = 0; i < ncomponents; i++) {
             struct component *comp = &components[i];
             assert(comp->size > 0);
-            if (comp->size > 1) {
-                continue;
-            }
-            struct node *node = global->graph.nodes[comp->representative];
-            if (value_ctx_all_eternal(node->state->ctxbag)) {
+            if (!comp->good && comp->all_same) {
                 comp->good = true;
+                comp->final = true;
+            }
+        }
+
+        // Look for states in final components
+        for (int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+			assert(node->component < ncomponents);
+            struct component *comp = &components[node->component];
+            if (comp->final) {
                 node->final = true;
                 if (global->dfa != NULL &&
 						!dfa_is_final(global->dfa, node->state->dfa_state)) {
