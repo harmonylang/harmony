@@ -57,7 +57,7 @@ fragment COMMENT
     | COMMENT_START ~[\r\n\f]*
     ;
 
-program: (stmt)*;
+program: (stmt)* EOF;
 
 // Used from Python3's Antlr4 Grammar
 import_stmt: (import_name | import_from) SEMI_COLON? NL;

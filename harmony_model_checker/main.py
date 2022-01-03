@@ -24,8 +24,8 @@ def build_parser(progam_input):
     lexer = HarmonyLexer(progam_input)
     parser = HarmonyParser(None)
 
-    # lexer.removeErrorListeners()
-    # parser.removeErrorListeners()
+    lexer.removeErrorListeners()
+    parser.removeErrorListeners()
 
     stream = HarmonyTokenStream(lexer, parser)
     parser._input = stream
@@ -55,7 +55,6 @@ def load_file(filename: str, scope: Scope, code: Code):
         files[filename] = f.read().split("\n")
 
     ast = parse(filename)
-    print(ast)
     if ast is None:
         raise HarmonyCompilerError(
             message="Unknown error: unable to parse Harmony file",
@@ -181,7 +180,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
         load_file(fname, scope, code)
     if interface is not None:
         load_string("def __iface__(): result = (%s)" % interface, scope, code)
-    
+
     code.append(ReturnOp())  # to terminate "__init__" process
 
     # Analyze liveness of variables
