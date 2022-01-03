@@ -177,7 +177,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     code = Code()
     code.append(FrameOp(("__init__", None, None, None), []))
     for fname in filenames:
-        load_file(fname, scope, code)
+        load_file(str(fname), scope, code)
     if interface is not None:
         load_string("def __iface__(): result = (%s)" % interface, scope, code)
 
