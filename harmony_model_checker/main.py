@@ -312,7 +312,7 @@ def main():
         gh = GenHTML()
         gh.run(outputfiles)
         if not suppress_output:
-            p = pathlib.Path(outputfiles["hvm"]).resolve()
+            p = pathlib.Path(outputfiles["htm"]).resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
         return 0
     if print_code is None:
