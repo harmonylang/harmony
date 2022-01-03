@@ -2,7 +2,7 @@ import dataclasses
 import json
 import os
 import pathlib
-from typing import List
+from typing import Dict, List, Optional
 
 from antlr4 import *
 
@@ -209,7 +209,7 @@ args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 args.add_argument("-t", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-A", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-j", action="store_true", help=argparse.SUPPRESS)
-args.add_argument("-o", action="store_true", help=argparse.SUPPRESS)
+args.add_argument("-o", type=pathlib.Path, nargs='*', help=argparse.SUPPRESS)
 args.add_argument("--suppress", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--model-checker", type=pathlib.Path, nargs=1, help=argparse.SUPPRESS)
 
@@ -231,11 +231,11 @@ def main():
     if not check_charm_model_checker_status_is_ok():
         return 1
 
-    consts = ns.const or []
-    interface = ns.intf
-    mods = ns.module or []
-    parse_code_only = ns.parse
-    print_code = None
+    consts: List[str] = ns.const or []
+    interface: Optional[str] = ns.intf
+    mods: List[str] = ns.module or []
+    parse_code_only: bool = ns.parse
+    print_code: Optional[str] = None
     if ns.a:
         print_code = "verbose"
     if ns.A:
@@ -243,15 +243,11 @@ def main():
     if ns.j:
         print_code = "json"
 
-    block_flag = ns.b
+    block_flag: bool = ns.b
     charm_flag = True and not any({ns.a, ns.A, ns.j, ns.f})
-    fulldump = ns.d
-    silent = ns.s
-    suppress_output = ns.suppress
-    charm_options = ns.cf or []
-    output_flag = ns.o
-
-    outputfiles = {
+    fulldump: bool = ns.d
+    silent: bool = ns.s
+    outputfiles: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
         "hco": None,
@@ -259,17 +255,31 @@ def main():
         "png": None,
         "gv":  None
     }
+    if ns.o:
+        for p in ns.o:
+            # The suffix includes the dot if it exists.
+            # Otherwise, it is an empty string.
+            suffix = p.suffix[1:]
+            if suffix not in outputfiles:
+                print(f"Unknown file suffix on {p}")
+                return 1
+            if outputfiles[suffix] is not None:
+                print(f"Duplicate suffix '.{suffix}'")
+                return 1
+            outputfiles[suffix] = str(p)
+    suppress_output = ns.suppress
     behavior = None
+    charm_options = ns.cf or []
 
-    filenames = [str(f) for f in ns.files]
+    filenames: List[pathlib.Path] = ns.files
     if not filenames:
-        print("harmony: fatal error: no input files")
+        args.print_help()
         return 1
     for f in filenames:
-        if not os.path.exists(f):
-            print("harmony: error: file named '" + f + "' does not exist.")
+        if not f.exists():
+            print(f"harmony: error: file named '{f}' does not exist.")
             return 1
-    stem = os.path.splitext(os.path.basename(filenames[0]))[0]
+    stem = filenames[0].stem
 
     if outputfiles["hvm"] is None:
         outputfiles["hvm"] = stem + ".hvm"
@@ -277,16 +287,17 @@ def main():
         outputfiles["hco"] = stem + ".hco"
     if outputfiles["htm"] is None:
         outputfiles["htm"] = stem + ".htm"
-    if outputfiles["png"] is not None and outputfiles["gv"] == None:
+    if outputfiles["png"] is not None and outputfiles["gv"] is None:
         outputfiles["gv"] = stem + ".gv"
 
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
     except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
         if isinstance(e, HarmonyCompilerErrorCollection):
-                errors = e.errors
+            errors = e.errors
         else:
             errors = [e.token]
+
         if parse_code_only:
             with open(outputfiles["hvm"], "w") as fp:
                 data = dict(errors=[dataclasses.asdict(e) for e in errors], status="error")
@@ -315,6 +326,7 @@ def main():
             p = pathlib.Path(outputfiles["htm"]).resolve()
             print("open file://" + str(p) + " for more information", file=sys.stderr)
         return 0
+
     if print_code is None:
         nodes, bad_node = run(code, scope.labels, block_flag)
         if bad_node is not None:
