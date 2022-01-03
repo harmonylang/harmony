@@ -11,7 +11,7 @@ import argparse
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
-    StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
+    StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
@@ -199,7 +199,7 @@ args.add_argument("-d", action='store_true', help="htmldump full state into html
 args.add_argument("--module", "-m", action="append", type=str, metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr", help="specify in interface function")
 args.add_argument("-s", action="store_true", help="silent (do not print periodic status updates)")
-args.add_argument("-v", help="print version number")
+args.add_argument("-v", "--version", action="store_true", help="print version number")
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
 args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker.")
 
@@ -217,6 +217,10 @@ args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*',
 
 def main():
     ns = args.parse_args()
+
+    if ns.version:
+        print("Version", ".".join([str(v) for v in version]))
+        return 0
 
     if ns.build_model_checker:
         successfully_built = build_model_checker()
