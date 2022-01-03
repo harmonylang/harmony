@@ -1,6 +1,6 @@
-#/usr/bin/env sh
+#!/usr/bin/env sh
 
-make all
+make gen
 
 PACKAGE_DIR=harmony_model_checker
 rm -rf build/

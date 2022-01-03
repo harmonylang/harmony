@@ -1,18 +1,31 @@
+from distutils import log
 import setuptools
 from setuptools.command.install import install
-from setuptools.command.build_py import build_py
+
+from pathlib import Path
+import shutil
+import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.19a7"
+PACKAGE_VERSION = "0.0.19a11"
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
+        package_config = Path.home() / ".harmony-model-checker"
+        if not package_config.exists():
+            package_config.mkdir()
         super().run()
 
-class BuildPythonCommand(build_py):
-    def run(self):
-        super().run()
+        harmony_cmd = shutil.which("harmony")
+        if harmony_cmd is not None:
+            ec = subprocess.run([harmony_cmd, "--build-model-checker"])
+        if harmony_cmd is None or ec != 0:
+            super().announce(
+                "Cannot build model checker automatically from setup. Please run [harmony --build-model-checker] after installation.",
+                level=log.WARN
+            )
+
 
 setuptools.setup(
     name=PACKAGE_NAME,
@@ -39,7 +52,6 @@ setuptools.setup(
     },
     python_requires=">=3.6",
     cmdclass={
-        "install": PostInstallCommand,
-        "build_py": BuildPythonCommand
+        "install": PostInstallCommand
     }
 )
