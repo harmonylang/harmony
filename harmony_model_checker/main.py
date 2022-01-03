@@ -10,7 +10,7 @@ import sys
 import argparse
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
-from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
+from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
@@ -140,7 +140,7 @@ def parse_string(string: str):
     return visitor.visit(tree)
 
 
-def parse(filename: str):
+def parse(filename: str) -> BlockAST:
     _input = FileStream(filename)
     parser = build_parser(_input)
     error_listener = HarmonyParserErrorListener(filename)
@@ -211,7 +211,6 @@ args.add_argument("-A", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-j", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("-o", type=pathlib.Path, nargs='*', help=argparse.SUPPRESS)
 args.add_argument("--suppress", action="store_true", help=argparse.SUPPRESS)
-args.add_argument("--model-checker", type=pathlib.Path, nargs=1, help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
 
@@ -255,18 +254,17 @@ def main():
         "png": None,
         "gv":  None
     }
-    if ns.o:
-        for p in ns.o:
-            # The suffix includes the dot if it exists.
-            # Otherwise, it is an empty string.
-            suffix = p.suffix[1:]
-            if suffix not in outputfiles:
-                print(f"Unknown file suffix on {p}")
-                return 1
-            if outputfiles[suffix] is not None:
-                print(f"Duplicate suffix '.{suffix}'")
-                return 1
-            outputfiles[suffix] = str(p)
+    for p in (ns.o or []):
+        # The suffix includes the dot if it exists.
+        # Otherwise, it is an empty string.
+        suffix = p.suffix[1:]
+        if suffix not in outputfiles:
+            print(f"Unknown file suffix on {p}")
+            return 1
+        if outputfiles[suffix] is not None:
+            print(f"Duplicate suffix '.{suffix}'")
+            return 1
+        outputfiles[suffix] = str(p)
     suppress_output = ns.suppress
     behavior = None
     charm_options = ns.cf or []
