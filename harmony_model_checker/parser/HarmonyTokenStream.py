@@ -1,7 +1,7 @@
 from antlr4 import *
 from antlr4.Token import CommonToken
 
-from harmony_model_checker.HarmonyParser import HarmonyParser
+from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 
 
 def make_indent_token(line: int):

@@ -12,12 +12,12 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump
-from harmony_model_checker.HarmonyParser import HarmonyParser
+from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
-from harmony_model_checker.HarmonyLexer import HarmonyLexer
-from harmony_model_checker.antlr_rule_visitor import HarmonyVisitorImpl
+from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
+from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 
 
 def build_parser(progam_input):

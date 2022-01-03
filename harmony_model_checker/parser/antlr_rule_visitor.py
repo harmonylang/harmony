@@ -2,8 +2,8 @@
 from typing import Any
 from antlr4.Token import CommonToken
 
-from harmony_model_checker.HarmonyVisitor import HarmonyVisitor
-from harmony_model_checker.HarmonyParser import HarmonyParser
+from harmony_model_checker.parser.HarmonyVisitor import HarmonyVisitor
+from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.harmony import *
 import math
 
