@@ -6489,7 +6489,10 @@ def main():
     except HarmonyCompilerError as e:
         if parse_code_only:
             with open(outputfiles["hvm"], "w") as f:
-                data = dict(dataclasses.asdict(e.token), status="error")
+                data = {
+                    "errors": [dataclasses.asdict(e.token)],
+                    "status": "error"
+                }
                 f.write(json.dumps(data))
         print(e.message, e.token)
         sys.exit(1)
