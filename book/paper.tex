@@ -3230,19 +3230,6 @@ for something as complicated as \autoref{fig:linkedlist}.
 In this chapter, we will look at approaches to testing
 concurrent code.
 
-\begin{comment}
-The framework in \autoref{fig:csbarebones} works well for thoroughly
-testing mutual exclusion and progress in critical sections, but depends
-on \texttt{countLabel}, an unusual operator specific to Harmony that is mostly
-useful for testing mutual exclusion.
-It turns out that we do not need labels to express this.
-\autoref{fig:cslock} tests mutual exclusion and progress for
-critical sections implemented using locks.
-The test uses a simple atomic counter that is incremented before entering
-the critical section and decremented after leaving it.
-Mutual exclusion holds if the counter never goes over 1.
-\end{comment}
-
 As with critical sections---when testing a concurrent data structure---we
 need a specification.
 For example, \autoref{fig:queues}(a) shows a sequential specification of a
@@ -3255,8 +3242,27 @@ we need to see if any sequence of queue operations in the
 implementation matches a corresponding sequence in the
 specification.
 We say that the implementation and the specification
-have the same \emph{behavior}.
-%
+have the same \emph{behaviors} or are
+\emph{behaviorally equivalent}.
+
+Behaviors say something about how we got to a state.
+The same state can be reaching by multiple behaviors, and the behaviors
+are often an integral part of whether a program is correct or not.
+Just because a state satisfies some invariant---however important---does
+not mean that the state is valid given the sequence of operations.
+For example, a state in which the queue is empty is certainly a valid state in
+its own right, but if the last operation to get there was an enqueue operation,
+there must be a bug in the program.
+It can therefore be important to capture the behaviors.
+We could store behaviors in the state itself by adding what is
+known as a \emph{history variable} that keeps track of all the operations.
+While this can be useful for correctness proofs, for model checking this approach
+presents a problem: introducing this
+additional state can lead to state explosion or even turn a finite model
+(a model with a finite number of states) into an infinite one.
+We therefore use a different approach: composing an implementation with
+its specification to ensure that accept the same behaviors.
+
 \autoref{fig:qtestseq} presents a test program that does
 exactly this, for sequences of up to <{NOPS}>
 queue operations.
@@ -3281,22 +3287,9 @@ is incorrect but the test program does not have enough coverage to find any
 bugs in the implementation.
 So, run a test program like this with a variety of queue implementations that
 have known bugs in them and make sure that the test program finds them.
-\begin{comment}
-In the case of testing mutual exclusion with atomic counters, you will want
-to see if you can use this method to find the problems in \autoref{fig:naivelock},
-\autoref{fig:naiveflags},
-and \autoref{fig:naiveturn}.
-\end{comment}
 Conversely, a test program may be broken in that it finds bugs that do not exist.
 In my experience, it is often harder to implement the test program than
 the algorithm that the test program tests.
-
-\begin{comment}
-So, in this case,
-you also want to check if an atomic counter solution works with known
-correct solutions such as \autoref{fig:peterson} and \autoref{fig:tas}
-if possible.
-\end{comment}
 
 As with any other test program,
 \autoref{fig:qtestseq} may not trigger extant bugs, but
@@ -3560,6 +3553,10 @@ sequential test followed by several concurrent tests}
 
 \section*{Exercises}
 \begin{problems}
+\item \autoref{fig:lockspec} shows a specification of a lock.  Write a program
+that checks the behaviors of lock implementations such as \autoref{fig:tas2}
+and \autoref{fig:ticket}.  That is, it should not rely on assertions such as
+in \autoref{fig:cs}.
 \item Write a Harmony program that checks if
 \autoref{fig:linkedlist} satisfies the specification
 of \autoref{fig:setobj} \emph{sequentially}.
