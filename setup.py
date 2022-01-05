@@ -2,6 +2,7 @@ from distutils import log
 import setuptools
 from setuptools import Extension
 from setuptools.command.install import install
+from setuptools.command.build_ext import build_ext
 
 from pathlib import Path
 import shutil
@@ -26,6 +27,14 @@ class PostInstallCommand(install):
         #         "Cannot build model checker automatically from setup. Please run [harmony --build-model-checker] after installation.",
         #         level=log.WARN
         #     )
+
+class CustomBuildExt(build_ext):
+    def build_extensions(self) -> None:
+        self.compiler.set_executable("compiler_so", "gcc")
+        self.compiler.set_executable("compiler_cxx", "gcc")
+        self.compiler.set_executable("linker_so", "gcc")
+        super().build_extensions()
+
 
 module = Extension(
     f"{PACKAGE_NAME}.charm",
