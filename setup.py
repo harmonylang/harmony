@@ -7,7 +7,7 @@ import shutil
 import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.20a1"
+PACKAGE_VERSION = "0.0.20a14"
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
