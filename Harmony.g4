@@ -265,9 +265,7 @@ normal_block:
 ;
 
 // Statements that do not introduce a new indentation block
-simple_stmt @init {
-self.getTokenStream().handle_assignment()
-}
+simple_stmt
     : assign_stmt
     | const_assign_stmt
     | await_stmt
@@ -298,8 +296,10 @@ self.getTokenStream().handle_compound()
     | method_decl
     ;
 
-one_line_stmt:
-    simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
+one_line_stmt @init {
+self.getTokenStream().handle_assignment()
+}
+    : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
 stmt: label? ATOMICALLY? (
@@ -307,7 +307,7 @@ stmt: label? ATOMICALLY? (
         | one_line_stmt
         | compound_stmt
         | import_stmt
-        | block
+        | normal_block
     );
 
 COMMENT_START: '#';

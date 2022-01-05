@@ -295,7 +295,7 @@ def serializedATN():
         buf.write("\3\2\2\2\u025a\u025d\3\2\2\2\u025b\u0259\3\2\2\2\u025b")
         buf.write("\u025c\3\2\2\2\u025c\u025e\3\2\2\2\u025d\u025b\3\2\2\2")
         buf.write("\u025e\u0264\7\67\2\2\u025f\u0264\5v<\2\u0260\u0264\5")
-        buf.write("t;\2\u0261\u0264\5\4\3\2\u0262\u0264\5l\67\2\u0263\u025b")
+        buf.write("t;\2\u0261\u0264\5\4\3\2\u0262\u0264\5p9\2\u0263\u025b")
         buf.write("\3\2\2\2\u0263\u025f\3\2\2\2\u0263\u0260\3\2\2\2\u0263")
         buf.write("\u0261\3\2\2\2\u0263\u0262\3\2\2\2\u0264{\3\2\2\2?\177")
         buf.write("\u0086\u0089\u0094\u009b\u009d\u00a6\u00ad\u00b4\u00b8")
@@ -4482,9 +4482,6 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.Simple_stmtContext(self, self._ctx, self.state)
         self.enterRule(localctx, 112, self.RULE_simple_stmt)
-
-        self.getTokenStream().handle_assignment()
-
         try:
             self.state = 567
             self._errHandler.sync(self)
@@ -4728,6 +4725,9 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.One_line_stmtContext(self, self._ctx, self.state)
         self.enterRule(localctx, 116, self.RULE_one_line_stmt)
+
+        self.getTokenStream().handle_assignment()
+
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
@@ -4850,8 +4850,8 @@ class HarmonyParser ( Parser ):
             return self.getTypedRuleContext(HarmonyParser.Import_stmtContext,0)
 
 
-        def block(self):
-            return self.getTypedRuleContext(HarmonyParser.BlockContext,0)
+        def normal_block(self):
+            return self.getTypedRuleContext(HarmonyParser.Normal_blockContext,0)
 
 
         def label(self):
@@ -4904,8 +4904,8 @@ class HarmonyParser ( Parser ):
 
             self.state = 609
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,60,self._ctx)
-            if la_ == 1:
+            token = self._input.LA(1)
+            if token in [HarmonyParser.NL, HarmonyParser.SEMI_COLON]:
                 self.state = 601
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
@@ -4919,27 +4919,24 @@ class HarmonyParser ( Parser ):
                 self.state = 604
                 self.match(HarmonyParser.NL)
                 pass
-
-            elif la_ == 2:
+            elif token in [HarmonyParser.T__7, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.POINTER_OF, HarmonyParser.PRINT, HarmonyParser.SETINTLEVEL, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.POSSIBLY, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.NONE, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.STRING]:
                 self.state = 605
                 self.one_line_stmt()
                 pass
-
-            elif la_ == 3:
+            elif token in [HarmonyParser.ATOMIC, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.ATOMICALLY]:
                 self.state = 606
                 self.compound_stmt()
                 pass
-
-            elif la_ == 4:
+            elif token in [HarmonyParser.IMPORT, HarmonyParser.FROM]:
                 self.state = 607
                 self.import_stmt()
                 pass
-
-            elif la_ == 5:
+            elif token in [HarmonyParser.INDENT]:
                 self.state = 608
-                self.block()
+                self.normal_block()
                 pass
-
+            else:
+                raise NoViableAltException(self)
 
         except RecognitionException as re:
             localctx.exception = re
