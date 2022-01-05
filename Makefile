@@ -30,5 +30,8 @@ dist: gen
 	rm -rf harmony_model_checker.egg-info/
 	python setup.py sdist
 
+wheel: dist
+	python setup.py bdist_wheel
+
 upload: dist
 	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
