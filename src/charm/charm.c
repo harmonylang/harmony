@@ -394,9 +394,6 @@ static bool onestep(
     step->log = NULL;
     step->nlog = 0;
 
-    next->dfa_trie = step->dfa_trie;
-    step->dfa_trie = NULL;
-
     if (step->ctx->failure != 0) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
     }
@@ -424,8 +421,6 @@ static void make_step(
 
     // Make a copy of the context
     step.ctx = value_copy(ctx, NULL);
-
-    step.dfa_trie = node->dfa_trie;
 
     // See if we need to interrupt
     if (sc->choosing == 0 && step.ctx->trap_pc != 0 && !step.ctx->interruptlevel) {
@@ -1713,12 +1708,6 @@ int main(int argc, char **argv){
         if (global->dfa == NULL) {
             exit(1);
         }
-        global->transitions = calloc(dfa_ntransitions(global->dfa), sizeof(bool));
-        struct dfa_trie *dt = new_alloc(struct dfa_trie);
-        pthread_mutex_init(&dt->lock, NULL);
-        dt->children = dict_new(0);
-        dt->dfa_state = dfa_initial(global->dfa);
-        global->dfa_trie = dt;
     }
 
     // open the HVM file
@@ -1775,7 +1764,6 @@ int main(int argc, char **argv){
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
-    node->dfa_trie = global->dfa_trie;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -2070,25 +2058,6 @@ int main(int argc, char **argv){
     bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
         printf("No issues\n");
-
-        if (0 && global->dfa != NULL) {
-            int n = dfa_ntransitions(global->dfa);
-            bool warning = false;
-            for (int i = 0; i < n; i++) {
-                if (!global->transitions[i]) {
-                    printf("DFA transition %d never taken\n", i);
-                    warning = true;
-                }
-            }
-            if (warning) {
-                printf("behavior warning: strict subset of specified behavior.]n");
-            }
-        }
-
-        if (0 && global->dfa_trie != NULL) {
-            dfa_check_trie(global);
-        }
-
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
         destutter1(&global->graph);

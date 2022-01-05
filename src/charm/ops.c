@@ -416,7 +416,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
-        int nstate = dfa_step(global->dfa, state->dfa_state, symbol, global->transitions);
+        int nstate = dfa_step(global->dfa, state->dfa_state, symbol);
         if (nstate < 0) {
             char *p = value_string(symbol);
             value_ctx_failure(step->ctx, &global->values, "Behavior failure on %s", p);
@@ -425,29 +425,7 @@ void op_Print(const void *env, struct state *state, struct step *step, struct gl
         }
         state->dfa_state = nstate;
 
-        struct dfa_trie *dt = step->dfa_trie;
-        if (dt != NULL) {
-            pthread_mutex_lock(&dt->lock);
-            void **p = dict_insert(dt->children, &symbol, sizeof(symbol));
-			struct dfa_trie *child = *p;
-            if (child != 0) {
-                assert(child->dfa_state == nstate);
-                assert(child->parent == step->dfa_trie);
-                assert(child->symbol == symbol);
-            }
-            else {
-                child = *p = new_alloc(struct dfa_trie);
-                pthread_mutex_init(&child->lock, NULL);
-                child->children = dict_new(0);
-                child->dfa_state = nstate;
-                child->parent = step->dfa_trie;
-                child->symbol = symbol;
-            }
-            step->dfa_trie = child;
-            pthread_mutex_unlock(&dt->lock);
-        }
     }
-
     step->ctx->pc++;
 }
 

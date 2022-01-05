@@ -22,9 +22,6 @@ struct global_t {
     int dequeued;                // #states dequeued
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
-    bool *transitions;           // keeps track of which transitions taken
-
-    struct dfa_trie *dfa_trie;
 };
 
 #endif //SRC_CHARM_H

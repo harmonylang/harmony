@@ -17,3 +17,5 @@ while x < 11:
         x = 14 if coin else 15
     elif x == 6:
         x = 16 if coin else 2
+
+print x
