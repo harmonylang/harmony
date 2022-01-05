@@ -115,7 +115,7 @@ void graph_check_for_data_race(
                     f->type = FAIL_RACE;
                     f->choice = node->choice;
                     f->node = node;
-                    f->address = value_put_address(values, ai->indices, ai->n * sizeof(uint64_t));
+                    f->address = value_put_address(values, ai->indices, ai->n * sizeof(hvalue_t));
                     minheap_insert(warnings, f);
                 }
                 else {
@@ -126,12 +126,12 @@ void graph_check_for_data_race(
                                 int min = ai->n < ai2->n ? ai->n : ai2->n;
                                 assert(min > 0);
                                 if (memcmp(ai->indices, ai2->indices,
-                                           min * sizeof(uint64_t)) == 0) {
+                                           min * sizeof(hvalue_t)) == 0) {
                                     struct failure *f = new_alloc(struct failure);
                                     f->type = FAIL_RACE;
                                     f->choice = node->choice;
                                     f->node = node;
-                                    f->address = value_put_address(values, ai->indices, min * sizeof(uint64_t));
+                                    f->address = value_put_address(values, ai->indices, min * sizeof(hvalue_t));
                                     minheap_insert(warnings, f);
                                 }
                             }

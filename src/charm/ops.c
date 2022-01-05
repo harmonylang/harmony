@@ -17,18 +17,18 @@
 
 struct val_info {
     int size, index;
-    uint64_t *vals;
+    hvalue_t *vals;
 };
 
 struct f_info {
     char *name;
-    uint64_t (*f)(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values);
+    hvalue_t (*f)(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values);
 };
 
 struct var_tree {
     enum { VT_NAME, VT_TUPLE } type;
     union {
-        uint64_t name;
+        hvalue_t name;
         struct {
             int n;
             struct var_tree **elements;
@@ -38,19 +38,19 @@ struct var_tree {
 
 // These are initialized in ops_init and are immutable.
 static struct dict *ops_map, *f_map;
-static uint64_t underscore, this_atom;
+static hvalue_t underscore, this_atom;
 
-bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
+bool is_sequential(hvalue_t seqvars, hvalue_t *indices, int n){
     assert((seqvars & VALUE_MASK) == VALUE_SET);
     int size;
-    uint64_t *seqs = value_get(seqvars, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *seqs = value_get(seqvars, &size);
+    size /= sizeof(hvalue_t);
 
-    n *= sizeof(uint64_t);
+    n *= sizeof(hvalue_t);
     for (int i = 0; i < size; i++) {
         assert((seqs[i] & VALUE_MASK) == VALUE_ADDRESS);
         int sn;
-        uint64_t *inds = value_get(seqs[i], &sn);
+        hvalue_t *inds = value_get(seqs[i], &sn);
         if (n >= sn && sn >= 0 && memcmp(indices, inds, sn) == 0) {
             return true;
         }
@@ -58,8 +58,8 @@ bool is_sequential(uint64_t seqvars, uint64_t *indices, int n){
     return false;
 }
 
-uint64_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t *values,
-                            uint64_t arg, uint64_t vars){
+hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t *values,
+                            hvalue_t arg, hvalue_t vars){
     switch (vt->type) {
     case VT_NAME:
         if (vt->u.name == underscore) {
@@ -86,8 +86,8 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
             return value_ctx_failure(ctx, values, "match: expected an empty tuple");
         }
         int size;
-        uint64_t *vals = value_get(arg, &size);
-        size /= 2 * sizeof(uint64_t);
+        hvalue_t *vals = value_get(arg, &size);
+        size /= 2 * sizeof(hvalue_t);
         if (vt->u.tuple.n != size) {
             return value_ctx_failure(ctx, values, "match: tuple size mismatch");
         }
@@ -104,29 +104,10 @@ uint64_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
     }
 }
 
-void var_match(struct context *ctx, struct var_tree *vt, struct values_t *values, uint64_t arg){
-    uint64_t vars = var_match_rec(ctx, vt, values, arg, ctx->vars);
+void var_match(struct context *ctx, struct var_tree *vt, struct values_t *values, hvalue_t arg){
+    hvalue_t vars = var_match_rec(ctx, vt, values, arg, ctx->vars);
     if (ctx->failure == 0) {
         ctx->vars = vars;
-    }
-}
-
-// for debugging only
-void var_dump(struct var_tree *vt){
-    switch (vt->type) {
-    case VT_NAME:
-        printf("%"PRIx64"", vt->u.name);
-        break;
-    case VT_TUPLE:
-        printf("(");
-        for (int i = 0; i < vt->u.tuple.n; i++) {
-            printf(" ");
-            var_dump(vt->u.tuple.elements[i]);
-        }
-        printf(" )");
-        break;
-    default:
-        panic("var_dump: bad vartree type");
     }
 }
 
@@ -196,8 +177,8 @@ void interrupt_invoke(struct step *step){
     step->ctx->interruptlevel = true;
 }
 
-bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
-    uint64_t d = dict;
+bool ind_tryload(hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
+    hvalue_t d = dict;
     for (int i = 0; i < n; i++) {
         if (!value_dict_tryload(d, indices[i], &d)) {
             return false;
@@ -207,7 +188,7 @@ bool ind_tryload(uint64_t dict, uint64_t *indices, int n, uint64_t *result){
     return true;
 }
 
-bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struct values_t *values, uint64_t *result){
+bool ind_trystore(hvalue_t dict, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
     assert((dict & VALUE_MASK) == VALUE_DICT);
     assert(n > 0);
 
@@ -216,7 +197,7 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struc
         return true;
     }
     else {
-        uint64_t *vals;
+        hvalue_t *vals;
         int size;
         if (dict == VALUE_DICT) {
             vals = NULL;
@@ -224,18 +205,18 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struc
         }
         else {
             vals = value_get(dict & ~VALUE_MASK, &size);
-            size /= sizeof(uint64_t);
+            size /= sizeof(hvalue_t);
             assert(size % 2 == 0);
         }
 
         int i;
         for (i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
-                uint64_t d = vals[i+1];
+                hvalue_t d = vals[i+1];
                 if ((d & VALUE_MASK) != VALUE_DICT) {
                     return false;
                 }
-                uint64_t nd;
+                hvalue_t nd;
                 if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
                     return false;
                 }
@@ -243,11 +224,11 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struc
                     *result = dict;
                     return true;
                 }
-                int n = size * sizeof(uint64_t);
-                uint64_t *copy = malloc(n);
+                int n = size * sizeof(hvalue_t);
+                hvalue_t *copy = malloc(n);
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
-                uint64_t v = value_put_dict(values, copy, n);
+                hvalue_t v = value_put_dict(values, copy, n);
                 free(copy);
                 *result = v;
                 return true;
@@ -262,8 +243,8 @@ bool ind_trystore(uint64_t dict, uint64_t *indices, int n, uint64_t value, struc
     return false;
 }
 
-bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values,
-                                        uint64_t *result) {
+bool ind_remove(hvalue_t dict, hvalue_t *indices, int n, struct values_t *values,
+                                        hvalue_t *result) {
     assert((dict & VALUE_MASK) == VALUE_DICT);
     assert(n > 0);
 
@@ -272,7 +253,7 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
         return true;
     }
     else {
-        uint64_t *vals;
+        hvalue_t *vals;
         int size;
         if (dict == VALUE_DICT) {
             vals = NULL;
@@ -280,18 +261,18 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
         }
         else {
             vals = value_get(dict & ~VALUE_MASK, &size);
-            size /= sizeof(uint64_t);
+            size /= sizeof(hvalue_t);
             assert(size % 2 == 0);
         }
 
         int i;
         for (i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
-                uint64_t d = vals[i+1];
+                hvalue_t d = vals[i+1];
                 if ((d & VALUE_MASK) != VALUE_DICT) {
                     return false;
                 }
-                uint64_t nd;
+                hvalue_t nd;
                 if (!ind_remove(d, indices + 1, n - 1, values, &nd)) {
                     return false;
                 }
@@ -299,11 +280,11 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
                     *result = dict;
                     return true;
                 }
-                int n = size * sizeof(uint64_t);
-                uint64_t *copy = malloc(n);
+                int n = size * sizeof(hvalue_t);
+                hvalue_t *copy = malloc(n);
                 memcpy(copy, vals, n);
                 copy[i + 1] = nd;
-                uint64_t v = value_put_dict(values, copy, n);
+                hvalue_t v = value_put_dict(values, copy, n);
                 free(copy);
                 *result = v;
                 return true;
@@ -319,8 +300,8 @@ bool ind_remove(uint64_t dict, uint64_t *indices, int n, struct values_t *values
 }
 
 void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t index = value_ctx_pop(&step->ctx);
-    uint64_t av = value_ctx_pop(&step->ctx);
+    hvalue_t index = value_ctx_pop(&step->ctx);
+    hvalue_t av = value_ctx_pop(&step->ctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &global->values, "%s: not an address", p);
@@ -336,23 +317,23 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
     }
 
     int size;
-    uint64_t *indices = value_copy(av, &size);
+    hvalue_t *indices = value_copy(av, &size);
     indices = realloc(indices, size + sizeof(index));
-    indices[size / sizeof(uint64_t)] = index;
+    indices[size / sizeof(hvalue_t)] = index;
     value_ctx_push(&step->ctx, value_put_address(&global->values, indices, size + sizeof(index)));
     free(indices);
     step->ctx->pc++;
 }
 
 void op_Apply(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t e = value_ctx_pop(&step->ctx);
-    uint64_t method = value_ctx_pop(&step->ctx);
+    hvalue_t e = value_ctx_pop(&step->ctx);
+    hvalue_t method = value_ctx_pop(&step->ctx);
 
-    uint64_t type = method & VALUE_MASK;
+    hvalue_t type = method & VALUE_MASK;
     switch (type) {
     case VALUE_DICT:
         {
-            uint64_t v;
+            hvalue_t v;
             if (!value_dict_tryload(method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
@@ -374,7 +355,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         return;
     default:
         {
-            extern char *json_escape_value(uint64_t v);
+            extern char *json_escape_value(hvalue_t v);
             char *x = json_escape_value(method);
             value_ctx_failure(step->ctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
@@ -383,7 +364,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
 }
 
 void op_Assert(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "assert can only be applied to bool values");
     }
@@ -396,8 +377,8 @@ void op_Assert(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Assert2(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t e = value_ctx_pop(&step->ctx);
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t e = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
     if ((v & VALUE_MASK) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "assert2 can only be applied to bool values");
     }
@@ -412,7 +393,7 @@ void op_Assert2(const void *env, struct state *state, struct step *step, struct 
 }
 
 void op_Print(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t symbol = value_ctx_pop(&step->ctx);
+    hvalue_t symbol = value_ctx_pop(&step->ctx);
     step->log = realloc(step->log, (step->nlog + 1) * sizeof(symbol));
     step->log[step->nlog++] = symbol;
     if (global->dfa != NULL) {
@@ -462,7 +443,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     const struct env_Cut *ec = env;
     struct context *ctx = step->ctx;
 
-    uint64_t v = value_dict_load(ctx->vars, ec->set);
+    hvalue_t v = value_dict_load(ctx->vars, ec->set);
     if ((v & VALUE_MASK) == VALUE_SET) {
         if (ec->key != NULL) {
             value_ctx_failure(ctx, &global->values, "Can't cut set in key/value pairs");
@@ -472,10 +453,10 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         void *p = (void *) (v & ~VALUE_MASK);
 
         int size;
-        uint64_t *vals = dict_retrieve(p, &size);
+        hvalue_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(uint64_t)));
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(hvalue_t)));
         var_match(step->ctx, ec->value, &global->values, vals[0]);
         step->ctx->pc++;
         return;
@@ -485,10 +466,10 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         void *p = (void *) (v & ~VALUE_MASK);
 
         int size;
-        uint64_t *vals = dict_retrieve(p, &size);
+        hvalue_t *vals = dict_retrieve(p, &size);
         assert(size > 0);
 
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(uint64_t)));
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(hvalue_t)));
         var_match(step->ctx, ec->value, &global->values, vals[1]);
         if (ec->key != NULL) {
             var_match(step->ctx, ec->key, &global->values, vals[0]);
@@ -507,7 +488,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
 
-    uint64_t av = value_ctx_pop(&step->ctx);
+    hvalue_t av = value_ctx_pop(&step->ctx);
     if ((av & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(av);
         value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
@@ -520,14 +501,14 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
     }
 
     int size;
-    uint64_t *indices = value_get(av, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *indices = value_get(av, &size);
+    size /= sizeof(hvalue_t);
     if (step->ai != NULL) {
         step->ai->indices = indices;
         step->ai->n = size;
         step->ai->load = false;
     }
-    uint64_t nd;
+    hvalue_t nd;
     if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
         value_ctx_failure(step->ctx, &global->values, "Del: no such variable");
     }
@@ -542,13 +523,13 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 
     assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
     if (ed == NULL) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
 
         bool result;
         if (indices[0] == this_atom) {
@@ -581,31 +562,26 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Dup(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
     value_ctx_push(&step->ctx, v);
     value_ctx_push(&step->ctx, v);
     step->ctx->pc++;
 }
 
 void op_Frame(const void *env, struct state *state, struct step *step, struct global_t *global){
-    static uint64_t result = 0;
+    static hvalue_t result = 0;
 
     if (result == 0) {
         result = value_put_atom(&global->values, "result", 6);
     }
 
     const struct env_Frame *ef = env;
-    if (false) {
-        printf("FRAME %d %d %"PRIx64" ", step->ctx->pc, step->ctx->sp, ef->name);
-        var_dump(ef->args);
-        printf("\n");
-    }
 
     // peek at argument
-    uint64_t arg = value_ctx_pop(&step->ctx);
+    hvalue_t arg = value_ctx_pop(&step->ctx);
     value_ctx_push(&step->ctx, arg);
 
-    uint64_t oldvars = step->ctx->vars;
+    hvalue_t oldvars = step->ctx->vars;
 
     // Set result to None
     step->ctx->vars = value_dict_store(&global->values, VALUE_DICT, result, VALUE_ADDRESS);
@@ -630,14 +606,14 @@ void op_Go(
     struct step *step,
     struct global_t *global
 ){
-    uint64_t ctx = value_ctx_pop(&step->ctx);
+    hvalue_t ctx = value_ctx_pop(&step->ctx);
     if ((ctx & VALUE_MASK) != VALUE_CONTEXT) {
         value_ctx_failure(step->ctx, &global->values, "Go: not a context");
         return;
     }
 
     // Remove from stopbag if it's there
-    uint64_t count;
+    hvalue_t count;
     if (value_dict_tryload(state->stopbag, ctx, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
@@ -650,11 +626,11 @@ void op_Go(
         }
     }
 
-    uint64_t result = value_ctx_pop(&step->ctx);
+    hvalue_t result = value_ctx_pop(&step->ctx);
     struct context *copy = value_copy(ctx, NULL);
     value_ctx_push(&copy, result);
     copy->stopped = false;
-    uint64_t v = value_put_context(&global->values, copy);
+    hvalue_t v = value_put_context(&global->values, copy);
     free(copy);
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
     step->ctx->pc++;
@@ -666,7 +642,7 @@ void op_IncVar(const void *env, struct state *state, struct step *step, struct g
 
     assert((ctx->vars & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t v = value_dict_load(ctx->vars, ei->name);
+    hvalue_t v = value_dict_load(ctx->vars, ei->name);
     assert((v & VALUE_MASK) == VALUE_INT);
     v += 1 << VALUE_BITS;
     ctx->vars = value_dict_store(&global->values, ctx->vars, ei->name, v);
@@ -678,7 +654,7 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
 
     assert((state->invariants & VALUE_MASK) == VALUE_SET);
     int size;
-    uint64_t *vals;
+    hvalue_t *vals;
     if (state->invariants == VALUE_SET) {
         size = 0;
         vals = NULL;
@@ -686,9 +662,9 @@ void op_Invariant(const void *env, struct state *state, struct step *step, struc
     else {
         vals = value_get(state->invariants, &size);
     }
-    vals = realloc(vals, size + sizeof(uint64_t));
-    * (uint64_t *) ((char *) vals + size) = (step->ctx->pc << VALUE_BITS) | VALUE_PC;
-    state->invariants = value_put_set(&global->values, vals, size + sizeof(uint64_t));
+    vals = realloc(vals, size + sizeof(hvalue_t));
+    * (hvalue_t *) ((char *) vals + size) = (step->ctx->pc << VALUE_BITS) | VALUE_PC;
+    state->invariants = value_put_set(&global->values, vals, size + sizeof(hvalue_t));
     step->ctx->pc = ei->end + 1;
 }
 
@@ -713,7 +689,7 @@ void op_JumpCond(const void *env, struct state *state, struct step *step, struct
     if (false) {
         printf("JUMPCOND %d\n", ej->pc);
     }
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
         value_ctx_failure(step->ctx, &global->values, "JumpCond: not an boolean");
@@ -732,9 +708,9 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
 
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t v;
+    hvalue_t v;
     if (el == 0) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Load %s: not an address", p);
@@ -747,8 +723,8 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         }
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
             step->ai->indices = indices;
             step->ai->n = size;
@@ -784,15 +760,15 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
     const struct env_LoadVar *el = env;
     assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t v;
+    hvalue_t v;
     if (el == NULL) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
 
         bool result;
         if (indices[0] == this_atom) {
@@ -835,21 +811,21 @@ void op_Move(const void *env, struct state *state, struct step *step, struct glo
     struct context *ctx = step->ctx;
     int offset = ctx->sp - em->offset;
 
-    uint64_t v = ctx->stack[offset];
+    hvalue_t v = ctx->stack[offset];
     memmove(&ctx->stack[offset], &ctx->stack[offset + 1],
-                (em->offset - 1) * sizeof(uint64_t));
+                (em->offset - 1) * sizeof(hvalue_t));
     ctx->stack[ctx->sp - 1] = v;
     ctx->pc++;
 }
 
 void op_Nary(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Nary *en = env;
-    uint64_t args[MAX_ARITY];
+    hvalue_t args[MAX_ARITY];
 
     for (int i = 0; i < en->arity; i++) {
         args[i] = value_ctx_pop(&step->ctx);
     }
-    uint64_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
+    hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
     if (step->ctx->failure == 0) {
         value_ctx_push(&step->ctx, result);
         step->ctx->pc++;
@@ -899,8 +875,8 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
         }
     }
     else {
-        uint64_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
-        uint64_t fp = value_ctx_pop(&step->ctx);
+        hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
+        hvalue_t fp = value_ctx_pop(&step->ctx);
         if ((fp & VALUE_MASK) != VALUE_INT) {
             printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
             value_ctx_failure(step->ctx, &global->values, "XXX");
@@ -909,7 +885,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
         }
         assert((fp & VALUE_MASK) == VALUE_INT);
         step->ctx->fp = fp >> VALUE_BITS;
-        uint64_t oldvars = value_ctx_pop(&step->ctx);
+        hvalue_t oldvars = value_ctx_pop(&step->ctx);
         assert((oldvars & VALUE_MASK) == VALUE_DICT);
         step->ctx->vars = oldvars;
         (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
@@ -920,7 +896,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
             }
             return;
         }
-        uint64_t calltype = value_ctx_pop(&step->ctx);
+        hvalue_t calltype = value_ctx_pop(&step->ctx);
         assert((calltype & VALUE_MASK) == VALUE_INT);
         switch (calltype >> VALUE_BITS) {
         case CALLTYPE_PROCESS:
@@ -928,7 +904,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
             break;
         case CALLTYPE_NORMAL:
             {
-                uint64_t pc = value_ctx_pop(&step->ctx);
+                hvalue_t pc = value_ctx_pop(&step->ctx);
                 assert((pc & VALUE_MASK) == VALUE_PC);
                 pc >>= VALUE_BITS;
                 assert(pc != step->ctx->pc);
@@ -939,7 +915,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
 		case CALLTYPE_INTERRUPT:
 			assert(step->ctx->interruptlevel);
 			step->ctx->interruptlevel = false;
-			uint64_t pc = value_ctx_pop(&step->ctx);
+			hvalue_t pc = value_ctx_pop(&step->ctx);
 			assert((pc & VALUE_MASK) == VALUE_PC);
 			pc >>= VALUE_BITS;
 			assert(pc != step->ctx->pc);
@@ -952,7 +928,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
 }
 
 void op_Sequential(const void *env, struct state *state, struct step *step, struct global_t *global){
-    uint64_t addr = value_ctx_pop(&step->ctx);
+    hvalue_t addr = value_ctx_pop(&step->ctx);
     if ((addr & VALUE_MASK) != VALUE_ADDRESS) {
         char *p = value_string(addr);
         value_ctx_failure(step->ctx, &global->values, "Sequential %s: not an address", p);
@@ -963,8 +939,8 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
     /* Insert in state's set of sequential variables.
      */
     int size;
-    uint64_t *seqs = value_copy(state->seqs, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *seqs = value_copy(state->seqs, &size);
+    size /= sizeof(hvalue_t);
     int i;
     for (i = 0; i < size; i++) {
         int k = value_cmp(seqs[i], addr);
@@ -977,18 +953,18 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
             break;
         }
     }
-    seqs = realloc(seqs, (size + 1) * sizeof(uint64_t));
-    memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(uint64_t));
+    seqs = realloc(seqs, (size + 1) * sizeof(hvalue_t));
+    memmove(&seqs[i + 1], &seqs[i], (size - i) * sizeof(hvalue_t));
     seqs[i] = addr;
-    state->seqs = value_put_set(&global->values, seqs, (size + 1) * sizeof(uint64_t));
+    state->seqs = value_put_set(&global->values, seqs, (size + 1) * sizeof(hvalue_t));
     free(seqs);
     step->ctx->pc++;
 }
 
 // sort two key/value pairs
 static int q_kv_cmp(const void *e1, const void *e2){
-    const uint64_t *kv1 = (const uint64_t *) e1;
-    const uint64_t *kv2 = (const uint64_t *) e2;
+    const hvalue_t *kv1 = (const hvalue_t *) e1;
+    const hvalue_t *kv2 = (const hvalue_t *) e2;
 
     int k = value_cmp(kv1[0], kv2[0]);
     if (k != 0) {
@@ -998,14 +974,14 @@ static int q_kv_cmp(const void *e1, const void *e2){
 }
 
 static int q_value_cmp(const void *v1, const void *v2){
-    return value_cmp(* (const uint64_t *) v1, * (const uint64_t *) v2);
+    return value_cmp(* (const hvalue_t *) v1, * (const hvalue_t *) v2);
 }
 
 // Sort the resulting set and remove duplicates
-static int sort(uint64_t *vals, int n){
-    qsort(vals, n, sizeof(uint64_t), q_value_cmp);
+static int sort(hvalue_t *vals, int n){
+    qsort(vals, n, sizeof(hvalue_t), q_value_cmp);
 
-    uint64_t *p = vals, *q = vals + 1;
+    hvalue_t *p = vals, *q = vals + 1;
     for (int i = 1; i < n; i++, q++) {
         if (*q != *p) {
             *++p = *q;
@@ -1017,7 +993,7 @@ static int sort(uint64_t *vals, int n){
 
 void op_SetIntLevel(const void *env, struct state *state, struct step *step, struct global_t *global){
 	bool oldlevel = step->ctx->interruptlevel;
-	uint64_t newlevel =  value_ctx_pop(&step->ctx);
+	hvalue_t newlevel =  value_ctx_pop(&step->ctx);
     if ((newlevel & VALUE_MASK) != VALUE_BOOL) {
         value_ctx_failure(step->ctx, &global->values, "setintlevel can only be set to a boolean");
         return;
@@ -1035,10 +1011,10 @@ void op_Spawn(
 ) {
     const struct env_Spawn *se = env;
 
-    uint64_t thisval = value_ctx_pop(&step->ctx);
-    uint64_t arg = value_ctx_pop(&step->ctx);
+    hvalue_t thisval = value_ctx_pop(&step->ctx);
+    hvalue_t arg = value_ctx_pop(&step->ctx);
 
-    uint64_t pc = value_ctx_pop(&step->ctx);
+    hvalue_t pc = value_ctx_pop(&step->ctx);
     if ((pc & VALUE_MASK) != VALUE_PC) {
         value_ctx_failure(step->ctx, &global->values, "spawn: not a method");
         return;
@@ -1061,7 +1037,7 @@ void op_Spawn(
     ctx->eternal = se->eternal;
     value_ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     value_ctx_push(&ctx, arg);
-    uint64_t v = value_put_context(&global->values, ctx);
+    hvalue_t v = value_put_context(&global->values, ctx);
 
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
 
@@ -1077,8 +1053,8 @@ void op_Spawn(
 void op_Split(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Split *es = env;
 
-    uint64_t v = value_ctx_pop(&step->ctx);
-    uint64_t type = v & VALUE_MASK;
+    hvalue_t v = value_ctx_pop(&step->ctx);
+    hvalue_t type = v & VALUE_MASK;
     if (type != VALUE_DICT && type != VALUE_SET) {
         value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
         return;
@@ -1094,10 +1070,10 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
     }
 
     int size;
-    uint64_t *vals = value_get(v, &size);
+    hvalue_t *vals = value_get(v, &size);
 
     if (type == VALUE_DICT) {
-        size /= 2 * sizeof(uint64_t);
+        size /= 2 * sizeof(hvalue_t);
         if (size != es->count) {
             value_ctx_failure(step->ctx, &global->values, "Split: list of wrong size");
             return;
@@ -1109,7 +1085,7 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
     if (type == VALUE_SET) {
-        size /= sizeof(uint64_t);
+        size /= sizeof(hvalue_t);
         if (size != es->count) {
             value_ctx_failure(step->ctx, &global->values, "Split: set of wrong size");
             return;
@@ -1134,7 +1110,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
     }
 
     if (es == 0) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Stop %s: not an address", p);
@@ -1147,12 +1123,12 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
         }
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
 
         step->ctx->stopped = true;
         step->ctx->pc++;
-        uint64_t v = value_put_context(&global->values, step->ctx);
+        hvalue_t v = value_put_context(&global->values, step->ctx);
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
@@ -1164,7 +1140,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
     else {
         step->ctx->stopped = true;
         step->ctx->pc++;
-        uint64_t v = value_put_context(&global->values, step->ctx);
+        hvalue_t v = value_put_context(&global->values, step->ctx);
 
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
             value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
@@ -1183,10 +1159,10 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
 
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
 
     if (es == 0) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Store %s: not an address", p);
@@ -1199,23 +1175,12 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         }
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
             step->ai->indices = indices;
             step->ai->n = size;
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
-        }
-
-        if (false) {
-            printf("STORE IND %d %d %d %"PRIx64" %s %s\n", step->ctx->pc, step->ctx->sp, size, v,
-                    value_string(step->ctx->stack[step->ctx->sp - 1]),
-                    value_string(av));
-            for (int i = 0; i < size; i++) {
-                char *index = value_string(indices[i]);
-                printf(">> %s\n", index);
-                free(index);
-            }
         }
 
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
@@ -1241,17 +1206,17 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
 
 void op_StoreVar(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_StoreVar *es = env;
-    uint64_t v = value_ctx_pop(&step->ctx);
+    hvalue_t v = value_ctx_pop(&step->ctx);
 
     assert((step->ctx->vars & VALUE_MASK) == VALUE_DICT);
     if (es == NULL) {
-        uint64_t av = value_ctx_pop(&step->ctx);
+        hvalue_t av = value_ctx_pop(&step->ctx);
         assert((av & VALUE_MASK) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
         int size;
-        uint64_t *indices = value_get(av, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
 
         bool result;
         if (indices[0] == this_atom) {
@@ -1402,7 +1367,7 @@ void *init_Load(struct dict *map, struct values_t *values){
     assert(jv->type == JV_LIST);
     struct env_Load *env = new_alloc(struct env_Load);
     env->n = jv->u.list.nvals;
-    env->indices = malloc(env->n * sizeof(uint64_t));
+    env->indices = malloc(env->n * sizeof(hvalue_t));
     for (int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -1553,7 +1518,7 @@ void *init_Stop(struct dict *map, struct values_t *values){
     assert(jv->type == JV_LIST);
     struct env_Stop *env = new_alloc(struct env_Stop);
     env->n = jv->u.list.nvals;
-    env->indices = malloc(env->n * sizeof(uint64_t));
+    env->indices = malloc(env->n * sizeof(hvalue_t));
     for (int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -1570,7 +1535,7 @@ void *init_Store(struct dict *map, struct values_t *values){
     assert(jv->type == JV_LIST);
     struct env_Store *env = new_alloc(struct env_Store);
     env->n = jv->u.list.nvals;
-    env->indices = malloc(env->n * sizeof(uint64_t));
+    env->indices = malloc(env->n * sizeof(hvalue_t));
     for (int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
@@ -1593,7 +1558,7 @@ void *init_StoreVar(struct dict *map, struct values_t *values){
     }
 }
 
-uint64_t f_abs(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     int64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_INT) {
@@ -1603,16 +1568,16 @@ uint64_t f_abs(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return e >= 0 ? args[0] : (((-e) << VALUE_BITS) | VALUE_INT);
 }
 
-uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
 		return VALUE_TRUE;
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *v = value_get(e, &size);
+        size /= sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "set.all() can only be applied to booleans");
@@ -1625,8 +1590,8 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= 2 * sizeof(uint64_t);
+        hvalue_t *v = value_get(e, &size);
+        size /= 2 * sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "dict.all() can only be applied to booleans");
@@ -1640,16 +1605,16 @@ uint64_t f_all(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return value_ctx_failure(ctx, values, "all() can only be applied to sets or dictionaries");
 }
 
-uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
 		return VALUE_FALSE;
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *v = value_get(e, &size);
+        size /= sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if ((v[i] & VALUE_MASK) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "set.any() can only be applied to booleans");
@@ -1662,8 +1627,8 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= 2 * sizeof(uint64_t);
+        hvalue_t *v = value_get(e, &size);
+        size /= 2 * sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if ((v[2*i+1] & VALUE_MASK) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "dict.any() can only be applied to booleans");
@@ -1677,30 +1642,30 @@ uint64_t f_any(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return value_ctx_failure(ctx, values, "any() can only be applied to sets or dictionaries");
 }
 
-uint64_t nametag(struct context *ctx, struct values_t *values){
-    uint64_t nt = value_dict_store(values, VALUE_DICT,
+hvalue_t nametag(struct context *ctx, struct values_t *values){
+    hvalue_t nt = value_dict_store(values, VALUE_DICT,
             (0 << VALUE_BITS) | VALUE_INT, ctx->entry);
     return value_dict_store(values, nt,
             (1 << VALUE_BITS) | VALUE_INT, ctx->arg);
 }
 
-uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     if (ctx->atomic == 0) {
         return value_ctx_failure(ctx, values, "atLabel: can only be called in atomic mode");
     }
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_PC) {
         return value_ctx_failure(ctx, values, "atLabel: not a label");
     }
     e >>= VALUE_BITS;
 
     int size;
-    uint64_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = value_get(state->ctxbag, &size);
+    size /= sizeof(hvalue_t);
     assert(size > 0);
     assert(size % 2 == 0);
-    uint64_t bag = VALUE_DICT;
+    hvalue_t bag = VALUE_DICT;
     for (int i = 0; i < size; i += 2) {
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
@@ -1713,23 +1678,23 @@ uint64_t f_atLabel(struct state *state, struct context *ctx, uint64_t *args, int
     return bag;
 }
 
-uint64_t f_countLabel(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     if (ctx->atomic == 0) {
         return value_ctx_failure(ctx, values, "countLabel: can only be called in atomic mode");
     }
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_PC) {
         return value_ctx_failure(ctx, values, "countLabel: not a label");
     }
     e >>= VALUE_BITS;
 
     int size;
-    uint64_t *vals = value_get(state->ctxbag, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = value_get(state->ctxbag, &size);
+    size /= sizeof(hvalue_t);
     assert(size > 0);
     assert(size % 2 == 0);
-    uint64_t result = 0;
+    hvalue_t result = 0;
     for (int i = 0; i < size; i += 2) {
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
@@ -1741,7 +1706,7 @@ uint64_t f_countLabel(struct state *state, struct context *ctx, uint64_t *args, 
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_div(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     int64_t e1 = args[0], e2 = args[1];
     if ((e1 & VALUE_MASK) != VALUE_INT) {
         return value_ctx_failure(ctx, values, "right argument to / not an integer");
@@ -1757,38 +1722,38 @@ uint64_t f_div(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_eq(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_eq(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     return ((args[0] == args[1]) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_ge(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_ge(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp >= 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_gt(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_gt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp > 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_ne(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_ne(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     return ((args[0] != args[1]) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
-    uint64_t s = args[0], e = args[1];
+    hvalue_t s = args[0], e = args[1];
 	if (s == VALUE_SET || s == VALUE_DICT) {
 		return VALUE_FALSE;
 	}
     if ((s & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(s, &size);
-        size /= sizeof(uint64_t);
+        hvalue_t *v = value_get(s, &size);
+        size /= sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if (v[i] == e) {
                 return VALUE_TRUE;
@@ -1798,8 +1763,8 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n, s
     }
     if ((s & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(s, &size);
-        size /= 2 * sizeof(uint64_t);
+        hvalue_t *v = value_get(s, &size);
+        size /= 2 * sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if (v[2*i+1] == e) {
                 return VALUE_TRUE;
@@ -1810,18 +1775,18 @@ uint64_t f_in(struct state *state, struct context *ctx, uint64_t *args, int n, s
     return value_ctx_failure(ctx, values, "'in' can only be applied to sets or dictionaries");
 }
 
-uint64_t f_intersection(
+hvalue_t f_intersection(
     struct state *state,
     struct context *ctx,
-    uint64_t *args,
+    hvalue_t *args,
     int n,
     struct values_t *values
 ) {
-    uint64_t e1 = args[0];
+    hvalue_t e1 = args[0];
 
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
-            uint64_t e2 = args[i];
+            hvalue_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
                 return value_ctx_failure(ctx, values, "'&' applied to mix of ints and other types");
             }
@@ -1839,7 +1804,7 @@ uint64_t f_intersection(
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
         int min_size = vi[0].size;              // minimum set size
-        uint64_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
+        hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if ((args[i] & VALUE_MASK) != VALUE_SET) {
                 return value_ctx_failure(ctx, values, "'&' applied to mix of sets and other types");
@@ -1865,15 +1830,15 @@ uint64_t f_intersection(
         }
 
         // Allocate sufficient memory.
-        uint64_t *vals = malloc((size_t) min_size), *v = vals;
+        hvalue_t *vals = malloc((size_t) min_size), *v = vals;
 
         bool done = false;
         for (int i = 0; i < min_size; i++) {
-            uint64_t old_max = max_val;
+            hvalue_t old_max = max_val;
             for (int j = 0; j < n; j++) {
-                int k, size = vi[j].size / sizeof(uint64_t);
+                int k, size = vi[j].size / sizeof(hvalue_t);
                 while ((k = vi[j].index) < size) {
-                    uint64_t v = vi[j].vals[k];
+                    hvalue_t v = vi[j].vals[k];
                     int cmp = value_cmp(v, max_val);
                     if (cmp > 0) {
                         max_val = v;
@@ -1894,9 +1859,9 @@ uint64_t f_intersection(
             if (old_max == max_val) {
                 *v++ = max_val;
                 for (int j = 0; j < n; j++) {
-                    assert(vi[j].index < vi[j].size / sizeof(uint64_t));
+                    assert(vi[j].index < vi[j].size / sizeof(hvalue_t));
                     vi[j].index++;
-                    int k, size = vi[j].size / sizeof(uint64_t);
+                    int k, size = vi[j].size / sizeof(hvalue_t);
                     if ((k = vi[j].index) == size) {
                         done = true;
                         break;
@@ -1911,7 +1876,7 @@ uint64_t f_intersection(
             }
         }
 
-        uint64_t result = value_put_set(values, vals, (char *) v - (char *) vals);
+        hvalue_t result = value_put_set(values, vals, (char *) v - (char *) vals);
         free(vi);
         free(vals);
         return result;
@@ -1946,7 +1911,7 @@ uint64_t f_intersection(
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total);
+    hvalue_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -1954,8 +1919,8 @@ uint64_t f_intersection(
     }
 
     // sort lexicographically, leaving duplicate keys
-    int cnt = total / (2 * sizeof(uint64_t));
-    qsort(vals, cnt, 2 * sizeof(uint64_t), q_kv_cmp);
+    int cnt = total / (2 * sizeof(hvalue_t));
+    qsort(vals, cnt, 2 * sizeof(hvalue_t), q_kv_cmp);
 
     // now only leave the min value for duplicate keys
     int in = 0, out = 0;
@@ -1979,13 +1944,13 @@ uint64_t f_intersection(
         in = i;
     }
 
-    uint64_t result = value_put_dict(values, vals, 2 * out * sizeof(uint64_t));
+    hvalue_t result = value_put_dict(values, vals, 2 * out * sizeof(hvalue_t));
     free(vi);
     free(vals);
     return result;
 }
 
-uint64_t f_invert(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_invert(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     int64_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_INT) {
@@ -1995,9 +1960,9 @@ uint64_t f_invert(struct state *state, struct context *ctx, uint64_t *args, int 
     return ((~e) << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
     if ((e & VALUE_MASK) == VALUE_DICT) {
         return ((e == VALUE_DICT) << VALUE_BITS) | VALUE_BOOL;
     }
@@ -2007,9 +1972,9 @@ uint64_t f_isEmpty(struct state *state, struct context *ctx, uint64_t *args, int
     return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries and sets");
 }
 
-uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t v = args[0];
+    hvalue_t v = args[0];
     if ((v & VALUE_MASK) != VALUE_DICT) {
         return value_ctx_failure(ctx, values, "keys() can only be applied to dictionaries");
     }
@@ -2018,53 +1983,53 @@ uint64_t f_keys(struct state *state, struct context *ctx, uint64_t *args, int n,
     }
 
     int size;
-    uint64_t *vals = value_get(v, &size);
-    uint64_t *keys = malloc(size / 2);
-    size /= 2 * sizeof(uint64_t);
+    hvalue_t *vals = value_get(v, &size);
+    hvalue_t *keys = malloc(size / 2);
+    size /= 2 * sizeof(hvalue_t);
     for (int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
-    uint64_t result = value_put_set(values, keys, size * sizeof(uint64_t));
+    hvalue_t result = value_put_set(values, keys, size * sizeof(hvalue_t));
     free(keys);
     return result;
 }
 
-uint64_t f_len(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
 	if (e == VALUE_SET || e == VALUE_DICT) {
 		return VALUE_INT;
 	}
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
         (void) value_get(e, &size);
-        size /= sizeof(uint64_t);
+        size /= sizeof(hvalue_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
         (void) value_get(e, &size);
-        size /= 2 * sizeof(uint64_t);
+        size /= 2 * sizeof(hvalue_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
     return value_ctx_failure(ctx, values, "len() can only be applied to sets or dictionaries");
 }
 
-uint64_t f_le(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp <= 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_lt(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_lt(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int cmp = value_cmp(args[1], args[0]);
     return ((cmp < 0) << VALUE_BITS) | VALUE_BOOL;
 }
 
-uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
 	if (e == VALUE_SET) {
         return value_ctx_failure(ctx, values, "can't apply max() to empty set");
     }
@@ -2073,9 +2038,9 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= sizeof(uint64_t);
-        uint64_t max = v[0];
+        hvalue_t *v = value_get(e, &size);
+        size /= sizeof(hvalue_t);
+        hvalue_t max = v[0];
         for (int i = 1; i < size; i++) {
             if (value_cmp(v[i], max) > 0) {
                 max = v[i];
@@ -2085,9 +2050,9 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= 2 * sizeof(uint64_t);
-        uint64_t max = v[1];
+        hvalue_t *v = value_get(e, &size);
+        size /= 2 * sizeof(hvalue_t);
+        hvalue_t max = v[1];
         for (int i = 0; i < size; i++) {
             if (value_cmp(v[2*i+1], max) > 0) {
                 max = v[2*i+1];
@@ -2098,9 +2063,9 @@ uint64_t f_max(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return value_ctx_failure(ctx, values, "max() can only be applied to sets or lists");
 }
 
-uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
 	if (e == VALUE_SET) {
         return value_ctx_failure(ctx, values, "can't apply min() to empty set");
     }
@@ -2109,9 +2074,9 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_SET) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= sizeof(uint64_t);
-        uint64_t min = v[0];
+        hvalue_t *v = value_get(e, &size);
+        size /= sizeof(hvalue_t);
+        hvalue_t min = v[0];
         for (int i = 1; i < size; i++) {
             if (value_cmp(v[i], min) < 0) {
                 min = v[i];
@@ -2121,9 +2086,9 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
     if ((e & VALUE_MASK) == VALUE_DICT) {
         int size;
-        uint64_t *v = value_get(e, &size);
-        size /= 2 * sizeof(uint64_t);
-        uint64_t min = v[1];
+        hvalue_t *v = value_get(e, &size);
+        size /= 2 * sizeof(hvalue_t);
+        hvalue_t min = v[1];
         for (int i = 0; i < size; i++) {
             if (value_cmp(v[2*i+1], min) < 0) {
                 min = v[2*i+1];
@@ -2134,10 +2099,10 @@ uint64_t f_min(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return value_ctx_failure(ctx, values, "min() can only be applied to sets or lists");
 }
 
-uint64_t f_minus(
+hvalue_t f_minus(
     struct state *state,
     struct context *ctx,
-    uint64_t *args,
+    hvalue_t *args,
     int n,
     struct values_t *values
 ) {
@@ -2149,7 +2114,7 @@ uint64_t f_minus(
         }
         e >>= VALUE_BITS;
         if (e == VALUE_MAX) {
-            return ((uint64_t) VALUE_MIN << VALUE_BITS) | VALUE_INT;
+            return ((hvalue_t) VALUE_MIN << VALUE_BITS) | VALUE_INT;
         }
         if (e == VALUE_MIN) {
             return (VALUE_MAX << VALUE_BITS) | VALUE_INT;
@@ -2174,12 +2139,12 @@ uint64_t f_minus(
             return (result << VALUE_BITS) | VALUE_INT;
         }
 
-        uint64_t e1 = args[0], e2 = args[1];
+        hvalue_t e1 = args[0], e2 = args[1];
         if ((e1 & VALUE_MASK) != VALUE_SET || (e2 & VALUE_MASK) != VALUE_SET) {
             return value_ctx_failure(ctx, values, "minus can only be applied to ints or sets");
         }
         int size1, size2;
-        uint64_t *vals1, *vals2;
+        hvalue_t *vals1, *vals2;
         if (e1 == VALUE_SET) {
             size1 = 0;
             vals1 = NULL;
@@ -2194,11 +2159,11 @@ uint64_t f_minus(
         else {
             vals2 = value_get(e2, &size2);
         }
-        uint64_t *vals = malloc(size2);
-        size1 /= sizeof(uint64_t);
-        size2 /= sizeof(uint64_t);
+        hvalue_t *vals = malloc(size2);
+        size1 /= sizeof(hvalue_t);
+        size2 /= sizeof(hvalue_t);
 
-        uint64_t *p1 = vals1, *p2 = vals2, *q = vals;
+        hvalue_t *p1 = vals1, *p2 = vals2, *q = vals;
         while (size1 > 0 && size2 > 0) {
             if (*p1 == *p2) {
                 p1++; size1--;
@@ -2218,13 +2183,13 @@ uint64_t f_minus(
         while (size2 > 0) {
             *q++ = *p2++; size2--;
         }
-        uint64_t result = value_put_set(values, vals, (char *) q - (char *) vals);
+        hvalue_t result = value_put_set(values, vals, (char *) q - (char *) vals);
         free(vals);
         return result;
     }
 }
 
-uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     int64_t e1 = args[0], e2 = args[1];
     if ((e1 & VALUE_MASK) != VALUE_INT) {
         return value_ctx_failure(ctx, values, "right argument to mod not an integer");
@@ -2240,20 +2205,20 @@ uint64_t f_mod(struct state *state, struct context *ctx, uint64_t *args, int n, 
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_get_context(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_get_context(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     return value_put_context(values, ctx);
 }
 
-uint64_t f_not(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_not(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    uint64_t e = args[0];
+    hvalue_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_BOOL) {
         return value_ctx_failure(ctx, values, "not can only be applied to booleans");
     }
     return e ^ (1 << VALUE_BITS);
 }
 
-uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     int64_t e1 = args[0];
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         e1 >>= VALUE_BITS;
@@ -2299,7 +2264,7 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n,
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total);
+    hvalue_t *vals = malloc(total);
     total = 0;
     for (int i = n; --i >= 0;) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2307,18 +2272,18 @@ uint64_t f_plus(struct state *state, struct context *ctx, uint64_t *args, int n,
     }
 
     // Update the indices
-    n = total / (2 * sizeof(uint64_t));
+    n = total / (2 * sizeof(hvalue_t));
     for (int i = 0; i < n; i++) {
         vals[2*i] = (i << VALUE_BITS) | VALUE_INT;
     }
-    uint64_t result = value_put_dict(values, vals, total);
+    hvalue_t result = value_put_dict(values, vals, total);
 
     free(vi);
     free(vals);
     return result;
 }
 
-uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
@@ -2356,7 +2321,7 @@ uint64_t f_power(struct state *state, struct context *ctx, uint64_t *args, int n
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
@@ -2374,24 +2339,24 @@ uint64_t f_range(struct state *state, struct context *ctx, uint64_t *args, int n
     int cnt = (finish - start) + 1;
 	assert(cnt > 0);
 	assert(cnt < 1000);		// seems unlikely...
-    uint64_t *v = malloc(cnt * sizeof(uint64_t));
+    hvalue_t *v = malloc(cnt * sizeof(hvalue_t));
     for (int i = 0; i < cnt; i++) {
         v[i] = ((start + i) << VALUE_BITS) | VALUE_INT;
     }
-    uint64_t result = value_put_set(values, v, cnt * sizeof(uint64_t));
+    hvalue_t result = value_put_set(values, v, cnt * sizeof(hvalue_t));
     free(v);
     return result;
 }
 
-uint64_t f_dict_add(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 3);
     int64_t value = args[0], key = args[1], dict = args[2];
     assert((dict & VALUE_MASK) == VALUE_DICT);
     int size;
-    uint64_t *vals = value_get(dict, &size), *v;
+    hvalue_t *vals = value_get(dict, &size), *v;
 
     int i = 0, cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v += 2) {
+    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v += 2) {
         cmp = value_cmp(key, *v);
         if (cmp <= 0) {
             break;
@@ -2404,36 +2369,36 @@ uint64_t f_dict_add(struct state *state, struct context *ctx, uint64_t *args, in
         if (cmp <= 0) {
             return dict;
         }
-        uint64_t *nvals = malloc(size);
+        hvalue_t *nvals = malloc(size);
         memcpy(nvals, vals, size);
-        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) = value;
+        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
 
-        uint64_t result = value_put_dict(values, nvals, size);
+        hvalue_t result = value_put_dict(values, nvals, size);
         free(nvals);
         return result;
     }
     else {
-        uint64_t *nvals = malloc(size + 2*sizeof(uint64_t));
+        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
         memcpy(nvals, vals, i);
-        * (uint64_t *) ((char *) nvals + i) = key;
-        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) = value;
-        memcpy((char *) nvals + i + 2*sizeof(uint64_t), v, size - i);
+        * (hvalue_t *) ((char *) nvals + i) = key;
+        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) = value;
+        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
-        uint64_t result = value_put_dict(values, nvals, size + 2*sizeof(uint64_t));
+        hvalue_t result = value_put_dict(values, nvals, size + 2*sizeof(hvalue_t));
         free(nvals);
         return result;
     }
 }
 
-uint64_t f_set_add(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t elt = args[0], set = args[1];
     assert((set & VALUE_MASK) == VALUE_SET);
     int size;
-    uint64_t *vals = value_get(set, &size), *v;
+    hvalue_t *vals = value_get(set, &size), *v;
 
     int i = 0;
-    for (v = vals; i < size; i += sizeof(uint64_t), v++) {
+    for (v = vals; i < size; i += sizeof(hvalue_t), v++) {
         int cmp = value_cmp(elt, *v);
         if (cmp == 0) {
             return set;
@@ -2443,25 +2408,25 @@ uint64_t f_set_add(struct state *state, struct context *ctx, uint64_t *args, int
         }
     }
 
-    uint64_t *nvals = malloc(size + sizeof(uint64_t));
+    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
     memcpy(nvals, vals, i);
-    * (uint64_t *) ((char *) nvals + i) = elt;
-    memcpy((char *) nvals + i + sizeof(uint64_t), v, size - i);
+    * (hvalue_t *) ((char *) nvals + i) = elt;
+    memcpy((char *) nvals + i + sizeof(hvalue_t), v, size - i);
 
-    uint64_t result = value_put_set(values, nvals, size + sizeof(uint64_t));
+    hvalue_t result = value_put_set(values, nvals, size + sizeof(hvalue_t));
     free(nvals);
     return result;
 }
 
-uint64_t f_value_bag_add(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t elt = args[0], dict = args[1];
     assert((dict & VALUE_MASK) == VALUE_DICT);
     int size;
-    uint64_t *vals = value_get(dict, &size), *v;
+    hvalue_t *vals = value_get(dict, &size), *v;
 
     int i = 0, cmp = 1;
-    for (v = vals; i < size; i += 2 * sizeof(uint64_t), v++) {
+    for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
         cmp = value_cmp(elt, *v);
         if (cmp <= 0) {
             break;
@@ -2471,30 +2436,30 @@ uint64_t f_value_bag_add(struct state *state, struct context *ctx, uint64_t *arg
     if (cmp == 0) {
         assert((v[1] & VALUE_MASK) == VALUE_INT);
         int cnt = (v[1] >> VALUE_BITS) + 1;
-        uint64_t *nvals = malloc(size);
+        hvalue_t *nvals = malloc(size);
         memcpy(nvals, vals, size);
-        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) =
+        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
                                         (cnt << VALUE_BITS) | VALUE_INT;
 
-        uint64_t result = value_put_dict(values, nvals, size);
+        hvalue_t result = value_put_dict(values, nvals, size);
         free(nvals);
         return result;
     }
     else {
-        uint64_t *nvals = malloc(size + 2*sizeof(uint64_t));
+        hvalue_t *nvals = malloc(size + 2*sizeof(hvalue_t));
         memcpy(nvals, vals, i);
-        * (uint64_t *) ((char *) nvals + i) = elt;
-        * (uint64_t *) ((char *) nvals + (i + sizeof(uint64_t))) =
+        * (hvalue_t *) ((char *) nvals + i) = elt;
+        * (hvalue_t *) ((char *) nvals + (i + sizeof(hvalue_t))) =
                                         (1 << VALUE_BITS) | VALUE_INT;
-        memcpy((char *) nvals + i + 2*sizeof(uint64_t), v, size - i);
+        memcpy((char *) nvals + i + 2*sizeof(hvalue_t), v, size - i);
 
-        uint64_t result = value_put_dict(values, nvals, size + 2*sizeof(uint64_t));
+        hvalue_t result = value_put_dict(values, nvals, size + 2*sizeof(hvalue_t));
         free(nvals);
         return result;
     }
 }
 
-uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_shiftleft(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
@@ -2519,7 +2484,7 @@ uint64_t f_shiftleft(struct state *state, struct context *ctx, uint64_t *args, i
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_shiftright(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t e1 = args[0], e2 = args[1];
 
@@ -2537,7 +2502,7 @@ uint64_t f_shiftright(struct state *state, struct context *ctx, uint64_t *args, 
     return ((e2 >> e1) << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
+hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     int64_t result = 1;
     int list = -1;
     for (int i = 0; i < n; i++) {
@@ -2576,12 +2541,12 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
         return VALUE_DICT;
     }
     int size;
-    uint64_t *vals = value_get(args[list], &size);
+    hvalue_t *vals = value_get(args[list], &size);
     if (size == 0) {
         return VALUE_DICT;
     }
-    uint64_t *r = malloc(result * size);
-    unsigned int cnt = size / (2 * sizeof(uint64_t));
+    hvalue_t *r = malloc(result * size);
+    unsigned int cnt = size / (2 * sizeof(hvalue_t));
     int index = 0;
     for (int i = 0; i < result; i++) {
         for (int j = 0; j < cnt; j++) {
@@ -2590,17 +2555,17 @@ uint64_t f_times(struct state *state, struct context *ctx, uint64_t *args, int n
             index++;
         }
     }
-    uint64_t v = value_put_dict(values, r, result * size);
+    hvalue_t v = value_put_dict(values, r, result * size);
     free(r);
     return v;
 }
 
-uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
-    uint64_t e1 = args[0];
+hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+    hvalue_t e1 = args[0];
 
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
-            uint64_t e2 = args[i];
+            hvalue_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
                 return value_ctx_failure(ctx, values, "'|' applied to mix of ints and other types");
             }
@@ -2633,15 +2598,15 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
         }
 
         // Concatenate the sets
-        uint64_t *vals = malloc(total);
+        hvalue_t *vals = malloc(total);
         total = 0;
         for (int i = 0; i < n; i++) {
             memcpy((char *) vals + total, vi[i].vals, vi[i].size);
             total += vi[i].size;
         }
 
-        n = sort(vals, total / sizeof(uint64_t));
-        uint64_t result = value_put_set(values, vals, n * sizeof(uint64_t));
+        n = sort(vals, total / sizeof(hvalue_t));
+        hvalue_t result = value_put_set(values, vals, n * sizeof(hvalue_t));
         free(vi);
         free(vals);
         return result;
@@ -2673,7 +2638,7 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
 
     // Concatenate the dictionaries
-    uint64_t *vals = malloc(total);
+    hvalue_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2681,8 +2646,8 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
 
     // sort lexicographically, leaving duplicate keys
-    int cnt = total / (2 * sizeof(uint64_t));
-    qsort(vals, cnt, 2 * sizeof(uint64_t), q_kv_cmp);
+    int cnt = total / (2 * sizeof(hvalue_t));
+    qsort(vals, cnt, 2 * sizeof(hvalue_t), q_kv_cmp);
 
     // now only leave the max value for duplicate keys
     n = 0;
@@ -2695,18 +2660,18 @@ uint64_t f_union(struct state *state, struct context *ctx, uint64_t *args, int n
     }
     n++;
 
-    uint64_t result = value_put_dict(values, vals, 2 * n * sizeof(uint64_t));
+    hvalue_t result = value_put_dict(values, vals, 2 * n * sizeof(hvalue_t));
     free(vi);
     free(vals);
     return result;
 }
 
-uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, struct values_t *values){
-    uint64_t e1 = args[0];
+hvalue_t f_xor(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+    hvalue_t e1 = args[0];
 
     if ((e1 & VALUE_MASK) == VALUE_INT) {
         for (int i = 1; i < n; i++) {
-            uint64_t e2 = args[i];
+            hvalue_t e2 = args[i];
             if ((e2 & VALUE_MASK) != VALUE_INT) {
                 return value_ctx_failure(ctx, values, "'^' applied to mix of ints and other types");
             }
@@ -2738,7 +2703,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
 
     // Concatenate the sets
-    uint64_t *vals = malloc(total);
+    hvalue_t *vals = malloc(total);
     total = 0;
     for (int i = 0; i < n; i++) {
         memcpy((char *) vals + total, vi[i].vals, vi[i].size);
@@ -2746,8 +2711,8 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, 
     }
 
     // sort the values, but retain duplicates
-    int cnt = total / sizeof(uint64_t);
-    qsort(vals, cnt, sizeof(uint64_t), q_value_cmp);
+    int cnt = total / sizeof(hvalue_t);
+    qsort(vals, cnt, sizeof(hvalue_t), q_value_cmp);
 
     // Now remove the values that have an even number
     int i = 0, j = 0, k = 0;
@@ -2761,7 +2726,7 @@ uint64_t f_xor(struct state *state, struct context *ctx, uint64_t *args, int n, 
         j = i;
     }
 
-    uint64_t result = value_put_set(values, vals, k * sizeof(uint64_t));
+    hvalue_t result = value_put_set(values, vals, k * sizeof(hvalue_t));
     free(vi);
     free(vals);
     return result;

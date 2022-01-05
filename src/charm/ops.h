@@ -15,7 +15,7 @@ struct op_info *ops_get(char *opname, int size);
 struct step {
     struct context *ctx;
     struct access_info *ai;
-    uint64_t *log;
+    hvalue_t *log;
     int nlog;
     struct dfa_trie *dfa_trie;
 };
@@ -27,16 +27,16 @@ struct op_info {
 };
 
 struct env_Cut {
-    uint64_t set;
+    hvalue_t set;
     struct var_tree *key, *value;
 };
 
 struct env_DelVar {
-    uint64_t name;
+    hvalue_t name;
 };
 
 struct env_Frame {
-    uint64_t name;
+    hvalue_t name;
     struct var_tree *args;
 };
 
@@ -45,7 +45,7 @@ struct env_AtomicInc {
 };
 
 struct env_IncVar {
-    uint64_t name;
+    hvalue_t name;
 };
 
 struct env_Invariant {
@@ -57,17 +57,17 @@ struct env_Jump {
 };
 
 struct env_JumpCond {
-    uint64_t cond;
+    hvalue_t cond;
     int pc;
 };
 
 struct env_Load {
-    uint64_t *indices;
+    hvalue_t *indices;
     int n;
 };
 
 struct env_LoadVar {
-    uint64_t name;
+    hvalue_t name;
 };
 
 struct env_Move {
@@ -80,7 +80,7 @@ struct env_Nary {
 };
 
 struct env_Push {
-    uint64_t value;
+    hvalue_t value;
 };
 
 struct env_Spawn {
@@ -92,12 +92,12 @@ struct env_Split {
 };
 
 struct env_Stop {
-    uint64_t *indices;
+    hvalue_t *indices;
     int n;
 };
 
 struct env_Store {
-    uint64_t *indices;
+    hvalue_t *indices;
     int n;
 };
 

@@ -18,7 +18,7 @@ struct component {
 
 struct access_info {
     struct access_info *next; // linked list maintenance
-    uint64_t *indices;        // address of load/store
+    hvalue_t *indices;        // address of load/store
     int n;                    // length of address
     bool load;                // store or del if false
     int pc;                   // for debugging
@@ -28,13 +28,13 @@ struct access_info {
 
 struct edge {
     struct edge *next;       // linked list maintenance
-    uint64_t ctx, choice;    // ctx that made the microstep, choice if any
+    hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     bool interrupt;          // set if state change is an interrupt
     struct node *node;       // resulting node (state)
-    uint64_t after;          // resulting context
+    hvalue_t after;          // resulting context
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
-    uint64_t *log;           // print history
+    hvalue_t *log;           // print history
     int nlog;                // size of print history
 };
 
@@ -60,14 +60,14 @@ struct node {
     struct node *parent;    // shortest path to initial state
     int len;                // length of path to initial state
     int steps;              // #microsteps from root
-    uint64_t before;        // context before state change
-    uint64_t after;         // context after state change (current context)
-    uint64_t choice;        // choice made if any
+    hvalue_t before;        // context before state change
+    hvalue_t after;         // context after state change (current context)
+    hvalue_t choice;        // choice made if any
     bool interrupt;         // set if gotten here by interrupt
     int weight;             // 1 if context switch; 0 otherwise
     struct access_info *ai; // to detect data races
     bool final;             // only eternal threads left
-    uint64_t *log;          // history
+    hvalue_t *log;          // history
     int nlog;               // size of history
 
     // SCC
@@ -81,8 +81,8 @@ struct node {
 struct failure {
     enum fail_type type;
     struct node *node;      // failed state
-    uint64_t choice;        // choice if any
-    uint64_t address;       // in case of data race
+    hvalue_t choice;        // choice if any
+    hvalue_t address;       // in case of data race
 };
 
 struct graph_t {
