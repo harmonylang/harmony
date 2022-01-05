@@ -1,6 +1,6 @@
 struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
-    uint64_t symbol;             // transition symbol
+    hvalue_t symbol;             // transition symbol
     int dst;                     // destination state
 };
 
@@ -143,7 +143,7 @@ bool dfa_is_final(struct dfa *dfa, int state){
 
 // make a step.  Return -1 upon error.  Record transition in
 // transitions if requested
-int dfa_step(struct dfa *dfa, int current, uint64_t symbol){
+int dfa_step(struct dfa *dfa, int current, hvalue_t symbol){
     struct dfa_state *ds = &dfa->states[current];
 
     // TODO.  Maybe make symbol lookup a hashmap

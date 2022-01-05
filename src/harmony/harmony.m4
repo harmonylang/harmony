@@ -50,8 +50,7 @@ import queue
 import functools
 import json
 import subprocess
-import dataclasses
-
+import webbrowser
 from typing import Any
 from typing import Any, List
 from dataclasses import dataclass
@@ -6369,16 +6368,22 @@ config = {
 def usage():
     print("Usage: harmony [options] harmony-file ...")
     print("  options: ")
-    print("    -a: list machine code")
-    print("    -p: parse code without running")
+    print("    -a: list machine code (with labels)")
+    print("    -A: list machine code (without labels)")
+    print("    -B <file>.hfa: check against the given behavior")
     print("    -c name=value: define a constant")
-    print("    -d: htmldump full state into html file")
+    print("    -d: include full state into html file")
     print("    -f: run with internal model checker (not supported)")
     print("    -h: help")
     print("    -i expr: specify in interface function")
+    print("    -j: list machine code in JSON format")
     print("    -m module=version: select a module version")
+    print("    -o <file>: specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
+    print("    -p: parse code without running")
     print("    -s: silent (do not print periodic status updates)")
     print("    -v: print version number")
+    print("    --noweb: do not automatically open web browser")
+    print("    --suppress: generate less terminal output")
     exit(1)
 
 def main():
@@ -6405,9 +6410,10 @@ def main():
     suppressOutput = False
     behavior = None
     charmoptions = []
+    open_browser = True
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
-                ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
+                ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse", "noweb"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -6464,6 +6470,8 @@ def main():
             sys.exit(0)
         elif o in { "-p", "--parse" }:
             parse_code_only = True
+        elif o == "--noweb":
+            open_browser = False
         else:
             assert False, "unhandled option"
 
@@ -6523,7 +6531,10 @@ def main():
         gh.run(outputfiles)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
-            print("open file://" + str(p) + " for more information", file=sys.stderr)
+            url = "file://" + str(p)
+            print("open " + url + " for more information", file=sys.stderr)
+            if open_browser:
+                webbrowser.open(url)
         sys.exit(0)
 
     if printCode == None:

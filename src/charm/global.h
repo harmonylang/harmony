@@ -20,5 +20,8 @@
 //char *scopy(char *s);
 //void mfree(void *p);
 
+#define PRI_HVAL            PRIx64
+typedef uint64_t            hvalue_t;
+
 void panic(char *s);
 unsigned long to_ulong(const char *p, int len);
