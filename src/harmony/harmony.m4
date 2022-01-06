@@ -1054,7 +1054,7 @@ class PushOp(Op):
         elif isinstance(lexeme, PcValue):
             v = lexeme.pc
         elif lexeme == novalue:
-            v = "FALSE"
+            v = "EmptyDict"
         else:
             v = lexeme
         return 'Push(self, %s)'%v
@@ -6421,6 +6421,10 @@ UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = ctxbag (-) SetToBag({self}) (+) SetToBag({next})
 
+UpdateDict(dict, key, value) ==
+    [ x \\in (DOMAIN dict) \\union {key} |->
+        IF x = key THEN value ELSE dict[x] ]
+
 Skip(self) ==
     LET next == [self EXCEPT !.pc = @ + 1]
     IN
@@ -6440,7 +6444,7 @@ Store(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = [shared EXCEPT ![v] = Head(self.stack)]
+        /\\ shared' = UpdateDict(shared, v, Head(self.stack))
 
 Load(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
