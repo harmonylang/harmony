@@ -6398,12 +6398,12 @@ Context(pc, atomic, vs, stack) ==
 
 Init == LET ctx == Context(0, TRUE, << >>, << >>)
         IN /\\ active = { ctx }
-           /\\ ctxbag = [ ctx |-> 1 ]
+           /\\ ctxbag = SetToBag(active)
            /\\ shared = << >>
 
 UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
-    /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+    /\\ ctxbag' = ctxbag (-) SetToBag({self}) (+) SetToBag({next})
 
 Skip(self) ==
     LET next == [self EXCEPT !.pc = @ + 1]
@@ -6428,7 +6428,7 @@ Load(self, v) ==
 
 Return(self) ==
     /\\ self.stack = << >>
-    /\\ ctxbag' = ctxbag (-) [ self |-> 1 ]
+    /\\ ctxbag' = ctxbag (-) SetToBag({self})
     /\\ IF self.atomic
        THEN active' = DOMAIN ctxbag'
        ELSE active' = active \\ { self }
@@ -6443,7 +6443,7 @@ Spawn(self) ==
         /\\ IF self.atomic
            THEN UNCHANGED active
            ELSE active' = active \\union { newc }
-        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1, newc |-> 1]
+        /\\ ctxbag' = ctxbag (-) SetToBag({self}) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 """
 
