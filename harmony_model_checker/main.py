@@ -192,25 +192,26 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
 
 
 args = argparse.ArgumentParser("harmony")
-args.add_argument("-a", action="store_true", help="list machine code")
-args.add_argument("--parse", "-p", action="store_true", help="parse code without running")
-args.add_argument("--const", "-c", action='append', type=str, metavar="name=value", help="define a constant")
+args.add_argument("-a", action="store_true", help="list machine code (with labels)")
+args.add_argument("-A", action="store_true", help="list machine code (without labels)")
+args.add_argument("-B", action="append", type=str, help="check against the given behavior")
+args.add_argument("-p", "--parse", action="store_true", help="parse code without running")
+args.add_argument("-c", "--const", action='append', type=str, metavar="name=value", help="define a constant")
 args.add_argument("-d", action='store_true', help="htmldump full state into html file")
 args.add_argument("--module", "-m", action="append", type=str, metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr", help="specify in interface function")
 args.add_argument("-s", action="store_true", help="silent (do not print periodic status updates)")
 args.add_argument("-v", "--version", action="store_true", help="print version number")
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
+args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
+args.add_argument("-j", action="store_true", help="list machine code in JSON format")
 args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker.")
+args.add_argument("--noweb", action="store_true", help="do not automatically open web browser")
+args.add_argument("--suppress", action="store_true", help="generate less terminal output")
 
 # Internal flags
 args.add_argument("-b", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
-args.add_argument("-t", action="store_true", help=argparse.SUPPRESS)
-args.add_argument("-A", action="store_true", help=argparse.SUPPRESS)
-args.add_argument("-j", action="store_true", help=argparse.SUPPRESS)
-args.add_argument("-o", type=pathlib.Path, nargs='*', help=argparse.SUPPRESS)
-args.add_argument("--suppress", action="store_true", help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
 
