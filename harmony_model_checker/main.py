@@ -282,7 +282,7 @@ def main():
         if not f.exists():
             print(f"harmony: error: file named '{f}' does not exist.")
             return 1
-    stem = filenames[0].stem
+    stem = str(filenames[0].parent / filenames[0].stem)
 
     if outputfiles["hvm"] is None:
         outputfiles["hvm"] = stem + ".hvm"
