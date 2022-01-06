@@ -752,6 +752,9 @@ class Op:
     def jdump(self):
         return '{ "op": "XXX %s" }'%str(self)
 
+    def tladump(self):
+        return "Skip(self)"
+
     def explain(self):
         return "no explanation yet"
 
@@ -1080,6 +1083,13 @@ class LoadOp(Op):
                 result += jsonValue(n)
             return '{ "op": "Load", "value": [%s] }'%result
 
+    def tladump(self):
+        if self.name == None:
+            return "False"
+        else:
+            (lexeme, file, line, column) = self.name
+            return 'Load(self, "%s")'%lexeme
+
     def explain(self):
         if self.name == None:
             return "pop an address and push the value at the address"
@@ -1127,6 +1137,13 @@ class StoreOp(Op):
                     result += ", "
                 result += jsonValue(n)
             return '{ "op": "Store", "value": [%s] }'%result
+
+    def tladump(self):
+        if self.name == None:
+            return "False"
+        else:
+            (lexeme, file, line, column) = self.name
+            return 'Store(self, "%s")'%lexeme
 
     def explain(self):
         if self.name == None:
@@ -1527,6 +1544,10 @@ class FrameOp(Op):
         (lexeme, file, line, column) = self.name
         return '{ "op": "Frame", "name": "%s", "args": "%s" }'%(lexeme, self.convert(self.args))
 
+    def tladump(self):
+        (lexeme, file, line, column) = self.name
+        return 'Frame(self, "%s", "%s")'%(lexeme, self.convert(self.args))
+
     def explain(self):
         return "start of method " + str(self.name[0])
 
@@ -1593,6 +1614,9 @@ class SpawnOp(Op):
 
     def jdump(self):
         return '{ "op": "Spawn", "eternal": "%s" }'%("True" if self.eternal else "False")
+
+    def tladump(self):
+        return 'Spawn(self)'
 
     def explain(self):
         return "pop thread-local state, argument, and pc and spawn a new thread"
@@ -6364,9 +6388,75 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("  }", file=f)
         print("}", file=f)
 
-config = {
-    "compile": "gcc -O3 -std=c99 -DNDEBUG $$infile$$ -m64 -o $$outfile$$"
-}
+tladefs = """---- MODULE Harmony ----
+VARIABLE active, ctxbag, shared
+vars == << active, ctxbag, shared >>
+
+Context(pc, atomic, vars, stack) ==
+    [ pc |-> pc, atomic |-> atomic, vars |-> vars, stack |-> stack ]
+
+Init == LET ctx = Context(0, TRUE, [ ], << >>)
+        IN /\\ active = { ctx }
+           /\\ ctxbag = [ ctx |-> 1 ]
+           /\\ shared = [ ]
+
+UpdateContext(self, next) ==
+    /\\ active' = active \\ { self } \\union { next }
+    /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+
+Skip(self) ==
+    LET next = [self EXCEPT ![pc] = ![pc] + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+Frame(self, name, args) ==
+    Skip(self)
+
+Store(self, var) ==
+    LET next = [self EXCEPT ![pc] = ![pc] + 1, ![stack] = Tail([!stack])]
+    IN
+        /\\ active' = active \\ { self } \\union { next }
+        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+        /\\ shared' = [shared EXCEPT [!var] |-> Head(self.stack)]
+
+Load(self, var) ==
+    LET next = [ self EXCEPT ![pc] = ![pc] + 1,
+                    ![stack] = << shared[var] >> \\o ![stack] ]
+    IN
+        /\\ active' = active \\ { self } \\union { next }
+        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+        /\\ UNCHANGED shared
+
+Spawn(self) ==
+    LET entry = self.stack[1],
+        arg = self.stack[0]
+        next = [self EXCEPT ![pc] = ![pc] + 1,
+                    ![stack] = << arg >> \\o Tail(Tail(![stack]))],
+        newc = Context(entry, FALSE, [ ], << arg >>)
+    IN
+        /\\ IF self.atomic
+           THEN UNCHANGED active
+           ELSE active' = active \\union { newc }
+        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1, newc |-> 1]
+        /\\ UNCHANGED shared
+"""
+
+def tla_translate(f, code, scope):
+    print(tladefs, file=f)
+    first = True
+    for pc in range(len(code.labeled_ops)):
+        if first:
+            print("Step(self) == ", end="", file=f)
+            first = False
+        else:
+            print("              ", end="", file=f)
+        print("\\/ pc = %d /\\ "%pc, end="", file=f)
+        print(code.labeled_ops[pc].op.tladump(), file=f)
+    print(file=f)
+    print("Next == (\\E self \\in active: Step(self))", file=f)
+    print("Spec == Init /\\ [][Next]_vars", file=f)
+    print("----", file=f)
 
 def usage():
     print("Usage: harmony [options] harmony-file ...")
@@ -6381,7 +6471,7 @@ def usage():
     print("    -i expr: specify in interface function")
     print("    -j: list machine code in JSON format")
     print("    -m module=version: select a module version")
-    print("    -o <file>: specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
+    print("    -o <file>: specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
     print("    -p: parse code without running")
     print("    -s: silent (do not print periodic status updates)")
     print("    -v: print version number")
@@ -6407,6 +6497,7 @@ def main():
         "hco": None,
         "hvm": None,
         "png": None,
+        "tla": None,
         "gv":  None
     }
     testflag = False
@@ -6509,6 +6600,10 @@ def main():
         with open(outputfiles["hvm"], "w") as f:
             f.write(json.dumps({"status": "ok"}))
         return
+
+    if outputfiles["tla"] != None:
+        with open(outputfiles["tla"], "w") as fd:
+            tla_translate(fd, code, scope)
 
     install_path = os.path.dirname(os.path.realpath(__file__))
 
