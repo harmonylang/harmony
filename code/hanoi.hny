@@ -1,0 +1,18 @@
+import list
+
+current = [ [1, 2, 3], [], [] ]
+desired = [ [], [], [1, 2, 3] ]
+
+def top(i):
+    result = 10000 if current[i] == [] else current[i][0]
+
+while current != desired:
+    let moves = { (src, dst) for src in {0..2} for dst in {0..2}
+            where current[src] != []
+            where (current[dst] == []) or (current[src][0] < top(dst)) }
+    let (s,d) = choose moves:
+        print(s, d)
+        current[d] = [list.head(current[s]),] + current[d]
+        current[s] = list.tail(current[s])
+
+assert False
