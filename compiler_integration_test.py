@@ -3,7 +3,8 @@ import sys
 import time
 import pathlib
 import dataclasses
-from typing import List, Set, TextIO, Optional, Union
+from typing import List, Optional, Set, TextIO, Union
+import re
 
 
 @dataclasses.dataclass
@@ -53,7 +54,7 @@ def load_test_cases() -> List[TestCase]:
                 tested_files.add(str(filename.resolve()))
                 test_cases.append(TestCase(
                     filename=str(filename),
-                    harmony_args=tc[:-1]
+                    harmony_args=tc[1:-1]
                 ))
 
     for f in code_dir.glob("*.hny"):
@@ -78,17 +79,17 @@ def dump_result(result: ComparisonResult, f: TextIO):
 
     f.write('---')
     f.write('\n')
-    f.write(f'### {test_case.harmony_args or ""} {test_case.filename}\n')
+    f.write(f'## {" ".join(test_case.harmony_args or [])} {test_case.filename}\n')
     f.write('\n')
-    f.write("#### Summary\n\n")
+    f.write("### Summary\n\n")
     f.write(f"Duration is good: {'✅' if result.duration_expected else '❌'}\n\n")
     f.write(f"Output is good: {'✅' if result.output_expected else '❌'}\n\n")
 
-    f.write("#### Baseline Output\n\n")
-    f.write(f"```{baseline.output}```\n\nDuration: {baseline.average_duration}\n\n")
+    f.write("### Baseline Output\n\n")
+    f.write(f"```\n{baseline.output}```\n\nDuration: {baseline.average_duration}\n\n")
 
-    f.write("#### Current Output\n\n")
-    f.write(f"```{current.output}```\n\nDuration: {current.average_duration}\n\n")
+    f.write("### Current Output\n\n")
+    f.write(f"```\n{current.output}```\n\nDuration: {current.average_duration}\n\n")
 
 def dump_results(results: List[ComparisonResult], f: TextIO):
     f.write('# Compiler Integration Test Results\n')
@@ -101,14 +102,16 @@ def dump_results(results: List[ComparisonResult], f: TextIO):
 
 
 def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
-    print(f'Evaluating `harmony {test_case.harmony_args} {test_case.filename}`')
+    harmony_args = ' '.join(test_case.harmony_args or [])
+    filename = test_case.filename
+    print(f'Evaluating `harmony {harmony_args} {filename}`')
 
     durations = []
     baseline_durations = []
     for _ in range(n):
         start_time = time.process_time()
         result = subprocess.run(
-            f'harmony {test_case.harmony_args or ""} {test_case.filename}'.split(),
+            f'harmony {harmony_args} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -116,7 +119,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         
         start_time = time.process_time()
         baseline_result = subprocess.run(
-            f'python harmony.py {test_case.harmony_args or ""} {test_case.filename}'.split(),
+            f'python harmony.py {harmony_args or ""} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -127,8 +130,19 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     average_duration = sum(durations) / len(durations)
     average_baseline_duration = sum(baseline_durations) / len(baseline_durations)
 
-    current_execution = ExecutionResult(result.stdout, average_duration)
-    baseline_execution = ExecutionResult(baseline_result.stdout, average_baseline_duration)
+    stdout = result.stdout.strip()
+    match = re.search("#states (\\d+) \\(time.*?\\)", stdout)
+    if match is not None:
+        states = match[1]
+        stdout = stdout.replace(match[0], f"#states ({states})", 1)
+    current_execution = ExecutionResult(stdout, average_duration)
+
+    stdout = baseline_result.stdout.strip()
+    match = re.search("#states (\\d+) \\(time.*?\\)", stdout)
+    if match is not None:
+        states = match[1]
+        stdout = stdout.replace(match[0], f"#states ({states})", 1)
+    baseline_execution = ExecutionResult(stdout, average_baseline_duration)
 
     return TestResult(
         test_case=test_case,
@@ -168,7 +182,7 @@ def expected_outputs_match(
 
         if prev_expected_output != curr_expected_output:
             print(
-                f'{test_case.harmony_args}: Previous and current expected '
+                f'{" ".join(test_case.harmony_args or [])}: Previous and current expected '
                 f'outputs differ, but merge has been suppressed by '
                 f'test_case.lines_to_check'
             )
@@ -198,7 +212,7 @@ def merge_expected_outputs(
     ):
         return True
 
-    print(f'{test_case.harmony_args}: difference on expected_output')
+    print(f'{" ".join(test_case.harmony_args or [])}: difference on expected_output')
     print('Previous results expected output:')
     print('```')
     print(prev, end='')
@@ -237,7 +251,7 @@ def merge_average_durations(
     if percent_difference <= 100:
         return True
 
-    print(f'{test_case.harmony_args}: difference on average duration by {percent_difference}% > 100%')
+    print(f'{" ".join(test_case.harmony_args or [])}: difference on average duration by {percent_difference}% > 100%')
     print(f'Previous duration: {prev}')
     print(f'Current duration: {curr}')
     print()
