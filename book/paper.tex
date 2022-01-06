@@ -599,9 +599,15 @@ Paxos consensus protocol.
 \item \autoref{ch:ns} demonstrates using Harmony to find a (known) bug in the original Needham-Schroeder authentication protocol.
 \end{itemize}
 
+If you already know about concurrent and distributed programming and
+are just interested in a ``speed course'' on Harmony, I would recommend
+reading \autoref{ch:harmonyintro}, \autoref{ch:harmonymachine},
+\autoref{ch:method}, \autoref{ch:specification}, and \autoref{ch:cds}.
 The appendices contain various details about Harmony itself, including
-an appendix that explains how Harmony works (\autoref{app:howitworks}) and
-an appendix on installing and running Harmony (\autoref{app:install}).
+an appendix on convenient Harmony modules (\autoref{ap:module}),
+an appendix that explains how Harmony works (\autoref{ap:howitworks}),
+and
+an appendix on installing and running Harmony (\autoref{ap:install}).
 
 <{:const:tas}>
 <{:const:cas}>
@@ -6750,7 +6756,7 @@ representation;
 ordered;
 \item an address is a list of Harmony values.  <{None}> is the empty list.
 Addresses are lexicographically ordered accordingly;
-\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
+\item contexts (\autoref{ap:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -8081,7 +8087,7 @@ and lock <{lk}> \\ \hline
 \end{tabular}
 
 
-\chapter{The Harmony Virtual Machine}\label{app:hvm}
+\chapter{The Harmony Virtual Machine}\label{ap:hvm}
 
 The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
 has the following state:
@@ -8270,7 +8276,7 @@ instructions, the atomic section may not even cause a switch point.
 \end{itemize}
 
 \section{Contexts and Threads}
-\label{app:context}
+\label{ap:context}
 
 A context captures the state of a thread.  Each time the thread
 executes an instruction, it goes from one context to another.
@@ -8329,7 +8335,7 @@ strings to arbitrary values.  The strings correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
-\chapter{How Harmony Works}\label{app:howitworks}
+\chapter{How Harmony Works}\label{ap:howitworks}
 
 This appendix gives a very brief overview of how Harmony works.
 In a nutshell, Harmony goes through the following three phases:
@@ -8346,7 +8352,7 @@ is written in C as it needs to be highly efficient (see \texttt{charm.c}).
 The model checker starts from the initial state, and then, iteratively,
 checks for each state that it has found what next steps are possible and
 generates the next states using the Harmony virtual machine
-(\autoref{app:hvm}).  If the model is finite, eventually the model
+(\autoref{ap:hvm}).  If the model is finite, eventually the model
 checker will generate a graph with all possible states.
 If there is a problematic path in this graph (see below), then it will
 report the shortest such path in the \texttt{x.hco} output file in JSON
@@ -8612,7 +8618,7 @@ This results in the operations being executed sequentially against the
 sequential specification in the same order of the linearization points
 of the concurrent specification.
 
-\chapter{Installing and Running Harmony}\label{app:install}
+\chapter{Installing and Running Harmony}\label{ap:install}
 
 There are currently three options for using Harmony:
 
