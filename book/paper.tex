@@ -2294,8 +2294,38 @@ For example:
 <{y}>.
 See \autoref{sec:vars} for more information.
 
-<{:const:ref}>
+<{:const:head}>
+<{:const:tail}>
+\begin{figure}
+\begin{code}
+<{:input:../code/hanoi.hny}>
+\end{code}
+\caption{\harmonylink{code/hanoi.hny} Towers of Hanoi}
+\label{fig:hanoi}
+\end{figure}
 
+As an example of using modules,
+\autoref{fig:hanoi} uses (or abuses?) Harmony to solve the
+\emph{Towers of Hanoi} problem.
+There are three towers with disks of varying sizes.
+In the initial configuration, the first tower has three disks (of
+sizes 1, 2, and 3), with the largest disk at the bottom, while the
+other two towers are empty.  You are allowed to move a top disk
+from one tower to another, but you are not allowed to stack a larger
+disk on a smaller one.  The objective is to move the disks from the
+first tower to the third one.
+
+The program uses the <{list}> module documented in \autoref{ap:list}.
+It has methods to extract the \emph{head} (first element) and
+the \emph{tail} (remaining elements) of a list.
+(The code is simple and available in \texttt{modules/list.hny}.)
+The program tries valid moves at random until it finds a solution.
+Curiously, the program then asserts <{False}>.  This is to cause
+the model checker to stop and output the trace.  If you look in the
+output column of the trace, you will find the minimal number of moves
+necessary to solve the problem.
+
+<{:const:ref}>
 \begin{figure}
 \begin{code}
 <{:input:../code/clock.hny}>
@@ -7908,7 +7938,7 @@ multisets:
 \section{The \texttt{hoare} module}
 \label{ap:hoare}
 
-\index{list module}%
+\index{hoare module}%
 The \texttt{hoare} module implements support for Hoare-style monitors
 and condition variables.
 
