@@ -6389,23 +6389,24 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("}", file=f)
 
 tladefs = """---- MODULE Harmony ----
+EXTENDS Integers, Bags, Sequences, TLC
 VARIABLE active, ctxbag, shared
-vars == << active, ctxbag, shared >>
+allvars == << active, ctxbag, shared >>
 
-Context(pc, atomic, vars, stack) ==
-    [ pc |-> pc, atomic |-> atomic, vars |-> vars, stack |-> stack ]
+Context(pc, atomic, vs, stack) ==
+    [ pc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-Init == LET ctx = Context(0, TRUE, [ ], << >>)
+Init == LET ctx == Context(0, TRUE, << >>, << >>)
         IN /\\ active = { ctx }
            /\\ ctxbag = [ ctx |-> 1 ]
-           /\\ shared = [ ]
+           /\\ shared = << >>
 
 UpdateContext(self, next) ==
-    /\\ active' = active \\ { self } \\union { next }
+    /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
 
 Skip(self) ==
-    LET next = [self EXCEPT ![pc] = @ + 1]
+    LET next == [self EXCEPT !.pc = @ + 1]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6413,15 +6414,14 @@ Skip(self) ==
 Frame(self, name, args) ==
     Skip(self)
 
-Store(self, var) ==
-    LET next = [self EXCEPT ![pc] = @ + 1, ![stack] = Tail(@)]
+Store(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = [shared EXCEPT [!var] |-> Head(self.stack)]
+        /\\ shared' = [shared EXCEPT ![v] = Head(self.stack)]
 
-Load(self, var) ==
-    LET next = [ self EXCEPT ![pc] = @ + 1,
-                    ![stack] = << shared[var] >> \\o @ ]
+Load(self, v) ==
+    LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6435,11 +6435,10 @@ Return(self) ==
     /\\ UNCHANGED shared
 
 Spawn(self) ==
-    LET entry = self.stack[1],
-        arg = self.stack[0]
-        next = [self EXCEPT ![pc] = @ + 1,
-                    ![stack] = << arg >> \\o Tail(Tail(@))],
-        newc = Context(entry, FALSE, [ ], << arg >>)
+    LET entry == self.stack[1]
+        arg   == self.stack[0]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = << arg >> \\o Tail(Tail(@))]
+        newc  == Context(entry, FALSE, << >>, << arg >>)
     IN
         /\\ IF self.atomic
            THEN UNCHANGED active
@@ -6457,12 +6456,12 @@ def tla_translate(f, code, scope):
             first = False
         else:
             print("              ", end="", file=f)
-        print("\\/ pc = %d /\\ "%pc, end="", file=f)
+        print("\\/ self.pc = %d /\\ "%pc, end="", file=f)
         print(code.labeled_ops[pc].op.tladump(), file=f)
     print(file=f)
     print("Next == (\\E self \\in active: Step(self))", file=f)
-    print("Spec == Init /\\ [][Next]_vars", file=f)
-    print("----", file=f)
+    print("Spec == Init /\\ [][Next]_allvars", file=f)
+    print("====", file=f)
 
 def usage():
     print("Usage: harmony [options] harmony-file ...")
