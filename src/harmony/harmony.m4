@@ -1045,6 +1045,20 @@ class PushOp(Op):
         (lexeme, file, line, column) = self.constant
         return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
 
+    def tladump(self):
+        (lexeme, file, line, column) = self.constant
+        if lexeme == False:
+            v = "FALSE"
+        elif lexeme == True:
+            v = "TRUE"
+        elif isinstance(lexeme, PcValue):
+            v = lexeme.pc
+        elif lexeme == novalue:
+            v = "FALSE"
+        else:
+            v = lexeme
+        return 'Push(self, %s)'%v
+
     def explain(self):
         return "push constant " + strValue(self.constant[0])
 
@@ -6393,13 +6407,15 @@ EXTENDS Integers, Bags, Sequences, TLC
 VARIABLE active, ctxbag, shared
 allvars == << active, ctxbag, shared >>
 
+EmptyDict == [x \in {} |-> TRUE]
+
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-Init == LET ctx == Context(0, TRUE, << >>, << >>)
+Init == LET ctx == Context(0, TRUE, EmptyDict, << >>)
         IN /\\ active = { ctx }
            /\\ ctxbag = SetToBag(active)
-           /\\ shared = << >>
+           /\\ shared = EmptyDict
 
 UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
@@ -6413,6 +6429,12 @@ Skip(self) ==
 
 Frame(self, name, args) ==
     Skip(self)
+
+Push(self, c) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 Store(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
@@ -6438,7 +6460,7 @@ Spawn(self) ==
     LET entry == self.stack[1]
         arg   == self.stack[0]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = << arg >> \\o Tail(Tail(@))]
-        newc  == Context(entry, FALSE, << >>, << arg >>)
+        newc  == Context(entry, FALSE, EmptyDict, << arg >>)
     IN
         /\\ IF self.atomic
            THEN UNCHANGED active
