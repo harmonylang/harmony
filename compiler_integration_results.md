@@ -16,9 +16,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/bag.hco```
+Loading harmony_model_checker/modules/bag.hco
+```
 
-Duration: 0.0011459999999999977
+Duration: 0.0015591000000000008
 
 ### Current Output
 
@@ -27,9 +28,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/bag.hco```
+Loading harmony_model_checker/modules/bag.hco
+```
 
-Duration: 0.0011697999999999986
+Duration: 0.0017630000000000007
 
 ---
 ##  harmony_model_checker/modules/synchBusy.hny
@@ -47,9 +49,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchBusy.hco```
+Loading harmony_model_checker/modules/synchBusy.hco
+```
 
-Duration: 0.0015348000000000028
+Duration: 0.001424599999999998
 
 ### Current Output
 
@@ -58,9 +61,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchBusy.hco```
+Loading harmony_model_checker/modules/synchBusy.hco
+```
 
-Duration: 0.0010944000000000023
+Duration: 0.0013767000000000015
 
 ---
 ##  harmony_model_checker/modules/synchImprecise.hny
@@ -78,9 +82,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchImprecise.hco```
+Loading harmony_model_checker/modules/synchImprecise.hco
+```
 
-Duration: 0.0011132000000000017
+Duration: 0.0014416999999999972
 
 ### Current Output
 
@@ -89,9 +94,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchImprecise.hco```
+Loading harmony_model_checker/modules/synchImprecise.hco
+```
 
-Duration: 0.0015929999999999972
+Duration: 0.0012042000000000025
 
 ---
 ##  harmony_model_checker/modules/synch.hny
@@ -109,9 +115,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synch.hco```
+Loading harmony_model_checker/modules/synch.hco
+```
 
-Duration: 0.0013827000000000006
+Duration: 0.0014131999999999964
 
 ### Current Output
 
@@ -120,9 +127,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synch.hco```
+Loading harmony_model_checker/modules/synch.hco
+```
 
-Duration: 0.001453999999999997
+Duration: 0.0016366999999999979
 
 ---
 ##  harmony_model_checker/modules/alloc.hny
@@ -140,9 +148,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/alloc.hco```
+Loading harmony_model_checker/modules/alloc.hco
+```
 
-Duration: 0.001905999999999998
+Duration: 0.0011938999999999977
 
 ### Current Output
 
@@ -151,9 +160,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/alloc.hco```
+Loading harmony_model_checker/modules/alloc.hco
+```
 
-Duration: 0.0015929000000000013
+Duration: 0.0012177000000000021
 
 ---
 ##  harmony_model_checker/modules/hoare.hny
@@ -171,9 +181,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/hoare.hco```
+Loading harmony_model_checker/modules/hoare.hco
+```
 
-Duration: 0.0013765999999999987
+Duration: 0.0017345999999999959
 
 ### Current Output
 
@@ -182,9 +193,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/hoare.hco```
+Loading harmony_model_checker/modules/hoare.hco
+```
 
-Duration: 0.0012493000000000018
+Duration: 0.0011765999999999999
 
 ---
 ##  harmony_model_checker/modules/synchS.hny
@@ -202,9 +214,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchS.hco```
+Loading harmony_model_checker/modules/synchS.hco
+```
 
-Duration: 0.0014278999999999958
+Duration: 0.0012980000000000005
 
 ### Current Output
 
@@ -213,9 +226,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/synchS.hco```
+Loading harmony_model_checker/modules/synchS.hco
+```
 
-Duration: 0.0017845000000000014
+Duration: 0.0011530000000000012
 
 ---
 ##  harmony_model_checker/modules/set.hny
@@ -233,9 +247,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/set.hco```
+Loading harmony_model_checker/modules/set.hco
+```
 
-Duration: 0.001256100000000003
+Duration: 0.0013244000000000034
 
 ### Current Output
 
@@ -244,9 +259,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/set.hco```
+Loading harmony_model_checker/modules/set.hco
+```
 
-Duration: 0.001333899999999999
+Duration: 0.0012030999999999986
 
 ---
 ##  harmony_model_checker/modules/list.hny
@@ -264,9 +280,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/list.hco```
+Loading harmony_model_checker/modules/list.hco
+```
 
-Duration: 0.0012505999999999975
+Duration: 0.0011928000000000008
 
 ### Current Output
 
@@ -275,9 +292,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading harmony_model_checker/modules/list.hco```
+Loading harmony_model_checker/modules/list.hco
+```
 
-Duration: 0.0011607999999999966
+Duration: 0.0013734999999999997
 
 ---
 ##  code/prog1.hny
@@ -295,9 +313,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/prog1.hco```
+Loading code/prog1.hco
+```
 
-Duration: 0.001274299999999999
+Duration: 0.0012899000000000035
 
 ### Current Output
 
@@ -306,9 +325,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/prog1.hco```
+Loading code/prog1.hco
+```
 
-Duration: 0.0014648999999999981
+Duration: 0.001127000000000003
 
 ---
 ##  code/prog2.hny
@@ -329,9 +349,10 @@ Loading code/prog2.hco
 T0: __init__() [0-3,17-25] { shared: True }
 T2: g() [13-16] { shared: False }
 T1: f() [4-8] { shared: False }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0011265999999999984
+Duration: 0.0010559999999999944
 
 ### Current Output
 
@@ -343,9 +364,10 @@ Loading code/prog2.hco
 T0: __init__() [0-3,17-25] { shared: True }
 T2: g() [13-16] { shared: False }
 T1: f() [4-8] { shared: False }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0010155999999999984
+Duration: 0.0011359999999999981
 
 ---
 ##  code/Up.hny
@@ -367,9 +389,10 @@ T0: __init__() [0-5,35-43] { count: 0, done: [ False, False ] }
 T2: incrementer(1) [6-9] { count: 0, done: [ False, False ] }
 T1: incrementer(0) [6-20] { count: 1, done: [ True, False ] }
 T2: incrementer(1) [10-24,26-31] { count: 1, done: [ True, True ] }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0015287999999999968
+Duration: 0.0011398999999999992
 
 ### Current Output
 
@@ -382,9 +405,10 @@ T0: __init__() [0-5,35-43] { count: 0, done: [ False, False ] }
 T2: incrementer(1) [6-9] { count: 0, done: [ False, False ] }
 T1: incrementer(0) [6-20] { count: 1, done: [ True, False ] }
 T2: incrementer(1) [10-24,26-31] { count: 1, done: [ True, True ] }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0012071000000000026
+Duration: 0.0011767999999999987
 
 ---
 ##  code/UpEnter.hny
@@ -406,9 +430,10 @@ Loading code/UpEnter.hco
 T0: __init__() [0-7,58-66] { count: 0, done: [ False, False ], entered: [ False, False ] }
 T2: incrementer(1) [8-18] { count: 0, done: [ False, False ], entered: [ False, True ] }
 T1: incrementer(0) [8-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
-T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }```
+T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
+```
 
-Duration: 0.0015410999999999897
+Duration: 0.001706299999999994
 
 ### Current Output
 
@@ -421,9 +446,10 @@ Loading code/UpEnter.hco
 T0: __init__() [0-7,58-66] { count: 0, done: [ False, False ], entered: [ False, False ] }
 T2: incrementer(1) [8-18] { count: 0, done: [ False, False ], entered: [ False, True ] }
 T1: incrementer(0) [8-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
-T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }```
+T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
+```
 
-Duration: 0.0011938000000000018
+Duration: 0.0012427999999999953
 
 ---
 ##  code/csbarebones.hny
@@ -445,9 +471,10 @@ T0: __init__() [0,1,18-26] { }
 T1: thread() [2-4] { }
 T2: thread() [2-4] { }
 T1: thread() [5-12] { }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0011257999999999962
+Duration: 0.0012187000000000031
 
 ### Current Output
 
@@ -460,9 +487,10 @@ T0: __init__() [0,1,18-26] { }
 T1: thread() [2-4] { }
 T2: thread() [2-4] { }
 T1: thread() [5-12] { }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0016591999999999996
+Duration: 0.001082699999999992
 
 ---
 ##  code/cs.hny
@@ -484,9 +512,10 @@ T0: __init__() [0,1,19-27] { }
 T1: thread() [2-4(choose True),5] { }
 T2: thread() [2-4(choose True),5] { }
 T1: thread() [6-13] { }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0011425999999999936
+Duration: 0.0012585999999999986
 
 ### Current Output
 
@@ -499,9 +528,10 @@ T0: __init__() [0,1,19-27] { }
 T1: thread() [2-4(choose True),5] { }
 T2: thread() [2-4(choose True),5] { }
 T1: thread() [6-13] { }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0011486999999999886
+Duration: 0.0011298999999999892
 
 ---
 ##  code/naiveLock.hny
@@ -523,9 +553,10 @@ T0: __init__() [0-3,31-39] { lockTaken: False }
 T2: thread(1) [4-7(choose True),8-12,14] { lockTaken: False }
 T1: thread(0) [4-7(choose True),8-12,14,15] { lockTaken: True }
 T2: thread(1) [15-23] { lockTaken: True }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0010195000000000065
+Duration: 0.0011180999999999969
 
 ### Current Output
 
@@ -538,9 +569,10 @@ T0: __init__() [0-3,31-39] { lockTaken: False }
 T2: thread(1) [4-7(choose True),8-12,14] { lockTaken: False }
 T1: thread(0) [4-7(choose True),8-12,14,15] { lockTaken: True }
 T2: thread(1) [15-23] { lockTaken: True }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0010344999999999938
+Duration: 0.0011268000000000111
 
 ---
 ##  code/naiveFlags.hny
@@ -561,9 +593,10 @@ Non-terminating state
 Loading code/naiveFlags.hco
 T0: __init__() [0-3,42-50] { flags: [ False, False ] }
 T2: thread(1) [4-6(choose True),7-17] { flags: [ False, True ] }
-T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }```
+T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }
+```
 
-Duration: 0.0011338999999999932
+Duration: 0.0011369999999999991
 
 ### Current Output
 
@@ -575,9 +608,10 @@ Non-terminating state
 Loading code/naiveFlags.hco
 T0: __init__() [0-3,42-50] { flags: [ False, False ] }
 T2: thread(1) [4-6(choose True),7-17] { flags: [ False, True ] }
-T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }```
+T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }
+```
 
-Duration: 0.0009819999999999968
+Duration: 0.0011436999999999975
 
 ---
 ##  code/naiveTurn.hny
@@ -598,9 +632,10 @@ Non-terminating state
 Loading code/naiveTurn.hco
 T0: __init__() [0-3,32-40] { turn: 0 }
 T1: thread(0) [4-6(choose True),7-11] { turn: 1 }
-T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }```
+T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }
+```
 
-Duration: 0.0011287999999999992
+Duration: 0.001646700000000001
 
 ### Current Output
 
@@ -612,9 +647,10 @@ Non-terminating state
 Loading code/naiveTurn.hco
 T0: __init__() [0-3,32-40] { turn: 0 }
 T1: thread(0) [4-6(choose True),7-11] { turn: 1 }
-T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }```
+T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }
+```
 
-Duration: 0.001103899999999991
+Duration: 0.0011516000000000026
 
 ---
 ##  code/Peterson.hny
@@ -632,9 +668,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/Peterson.hco```
+Loading code/Peterson.hco
+```
 
-Duration: 0.0010717000000000088
+Duration: 0.001292599999999991
 
 ### Current Output
 
@@ -643,9 +680,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/Peterson.hco```
+Loading code/Peterson.hco
+```
 
-Duration: 0.0010234000000000076
+Duration: 0.0011850000000000055
 
 ---
 ##  code/PetersonInductive.hny
@@ -663,9 +701,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/PetersonInductive.hco```
+Loading code/PetersonInductive.hco
+```
 
-Duration: 0.0012411999999999979
+Duration: 0.0012658000000000114
 
 ### Current Output
 
@@ -674,9 +713,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/PetersonInductive.hco```
+Loading code/PetersonInductive.hco
+```
 
-Duration: 0.0010610999999999954
+Duration: 0.0011748000000000036
 
 ---
 ##  code/csonebit.hny
@@ -697,9 +737,10 @@ Active busy waiting
 Loading code/csonebit.hco
 T0: __init__() [0-5,52-60] { flags: [ False, False ] }
 T2: thread(1) [6-8(choose True),9-19] { flags: [ False, True ] }
-T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }```
+T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }
+```
 
-Duration: 0.001207799999999995
+Duration: 0.0016533999999999993
 
 ### Current Output
 
@@ -711,9 +752,10 @@ Active busy waiting
 Loading code/csonebit.hco
 T0: __init__() [0-5,52-60] { flags: [ False, False ] }
 T2: thread(1) [6-8(choose True),9-19] { flags: [ False, True ] }
-T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }```
+T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }
+```
 
-Duration: 0.0010146000000000044
+Duration: 0.001329700000000003
 
 ---
 ##  code/PetersonMethod.hny
@@ -731,9 +773,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/PetersonMethod.hco```
+Loading code/PetersonMethod.hco
+```
 
-Duration: 0.0011063999999999935
+Duration: 0.00152759999999999
 
 ### Current Output
 
@@ -742,9 +785,10 @@ nworkers = 16
 #states (104)
 37 components
 No issues
-Loading code/PetersonMethod.hco```
+Loading code/PetersonMethod.hco
+```
 
-Duration: 0.0010423000000000099
+Duration: 0.0012619999999999992
 
 ---
 ##  code/clock.hny
@@ -763,9 +807,10 @@ nworkers = 16
 Safety Violation
 Loading code/clock.hco
 T0: __init__() [0,1,132-139,2-21,140-144,2-21,145-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 1),179-195,23-80,31-45,81-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 5),179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-80,31-80,31-80,31-80,31-45,81-131,206-226,161-168,173-178(choose 1),179-195,23-30,115-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-45,81-131,206-218] { clock3: { "entries": [ 5, 2, 1 ], "hand": 1, "misses": 6, "recent": { 1, 2, 5 } }, clock4: { "entries": [ 5, 1, 2, 4 ], "hand": 3, "misses": 7, "recent": { 1, 2, 5 } }, refs: [ 1, 2, 3, 4, 2, 1, 2, 5, 1, 2 ] }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.001300499999999996
+Duration: 0.0015866999999999964
 
 ### Current Output
 
@@ -775,9 +820,10 @@ nworkers = 16
 Safety Violation
 Loading code/clock.hco
 T0: __init__() [0,1,132-139,2-21,140-144,2-21,145-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 1),179-195,23-80,31-45,81-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 5),179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-80,31-80,31-80,31-80,31-45,81-131,206-226,161-168,173-178(choose 1),179-195,23-30,115-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-45,81-131,206-218] { clock3: { "entries": [ 5, 2, 1 ], "hand": 1, "misses": 6, "recent": { 1, 2, 5 } }, clock4: { "entries": [ 5, 1, 2, 4 ], "hand": 3, "misses": 7, "recent": { 1, 2, 5 } }, refs: [ 1, 2, 3, 4, 2, 1, 2, 5, 1, 2 ] }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0013142000000000015
+Duration: 0.0015458
 
 ---
 ##  code/spinlock.hny
@@ -795,9 +841,10 @@ nworkers = 16
 #states (473)
 148 components
 No issues
-Loading code/spinlock.hco```
+Loading code/spinlock.hco
+```
 
-Duration: 0.0011918000000000067
+Duration: 0.0017493000000000092
 
 ### Current Output
 
@@ -806,9 +853,10 @@ nworkers = 16
 #states (473)
 148 components
 No issues
-Loading code/spinlock.hco```
+Loading code/spinlock.hco
+```
 
-Duration: 0.0010196999999999984
+Duration: 0.0012376999999999944
 
 ---
 ##  code/UpLock.hny
@@ -826,9 +874,10 @@ nworkers = 16
 #states (57)
 57 components
 No issues
-Loading code/UpLock.hco```
+Loading code/UpLock.hco
+```
 
-Duration: 0.0013770999999999922
+Duration: 0.0015714000000000006
 
 ### Current Output
 
@@ -837,9 +886,10 @@ nworkers = 16
 #states (57)
 57 components
 No issues
-Loading code/UpLock.hco```
+Loading code/UpLock.hco
+```
 
-Duration: 0.0013264999999999944
+Duration: 0.0015575000000000033
 
 ---
 ## -msynch=synchS code/UpLock.hny
@@ -857,9 +907,10 @@ nworkers = 16
 #states (59)
 59 components
 No issues
-Loading code/UpLock.hco```
+Loading code/UpLock.hco
+```
 
-Duration: 0.0013296000000000002
+Duration: 0.0013340000000000019
 
 ### Current Output
 
@@ -868,9 +919,10 @@ nworkers = 16
 #states (59)
 59 components
 No issues
-Loading code/UpLock.hco```
+Loading code/UpLock.hco
+```
 
-Duration: 0.0012413000000000007
+Duration: 0.00120279999999999
 
 ---
 ##  code/xy.hny
@@ -891,9 +943,10 @@ Loading code/xy.hco
 T0: __init__() [0-9,54-62] { x: 0, y: 100 }
 T2: setX(50) [10-16] { x: 50, y: 100 }
 T1: checker() [32-35,20-30,36-50] { x: 50, y: 100 }
-Harmony assertion failed: (50, 100)```
+Harmony assertion failed: (50, 100)
+```
 
-Duration: 0.0011821999999999944
+Duration: 0.001099799999999998
 
 ### Current Output
 
@@ -905,9 +958,10 @@ Loading code/xy.hco
 T0: __init__() [0-9,54-62] { x: 0, y: 100 }
 T2: setX(50) [10-16] { x: 50, y: 100 }
 T1: checker() [32-35,20-30,36-50] { x: 50, y: 100 }
-Harmony assertion failed: (50, 100)```
+Harmony assertion failed: (50, 100)
+```
 
-Duration: 0.0013985999999999998
+Duration: 0.0010962000000000055
 
 ---
 ##  code/atm.hny
@@ -926,11 +980,12 @@ nworkers = 16
 Invariant Violation
 Loading code/atm.hco
 T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }```
+T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T1: customer(1, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+```
 
-Duration: 0.0013558000000000042
+Duration: 0.001398499999999997
 
 ### Current Output
 
@@ -939,12 +994,13 @@ nworkers = 16
 #states (4110)
 Invariant Violation
 Loading code/atm.hco
-T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 1),1198-1201(choose 1),1202-1205,1185-1197(choose 1),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 1, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 1, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 1, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": 1, "lock": False }, { "balance": -1, "lock": True } ], bag: (), list: (), synch: () }```
+T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+```
 
-Duration: 0.0016202999999999912
+Duration: 0.001130099999999995
 
 ---
 ##  code/queuedemo.hny
@@ -962,9 +1018,10 @@ nworkers = 16
 #states (80)
 80 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0012093000000000104
+Duration: 0.001266299999999998
 
 ### Current Output
 
@@ -973,9 +1030,10 @@ nworkers = 16
 #states (80)
 80 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0013312000000000046
+Duration: 0.0014692000000000038
 
 ---
 ## -msynch=synchS code/queuedemo.hny
@@ -993,9 +1051,10 @@ nworkers = 16
 #states (80)
 80 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0013081999999999955
+Duration: 0.0016508999999999968
 
 ### Current Output
 
@@ -1004,9 +1063,10 @@ nworkers = 16
 #states (80)
 80 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0010854000000000003
+Duration: 0.0012780000000000014
 
 ---
 ##  code/qtestseq.hny
@@ -1024,9 +1084,10 @@ nworkers = 16
 #states (600)
 600 components
 No issues
-Loading code/qtestseq.hco```
+Loading code/qtestseq.hco
+```
 
-Duration: 0.0013538000000000022
+Duration: 0.0015555000000000013
 
 ### Current Output
 
@@ -1035,9 +1096,10 @@ nworkers = 16
 #states (600)
 600 components
 No issues
-Loading code/qtestseq.hco```
+Loading code/qtestseq.hco
+```
 
-Duration: 0.0013977000000000017
+Duration: 0.001575000000000007
 
 ---
 ##  code/qtest1.hny
@@ -1055,9 +1117,10 @@ nworkers = 16
 #states (274)
 274 components
 No issues
-Loading code/qtest1.hco```
+Loading code/qtest1.hco
+```
 
-Duration: 0.001483100000000001
+Duration: 0.0016088999999999964
 
 ### Current Output
 
@@ -1066,9 +1129,10 @@ nworkers = 16
 #states (274)
 274 components
 No issues
-Loading code/qtest1.hco```
+Loading code/qtest1.hco
+```
 
-Duration: 0.0012225000000000014
+Duration: 0.0012550000000000061
 
 ---
 ## -msynch=synchS code/qtest1.hny
@@ -1086,9 +1150,10 @@ nworkers = 16
 #states (274)
 274 components
 No issues
-Loading code/qtest1.hco```
+Loading code/qtest1.hco
+```
 
-Duration: 0.001602199999999998
+Duration: 0.001270199999999999
 
 ### Current Output
 
@@ -1097,9 +1162,10 @@ nworkers = 16
 #states (274)
 274 components
 No issues
-Loading code/qtest1.hco```
+Loading code/qtest1.hco
+```
 
-Duration: 0.0012992000000000004
+Duration: 0.0015231999999999885
 
 ---
 ##  code/qtest2.hny
@@ -1117,9 +1183,10 @@ nworkers = 16
 #states (55)
 55 components
 No issues
-Loading code/qtest2.hco```
+Loading code/qtest2.hco
+```
 
-Duration: 0.0014310000000000017
+Duration: 0.0015832000000000068
 
 ### Current Output
 
@@ -1128,9 +1195,10 @@ nworkers = 16
 #states (55)
 55 components
 No issues
-Loading code/qtest2.hco```
+Loading code/qtest2.hco
+```
 
-Duration: 0.0013391000000000097
+Duration: 0.0013808000000000015
 
 ---
 ## -msynch=synchS code/qtest2.hny
@@ -1148,9 +1216,10 @@ nworkers = 16
 #states (55)
 55 components
 No issues
-Loading code/qtest2.hco```
+Loading code/qtest2.hco
+```
 
-Duration: 0.0012680999999999942
+Duration: 0.0012106999999999812
 
 ### Current Output
 
@@ -1159,9 +1228,10 @@ nworkers = 16
 #states (55)
 55 components
 No issues
-Loading code/qtest2.hco```
+Loading code/qtest2.hco
+```
 
-Duration: 0.0014099999999999946
+Duration: 0.0015408999999999978
 
 ---
 ##  code/qtest3.hny
@@ -1179,9 +1249,10 @@ nworkers = 16
 #states (3225)
 3225 components
 No issues
-Loading code/qtest3.hco```
+Loading code/qtest3.hco
+```
 
-Duration: 0.0012302999999999897
+Duration: 0.001308599999999993
 
 ### Current Output
 
@@ -1190,9 +1261,10 @@ nworkers = 16
 #states (3225)
 3225 components
 No issues
-Loading code/qtest3.hco```
+Loading code/qtest3.hco
+```
 
-Duration: 0.0012044999999999972
+Duration: 0.0015415000000000012
 
 ---
 ## -msynch=synchS code/qtest3.hny
@@ -1210,9 +1282,10 @@ nworkers = 16
 #states (3225)
 3225 components
 No issues
-Loading code/qtest3.hco```
+Loading code/qtest3.hco
+```
 
-Duration: 0.0013168000000000069
+Duration: 0.0013587999999999933
 
 ### Current Output
 
@@ -1221,9 +1294,10 @@ nworkers = 16
 #states (3225)
 3225 components
 No issues
-Loading code/qtest3.hco```
+Loading code/qtest3.hco
+```
 
-Duration: 0.00114510000000001
+Duration: 0.0014346999999999832
 
 ---
 ##  code/qtest4.hny
@@ -1241,9 +1315,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/qtest4.hco```
+Loading code/qtest4.hco
+```
 
-Duration: 0.0013708000000000053
+Duration: 0.0011928999999999967
 
 ### Current Output
 
@@ -1252,9 +1327,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/qtest4.hco```
+Loading code/qtest4.hco
+```
 
-Duration: 0.0011287999999999854
+Duration: 0.0011160000000000059
 
 ---
 ## -msynch=synchS code/qtest4.hny
@@ -1272,9 +1348,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/qtest4.hco```
+Loading code/qtest4.hco
+```
 
-Duration: 0.00112509999999999
+Duration: 0.0017073999999999978
 
 ### Current Output
 
@@ -1283,9 +1360,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/qtest4.hco```
+Loading code/qtest4.hco
+```
 
-Duration: 0.0012222000000000066
+Duration: 0.0014686000000000143
 
 ---
 ##  code/qtestconc.hny
@@ -1303,9 +1381,10 @@ nworkers = 16
 #states (2127239)
 2127239 components
 No issues
-Loading code/qtestconc.hco```
+Loading code/qtestconc.hco
+```
 
-Duration: 0.005788199999999993
+Duration: 0.003019999999999995
 
 ### Current Output
 
@@ -1314,9 +1393,10 @@ nworkers = 16
 #states (2127239)
 2127239 components
 No issues
-Loading code/qtestconc.hco```
+Loading code/qtestconc.hco
+```
 
-Duration: 0.002636699999999992
+Duration: 0.002994500000000011
 
 ---
 ## -msynch=synchS code/qtestconc.hny
@@ -1334,9 +1414,10 @@ nworkers = 16
 #states (3430951)
 3430951 components
 No issues
-Loading code/qtestconc.hco```
+Loading code/qtestconc.hco
+```
 
-Duration: 0.00408989999999998
+Duration: 0.004718
 
 ### Current Output
 
@@ -1345,9 +1426,10 @@ nworkers = 16
 #states (3430951)
 3430951 components
 No issues
-Loading code/qtestconc.hco```
+Loading code/qtestconc.hco
+```
 
-Duration: 0.003318600000000005
+Duration: 0.005551499999999987
 
 ---
 ## -mqueue=queueMS code/queuedemo.hny
@@ -1365,9 +1447,10 @@ nworkers = 16
 #states (3125)
 3125 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0014875000000000027
+Duration: 0.0016076000000000146
 
 ### Current Output
 
@@ -1376,9 +1459,10 @@ nworkers = 16
 #states (3125)
 3125 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0012786999999999937
+Duration: 0.0013605999999999896
 
 ---
 ## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
@@ -1396,9 +1480,10 @@ nworkers = 16
 #states (3287)
 3287 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0013794000000000028
+Duration: 0.0014637000000000122
 
 ### Current Output
 
@@ -1407,9 +1492,10 @@ nworkers = 16
 #states (3287)
 3287 components
 No issues
-Loading code/queuedemo.hco```
+Loading code/queuedemo.hco
+```
 
-Duration: 0.0011933999999999834
+Duration: 0.0013685999999999976
 
 ---
 ## -msetobj=linkedlist code/intsettest.hny
@@ -1427,9 +1513,10 @@ nworkers = 16
 #states (12368)
 12368 components
 No issues
-Loading code/intsettest.hco```
+Loading code/intsettest.hco
+```
 
-Duration: 0.001308599999999993
+Duration: 0.0013192999999999955
 
 ### Current Output
 
@@ -1438,9 +1525,10 @@ nworkers = 16
 #states (12368)
 12368 components
 No issues
-Loading code/intsettest.hco```
+Loading code/intsettest.hco
+```
 
-Duration: 0.001765700000000009
+Duration: 0.0014060000000000183
 
 ---
 ## -msynch=synchS -msetobj=linkedlist code/intsettest.hny
@@ -1458,9 +1546,10 @@ nworkers = 16
 #states (18377)
 18377 components
 No issues
-Loading code/intsettest.hco```
+Loading code/intsettest.hco
+```
 
-Duration: 0.0013451999999999908
+Duration: 0.0013111000000000095
 
 ### Current Output
 
@@ -1469,9 +1558,10 @@ nworkers = 16
 #states (18377)
 18377 components
 No issues
-Loading code/intsettest.hco```
+Loading code/intsettest.hco
+```
 
-Duration: 0.0014292000000000193
+Duration: 0.001723499999999989
 
 ---
 ##  code/RWtest.hny
@@ -1489,9 +1579,10 @@ nworkers = 16
 #states (135)
 27 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0012231999999999799
+Duration: 0.0013498999999999872
 
 ### Current Output
 
@@ -1500,9 +1591,10 @@ nworkers = 16
 #states (135)
 27 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0012767000000000195
+Duration: 0.0013330000000000009
 
 ---
 ## -msynch=synchS code/RWtest.hny
@@ -1520,9 +1612,10 @@ nworkers = 16
 #states (135)
 27 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0015186000000000088
+Duration: 0.001459999999999989
 
 ### Current Output
 
@@ -1531,9 +1624,10 @@ nworkers = 16
 #states (135)
 27 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.001234099999999988
+Duration: 0.0013757000000000075
 
 ---
 ## -mRW=RWsbs code/RWtest.hny
@@ -1551,9 +1645,10 @@ nworkers = 16
 #states (1943)
 619 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0012781000000000042
+Duration: 0.0012727999999999906
 
 ### Current Output
 
@@ -1562,9 +1657,10 @@ nworkers = 16
 #states (1943)
 619 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0011060999999999988
+Duration: 0.0013168000000000069
 
 ---
 ## -mRW=RWsbs -msynch=synchS code/RWtest.hny
@@ -1582,9 +1678,10 @@ nworkers = 16
 #states (4212)
 897 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0012082999999999955
+Duration: 0.001392499999999991
 
 ### Current Output
 
@@ -1593,9 +1690,10 @@ nworkers = 16
 #states (4212)
 897 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0013009000000000215
+Duration: 0.0011271999999999949
 
 ---
 ## -mRW=RWfair code/RWtest.hny
@@ -1613,9 +1711,10 @@ nworkers = 16
 #states (1438)
 449 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0014732000000000078
+Duration: 0.0012496999999999925
 
 ### Current Output
 
@@ -1624,9 +1723,10 @@ nworkers = 16
 #states (1438)
 449 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.00147029999999998
+Duration: 0.001159100000000024
 
 ---
 ## -mRW=RWfair -msynch=synchS code/RWtest.hny
@@ -1644,9 +1744,10 @@ nworkers = 16
 #states (3137)
 635 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0015569
+Duration: 0.0013431999999999888
 
 ### Current Output
 
@@ -1655,9 +1756,10 @@ nworkers = 16
 #states (3137)
 635 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0014102000000000003
+Duration: 0.0013205000000000022
 
 ---
 ## -mboundedbuffer=BBhoare code/BBtest.hny
@@ -1675,9 +1777,10 @@ nworkers = 16
 #states (1175)
 1175 components
 No issues
-Loading code/BBtest.hco```
+Loading code/BBtest.hco
+```
 
-Duration: 0.0013054999999999872
+Duration: 0.001193699999999992
 
 ### Current Output
 
@@ -1686,9 +1789,10 @@ nworkers = 16
 #states (1175)
 1175 components
 No issues
-Loading code/BBtest.hco```
+Loading code/BBtest.hco
+```
 
-Duration: 0.001631400000000005
+Duration: 0.0013294000000000084
 
 ---
 ## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
@@ -1706,9 +1810,10 @@ nworkers = 16
 #states (4127)
 4127 components
 No issues
-Loading code/BBtest.hco```
+Loading code/BBtest.hco
+```
 
-Duration: 0.0015776000000000123
+Duration: 0.0016912000000000038
 
 ### Current Output
 
@@ -1717,9 +1822,10 @@ nworkers = 16
 #states (4127)
 4127 components
 No issues
-Loading code/BBtest.hco```
+Loading code/BBtest.hco
+```
 
-Duration: 0.0014128999999999947
+Duration: 0.001204700000000003
 
 ---
 ## -mRW=RWcv code/RWtest.hny
@@ -1737,9 +1843,10 @@ nworkers = 16
 #states (1902)
 406 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0013180999999999887
+Duration: 0.0012745000000000117
 
 ### Current Output
 
@@ -1748,9 +1855,10 @@ nworkers = 16
 #states (1902)
 406 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0011631000000000002
+Duration: 0.0012196000000000151
 
 ---
 ## -mRW=RWcv -msynch=synchS code/RWtest.hny
@@ -1768,9 +1876,10 @@ nworkers = 16
 #states (4301)
 666 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0017305999999999988
+Duration: 0.0012613999999999959
 
 ### Current Output
 
@@ -1779,9 +1888,10 @@ nworkers = 16
 #states (4301)
 666 components
 No issues
-Loading code/RWtest.hco```
+Loading code/RWtest.hco
+```
 
-Duration: 0.0013928999999999747
+Duration: 0.0012482000000000049
 
 ---
 ##  code/qsorttest.hny
@@ -1799,9 +1909,10 @@ nworkers = 16
 #states (454)
 454 components
 No issues
-Loading code/qsorttest.hco```
+Loading code/qsorttest.hco
+```
 
-Duration: 0.0012871999999999884
+Duration: 0.0011635999999999869
 
 ### Current Output
 
@@ -1810,9 +1921,10 @@ nworkers = 16
 #states (454)
 454 components
 No issues
-Loading code/qsorttest.hco```
+Loading code/qsorttest.hco
+```
 
-Duration: 0.0012796999999999947
+Duration: 0.0011496000000000006
 
 ---
 ##  code/Diners.hny
@@ -1836,9 +1948,10 @@ T3: diner(2) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785
 T1: diner(0) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, False, False ], list: (), synch: () }
 T5: diner(4) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, False, True ], list: (), synch: () }
 T4: diner(3) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, True, True ], list: (), synch: () }
-T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }```
+T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }
+```
 
-Duration: 0.001591100000000012
+Duration: 0.001543899999999987
 
 ### Current Output
 
@@ -1853,9 +1966,10 @@ T3: diner(2) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785
 T1: diner(0) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, False, False ], list: (), synch: () }
 T5: diner(4) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, False, True ], list: (), synch: () }
 T4: diner(3) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, True, True ], list: (), synch: () }
-T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }```
+T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }
+```
 
-Duration: 0.0013052999999999815
+Duration: 0.0013057000000000207
 
 ---
 ## -msynch=synchS code/Diners.hny
@@ -1880,9 +1994,10 @@ T1: diner(0) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { fo
 T5: diner(4) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": False, "suspended": () }, { "acquired": False, "suspended": () }, { "acquired": True, "suspended": () } ], list: (), synch: () }
 T4: diner(3) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": False, "suspended": () }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
 T3: diner(2) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
-T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }```
+T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
+```
 
-Duration: 0.0016457
+Duration: 0.0012889999999999846
 
 ### Current Output
 
@@ -1898,9 +2013,10 @@ T1: diner(0) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { fo
 T5: diner(4) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": False, "suspended": () }, { "acquired": False, "suspended": () }, { "acquired": True, "suspended": () } ], list: (), synch: () }
 T4: diner(3) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": False, "suspended": () }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
 T3: diner(2) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
-T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }```
+T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
+```
 
-Duration: 0.001437799999999989
+Duration: 0.0014309999999999878
 
 ---
 ##  code/DinersCV.hny
@@ -1918,9 +2034,10 @@ nworkers = 16
 #states (111679)
 39194 components
 No issues
-Loading code/DinersCV.hco```
+Loading code/DinersCV.hco
+```
 
-Duration: 0.0013679000000000052
+Duration: 0.0014756999999999965
 
 ### Current Output
 
@@ -1929,9 +2046,10 @@ nworkers = 16
 #states (111679)
 39194 components
 No issues
-Loading code/DinersCV.hco```
+Loading code/DinersCV.hco
+```
 
-Duration: 0.0014413000000000065
+Duration: 0.0013920000000000043
 
 ---
 ## -msynch=synchS code/DinersCV.hny
@@ -1949,9 +2067,10 @@ nworkers = 16
 #states (2293519)
 441764 components
 No issues
-Loading code/DinersCV.hco```
+Loading code/DinersCV.hco
+```
 
-Duration: 0.003512100000000018
+Duration: 0.0029032999999999975
 
 ### Current Output
 
@@ -1960,9 +2079,10 @@ nworkers = 16
 #states (2293519)
 441764 components
 No issues
-Loading code/DinersCV.hco```
+Loading code/DinersCV.hco
+```
 
-Duration: 0.00312380000000001
+Duration: 0.0029364000000000057
 
 ---
 ##  code/DinersAvoid.hny
@@ -1980,9 +2100,10 @@ nworkers = 16
 #states (86214)
 5589 components
 No issues
-Loading code/DinersAvoid.hco```
+Loading code/DinersAvoid.hco
+```
 
-Duration: 0.0018589999999999995
+Duration: 0.0015220999999999985
 
 ### Current Output
 
@@ -1991,9 +2112,10 @@ nworkers = 16
 #states (86214)
 5589 components
 No issues
-Loading code/DinersAvoid.hco```
+Loading code/DinersAvoid.hco
+```
 
-Duration: 0.0014706000000000163
+Duration: 0.00143879999999999
 
 ---
 ## -msynch=synchS code/DinersAvoid.hny
@@ -2011,9 +2133,10 @@ nworkers = 16
 #states (152874)
 10504 components
 No issues
-Loading code/DinersAvoid.hco```
+Loading code/DinersAvoid.hco
+```
 
-Duration: 0.0017391000000000212
+Duration: 0.0014905999999999808
 
 ### Current Output
 
@@ -2022,9 +2145,10 @@ nworkers = 16
 #states (152874)
 10504 components
 No issues
-Loading code/DinersAvoid.hco```
+Loading code/DinersAvoid.hco
+```
 
-Duration: 0.0014098999999999917
+Duration: 0.001398200000000016
 
 ---
 ##  code/bank.hny
@@ -2045,9 +2169,10 @@ Non-terminating state
 Loading code/bank.hco
 T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 2),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 2),1059-1062,1044-1046,1063-1066,1170-1181,1172-1181,1172-1174,1182,1183] { accounts: [ { "balance": 2, "lock": False }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
 T1: thread() [1142-1144(choose 0),1145-1151(choose 1),1152-1165(choose 1),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
-T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }```
+T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }
+```
 
-Duration: 0.00152469999999999
+Duration: 0.0015583000000000125
 
 ### Current Output
 
@@ -2059,9 +2184,10 @@ Non-terminating state
 Loading code/bank.hco
 T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 2),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 2),1059-1062,1044-1046,1063-1066,1170-1181,1172-1181,1172-1174,1182,1183] { accounts: [ { "balance": 2, "lock": False }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
 T1: thread() [1142-1144(choose 0),1145-1151(choose 1),1152-1165(choose 1),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
-T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }```
+T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }
+```
 
-Duration: 0.00128049999999999
+Duration: 0.0014631999999999978
 
 ---
 ##  code/counter.hny
@@ -2079,9 +2205,10 @@ nworkers = 16
 #states (601)
 601 components
 No issues
-Loading code/counter.hco```
+Loading code/counter.hco
+```
 
-Duration: 0.0013728999999999825
+Duration: 0.001245099999999999
 
 ### Current Output
 
@@ -2090,9 +2217,10 @@ nworkers = 16
 #states (601)
 601 components
 No issues
-Loading code/counter.hco```
+Loading code/counter.hco
+```
 
-Duration: 0.0015085999999999988
+Duration: 0.001536799999999977
 
 ---
 ##  code/qbarrier.hny
@@ -2110,9 +2238,10 @@ nworkers = 16
 #states (1664)
 1664 components
 No issues
-Loading code/qbarrier.hco```
+Loading code/qbarrier.hco
+```
 
-Duration: 0.001167499999999988
+Duration: 0.0012875999999999999
 
 ### Current Output
 
@@ -2121,9 +2250,10 @@ nworkers = 16
 #states (1664)
 1664 components
 No issues
-Loading code/qbarrier.hco```
+Loading code/qbarrier.hco
+```
 
-Duration: 0.0013679000000000052
+Duration: 0.0016684999999999894
 
 ---
 ## -msynch=synchS code/qbarrier.hny
@@ -2141,9 +2271,10 @@ nworkers = 16
 #states (4927)
 4927 components
 No issues
-Loading code/qbarrier.hco```
+Loading code/qbarrier.hco
+```
 
-Duration: 0.0014231999999999856
+Duration: 0.001283499999999993
 
 ### Current Output
 
@@ -2152,9 +2283,10 @@ nworkers = 16
 #states (4927)
 4927 components
 No issues
-Loading code/qbarrier.hco```
+Loading code/qbarrier.hco
+```
 
-Duration: 0.001322799999999985
+Duration: 0.001040299999999994
 
 ---
 ##  code/barriertest.hny
@@ -2172,9 +2304,10 @@ nworkers = 16
 #states (2802)
 2802 components
 No issues
-Loading code/barriertest.hco```
+Loading code/barriertest.hco
+```
 
-Duration: 0.0013422000000000156
+Duration: 0.0013384000000000174
 
 ### Current Output
 
@@ -2183,9 +2316,10 @@ nworkers = 16
 #states (2802)
 2802 components
 No issues
-Loading code/barriertest.hco```
+Loading code/barriertest.hco
+```
 
-Duration: 0.0012768000000000224
+Duration: 0.0012001999999999846
 
 ---
 ## -msynch=synchS code/barriertest.hny
@@ -2203,9 +2337,10 @@ nworkers = 16
 #states (7425)
 7425 components
 No issues
-Loading code/barriertest.hco```
+Loading code/barriertest.hco
+```
 
-Duration: 0.0018267999999999895
+Duration: 0.0013514000000000026
 
 ### Current Output
 
@@ -2214,9 +2349,10 @@ nworkers = 16
 #states (7425)
 7425 components
 No issues
-Loading code/barriertest.hco```
+Loading code/barriertest.hco
+```
 
-Duration: 0.0012101999999999946
+Duration: 0.0015431999999999946
 
 ---
 ##  code/trap.hny
@@ -2236,9 +2372,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap.hco
 T0: __init__() [0-7,34-38] { count: 0, done: False }
-T1: main() [17-20] { count: 0, done: False }```
+T1: main() [17-20] { count: 0, done: False }
+```
 
-Duration: 0.0015272999999999815
+Duration: 0.0014662000000000008
 
 ### Current Output
 
@@ -2249,9 +2386,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap.hco
 T0: __init__() [0-7,34-38] { count: 0, done: False }
-T1: main() [17-20] { count: 0, done: False }```
+T1: main() [17-20] { count: 0, done: False }
+```
 
-Duration: 0.0016347999999999918
+Duration: 0.0010378999999999805
 
 ---
 ##  code/trap2.hny
@@ -2265,16 +2403,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19) ErrorToken(line=1, message="constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)", column=5, lexeme='LABEL(0, ok)', filename='code/trap2.hny', is_eof_error=False)```
+constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19) ErrorToken(line=1, message="constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)", column=5, lexeme='LABEL(0, ok)', filename='code/trap2.hny', is_eof_error=False)
+```
 
-Duration: 0.0012959999999999916
+Duration: 0.000992700000000013
 
 ### Current Output
 
 ```
-Line 1:5 at code/trap2.hny, constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)```
+Line 1:5 at code/trap2.hny, constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)
+```
 
-Duration: 0.001023099999999999
+Duration: 0.0009274999999999978
 
 ---
 ##  code/trap3.hny
@@ -2293,9 +2433,10 @@ nworkers = 16
 Safety Violation
 Loading code/trap3.hco
 T0: __init__() [0-5,369-371,1039-1043,766-770,759-764,771,772,1044-1049,1096-1100] { bag: (), count: 0, countlock: False, done: False, list: (), synch: () }
-T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }```
+T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }
+```
 
-Duration: 0.0012630999999999892
+Duration: 0.001620399999999994
 
 ### Current Output
 
@@ -2305,9 +2446,10 @@ nworkers = 16
 Safety Violation
 Loading code/trap3.hco
 T0: __init__() [0-5,369-371,1039-1043,766-770,759-764,771,772,1044-1049,1096-1100] { bag: (), count: 0, countlock: False, done: False, list: (), synch: () }
-T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }```
+T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }
+```
 
-Duration: 0.0016850000000000198
+Duration: 0.0014388000000000178
 
 ---
 ##  code/trap4.hny
@@ -2327,9 +2469,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap4.hco
 T0: __init__() [0-7,44-48] { count: 0, done: False }
-T1: main() [17-30] { count: 1, done: False }```
+T1: main() [17-30] { count: 1, done: False }
+```
 
-Duration: 0.0014830999999999872
+Duration: 0.0011699000000000015
 
 ### Current Output
 
@@ -2340,9 +2483,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap4.hco
 T0: __init__() [0-7,44-48] { count: 0, done: False }
-T1: main() [17-30] { count: 1, done: False }```
+T1: main() [17-30] { count: 1, done: False }
+```
 
-Duration: 0.0011936000000000169
+Duration: 0.0010397999999999796
 
 ---
 ##  code/trap5.hny
@@ -2362,9 +2506,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap5.hco
 T0: __init__() [0-7,52-56] { count: 0, done: False }
-T1: main() [31-37,8-20,38] { count: 1, done: False }```
+T1: main() [31-37,8-20,38] { count: 1, done: False }
+```
 
-Duration: 0.001273300000000005
+Duration: 0.0013193999999999984
 
 ### Current Output
 
@@ -2375,9 +2520,10 @@ nworkers = 16
 Non-terminating state
 Loading code/trap5.hco
 T0: __init__() [0-7,52-56] { count: 0, done: False }
-T1: main() [31-37,8-20,38] { count: 1, done: False }```
+T1: main() [31-37,8-20,38] { count: 1, done: False }
+```
 
-Duration: 0.0012699999999999934
+Duration: 0.0011275999999999786
 
 ---
 ##  code/trap6.hny
@@ -2398,9 +2544,10 @@ Non-terminating state
 Loading code/trap6.hco
 T0: __init__() [0-5,369-371,1039-1045,766-770,759-764,771,772,1046-1049,1109-1117] { bag: (), count: 0, countlock: False, done: [ False, False ], list: (), synch: () }
 T1: thread(0) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 1, countlock: False, done: [ False, False ], list: (), synch: () }
-T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }```
+T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }
+```
 
-Duration: 0.0014067999999999858
+Duration: 0.001168300000000011
 
 ### Current Output
 
@@ -2412,9 +2559,10 @@ Non-terminating state
 Loading code/trap6.hco
 T0: __init__() [0-5,369-371,1039-1045,766-770,759-764,771,772,1046-1049,1109-1117] { bag: (), count: 0, countlock: False, done: [ False, False ], list: (), synch: () }
 T1: thread(0) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 1, countlock: False, done: [ False, False ], list: (), synch: () }
-T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }```
+T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }
+```
 
-Duration: 0.0013082000000000094
+Duration: 0.0012514000000000136
 
 ---
 ## -msynch=synchS code/trap6.hny
@@ -2435,9 +2583,10 @@ Non-terminating state
 Loading code/trap6.hco
 T0: __init__() [0-5,799-805,417-421,404-415,422,423,806-809,869-877] { count: 0, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
 T1: thread(0) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 1, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
-T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }```
+T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
+```
 
-Duration: 0.0011654000000000386
+Duration: 0.0012530999999999515
 
 ### Current Output
 
@@ -2449,9 +2598,10 @@ Non-terminating state
 Loading code/trap6.hco
 T0: __init__() [0-5,799-805,417-421,404-415,422,423,806-809,869-877] { count: 0, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
 T1: thread(0) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 1, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
-T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }```
+T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
+```
 
-Duration: 0.0011902000000000301
+Duration: 0.0011816000000000049
 
 ---
 ##  code/hw.hny
@@ -2469,9 +2619,10 @@ nworkers = 16
 #states (23864)
 18524 components
 No issues
-Loading code/hw.hco```
+Loading code/hw.hco
+```
 
-Duration: 0.0013788000000000133
+Duration: 0.001257100000000011
 
 ### Current Output
 
@@ -2480,9 +2631,10 @@ nworkers = 16
 #states (23864)
 18524 components
 No issues
-Loading code/hw.hco```
+Loading code/hw.hco
+```
 
-Duration: 0.001389499999999988
+Duration: 0.0013818999999999915
 
 ---
 ##  code/abptest.hny
@@ -2500,9 +2652,10 @@ nworkers = 16
 #states (1536)
 608 components
 No issues
-Loading code/abptest.hco```
+Loading code/abptest.hco
+```
 
-Duration: 0.0012828999999999757
+Duration: 0.001272300000000004
 
 ### Current Output
 
@@ -2511,9 +2664,10 @@ nworkers = 16
 #states (1536)
 608 components
 No issues
-Loading code/abptest.hco```
+Loading code/abptest.hco
+```
 
-Duration: 0.001253100000000007
+Duration: 0.0013524999999999787
 
 ---
 ##  code/byzbosco.hny
@@ -2527,16 +2681,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)```
+Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)
+```
 
-Duration: 0.0010022000000000086
+Duration: 0.0009989999999999721
 
 ### Current Output
 
 ```
-Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)```
+Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)
+```
 
-Duration: 0.0008751999999999649
+Duration: 0.00088870000000002
 
 ---
 ##  code/BBsematest.hny
@@ -2555,9 +2711,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsematest.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
-Load: unknown address ?BBsema["Semaphore"][1]```
+Load: unknown address ?BBsema["Semaphore"][1]
+```
 
-Duration: 0.0015312999999999577
+Duration: 0.0014895000000000325
 
 ### Current Output
 
@@ -2567,9 +2724,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsematest.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
-Load: unknown address ?BBsema["Semaphore"][1]```
+Load: unknown address ?BBsema["Semaphore"][1]
+```
 
-Duration: 0.0016528000000000098
+Duration: 0.001482199999999989
 
 ---
 ##  code/ky.hny
@@ -2587,9 +2745,10 @@ nworkers = 16
 #states (14)
 12 components
 No issues
-Loading code/ky.hco```
+Loading code/ky.hco
+```
 
-Duration: 0.0011901000000000272
+Duration: 0.0016242999999999674
 
 ### Current Output
 
@@ -2598,9 +2757,10 @@ nworkers = 16
 #states (14)
 12 components
 No issues
-Loading code/ky.hco```
+Loading code/ky.hco
+```
 
-Duration: 0.001181500000000002
+Duration: 0.0012032000000000154
 
 ---
 ##  code/bosco.hny
@@ -2618,9 +2778,10 @@ nworkers = 16
 #states (7404)
 7404 components
 No issues
-Loading code/bosco.hco```
+Loading code/bosco.hco
+```
 
-Duration: 0.0013128000000000029
+Duration: 0.0013533000000000017
 
 ### Current Output
 
@@ -2629,9 +2790,10 @@ nworkers = 16
 #states (7404)
 7404 components
 No issues
-Loading code/bosco.hco```
+Loading code/bosco.hco
+```
 
-Duration: 0.001239099999999993
+Duration: 0.0013232000000000244
 
 ---
 ##  code/RWsbs.hny
@@ -2649,9 +2811,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWsbs.hco```
+Loading code/RWsbs.hco
+```
 
-Duration: 0.001705399999999968
+Duration: 0.001346600000000031
 
 ### Current Output
 
@@ -2660,9 +2823,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWsbs.hco```
+Loading code/RWsbs.hco
+```
 
-Duration: 0.001301400000000008
+Duration: 0.0012323000000000195
 
 ---
 ##  code/queuebroken.hny
@@ -2680,9 +2844,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuebroken.hco```
+Loading code/queuebroken.hco
+```
 
-Duration: 0.0012898000000000076
+Duration: 0.0013214999999999755
 
 ### Current Output
 
@@ -2691,9 +2856,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuebroken.hco```
+Loading code/queuebroken.hco
+```
 
-Duration: 0.0015634999999999954
+Duration: 0.0014625999999999806
 
 ---
 ##  code/hello7.hny
@@ -2711,9 +2877,10 @@ nworkers = 16
 #states (17)
 17 components
 No issues
-Loading code/hello7.hco```
+Loading code/hello7.hco
+```
 
-Duration: 0.0012458000000000191
+Duration: 0.0011671999999999794
 
 ### Current Output
 
@@ -2722,9 +2889,10 @@ nworkers = 16
 #states (17)
 17 components
 No issues
-Loading code/hello7.hco```
+Loading code/hello7.hco
+```
 
-Duration: 0.0016464999999999952
+Duration: 0.001154299999999997
 
 ---
 ##  code/multitest.hny
@@ -2742,9 +2910,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/multitest.hco```
+Loading code/multitest.hco
+```
 
-Duration: 0.0012059000000000375
+Duration: 0.0011981999999999826
 
 ### Current Output
 
@@ -2753,9 +2922,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/multitest.hco```
+Loading code/multitest.hco
+```
 
-Duration: 0.0014419999999999988
+Duration: 0.0012099999999999889
 
 ---
 ##  code/BBsemadata.hny
@@ -2774,9 +2944,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsemadata.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
-Load: unknown address ?BBsema["Semaphore"][1]```
+Load: unknown address ?BBsema["Semaphore"][1]
+```
 
-Duration: 0.001423899999999978
+Duration: 0.0012797999999999976
 
 ### Current Output
 
@@ -2786,9 +2957,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsemadata.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
-Load: unknown address ?BBsema["Semaphore"][1]```
+Load: unknown address ?BBsema["Semaphore"][1]
+```
 
-Duration: 0.0013515000000000055
+Duration: 0.0011682999999999555
 
 ---
 ##  code/dinersfix2.hny
@@ -2807,9 +2979,10 @@ nworkers = 16
 Safety Violation
 Loading code/dinersfix2.hco
 T0: __init__() [0-7] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.0014967000000000175
+Duration: 0.0011509000000000102
 
 ### Current Output
 
@@ -2819,9 +2992,10 @@ nworkers = 16
 Safety Violation
 Loading code/dinersfix2.hco
 T0: __init__() [0-7] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.0018149000000000082
+Duration: 0.0012274000000000451
 
 ---
 ##  code/qsort.hny
@@ -2839,9 +3013,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/qsort.hco```
+Loading code/qsort.hco
+```
 
-Duration: 0.0013385999999999676
+Duration: 0.0013688000000000033
 
 ### Current Output
 
@@ -2850,9 +3025,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/qsort.hco```
+Loading code/qsort.hco
+```
 
-Duration: 0.0011361000000000288
+Duration: 0.0013523999999999758
 
 ---
 ##  code/setobj.hny
@@ -2870,9 +3046,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/setobj.hco```
+Loading code/setobj.hco
+```
 
-Duration: 0.0013345999999999636
+Duration: 0.0013620999999999772
 
 ### Current Output
 
@@ -2881,9 +3058,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/setobj.hco```
+Loading code/setobj.hco
+```
 
-Duration: 0.0018106999999999984
+Duration: 0.0011576999999999837
 
 ---
 ##  code/baddblwait.hny
@@ -2902,9 +3080,10 @@ nworkers = 16
 Safety Violation
 Loading code/baddblwait.hco
 T0: __init__() [0-2] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.0012197999999999931
+Duration: 0.0012967999999999869
 
 ### Current Output
 
@@ -2914,9 +3093,10 @@ nworkers = 16
 Safety Violation
 Loading code/baddblwait.hco
 T0: __init__() [0-2] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.0012293999999999916
+Duration: 0.001052300000000006
 
 ---
 ##  code/nbqueuetest.hny
@@ -2934,9 +3114,10 @@ nworkers = 16
 #states (1393)
 1393 components
 No issues
-Loading code/nbqueuetest.hco```
+Loading code/nbqueuetest.hco
+```
 
-Duration: 0.00185059999999998
+Duration: 0.0011545000000000027
 
 ### Current Output
 
@@ -2945,9 +3126,10 @@ nworkers = 16
 #states (1393)
 1393 components
 No issues
-Loading code/nbqueuetest.hco```
+Loading code/nbqueuetest.hco
+```
 
-Duration: 0.001207899999999984
+Duration: 0.0010950000000000126
 
 ---
 ##  code/cssynch.hny
@@ -2965,9 +3147,10 @@ nworkers = 16
 #states (22)
 10 components
 No issues
-Loading code/cssynch.hco```
+Loading code/cssynch.hco
+```
 
-Duration: 0.0011913999999999536
+Duration: 0.0011475000000000235
 
 ### Current Output
 
@@ -2976,9 +3159,10 @@ nworkers = 16
 #states (22)
 10 components
 No issues
-Loading code/cssynch.hco```
+Loading code/cssynch.hco
+```
 
-Duration: 0.001385499999999984
+Duration: 0.0012618999999999825
 
 ---
 ##  code/stack3.hny
@@ -2996,9 +3180,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack3.hco```
+Loading code/stack3.hco
+```
 
-Duration: 0.0013675999999999688
+Duration: 0.0012215999999999894
 
 ### Current Output
 
@@ -3007,9 +3192,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack3.hco```
+Loading code/stack3.hco
+```
 
-Duration: 0.0011690000000000311
+Duration: 0.0010142000000000206
 
 ---
 ##  code/RWqueue.hny
@@ -3028,9 +3214,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWqueue.hco
 T0: __init__() [0-5,369-371,1251-1254] { bag: (), list: (), synch: () }
-Load: unknown address ?Semaphore[1]```
+Load: unknown address ?Semaphore[1]
+```
 
-Duration: 0.0018024999999999847
+Duration: 0.001253100000000007
 
 ### Current Output
 
@@ -3040,9 +3227,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWqueue.hco
 T0: __init__() [0-5,369-371,1251-1254] { bag: (), list: (), synch: () }
-Load: unknown address ?Semaphore[1]```
+Load: unknown address ?Semaphore[1]
+```
 
-Duration: 0.0012314999999999965
+Duration: 0.001270599999999955
 
 ---
 ##  code/DinersSema.hny
@@ -3061,9 +3249,10 @@ nworkers = 16
 Safety Violation
 Loading code/DinersSema.hco
 T0: __init__() [0-5,369-371,1057-1060] { bag: (), list: (), synch: () }
-Load: unknown address ?Semaphore[3]```
+Load: unknown address ?Semaphore[3]
+```
 
-Duration: 0.0014282999999999935
+Duration: 0.0013505999999999796
 
 ### Current Output
 
@@ -3073,9 +3262,10 @@ nworkers = 16
 Safety Violation
 Loading code/DinersSema.hco
 T0: __init__() [0-5,369-371,1057-1060] { bag: (), list: (), synch: () }
-Load: unknown address ?Semaphore[3]```
+Load: unknown address ?Semaphore[3]
+```
 
-Duration: 0.001190300000000033
+Duration: 0.0012125000000000052
 
 ---
 ##  code/RWcv.hny
@@ -3093,9 +3283,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWcv.hco```
+Loading code/RWcv.hco
+```
 
-Duration: 0.001809900000000031
+Duration: 0.0014030999999999905
 
 ### Current Output
 
@@ -3104,9 +3295,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWcv.hco```
+Loading code/RWcv.hco
+```
 
-Duration: 0.001323899999999989
+Duration: 0.0012950999999999935
 
 ---
 ##  code/RWmulti.hny
@@ -3125,9 +3317,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWmulti.hco
 T0: __init__() [0-7,371-373,1109-1112] { RWlock: (), bag: (), list: (), synch: () }
-Load: unknown address ?RWlock["Lock"][()]```
+Load: unknown address ?RWlock["Lock"][()]
+```
 
-Duration: 0.0013978000000000046
+Duration: 0.0014353000000000282
 
 ### Current Output
 
@@ -3137,9 +3330,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWmulti.hco
 T0: __init__() [0-7,371-373,1109-1112] { RWlock: (), bag: (), list: (), synch: () }
-Load: unknown address ?RWlock["Lock"][()]```
+Load: unknown address ?RWlock["Lock"][()]
+```
 
-Duration: 0.0012334999999999985
+Duration: 0.0017231999999999803
 
 ---
 ##  code/2pc.hny
@@ -3153,16 +3347,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)```
+Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)
+```
 
-Duration: 0.0010475999999999819
+Duration: 0.001140299999999983
 
 ### Current Output
 
 ```
-Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)```
+Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
+```
 
-Duration: 0.0008982000000000157
+Duration: 0.0008547999999999889
 
 ---
 ##  code/queueconc.hny
@@ -3180,9 +3376,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueconc.hco```
+Loading code/queueconc.hco
+```
 
-Duration: 0.001354299999999975
+Duration: 0.0013248000000000149
 
 ### Current Output
 
@@ -3191,9 +3388,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueconc.hco```
+Loading code/queueconc.hco
+```
 
-Duration: 0.001648700000000003
+Duration: 0.001424599999999998
 
 ---
 ##  code/queuelin.hny
@@ -3211,9 +3409,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuelin.hco```
+Loading code/queuelin.hco
+```
 
-Duration: 0.0018043999999999838
+Duration: 0.0011991000000000085
 
 ### Current Output
 
@@ -3222,9 +3421,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuelin.hco```
+Loading code/queuelin.hco
+```
 
-Duration: 0.0014673000000000047
+Duration: 0.0012263000000000135
 
 ---
 ##  code/lockspec.hny
@@ -3242,9 +3442,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/lockspec.hco```
+Loading code/lockspec.hco
+```
 
-Duration: 0.0011580000000000479
+Duration: 0.0012294999999999945
 
 ### Current Output
 
@@ -3253,9 +3454,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/lockspec.hco```
+Loading code/lockspec.hco
+```
 
-Duration: 0.0012315999999999994
+Duration: 0.0014039999999999608
 
 ---
 ##  code/ky2.hny
@@ -3273,9 +3475,10 @@ nworkers = 16
 #states (14)
 12 components
 No issues
-Loading code/ky2.hco```
+Loading code/ky2.hco
+```
 
-Duration: 0.0011261000000000188
+Duration: 0.0015700999999999632
 
 ### Current Output
 
@@ -3284,9 +3487,10 @@ nworkers = 16
 #states (14)
 12 components
 No issues
-Loading code/ky2.hco```
+Loading code/ky2.hco
+```
 
-Duration: 0.0014576000000000033
+Duration: 0.0011109000000000258
 
 ---
 ##  code/cslock.hny
@@ -3304,9 +3508,10 @@ nworkers = 16
 #states (97)
 97 components
 No issues
-Loading code/cslock.hco```
+Loading code/cslock.hco
+```
 
-Duration: 0.0013354000000000421
+Duration: 0.001448700000000025
 
 ### Current Output
 
@@ -3315,9 +3520,10 @@ nworkers = 16
 #states (97)
 97 components
 No issues
-Loading code/cslock.hco```
+Loading code/cslock.hco
+```
 
-Duration: 0.0012198000000000486
+Duration: 0.001224999999999976
 
 ---
 ##  code/abp.hny
@@ -3335,9 +3541,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/abp.hco```
+Loading code/abp.hco
+```
 
-Duration: 0.001296599999999981
+Duration: 0.0015695000000000014
 
 ### Current Output
 
@@ -3346,9 +3553,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/abp.hco```
+Loading code/abp.hco
+```
 
-Duration: 0.0011878000000000166
+Duration: 0.0011412999999999562
 
 ---
 ##  code/hello2.hny
@@ -3366,9 +3574,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello2.hco```
+Loading code/hello2.hco
+```
 
-Duration: 0.0011036999999999852
+Duration: 0.0016206000000000276
 
 ### Current Output
 
@@ -3377,9 +3586,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello2.hco```
+Loading code/hello2.hco
+```
 
-Duration: 0.0016147000000000244
+Duration: 0.0011392000000000069
 
 ---
 ##  code/actortest.hny
@@ -3393,16 +3603,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)```
+Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
+```
 
-Duration: 0.0010336000000000234
+Duration: 0.0010229999999999961
 
 ### Current Output
 
 ```
-Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)```
+Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
+```
 
-Duration: 0.0009274000000000227
+Duration: 0.0010585000000000178
 
 ---
 ##  code/hello4.hny
@@ -3420,9 +3632,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/hello4.hco```
+Loading code/hello4.hco
+```
 
-Duration: 0.0013393000000000432
+Duration: 0.0022148000000000168
 
 ### Current Output
 
@@ -3431,9 +3644,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/hello4.hco```
+Loading code/hello4.hco
+```
 
-Duration: 0.0014325999999999506
+Duration: 0.0012352999999999947
 
 ---
 ##  code/actor.hny
@@ -3447,16 +3661,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)```
+Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
+```
 
-Duration: 0.0011468000000000034
+Duration: 0.0009993000000000363
 
 ### Current Output
 
 ```
-Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)```
+Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
+```
 
-Duration: 0.0009350999999999665
+Duration: 0.0009380999999999973
 
 ---
 ##  code/chain.hny
@@ -3474,9 +3690,10 @@ nworkers = 16
 #states (69601)
 45835 components
 No issues
-Loading code/chain.hco```
+Loading code/chain.hco
+```
 
-Duration: 0.0014764999999999917
+Duration: 0.0013825000000000087
 
 ### Current Output
 
@@ -3485,9 +3702,10 @@ nworkers = 16
 #states (69601)
 45835 components
 No issues
-Loading code/chain.hco```
+Loading code/chain.hco
+```
 
-Duration: 0.0015672999999999937
+Duration: 0.0016953000000000107
 
 ---
 ##  code/boundedbuffer.hny
@@ -3505,9 +3723,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/boundedbuffer.hco```
+Loading code/boundedbuffer.hco
+```
 
-Duration: 0.0012658999999999865
+Duration: 0.0013754000000000266
 
 ### Current Output
 
@@ -3516,9 +3735,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/boundedbuffer.hco```
+Loading code/boundedbuffer.hco
+```
 
-Duration: 0.0010907
+Duration: 0.0012300000000000089
 
 ---
 ##  code/lockintf.hny
@@ -3536,9 +3756,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/lockintf.hco```
+Loading code/lockintf.hco
+```
 
-Duration: 0.001201500000000022
+Duration: 0.0012042000000000441
 
 ### Current Output
 
@@ -3547,9 +3768,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/lockintf.hco```
+Loading code/lockintf.hco
+```
 
-Duration: 0.0013969999999999816
+Duration: 0.0014954000000000356
 
 ---
 ##  code/taslock.hny
@@ -3567,9 +3789,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/taslock.hco```
+Loading code/taslock.hco
+```
 
-Duration: 0.0012538000000000271
+Duration: 0.001554600000000017
 
 ### Current Output
 
@@ -3578,9 +3801,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/taslock.hco```
+Loading code/taslock.hco
+```
 
-Duration: 0.0013422000000000156
+Duration: 0.001154299999999997
 
 ---
 ##  code/RW.hny
@@ -3598,9 +3822,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RW.hco```
+Loading code/RW.hco
+```
 
-Duration: 0.0014762000000000386
+Duration: 0.0012992000000000004
 
 ### Current Output
 
@@ -3609,9 +3834,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RW.hco```
+Loading code/RW.hco
+```
 
-Duration: 0.0011938000000000226
+Duration: 0.0011797999999999531
 
 ---
 ##  code/DinersCV2.hny
@@ -3630,9 +3856,10 @@ nworkers = 16
 Safety Violation
 Loading code/DinersCV2.hco
 T0: __init__() [0-5,369-371,1039-1041,766-770,759-764,771,772,1042-1049,825] { bag: (), forks: [ False, False, False, False, False ], list: (), mutex: False, synch: () }
-match: expected ()```
+match: expected ()
+```
 
-Duration: 0.0015963999999999978
+Duration: 0.0013494000000000006
 
 ### Current Output
 
@@ -3642,9 +3869,10 @@ nworkers = 16
 Safety Violation
 Loading code/DinersCV2.hco
 T0: __init__() [0-5,369-371,1039-1041,766-770,759-764,771,772,1042-1049,825] { bag: (), forks: [ False, False, False, False, False ], list: (), mutex: False, synch: () }
-match: expected ()```
+match: expected ()
+```
 
-Duration: 0.0013645999999999936
+Duration: 0.0011314000000000046
 
 ---
 ##  code/2pc2.hny
@@ -3663,9 +3891,10 @@ nworkers = 16
 Safety Violation
 Loading code/2pc2.hco
 T0: __init__() [0-3,735-737] { list: () }
-Load: unknown variable NBANKS```
+Load: unknown variable NBANKS
+```
 
-Duration: 0.0014824999999999977
+Duration: 0.0012884999999999702
 
 ### Current Output
 
@@ -3675,9 +3904,10 @@ nworkers = 16
 Safety Violation
 Loading code/2pc2.hco
 T0: __init__() [0-3,735-737] { list: () }
-Load: unknown variable NBANKS```
+Load: unknown variable NBANKS
+```
 
-Duration: 0.0014152000000000053
+Duration: 0.001154299999999997
 
 ---
 ##  code/rsmspec.hny
@@ -3695,9 +3925,10 @@ nworkers = 16
 #states (5048)
 5048 components
 No issues
-Loading code/rsmspec.hco```
+Loading code/rsmspec.hco
+```
 
-Duration: 0.0012291999999999859
+Duration: 0.001409400000000005
 
 ### Current Output
 
@@ -3706,9 +3937,10 @@ nworkers = 16
 #states (5048)
 5048 components
 No issues
-Loading code/rsmspec.hco```
+Loading code/rsmspec.hco
+```
 
-Duration: 0.0014039000000000135
+Duration: 0.001228199999999957
 
 ---
 ##  code/paxos1.hny
@@ -3727,9 +3959,10 @@ nworkers = 16
 Safety Violation
 Loading code/paxos1.hco
 T0: __init__() [0-3,356-358,4-8,359-372(choose 0),373-375,365-372(choose 0),373-375,365-367,376-379,454,455(print [ 0, 0 ]),456-462] { bag: (), network: (), proposals: [ 0, 0 ] }
-Load: unknown variable leader```
+Load: unknown variable leader
+```
 
-Duration: 0.0012805000000000177
+Duration: 0.0012590000000000101
 
 ### Current Output
 
@@ -3739,9 +3972,10 @@ nworkers = 16
 Safety Violation
 Loading code/paxos1.hco
 T0: __init__() [0-3,356-358,4-8,359-372(choose 0),373-375,365-372(choose 0),373-375,365-367,376-379,454,455(print [ 0, 0 ]),456-462] { bag: (), network: (), proposals: [ 0, 0 ] }
-Load: unknown variable leader```
+Load: unknown variable leader
+```
 
-Duration: 0.0011773999999999951
+Duration: 0.0014461000000000057
 
 ---
 ##  code/queuespec.hny
@@ -3759,9 +3993,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuespec.hco```
+Loading code/queuespec.hco
+```
 
-Duration: 0.001303500000000013
+Duration: 0.0015178000000000136
 
 ### Current Output
 
@@ -3770,9 +4005,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuespec.hco```
+Loading code/queuespec.hco
+```
 
-Duration: 0.0013116999999999712
+Duration: 0.0012705000000000077
 
 ---
 ##  code/RWbtest.hny
@@ -3790,9 +4026,10 @@ nworkers = 16
 #states (3745)
 28 components
 No issues
-Loading code/RWbtest.hco```
+Loading code/RWbtest.hco
+```
 
-Duration: 0.0014178000000000246
+Duration: 0.0014627999999999863
 
 ### Current Output
 
@@ -3801,9 +4038,10 @@ nworkers = 16
 #states (3745)
 28 components
 No issues
-Loading code/RWbtest.hco```
+Loading code/RWbtest.hco
+```
 
-Duration: 0.0012941999999999676
+Duration: 0.00123829999999997
 
 ---
 ##  code/RWhoare.hny
@@ -3821,9 +4059,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWhoare.hco```
+Loading code/RWhoare.hco
+```
 
-Duration: 0.0012180999999999997
+Duration: 0.0016720000000000068
 
 ### Current Output
 
@@ -3832,9 +4071,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWhoare.hco```
+Loading code/RWhoare.hco
+```
 
-Duration: 0.001434600000000008
+Duration: 0.0012796999999999947
 
 ---
 ##  code/RWbusy.hny
@@ -3852,9 +4092,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWbusy.hco```
+Loading code/RWbusy.hco
+```
 
-Duration: 0.001839000000000035
+Duration: 0.0016206000000000276
 
 ### Current Output
 
@@ -3863,9 +4104,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWbusy.hco```
+Loading code/RWbusy.hco
+```
 
-Duration: 0.0013931999999999833
+Duration: 0.0016686999999999674
 
 ---
 ##  code/qtestpar.hny
@@ -3883,9 +4125,10 @@ nworkers = 16
 #states (16332)
 16332 components
 No issues
-Loading code/qtestpar.hco```
+Loading code/qtestpar.hco
+```
 
-Duration: 0.0013329000000000257
+Duration: 0.0012213999999999836
 
 ### Current Output
 
@@ -3894,9 +4137,10 @@ nworkers = 16
 #states (16332)
 16332 components
 No issues
-Loading code/qtestpar.hco```
+Loading code/qtestpar.hco
+```
 
-Duration: 0.0013524999999999787
+Duration: 0.0011699000000000015
 
 ---
 ##  code/leader.hny
@@ -3914,9 +4158,10 @@ nworkers = 16
 #states (22279)
 15056 components
 No issues
-Loading code/leader.hco```
+Loading code/leader.hco
+```
 
-Duration: 0.0014865000000000017
+Duration: 0.00162859999999998
 
 ### Current Output
 
@@ -3925,9 +4170,10 @@ nworkers = 16
 #states (22279)
 15056 components
 No issues
-Loading code/leader.hco```
+Loading code/leader.hco
+```
 
-Duration: 0.0015132999999999952
+Duration: 0.0016439999999999788
 
 ---
 ##  code/hoare.hny
@@ -3945,9 +4191,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hoare.hco```
+Loading code/hoare.hco
+```
 
-Duration: 0.0015152999999999972
+Duration: 0.0012795999999999919
 
 ### Current Output
 
@@ -3956,9 +4203,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hoare.hco```
+Loading code/hoare.hco
+```
 
-Duration: 0.0016777999999999516
+Duration: 0.0014118000000000186
 
 ---
 ##  code/RWfair.hny
@@ -3976,9 +4224,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWfair.hco```
+Loading code/RWfair.hco
+```
 
-Duration: 0.0016672999999999827
+Duration: 0.0013910999999999785
 
 ### Current Output
 
@@ -3987,9 +4236,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWfair.hco```
+Loading code/RWfair.hco
+```
 
-Duration: 0.0012484999999999857
+Duration: 0.0016978999999999744
 
 ---
 ##  code/register.hny
@@ -4007,9 +4257,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/register.hco```
+Loading code/register.hco
+```
 
-Duration: 0.0013375999999999943
+Duration: 0.001374299999999995
 
 ### Current Output
 
@@ -4018,9 +4269,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/register.hco```
+Loading code/register.hco
+```
 
-Duration: 0.0010567000000000215
+Duration: 0.0015210999999999975
 
 ---
 ##  code/lltest.hny
@@ -4039,9 +4291,10 @@ nworkers = 16
 Safety Violation
 Loading code/lltest.hco
 T0: __init__() [0-7,371-373,1041-1047,1331-1334] { alloc: { "next": 0, "pool": () }, bag: (), linkedlist: (), list: (), synch: () }
-Load: unknown address ?LinkedList[()]```
+Load: unknown address ?LinkedList[()]
+```
 
-Duration: 0.0013004999999999822
+Duration: 0.0013646999999999965
 
 ### Current Output
 
@@ -4051,9 +4304,10 @@ nworkers = 16
 Safety Violation
 Loading code/lltest.hco
 T0: __init__() [0-7,371-373,1041-1047,1331-1334] { alloc: { "next": 0, "pool": () }, bag: (), linkedlist: (), list: (), synch: () }
-Load: unknown address ?LinkedList[()]```
+Load: unknown address ?LinkedList[()]
+```
 
-Duration: 0.0012530000000000041
+Duration: 0.0014177000000000217
 
 ---
 ##  code/paxos.hny
@@ -4071,9 +4325,10 @@ nworkers = 16
 #states (50808)
 50808 components
 No issues
-Loading code/paxos.hco```
+Loading code/paxos.hco
+```
 
-Duration: 0.0014144999999999852
+Duration: 0.001381800000000044
 
 ### Current Output
 
@@ -4082,9 +4337,10 @@ nworkers = 16
 #states (50808)
 50808 components
 No issues
-Loading code/paxos.hco```
+Loading code/paxos.hco
+```
 
-Duration: 0.0012853000000000447
+Duration: 0.0012435999999999559
 
 ---
 ##  code/RWlock.hny
@@ -4103,9 +4359,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWlock.hco
 T0: __init__() [0-5,369-371,1107-1110] { bag: (), list: (), synch: () }
-Load: unknown address ?Lock[()]```
+Load: unknown address ?Lock[()]
+```
 
-Duration: 0.0017719999999999958
+Duration: 0.0011957999999999691
 
 ### Current Output
 
@@ -4115,9 +4372,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWlock.hco
 T0: __init__() [0-5,369-371,1107-1110] { bag: (), list: (), synch: () }
-Load: unknown address ?Lock[()]```
+Load: unknown address ?Lock[()]
+```
 
-Duration: 0.0013869000000000242
+Duration: 0.0011969000000000007
 
 ---
 ##  code/mesa.hny
@@ -4135,9 +4393,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/mesa.hco```
+Loading code/mesa.hco
+```
 
-Duration: 0.0009909999999999641
+Duration: 0.0012028000000000039
 
 ### Current Output
 
@@ -4146,9 +4405,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/mesa.hco```
+Loading code/mesa.hco
+```
 
-Duration: 0.0009078999999999615
+Duration: 0.0013124999999999942
 
 ---
 ##  code/RWqtest.hny
@@ -4167,9 +4427,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWqtest.hco
 T0: __init__() [0-7,371-373,1253-1256] { RWqueue: (), bag: (), list: (), synch: () }
-Load: unknown address ?RWqueue["Semaphore"][1]```
+Load: unknown address ?RWqueue["Semaphore"][1]
+```
 
-Duration: 0.0013916999999999957
+Duration: 0.0013462000000000196
 
 ### Current Output
 
@@ -4179,9 +4440,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWqtest.hco
 T0: __init__() [0-7,371-373,1253-1256] { RWqueue: (), bag: (), list: (), synch: () }
-Load: unknown address ?RWqueue["Semaphore"][1]```
+Load: unknown address ?RWqueue["Semaphore"][1]
+```
 
-Duration: 0.001419400000000015
+Duration: 0.0012836999999999987
 
 ---
 ##  code/BBsema.hny
@@ -4200,9 +4462,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsema.hco
 T0: __init__() [0-5,369-371,1109-1120,1112-1120,1112-1114,1121-1130] { b_in: 1, b_out: 1, bag: (), buf: { 1: (), 2: () }, list: (), synch: () }
-Load: unknown address ?Semaphore[1]```
+Load: unknown address ?Semaphore[1]
+```
 
-Duration: 0.0013635000000000175
+Duration: 0.0012495000000000145
 
 ### Current Output
 
@@ -4212,9 +4475,10 @@ nworkers = 16
 Safety Violation
 Loading code/BBsema.hco
 T0: __init__() [0-5,369-371,1109-1120,1112-1120,1112-1114,1121-1130] { b_in: 1, b_out: 1, bag: (), buf: { 1: (), 2: () }, list: (), synch: () }
-Load: unknown address ?Semaphore[1]```
+Load: unknown address ?Semaphore[1]
+```
 
-Duration: 0.0011617999999999906
+Duration: 0.0014213000000000142
 
 ---
 ##  code/queue.hny
@@ -4232,9 +4496,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queue.hco```
+Loading code/queue.hco
+```
 
-Duration: 0.0013617000000000212
+Duration: 0.0014284999999999992
 
 ### Current Output
 
@@ -4243,9 +4508,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queue.hco```
+Loading code/queue.hco
+```
 
-Duration: 0.001196999999999948
+Duration: 0.0011697999999999986
 
 ---
 ##  code/barrier.hny
@@ -4263,9 +4529,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/barrier.hco```
+Loading code/barrier.hco
+```
 
-Duration: 0.001801499999999956
+Duration: 0.0011592000000000269
 
 ### Current Output
 
@@ -4274,9 +4541,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/barrier.hco```
+Loading code/barrier.hco
+```
 
-Duration: 0.0012930000000000441
+Duration: 0.0010718000000000116
 
 ---
 ##  code/ticket.hny
@@ -4294,9 +4562,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/ticket.hco```
+Loading code/ticket.hco
+```
 
-Duration: 0.0013007999999999909
+Duration: 0.001366299999999987
 
 ### Current Output
 
@@ -4305,9 +4574,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/ticket.hco```
+Loading code/ticket.hco
+```
 
-Duration: 0.00174669999999999
+Duration: 0.0012309000000000347
 
 ---
 ##  code/PetersonPrint.hny
@@ -4321,16 +4591,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+
 ```
 
-Duration: 0.0009849000000000108
+Duration: 0.000953499999999996
 
 ### Current Output
 
 ```
+
 ```
 
-Duration: 0.0009268000000000054
+Duration: 0.0008098999999999745
 
 ---
 ##  code/atomicinc.hny
@@ -4348,9 +4620,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/atomicinc.hco```
+Loading code/atomicinc.hco
+```
 
-Duration: 0.0015044999999999642
+Duration: 0.0011438000000000281
 
 ### Current Output
 
@@ -4359,9 +4632,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/atomicinc.hco```
+Loading code/atomicinc.hco
+```
 
-Duration: 0.0015056999999999987
+Duration: 0.001242199999999971
 
 ---
 ##  code/nbqueue.hny
@@ -4379,9 +4653,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/nbqueue.hco```
+Loading code/nbqueue.hco
+```
 
-Duration: 0.0016664000000000123
+Duration: 0.0011546000000000056
 
 ### Current Output
 
@@ -4390,9 +4665,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/nbqueue.hco```
+Loading code/nbqueue.hco
+```
 
-Duration: 0.0017267999999999728
+Duration: 0.0015107000000000315
 
 ---
 ##  code/dinersfix.hny
@@ -4411,9 +4687,10 @@ nworkers = 16
 Safety Violation
 Loading code/dinersfix.hco
 T0: __init__() [0,1] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.0013944000000000178
+Duration: 0.0012015999999999694
 
 ### Current Output
 
@@ -4423,9 +4700,10 @@ nworkers = 16
 Safety Violation
 Loading code/dinersfix.hco
 T0: __init__() [0,1] { }
-Load: unknown variable left```
+Load: unknown variable left
+```
 
-Duration: 0.001361399999999957
+Duration: 0.0010379999999999834
 
 ---
 ##  code/stack2.hny
@@ -4443,9 +4721,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack2.hco```
+Loading code/stack2.hco
+```
 
-Duration: 0.0016183999999999643
+Duration: 0.001268199999999997
 
 ### Current Output
 
@@ -4454,9 +4733,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack2.hco```
+Loading code/stack2.hco
+```
 
-Duration: 0.0014368000000000158
+Duration: 0.0012841000000000102
 
 ---
 ##  code/gpu.hny
@@ -4474,9 +4754,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/gpu.hco```
+Loading code/gpu.hco
+```
 
-Duration: 0.0016541999999999946
+Duration: 0.001251900000000028
 
 ### Current Output
 
@@ -4485,9 +4766,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/gpu.hco```
+Loading code/gpu.hco
+```
 
-Duration: 0.001354600000000039
+Duration: 0.0011608000000000174
 
 ---
 ##  code/triangle.hny
@@ -4505,9 +4787,10 @@ nworkers = 16
 #states (13)
 13 components
 No issues
-Loading code/triangle.hco```
+Loading code/triangle.hco
+```
 
-Duration: 0.0013818999999999915
+Duration: 0.001184699999999983
 
 ### Current Output
 
@@ -4516,9 +4799,10 @@ nworkers = 16
 #states (13)
 13 components
 No issues
-Loading code/triangle.hco```
+Loading code/triangle.hco
+```
 
-Duration: 0.0012908999999999837
+Duration: 0.0012996000000000119
 
 ---
 ##  code/barrier1.hny
@@ -4536,9 +4820,10 @@ nworkers = 16
 #states (3614)
 3614 components
 No issues
-Loading code/barrier1.hco```
+Loading code/barrier1.hco
+```
 
-Duration: 0.00126390000000004
+Duration: 0.0013504000000000294
 
 ### Current Output
 
@@ -4547,9 +4832,10 @@ nworkers = 16
 #states (3614)
 3614 components
 No issues
-Loading code/barrier1.hco```
+Loading code/barrier1.hco
+```
 
-Duration: 0.0013568000000000469
+Duration: 0.0011854000000000031
 
 ---
 ##  code/spinlockInv.hny
@@ -4567,9 +4853,10 @@ nworkers = 16
 #states (473)
 148 components
 No issues
-Loading code/spinlockInv.hco```
+Loading code/spinlockInv.hco
+```
 
-Duration: 0.0012120999999999937
+Duration: 0.0012578999999999785
 
 ### Current Output
 
@@ -4578,9 +4865,10 @@ nworkers = 16
 #states (473)
 148 components
 No issues
-Loading code/spinlockInv.hco```
+Loading code/spinlockInv.hco
+```
 
-Duration: 0.0011271999999999949
+Duration: 0.001213500000000034
 
 ---
 ##  code/bosco2.hny
@@ -4598,9 +4886,10 @@ nworkers = 16
 #states (633)
 633 components
 No issues
-Loading code/bosco2.hco```
+Loading code/bosco2.hco
+```
 
-Duration: 0.0011992000000000114
+Duration: 0.0012820999999999527
 
 ### Current Output
 
@@ -4609,9 +4898,10 @@ nworkers = 16
 #states (633)
 633 components
 No issues
-Loading code/bosco2.hco```
+Loading code/bosco2.hco
+```
 
-Duration: 0.001165499999999986
+Duration: 0.0011867000000000405
 
 ---
 ##  code/paxos2.hny
@@ -4629,9 +4919,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/paxos2.hco```
+Loading code/paxos2.hco
+```
 
-Duration: 0.0013704000000000494
+Duration: 0.0011924000000000379
 
 ### Current Output
 
@@ -4640,9 +4931,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/paxos2.hco```
+Loading code/paxos2.hco
+```
 
-Duration: 0.0013616999999999657
+Duration: 0.0016866999999999854
 
 ---
 ##  code/bqueue.hny
@@ -4660,9 +4952,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/bqueue.hco```
+Loading code/bqueue.hco
+```
 
-Duration: 0.0012819000000000025
+Duration: 0.0012836999999999987
 
 ### Current Output
 
@@ -4671,9 +4964,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/bqueue.hco```
+Loading code/bqueue.hco
+```
 
-Duration: 0.0011189000000000338
+Duration: 0.0012165000000000092
 
 ---
 ##  code/hello6.hny
@@ -4691,9 +4985,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/hello6.hco```
+Loading code/hello6.hco
+```
 
-Duration: 0.0012990999999999975
+Duration: 0.0013195999999999763
 
 ### Current Output
 
@@ -4702,9 +4997,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/hello6.hco```
+Loading code/hello6.hco
+```
 
-Duration: 0.0012106000000000061
+Duration: 0.0014331999999999678
 
 ---
 ##  code/stack1.hny
@@ -4722,9 +5018,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack1.hco```
+Loading code/stack1.hco
+```
 
-Duration: 0.0012514000000000136
+Duration: 0.0011365999999999876
 
 ### Current Output
 
@@ -4733,9 +5030,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack1.hco```
+Loading code/stack1.hco
+```
 
-Duration: 0.0014667999999999903
+Duration: 0.0012215999999999894
 
 ---
 ##  code/hello5.hny
@@ -4753,9 +5051,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello5.hco```
+Loading code/hello5.hco
+```
 
-Duration: 0.0013713000000000197
+Duration: 0.0012371999999999939
 
 ### Current Output
 
@@ -4764,9 +5063,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello5.hco```
+Loading code/hello5.hco
+```
 
-Duration: 0.0014121999999999746
+Duration: 0.0016147999999999718
 
 ---
 ##  code/abd.hny
@@ -4784,9 +5084,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/abd.hco```
+Loading code/abd.hco
+```
 
-Duration: 0.0016139000000000014
+Duration: 0.0013388999999999762
 
 ### Current Output
 
@@ -4795,9 +5096,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/abd.hco```
+Loading code/abd.hco
+```
 
-Duration: 0.0015685999999999756
+Duration: 0.001346999999999987
 
 ---
 ##  code/hello8.hny
@@ -4815,9 +5117,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/hello8.hco```
+Loading code/hello8.hco
+```
 
-Duration: 0.0012795000000000445
+Duration: 0.001141100000000006
 
 ### Current Output
 
@@ -4826,9 +5129,10 @@ nworkers = 16
 #states (10)
 10 components
 No issues
-Loading code/hello8.hco```
+Loading code/hello8.hco
+```
 
-Duration: 0.0012013999999999636
+Duration: 0.001189899999999966
 
 ---
 ##  code/stack4.hny
@@ -4846,9 +5150,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack4.hco```
+Loading code/stack4.hco
+```
 
-Duration: 0.0015197000000000127
+Duration: 0.001227900000000004
 
 ### Current Output
 
@@ -4857,9 +5162,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/stack4.hco```
+Loading code/stack4.hco
+```
 
-Duration: 0.0016206000000000276
+Duration: 0.0011767999999999779
 
 ---
 ##  code/BBhoare.hny
@@ -4877,9 +5183,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/BBhoare.hco```
+Loading code/BBhoare.hco
+```
 
-Duration: 0.0014441000000000037
+Duration: 0.0012051999999999619
 
 ### Current Output
 
@@ -4888,9 +5195,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/BBhoare.hco```
+Loading code/BBhoare.hco
+```
 
-Duration: 0.0014353000000000282
+Duration: 0.0012490999999999475
 
 ---
 ##  code/RWcheat.hny
@@ -4908,9 +5216,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWcheat.hco```
+Loading code/RWcheat.hco
+```
 
-Duration: 0.0011508999999999547
+Duration: 0.0011874000000000051
 
 ### Current Output
 
@@ -4919,9 +5228,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/RWcheat.hco```
+Loading code/RWcheat.hco
+```
 
-Duration: 0.0015029000000000292
+Duration: 0.0012464999999999837
 
 ---
 ##  code/stacktest.hny
@@ -4935,16 +5245,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)```
+Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)
+```
 
-Duration: 0.0009004000000000234
+Duration: 0.001020299999999974
 
 ### Current Output
 
 ```
-Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']```
+Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']
+```
 
-Duration: 0.0007330000000000392
+Duration: 0.0009290000000000131
 
 ---
 ##  code/queueMS.hny
@@ -4962,9 +5274,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueMS.hco```
+Loading code/queueMS.hco
+```
 
-Duration: 0.0012693000000000287
+Duration: 0.0015491000000000255
 
 ### Current Output
 
@@ -4973,9 +5286,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueMS.hco```
+Loading code/queueMS.hco
+```
 
-Duration: 0.0014079000000000175
+Duration: 0.0016639999999999988
 
 ---
 ##  code/abdtest.hny
@@ -4993,9 +5307,10 @@ nworkers = 16
 #states (148)
 148 components
 No issues
-Loading code/abdtest.hco```
+Loading code/abdtest.hco
+```
 
-Duration: 0.001195899999999972
+Duration: 0.0012151000000000245
 
 ### Current Output
 
@@ -5004,9 +5319,10 @@ nworkers = 16
 #states (148)
 148 components
 No issues
-Loading code/abdtest.hco```
+Loading code/abdtest.hco
+```
 
-Duration: 0.0011114000000000401
+Duration: 0.0012029000000000067
 
 ---
 ##  code/locksusp.hny
@@ -5024,9 +5340,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/locksusp.hco```
+Loading code/locksusp.hco
+```
 
-Duration: 0.0011484999999999967
+Duration: 0.0012105000000000032
 
 ### Current Output
 
@@ -5035,9 +5352,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/locksusp.hco```
+Loading code/locksusp.hco
+```
 
-Duration: 0.0011620999999999992
+Duration: 0.001368299999999989
 
 ---
 ##  code/RWbusychk.hny
@@ -5056,9 +5374,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWbusychk.hco
 T0: __init__() [0-3,145-156,147-156,147-156,147-149,157-169,160-169,160-169,160-162,170-174] { RW: () }
-Load: unknown address ?acquire_wlock[()]```
+Load: unknown address ?acquire_wlock[()]
+```
 
-Duration: 0.0013050000000000006
+Duration: 0.0012660999999999922
 
 ### Current Output
 
@@ -5068,9 +5387,10 @@ nworkers = 16
 Safety Violation
 Loading code/RWbusychk.hco
 T0: __init__() [0-3,145-156,147-156,147-156,147-149,157-169,160-169,160-169,160-162,170-174] { RW: () }
-Load: unknown address ?acquire_wlock[()]```
+Load: unknown address ?acquire_wlock[()]
+```
 
-Duration: 0.00110509999999997
+Duration: 0.001103500000000035
 
 ---
 ##  code/2pc1.hny
@@ -5084,16 +5404,18 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)```
+Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)
+```
 
-Duration: 0.0008441999999999616
+Duration: 0.0009908999999999613
 
 ### Current Output
 
 ```
-Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)```
+Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)
+```
 
-Duration: 0.0008993999999999946
+Duration: 0.0008952999999999878
 
 ---
 ##  code/needhamschroeder.hny
@@ -5118,9 +5440,10 @@ T2: bob() [101-113(choose { "contents": { "initiator": "Alice", "nonce": "nonceA
 T1: alice() [36-45(choose { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }),46-68,70,71,76-96,7-17,97-99] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 T3: corey() [232-243(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" }),244-251,256-282,295-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-306,391-393,298-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-306,391-393,298-300,394-399(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),400,7-17,401-403,228-231] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 T2: bob() [172-181(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),182-205,208,209,213-219] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0014185000000000447
+Duration: 0.0015988000000000113
 
 ### Current Output
 
@@ -5136,9 +5459,10 @@ T2: bob() [101-113(choose { "contents": { "initiator": "Alice", "nonce": "nonceA
 T1: alice() [36-45(choose { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }),46-68,70,71,76-96,7-17,97-99] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 T3: corey() [232-243(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" }),244-251,256-282,295-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-306,391-393,298-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-335,313-335,313-315,336-366,344-366,344-366,344-346,367-390,304-306,391-393,298-300,394-399(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),400,7-17,401-403,228-231] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 T2: bob() [172-181(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),182-205,208,209,213-219] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
-Harmony assertion failed```
+Harmony assertion failed
+```
 
-Duration: 0.0016826999999999814
+Duration: 0.0017459999999999698
 
 ---
 ##  code/linkedlist.hny
@@ -5156,9 +5480,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/linkedlist.hco```
+Loading code/linkedlist.hco
+```
 
-Duration: 0.0013526999999999845
+Duration: 0.0014167000000000485
 
 ### Current Output
 
@@ -5167,9 +5492,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/linkedlist.hco```
+Loading code/linkedlist.hco
+```
 
-Duration: 0.0012410000000000476
+Duration: 0.001376199999999994
 
 ---
 ##  code/barriertest2.hny
@@ -5187,9 +5513,10 @@ nworkers = 16
 #states (6272)
 6272 components
 No issues
-Loading code/barriertest2.hco```
+Loading code/barriertest2.hco
+```
 
-Duration: 0.0012490000000000556
+Duration: 0.001379100000000022
 
 ### Current Output
 
@@ -5198,9 +5525,10 @@ nworkers = 16
 #states (6272)
 6272 components
 No issues
-Loading code/barriertest2.hco```
+Loading code/barriertest2.hco
+```
 
-Duration: 0.0012720000000000509
+Duration: 0.0014314999999999745
 
 ---
 ##  code/oo.hny
@@ -5218,9 +5546,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/oo.hco```
+Loading code/oo.hco
+```
 
-Duration: 0.0011607000000000145
+Duration: 0.0015826999999999924
 
 ### Current Output
 
@@ -5229,9 +5558,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/oo.hco```
+Loading code/oo.hco
+```
 
-Duration: 0.0010748000000000424
+Duration: 0.0012271999999999839
 
 ---
 ##  code/queuefix.hny
@@ -5249,9 +5579,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuefix.hco```
+Loading code/queuefix.hco
+```
 
-Duration: 0.0017584999999999962
+Duration: 0.0014725000000000432
 
 ### Current Output
 
@@ -5260,9 +5591,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queuefix.hco```
+Loading code/queuefix.hco
+```
 
-Duration: 0.0012092999999999687
+Duration: 0.0012815999999999939
 
 ---
 ##  code/hello3.hny
@@ -5280,9 +5612,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/hello3.hco```
+Loading code/hello3.hco
+```
 
-Duration: 0.0013016999999999612
+Duration: 0.0011126000000000191
 
 ### Current Output
 
@@ -5291,9 +5624,10 @@ nworkers = 16
 #states (3)
 3 components
 No issues
-Loading code/hello3.hco```
+Loading code/hello3.hco
+```
 
-Duration: 0.0012864000000000209
+Duration: 0.0011799999999999589
 
 ---
 ##  code/queueseq.hny
@@ -5311,9 +5645,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueseq.hco```
+Loading code/queueseq.hco
+```
 
-Duration: 0.0012468999999999397
+Duration: 0.0013889000000000262
 
 ### Current Output
 
@@ -5322,9 +5657,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/queueseq.hco```
+Loading code/queueseq.hco
+```
 
-Duration: 0.0012503999999999849
+Duration: 0.0011856999999999562
 
 ---
 ##  code/hello1.hny
@@ -5342,9 +5678,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello1.hco```
+Loading code/hello1.hco
+```
 
-Duration: 0.0013222999999999985
+Duration: 0.001135499999999956
 
 ### Current Output
 
@@ -5353,9 +5690,10 @@ nworkers = 16
 #states (2)
 2 components
 No issues
-Loading code/hello1.hco```
+Loading code/hello1.hco
+```
 
-Duration: 0.0012689999999999646
+Duration: 0.0012360999999999622
 
 ---
 ##  code/consensus.hny
@@ -5373,9 +5711,10 @@ nworkers = 16
 #states (4540)
 4540 components
 No issues
-Loading code/consensus.hco```
+Loading code/consensus.hco
+```
 
-Duration: 0.001624599999999976
+Duration: 0.001369100000000012
 
 ### Current Output
 
@@ -5384,8 +5723,9 @@ nworkers = 16
 #states (4540)
 4540 components
 No issues
-Loading code/consensus.hco```
+Loading code/consensus.hco
+```
 
-Duration: 0.001178699999999977
+Duration: 0.001287499999999997
 
 ---

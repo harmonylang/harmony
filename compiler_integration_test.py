@@ -80,10 +80,10 @@ def dump_result(result: ComparisonResult, f: TextIO):
     f.write(f"Output is good: {'✅' if result.output_expected else '❌'}\n\n")
 
     f.write("### Baseline Output\n\n")
-    f.write(f"```\n{baseline.output}```\n\nDuration: {baseline.average_duration}\n\n")
+    f.write(f"```\n{baseline.output}\n```\n\nDuration: {baseline.average_duration}\n\n")
 
     f.write("### Current Output\n\n")
-    f.write(f"```\n{current.output}```\n\nDuration: {current.average_duration}\n\n")
+    f.write(f"```\n{current.output}\n```\n\nDuration: {current.average_duration}\n\n")
 
 def dump_results(results: List[ComparisonResult], f: TextIO):
     f.write('# Compiler Integration Test Results\n')
