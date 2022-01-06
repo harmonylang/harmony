@@ -7,7 +7,7 @@ while current[2] != [1, 2, 3]:
         where current[s] != []
         where (current[d] == []) or (current[s][0] < current[d][0]) }
     let (src,dst) = choose moves:
-        print(src, dst)
+        print str(src) + " -> " + str(dst)
         current[dst] = [list.head(current[src]),] + current[dst]
         current[src] = list.tail(current[src])
 

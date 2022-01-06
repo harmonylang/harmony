@@ -2325,6 +2325,19 @@ the model checker to stop and output the trace.  If you look in the
 output column of the trace, you will find the minimal number of moves
 necessary to solve the problem.
 
+It is even cooler to remove that assertion and let Harmony generate
+all possible solutions to the problem like so:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -o hanoi.png code/hanoi.hny
+\end{verbatim}
+\end{code}
+
+The resulting \texttt{hanoi.png} file contains a DFA describing
+the possible solutions.  It is a little too big to include here,
+but well worth looking at.
+
 <{:const:ref}>
 \begin{figure}
 \begin{code}
