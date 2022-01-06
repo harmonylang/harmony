@@ -38,7 +38,9 @@ void *value_copy(hvalue_t v, int *psize){
 }
 
 hvalue_t value_put_atom(struct values_t *values, const void *p, int size){
-    assert(size > 0);
+    if (size == 0) {
+        return VALUE_ATOM;
+    }
     void *q = dict_find(values->atoms, p, size);
     return (hvalue_t) q | VALUE_ATOM;
 }
@@ -83,10 +85,9 @@ int value_cmp_int(hvalue_t v1, hvalue_t v2){
 }
 
 int value_cmp_atom(hvalue_t v1, hvalue_t v2){
-    void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    char *s1 = dict_retrieve(p1, &size1);
-    char *s2 = dict_retrieve(p2, &size2);
+    char *s1 = value_get(v1, &size1);
+    char *s2 = value_get(v2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = strncmp(s1, s2, size);
     if (cmp != 0) {
@@ -301,9 +302,8 @@ static char *value_json_int(hvalue_t v) {
 }
 
 static char *value_string_atom(hvalue_t v) {
-    void *p = (void *) v;
     int size;
-    char *s = dict_retrieve(p, &size), *r;
+    char *s = value_get(v, &size), *r;
 	struct strbuf sb;
 
 	strbuf_init(&sb);
@@ -333,18 +333,11 @@ static char *value_string_atom(hvalue_t v) {
 }
 
 static char *value_json_atom(hvalue_t v) {
-    void *p = (void *) v;
     int size;
-    char *s = dict_retrieve(p, &size), *r;
-    assert(size > 0);
-    if (size > 1 || (isprint(s[0]) && s[0] != '"' && s[0] != '\\')) {
-        char *esc = json_escape(s, size);
-        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
-        free(esc);
-    }
-    else {
-        alloc_printf(&r, "{ \"type\": \"char\", \"value\": \"%02x\" }", s[0]);
-    }
+    char *s = value_get(v, &size), *r;
+    char *esc = json_escape(s, size);
+    alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
+    free(esc);
     return r;
 }
 
@@ -756,28 +749,10 @@ hvalue_t value_pc(struct dict *map){
 hvalue_t value_atom(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
-	assert(value->u.atom.len > 0);
+    if (value->u.atom.len == 0) {
+        return VALUE_ATOM;
+    }
     void *p = dict_find(values->atoms, value->u.atom.base, value->u.atom.len);
-    return (hvalue_t) p | VALUE_ATOM;
-}
-
-hvalue_t value_char(struct values_t *values, struct dict *map){
-    struct json_value *value = dict_lookup(map, "value", 5);
-    assert(value->type == JV_ATOM);
-    char *copy = malloc(value->u.atom.len + 1);
-    memcpy(copy, value->u.atom.base, value->u.atom.len);
-    copy[value->u.atom.len] = 0;
-    unsigned long x;
-    sscanf(copy, "%lx", &x);
-    free(copy);
-    if (x == 0) {
-        printf("value_char: can't handle null characters yet\n");
-    }
-    else if (x != (x & 0x7F)) {
-        printf("value_char: can only handle ASCII characters right now\n");
-    }
-    char v = x & 0x7F;
-    void *p = dict_find(values->atoms, &v, 1);
     return (hvalue_t) p | VALUE_ATOM;
 }
 
@@ -855,9 +830,6 @@ hvalue_t value_from_json(struct values_t *values, struct dict *map){
     }
     else if (atom_cmp(type->u.atom, "atom")) {
         return value_atom(values, map);
-    }
-    else if (atom_cmp(type->u.atom, "char")) {
-        return value_char(values, map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
         return value_dict(values, map);

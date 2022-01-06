@@ -6804,6 +6804,26 @@ characters and does not start with a digit,
 then a string can be represented by a ``.'' followed by the characters.
 For example, <{.example}> is the same as the string <{"example"}>.
 
+Native operations on strings include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+<{s k}> & indexing \\
+\hline
+<{s + s + ...}> & concatenation \\
+\hline
+<{s * n}> & <{n}> copies of <{s}> concatenated \\
+\hline
+<{v [not] in s}> & check if <{v}> is [not] a substring in <{s}> \\
+\hline
+<{len s}> & the length of <{s}> \\
+\hline
+<{str e}> & string representation of any value <{e}> \\
+\hline
+\end{tabular}
+\end{center}
+
 \subsection*{Set}
 
 In Harmony you can create a set of any collection of Harmony values.
@@ -7098,7 +7118,7 @@ Harmony currently supports the following statements
 \hline
 <{del lv}> & delete <{lv}>\\
 \hline
-<{for a[:b] in e [where c]: S}> & <{a}> and <{b}> are bound variables, <{e}> is a set or dictionary \\
+<{for a[:b] in e [where c]: S}> & <{a}> and <{b}> are bound variables, <{e}> is a set, dictionary, or string \\
 \hline
 <{from m import ...}> & <{m}> identifies a module \\
 \hline
@@ -7269,7 +7289,7 @@ from Python:
 The statement <{for x in y: S1; S2; ...}>
 iterates over <{y}> and executes for each element the statements
 <{S1, S2, ...}>.
-<{y}> must be a set or a dictionary.  <{y}> is evaluated only once at
+<{y}> must be a set, dictionary, or string.  <{y}> is evaluated only once at
 the beginning of the evaluation of this statement.  In case of a set,
 the result is sorted (using Harmony's global order on all values).
 In case of a dictionary, the statement iterates over the values of

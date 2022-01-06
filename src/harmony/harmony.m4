@@ -285,6 +285,7 @@ def isreserved(s):
         "setintlevel",
         "spawn",
         "stop",
+        "str",
         "trap",
         "try",
         "True",
@@ -301,7 +302,7 @@ def isname(s):
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
         "contexts", "countLabel", "get_context", "min", "max", "not",
-        "keys", "hash", "len"
+        "keys", "hash", "len", "str"
     }
 
 def isxbinop(s):
@@ -1850,6 +1851,10 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 += e1
+                    elif type(e1) == str:
+                        if not self.checktype(state, context, sa, type(e2) == str):
+                            return
+                        e2 = e1 + e2
                     else:
                         if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
                             return
@@ -1863,6 +1868,12 @@ class NaryOp(Op):
                         if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
                             return
                         e2 = self.dmult(e1, e2) if isinstance(e1, DictValue) else self.dmult(e2, e1)
+                    elif isinstance(e1, str) or isinstance(e2, str):
+                        if isinstance(e1, str) and not self.checktype(state, context, sa, isinstance(e2, int)):
+                            return
+                        if isinstance(e2, str) and not self.checktype(state, context, sa, isinstance(e1, int)):
+                            return
+                        e2 *= e1
                     else:
                         if not self.checktype(state, context, sa, type(e1) == int):
                             return
@@ -2005,10 +2016,14 @@ class NaryOp(Op):
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
+                elif isinstance(e, str):
+                    context.push(len(e))
                 else:
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
                     context.push(len(e.d))
+            elif op == "str":
+                context.push(strValue(e))
             elif op == "any":
                 if isinstance(e, SetValue):
                     context.push(any(e.s))
@@ -2103,6 +2118,10 @@ class NaryOp(Op):
             elif op == "in":
                 if isinstance(e2, SetValue):
                     context.push(e1 in e2.s)
+                elif isinstance(e2, str):
+                    if not self.checktype(state, context, sa, isinstance(e1, str)):
+                        return
+                    context.push(e1 in e2)
                 elif not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                     return
                 else:

@@ -85,6 +85,7 @@ reserved = {
     "setintlevel",
     "spawn",
     "stop",
+    "str",
     "this",
     "trap",
     "True",
