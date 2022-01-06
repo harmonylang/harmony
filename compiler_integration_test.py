@@ -98,14 +98,14 @@ def dump_results(results: List[ComparisonResult], f: TextIO):
 def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     harmony_args = ' '.join(test_case.harmony_args or [])
     filename = test_case.filename
-    print(f'Evaluating `harmony {harmony_args} {filename}`')
+    print(f'Evaluating `./harmony {harmony_args} {filename}`')
 
     durations = []
     baseline_durations = []
     for _ in range(n):
         start_time = time.process_time()
         result = subprocess.run(
-            f'harmony {harmony_args} {filename}'.split(),
+            f'./harmony {harmony_args} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )

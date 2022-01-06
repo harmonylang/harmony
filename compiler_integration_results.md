@@ -18,7 +18,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/bag.hco```
 
-Duration: 0.0036166000000000045
+Duration: 0.0011459999999999977
 
 ### Current Output
 
@@ -29,7 +29,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/bag.hco```
 
-Duration: 0.0043199000000000015
+Duration: 0.0011697999999999986
 
 ---
 ##  harmony_model_checker/modules/synchBusy.hny
@@ -49,7 +49,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchBusy.hco```
 
-Duration: 0.0027106000000000074
+Duration: 0.0015348000000000028
 
 ### Current Output
 
@@ -60,7 +60,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchBusy.hco```
 
-Duration: 0.0036390000000000033
+Duration: 0.0010944000000000023
 
 ---
 ##  harmony_model_checker/modules/synchImprecise.hny
@@ -80,7 +80,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchImprecise.hco```
 
-Duration: 0.0024229999999999946
+Duration: 0.0011132000000000017
 
 ### Current Output
 
@@ -91,7 +91,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchImprecise.hco```
 
-Duration: 0.003438400000000008
+Duration: 0.0015929999999999972
 
 ---
 ##  harmony_model_checker/modules/synch.hny
@@ -111,7 +111,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synch.hco```
 
-Duration: 0.002331700000000006
+Duration: 0.0013827000000000006
 
 ### Current Output
 
@@ -122,7 +122,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synch.hco```
 
-Duration: 0.002731300000000006
+Duration: 0.001453999999999997
 
 ---
 ##  harmony_model_checker/modules/alloc.hny
@@ -142,7 +142,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/alloc.hco```
 
-Duration: 0.0034131999999999912
+Duration: 0.001905999999999998
 
 ### Current Output
 
@@ -153,7 +153,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/alloc.hco```
 
-Duration: 0.0028910000000000047
+Duration: 0.0015929000000000013
 
 ---
 ##  harmony_model_checker/modules/hoare.hny
@@ -173,7 +173,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/hoare.hco```
 
-Duration: 0.002105699999999988
+Duration: 0.0013765999999999987
 
 ### Current Output
 
@@ -184,7 +184,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/hoare.hco```
 
-Duration: 0.003008699999999989
+Duration: 0.0012493000000000018
 
 ---
 ##  harmony_model_checker/modules/synchS.hny
@@ -204,7 +204,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchS.hco```
 
-Duration: 0.0036178999999999933
+Duration: 0.0014278999999999958
 
 ### Current Output
 
@@ -215,7 +215,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/synchS.hco```
 
-Duration: 0.002971200000000007
+Duration: 0.0017845000000000014
 
 ---
 ##  harmony_model_checker/modules/set.hny
@@ -235,7 +235,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/set.hco```
 
-Duration: 0.0023143000000000052
+Duration: 0.001256100000000003
 
 ### Current Output
 
@@ -246,7 +246,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/set.hco```
 
-Duration: 0.0034564000000000122
+Duration: 0.001333899999999999
 
 ---
 ##  harmony_model_checker/modules/list.hny
@@ -266,7 +266,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/list.hco```
 
-Duration: 0.002664799999999995
+Duration: 0.0012505999999999975
 
 ### Current Output
 
@@ -277,7 +277,7 @@ nworkers = 16
 No issues
 Loading harmony_model_checker/modules/list.hco```
 
-Duration: 0.002150100000000002
+Duration: 0.0011607999999999966
 
 ---
 ##  code/prog1.hny
@@ -297,7 +297,7 @@ nworkers = 16
 No issues
 Loading code/prog1.hco```
 
-Duration: 0.003086200000000011
+Duration: 0.001274299999999999
 
 ### Current Output
 
@@ -308,7 +308,7 @@ nworkers = 16
 No issues
 Loading code/prog1.hco```
 
-Duration: 0.0024722999999999967
+Duration: 0.0014648999999999981
 
 ---
 ##  code/prog2.hny
@@ -331,7 +331,7 @@ T2: g() [13-16] { shared: False }
 T1: f() [4-8] { shared: False }
 Harmony assertion failed```
 
-Duration: 0.0024208000000000007
+Duration: 0.0011265999999999984
 
 ### Current Output
 
@@ -345,7 +345,7 @@ T2: g() [13-16] { shared: False }
 T1: f() [4-8] { shared: False }
 Harmony assertion failed```
 
-Duration: 0.002912800000000007
+Duration: 0.0010155999999999984
 
 ---
 ##  code/Up.hny
@@ -369,7 +369,7 @@ T1: incrementer(0) [6-20] { count: 1, done: [ True, False ] }
 T2: incrementer(1) [10-24,26-31] { count: 1, done: [ True, True ] }
 Harmony assertion failed```
 
-Duration: 0.002874700000000008
+Duration: 0.0015287999999999968
 
 ### Current Output
 
@@ -384,7 +384,7 @@ T1: incrementer(0) [6-20] { count: 1, done: [ True, False ] }
 T2: incrementer(1) [10-24,26-31] { count: 1, done: [ True, True ] }
 Harmony assertion failed```
 
-Duration: 0.0026734999999999953
+Duration: 0.0012071000000000026
 
 ---
 ##  code/UpEnter.hny
@@ -408,7 +408,7 @@ T2: incrementer(1) [8-18] { count: 0, done: [ False, False ], entered: [ False, 
 T1: incrementer(0) [8-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
 T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }```
 
-Duration: 0.002539399999999997
+Duration: 0.0015410999999999897
 
 ### Current Output
 
@@ -423,7 +423,7 @@ T2: incrementer(1) [8-18] { count: 0, done: [ False, False ], entered: [ False, 
 T1: incrementer(0) [8-25] { count: 0, done: [ False, False ], entered: [ True, True ] }
 T2: incrementer(1) [19-25] { count: 0, done: [ False, False ], entered: [ True, True ] }```
 
-Duration: 0.0029939000000000215
+Duration: 0.0011938000000000018
 
 ---
 ##  code/csbarebones.hny
@@ -447,7 +447,7 @@ T2: thread() [2-4] { }
 T1: thread() [5-12] { }
 Harmony assertion failed```
 
-Duration: 0.002538499999999999
+Duration: 0.0011257999999999962
 
 ### Current Output
 
@@ -462,7 +462,7 @@ T2: thread() [2-4] { }
 T1: thread() [5-12] { }
 Harmony assertion failed```
 
-Duration: 0.0023222999999999994
+Duration: 0.0016591999999999996
 
 ---
 ##  code/cs.hny
@@ -486,7 +486,7 @@ T2: thread() [2-4(choose True),5] { }
 T1: thread() [6-13] { }
 Harmony assertion failed```
 
-Duration: 0.0032355000000000023
+Duration: 0.0011425999999999936
 
 ### Current Output
 
@@ -501,7 +501,7 @@ T2: thread() [2-4(choose True),5] { }
 T1: thread() [6-13] { }
 Harmony assertion failed```
 
-Duration: 0.0027348000000000094
+Duration: 0.0011486999999999886
 
 ---
 ##  code/naiveLock.hny
@@ -525,7 +525,7 @@ T1: thread(0) [4-7(choose True),8-12,14,15] { lockTaken: True }
 T2: thread(1) [15-23] { lockTaken: True }
 Harmony assertion failed```
 
-Duration: 0.0025975000000000026
+Duration: 0.0010195000000000065
 
 ### Current Output
 
@@ -540,7 +540,7 @@ T1: thread(0) [4-7(choose True),8-12,14,15] { lockTaken: True }
 T2: thread(1) [15-23] { lockTaken: True }
 Harmony assertion failed```
 
-Duration: 0.003740300000000002
+Duration: 0.0010344999999999938
 
 ---
 ##  code/naiveFlags.hny
@@ -563,7 +563,7 @@ T0: __init__() [0-3,42-50] { flags: [ False, False ] }
 T2: thread(1) [4-6(choose True),7-17] { flags: [ False, True ] }
 T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }```
 
-Duration: 0.002142900000000003
+Duration: 0.0011338999999999932
 
 ### Current Output
 
@@ -577,7 +577,7 @@ T0: __init__() [0-3,42-50] { flags: [ False, False ] }
 T2: thread(1) [4-6(choose True),7-17] { flags: [ False, True ] }
 T1: thread(0) [4-6(choose True),7-17] { flags: [ True, True ] }```
 
-Duration: 0.0017247999999999986
+Duration: 0.0009819999999999968
 
 ---
 ##  code/naiveTurn.hny
@@ -600,7 +600,7 @@ T0: __init__() [0-3,32-40] { turn: 0 }
 T1: thread(0) [4-6(choose True),7-11] { turn: 1 }
 T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }```
 
-Duration: 0.0031225000000000003
+Duration: 0.0011287999999999992
 
 ### Current Output
 
@@ -614,7 +614,7 @@ T0: __init__() [0-3,32-40] { turn: 0 }
 T1: thread(0) [4-6(choose True),7-11] { turn: 1 }
 T2: thread(1) [4-6(choose False),7,30,31] { turn: 1 }```
 
-Duration: 0.003121600000000002
+Duration: 0.001103899999999991
 
 ---
 ##  code/Peterson.hny
@@ -634,7 +634,7 @@ nworkers = 16
 No issues
 Loading code/Peterson.hco```
 
-Duration: 0.0023138000000000047
+Duration: 0.0010717000000000088
 
 ### Current Output
 
@@ -645,7 +645,7 @@ nworkers = 16
 No issues
 Loading code/Peterson.hco```
 
-Duration: 0.003493999999999997
+Duration: 0.0010234000000000076
 
 ---
 ##  code/PetersonInductive.hny
@@ -665,7 +665,7 @@ nworkers = 16
 No issues
 Loading code/PetersonInductive.hco```
 
-Duration: 0.0025915000000000243
+Duration: 0.0012411999999999979
 
 ### Current Output
 
@@ -676,7 +676,7 @@ nworkers = 16
 No issues
 Loading code/PetersonInductive.hco```
 
-Duration: 0.0022474000000000105
+Duration: 0.0010610999999999954
 
 ---
 ##  code/csonebit.hny
@@ -699,7 +699,7 @@ T0: __init__() [0-5,52-60] { flags: [ False, False ] }
 T2: thread(1) [6-8(choose True),9-19] { flags: [ False, True ] }
 T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }```
 
-Duration: 0.0032314999999999983
+Duration: 0.001207799999999995
 
 ### Current Output
 
@@ -713,7 +713,7 @@ T0: __init__() [0-5,52-60] { flags: [ False, False ] }
 T2: thread(1) [6-8(choose True),9-19] { flags: [ False, True ] }
 T1: thread(0) [6-8(choose True),9-19] { flags: [ True, True ] }```
 
-Duration: 0.003307399999999988
+Duration: 0.0010146000000000044
 
 ---
 ##  code/PetersonMethod.hny
@@ -733,7 +733,7 @@ nworkers = 16
 No issues
 Loading code/PetersonMethod.hco```
 
-Duration: 0.003141199999999983
+Duration: 0.0011063999999999935
 
 ### Current Output
 
@@ -744,7 +744,7 @@ nworkers = 16
 No issues
 Loading code/PetersonMethod.hco```
 
-Duration: 0.0036539000000000155
+Duration: 0.0010423000000000099
 
 ---
 ##  code/clock.hny
@@ -765,7 +765,7 @@ Loading code/clock.hco
 T0: __init__() [0,1,132-139,2-21,140-144,2-21,145-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 1),179-195,23-80,31-45,81-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 5),179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-80,31-80,31-80,31-80,31-45,81-131,206-226,161-168,173-178(choose 1),179-195,23-30,115-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-45,81-131,206-218] { clock3: { "entries": [ 5, 2, 1 ], "hand": 1, "misses": 6, "recent": { 1, 2, 5 } }, clock4: { "entries": [ 5, 1, 2, 4 ], "hand": 3, "misses": 7, "recent": { 1, 2, 5 } }, refs: [ 1, 2, 3, 4, 2, 1, 2, 5, 1, 2 ] }
 Harmony assertion failed```
 
-Duration: 0.003372099999999989
+Duration: 0.001300499999999996
 
 ### Current Output
 
@@ -777,7 +777,7 @@ Loading code/clock.hco
 T0: __init__() [0,1,132-139,2-21,140-144,2-21,145-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-45,81-131,196-205,23-45,81-131,206-226,161-172,179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 1),179-195,23-80,31-45,81-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-30,115-131,206-226,161-168,173-178(choose 5),179-195,23-80,31-80,31-80,31-45,81-131,196-205,23-80,31-80,31-80,31-80,31-45,81-131,206-226,161-168,173-178(choose 1),179-195,23-30,115-131,196-205,23-45,81-131,206-226,161-168,173-178(choose 2),179-195,23-30,115-131,196-205,23-45,81-131,206-218] { clock3: { "entries": [ 5, 2, 1 ], "hand": 1, "misses": 6, "recent": { 1, 2, 5 } }, clock4: { "entries": [ 5, 1, 2, 4 ], "hand": 3, "misses": 7, "recent": { 1, 2, 5 } }, refs: [ 1, 2, 3, 4, 2, 1, 2, 5, 1, 2 ] }
 Harmony assertion failed```
 
-Duration: 0.002895599999999998
+Duration: 0.0013142000000000015
 
 ---
 ##  code/spinlock.hny
@@ -797,7 +797,7 @@ nworkers = 16
 No issues
 Loading code/spinlock.hco```
 
-Duration: 0.002536499999999997
+Duration: 0.0011918000000000067
 
 ### Current Output
 
@@ -808,7 +808,7 @@ nworkers = 16
 No issues
 Loading code/spinlock.hco```
 
-Duration: 0.002324799999999988
+Duration: 0.0010196999999999984
 
 ---
 ##  code/UpLock.hny
@@ -828,7 +828,7 @@ nworkers = 16
 No issues
 Loading code/UpLock.hco```
 
-Duration: 0.0029426999999999925
+Duration: 0.0013770999999999922
 
 ### Current Output
 
@@ -839,7 +839,7 @@ nworkers = 16
 No issues
 Loading code/UpLock.hco```
 
-Duration: 0.0027288000000000034
+Duration: 0.0013264999999999944
 
 ---
 ## -msynch=synchS code/UpLock.hny
@@ -859,7 +859,7 @@ nworkers = 16
 No issues
 Loading code/UpLock.hco```
 
-Duration: 0.0024766999999999983
+Duration: 0.0013296000000000002
 
 ### Current Output
 
@@ -870,7 +870,7 @@ nworkers = 16
 No issues
 Loading code/UpLock.hco```
 
-Duration: 0.002929199999999993
+Duration: 0.0012413000000000007
 
 ---
 ##  code/xy.hny
@@ -893,7 +893,7 @@ T2: setX(50) [10-16] { x: 50, y: 100 }
 T1: checker() [32-35,20-30,36-50] { x: 50, y: 100 }
 Harmony assertion failed: (50, 100)```
 
-Duration: 0.002544700000000011
+Duration: 0.0011821999999999944
 
 ### Current Output
 
@@ -907,7 +907,7 @@ T2: setX(50) [10-16] { x: 50, y: 100 }
 T1: checker() [32-35,20-30,36-50] { x: 50, y: 100 }
 Harmony assertion failed: (50, 100)```
 
-Duration: 0.003455999999999987
+Duration: 0.0013985999999999998
 
 ---
 ##  code/atm.hny
@@ -925,12 +925,12 @@ nworkers = 16
 #states (4110)
 Invariant Violation
 Loading code/atm.hco
-T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 0),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }```
+T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }```
 
-Duration: 0.00267199999999998
+Duration: 0.0013558000000000042
 
 ### Current Output
 
@@ -939,12 +939,12 @@ nworkers = 16
 #states (4110)
 Invariant Violation
 Loading code/atm.hco
-T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 0),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1197(choose 0),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T2: customer(2, 0, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 0, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
-T1: customer(1, 0, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": -1, "lock": True }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }```
+T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1054,766-770,759-764,771,772,1055-1058(choose 1),1059-1062,1044-1046,1063-1066,1094,1183-1197(choose 1),1198-1201(choose 1),1202-1205,1185-1197(choose 1),1198-1201(choose 1),1202-1205,1185-1187,1206,1207] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T1: customer(1, 1, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-785] { accounts: [ { "balance": 1, "lock": False }, { "balance": 1, "lock": False } ], bag: (), list: (), synch: () }
+T2: customer(2, 1, 1) [1157-1161,1095-1103,782-789,793-799,1104-1119,801-815,1120,1121,1162-1178,1123-1131,782-789,793-799,1132-1153,801-815,1154,1155,1179-1182] { accounts: [ { "balance": 1, "lock": False }, { "balance": 0, "lock": False } ], bag: (), list: (), synch: () }
+T1: customer(1, 1, 1) [786-789,793-799,1132-1153,801-804] { accounts: [ { "balance": 1, "lock": False }, { "balance": -1, "lock": True } ], bag: (), list: (), synch: () }```
 
-Duration: 0.0020619000000000054
+Duration: 0.0016202999999999912
 
 ---
 ##  code/queuedemo.hny
@@ -964,7 +964,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.002543899999999988
+Duration: 0.0012093000000000104
 
 ### Current Output
 
@@ -975,7 +975,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0029983000000000093
+Duration: 0.0013312000000000046
 
 ---
 ## -msynch=synchS code/queuedemo.hny
@@ -995,7 +995,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0036260999999999932
+Duration: 0.0013081999999999955
 
 ### Current Output
 
@@ -1006,7 +1006,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0030010000000000037
+Duration: 0.0010854000000000003
 
 ---
 ##  code/qtestseq.hny
@@ -1026,7 +1026,7 @@ nworkers = 16
 No issues
 Loading code/qtestseq.hco```
 
-Duration: 0.0024454999999999893
+Duration: 0.0013538000000000022
 
 ### Current Output
 
@@ -1037,7 +1037,7 @@ nworkers = 16
 No issues
 Loading code/qtestseq.hco```
 
-Duration: 0.00311740000000002
+Duration: 0.0013977000000000017
 
 ---
 ##  code/qtest1.hny
@@ -1057,7 +1057,7 @@ nworkers = 16
 No issues
 Loading code/qtest1.hco```
 
-Duration: 0.003506199999999987
+Duration: 0.001483100000000001
 
 ### Current Output
 
@@ -1068,7 +1068,7 @@ nworkers = 16
 No issues
 Loading code/qtest1.hco```
 
-Duration: 0.0033823000000000047
+Duration: 0.0012225000000000014
 
 ---
 ## -msynch=synchS code/qtest1.hny
@@ -1088,7 +1088,7 @@ nworkers = 16
 No issues
 Loading code/qtest1.hco```
 
-Duration: 0.0029716000000000187
+Duration: 0.001602199999999998
 
 ### Current Output
 
@@ -1099,7 +1099,7 @@ nworkers = 16
 No issues
 Loading code/qtest1.hco```
 
-Duration: 0.003725299999999987
+Duration: 0.0012992000000000004
 
 ---
 ##  code/qtest2.hny
@@ -1119,7 +1119,7 @@ nworkers = 16
 No issues
 Loading code/qtest2.hco```
 
-Duration: 0.0024411000000000294
+Duration: 0.0014310000000000017
 
 ### Current Output
 
@@ -1130,7 +1130,7 @@ nworkers = 16
 No issues
 Loading code/qtest2.hco```
 
-Duration: 0.0033394999999999953
+Duration: 0.0013391000000000097
 
 ---
 ## -msynch=synchS code/qtest2.hny
@@ -1150,7 +1150,7 @@ nworkers = 16
 No issues
 Loading code/qtest2.hco```
 
-Duration: 0.0022706000000000115
+Duration: 0.0012680999999999942
 
 ### Current Output
 
@@ -1161,7 +1161,7 @@ nworkers = 16
 No issues
 Loading code/qtest2.hco```
 
-Duration: 0.002902799999999983
+Duration: 0.0014099999999999946
 
 ---
 ##  code/qtest3.hny
@@ -1181,7 +1181,7 @@ nworkers = 16
 No issues
 Loading code/qtest3.hco```
 
-Duration: 0.0030212000000000017
+Duration: 0.0012302999999999897
 
 ### Current Output
 
@@ -1192,7 +1192,7 @@ nworkers = 16
 No issues
 Loading code/qtest3.hco```
 
-Duration: 0.002656000000000047
+Duration: 0.0012044999999999972
 
 ---
 ## -msynch=synchS code/qtest3.hny
@@ -1212,7 +1212,7 @@ nworkers = 16
 No issues
 Loading code/qtest3.hco```
 
-Duration: 0.002031800000000028
+Duration: 0.0013168000000000069
 
 ### Current Output
 
@@ -1223,7 +1223,7 @@ nworkers = 16
 No issues
 Loading code/qtest3.hco```
 
-Duration: 0.0029681999999999764
+Duration: 0.00114510000000001
 
 ---
 ##  code/qtest4.hny
@@ -1243,7 +1243,7 @@ nworkers = 16
 No issues
 Loading code/qtest4.hco```
 
-Duration: 0.0027562999999999893
+Duration: 0.0013708000000000053
 
 ### Current Output
 
@@ -1254,7 +1254,7 @@ nworkers = 16
 No issues
 Loading code/qtest4.hco```
 
-Duration: 0.002536399999999994
+Duration: 0.0011287999999999854
 
 ---
 ## -msynch=synchS code/qtest4.hny
@@ -1274,7 +1274,7 @@ nworkers = 16
 No issues
 Loading code/qtest4.hco```
 
-Duration: 0.0024269000000000096
+Duration: 0.00112509999999999
 
 ### Current Output
 
@@ -1285,7 +1285,7 @@ nworkers = 16
 No issues
 Loading code/qtest4.hco```
 
-Duration: 0.002241499999999952
+Duration: 0.0012222000000000066
 
 ---
 ##  code/qtestconc.hny
@@ -1305,7 +1305,7 @@ nworkers = 16
 No issues
 Loading code/qtestconc.hco```
 
-Duration: 0.005218900000000026
+Duration: 0.005788199999999993
 
 ### Current Output
 
@@ -1316,7 +1316,7 @@ nworkers = 16
 No issues
 Loading code/qtestconc.hco```
 
-Duration: 0.006919200000000014
+Duration: 0.002636699999999992
 
 ---
 ## -msynch=synchS code/qtestconc.hny
@@ -1336,7 +1336,7 @@ nworkers = 16
 No issues
 Loading code/qtestconc.hco```
 
-Duration: 0.0040636000000000005
+Duration: 0.00408989999999998
 
 ### Current Output
 
@@ -1347,7 +1347,7 @@ nworkers = 16
 No issues
 Loading code/qtestconc.hco```
 
-Duration: 0.006051899999999999
+Duration: 0.003318600000000005
 
 ---
 ## -mqueue=queueMS code/queuedemo.hny
@@ -1367,7 +1367,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.001339800000000002
+Duration: 0.0014875000000000027
 
 ### Current Output
 
@@ -1378,7 +1378,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0017612999999999657
+Duration: 0.0012786999999999937
 
 ---
 ## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
@@ -1398,7 +1398,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0016925999999999886
+Duration: 0.0013794000000000028
 
 ### Current Output
 
@@ -1409,7 +1409,7 @@ nworkers = 16
 No issues
 Loading code/queuedemo.hco```
 
-Duration: 0.0015580000000000038
+Duration: 0.0011933999999999834
 
 ---
 ## -msetobj=linkedlist code/intsettest.hny
@@ -1429,7 +1429,7 @@ nworkers = 16
 No issues
 Loading code/intsettest.hco```
 
-Duration: 0.0012765000000000137
+Duration: 0.001308599999999993
 
 ### Current Output
 
@@ -1440,7 +1440,7 @@ nworkers = 16
 No issues
 Loading code/intsettest.hco```
 
-Duration: 0.001956499999999972
+Duration: 0.001765700000000009
 
 ---
 ## -msynch=synchS -msetobj=linkedlist code/intsettest.hny
@@ -1460,7 +1460,7 @@ nworkers = 16
 No issues
 Loading code/intsettest.hco```
 
-Duration: 0.0015592999999999857
+Duration: 0.0013451999999999908
 
 ### Current Output
 
@@ -1471,7 +1471,7 @@ nworkers = 16
 No issues
 Loading code/intsettest.hco```
 
-Duration: 0.0014207999999999998
+Duration: 0.0014292000000000193
 
 ---
 ##  code/RWtest.hny
@@ -1491,7 +1491,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001248199999999977
+Duration: 0.0012231999999999799
 
 ### Current Output
 
@@ -1502,7 +1502,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001605499999999982
+Duration: 0.0012767000000000195
 
 ---
 ## -msynch=synchS code/RWtest.hny
@@ -1522,7 +1522,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0011956999999999662
+Duration: 0.0015186000000000088
 
 ### Current Output
 
@@ -1533,7 +1533,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0010676000000000019
+Duration: 0.001234099999999988
 
 ---
 ## -mRW=RWsbs code/RWtest.hny
@@ -1553,7 +1553,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0012907999999999809
+Duration: 0.0012781000000000042
 
 ### Current Output
 
@@ -1564,7 +1564,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0013521000000000227
+Duration: 0.0011060999999999988
 
 ---
 ## -mRW=RWsbs -msynch=synchS code/RWtest.hny
@@ -1584,7 +1584,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001418699999999995
+Duration: 0.0012082999999999955
 
 ### Current Output
 
@@ -1595,7 +1595,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0014838999999999825
+Duration: 0.0013009000000000215
 
 ---
 ## -mRW=RWfair code/RWtest.hny
@@ -1615,7 +1615,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001408699999999985
+Duration: 0.0014732000000000078
 
 ### Current Output
 
@@ -1626,7 +1626,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.00155540000000004
+Duration: 0.00147029999999998
 
 ---
 ## -mRW=RWfair -msynch=synchS code/RWtest.hny
@@ -1646,7 +1646,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001370299999999991
+Duration: 0.0015569
 
 ### Current Output
 
@@ -1657,7 +1657,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0015233000000000052
+Duration: 0.0014102000000000003
 
 ---
 ## -mboundedbuffer=BBhoare code/BBtest.hny
@@ -1677,7 +1677,7 @@ nworkers = 16
 No issues
 Loading code/BBtest.hco```
 
-Duration: 0.0016805999999999766
+Duration: 0.0013054999999999872
 
 ### Current Output
 
@@ -1688,7 +1688,7 @@ nworkers = 16
 No issues
 Loading code/BBtest.hco```
 
-Duration: 0.0013468999999999842
+Duration: 0.001631400000000005
 
 ---
 ## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
@@ -1708,7 +1708,7 @@ nworkers = 16
 No issues
 Loading code/BBtest.hco```
 
-Duration: 0.0013139999999999818
+Duration: 0.0015776000000000123
 
 ### Current Output
 
@@ -1719,7 +1719,7 @@ nworkers = 16
 No issues
 Loading code/BBtest.hco```
 
-Duration: 0.001505100000000037
+Duration: 0.0014128999999999947
 
 ---
 ## -mRW=RWcv code/RWtest.hny
@@ -1739,7 +1739,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0014024999999999732
+Duration: 0.0013180999999999887
 
 ### Current Output
 
@@ -1750,7 +1750,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.001387900000000053
+Duration: 0.0011631000000000002
 
 ---
 ## -mRW=RWcv -msynch=synchS code/RWtest.hny
@@ -1770,7 +1770,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0016999999999999793
+Duration: 0.0017305999999999988
 
 ### Current Output
 
@@ -1781,7 +1781,7 @@ nworkers = 16
 No issues
 Loading code/RWtest.hco```
 
-Duration: 0.0015516999999999892
+Duration: 0.0013928999999999747
 
 ---
 ##  code/qsorttest.hny
@@ -1801,7 +1801,7 @@ nworkers = 16
 No issues
 Loading code/qsorttest.hco```
 
-Duration: 0.0015514999999999834
+Duration: 0.0012871999999999884
 
 ### Current Output
 
@@ -1812,7 +1812,7 @@ nworkers = 16
 No issues
 Loading code/qsorttest.hco```
 
-Duration: 0.0013809999999999656
+Duration: 0.0012796999999999947
 
 ---
 ##  code/Diners.hny
@@ -1838,7 +1838,7 @@ T5: diner(4) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785
 T4: diner(3) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, True, True ], list: (), synch: () }
 T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }```
 
-Duration: 0.0014688000000000478
+Duration: 0.001591100000000012
 
 ### Current Output
 
@@ -1855,7 +1855,7 @@ T5: diner(4) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785
 T4: diner(3) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, False, True, True, True ], list: (), synch: () }
 T2: diner(1) [1049-1064(choose True),1065-1070,782-789,793-799,1071-1076,782-785] { bag: (), forks: [ True, True, True, True, True ], list: (), synch: () }```
 
-Duration: 0.0014230000000000076
+Duration: 0.0013052999999999815
 
 ---
 ## -msynch=synchS code/Diners.hny
@@ -1882,7 +1882,7 @@ T4: diner(3) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { fo
 T3: diner(2) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
 T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }```
 
-Duration: 0.0013629000000000002
+Duration: 0.0016457
 
 ### Current Output
 
@@ -1900,7 +1900,7 @@ T4: diner(3) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { fo
 T3: diner(2) [809-824(choose True),825-830,425-431,455-462,831-836,425-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": () }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }
 T2: diner(1) [430-441] { forks: [ { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] }, { "acquired": True, "suspended": [ CONTEXT("diner") ] } ], list: (), synch: () }```
 
-Duration: 0.0016227999999999798
+Duration: 0.001437799999999989
 
 ---
 ##  code/DinersCV.hny
@@ -1920,7 +1920,7 @@ nworkers = 16
 No issues
 Loading code/DinersCV.hco```
 
-Duration: 0.0015311000000000075
+Duration: 0.0013679000000000052
 
 ### Current Output
 
@@ -1931,7 +1931,7 @@ nworkers = 16
 No issues
 Loading code/DinersCV.hco```
 
-Duration: 0.0014461000000000057
+Duration: 0.0014413000000000065
 
 ---
 ## -msynch=synchS code/DinersCV.hny
@@ -1951,7 +1951,7 @@ nworkers = 16
 No issues
 Loading code/DinersCV.hco```
 
-Duration: 0.0041180000000000105
+Duration: 0.003512100000000018
 
 ### Current Output
 
@@ -1962,7 +1962,7 @@ nworkers = 16
 No issues
 Loading code/DinersCV.hco```
 
-Duration: 0.003330999999999973
+Duration: 0.00312380000000001
 
 ---
 ##  code/DinersAvoid.hny
@@ -1982,7 +1982,7 @@ nworkers = 16
 No issues
 Loading code/DinersAvoid.hco```
 
-Duration: 0.00153979999999998
+Duration: 0.0018589999999999995
 
 ### Current Output
 
@@ -1993,7 +1993,7 @@ nworkers = 16
 No issues
 Loading code/DinersAvoid.hco```
 
-Duration: 0.0016571000000000224
+Duration: 0.0014706000000000163
 
 ---
 ## -msynch=synchS code/DinersAvoid.hny
@@ -2013,7 +2013,7 @@ nworkers = 16
 No issues
 Loading code/DinersAvoid.hco```
 
-Duration: 0.0014559999999999573
+Duration: 0.0017391000000000212
 
 ### Current Output
 
@@ -2024,7 +2024,7 @@ nworkers = 16
 No issues
 Loading code/DinersAvoid.hco```
 
-Duration: 0.001923800000000031
+Duration: 0.0014098999999999917
 
 ---
 ##  code/bank.hny
@@ -2047,7 +2047,7 @@ T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 2
 T1: thread() [1142-1144(choose 0),1145-1151(choose 1),1152-1165(choose 1),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
 T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }```
 
-Duration: 0.0011969000000000007
+Duration: 0.00152469999999999
 
 ### Current Output
 
@@ -2061,7 +2061,7 @@ T0: __init__() [0-5,369-371,1039-1054,766-770,759-764,771,772,1055-1058(choose 2
 T1: thread() [1142-1144(choose 0),1145-1151(choose 1),1152-1165(choose 1),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 2, "lock": False } ], bag: (), list: (), synch: () }
 T2: thread() [1142-1144(choose 1),1145-1151(choose 0),1152-1165(choose 2),1166,1167,1067-1075,782-789,793-799,1076-1102,782-785] { accounts: [ { "balance": 1, "lock": True }, { "balance": 0, "lock": True } ], bag: (), list: (), synch: () }```
 
-Duration: 0.0013712000000000168
+Duration: 0.00128049999999999
 
 ---
 ##  code/counter.hny
@@ -2081,7 +2081,7 @@ nworkers = 16
 No issues
 Loading code/counter.hco```
 
-Duration: 0.0011847000000000385
+Duration: 0.0013728999999999825
 
 ### Current Output
 
@@ -2092,7 +2092,7 @@ nworkers = 16
 No issues
 Loading code/counter.hco```
 
-Duration: 0.0013161999999999896
+Duration: 0.0015085999999999988
 
 ---
 ##  code/qbarrier.hny
@@ -2112,7 +2112,7 @@ nworkers = 16
 No issues
 Loading code/qbarrier.hco```
 
-Duration: 0.001220999999999972
+Duration: 0.001167499999999988
 
 ### Current Output
 
@@ -2123,7 +2123,7 @@ nworkers = 16
 No issues
 Loading code/qbarrier.hco```
 
-Duration: 0.0013352000000000364
+Duration: 0.0013679000000000052
 
 ---
 ## -msynch=synchS code/qbarrier.hny
@@ -2143,7 +2143,7 @@ nworkers = 16
 No issues
 Loading code/qbarrier.hco```
 
-Duration: 0.0013800999999999952
+Duration: 0.0014231999999999856
 
 ### Current Output
 
@@ -2154,7 +2154,7 @@ nworkers = 16
 No issues
 Loading code/qbarrier.hco```
 
-Duration: 0.0014253000000000182
+Duration: 0.001322799999999985
 
 ---
 ##  code/barriertest.hny
@@ -2174,7 +2174,7 @@ nworkers = 16
 No issues
 Loading code/barriertest.hco```
 
-Duration: 0.0012064999999999992
+Duration: 0.0013422000000000156
 
 ### Current Output
 
@@ -2185,7 +2185,7 @@ nworkers = 16
 No issues
 Loading code/barriertest.hco```
 
-Duration: 0.0014010999999999885
+Duration: 0.0012768000000000224
 
 ---
 ## -msynch=synchS code/barriertest.hny
@@ -2205,7 +2205,7 @@ nworkers = 16
 No issues
 Loading code/barriertest.hco```
 
-Duration: 0.0012878000000000056
+Duration: 0.0018267999999999895
 
 ### Current Output
 
@@ -2216,7 +2216,7 @@ nworkers = 16
 No issues
 Loading code/barriertest.hco```
 
-Duration: 0.0013928999999999747
+Duration: 0.0012101999999999946
 
 ---
 ##  code/trap.hny
@@ -2238,7 +2238,7 @@ Loading code/trap.hco
 T0: __init__() [0-7,34-38] { count: 0, done: False }
 T1: main() [17-20] { count: 0, done: False }```
 
-Duration: 0.0014107999999999898
+Duration: 0.0015272999999999815
 
 ### Current Output
 
@@ -2251,7 +2251,7 @@ Loading code/trap.hco
 T0: __init__() [0-7,34-38] { count: 0, done: False }
 T1: main() [17-20] { count: 0, done: False }```
 
-Duration: 0.0014371000000000245
+Duration: 0.0016347999999999918
 
 ---
 ##  code/trap2.hny
@@ -2267,14 +2267,14 @@ Output is good: ✅
 ```
 constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19) ErrorToken(line=1, message="constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)", column=5, lexeme='LABEL(0, ok)', filename='code/trap2.hny', is_eof_error=False)```
 
-Duration: 0.0010709999999999886
+Duration: 0.0012959999999999916
 
 ### Current Output
 
 ```
 Line 1:5 at code/trap2.hny, constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)```
 
-Duration: 0.0008906000000000192
+Duration: 0.001023099999999999
 
 ---
 ##  code/trap3.hny
@@ -2295,7 +2295,7 @@ Loading code/trap3.hco
 T0: __init__() [0-5,369-371,1039-1043,766-770,759-764,771,772,1044-1049,1096-1100] { bag: (), count: 0, countlock: False, done: False, list: (), synch: () }
 T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }```
 
-Duration: 0.0012976000000000099
+Duration: 0.0012630999999999892
 
 ### Current Output
 
@@ -2307,7 +2307,7 @@ Loading code/trap3.hco
 T0: __init__() [0-5,369-371,1039-1043,766-770,759-764,771,772,1044-1049,1096-1100] { bag: (), count: 0, countlock: False, done: False, list: (), synch: () }
 T1: main() [1067-1073,782-789,793-799,1074] { bag: (), count: 0, countlock: True, done: False, list: (), synch: () }```
 
-Duration: 0.00150469999999997
+Duration: 0.0016850000000000198
 
 ---
 ##  code/trap4.hny
@@ -2329,7 +2329,7 @@ Loading code/trap4.hco
 T0: __init__() [0-7,44-48] { count: 0, done: False }
 T1: main() [17-30] { count: 1, done: False }```
 
-Duration: 0.0013240000000000474
+Duration: 0.0014830999999999872
 
 ### Current Output
 
@@ -2342,7 +2342,7 @@ Loading code/trap4.hco
 T0: __init__() [0-7,44-48] { count: 0, done: False }
 T1: main() [17-30] { count: 1, done: False }```
 
-Duration: 0.0014413999999999816
+Duration: 0.0011936000000000169
 
 ---
 ##  code/trap5.hny
@@ -2364,7 +2364,7 @@ Loading code/trap5.hco
 T0: __init__() [0-7,52-56] { count: 0, done: False }
 T1: main() [31-37,8-20,38] { count: 1, done: False }```
 
-Duration: 0.0011881999999999726
+Duration: 0.001273300000000005
 
 ### Current Output
 
@@ -2377,7 +2377,7 @@ Loading code/trap5.hco
 T0: __init__() [0-7,52-56] { count: 0, done: False }
 T1: main() [31-37,8-20,38] { count: 1, done: False }```
 
-Duration: 0.001435799999999987
+Duration: 0.0012699999999999934
 
 ---
 ##  code/trap6.hny
@@ -2400,7 +2400,7 @@ T0: __init__() [0-5,369-371,1039-1045,766-770,759-764,771,772,1046-1049,1109-111
 T1: thread(0) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 1, countlock: False, done: [ False, False ], list: (), synch: () }
 T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }```
 
-Duration: 0.0011281999999999681
+Duration: 0.0014067999999999858
 
 ### Current Output
 
@@ -2414,7 +2414,7 @@ T0: __init__() [0-5,369-371,1039-1045,766-770,759-764,771,772,1046-1049,1109-111
 T1: thread(0) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 1, countlock: False, done: [ False, False ], list: (), synch: () }
 T2: thread(1) [1085-1092,1050-1056,782-789,793-799,1057-1064,801-815,1065-1070,1093] { bag: (), count: 2, countlock: False, done: [ False, False ], list: (), synch: () }```
 
-Duration: 0.0015391000000000155
+Duration: 0.0013082000000000094
 
 ---
 ## -msynch=synchS code/trap6.hny
@@ -2437,7 +2437,7 @@ T0: __init__() [0-5,799-805,417-421,404-415,422,423,806-809,869-877] { count: 0,
 T1: thread(0) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 1, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
 T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }```
 
-Duration: 0.0012524999999999897
+Duration: 0.0011654000000000386
 
 ### Current Output
 
@@ -2451,7 +2451,7 @@ T0: __init__() [0-5,799-805,417-421,404-415,422,423,806-809,869-877] { count: 0,
 T1: thread(0) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 1, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }
 T2: thread(1) [845-852,810-816,425-431,455-462,817-824,464-488,508,509,825-830,853] { count: 2, countlock: { "acquired": False, "suspended": () }, done: [ False, False ], list: (), synch: () }```
 
-Duration: 0.0012498999999999705
+Duration: 0.0011902000000000301
 
 ---
 ##  code/hw.hny
@@ -2471,7 +2471,7 @@ nworkers = 16
 No issues
 Loading code/hw.hco```
 
-Duration: 0.0013218000000000396
+Duration: 0.0013788000000000133
 
 ### Current Output
 
@@ -2482,7 +2482,7 @@ nworkers = 16
 No issues
 Loading code/hw.hco```
 
-Duration: 0.0015171999999999963
+Duration: 0.001389499999999988
 
 ---
 ##  code/abptest.hny
@@ -2502,7 +2502,7 @@ nworkers = 16
 No issues
 Loading code/abptest.hco```
 
-Duration: 0.0016864999999999797
+Duration: 0.0012828999999999757
 
 ### Current Output
 
@@ -2513,7 +2513,7 @@ nworkers = 16
 No issues
 Loading code/abptest.hco```
 
-Duration: 0.001615000000000033
+Duration: 0.001253100000000007
 
 ---
 ##  code/byzbosco.hny
@@ -2529,14 +2529,14 @@ Output is good: ✅
 ```
 Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)```
 
-Duration: 0.0010338000000000291
+Duration: 0.0010022000000000086
 
 ### Current Output
 
 ```
 Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)```
 
-Duration: 0.0010650999999999855
+Duration: 0.0008751999999999649
 
 ---
 ##  code/BBsematest.hny
@@ -2557,7 +2557,7 @@ Loading code/BBsematest.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
 Load: unknown address ?BBsema["Semaphore"][1]```
 
-Duration: 0.001416200000000034
+Duration: 0.0015312999999999577
 
 ### Current Output
 
@@ -2569,7 +2569,7 @@ Loading code/BBsematest.hco
 T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
 Load: unknown address ?BBsema["Semaphore"][1]```
 
-Duration: 0.0016287999999999858
+Duration: 0.0016528000000000098
 
 ---
 ##  code/ky.hny
@@ -2589,7 +2589,7 @@ nworkers = 16
 No issues
 Loading code/ky.hco```
 
-Duration: 0.0011472000000000149
+Duration: 0.0011901000000000272
 
 ### Current Output
 
@@ -2600,7 +2600,7 @@ nworkers = 16
 No issues
 Loading code/ky.hco```
 
-Duration: 0.0017753999999999825
+Duration: 0.001181500000000002
 
 ---
 ##  code/bosco.hny
@@ -2620,7 +2620,7 @@ nworkers = 16
 No issues
 Loading code/bosco.hco```
 
-Duration: 0.0013645999999999936
+Duration: 0.0013128000000000029
 
 ### Current Output
 
@@ -2631,7 +2631,7 @@ nworkers = 16
 No issues
 Loading code/bosco.hco```
 
-Duration: 0.0013169000000000097
+Duration: 0.001239099999999993
 
 ---
 ##  code/RWsbs.hny
@@ -2651,7 +2651,7 @@ nworkers = 16
 No issues
 Loading code/RWsbs.hco```
 
-Duration: 0.0013608999999999982
+Duration: 0.001705399999999968
 
 ### Current Output
 
@@ -2662,7 +2662,7 @@ nworkers = 16
 No issues
 Loading code/RWsbs.hco```
 
-Duration: 0.0014593999999999996
+Duration: 0.001301400000000008
 
 ---
 ##  code/queuebroken.hny
@@ -2682,7 +2682,7 @@ nworkers = 16
 No issues
 Loading code/queuebroken.hco```
 
-Duration: 0.0013272000000000284
+Duration: 0.0012898000000000076
 
 ### Current Output
 
@@ -2693,7 +2693,7 @@ nworkers = 16
 No issues
 Loading code/queuebroken.hco```
 
-Duration: 0.0014644999999999797
+Duration: 0.0015634999999999954
 
 ---
 ##  code/hello7.hny
@@ -2713,7 +2713,7 @@ nworkers = 16
 No issues
 Loading code/hello7.hco```
 
-Duration: 0.0012765000000000137
+Duration: 0.0012458000000000191
 
 ### Current Output
 
@@ -2724,7 +2724,7 @@ nworkers = 16
 No issues
 Loading code/hello7.hco```
 
-Duration: 0.0011412000000000089
+Duration: 0.0016464999999999952
 
 ---
 ##  code/multitest.hny
@@ -2744,7 +2744,7 @@ nworkers = 16
 No issues
 Loading code/multitest.hco```
 
-Duration: 0.0013132000000000144
+Duration: 0.0012059000000000375
 
 ### Current Output
 
@@ -2755,7 +2755,7 @@ nworkers = 16
 No issues
 Loading code/multitest.hco```
 
-Duration: 0.0013325000000000142
+Duration: 0.0014419999999999988
 
 ---
 ##  code/BBsemadata.hny
@@ -2769,16 +2769,26 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Parse error in statement. Got ('atomic', 'code/BBsemadata.hny', 13, 9), but expected expression ErrorToken(line=13, message="Parse error in statement. Got ('atomic', 'code/BBsemadata.hny', 13, 9), but expected expression", column=9, lexeme='atomic', filename='code/BBsemadata.hny', is_eof_error=False)```
+nworkers = 16
+#states (2)
+Safety Violation
+Loading code/BBsemadata.hco
+T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
+Load: unknown address ?BBsema["Semaphore"][1]```
 
-Duration: 0.0009935999999999834
+Duration: 0.001423899999999978
 
 ### Current Output
 
 ```
-```
+nworkers = 16
+#states (2)
+Safety Violation
+Loading code/BBsemadata.hco
+T0: __init__() [0-7,371-373,1111-1122,1114-1122,1114-1116,1123-1132] { BBsema: { "b_in": 1, "b_out": 1, "buf": { 1: (), 2: () } }, bag: (), list: (), synch: () }
+Load: unknown address ?BBsema["Semaphore"][1]```
 
-Duration: 0.0009897999999999851
+Duration: 0.0013515000000000055
 
 ---
 ##  code/dinersfix2.hny
@@ -2799,7 +2809,7 @@ Loading code/dinersfix2.hco
 T0: __init__() [0-7] { }
 Load: unknown variable left```
 
-Duration: 0.0011461999999999861
+Duration: 0.0014967000000000175
 
 ### Current Output
 
@@ -2811,7 +2821,7 @@ Loading code/dinersfix2.hco
 T0: __init__() [0-7] { }
 Load: unknown variable left```
 
-Duration: 0.0015767999999999893
+Duration: 0.0018149000000000082
 
 ---
 ##  code/qsort.hny
@@ -2831,7 +2841,7 @@ nworkers = 16
 No issues
 Loading code/qsort.hco```
 
-Duration: 0.0014475999999999933
+Duration: 0.0013385999999999676
 
 ### Current Output
 
@@ -2842,7 +2852,7 @@ nworkers = 16
 No issues
 Loading code/qsort.hco```
 
-Duration: 0.0015892000000000128
+Duration: 0.0011361000000000288
 
 ---
 ##  code/setobj.hny
@@ -2862,7 +2872,7 @@ nworkers = 16
 No issues
 Loading code/setobj.hco```
 
-Duration: 0.0012588000000000044
+Duration: 0.0013345999999999636
 
 ### Current Output
 
@@ -2873,7 +2883,7 @@ nworkers = 16
 No issues
 Loading code/setobj.hco```
 
-Duration: 0.0013384000000000174
+Duration: 0.0018106999999999984
 
 ---
 ##  code/baddblwait.hny
@@ -2894,7 +2904,7 @@ Loading code/baddblwait.hco
 T0: __init__() [0-2] { }
 Load: unknown variable left```
 
-Duration: 0.0012781000000000042
+Duration: 0.0012197999999999931
 
 ### Current Output
 
@@ -2906,7 +2916,7 @@ Loading code/baddblwait.hco
 T0: __init__() [0-2] { }
 Load: unknown variable left```
 
-Duration: 0.0013355999999999923
+Duration: 0.0012293999999999916
 
 ---
 ##  code/nbqueuetest.hny
@@ -2926,7 +2936,7 @@ nworkers = 16
 No issues
 Loading code/nbqueuetest.hco```
 
-Duration: 0.001443899999999998
+Duration: 0.00185059999999998
 
 ### Current Output
 
@@ -2937,7 +2947,7 @@ nworkers = 16
 No issues
 Loading code/nbqueuetest.hco```
 
-Duration: 0.0013915999999999928
+Duration: 0.001207899999999984
 
 ---
 ##  code/cssynch.hny
@@ -2957,7 +2967,7 @@ nworkers = 16
 No issues
 Loading code/cssynch.hco```
 
-Duration: 0.0013603000000000365
+Duration: 0.0011913999999999536
 
 ### Current Output
 
@@ -2968,7 +2978,7 @@ nworkers = 16
 No issues
 Loading code/cssynch.hco```
 
-Duration: 0.0012529000000000012
+Duration: 0.001385499999999984
 
 ---
 ##  code/stack3.hny
@@ -2988,7 +2998,7 @@ nworkers = 16
 No issues
 Loading code/stack3.hco```
 
-Duration: 0.0013429000000000357
+Duration: 0.0013675999999999688
 
 ### Current Output
 
@@ -2999,7 +3009,7 @@ nworkers = 16
 No issues
 Loading code/stack3.hco```
 
-Duration: 0.0011365000000000403
+Duration: 0.0011690000000000311
 
 ---
 ##  code/RWqueue.hny
@@ -3020,14 +3030,19 @@ Loading code/RWqueue.hco
 T0: __init__() [0-5,369-371,1251-1254] { bag: (), list: (), synch: () }
 Load: unknown address ?Semaphore[1]```
 
-Duration: 0.0015874000000000166
+Duration: 0.0018024999999999847
 
 ### Current Output
 
 ```
-```
+nworkers = 16
+#states (2)
+Safety Violation
+Loading code/RWqueue.hco
+T0: __init__() [0-5,369-371,1251-1254] { bag: (), list: (), synch: () }
+Load: unknown address ?Semaphore[1]```
 
-Duration: 0.0011971000000000065
+Duration: 0.0012314999999999965
 
 ---
 ##  code/DinersSema.hny
@@ -3048,7 +3063,7 @@ Loading code/DinersSema.hco
 T0: __init__() [0-5,369-371,1057-1060] { bag: (), list: (), synch: () }
 Load: unknown address ?Semaphore[3]```
 
-Duration: 0.0012647999999999548
+Duration: 0.0014282999999999935
 
 ### Current Output
 
@@ -3060,7 +3075,7 @@ Loading code/DinersSema.hco
 T0: __init__() [0-5,369-371,1057-1060] { bag: (), list: (), synch: () }
 Load: unknown address ?Semaphore[3]```
 
-Duration: 0.00152540000000001
+Duration: 0.001190300000000033
 
 ---
 ##  code/RWcv.hny
@@ -3080,7 +3095,7 @@ nworkers = 16
 No issues
 Loading code/RWcv.hco```
 
-Duration: 0.0013859999999999983
+Duration: 0.001809900000000031
 
 ### Current Output
 
@@ -3091,7 +3106,7 @@ nworkers = 16
 No issues
 Loading code/RWcv.hco```
 
-Duration: 0.0014533999999999936
+Duration: 0.001323899999999989
 
 ---
 ##  code/RWmulti.hny
@@ -3100,7 +3115,7 @@ Duration: 0.0014533999999999936
 
 Duration is good: ✅
 
-Output is good: ❌
+Output is good: ✅
 
 ### Baseline Output
 
@@ -3112,14 +3127,19 @@ Loading code/RWmulti.hco
 T0: __init__() [0-7,371-373,1109-1112] { RWlock: (), bag: (), list: (), synch: () }
 Load: unknown address ?RWlock["Lock"][()]```
 
-Duration: 0.001360199999999978
+Duration: 0.0013978000000000046
 
 ### Current Output
 
 ```
-Line 19:8 at code/RWmulti.hny, extraneous input 'dict' expecting {'-', '~', 'abs', 'all', 'any', 'atLabel', 'countLabel', 'choose', 'contexts', 'get_context', 'min', 'max', 'keys', 'hash', 'len', '!', 'print', 'setintlevel', 'stop', 'lambda', '?', 'not', 'None', BOOL, INT, NAME, ATOM, '[', '{', '(', STRING}```
+nworkers = 16
+#states (2)
+Safety Violation
+Loading code/RWmulti.hco
+T0: __init__() [0-7,371-373,1109-1112] { RWlock: (), bag: (), list: (), synch: () }
+Load: unknown address ?RWlock["Lock"][()]```
 
-Duration: 0.0010787999999999909
+Duration: 0.0012334999999999985
 
 ---
 ##  code/2pc.hny
@@ -3135,14 +3155,14 @@ Output is good: ✅
 ```
 Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)```
 
-Duration: 0.0010125000000000273
+Duration: 0.0010475999999999819
 
 ### Current Output
 
 ```
 Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)```
 
-Duration: 0.001071500000000003
+Duration: 0.0008982000000000157
 
 ---
 ##  code/queueconc.hny
@@ -3162,7 +3182,7 @@ nworkers = 16
 No issues
 Loading code/queueconc.hco```
 
-Duration: 0.0015000000000000013
+Duration: 0.001354299999999975
 
 ### Current Output
 
@@ -3173,7 +3193,7 @@ nworkers = 16
 No issues
 Loading code/queueconc.hco```
 
-Duration: 0.002025700000000019
+Duration: 0.001648700000000003
 
 ---
 ##  code/queuelin.hny
@@ -3193,7 +3213,7 @@ nworkers = 16
 No issues
 Loading code/queuelin.hco```
 
-Duration: 0.0013757000000000352
+Duration: 0.0018043999999999838
 
 ### Current Output
 
@@ -3204,7 +3224,7 @@ nworkers = 16
 No issues
 Loading code/queuelin.hco```
 
-Duration: 0.0013385999999999676
+Duration: 0.0014673000000000047
 
 ---
 ##  code/lockspec.hny
@@ -3224,7 +3244,7 @@ nworkers = 16
 No issues
 Loading code/lockspec.hco```
 
-Duration: 0.0012841999999999576
+Duration: 0.0011580000000000479
 
 ### Current Output
 
@@ -3235,7 +3255,7 @@ nworkers = 16
 No issues
 Loading code/lockspec.hco```
 
-Duration: 0.0013062000000000351
+Duration: 0.0012315999999999994
 
 ---
 ##  code/ky2.hny
@@ -3255,7 +3275,7 @@ nworkers = 16
 No issues
 Loading code/ky2.hco```
 
-Duration: 0.0011180999999999552
+Duration: 0.0011261000000000188
 
 ### Current Output
 
@@ -3266,7 +3286,7 @@ nworkers = 16
 No issues
 Loading code/ky2.hco```
 
-Duration: 0.0013739999999999863
+Duration: 0.0014576000000000033
 
 ---
 ##  code/cslock.hny
@@ -3286,7 +3306,7 @@ nworkers = 16
 No issues
 Loading code/cslock.hco```
 
-Duration: 0.0012559999999999794
+Duration: 0.0013354000000000421
 
 ### Current Output
 
@@ -3297,7 +3317,7 @@ nworkers = 16
 No issues
 Loading code/cslock.hco```
 
-Duration: 0.0015228999999999937
+Duration: 0.0012198000000000486
 
 ---
 ##  code/abp.hny
@@ -3317,7 +3337,7 @@ nworkers = 16
 No issues
 Loading code/abp.hco```
 
-Duration: 0.0012265000000000192
+Duration: 0.001296599999999981
 
 ### Current Output
 
@@ -3328,7 +3348,7 @@ nworkers = 16
 No issues
 Loading code/abp.hco```
 
-Duration: 0.0013482000000000216
+Duration: 0.0011878000000000166
 
 ---
 ##  code/hello2.hny
@@ -3348,7 +3368,7 @@ nworkers = 16
 No issues
 Loading code/hello2.hco```
 
-Duration: 0.001235499999999945
+Duration: 0.0011036999999999852
 
 ### Current Output
 
@@ -3359,7 +3379,7 @@ nworkers = 16
 No issues
 Loading code/hello2.hco```
 
-Duration: 0.0012972999999999457
+Duration: 0.0016147000000000244
 
 ---
 ##  code/actortest.hny
@@ -3375,14 +3395,14 @@ Output is good: ✅
 ```
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)```
 
-Duration: 0.0010352000000000139
+Duration: 0.0010336000000000234
 
 ### Current Output
 
 ```
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)```
 
-Duration: 0.0010931999999999054
+Duration: 0.0009274000000000227
 
 ---
 ##  code/hello4.hny
@@ -3402,7 +3422,7 @@ nworkers = 16
 No issues
 Loading code/hello4.hco```
 
-Duration: 0.0010867999999999434
+Duration: 0.0013393000000000432
 
 ### Current Output
 
@@ -3413,7 +3433,7 @@ nworkers = 16
 No issues
 Loading code/hello4.hco```
 
-Duration: 0.0016192999999999902
+Duration: 0.0014325999999999506
 
 ---
 ##  code/actor.hny
@@ -3429,14 +3449,14 @@ Output is good: ✅
 ```
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)```
 
-Duration: 0.001410699999999987
+Duration: 0.0011468000000000034
 
 ### Current Output
 
 ```
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)```
 
-Duration: 0.0011207000000000855
+Duration: 0.0009350999999999665
 
 ---
 ##  code/chain.hny
@@ -3445,7 +3465,7 @@ Duration: 0.0011207000000000855
 
 Duration is good: ✅
 
-Output is good: ❌
+Output is good: ✅
 
 ### Baseline Output
 
@@ -3456,18 +3476,18 @@ nworkers = 16
 No issues
 Loading code/chain.hco```
 
-Duration: 0.0018129000000000062
+Duration: 0.0014764999999999917
 
 ### Current Output
 
 ```
-Line 24:51 at code/chain.hny, extraneous input 'indent' expecting {'-', '~', 'abs', 'all', 'any', 'atLabel', 'countLabel', 'choose', 'contexts', 'get_context', 'min', 'max', 'keys', 'hash', 'len', '!', 'print', 'setintlevel', 'stop', 'lambda', '?', 'not', 'None', BOOL, INT, NAME, ATOM, '[', '{', '(', STRING}
+nworkers = 16
+#states (69601)
+45835 components
+No issues
+Loading code/chain.hco```
 
-Line 25:77 at code/chain.hny, mismatched input 'newLine' expecting {'-', '~', 'abs', 'all', 'any', 'atLabel', 'countLabel', 'choose', 'contexts', 'get_context', 'min', 'max', 'keys', 'hash', 'len', '!', 'print', 'setintlevel', 'stop', 'lambda', '?', 'not', 'const', 'await', 'assert', 'var', 'trap', 'possibly', 'pass', 'del', 'spawn', 'invariant', 'go', 'sequential', 'None', BOOL, INT, NAME, ATOM, '[', '{', '(', STRING, INDENT}
-
-Line 32:0 at code/chain.hny, extraneous input 'dedent' expecting {<EOF>, '-', '~', 'abs', 'all', 'any', 'atLabel', 'countLabel', 'choose', 'contexts', 'get_context', 'min', 'max', 'keys', 'hash', 'len', NL, '!', 'import', 'print', 'from', 'setintlevel', 'stop', 'lambda', '?', 'not', 'const', 'await', 'assert', 'var', 'trap', 'possibly', 'pass', 'del', 'spawn', 'invariant', 'go', 'sequential', 'atomic', 'when', 'let', 'if', 'while', 'def', 'for', 'None', 'atomically', BOOL, INT, NAME, ATOM, '[', '{', '(', ';', STRING, INDENT}```
-
-Duration: 0.0014849999999999586
+Duration: 0.0015672999999999937
 
 ---
 ##  code/boundedbuffer.hny
@@ -3487,7 +3507,7 @@ nworkers = 16
 No issues
 Loading code/boundedbuffer.hco```
 
-Duration: 0.0014359999999999928
+Duration: 0.0012658999999999865
 
 ### Current Output
 
@@ -3498,7 +3518,7 @@ nworkers = 16
 No issues
 Loading code/boundedbuffer.hco```
 
-Duration: 0.0013130000000000086
+Duration: 0.0010907
 
 ---
 ##  code/lockintf.hny
@@ -3518,7 +3538,7 @@ nworkers = 16
 No issues
 Loading code/lockintf.hco```
 
-Duration: 0.0013780999999999377
+Duration: 0.001201500000000022
 
 ### Current Output
 
@@ -3529,7 +3549,7 @@ nworkers = 16
 No issues
 Loading code/lockintf.hco```
 
-Duration: 0.0013404000000000194
+Duration: 0.0013969999999999816
 
 ---
 ##  code/taslock.hny
@@ -3549,7 +3569,7 @@ nworkers = 16
 No issues
 Loading code/taslock.hco```
 
-Duration: 0.001202700000000001
+Duration: 0.0012538000000000271
 
 ### Current Output
 
@@ -3560,7 +3580,7 @@ nworkers = 16
 No issues
 Loading code/taslock.hco```
 
-Duration: 0.0012331999999999343
+Duration: 0.0013422000000000156
 
 ---
 ##  code/RW.hny
@@ -3580,7 +3600,7 @@ nworkers = 16
 No issues
 Loading code/RW.hco```
 
-Duration: 0.00125390000000003
+Duration: 0.0014762000000000386
 
 ### Current Output
 
@@ -3591,7 +3611,7 @@ nworkers = 16
 No issues
 Loading code/RW.hco```
 
-Duration: 0.001237900000000014
+Duration: 0.0011938000000000226
 
 ---
 ##  code/DinersCV2.hny
@@ -3612,7 +3632,7 @@ Loading code/DinersCV2.hco
 T0: __init__() [0-5,369-371,1039-1041,766-770,759-764,771,772,1042-1049,825] { bag: (), forks: [ False, False, False, False, False ], list: (), mutex: False, synch: () }
 match: expected ()```
 
-Duration: 0.0011493999999999671
+Duration: 0.0015963999999999978
 
 ### Current Output
 
@@ -3624,7 +3644,7 @@ Loading code/DinersCV2.hco
 T0: __init__() [0-5,369-371,1039-1041,766-770,759-764,771,772,1042-1049,825] { bag: (), forks: [ False, False, False, False, False ], list: (), mutex: False, synch: () }
 match: expected ()```
 
-Duration: 0.0013027999999999373
+Duration: 0.0013645999999999936
 
 ---
 ##  code/2pc2.hny
@@ -3645,7 +3665,7 @@ Loading code/2pc2.hco
 T0: __init__() [0-3,735-737] { list: () }
 Load: unknown variable NBANKS```
 
-Duration: 0.0012410000000000476
+Duration: 0.0014824999999999977
 
 ### Current Output
 
@@ -3657,7 +3677,7 @@ Loading code/2pc2.hco
 T0: __init__() [0-3,735-737] { list: () }
 Load: unknown variable NBANKS```
 
-Duration: 0.0012956999999998997
+Duration: 0.0014152000000000053
 
 ---
 ##  code/rsmspec.hny
@@ -3677,7 +3697,7 @@ nworkers = 16
 No issues
 Loading code/rsmspec.hco```
 
-Duration: 0.001297399999999893
+Duration: 0.0012291999999999859
 
 ### Current Output
 
@@ -3688,7 +3708,7 @@ nworkers = 16
 No issues
 Loading code/rsmspec.hco```
 
-Duration: 0.0012408000000000419
+Duration: 0.0014039000000000135
 
 ---
 ##  code/paxos1.hny
@@ -3709,7 +3729,7 @@ Loading code/paxos1.hco
 T0: __init__() [0-3,356-358,4-8,359-372(choose 0),373-375,365-372(choose 0),373-375,365-367,376-379,454,455(print [ 0, 0 ]),456-462] { bag: (), network: (), proposals: [ 0, 0 ] }
 Load: unknown variable leader```
 
-Duration: 0.001339800000000002
+Duration: 0.0012805000000000177
 
 ### Current Output
 
@@ -3721,7 +3741,7 @@ Loading code/paxos1.hco
 T0: __init__() [0-3,356-358,4-8,359-372(choose 0),373-375,365-372(choose 0),373-375,365-367,376-379,454,455(print [ 0, 0 ]),456-462] { bag: (), network: (), proposals: [ 0, 0 ] }
 Load: unknown variable leader```
 
-Duration: 0.00124829999999998
+Duration: 0.0011773999999999951
 
 ---
 ##  code/queuespec.hny
@@ -3741,7 +3761,7 @@ nworkers = 16
 No issues
 Loading code/queuespec.hco```
 
-Duration: 0.0012510000000000021
+Duration: 0.001303500000000013
 
 ### Current Output
 
@@ -3752,7 +3772,7 @@ nworkers = 16
 No issues
 Loading code/queuespec.hco```
 
-Duration: 0.0013369000000000852
+Duration: 0.0013116999999999712
 
 ---
 ##  code/RWbtest.hny
@@ -3772,7 +3792,7 @@ nworkers = 16
 No issues
 Loading code/RWbtest.hco```
 
-Duration: 0.001994700000000016
+Duration: 0.0014178000000000246
 
 ### Current Output
 
@@ -3783,7 +3803,7 @@ nworkers = 16
 No issues
 Loading code/RWbtest.hco```
 
-Duration: 0.00141710000000006
+Duration: 0.0012941999999999676
 
 ---
 ##  code/RWhoare.hny
@@ -3803,7 +3823,7 @@ nworkers = 16
 No issues
 Loading code/RWhoare.hco```
 
-Duration: 0.0017812000000000383
+Duration: 0.0012180999999999997
 
 ### Current Output
 
@@ -3814,7 +3834,7 @@ nworkers = 16
 No issues
 Loading code/RWhoare.hco```
 
-Duration: 0.0013471000000000455
+Duration: 0.001434600000000008
 
 ---
 ##  code/RWbusy.hny
@@ -3834,7 +3854,7 @@ nworkers = 16
 No issues
 Loading code/RWbusy.hco```
 
-Duration: 0.0017806999999999684
+Duration: 0.001839000000000035
 
 ### Current Output
 
@@ -3845,7 +3865,7 @@ nworkers = 16
 No issues
 Loading code/RWbusy.hco```
 
-Duration: 0.00147150000000007
+Duration: 0.0013931999999999833
 
 ---
 ##  code/qtestpar.hny
@@ -3865,7 +3885,7 @@ nworkers = 16
 No issues
 Loading code/qtestpar.hco```
 
-Duration: 0.0019871999999999668
+Duration: 0.0013329000000000257
 
 ### Current Output
 
@@ -3876,7 +3896,7 @@ nworkers = 16
 No issues
 Loading code/qtestpar.hco```
 
-Duration: 0.0016095999999999888
+Duration: 0.0013524999999999787
 
 ---
 ##  code/leader.hny
@@ -3896,7 +3916,7 @@ nworkers = 16
 No issues
 Loading code/leader.hco```
 
-Duration: 0.0014351000000000225
+Duration: 0.0014865000000000017
 
 ### Current Output
 
@@ -3907,7 +3927,7 @@ nworkers = 16
 No issues
 Loading code/leader.hco```
 
-Duration: 0.0014025999999999206
+Duration: 0.0015132999999999952
 
 ---
 ##  code/hoare.hny
@@ -3927,7 +3947,7 @@ nworkers = 16
 No issues
 Loading code/hoare.hco```
 
-Duration: 0.001417399999999902
+Duration: 0.0015152999999999972
 
 ### Current Output
 
@@ -3938,7 +3958,7 @@ nworkers = 16
 No issues
 Loading code/hoare.hco```
 
-Duration: 0.001605099999999915
+Duration: 0.0016777999999999516
 
 ---
 ##  code/RWfair.hny
@@ -3958,7 +3978,7 @@ nworkers = 16
 No issues
 Loading code/RWfair.hco```
 
-Duration: 0.0013371999999999273
+Duration: 0.0016672999999999827
 
 ### Current Output
 
@@ -3969,7 +3989,7 @@ nworkers = 16
 No issues
 Loading code/RWfair.hco```
 
-Duration: 0.0012786000000000186
+Duration: 0.0012484999999999857
 
 ---
 ##  code/register.hny
@@ -3989,7 +4009,7 @@ nworkers = 16
 No issues
 Loading code/register.hco```
 
-Duration: 0.0014813000000000187
+Duration: 0.0013375999999999943
 
 ### Current Output
 
@@ -4000,7 +4020,7 @@ nworkers = 16
 No issues
 Loading code/register.hco```
 
-Duration: 0.0017527999999999988
+Duration: 0.0010567000000000215
 
 ---
 ##  code/lltest.hny
@@ -4021,7 +4041,7 @@ Loading code/lltest.hco
 T0: __init__() [0-7,371-373,1041-1047,1331-1334] { alloc: { "next": 0, "pool": () }, bag: (), linkedlist: (), list: (), synch: () }
 Load: unknown address ?LinkedList[()]```
 
-Duration: 0.001590999999999898
+Duration: 0.0013004999999999822
 
 ### Current Output
 
@@ -4033,7 +4053,7 @@ Loading code/lltest.hco
 T0: __init__() [0-7,371-373,1041-1047,1331-1334] { alloc: { "next": 0, "pool": () }, bag: (), linkedlist: (), list: (), synch: () }
 Load: unknown address ?LinkedList[()]```
 
-Duration: 0.0017319000000000084
+Duration: 0.0012530000000000041
 
 ---
 ##  code/paxos.hny
@@ -4053,7 +4073,7 @@ nworkers = 16
 No issues
 Loading code/paxos.hco```
 
-Duration: 0.0015162000000000786
+Duration: 0.0014144999999999852
 
 ### Current Output
 
@@ -4064,7 +4084,7 @@ nworkers = 16
 No issues
 Loading code/paxos.hco```
 
-Duration: 0.0015735000000000054
+Duration: 0.0012853000000000447
 
 ---
 ##  code/RWlock.hny
@@ -4085,7 +4105,7 @@ Loading code/RWlock.hco
 T0: __init__() [0-5,369-371,1107-1110] { bag: (), list: (), synch: () }
 Load: unknown address ?Lock[()]```
 
-Duration: 0.0016846999999999834
+Duration: 0.0017719999999999958
 
 ### Current Output
 
@@ -4097,7 +4117,7 @@ Loading code/RWlock.hco
 T0: __init__() [0-5,369-371,1107-1110] { bag: (), list: (), synch: () }
 Load: unknown address ?Lock[()]```
 
-Duration: 0.0013897000000000492
+Duration: 0.0013869000000000242
 
 ---
 ##  code/mesa.hny
@@ -4111,16 +4131,24 @@ Output is good: ✅
 ### Baseline Output
 
 ```
-Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '=' ErrorToken(line=5, message="Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '='", column=13, lexeme='0', filename='code/mesa.hny', is_eof_error=False)```
+nworkers = 16
+#states (2)
+2 components
+No issues
+Loading code/mesa.hco```
 
-Duration: 0.0010044000000000164
+Duration: 0.0009909999999999641
 
 ### Current Output
 
 ```
-Line 5:12 at code/mesa.hny, missing '=' at '0'```
+nworkers = 16
+#states (2)
+2 components
+No issues
+Loading code/mesa.hco```
 
-Duration: 0.0010369999999999546
+Duration: 0.0009078999999999615
 
 ---
 ##  code/RWqtest.hny
@@ -4141,14 +4169,19 @@ Loading code/RWqtest.hco
 T0: __init__() [0-7,371-373,1253-1256] { RWqueue: (), bag: (), list: (), synch: () }
 Load: unknown address ?RWqueue["Semaphore"][1]```
 
-Duration: 0.0013885000000000147
+Duration: 0.0013916999999999957
 
 ### Current Output
 
 ```
-```
+nworkers = 16
+#states (2)
+Safety Violation
+Loading code/RWqtest.hco
+T0: __init__() [0-7,371-373,1253-1256] { RWqueue: (), bag: (), list: (), synch: () }
+Load: unknown address ?RWqueue["Semaphore"][1]```
 
-Duration: 0.0011449000000000042
+Duration: 0.001419400000000015
 
 ---
 ##  code/BBsema.hny
@@ -4169,7 +4202,7 @@ Loading code/BBsema.hco
 T0: __init__() [0-5,369-371,1109-1120,1112-1120,1112-1114,1121-1130] { b_in: 1, b_out: 1, bag: (), buf: { 1: (), 2: () }, list: (), synch: () }
 Load: unknown address ?Semaphore[1]```
 
-Duration: 0.0014144999999999852
+Duration: 0.0013635000000000175
 
 ### Current Output
 
@@ -4181,7 +4214,7 @@ Loading code/BBsema.hco
 T0: __init__() [0-5,369-371,1109-1120,1112-1120,1112-1114,1121-1130] { b_in: 1, b_out: 1, bag: (), buf: { 1: (), 2: () }, list: (), synch: () }
 Load: unknown address ?Semaphore[1]```
 
-Duration: 0.0013913999999999316
+Duration: 0.0011617999999999906
 
 ---
 ##  code/queue.hny
@@ -4201,7 +4234,7 @@ nworkers = 16
 No issues
 Loading code/queue.hco```
 
-Duration: 0.0012982000000000271
+Duration: 0.0013617000000000212
 
 ### Current Output
 
@@ -4212,7 +4245,7 @@ nworkers = 16
 No issues
 Loading code/queue.hco```
 
-Duration: 0.0015956000000000303
+Duration: 0.001196999999999948
 
 ---
 ##  code/barrier.hny
@@ -4232,7 +4265,7 @@ nworkers = 16
 No issues
 Loading code/barrier.hco```
 
-Duration: 0.0015340000000000353
+Duration: 0.001801499999999956
 
 ### Current Output
 
@@ -4243,7 +4276,7 @@ nworkers = 16
 No issues
 Loading code/barrier.hco```
 
-Duration: 0.0015070999999999835
+Duration: 0.0012930000000000441
 
 ---
 ##  code/ticket.hny
@@ -4263,7 +4296,7 @@ nworkers = 16
 No issues
 Loading code/ticket.hco```
 
-Duration: 0.0016884999999999817
+Duration: 0.0013007999999999909
 
 ### Current Output
 
@@ -4274,7 +4307,7 @@ nworkers = 16
 No issues
 Loading code/ticket.hco```
 
-Duration: 0.001428600000000002
+Duration: 0.00174669999999999
 
 ---
 ##  code/PetersonPrint.hny
@@ -4290,14 +4323,14 @@ Output is good: ✅
 ```
 ```
 
-Duration: 0.00115070000000006
+Duration: 0.0009849000000000108
 
 ### Current Output
 
 ```
 ```
 
-Duration: 0.0011497000000000313
+Duration: 0.0009268000000000054
 
 ---
 ##  code/atomicinc.hny
@@ -4317,7 +4350,7 @@ nworkers = 16
 No issues
 Loading code/atomicinc.hco```
 
-Duration: 0.0017966999999999844
+Duration: 0.0015044999999999642
 
 ### Current Output
 
@@ -4328,7 +4361,7 @@ nworkers = 16
 No issues
 Loading code/atomicinc.hco```
 
-Duration: 0.001376299999999997
+Duration: 0.0015056999999999987
 
 ---
 ##  code/nbqueue.hny
@@ -4348,7 +4381,7 @@ nworkers = 16
 No issues
 Loading code/nbqueue.hco```
 
-Duration: 0.0012179999999999414
+Duration: 0.0016664000000000123
 
 ### Current Output
 
@@ -4359,7 +4392,7 @@ nworkers = 16
 No issues
 Loading code/nbqueue.hco```
 
-Duration: 0.0013792999999999722
+Duration: 0.0017267999999999728
 
 ---
 ##  code/dinersfix.hny
@@ -4380,7 +4413,7 @@ Loading code/dinersfix.hco
 T0: __init__() [0,1] { }
 Load: unknown variable left```
 
-Duration: 0.0012836000000000514
+Duration: 0.0013944000000000178
 
 ### Current Output
 
@@ -4392,7 +4425,7 @@ Loading code/dinersfix.hco
 T0: __init__() [0,1] { }
 Load: unknown variable left```
 
-Duration: 0.0014775999999999678
+Duration: 0.001361399999999957
 
 ---
 ##  code/stack2.hny
@@ -4412,7 +4445,7 @@ nworkers = 16
 No issues
 Loading code/stack2.hco```
 
-Duration: 0.0012609999999999566
+Duration: 0.0016183999999999643
 
 ### Current Output
 
@@ -4423,7 +4456,7 @@ nworkers = 16
 No issues
 Loading code/stack2.hco```
 
-Duration: 0.001264299999999996
+Duration: 0.0014368000000000158
 
 ---
 ##  code/gpu.hny
@@ -4443,7 +4476,7 @@ nworkers = 16
 No issues
 Loading code/gpu.hco```
 
-Duration: 0.0013659999999999783
+Duration: 0.0016541999999999946
 
 ### Current Output
 
@@ -4454,7 +4487,7 @@ nworkers = 16
 No issues
 Loading code/gpu.hco```
 
-Duration: 0.0012311999999999879
+Duration: 0.001354600000000039
 
 ---
 ##  code/triangle.hny
@@ -4474,7 +4507,7 @@ nworkers = 16
 No issues
 Loading code/triangle.hco```
 
-Duration: 0.0013085000000000457
+Duration: 0.0013818999999999915
 
 ### Current Output
 
@@ -4485,7 +4518,7 @@ nworkers = 16
 No issues
 Loading code/triangle.hco```
 
-Duration: 0.001572299999999971
+Duration: 0.0012908999999999837
 
 ---
 ##  code/barrier1.hny
@@ -4505,7 +4538,7 @@ nworkers = 16
 No issues
 Loading code/barrier1.hco```
 
-Duration: 0.0017165000000000097
+Duration: 0.00126390000000004
 
 ### Current Output
 
@@ -4516,7 +4549,7 @@ nworkers = 16
 No issues
 Loading code/barrier1.hco```
 
-Duration: 0.0014324000000000003
+Duration: 0.0013568000000000469
 
 ---
 ##  code/spinlockInv.hny
@@ -4536,14 +4569,18 @@ nworkers = 16
 No issues
 Loading code/spinlockInv.hco```
 
-Duration: 0.0014657999999999616
+Duration: 0.0012120999999999937
 
 ### Current Output
 
 ```
-```
+nworkers = 16
+#states (473)
+148 components
+No issues
+Loading code/spinlockInv.hco```
 
-Duration: 0.0010564000000000684
+Duration: 0.0011271999999999949
 
 ---
 ##  code/bosco2.hny
@@ -4563,7 +4600,7 @@ nworkers = 16
 No issues
 Loading code/bosco2.hco```
 
-Duration: 0.0016535999999999218
+Duration: 0.0011992000000000114
 
 ### Current Output
 
@@ -4574,7 +4611,7 @@ nworkers = 16
 No issues
 Loading code/bosco2.hco```
 
-Duration: 0.0022363999999999162
+Duration: 0.001165499999999986
 
 ---
 ##  code/paxos2.hny
@@ -4594,7 +4631,7 @@ nworkers = 16
 No issues
 Loading code/paxos2.hco```
 
-Duration: 0.001607500000000095
+Duration: 0.0013704000000000494
 
 ### Current Output
 
@@ -4605,7 +4642,7 @@ nworkers = 16
 No issues
 Loading code/paxos2.hco```
 
-Duration: 0.0018209000000000142
+Duration: 0.0013616999999999657
 
 ---
 ##  code/bqueue.hny
@@ -4625,7 +4662,7 @@ nworkers = 16
 No issues
 Loading code/bqueue.hco```
 
-Duration: 0.0016359999999999708
+Duration: 0.0012819000000000025
 
 ### Current Output
 
@@ -4636,7 +4673,7 @@ nworkers = 16
 No issues
 Loading code/bqueue.hco```
 
-Duration: 0.0015665000000000262
+Duration: 0.0011189000000000338
 
 ---
 ##  code/hello6.hny
@@ -4656,7 +4693,7 @@ nworkers = 16
 No issues
 Loading code/hello6.hco```
 
-Duration: 0.0016943000000000374
+Duration: 0.0012990999999999975
 
 ### Current Output
 
@@ -4667,7 +4704,7 @@ nworkers = 16
 No issues
 Loading code/hello6.hco```
 
-Duration: 0.001429899999999984
+Duration: 0.0012106000000000061
 
 ---
 ##  code/stack1.hny
@@ -4687,7 +4724,7 @@ nworkers = 16
 No issues
 Loading code/stack1.hco```
 
-Duration: 0.0012254000000000431
+Duration: 0.0012514000000000136
 
 ### Current Output
 
@@ -4698,7 +4735,7 @@ nworkers = 16
 No issues
 Loading code/stack1.hco```
 
-Duration: 0.0014664999999999262
+Duration: 0.0014667999999999903
 
 ---
 ##  code/hello5.hny
@@ -4718,7 +4755,7 @@ nworkers = 16
 No issues
 Loading code/hello5.hco```
 
-Duration: 0.0013497000000000092
+Duration: 0.0013713000000000197
 
 ### Current Output
 
@@ -4729,7 +4766,7 @@ nworkers = 16
 No issues
 Loading code/hello5.hco```
 
-Duration: 0.001270700000000069
+Duration: 0.0014121999999999746
 
 ---
 ##  code/abd.hny
@@ -4738,7 +4775,7 @@ Duration: 0.001270700000000069
 
 Duration is good: ✅
 
-Output is good: ❌
+Output is good: ✅
 
 ### Baseline Output
 
@@ -4749,14 +4786,18 @@ nworkers = 16
 No issues
 Loading code/abd.hco```
 
-Duration: 0.001389100000000032
+Duration: 0.0016139000000000014
 
 ### Current Output
 
 ```
-Line 8:13 at code/abd.hny, extraneous input 'atomically' expecting {'-', '~', 'abs', 'all', 'any', 'atLabel', 'countLabel', 'choose', 'contexts', 'get_context', 'min', 'max', 'keys', 'hash', 'len', '!', 'print', 'setintlevel', 'stop', 'lambda', '?', 'not', 'const', 'await', 'assert', 'var', 'trap', 'possibly', 'pass', 'del', 'spawn', 'invariant', 'go', 'sequential', 'None', BOOL, INT, NAME, ATOM, '[', '{', '(', STRING, INDENT}```
+nworkers = 16
+#states (2)
+2 components
+No issues
+Loading code/abd.hco```
 
-Duration: 0.0011006000000000071
+Duration: 0.0015685999999999756
 
 ---
 ##  code/hello8.hny
@@ -4776,7 +4817,7 @@ nworkers = 16
 No issues
 Loading code/hello8.hco```
 
-Duration: 0.0013425000000000242
+Duration: 0.0012795000000000445
 
 ### Current Output
 
@@ -4787,7 +4828,7 @@ nworkers = 16
 No issues
 Loading code/hello8.hco```
 
-Duration: 0.001902699999999924
+Duration: 0.0012013999999999636
 
 ---
 ##  code/stack4.hny
@@ -4807,7 +4848,7 @@ nworkers = 16
 No issues
 Loading code/stack4.hco```
 
-Duration: 0.0013398999999999495
+Duration: 0.0015197000000000127
 
 ### Current Output
 
@@ -4818,7 +4859,7 @@ nworkers = 16
 No issues
 Loading code/stack4.hco```
 
-Duration: 0.0018169999999999575
+Duration: 0.0016206000000000276
 
 ---
 ##  code/BBhoare.hny
@@ -4838,7 +4879,7 @@ nworkers = 16
 No issues
 Loading code/BBhoare.hco```
 
-Duration: 0.0011945999999999346
+Duration: 0.0014441000000000037
 
 ### Current Output
 
@@ -4849,7 +4890,7 @@ nworkers = 16
 No issues
 Loading code/BBhoare.hco```
 
-Duration: 0.0012364999999999737
+Duration: 0.0014353000000000282
 
 ---
 ##  code/RWcheat.hny
@@ -4869,7 +4910,7 @@ nworkers = 16
 No issues
 Loading code/RWcheat.hco```
 
-Duration: 0.00119950000000002
+Duration: 0.0011508999999999547
 
 ### Current Output
 
@@ -4880,7 +4921,7 @@ nworkers = 16
 No issues
 Loading code/RWcheat.hco```
 
-Duration: 0.0012501000000000317
+Duration: 0.0015029000000000292
 
 ---
 ##  code/stacktest.hny
@@ -4896,14 +4937,14 @@ Output is good: ✅
 ```
 Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)```
 
-Duration: 0.0009599999999999609
+Duration: 0.0009004000000000234
 
 ### Current Output
 
 ```
 Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']```
 
-Duration: 0.0015337999999999186
+Duration: 0.0007330000000000392
 
 ---
 ##  code/queueMS.hny
@@ -4923,7 +4964,7 @@ nworkers = 16
 No issues
 Loading code/queueMS.hco```
 
-Duration: 0.0011672000000000349
+Duration: 0.0012693000000000287
 
 ### Current Output
 
@@ -4934,7 +4975,7 @@ nworkers = 16
 No issues
 Loading code/queueMS.hco```
 
-Duration: 0.0012919000000000125
+Duration: 0.0014079000000000175
 
 ---
 ##  code/abdtest.hny
@@ -4954,7 +4995,7 @@ nworkers = 16
 No issues
 Loading code/abdtest.hco```
 
-Duration: 0.0011513999999999136
+Duration: 0.001195899999999972
 
 ### Current Output
 
@@ -4965,7 +5006,7 @@ nworkers = 16
 No issues
 Loading code/abdtest.hco```
 
-Duration: 0.001482699999999948
+Duration: 0.0011114000000000401
 
 ---
 ##  code/locksusp.hny
@@ -4985,7 +5026,7 @@ nworkers = 16
 No issues
 Loading code/locksusp.hco```
 
-Duration: 0.001073099999999938
+Duration: 0.0011484999999999967
 
 ### Current Output
 
@@ -4996,7 +5037,7 @@ nworkers = 16
 No issues
 Loading code/locksusp.hco```
 
-Duration: 0.0012497000000000202
+Duration: 0.0011620999999999992
 
 ---
 ##  code/RWbusychk.hny
@@ -5017,7 +5058,7 @@ Loading code/RWbusychk.hco
 T0: __init__() [0-3,145-156,147-156,147-156,147-149,157-169,160-169,160-169,160-162,170-174] { RW: () }
 Load: unknown address ?acquire_wlock[()]```
 
-Duration: 0.0012691999999999704
+Duration: 0.0013050000000000006
 
 ### Current Output
 
@@ -5029,7 +5070,7 @@ Loading code/RWbusychk.hco
 T0: __init__() [0-3,145-156,147-156,147-156,147-149,157-169,160-169,160-169,160-162,170-174] { RW: () }
 Load: unknown address ?acquire_wlock[()]```
 
-Duration: 0.001270199999999999
+Duration: 0.00110509999999997
 
 ---
 ##  code/2pc1.hny
@@ -5045,14 +5086,14 @@ Output is good: ✅
 ```
 Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)```
 
-Duration: 0.0009727000000000485
+Duration: 0.0008441999999999616
 
 ### Current Output
 
 ```
 Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)```
 
-Duration: 0.0010099999999999554
+Duration: 0.0008993999999999946
 
 ---
 ##  code/needhamschroeder.hny
@@ -5079,7 +5120,7 @@ T3: corey() [232-243(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst
 T2: bob() [172-181(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),182-205,208,209,213-219] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 Harmony assertion failed```
 
-Duration: 0.0013306000000000706
+Duration: 0.0014185000000000447
 
 ### Current Output
 
@@ -5097,7 +5138,7 @@ T3: corey() [232-243(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst
 T2: bob() [172-181(choose { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }),182-205,208,209,213-219] { dest: "Corey", network: { { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Bob" }, { "contents": { "initiator": "Alice", "nonce": "nonceA", "type": 1 }, "dst": "Corey" }, { "contents": { "nonce": "nonceA", "nonce2": "nonceB", "type": 2 }, "dst": "Alice" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Bob" }, { "contents": { "nonce": "nonceB", "type": 3 }, "dst": "Corey" } } }
 Harmony assertion failed```
 
-Duration: 0.0013347999999999693
+Duration: 0.0016826999999999814
 
 ---
 ##  code/linkedlist.hny
@@ -5117,7 +5158,7 @@ nworkers = 16
 No issues
 Loading code/linkedlist.hco```
 
-Duration: 0.0014100000000000223
+Duration: 0.0013526999999999845
 
 ### Current Output
 
@@ -5128,7 +5169,7 @@ nworkers = 16
 No issues
 Loading code/linkedlist.hco```
 
-Duration: 0.0014446999999999655
+Duration: 0.0012410000000000476
 
 ---
 ##  code/barriertest2.hny
@@ -5148,7 +5189,7 @@ nworkers = 16
 No issues
 Loading code/barriertest2.hco```
 
-Duration: 0.0013153000000000192
+Duration: 0.0012490000000000556
 
 ### Current Output
 
@@ -5159,7 +5200,7 @@ nworkers = 16
 No issues
 Loading code/barriertest2.hco```
 
-Duration: 0.001384300000000005
+Duration: 0.0012720000000000509
 
 ---
 ##  code/oo.hny
@@ -5179,7 +5220,7 @@ nworkers = 16
 No issues
 Loading code/oo.hco```
 
-Duration: 0.0014720999999999762
+Duration: 0.0011607000000000145
 
 ### Current Output
 
@@ -5190,7 +5231,7 @@ nworkers = 16
 No issues
 Loading code/oo.hco```
 
-Duration: 0.0012828999999999757
+Duration: 0.0010748000000000424
 
 ---
 ##  code/queuefix.hny
@@ -5210,7 +5251,7 @@ nworkers = 16
 No issues
 Loading code/queuefix.hco```
 
-Duration: 0.0014655000000000085
+Duration: 0.0017584999999999962
 
 ### Current Output
 
@@ -5221,7 +5262,7 @@ nworkers = 16
 No issues
 Loading code/queuefix.hco```
 
-Duration: 0.0017215000000000424
+Duration: 0.0012092999999999687
 
 ---
 ##  code/hello3.hny
@@ -5241,7 +5282,7 @@ nworkers = 16
 No issues
 Loading code/hello3.hco```
 
-Duration: 0.0017513999999999585
+Duration: 0.0013016999999999612
 
 ### Current Output
 
@@ -5252,7 +5293,7 @@ nworkers = 16
 No issues
 Loading code/hello3.hco```
 
-Duration: 0.001419500000000018
+Duration: 0.0012864000000000209
 
 ---
 ##  code/queueseq.hny
@@ -5272,7 +5313,7 @@ nworkers = 16
 No issues
 Loading code/queueseq.hco```
 
-Duration: 0.0013998999999998984
+Duration: 0.0012468999999999397
 
 ### Current Output
 
@@ -5283,7 +5324,7 @@ nworkers = 16
 No issues
 Loading code/queueseq.hco```
 
-Duration: 0.0013507999999999853
+Duration: 0.0012503999999999849
 
 ---
 ##  code/hello1.hny
@@ -5303,7 +5344,7 @@ nworkers = 16
 No issues
 Loading code/hello1.hco```
 
-Duration: 0.0014305000000000012
+Duration: 0.0013222999999999985
 
 ### Current Output
 
@@ -5314,7 +5355,7 @@ nworkers = 16
 No issues
 Loading code/hello1.hco```
 
-Duration: 0.0017445000000000377
+Duration: 0.0012689999999999646
 
 ---
 ##  code/consensus.hny
@@ -5334,7 +5375,7 @@ nworkers = 16
 No issues
 Loading code/consensus.hco```
 
-Duration: 0.001494200000000001
+Duration: 0.001624599999999976
 
 ### Current Output
 
@@ -5345,6 +5386,6 @@ nworkers = 16
 No issues
 Loading code/consensus.hco```
 
-Duration: 0.0016720000000000068
+Duration: 0.001178699999999977
 
 ---
