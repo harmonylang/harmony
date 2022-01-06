@@ -396,8 +396,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             stmt = self.visit(ctx.compound_stmt())
         elif ctx.import_stmt() is not None:
             stmt = self.visit(ctx.import_stmt())
-        elif ctx.block() is not None:
-            stmt = self.visit(ctx.block())
+        elif ctx.normal_block() is not None:
+            stmt = self.visit(ctx.normal_block())
         else:
             return []
 
