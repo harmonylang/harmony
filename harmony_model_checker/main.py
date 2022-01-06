@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 from typing import Dict, List, Optional
+import webbrowser
 
 from antlr4 import *
 
@@ -194,7 +195,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
 args = argparse.ArgumentParser("harmony")
 args.add_argument("-a", action="store_true", help="list machine code (with labels)")
 args.add_argument("-A", action="store_true", help="list machine code (without labels)")
-args.add_argument("-B", action="append", type=str, help="check against the given behavior")
+args.add_argument("-B", type=str, nargs=1, help="check against the given behavior")
 args.add_argument("-p", "--parse", action="store_true", help="parse code without running")
 args.add_argument("-c", "--const", action='append', type=str, metavar="name=value", help="define a constant")
 args.add_argument("-d", action='store_true', help="htmldump full state into html file")
@@ -205,8 +206,8 @@ args.add_argument("-v", "--version", action="store_true", help="print version nu
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
 args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
 args.add_argument("-j", action="store_true", help="list machine code in JSON format")
-args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker.")
-args.add_argument("--noweb", action="store_true", help="do not automatically open web browser")
+args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker")
+args.add_argument("--noweb", action="store_true", default=False, help="do not automatically open web browser")
 args.add_argument("--suppress", action="store_true", help="generate less terminal output")
 
 # Internal flags
@@ -239,19 +240,26 @@ def main():
     interface: Optional[str] = ns.intf
     mods: List[str] = ns.module or []
     parse_code_only: bool = ns.parse
+    charm_flag = True
+
     print_code: Optional[str] = None
     if ns.a:
         print_code = "verbose"
+        charm_flag = False
     if ns.A:
         print_code = "terse"
+        charm_flag = False
     if ns.j:
         print_code = "json"
+        charm_flag = False
+    if ns.f:
+        charm_flag = False
 
     block_flag: bool = ns.b
-    charm_flag = True and not any({ns.a, ns.A, ns.j, ns.f})
     fulldump: bool = ns.d
     silent: bool = ns.s
-    outputfiles: Dict[str, Optional[str]] = {
+
+    output_files: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
         "hco": None,
@@ -263,16 +271,23 @@ def main():
         # The suffix includes the dot if it exists.
         # Otherwise, it is an empty string.
         suffix = p.suffix[1:]
-        if suffix not in outputfiles:
+        if suffix not in output_files:
             print(f"Unknown file suffix on {p}")
             return 1
-        if outputfiles[suffix] is not None:
+        if output_files[suffix] is not None:
             print(f"Duplicate suffix '.{suffix}'")
             return 1
-        outputfiles[suffix] = str(p)
+        output_files[suffix] = str(p)
+
     suppress_output = ns.suppress
+
     behavior = None
     charm_options = ns.cf or []
+    if ns.B:
+        charm_options.append("-B" + ns.B)
+        behavior = ns.B
+    
+    open_browser = not ns.noweb
 
     filenames: List[pathlib.Path] = ns.files
     if not filenames:
@@ -284,14 +299,14 @@ def main():
             return 1
     stem = str(filenames[0].parent / filenames[0].stem)
 
-    if outputfiles["hvm"] is None:
-        outputfiles["hvm"] = stem + ".hvm"
-    if outputfiles["hco"] is None:
-        outputfiles["hco"] = stem + ".hco"
-    if outputfiles["htm"] is None:
-        outputfiles["htm"] = stem + ".htm"
-    if outputfiles["png"] is not None and outputfiles["gv"] is None:
-        outputfiles["gv"] = stem + ".gv"
+    if output_files["hvm"] is None:
+        output_files["hvm"] = stem + ".hvm"
+    if output_files["hco"] is None:
+        output_files["hco"] = stem + ".hco"
+    if output_files["htm"] is None:
+        output_files["htm"] = stem + ".htm"
+    if output_files["png"] is not None and output_files["gv"] is None:
+        output_files["gv"] = stem + ".gv"
 
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
@@ -302,7 +317,7 @@ def main():
             errors = [e.token]
 
         if parse_code_only:
-            with open(outputfiles["hvm"], "w") as fp:
+            with open(output_files["hvm"], "w") as fp:
                 data = dict(errors=[dataclasses.asdict(e) for e in errors], status="error")
                 json.dump(data, fp)
         else:
@@ -315,19 +330,22 @@ def main():
     if charm_flag:
         # see if there is a configuration file
         outfile = CHARM_EXECUTABLE_FILE
-        with open(outputfiles["hvm"], "w") as fd:
+        with open(output_files["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), outputfiles["hco"], outputfiles["hvm"]))
+        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), output_files["hco"], output_files["hvm"]))
         if r != 0:
             print("charm model checker failed")
             return r
         b = Brief()
-        b.run(outputfiles, behavior)
+        b.run(output_files, behavior)
         gh = GenHTML()
-        gh.run(outputfiles)
+        gh.run(output_files)
         if not suppress_output:
-            p = pathlib.Path(outputfiles["htm"]).resolve()
-            print("open file://" + str(p) + " for more information", file=sys.stderr)
+            p = pathlib.Path(output_files["htm"]).resolve()
+            url = "file://" + str(p)
+            print("open " + url + " for more information", file=sys.stderr)
+            if open_browser:
+                webbrowser.open(url)
         return 0
 
     if print_code is None:

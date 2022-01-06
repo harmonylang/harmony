@@ -53,6 +53,7 @@ import subprocess
 import webbrowser
 from typing import Any
 from typing import Any, List
+import dataclasses
 from dataclasses import dataclass
 
 try:
