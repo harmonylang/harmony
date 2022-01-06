@@ -208,33 +208,16 @@ def nextLine(s):
         if s[0] == '"':
             print('\\texttt{"}', end="")
             i = 1
-            str = '"'
             while i < len(s) and s[i] != '"':
-                putchar(s[i])
-                if s[i] == '\\':
-                    i += 1
-                    if i == len(s):
-                        break
-                    if s[i] == '"':
-                        str += '"'
-                    elif s[i] == '\\':
-                        str += '\\'
-                    elif s[i] == 't':
-                        str += '\t'
-                    elif s[i] == 'n':
-                        str += '\n'
-                    elif s[i] == 'f':
-                        str += '\f'
-                    elif s[i] == 'r':
-                        str += '\r'
-                    else:
-                        str += s[i]
+                if s[i] in ["&", "%", "{", "}", "#", "^", "_"]:
+                    print("\\" + s[i], end="")
+                elif s[i] in [ "<", ">", "-" ]:
+                    print("$" + s[i] + "$", end="")
                 else:
-                    str += s[i]
+                    putchar(s[i])
                 i += 1
             if i < len(s):
                 i += 1
-            str += '"'
             print('\\texttt{"}', end="")
             s = s[i:]
             continue
