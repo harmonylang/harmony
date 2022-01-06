@@ -6405,7 +6405,7 @@ UpdateContext(self, next) ==
     /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
 
 Skip(self) ==
-    LET next = [self EXCEPT ![pc] = ![pc] + 1]
+    LET next = [self EXCEPT ![pc] = @ + 1]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6414,25 +6414,31 @@ Frame(self, name, args) ==
     Skip(self)
 
 Store(self, var) ==
-    LET next = [self EXCEPT ![pc] = ![pc] + 1, ![stack] = Tail([!stack])]
+    LET next = [self EXCEPT ![pc] = @ + 1, ![stack] = Tail(@)]
     IN
-        /\\ active' = active \\ { self } \\union { next }
-        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+        /\\ UpdateContext(self, next)
         /\\ shared' = [shared EXCEPT [!var] |-> Head(self.stack)]
 
 Load(self, var) ==
-    LET next = [ self EXCEPT ![pc] = ![pc] + 1,
-                    ![stack] = << shared[var] >> \\o ![stack] ]
+    LET next = [ self EXCEPT ![pc] = @ + 1,
+                    ![stack] = << shared[var] >> \\o @ ]
     IN
-        /\\ active' = active \\ { self } \\union { next }
-        /\\ ctxbag' = ctxbag (-) [self |-> 1] (+) [next |-> 1]
+        /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
+
+Return(self) ==
+    /\\ self.stack = << >>
+    /\\ ctxbag' = ctxbag (-) [ self |-> 1 ]
+    /\\ IF self.atomic
+       THEN active' = DOMAIN ctxbag'
+       ELSE active' = active \\ { self }
+    /\\ UNCHANGED shared
 
 Spawn(self) ==
     LET entry = self.stack[1],
         arg = self.stack[0]
-        next = [self EXCEPT ![pc] = ![pc] + 1,
-                    ![stack] = << arg >> \\o Tail(Tail(![stack]))],
+        next = [self EXCEPT ![pc] = @ + 1,
+                    ![stack] = << arg >> \\o Tail(Tail(@))],
         newc = Context(entry, FALSE, [ ], << arg >>)
     IN
         /\\ IF self.atomic
