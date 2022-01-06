@@ -753,7 +753,7 @@ class Op:
         return '{ "op": "XXX %s" }'%str(self)
 
     def tladump(self):
-        return "Skip(self)"
+        return 'Skip(self, "%s")'%self
 
     def explain(self):
         return "no explanation yet"
@@ -1764,6 +1764,9 @@ class JumpOp(Op):
 
     def jdump(self):
         return '{ "op": "Jump", "pc": "%d" }'%self.pc
+
+    def tladump(self):
+        return 'Jump(self, %d)'%self.pc
 
     def explain(self):
         return "set program counter to " + str(self.pc)
@@ -6425,14 +6428,14 @@ UpdateDict(dict, key, value) ==
     [ x \\in (DOMAIN dict) \\union {key} |->
         IF x = key THEN value ELSE dict[x] ]
 
-Skip(self) ==
+Skip(self, what) ==
     LET next == [self EXCEPT !.pc = @ + 1]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 Frame(self, name, args) ==
-    Skip(self)
+    Skip(self, self)
 
 Push(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
@@ -6460,16 +6463,23 @@ Return(self) ==
        ELSE active' = active \\ { self }
     /\\ UNCHANGED shared
 
+Jump(self, pc) ==
+    LET next == [ self EXCEPT !.pc = pc ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 Spawn(self) ==
-    LET entry == self.stack[1]
-        arg   == self.stack[0]
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = << arg >> \\o Tail(Tail(@))]
+    LET local == self.stack[0]
+        entry == self.stack[1]
+        arg   == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
         newc  == Context(entry, FALSE, EmptyDict, << arg >>)
     IN
         /\\ IF self.atomic
-           THEN UNCHANGED active
-           ELSE active' = active \\union { newc }
-        /\\ ctxbag' = ctxbag (-) SetToBag({self}) (+) SetToBag({next,newc})
+           THEN active' = (active \\ { self }) \\union { next }
+           ELSE active' = (active \\ { self }) \\union { next, newc }
+        /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 """
 
