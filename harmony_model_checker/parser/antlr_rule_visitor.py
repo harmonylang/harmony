@@ -107,7 +107,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#atom.
     def visitAtom(self, ctx: HarmonyParser.AtomContext):
         lexeme = ctx.getText()
-        # tkn = self.tkn_factory.make(ctx.start, ctx.stop)
         if lexeme.startswith("0x"):
             v = chr(int(lexeme, 16))
             tkn = self.get_token(ctx.start, v)
