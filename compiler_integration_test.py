@@ -35,7 +35,6 @@ def load_test_cases() -> List[TestCase]:
     modules_dir = pathlib.Path("harmony_model_checker") / "modules"
     runall_script = pathlib.Path("runall.scr")
     code_dir = pathlib.Path("code")
-    test_dir = pathlib.Path("test")
 
     test_cases: List[TestCase] = []
 
@@ -62,11 +61,6 @@ def load_test_cases() -> List[TestCase]:
             tested_files.add(str(f.resolve()))
             test_cases.append(TestCase(filename=str(f)))
     
-    for f in test_dir.glob("*.hny"):
-        if str(f.resolve()) not in tested_files and f.exists():
-            tested_files.add(str(f.resolve()))
-            test_cases.append(TestCase(filename=str(f)))
-
     return test_cases
 
 TEST_CASES = load_test_cases()

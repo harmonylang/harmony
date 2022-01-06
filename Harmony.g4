@@ -224,7 +224,7 @@ print_stmt: PRINT expr;
 sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
 
 // Block-able statements
-atomic_block: (ATOMICALLY | ATOMIC) COLON block;
+atomic_block: ATOMICALLY COLON block;
 for_block: iter_parse COLON block;
 
 let_decl: LET bound EQ tuple_rule NL?;
@@ -234,7 +234,9 @@ let_when_block: let_when_decl COLON block;
 
 method_decl: DEF NAME OPEN_PAREN bound? CLOSE_PAREN COLON block;
 while_block: WHILE expr COLON block;
-elif_block: ELIF expr COLON block;
+elif_block @init{
+self.getTokenStream().handle_compound()
+}: ELIF expr COLON block;
 else_block: ELSE COLON block;
 
 if_block: IF expr COLON block elif_block* else_block?;
@@ -256,7 +258,7 @@ block
 ;
 
 simple_stmt_block:
-    simple_stmt SEMI_COLON? NL
+    ATOMICALLY? simple_stmt SEMI_COLON? NL
 ;
 
 normal_block:
@@ -322,7 +324,6 @@ IMPORT   : 'import';
 PRINT    : 'print';
 FROM     : 'from';
 RANGE    : '..';
-DICT     : 'dict';
 SETINTLEVEL : 'setintlevel';
 ARROW    : '->';
 STOP     : 'stop';
@@ -342,7 +343,6 @@ SPAWN    : 'spawn';
 INVARIANT: 'invariant';
 GO     : 'go';
 SEQUENTIAL: 'sequential';
-ATOMIC  : 'atomic';
 WHEN    : 'when';
 LET     : 'let';
 IF      : 'if';

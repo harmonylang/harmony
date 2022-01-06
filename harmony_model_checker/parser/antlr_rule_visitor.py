@@ -361,7 +361,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#simple_stmt_block.
     def visitSimple_stmt_block(self, ctx:HarmonyParser.Simple_stmt_blockContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return BlockAST(tkn, False, [self.visit(ctx.simple_stmt())])
+        is_atomic = ctx.ATOMICALLY() is not None
+        return BlockAST(tkn, is_atomic, [self.visit(ctx.simple_stmt())])
 
     # Visit a parse tree produced by HarmonyParser#normal_block.
     def visitNormal_block(self, ctx: HarmonyParser.Normal_blockContext):
