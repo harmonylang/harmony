@@ -6512,6 +6512,21 @@ UpdateDict(dict, key, value) ==
     [ x \\in (DOMAIN dict) \\union {key} |->
         IF x = key THEN value ELSE dict[x] ]
 
+RECURSIVE UpdateDictAddr(_, _, _)
+
+UpdateDictAddr(dict, addr, value) ==
+    IF addr = <<>>
+    THEN
+        value
+    ELSE
+        [ x \\in (DOMAIN dict) \\union {Head(addr)} |->
+            IF x = Head(addr)
+            THEN
+                UpdateDictAddr(dict[Head(addr)], Tail(addr), value)
+            ELSE
+                dict[x]
+        ]
+
 Skip(self, what) ==
     LET next == [self EXCEPT !.pc = @ + 1]
     IN
@@ -6617,6 +6632,15 @@ OpStore(self, v) ==
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDict(shared, v, Head(self.stack))
 
+OpStoreInd(self) ==
+    LET
+        val  == self.stack[1]
+        addr == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ shared' = UpdateDictAddr(shared, addr, val)
+
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
     IN
@@ -6657,7 +6681,6 @@ OpSpawn(self) ==
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
-OpStoreInd(self) == Skip(self, "StoreInd")
 OpLoadInd(self) == Skip(self, "LoadInd")
 
 Idle ==
