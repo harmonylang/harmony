@@ -1422,6 +1422,12 @@ class StoreVarOp(Op):
         else:
             return '{ "op": "StoreVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        if self.v == None:
+            return 'OpStoreVarInd(self)'
+        else:
+            return 'OpStoreVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop a value and the address of a method variable and store the value at that address"
@@ -2301,6 +2307,9 @@ class ApplyOp(Op):
     def jdump(self):
         return '{ "op": "Apply" }'
 
+    def tladump(self):
+        return 'OpApply(self)'
+
     def explain(self):
         return "pop a pc or dictionary f and an index i and push f(i)"
 
@@ -2334,6 +2343,7 @@ class ApplyOp(Op):
                 else:
                     context.push("normal")
             context.pc += 1
+        # TODO: probably also need to deal with strings
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
@@ -6502,26 +6512,33 @@ SharedInvariant == shared.ctype = "dict"
 
 TypeInvariant == SharedInvariant
 
+Str(x)    == [ ctype |-> "str", cval |-> x ]
 EmptyFunc == [x \in {} |-> TRUE]
 EmptyDict == [ ctype |-> "dict", cval |-> EmptyFunc ]
+None      == [ ctype |-> "address", cval |-> <<>> ]
+Result    == Str("result")
 
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
-
-Init == LET ctx == Context(0, 1, EmptyDict, << EmptyDict >>)
-        IN /\\ active = { ctx }
-           /\\ ctxbag = SetToBag(active)
-           /\\ shared = EmptyDict
-
-UpdateContext(self, next) ==
-    /\\ active' = (active \\ { self }) \\union { next }
-    /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
 UpdateMap(map, key, value) ==
     [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
 
 UpdateDict(dict, key, value) ==
     [ ctype |-> "dict", cval |-> UpdateMap(dict.cval, key, value) ]
+
+InitContext(pc, atomic, arg) ==
+    Context(pc, atomic, EmptyDict, << arg, "process" >>)
+
+Init ==
+    LET ctx == InitContext(0, 1, EmptyDict)
+    IN /\\ active = { ctx }
+       /\\ ctxbag = SetToBag(active)
+       /\\ shared = EmptyDict
+
+UpdateContext(self, next) ==
+    /\\ active' = (active \\ { self }) \\union { next }
+    /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
 AddrTail(addr) == [ ctype |-> "address", cval |-> Tail(addr.cval) ]
 
@@ -6560,7 +6577,7 @@ Skip(self, what) ==
 UpdateVars(vs, args, value) ==
     IF args.vtype = "var"
     THEN
-        UpdateDict(vs, args.vname, value)
+        UpdateDict(vs, Str(args.vname), value)
     ELSE
         vs          \\* TODO
 
@@ -6577,7 +6594,7 @@ OpStoreVar(self, v) ==
         /\\ UNCHANGED shared
 
 OpLoadVar(self, v) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[v.vname] >> \\o @ ]
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[Str(v.vname)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6679,11 +6696,25 @@ OpPush(self, c) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+OpApply(self) ==
+    LET arg    == self.stack[1]
+        method == self.stack[2]
+    IN
+        CASE method.ctype = "pc" ->
+            LET next == [self EXCEPT !.pc = method.cval,
+                !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] method.ctype = "dict" -> FALSE
+        [] method.ctype = "str" -> FALSE
+        [] OTHER -> FALSE
+
 OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDict(shared, [ ctype |-> "str", cval |-> v ], Head(self.stack))
+        /\\ shared' = UpdateDict(shared, Str(v), Head(self.stack))
 
 OpStoreInd(self) ==
     LET
@@ -6705,7 +6736,7 @@ OpLoadInd(self) ==
 
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
-        !.stack = << shared.cval[[ ctype |-> "str", cval |-> v]] >> \\o @ ]
+        !.stack = << shared.cval[Str(v)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6736,7 +6767,7 @@ OpSpawn(self) ==
         arg   == self.stack[2]
         entry == self.stack[3]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
-        newc  == Context(entry.cval, 0, EmptyDict, << arg >>)
+        newc  == InitContext(entry.cval, 0, << arg, "process" >>)
     IN
         /\\ entry.ctype = "pc"
         /\\ IF self.atomic > 0
