@@ -2768,7 +2768,7 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t == "local-var":
             if self.name[0] == "_":
-                code.append(PopOp());
+                code.append(PopOp())
             else:
                 code.append(StoreVarOp(None, self.name[0]))
         else:
@@ -3055,7 +3055,7 @@ class ApplyAST(AST):
             if self.method.varCompile(scope, code):
                 self.arg.compile(scope, code)
                 code.append(AddressOp())
-                return True;
+                return True
             else:
                 return False
 
@@ -3600,7 +3600,7 @@ class AssignmentAST(AST):
                     )
                 assert t in { "local-var", "global" }, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp());
+                    code.append(PopOp())
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                     code.append(st)
@@ -6582,7 +6582,11 @@ UpdateVars(vs, args, value) ==
         vs          \\* TODO
 
 OpFrame(self, name, args) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, args, Head(self.stack))]
+    LET next == [
+        self EXCEPT !.pc = @ + 1,
+        !.stack = << self.vs >> \\o Tail(@),
+        !.vs = UpdateVars(UpdateDict(@, Result, None), args, Head(self.stack))
+    ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6736,18 +6740,33 @@ OpLoadInd(self) ==
 
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
-        !.stack = << shared.cval[Str(v)] >> \\o @ ]
+                        !.stack = << shared.cval[Str(v)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 OpReturn(self) ==
-    /\\ self.stack = << >>
-    /\\ ctxbag' = ctxbag (-) SetToBag({self})
-    /\\ IF self.atomic > 0
-       THEN active' = DOMAIN ctxbag'
-       ELSE active' = active \\ { self }
-    /\\ UNCHANGED shared
+    LET savedvars == self.stack[1]
+        calltype  == self.stack[2]
+    IN
+        CASE calltype = "normal" ->
+            LET raddr == self.stack[3]
+                result == self.vs.cval[Result]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.vs = savedvars,
+                            !.stack = << result >> \\o Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] calltype = "process" ->
+            /\\ ctxbag' = ctxbag (-) SetToBag({self})
+            /\\ IF self.atomic > 0
+               THEN active' = DOMAIN ctxbag'
+               ELSE active' = active \\ { self }
+            /\\ UNCHANGED shared
+        [] OTHER -> FALSE
 
 OpJump(self, pc) ==
     LET next == [ self EXCEPT !.pc = pc ]
