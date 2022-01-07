@@ -506,19 +506,17 @@ def lexer(s, file):
     return result
 
 def tlaValue(lexeme):
-    if lexeme == False:
-        return "FALSE"
-    if lexeme == True:
-        return "TRUE"
+    if isinstance(lexeme, bool):
+        return "TRUE" if lexeme else "FALSE"
     if isinstance(lexeme, int):
         return str(lexeme)
-    if isinstance(lexeme, PcValue):
-        return lexeme.tlaval()
+    if isinstance(lexeme, str):
+        return '"' + lexeme + '"'
     if lexeme == novalue:
         return "EmptyDict"
-    if isinstance(lexeme, SetValue):
+    if isinstance(lexeme, Value):
         return lexeme.tlaval()
-    return lexeme
+    assert False
 
 def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
@@ -644,6 +642,26 @@ class DictValue(Value):
             result += strValue(k) + ":" + strValue(self.d[k])
         return "{ " + result + " }"
 
+    def tlaval(self):
+        if len(self.d) == 0:
+            return "EmptyDict"
+        s = "[ x \\in {" + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
+        # special case: all values are the same
+        vals = list(self.d.values())
+        if vals.count(vals[0]) == len(vals):
+            return s + tlaValue(vals[0]) + " ]"
+
+        # not all values are the same
+        first = True
+        for k,v in self.d.items():
+            if first:
+                s += "CASE "
+                first = False
+            else:
+                s += " [] "
+            s += tlaValue(k) + " -> " + tlaValue(v)
+        return s + " OTHER -> FALSE ]"
+
     def jdump(self):
         result = ""
         keys = sorted(self.d.keys(), key=keyValue)
@@ -737,6 +755,9 @@ class AddressValue(Value):
             else:
                 result += "[" + strValue(index) + "]"
         return result
+
+    def tlaval(self):
+        return "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
 
     def jdump(self):
         result = ""
@@ -1069,7 +1090,7 @@ class PushOp(Op):
     def tladump(self):
         (lexeme, file, line, column) = self.constant
         v = tlaValue(lexeme)
-        return 'Push(self, %s)'%v
+        return 'OpPush(self, %s)'%v
 
     def explain(self):
         return "push constant " + strValue(self.constant[0])
@@ -1111,10 +1132,10 @@ class LoadOp(Op):
 
     def tladump(self):
         if self.name == None:
-            return "False"
+            return "OpLoadInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            return 'Load(self, "%s")'%lexeme
+            return 'OpLoad(self, "%s")'%lexeme
 
     def explain(self):
         if self.name == None:
@@ -1166,10 +1187,10 @@ class StoreOp(Op):
 
     def tladump(self):
         if self.name == None:
-            return "False"
+            return "OpStoreInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            return 'Store(self, "%s")'%lexeme
+            return 'OpStore(self, "%s")'%lexeme
 
     def explain(self):
         if self.name == None:
@@ -1315,6 +1336,9 @@ class SequentialOp(Op):
     def jdump(self):
         return '{ "op": "Sequential" }'
 
+    def tladump(self):
+        return 'OpSequential(self)'
+
     def explain(self):
         return "sequential consistency for variable on top of stack"
 
@@ -1341,6 +1365,9 @@ class AddressOp(Op):
 
     def jdump(self):
         return '{ "op": "Address" }'
+
+    def tladump(self):
+        return "OpAddress(self)"
 
     def explain(self):
         return "combine the top two values on the stack into an address and push the result"
@@ -1486,6 +1513,12 @@ class AssertOp(Op):
         else:
             return '{ "op": "Assert" }'
 
+    def tladump(self):
+        if self.exprthere:
+            return 'OpAssert2(self)'
+        else:
+            return 'OpAssert(self)'
+
     def explain(self):
         if self.exprthere:
             return "pop a value and a condition and raise exception if condition is false"
@@ -1575,7 +1608,7 @@ class FrameOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.name
-        return 'Frame(self, "%s", "%s")'%(lexeme, self.convert(self.args))
+        return 'OpFrame(self, "%s", "%s")'%(lexeme, self.convert(self.args))
 
     def explain(self):
         return "start of method " + str(self.name[0])
@@ -1598,7 +1631,7 @@ class ReturnOp(Op):
         return '{ "op": "Return" }'
 
     def tladump(self):
-        return 'Return(self)'
+        return 'OpReturn(self)'
 
     def use(self):
         return { "result" }
@@ -1648,7 +1681,7 @@ class SpawnOp(Op):
         return '{ "op": "Spawn", "eternal": "%s" }'%("True" if self.eternal else "False")
 
     def tladump(self):
-        return 'Spawn(self)'
+        return 'OpSpawn(self)'
 
     def explain(self):
         return "pop thread-local state, argument, and pc and spawn a new thread"
@@ -1695,6 +1728,9 @@ class AtomicIncOp(Op):
     def __repr__(self):
         return "AtomicInc(%s)"%("lazy" if self.lazy else "eager")
 
+    def tladump(self):
+        return 'OpAtomicInc(self)'
+
     def jdump(self):
         return '{ "op": "AtomicInc", "lazy": "%s" }'%str(self.lazy)
 
@@ -1711,6 +1747,9 @@ class AtomicDecOp(Op):
 
     def jdump(self):
         return '{ "op": "AtomicDec" }'
+
+    def tladump(self):
+        return 'OpAtomicDec(self)'
 
     def explain(self):
         return "decrement atomic counter of context"
@@ -1784,7 +1823,7 @@ class JumpOp(Op):
         return '{ "op": "Jump", "pc": "%d" }'%self.pc
 
     def tladump(self):
-        return 'Jump(self, %d)'%self.pc
+        return 'OpJump(self, %d)'%self.pc
 
     def explain(self):
         return "set program counter to " + str(self.pc)
@@ -1810,7 +1849,7 @@ class JumpCondOp(Op):
         return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
 
     def tladump(self):
-        return 'JumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
+        return 'OpJumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
 
     def explain(self):
         return "pop a value and jump to " + str(self.pc) + \
@@ -1846,6 +1885,8 @@ class NaryOp(Op):
         (lexeme, file, line, column) = self.op
         if lexeme == "not" and self.n == 1:
             return "Not(self)"
+        if lexeme == "countLabel" and self.n == 1:
+            return "CountLabel(self)"
         if lexeme == "==" and self.n == 2:
             return "Equals(self)"
         return 'Skip(self, "%s")'%self
@@ -6444,7 +6485,7 @@ EmptyDict == [x \in {} |-> TRUE]
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-Init == LET ctx == Context(0, TRUE, EmptyDict, << EmptyDict >>)
+Init == LET ctx == Context(0, 1, EmptyDict, << EmptyDict >>)
         IN /\\ active = { ctx }
            /\\ ctxbag = SetToBag(active)
            /\\ shared = EmptyDict
@@ -6463,9 +6504,28 @@ Skip(self, what) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Frame(self, name, args) ==
+OpFrame(self, name, args) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpAtomicInc(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpAtomicDec(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ - 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpAssert(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ Head(self.stack)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -6476,9 +6536,22 @@ OpChoose(self) ==
             /\\ UpdateContext(self, next)
             /\\ UNCHANGED shared
 
+OpSequential(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 Not(self) ==
     LET v == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = << ~v >> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+CountLabel(self) ==
+    LET label == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = << 1 >> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6491,53 +6564,53 @@ Equals(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Push(self, c) ==
+OpPush(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Store(self, v) ==
+OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDict(shared, v, Head(self.stack))
 
-Load(self, v) ==
+OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Return(self) ==
+OpReturn(self) ==
     /\\ self.stack = << >>
     /\\ ctxbag' = ctxbag (-) SetToBag({self})
-    /\\ IF self.atomic
+    /\\ IF self.atomic > 0
        THEN active' = DOMAIN ctxbag'
        ELSE active' = active \\ { self }
     /\\ UNCHANGED shared
 
-Jump(self, pc) ==
+OpJump(self, pc) ==
     LET next == [ self EXCEPT !.pc = pc ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-JumpCond(self, pc, cond) ==
+OpJumpCond(self, pc, cond) ==
     LET next == [ self EXCEPT !.pc = IF self.stack[1] = cond
                     THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Spawn(self) ==
+OpSpawn(self) ==
     LET local == self.stack[1]
         arg   == self.stack[2]
         entry == self.stack[3]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
-        newc  == Context(entry, FALSE, EmptyDict, << arg >>)
+        newc  == Context(entry, 0, EmptyDict, << arg >>)
     IN
-        /\\ IF self.atomic
+        /\\ IF self.atomic > 0
            THEN active' = (active \\ { self }) \\union { next }
            ELSE active' = (active \\ { self }) \\union { next, newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
