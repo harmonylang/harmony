@@ -815,6 +815,14 @@ class Op:
                 result += self.convert(v)
             return "(" + result + ")"
 
+    def tlaconvert(self, x):
+        if isinstance(x, tuple):
+            return '[ vtype |-> "var", vname |-> "%s" ]'%x[0]
+        else:
+            assert isinstance(x, list)
+            result = '[ vtype |-> "tup", vlist |-> << '
+            return result + " >> ]"
+
     # Return the set of local variables in x
     # TODO.  Use reduce()
     def lvars(self, x):
@@ -1041,6 +1049,12 @@ class LoadVarOp(Op):
             return '{ "op": "LoadVar" }'
         else:
             return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
+
+    def tladump(self):
+        if self.v == None:
+            return 'OpLoadVarInd(self)'
+        else:
+            return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
         if self.v == None:
@@ -1608,7 +1622,7 @@ class FrameOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.name
-        return 'OpFrame(self, "%s", "%s")'%(lexeme, self.convert(self.args))
+        return 'OpFrame(self, "%s", %s)'%(lexeme, self.tlaconvert(self.args))
 
     def explain(self):
         return "start of method " + str(self.name[0])
@@ -6504,8 +6518,27 @@ Skip(self, what) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+UpdateVars(vs, args, value) ==
+    IF args.vtype = "var"
+    THEN
+        UpdateDict(vs, args.vname, value)
+    ELSE
+        vs          \\* TODO
+
 OpFrame(self, name, args) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, args, Head(self.stack))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpStoreVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpLoadVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs[v.vname] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6564,6 +6597,14 @@ Equals(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+OpAddress(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e2 \\o <<e1>> >> \\o Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 OpPush(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
     IN
@@ -6615,6 +6656,9 @@ OpSpawn(self) ==
            ELSE active' = (active \\ { self }) \\union { next, newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
+
+OpStoreInd(self) == Skip(self, "StoreInd")
+OpLoadInd(self) == Skip(self, "LoadInd")
 
 Idle ==
     /\\ active = {}
