@@ -507,16 +507,12 @@ def lexer(s, file):
 
 def tlaValue(lexeme):
     if isinstance(lexeme, bool):
-        return "TRUE" if lexeme else "FALSE"
+        return '[ ctype |-> "bool", cval |-> %s ]'%("TRUE" if lexeme else "FALSE")
     if isinstance(lexeme, int):
-        return str(lexeme)
+        return '[ ctype |-> "int", cval |-> %d ]'%lexeme
     if isinstance(lexeme, str):
-        return '"' + lexeme + '"'
-    if lexeme == novalue:
-        return "EmptyDict"
-    if isinstance(lexeme, Value):
-        return lexeme.tlaval()
-    assert False
+        return '[ ctype |-> "str", cval |-> "%s" ]'%lexeme
+    return lexeme.tlaval()
 
 def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
@@ -576,7 +572,7 @@ class PcValue(Value):
         return "PC(" + str(self.pc) + ")"
 
     def tlaval(self):
-        return str(self.pc)
+        return '[ ctype |-> "pc", cval |-> %d ]'%self.pc
 
     def __hash__(self):
         return self.pc.__hash__()
@@ -644,12 +640,13 @@ class DictValue(Value):
 
     def tlaval(self):
         if len(self.d) == 0:
-            return "EmptyDict"
+            return 'EmptyDict'
         s = "[ x \\in {" + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
         # special case: all values are the same
         vals = list(self.d.values())
         if vals.count(vals[0]) == len(vals):
-            return s + tlaValue(vals[0]) + " ]"
+            s += tlaValue(vals[0]) + " ]"
+            return '[ ctype |-> "dict", cval |-> %s ]'%s
 
         # not all values are the same
         first = True
@@ -660,7 +657,8 @@ class DictValue(Value):
             else:
                 s += " [] "
             s += tlaValue(k) + " -> " + tlaValue(v)
-        return s + " OTHER -> FALSE ]"
+        s += " OTHER -> FALSE ]"
+        return '[ ctype |-> "dict", cval |-> %s ]'%s
 
     def jdump(self):
         result = ""
@@ -716,7 +714,8 @@ class SetValue(Value):
         return "{ " + result + " }"
 
     def tlaval(self):
-        return "{" + ",".join(tlaValue(x) for x in self.s) + "}"
+        s = "{" + ",".join(tlaValue(x) for x in self.s) + "}"
+        return '[ ctype |-> "set", cval |-> %s ]'%s
 
     def jdump(self):
         result = ""
@@ -757,7 +756,8 @@ class AddressValue(Value):
         return result
 
     def tlaval(self):
-        return "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
+        s = "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
+        return '[ ctype |-> "address", cval |-> %s ]'%s
 
     def jdump(self):
         result = ""
@@ -6498,7 +6498,12 @@ EXTENDS Integers, Bags, Sequences, TLC
 VARIABLE active, ctxbag, shared
 allvars == << active, ctxbag, shared >>
 
-EmptyDict == [x \in {} |-> TRUE]
+SharedInvariant == shared.ctype = "dict"
+
+TypeInvariant == SharedInvariant
+
+EmptyFunc == [x \in {} |-> TRUE]
+EmptyDict == [ ctype |-> "dict", cval |-> EmptyFunc ]
 
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
@@ -6512,33 +6517,39 @@ UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
+UpdateMap(map, key, value) ==
+    [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
+
 UpdateDict(dict, key, value) ==
-    [ x \\in (DOMAIN dict) \\union {key} |->
-        IF x = key THEN value ELSE dict[x] ]
+    [ ctype |-> "dict", cval |-> UpdateMap(dict.cval, key, value) ]
+
+AddrTail(addr) == [ ctype |-> "address", cval |-> Tail(addr.cval) ]
 
 RECURSIVE UpdateDictAddr(_, _, _)
 
 UpdateDictAddr(dict, addr, value) ==
-    IF addr = <<>>
+    IF addr.cval = <<>>
     THEN
         value
     ELSE
-        [ x \\in (DOMAIN dict) \\union {Head(addr)} |->
-            IF x = Head(addr)
-            THEN
-                UpdateDictAddr(dict[Head(addr)], Tail(addr), value)
-            ELSE
-                dict[x]
+        [ ctype |-> "dict", cval |->
+            [ x \\in (DOMAIN dict.cval) \\union {Head(addr.cval)} |->
+                IF x = Head(addr.cval)
+                THEN
+                      UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                ELSE
+                    dict.cval[x]
+            ]
         ]
 
 RECURSIVE LoadDictAddr(_, _)
 
 LoadDictAddr(dict, addr) ==
-    IF addr = <<>>
+    IF addr.cval = <<>>
     THEN
         dict
     ELSE
-        LoadDictAddr(dict[Head(addr)], Tail(addr))
+        LoadDictAddr(dict.cval[Head(addr.cval)], AddrTail(addr))
 
 Skip(self, what) ==
     LET next == [self EXCEPT !.pc = @ + 1]
@@ -6566,7 +6577,7 @@ OpStoreVar(self, v) ==
         /\\ UNCHANGED shared
 
 OpLoadVar(self, v) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs[v.vname] >> \\o @ ]
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[v.vname] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6585,18 +6596,23 @@ OpAtomicDec(self) ==
         /\\ UNCHANGED shared
 
 OpAssert(self, msg) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    LET cond == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
-        /\\ Assert(Head(self.stack), msg)
+        /\\ cond.ctype = "bool"
+        /\\ Assert(cond.cval, msg)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 OpChoose(self) ==
-    \\E v \\in self.stack[1]:
-        LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<v>> \\o Tail(@)]
-        IN
-            /\\ UpdateContext(self, next)
-            /\\ UNCHANGED shared
+    LET choices == Head(self.stack)
+    IN
+        \\E v \\in choices.cval:
+            LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<v>> \\o Tail(@)]
+            IN
+                /\\ choices.ctype = "set"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
 
 OpSequential(self) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
@@ -6606,26 +6622,32 @@ OpSequential(self) ==
 
 Not(self) ==
     LET v    == Head(self.stack)
-        next == [self EXCEPT !.pc = @ + 1, !.stack = << ~v >> \\o Tail(@)]
+        next == [self EXCEPT !.pc = @ + 1,
+            !.stack = << [ ctype |-> "bool", cval |-> ~v.cval ] >> \\o Tail(@)]
     IN
+        /\\ v.ctype = "bool"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
 
 CountLabel(self) ==
-    LET fdom  == { c \\in DOMAIN ctxbag: Location(c) = Head(self.stack) }
+    LET label == Head(self.stack)
+        fdom  == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
         fbag  == [ c \\in fdom |-> ctxbag[c] ]
         cnt   == BagCardinality(fbag)
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = << cnt >> \\o Tail(@)]
+        next  == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << [ ctype |-> "int", cval |-> cnt ] >> \\o Tail(@)]
     IN
+        /\\ label.ctype = "pc"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 Equals(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e1 = e2 >> \\o Tail(Tail(@))]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << [ ctype |-> "bool", cval |-> e1 = e2 ] >> \\o Tail(Tail(@))]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6633,16 +6655,21 @@ Equals(self) ==
 BinMinus(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e2 - e1 >> \\o Tail(Tail(@))]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << [ ctype |-> "int", cval |-> e2.cval - e1.cval ] >> \\o Tail(Tail(@))]
     IN
+        /\\ e1.ctype = "int"
+        /\\ e2.ctype = "int"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 OpAddress(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e2 \\o <<e1>> >> \\o Tail(Tail(@))]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << [ ctype |-> "address", cval |-> e2.cval \\o <<e1>> ] >> \\o Tail(Tail(@))]
     IN
+        /\\ e2.ctype = "address"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -6656,7 +6683,7 @@ OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDict(shared, v, Head(self.stack))
+        /\\ shared' = UpdateDict(shared, [ ctype |-> "str", cval |-> v ], Head(self.stack))
 
 OpStoreInd(self) ==
     LET
@@ -6674,7 +6701,7 @@ OpLoadInd(self) ==
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDictAddr(shared, addr, val)
+        /\\ UNCHANGED shared
 
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
@@ -6708,8 +6735,9 @@ OpSpawn(self) ==
         arg   == self.stack[2]
         entry == self.stack[3]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
-        newc  == Context(entry, 0, EmptyDict, << arg >>)
+        newc  == Context(entry.cval, 0, EmptyDict, << arg >>)
     IN
+        /\\ entry.ctype = "pc"
         /\\ IF self.atomic > 0
            THEN active' = (active \\ { self }) \\union { next }
            ELSE active' = (active \\ { self }) \\union { next, newc }
@@ -6735,6 +6763,8 @@ def tla_translate(f, code, scope):
     print(file=f)
     print("Next == (\\E self \\in active: Step(self)) \\/ Idle", file=f)
     print("Spec == Init /\\ [][Next]_allvars", file=f)
+    print(file=f)
+    print("THEOREM Spec => []TypeInvariant", file=f)
     print("====", file=f)
 
 def usage():
