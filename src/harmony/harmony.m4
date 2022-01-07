@@ -505,6 +505,21 @@ def lexer(s, file):
 
     return result
 
+def tlaValue(lexeme):
+    if lexeme == False:
+        return "FALSE"
+    if lexeme == True:
+        return "TRUE"
+    if isinstance(lexeme, int):
+        return str(lexeme)
+    if isinstance(lexeme, PcValue):
+        return lexeme.tlaval()
+    if lexeme == novalue:
+        return "EmptyDict"
+    if isinstance(lexeme, SetValue):
+        return lexeme.tlaval()
+    return lexeme
+
 def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
         return str(v)
@@ -561,6 +576,9 @@ class PcValue(Value):
 
     def __repr__(self):
         return "PC(" + str(self.pc) + ")"
+
+    def tlaval(self):
+        return str(self.pc)
 
     def __hash__(self):
         return self.pc.__hash__()
@@ -679,6 +697,9 @@ class SetValue(Value):
             result += strValue(v)
         return "{ " + result + " }"
 
+    def tlaval(self):
+        return "{" + ",".join(tlaValue(x) for x in self.s) + "}"
+
     def jdump(self):
         result = ""
         vals = sorted(self.s, key=keyValue)
@@ -754,17 +775,6 @@ class Op:
 
     def tladump(self):
         return 'Skip(self, "%s")'%self
-
-    def tlaval(self, lexeme):
-        if lexeme == False:
-            return "FALSE"
-        if lexeme == True:
-            return "TRUE"
-        if isinstance(lexeme, PcValue):
-            return lexeme.pc
-        if lexeme == novalue:
-            return "EmptyDict"
-        return lexeme
 
     def explain(self):
         return "no explanation yet"
@@ -1058,7 +1068,7 @@ class PushOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.constant
-        v = self.tlaval(lexeme)
+        v = tlaValue(lexeme)
         return 'Push(self, %s)'%v
 
     def explain(self):
@@ -1448,6 +1458,9 @@ class ChooseOp(Op):
     def jdump(self):
         return '{ "op": "Choose" }'
 
+    def tladump(self):
+        return 'OpChoose(self)'
+
     def explain(self):
         return "pop a set value and push one of its elements"
 
@@ -1797,7 +1810,7 @@ class JumpCondOp(Op):
         return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
 
     def tladump(self):
-        return 'JumpCond(self, %d, %s)'%(self.pc, self.tlaval(self.cond))
+        return 'JumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
 
     def explain(self):
         return "pop a value and jump to " + str(self.pc) + \
@@ -6455,6 +6468,13 @@ Frame(self, name, args) ==
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
+
+OpChoose(self) ==
+    \\E v \\in self.stack[1]:
+        LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<v>> \\o Tail(@)]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
 
 Not(self) ==
     LET v == Head(self.stack)
