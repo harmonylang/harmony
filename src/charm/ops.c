@@ -177,10 +177,10 @@ void interrupt_invoke(struct step *step){
     step->ctx->interruptlevel = true;
 }
 
-bool ind_tryload(hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
+bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
     hvalue_t d = dict;
     for (int i = 0; i < n; i++) {
-        if (!value_dict_tryload(d, indices[i], &d)) {
+        if (!value_dict_tryload(values, d, indices[i], &d)) {
             return false;
         }
     }
@@ -334,7 +334,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
     case VALUE_DICT:
         {
             hvalue_t v;
-            if (!value_dict_tryload(method, e, &v)) {
+            if (!value_dict_tryload(&global->values, method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
                 value_ctx_failure(step->ctx, &global->values, "Bad index %s: not in %s", x, m);
@@ -643,7 +643,7 @@ void op_Go(
 
     // Remove from stopbag if it's there
     hvalue_t count;
-    if (value_dict_tryload(state->stopbag, ctx, &count)) {
+    if (value_dict_tryload(&global->values, state->stopbag, ctx, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
         count -= 1 << VALUE_BITS;
@@ -760,7 +760,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->load = true;
         }
 
-        if (!ind_tryload(state->vars, indices, size, &v)) {
+        if (!ind_tryload(&global->values, state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &global->values, "Load: unknown address %s", x);
             free(x);
@@ -774,7 +774,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->n = el->n;
             step->ai->load = true;
         }
-        if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
+        if (!ind_tryload(&global->values, state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
             value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x+1);
             free(x);
@@ -805,10 +805,10 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &global->values, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload(step->ctx->this, &indices[1], size - 1, &v);
+            result = ind_tryload(&global->values, step->ctx->this, &indices[1], size - 1, &v);
         }
         else {
-            result = ind_tryload(step->ctx->vars, indices, size, &v);
+            result = ind_tryload(&global->values, step->ctx->vars, indices, size, &v);
         }
         if (!result) {
             char *x = indices_string(indices, size);
@@ -822,7 +822,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         if (el->name == this_atom) {
             value_ctx_push(&step->ctx, step->ctx->this);
         }
-        else if (value_dict_tryload(step->ctx->vars, el->name, &v)) {
+        else if (value_dict_tryload(&global->values, step->ctx->vars, el->name, &v)) {
             value_ctx_push(&step->ctx, v);
         }
         else {

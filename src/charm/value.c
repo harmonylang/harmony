@@ -991,7 +991,26 @@ hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key)
     return dict;
 }
 
-bool value_dict_tryload(hvalue_t dict, hvalue_t key, hvalue_t *result){
+bool value_dict_tryload(
+    struct values_t *values,
+    hvalue_t dict,
+    hvalue_t key,
+    hvalue_t *result
+){
+    if ((dict & VALUE_MASK) == VALUE_ATOM) {
+        if ((key & VALUE_MASK) != VALUE_INT) {
+            return false;
+        }
+        key >>= VALUE_BITS;
+        int size;
+        char *chars = value_get(dict, &size);
+        if (key >= size) {
+            return false;
+        }
+        *result = value_put_atom(values, chars + key, 1);
+        return true;
+    }
+
     if ((dict & VALUE_MASK) != VALUE_DICT) {
         return false;
     }
@@ -1025,7 +1044,7 @@ bool value_dict_tryload(hvalue_t dict, hvalue_t key, hvalue_t *result){
 
 hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
-    if (value_dict_tryload(bag, v, &count)) {
+    if (value_dict_tryload(values, bag, v, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;
