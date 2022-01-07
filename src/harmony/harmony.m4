@@ -1582,6 +1582,9 @@ class ReturnOp(Op):
     def jdump(self):
         return '{ "op": "Return" }'
 
+    def tladump(self):
+        return 'Return(self)'
+
     def use(self):
         return { "result" }
 
@@ -6422,7 +6425,7 @@ Init == LET ctx == Context(0, TRUE, EmptyDict, << >>)
 
 UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
-    /\\ ctxbag' = ctxbag (-) SetToBag({self}) (+) SetToBag({next})
+    /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
 UpdateDict(dict, key, value) ==
     [ x \\in (DOMAIN dict) \\union {key} |->
@@ -6470,9 +6473,9 @@ Jump(self, pc) ==
         /\\ UNCHANGED shared
 
 Spawn(self) ==
-    LET local == self.stack[0]
-        entry == self.stack[1]
+    LET local == self.stack[1]
         arg   == self.stack[2]
+        entry == self.stack[3]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
         newc  == Context(entry, FALSE, EmptyDict, << arg >>)
     IN
