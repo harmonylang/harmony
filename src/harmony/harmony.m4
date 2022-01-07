@@ -755,6 +755,17 @@ class Op:
     def tladump(self):
         return 'Skip(self, "%s")'%self
 
+    def tlaval(self, lexeme):
+        if lexeme == False:
+            return "FALSE"
+        if lexeme == True:
+            return "TRUE"
+        if isinstance(lexeme, PcValue):
+            return lexeme.pc
+        if lexeme == novalue:
+            return "EmptyDict"
+        return lexeme
+
     def explain(self):
         return "no explanation yet"
 
@@ -1047,16 +1058,7 @@ class PushOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.constant
-        if lexeme == False:
-            v = "FALSE"
-        elif lexeme == True:
-            v = "TRUE"
-        elif isinstance(lexeme, PcValue):
-            v = lexeme.pc
-        elif lexeme == novalue:
-            v = "EmptyDict"
-        else:
-            v = lexeme
+        v = self.tlaval(lexeme)
         return 'Push(self, %s)'%v
 
     def explain(self):
@@ -1794,6 +1796,9 @@ class JumpCondOp(Op):
     def jdump(self):
         return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
 
+    def tladump(self):
+        return 'JumpCond(self, %d, %s)'%(self.pc, self.tlaval(self.cond))
+
     def explain(self):
         return "pop a value and jump to " + str(self.pc) + \
             " if the value is " + strValue(self.cond)
@@ -1823,6 +1828,14 @@ class NaryOp(Op):
     def jdump(self):
         (lexeme, file, line, column) = self.op
         return '{ "op": "Nary", "arity": %d, "value": "%s" }'%(self.n, lexeme)
+
+    def tladump(self):
+        (lexeme, file, line, column) = self.op
+        if lexeme == "not" and self.n == 1:
+            return "Not(self)"
+        if lexeme == "==" and self.n == 2:
+            return "Equals(self)"
+        return 'Skip(self, "%s")'%self
 
     def explain(self):
         return "pop " + str(self.n) + \
@@ -6440,6 +6453,21 @@ Skip(self, what) ==
 Frame(self, name, args) ==
     Skip(self, self)
 
+Not(self) ==
+    LET v == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = << ~v >> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+Equals(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e1 = e2 >> \\o Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 Push(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
     IN
@@ -6468,6 +6496,13 @@ Return(self) ==
 
 Jump(self, pc) ==
     LET next == [ self EXCEPT !.pc = pc ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+JumpCond(self, pc, cond) ==
+    LET next == [ self EXCEPT !.pc = IF self.stack[1] = cond
+                    THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
