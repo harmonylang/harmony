@@ -656,8 +656,8 @@ class DictValue(Value):
                 first = False
             else:
                 s += " [] "
-            s += tlaValue(k) + " -> " + tlaValue(v)
-        s += " OTHER -> FALSE ]"
+            s += "x = " + tlaValue(k) + " -> " + tlaValue(v)
+        s += " [] OTHER -> FALSE ]"
         return '[ ctype |-> "dict", cval |-> %s ]'%s
 
     def jdump(self):
@@ -6706,12 +6706,24 @@ OpApply(self) ==
     IN
         CASE method.ctype = "pc" ->
             LET next == [self EXCEPT !.pc = method.cval,
-                !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
+                    !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
             IN
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
-        [] method.ctype = "dict" -> FALSE
-        [] method.ctype = "str" -> FALSE
+        [] method.ctype = "dict" ->
+            LET next == [self EXCEPT !.pc = @ + 1,
+                            !.stack = << method.cval[arg] >> \\o Tail(Tail(@))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] method.ctype = "str" ->
+            LET char == SubSeq(method.cval, arg.cval+1, arg.cval+1)
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << Str(char) >> \\o Tail(Tail(@))]
+            IN
+                /\\ arg.ctype = "int"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
 OpStore(self, v) ==
