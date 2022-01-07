@@ -6522,6 +6522,10 @@ Spawn(self) ==
            ELSE active' = (active \\ { self }) \\union { next, newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
+
+Idle ==
+    /\\ active = {}
+    /\\ UNCHANGED allvars
 """
 
 def tla_translate(f, code, scope):
@@ -6536,7 +6540,7 @@ def tla_translate(f, code, scope):
         print("\\/ self.pc = %d /\\ "%pc, end="", file=f)
         print(code.labeled_ops[pc].op.tladump(), file=f)
     print(file=f)
-    print("Next == (\\E self \\in active: Step(self))", file=f)
+    print("Next == (\\E self \\in active: Step(self)) \\/ Idle", file=f)
     print("Spec == Init /\\ [][Next]_allvars", file=f)
     print("====", file=f)
 
