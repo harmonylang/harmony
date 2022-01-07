@@ -6704,7 +6704,8 @@ OpLoadInd(self) ==
         /\\ UNCHANGED shared
 
 OpLoad(self, v) ==
-    LET next == [ self EXCEPT !.pc = @ + 1, !.stack = << shared[v] >> \\o @ ]
+    LET next == [ self EXCEPT !.pc = @ + 1,
+        !.stack = << shared.cval[[ ctype |-> "str", cval |-> v]] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
