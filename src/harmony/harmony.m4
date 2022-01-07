@@ -6431,7 +6431,7 @@ EmptyDict == [x \in {} |-> TRUE]
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-Init == LET ctx == Context(0, TRUE, EmptyDict, << >>)
+Init == LET ctx == Context(0, TRUE, EmptyDict, << EmptyDict >>)
         IN /\\ active = { ctx }
            /\\ ctxbag = SetToBag(active)
            /\\ shared = EmptyDict
@@ -6451,7 +6451,10 @@ Skip(self, what) ==
         /\\ UNCHANGED shared
 
 Frame(self, name, args) ==
-    Skip(self, self)
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 Not(self) ==
     LET v == Head(self.stack)
