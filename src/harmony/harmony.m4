@@ -1903,6 +1903,8 @@ class NaryOp(Op):
             return "CountLabel(self)"
         if lexeme == "==" and self.n == 2:
             return "Equals(self)"
+        if lexeme == "-" and self.n == 2:
+            return "BinMinus(self)"
         return 'Skip(self, "%s")'%self
 
     def explain(self):
@@ -6527,6 +6529,15 @@ UpdateDictAddr(dict, addr, value) ==
                 dict[x]
         ]
 
+RECURSIVE LoadDictAddr(_, _)
+
+LoadDictAddr(dict, addr) ==
+    IF addr = <<>>
+    THEN
+        dict
+    ELSE
+        LoadDictAddr(dict[Head(addr)], Tail(addr))
+
 Skip(self, what) ==
     LET next == [self EXCEPT !.pc = @ + 1]
     IN
@@ -6612,6 +6623,14 @@ Equals(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+BinMinus(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = << e2 - e1 >> \\o Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 OpAddress(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
@@ -6637,6 +6656,15 @@ OpStoreInd(self) ==
         val  == self.stack[1]
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ shared' = UpdateDictAddr(shared, addr, val)
+
+OpLoadInd(self) ==
+    LET
+        addr == self.stack[1]
+        val  == LoadDictAddr(shared, addr)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, addr, val)
@@ -6680,8 +6708,6 @@ OpSpawn(self) ==
            ELSE active' = (active \\ { self }) \\union { next, newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
-
-OpLoadInd(self) == Skip(self, "LoadInd")
 
 Idle ==
     /\\ active = {}
