@@ -1,7 +1,7 @@
 """
 	This is the Harmony compiler.
 
-    Copyright (C) 2020, 2021  Robbert van Renesse
+    Copyright (C) 2020, 2021, 2022  Robbert van Renesse
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -1528,10 +1528,12 @@ class AssertOp(Op):
             return '{ "op": "Assert" }'
 
     def tladump(self):
+        (lexeme, file, line, column) = self.token
+        msg = '"Harmony Assertion (file=%s, line=%d) failed"'%(file, line)
         if self.exprthere:
-            return 'OpAssert2(self)'
+            return 'OpAssert2(self, %s)'%msg
         else:
-            return 'OpAssert(self)'
+            return 'OpAssert(self, %s)'%msg
 
     def explain(self):
         if self.exprthere:
@@ -6499,7 +6501,7 @@ allvars == << active, ctxbag, shared >>
 EmptyDict == [x \in {} |-> TRUE]
 
 Context(pc, atomic, vs, stack) ==
-    [ pc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
+    [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
 Init == LET ctx == Context(0, 1, EmptyDict, << EmptyDict >>)
         IN /\\ active = { ctx }
@@ -6570,7 +6572,8 @@ OpLoadVar(self, v) ==
         /\\ UNCHANGED shared
 
 OpAtomicInc(self) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ + 1]
+    LET apc  == IF self.atomic = 0 THEN self.pc ELSE self.apc
+        next == [self EXCEPT !.pc = @ + 1, !.apc = apc, !.atomic = @ + 1]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6581,10 +6584,10 @@ OpAtomicDec(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-OpAssert(self) ==
+OpAssert(self, msg) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
-        /\\ Head(self.stack)
+        /\\ Assert(Head(self.stack), msg)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -6602,15 +6605,19 @@ OpSequential(self) ==
         /\\ UNCHANGED shared
 
 Not(self) ==
-    LET v == Head(self.stack)
+    LET v    == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = << ~v >> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
+
 CountLabel(self) ==
-    LET label == Head(self.stack)
-        next == [self EXCEPT !.pc = @ + 1, !.stack = << 1 >> \\o Tail(@)]
+    LET fdom  == { c \\in DOMAIN ctxbag: Location(c) = Head(self.stack) }
+        fbag  == [ c \\in fdom |-> ctxbag[c] ]
+        cnt   == BagCardinality(fbag)
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = << cnt >> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
