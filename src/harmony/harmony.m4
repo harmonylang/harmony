@@ -1573,6 +1573,9 @@ class PrintOp(Op):
     def jdump(self):
         return '{ "op": "Print" }'
 
+    def tladump(self):
+        return 'OpPrint(self)'
+
     def explain(self):
         return "pop a value and add to print history"
 
@@ -6622,6 +6625,14 @@ OpAssert(self, msg) ==
     IN
         /\\ cond.ctype = "bool"
         /\\ Assert(cond.cval, msg)
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+OpPrint(self) ==
+    LET msg == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ PrintT(msg)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
