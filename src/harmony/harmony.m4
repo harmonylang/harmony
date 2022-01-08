@@ -6566,9 +6566,48 @@ HRank(x) ==
     []   x.ctype = "context" -> 7
     [] OTHER -> FALSE
 
+CRank(c) ==
+    CASE c=" "->32[]c="!"->33[]c="#"->35[]c="$"->36[]c="%"->37[]c="&"->38
+    []c="'"->39[]c="("->40[]c=")"->41[]c="*"->42[]c="+"->43[]c=","->44
+    []c="-"->45[]c="."->46[]c="/"->47[]c="0"->48[]c="1"->49[]c="2"->50
+    []c="3"->51[]c="4"->52[]c="5"->53[]c="6"->54[]c="7"->55[]c="8"->56
+    []c="9"->57[]c=":"->58[]c=";"->59[]c="<"->60[]c="="->61[]c=">"->62
+    []c="?"->63[]c="@"->64[]c="A"->65[]c="B"->66[]c="C"->67[]c="D"->68
+    []c="E"->69[]c="F"->70[]c="G"->71[]c="H"->72[]c="I"->73[]c="J"->74
+    []c="K"->75[]c="L"->76[]c="M"->77[]c="N"->78[]c="O"->79[]c="P"->80
+    []c="Q"->81[]c="R"->82[]c="S"->83[]c="T"->84[]c="U"->85[]c="V"->86
+    []c="W"->87[]c="X"->88[]c="Y"->89[]c="Z"->90[]c="["->91[]c="]"->93
+    []c="^"->94[]c="_"->95[]c="`"->96[]c="a"->97[]c="b"->98[]c="c"->99
+    []c="d"->100[]c="e"->101[]c="f"->102[]c="g"->103[]c="h"->104
+    []c="i"->105[]c="j"->106[]c="k"->107[]c="l"->108[]c="m"->109
+    []c="n"->110[]c="o"->111[]c="p"->112[]c="q"->113[]c="r"->114
+    []c="s"->115[]c="t"->116[]c="u"->117[]c="v"->118[]c="w"->119
+    []c="x"->120[]c="y"->121[]c="z"->122[]c="{"->123[]c="|"->124
+    []c="}"->125[]c="~"->126
+    [] OTHER -> 0
+
+RECURSIVE StrCmp(_,_)
+StrCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        CASE Len(x) = 0 ->  1
+        []   Len(y) = 0 -> -1
+        [] OTHER ->
+            LET rx == CRank(x)
+                ry == CRank(y)
+            IN
+                CASE rx < ry -> -1
+                []   rx > ry ->  1
+                [] OTHER -> StrCmp(Tail(x), Tail(y))
+
 RECURSIVE SeqCmp(_,_)
 RECURSIVE HCmp(_,_)
 RECURSIVE HSort(_)
+RECURSIVE DictSeq(_)
+
+DictSeq(dict) == [x \in HSort(DOMAIN dict) |-> dict[x]]
 
 SeqCmp(x, y) ==
     IF x = y
@@ -6593,12 +6632,12 @@ HCmp(x, y) ==
         THEN 
             CASE x.ctype = "bool"    -> IF x.cval THEN 1 ELSE -1
             []   x.ctype = "int"     -> x.cval - y.cval
-            []   x.ctype = "str"     -> 0 \\* TODO: map chars to ASCII vals?
+            []   x.ctype = "str"     -> StrCmp(x.cval, y.cval)
             []   x.ctype = "pc"      -> x.cval - y.cval
             []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
-            []   x.ctype = "dict"    -> 0 \\* TODO
+            []   x.ctype = "dict"    -> SeqCmp(DictSeq(x.cval), DictSeq(y.cval))
             []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
-            []   x.ctype = "context" -> 0 \\* TODO
+            []   x.ctype = "context" -> FALSE \\* TODO
             [] OTHER -> FALSE
         ELSE
             HRank(x) - HRank(y)
