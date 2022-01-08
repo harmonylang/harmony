@@ -6577,7 +6577,7 @@ CRank(c) ==
     []c="K"->75[]c="L"->76[]c="M"->77[]c="N"->78[]c="O"->79[]c="P"->80
     []c="Q"->81[]c="R"->82[]c="S"->83[]c="T"->84[]c="U"->85[]c="V"->86
     []c="W"->87[]c="X"->88[]c="Y"->89[]c="Z"->90[]c="["->91[]c="]"->93
-    []c="^"->94[]c="_"->95[]c="`"->96[]c="a"->97[]c="b"->98[]c="c"->99
+    []c="^"->94[]c="_"->95[]c="a"->97[]c="b"->98[]c="c"->99
     []c="d"->100[]c="e"->101[]c="f"->102[]c="g"->103[]c="h"->104
     []c="i"->105[]c="j"->106[]c="k"->107[]c="l"->108[]c="m"->109
     []c="n"->110[]c="o"->111[]c="p"->112[]c="q"->113[]c="r"->114
@@ -6644,7 +6644,12 @@ HCmp(x, y) ==
 
 HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
 
-HSort(s) == LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
+HSort(s) ==
+    IF s = {}
+    THEN
+        <<>>
+    ELSE
+        LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
 
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
