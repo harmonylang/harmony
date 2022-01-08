@@ -6769,27 +6769,21 @@ Equals(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-BinMinus(self) ==
+BinOp(self, op(_,_)) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HInt(e2.cval - e1.cval) >> \\o Tail(Tail(@))]
+            !.stack = << op(e2, e1) >> \\o Tail(Tail(@))]
     IN
-        /\\ e1.ctype = "int"
-        /\\ e2.ctype = "int"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-BinPlus(self) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HInt(e2.cval + e1.cval) >> \\o Tail(Tail(@))]
-    IN
-        /\\ e1.ctype = "int"
-        /\\ e2.ctype = "int"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+OpPlus(x, y) == HInt(x.cval + y.cval)
+BinPlus(self) == BinOp(self, OpPlus)
+OpMinus(x, y) == HInt(x.cval - y.cval)
+BinMinus(self) == BinOp(self, OpMinus)
+OpMod(x, y) == HInt(x.cval % y.cval)
+BinMod(self) == BinOp(self, OpMod)
 
 DictTimes(dict, n) ==
     LET odom == { x.cval : x \\in DOMAIN dict.cval }
@@ -6799,34 +6793,16 @@ DictTimes(dict, n) ==
     IN
         HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
 
-BinTimes(self) ==
-    LET e1   == self.stack[1]
-        e2   == self.stack[2]
-        next ==
-            CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
-                [self EXCEPT !.pc = @ + 1,
-                        !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
-            [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
-                [self EXCEPT !.pc = @ + 1,
-                        !.stack = << DictTimes(e2, e1) >> \\o Tail(Tail(@))]
-            [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
-                [self EXCEPT !.pc = @ + 1,
-                        !.stack = << DictTimes(e1, e2) >> \\o Tail(Tail(@))]
-            [] OTHER -> FALSE
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+OpTimes(e1, e2) ==
+    CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
+        HInt(e2.cval * e1.cval)
+    [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
+        DictTimes(e2, e1)
+    [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
+        DictTimes(e1, e2)
+    [] OTHER -> FALSE
 
-BinMod(self) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HInt(e2.cval % e1.cval) >> \\o Tail(Tail(@))]
-    IN
-        /\\ e1.ctype = "int"
-        /\\ e2.ctype = "int"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+BinTimes(self) == BinOp(self, OpTimes)
 
 DictAdd(self) ==
     LET value == self.stack[1]
