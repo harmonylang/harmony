@@ -6545,6 +6545,14 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
 tladefs = """---- MODULE Harmony ----
 EXTENDS Integers, Bags, Sequences, TLC
 
+\* This is the Harmony TLA+ module.  All the Harmony virtual machine
+\* instructions are defined below.  Mostly, if the Harmony VM instruction
+\* is called X, then its definition below is under the name OpX.  There
+\* are some cases where there is an extension.  For example, the Store
+\* instruction has two versions: OpStore and OpStoreInd, depending on
+\* whether the variable is directly specified or its address is on the
+\* stack of the current thread.
+
 \* There are three variables:
 \*  active: a set of the currently active contexts
 \*  ctxbag: a multiset of all contexts
@@ -6724,10 +6732,14 @@ Init ==
        /\\ ctxbag = SetToBag(active)
        /\\ shared = EmptyDict
 
+\* The state of the current thread goes from 'self' to 'next'.  Update
+\* both the context bag and the active set
 UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
+\* A Harmony address is essentially a sequence of Harmony values
+\* This computes the tail (all but the first element)
 AddrTail(addr) == HAddress(Tail(addr.cval))
 
 RECURSIVE UpdateDictAddr(_, _, _)
@@ -6760,7 +6772,7 @@ Skip(self, what) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\\* Create a sequence of (variable, value) records
+\* Create a sequence of (variable, value) records
 RECURSIVE CollectVars(_, _)
 CollectVars(args, value) ==
     IF args.vtype = "var"
@@ -6801,7 +6813,7 @@ OpPop(self) ==
 OpCut(self, s, v) ==
     LET svar == HStr(s)
         sval == self.vs.cval[svar]
-        pick == CHOOSE e \\in sval.cval: TRUE
+        pick == HMin(sval.cval)
         intm == UpdateVars(self.vs, v, pick)
         next == [self EXCEPT !.pc = @ + 1, !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
     IN
@@ -7067,6 +7079,7 @@ OpSpawn(self) ==
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
+\* When there are no threads left, the Idle action kicks in
 Idle ==
     /\\ active = {}
     /\\ UNCHANGED allvars
