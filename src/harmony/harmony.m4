@@ -6646,11 +6646,12 @@ OpPop(self) ==
 
 OpCut(self, s, v) ==
     LET svar == HStr(s)
-        sval == self.vs.cvar[svar]
-        pick == CHOOSE e \\in sval: TRUE
-        next == [self EXCEPT !.pc = @ + 1, !.vs = UpdateVars(UpdateVars(@, v, pick), svar, sval \\ pick) ]
+        sval == self.vs.cval[svar]
+        pick == CHOOSE e \\in sval.cval: TRUE
+        intm == UpdateVars(self.vs, v, pick)
+        next == [self EXCEPT !.pc = @ + 1, !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
     IN
-        /\\ s.ctype = "set"
+        /\\ sval.ctype = "set"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -6726,7 +6727,7 @@ IsEmpty(self) ==
         next == [self EXCEPT !.pc = @ + 1,
             !.stack = << HBool(v = HSet({})) >> \\o Tail(@)]
     IN
-        /\\ v.ctype = "bool"
+        /\\ v.ctype = "set"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -6778,13 +6779,26 @@ BinPlus(self) ==
 BinTimes(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
     IN
-        /\\ e1.ctype = "int"
-        /\\ e2.ctype = "int"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+        CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
+            LET next  == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
+            IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+        [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
+            LET next  == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << e2 >> \\o Tail(Tail(@))]
+            IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+        [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
+            LET next  == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << e1 >> \\o Tail(Tail(@))]
+            IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+        [] OTHER -> FALSE
 
 BinMod(self) ==
     LET e1    == self.stack[1]
@@ -6798,12 +6812,12 @@ BinMod(self) ==
         /\\ UNCHANGED shared
 
 DictAdd(self) ==
-    LET dict  == self.stack[1]
+    LET value == self.stack[1]
         key   == self.stack[2]
-        value == self.stack[3]
+        dict  == self.stack[3]
         newd  == HDict(UpdateMap(dict.cval, key, value))
         next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HDict(newd) >> \\o Tail(Tail(@))]
+            !.stack = << newd >> \\o Tail(Tail(Tail(@)))]
     IN
         /\\ dict.ctype = "dict"
         /\\ UpdateContext(self, next)
