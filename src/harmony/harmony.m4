@@ -6792,11 +6792,12 @@ BinPlus(self) ==
         /\\ UNCHANGED shared
 
 DictTimes(dict, n) ==
-    LET card == Len(DOMAIN dict.cval)
-        dom  == { HInt(x): x \\in 0..(dict.cval * card - 1) }
-        list == [ x \\in dom |-> dict.cval[HInt(x.cval % card)] ]
+    LET odom == { x.cval : x \\in DOMAIN dict.cval }
+        max  == CHOOSE x \in odom: \A y \in odom: y <= x
+        card == max + 1
+        ndom == { HInt(x): x \\in 0..(n.cval * card - 1) }
     IN
-        HDict(list)
+        HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
 
 BinTimes(self) ==
     LET e1   == self.stack[1]
