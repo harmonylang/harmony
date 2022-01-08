@@ -1920,6 +1920,8 @@ class NaryOp(Op):
 
     def tladump(self):
         (lexeme, file, line, column) = self.op
+        if lexeme == "-" and self.n == 1:
+            return "UnaOp(self, FunMinus)"
         if lexeme == "not" and self.n == 1:
             return "UnaOp(self, FunNot)"
         if lexeme == "IsEmpty" and self.n == 1:
@@ -1934,6 +1936,8 @@ class NaryOp(Op):
             return "BinOp(self, FunAdd)"
         if lexeme == "*" and self.n == 2:
             return "BinOp(self, FunMult)"
+        if lexeme == "/" and self.n == 2:
+            return "BinOp(self, FunDiv)"
         if lexeme == "%" and self.n == 2:
             return "BinOp(self, FunMod)"
         if lexeme == "DictAdd" and self.n == 3:
@@ -6747,11 +6751,13 @@ FunCountLabel(label) ==
     IN
         HInt(BagCardinality(fbag))
 
+FunMinus(v)       == HInt(-v.cval)
 FunNot(v)         == HBool(~v.cval)
 FunIsEmpty(s)     == HBool(s = HSet({}))
 FunEquals(x, y)   == HBool(x = y)
 FunAdd(x, y)      == HInt(x.cval + y.cval)
 FunSubtract(x, y) == HInt(x.cval - y.cval)
+FunDiv(x, y)      == HInt(x.cval \\div y.cval)
 FunMod(x, y)      == HInt(x.cval % y.cval)
 
 DictTimes(dict, n) ==
