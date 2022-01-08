@@ -6981,9 +6981,11 @@ def tla_translate(f, code, scope):
         print(code.labeled_ops[pc].op.tladump(), file=f)
     print(file=f)
     print("Next == (\\E self \\in active: Step(self)) \\/ Idle", file=f)
-    print("Spec == Init /\\ [][Next]_allvars", file=f)
+    print("Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)", file=f)
+    print("Spec == Init /\\ [][Next]_allvars /\\ Liveness", file=f)
     print(file=f)
     print("THEOREM Spec => []TypeInvariant", file=f)
+    print("THEOREM Spec => []<><<Idle>>_allvars", file=f)
     print("====", file=f)
 
 def usage():
