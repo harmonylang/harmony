@@ -507,11 +507,11 @@ def lexer(s, file):
 
 def tlaValue(lexeme):
     if isinstance(lexeme, bool):
-        return '[ ctype |-> "bool", cval |-> %s ]'%("TRUE" if lexeme else "FALSE")
+        return 'HBool(%s)'%("TRUE" if lexeme else "FALSE")
     if isinstance(lexeme, int):
-        return '[ ctype |-> "int", cval |-> %d ]'%lexeme
+        return 'HInt(%d)'%lexeme
     if isinstance(lexeme, str):
-        return '[ ctype |-> "str", cval |-> "%s" ]'%lexeme
+        return 'HStr("%s")'%lexeme
     return lexeme.tlaval()
 
 def strValue(v):
@@ -572,7 +572,7 @@ class PcValue(Value):
         return "PC(" + str(self.pc) + ")"
 
     def tlaval(self):
-        return '[ ctype |-> "pc", cval |-> %d ]'%self.pc
+        return 'HPc(%d)'%self.pc
 
     def __hash__(self):
         return self.pc.__hash__()
@@ -646,7 +646,7 @@ class DictValue(Value):
         vals = list(self.d.values())
         if vals.count(vals[0]) == len(vals):
             s += tlaValue(vals[0]) + " ]"
-            return '[ ctype |-> "dict", cval |-> %s ]'%s
+            return 'HDict(%s)'%s
 
         # not all values are the same
         first = True
@@ -658,7 +658,7 @@ class DictValue(Value):
                 s += " [] "
             s += "x = " + tlaValue(k) + " -> " + tlaValue(v)
         s += " [] OTHER -> FALSE ]"
-        return '[ ctype |-> "dict", cval |-> %s ]'%s
+        return 'HDict(%s)'%s
 
     def jdump(self):
         result = ""
@@ -715,7 +715,7 @@ class SetValue(Value):
 
     def tlaval(self):
         s = "{" + ",".join(tlaValue(x) for x in self.s) + "}"
-        return '[ ctype |-> "set", cval |-> %s ]'%s
+        return 'HSet(%s)'%s
 
     def jdump(self):
         result = ""
@@ -757,7 +757,7 @@ class AddressValue(Value):
 
     def tlaval(self):
         s = "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
-        return '[ ctype |-> "address", cval |-> %s ]'%s
+        return 'HAddress(%s)'%s
 
     def jdump(self):
         result = ""
@@ -6542,7 +6542,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("  }", file=f)
         print("}", file=f)
 
-tladefs = """---- MODULE Harmony ----
+tladefs = """-------- MODULE Harmony --------
 EXTENDS Integers, Bags, Sequences, TLC
 
 \* This is the Harmony TLA+ module.  All the Harmony virtual machine
@@ -6747,7 +6747,7 @@ UpdateContext(self, next) ==
 
 \* A Harmony address is essentially a sequence of Harmony values
 \* These compute the head (the first element) and the remaining tail
-AddrHead(addr) == addr.cval
+AddrHead(addr) == Head(addr.cval)
 AddrTail(addr) == HAddress(Tail(addr.cval))
 
 \* This is used temporarily for Harmony VM instructions that have not yet
@@ -7149,7 +7149,7 @@ def tla_translate(f, code, scope):
     print(file=f)
     print("THEOREM Spec => []TypeInvariant", file=f)
     print("THEOREM Spec => []<><<Idle>>_allvars", file=f)
-    print("====", file=f)
+    print("================", file=f)
 
 def usage():
     print("Usage: harmony [options] harmony-file ...")
