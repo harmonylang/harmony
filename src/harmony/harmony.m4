@@ -6708,11 +6708,18 @@ HSort(s) ==
     ELSE
         LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
 
-\* Representation of a context (the state of a thread)
+\* Representation of a context (the state of a thread).  It includes
+\* the following fields:
+\*  pc:     the program counter (location in the code)
+\*  apc:    if atomic, the location in the code where the thread became atomic
+\*  atomic: a counter: 0 means not atomic, larger than 0 is atomic
+\*  vs:     a Harmony dictionary containing the variables of this thread
+\*  stack:  a sequence of Harmony values
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-\* An initial context of a thread
+\* An initial context of a thread.  arg is the argument given when the thread
+\* thread was spawned.  "process" is used by the OpReturn operator.
 InitContext(pc, atomic, arg) ==
     Context(pc, atomic, EmptyDict, << arg, "process" >>)
 
@@ -6739,9 +6746,22 @@ UpdateContext(self, next) ==
     /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
 \* A Harmony address is essentially a sequence of Harmony values
-\* This computes the tail (all but the first element)
+\* These compute the head (the first element) and the remaining tail
+AddrHead(addr) == addr.cval
 AddrTail(addr) == HAddress(Tail(addr.cval))
 
+\* This is used temporarily for Harmony VM instructions that have not yet
+\* been implemented
+Skip(self, what) ==
+    LET next == [self EXCEPT !.pc = @ + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* This is to implement !addr = value, where addr is a Harmony address
+\* (a sequence of Harmony values representing a path in dict, a tree of
+\* dictionaries), and value is the new value.  It is a recursive operator
+\* that returns the new dictionary.
 RECURSIVE UpdateDictAddr(_, _, _)
 UpdateDictAddr(dict, addr, value) ==
     IF addr.cval = <<>>
@@ -6749,8 +6769,8 @@ UpdateDictAddr(dict, addr, value) ==
         value
     ELSE
         HDict(
-            [ x \\in (DOMAIN dict.cval) \\union {Head(addr.cval)} |->
-                IF x = Head(addr.cval)
+            [ x \\in (DOMAIN dict.cval) \\union {AddrHead(addr)} |->
+                IF x = AddrHead(addr)
                 THEN
                       UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
                 ELSE
@@ -6758,21 +6778,23 @@ UpdateDictAddr(dict, addr, value) ==
             ]
         )
 
+\* This is to compute the value of !addr in dict, which is a simple
+\* recursive function
 RECURSIVE LoadDictAddr(_, _)
 LoadDictAddr(dict, addr) ==
     IF addr.cval = <<>>
     THEN
         dict
     ELSE
-        LoadDictAddr(dict.cval[Head(addr.cval)], AddrTail(addr))
+        LoadDictAddr(dict.cval[AddrHead(addr)], AddrTail(addr))
 
-Skip(self, what) ==
-    LET next == [self EXCEPT !.pc = @ + 1]
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
-
-\* Create a sequence of (variable, value) records
+\* This is a helper operator for UpdateVars.
+\* Harmony allows statements of the form: x,(y,z) = v.  For example,
+\* if v = (1, (2, 3)), then this assigns 1 to x, 2 to y, and 3 to z.
+\* For this operator, args is a tree describing the lefthand side,
+\* while value is the righthand side of the equation above.  The
+\* operator creates a sequence of (variable, value) records.  In the
+\* example, the sequence would be << (x,1), (y,2), (z,3) >> essentially.
 RECURSIVE CollectVars(_, _)
 CollectVars(args, value) ==
     IF args.vtype = "var"
@@ -6782,6 +6804,9 @@ CollectVars(args, value) ==
             CollectVars(args.vlist[i], value.cval[HInt(i-1)])
         ])
 
+\* Another helper operator for UpdateVars.  dict is a Harmony dictionary,
+\* cv is a sequence as returned by CollectVars, and index is an index into
+\* this sequence.  Fold returns an updated dictionary.
 RECURSIVE Fold(_, _, _)
 Fold(dict, cv, index) ==
     IF index = 0
@@ -6790,6 +6815,10 @@ Fold(dict, cv, index) ==
         LET elt == cv[index]
         IN Fold(UpdateDict(dict, elt.var, elt.val), cv, index - 1)
 
+\* As explained in CollectVars, args is a tree of variable names that
+\* appears on the lefthandside of a Harmony assignment operation.  value
+\* is the value of the righthandside.  The vs are the variables of the
+\* context that need to be updated.
 UpdateVars(vs, args, value) ==
     LET cv == CollectVars(args, value)
     IN Fold(vs, cv, Len(cv))
@@ -6906,7 +6935,12 @@ BinOp(self, op(_,_)) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* The official "pc" of a thread depends on whether it is operating in
+\* atomic mode or not.  If not, the pc is simply the current location
+\* in the code.  However, if in atomic mode, the pc is the location where
+\* the thread became atomic.
 Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
+
 FunCountLabel(label) ==
     LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
         fbag == [ c \\in fdom |-> ctxbag[c] ]
@@ -6966,12 +7000,19 @@ OpAddress(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Push Harmony constant c onto the stack.
 OpPush(self, c) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* In Harmony, the expression "x(y)" (or equivalently "x y" or "x[y]")
+\* means something different depending on the type of x, similar to TLA+
+\* actually.  If x is a method, that x should be invoked with the argument y.
+\* When the method finishes, the value is that of its "result" variable.
+\* If x is a dictionary, then the value is that of x[y].  If x is a string,
+\* then y must be an integer index and x[y] returns the specified character.
 OpApply(self) ==
     LET arg    == self.stack[1]
         method == self.stack[2]
@@ -7029,6 +7070,11 @@ OpLoad(self, v) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* What return should do depends on whether the methods was spawned
+\* or called as an ordinary method.  To indicate this, Spawn pushes the
+\* string "process" on the stack, while Apply pushes the string "normal"
+\* onto the stack.  The Frame operation also pushed the saved variables
+\* which must be restored.
 OpReturn(self) ==
     LET savedvars == self.stack[1]
         calltype  == self.stack[2]
