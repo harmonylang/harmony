@@ -6541,16 +6541,71 @@ SharedInvariant == shared.ctype = "dict"
 
 TypeInvariant == SharedInvariant
 
-HStr(x)     == [ ctype |-> "str",     cval |-> x ]
-HInt(x)     == [ ctype |-> "int",     cval |-> x ]
 HBool(x)    == [ ctype |-> "bool",    cval |-> x ]
-HSet(x)     == [ ctype |-> "set",     cval |-> x ]
+HInt(x)     == [ ctype |-> "int",     cval |-> x ]
+HStr(x)     == [ ctype |-> "str",     cval |-> x ]
+HPc(x)      == [ ctype |-> "pc",      cval |-> x ]
 HDict(x)    == [ ctype |-> "dict",    cval |-> x ]
+HSet(x)     == [ ctype |-> "set",     cval |-> x ]
 HAddress(x) == [ ctype |-> "address", cval |-> x ]
+HContext(x) == [ ctype |-> "context", cval |-> x ]
+
 EmptyFunc == [x \in {} |-> TRUE]
 EmptyDict == HDict(EmptyFunc)
 None      == HAddress(<<>>)
 Result    == HStr("result")
+
+HRank(x) ==
+    CASE x.ctype = "bool"    -> 0
+    []   x.ctype = "int"     -> 1
+    []   x.ctype = "str"     -> 2
+    []   x.ctype = "pc"      -> 3
+    []   x.ctype = "dict"    -> 4
+    []   x.ctype = "set"     -> 5
+    []   x.ctype = "address" -> 6
+    []   x.ctype = "context" -> 7
+    [] OTHER -> FALSE
+
+RECURSIVE SeqCmp(_,_)
+RECURSIVE HCmp(_,_)
+RECURSIVE HSort(_)
+
+SeqCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        CASE Len(x) = 0 ->  1
+        []   Len(y) = 0 -> -1
+        [] OTHER ->
+            LET c == HCmp(Head(x), Head(y))
+            IN
+                CASE c < 0 -> -1
+                []   c > 0 ->  1
+                [] OTHER -> SeqCmp(Tail(x), Tail(y))
+
+HCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        IF x.ctype = y.ctype
+        THEN 
+            CASE x.ctype = "bool"    -> IF x.cval THEN 1 ELSE -1
+            []   x.ctype = "int"     -> x.cval - y.cval
+            []   x.ctype = "str"     -> 0 \\* TODO: map chars to ASCII vals?
+            []   x.ctype = "pc"      -> x.cval - y.cval
+            []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
+            []   x.ctype = "dict"    -> 0 \\* TODO
+            []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
+            []   x.ctype = "context" -> 0 \\* TODO
+            [] OTHER -> FALSE
+        ELSE
+            HRank(x) - HRank(y)
+
+HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
+
+HSort(s) == LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
 
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
