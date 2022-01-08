@@ -6791,29 +6791,30 @@ BinPlus(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-BinTimes(self) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
+DictTimes(dict, n) ==
+    LET card == Len(DOMAIN dict.cval)
+        dom  == { HInt(x): x \\in 0..(dict.cval * card - 1) }
+        list == [ x \\in dom |-> dict.cval[HInt(x.cval % card)] ]
     IN
-        CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
-            LET next  == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
-            IN
-            /\\ UpdateContext(self, next)
-            /\\ UNCHANGED shared
-        [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
-            LET next  == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << e2 >> \\o Tail(Tail(@))]
-            IN
-            /\\ UpdateContext(self, next)
-            /\\ UNCHANGED shared
-        [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
-            LET next  == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << e1 >> \\o Tail(Tail(@))]
-            IN
-            /\\ UpdateContext(self, next)
-            /\\ UNCHANGED shared
-        [] OTHER -> FALSE
+        HDict(list)
+
+BinTimes(self) ==
+    LET e1   == self.stack[1]
+        e2   == self.stack[2]
+        next ==
+            CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
+                [self EXCEPT !.pc = @ + 1,
+                        !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
+            [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
+                [self EXCEPT !.pc = @ + 1,
+                        !.stack = << DictTimes(e2, e1) >> \\o Tail(Tail(@))]
+            [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
+                [self EXCEPT !.pc = @ + 1,
+                        !.stack = << DictTimes(e1, e2) >> \\o Tail(Tail(@))]
+            [] OTHER -> FALSE
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 BinMod(self) ==
     LET e1    == self.stack[1]
