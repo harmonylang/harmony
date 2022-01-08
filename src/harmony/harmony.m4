@@ -1930,6 +1930,16 @@ class NaryOp(Op):
             return "UnaOp(self, FunCountLabel)"
         if lexeme == "==" and self.n == 2:
             return "BinOp(self, FunEquals)"
+        if lexeme == "!=" and self.n == 2:
+            return "BinOp(self, FunNotEquals)"
+        if lexeme == "<" and self.n == 2:
+            return "BinOp(self, FunLT)"
+        if lexeme == "<=" and self.n == 2:
+            return "BinOp(self, FunLE)"
+        if lexeme == ">" and self.n == 2:
+            return "BinOp(self, FunGT)"
+        if lexeme == ">=" and self.n == 2:
+            return "BinOp(self, FunGE)"
         if lexeme == "-" and self.n == 2:
             return "BinOp(self, FunSubtract)"
         if lexeme == "+" and self.n == 2:
@@ -6534,13 +6544,26 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
 
 tladefs = """---- MODULE Harmony ----
 EXTENDS Integers, Bags, Sequences, TLC
+
+\* There are three variables:
+\*  active: a set of the currently active contexts
+\*  ctxbag: a multiset of all contexts
+\*  shared: a map of variable names to Harmony values
+\*
+\* A context is the state of a thread.  A context may be atomic or not.
+\* There can be at most one atomic context.  If there is an atomic context,
+\* it and only it is in the active set.  If there is no atomic context,
+\* then the active set is the domain of the ctxbag.
 VARIABLE active, ctxbag, shared
 allvars == << active, ctxbag, shared >>
 
+\* The variable "shared" is a Harmony dict type
 SharedInvariant == shared.ctype = "dict"
 
 TypeInvariant == SharedInvariant
 
+\* Harmony values are represented by a ctype tag that contains the name of
+\* their Harmony type and a cval that contains their TLA+ representation
 HBool(x)    == [ ctype |-> "bool",    cval |-> x ]
 HInt(x)     == [ ctype |-> "int",     cval |-> x ]
 HStr(x)     == [ ctype |-> "str",     cval |-> x ]
@@ -6550,11 +6573,22 @@ HSet(x)     == [ ctype |-> "set",     cval |-> x ]
 HAddress(x) == [ ctype |-> "address", cval |-> x ]
 HContext(x) == [ ctype |-> "context", cval |-> x ]
 
+\* Defining the Harmony constant (), which is an empty dict
 EmptyFunc == [x \in {} |-> TRUE]
 EmptyDict == HDict(EmptyFunc)
+
+\* Defining the Harmony constant None, which is a empty address
 None      == HAddress(<<>>)
+
+\* Convenient definition for the "result" variable in each method
 Result    == HStr("result")
 
+\* Flatten a sequence of sequences
+Flatten(seq) ==
+    LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
+    IN F[Len(seq)]
+
+\* Harmony values are ordered first by their type
 HRank(x) ==
     CASE x.ctype = "bool"    -> 0
     []   x.ctype = "int"     -> 1
@@ -6566,6 +6600,10 @@ HRank(x) ==
     []   x.ctype = "context" -> 7
     [] OTHER -> FALSE
 
+\* TLA+ does not seem to have a direct way to compare characters in a
+\* string, so...  Note that this only contains the printable ASCII
+\* characters and excludes the backquote and double quote characters
+\* as well as the backslash
 CRank(c) ==
     CASE c=" "->32[]c="!"->33[]c="#"->35[]c="$"->36[]c="%"->37[]c="&"->38
     []c="'"->39[]c="("->40[]c=")"->41[]c="*"->42[]c="+"->43[]c=","->44
@@ -6584,8 +6622,9 @@ CRank(c) ==
     []c="s"->115[]c="t"->116[]c="u"->117[]c="v"->118[]c="w"->119
     []c="x"->120[]c="y"->121[]c="z"->122[]c="{"->123[]c="|"->124
     []c="}"->125[]c="~"->126
-    [] OTHER -> 0
+    [] OTHER -> FALSE
 
+\* Comparing two TLA+ strings
 RECURSIVE StrCmp(_,_)
 StrCmp(x, y) ==
     IF x = y
@@ -6595,20 +6634,26 @@ StrCmp(x, y) ==
         CASE Len(x) = 0 ->  1
         []   Len(y) = 0 -> -1
         [] OTHER ->
-            LET rx == CRank(x)
-                ry == CRank(y)
+            LET rx == CRank(Head(x))
+                ry == CRank(Head(y))
             IN
                 CASE rx < ry -> -1
                 []   rx > ry ->  1
                 [] OTHER -> StrCmp(Tail(x), Tail(y))
 
+\* Setting up to compare two arbitrary Harmony values
 RECURSIVE SeqCmp(_,_)
 RECURSIVE HCmp(_,_)
 RECURSIVE HSort(_)
 RECURSIVE DictSeq(_)
 
-DictSeq(dict) == [x \in HSort(DOMAIN dict) |-> dict[x]]
+\* Given a Harmony dictionary, return a sequence of its key, value
+\* pairs sorted by the corresponding key.
+DictSeq(dict) ==
+    LET dom == HSort(DOMAIN dict)
+    IN [ x \in 1..Len(dom) |-> << dom[x], dict[dom[x]] >> ]
 
+\* Lexicographically compare two sequences of Harmony values
 SeqCmp(x, y) ==
     IF x = y
     THEN
@@ -6623,6 +6668,7 @@ SeqCmp(x, y) ==
                 []   c > 0 ->  1
                 [] OTHER -> SeqCmp(Tail(x), Tail(y))
 
+\* Compare two Harmony values as specified in the book
 HCmp(x, y) ==
     IF x = y
     THEN
@@ -6635,15 +6681,18 @@ HCmp(x, y) ==
             []   x.ctype = "str"     -> StrCmp(x.cval, y.cval)
             []   x.ctype = "pc"      -> x.cval - y.cval
             []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
-            []   x.ctype = "dict"    -> SeqCmp(DictSeq(x.cval), DictSeq(y.cval))
+            []   x.ctype = "dict"    ->
+                SeqCmp(Flatten(DictSeq(x.cval)), Flatten(DictSeq(y.cval)))
             []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
-            []   x.ctype = "context" -> FALSE \\* TODO
+            []   x.ctype = "context" -> FALSE \* TODO
             [] OTHER -> FALSE
         ELSE
             HRank(x) - HRank(y)
 
+\* The minimum Harmony value in a set
 HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
 
+\* Sort a set of Harmony values into a sequence
 HSort(s) ==
     IF s = {}
     THEN
@@ -6651,18 +6700,24 @@ HSort(s) ==
     ELSE
         LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
 
+\* Representation of a context (the state of a thread)
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
 
-UpdateMap(map, key, value) ==
-    [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
-
-UpdateDict(dict, key, value) ==
-    HDict(UpdateMap(dict.cval, key, value))
-
+\* An initial context of a thread
 InitContext(pc, atomic, arg) ==
     Context(pc, atomic, EmptyDict, << arg, "process" >>)
 
+\* Update the given map with a new key -> value mapping
+UpdateMap(map, key, value) ==
+    [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
+
+\* Update a Harmony dictionary with a new key -> value mapping
+UpdateDict(dict, key, value) ==
+    HDict(UpdateMap(dict.cval, key, value))
+
+\* The initial state of the Harmony module consists of a single thread starting
+\* at pc = 0 and an empty set of shared variables
 Init ==
     LET ctx == InitContext(0, 1, EmptyDict)
     IN /\\ active = { ctx }
@@ -6704,10 +6759,6 @@ Skip(self, what) ==
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
-
-Flatten(seq) ==
-    LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
-    IN F[Len(seq)]
 
 \\* Create a sequence of (variable, value) records
 RECURSIVE CollectVars(_, _)
@@ -6850,14 +6901,19 @@ FunCountLabel(label) ==
     IN
         HInt(BagCardinality(fbag))
 
-FunMinus(v)       == HInt(-v.cval)
-FunNot(v)         == HBool(~v.cval)
-FunIsEmpty(s)     == HBool(s = HSet({}))
-FunEquals(x, y)   == HBool(x = y)
-FunAdd(x, y)      == HInt(x.cval + y.cval)
-FunSubtract(x, y) == HInt(x.cval - y.cval)
-FunDiv(x, y)      == HInt(x.cval \\div y.cval)
-FunMod(x, y)      == HInt(x.cval % y.cval)
+FunMinus(v)        == HInt(-v.cval)
+FunNot(v)          == HBool(~v.cval)
+FunIsEmpty(s)      == HBool(s = HSet({}))
+FunEquals(x, y)    == HBool(x = y)
+FunNotEquals(x, y) == HBool(x /= y)
+FunLT(x, y)        == HBool(HCmp(x, y) < 0)
+FunLE(x, y)        == HBool(HCmp(x, y) <= 0)
+FunGT(x, y)        == HBool(HCmp(x, y) > 0)
+FunGE(x, y)        == HBool(HCmp(x, y) >= 0)
+FunAdd(x, y)       == HInt(x.cval + y.cval)
+FunSubtract(x, y)  == HInt(x.cval - y.cval)
+FunDiv(x, y)       == HInt(x.cval \\div y.cval)
+FunMod(x, y)       == HInt(x.cval % y.cval)
 
 DictTimes(dict, n) ==
     LET odom == { x.cval : x \\in DOMAIN dict.cval }
