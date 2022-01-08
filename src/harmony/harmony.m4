@@ -1924,6 +1924,8 @@ class NaryOp(Op):
             return "UnaOp(self, FunMinus)"
         if lexeme == "not" and self.n == 1:
             return "UnaOp(self, FunNot)"
+        if lexeme == "len" and self.n == 1:
+            return "UnaOp(self, FunLen)"
         if lexeme == "IsEmpty" and self.n == 1:
             return "UnaOp(self, FunIsEmpty)"
         if lexeme == "countLabel" and self.n == 1:
@@ -6543,7 +6545,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("}", file=f)
 
 tladefs = """-------- MODULE Harmony --------
-EXTENDS Integers, Bags, Sequences, TLC
+EXTENDS Integers, FiniteSets, Bags, Sequences, TLC
 
 \* This is the Harmony TLA+ module.  All the Harmony virtual machine
 \* instructions are defined below.  Mostly, if the Harmony VM instruction
@@ -6946,6 +6948,12 @@ FunCountLabel(label) ==
         fbag == [ c \\in fdom |-> ctxbag[c] ]
     IN
         HInt(BagCardinality(fbag))
+
+FunLen(s) ==
+    CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
+    []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
+    []   s.ctype = "str"  -> HInt(Len(s.cval))
+    [] OTHER -> FALSE
 
 FunMinus(v)        == HInt(-v.cval)
 FunNot(v)          == HBool(~v.cval)
