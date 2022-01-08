@@ -495,6 +495,10 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
     if ((v & VALUE_MASK) == VALUE_ATOM) {
+        if (ec->key != NULL) {
+            value_ctx_failure(ctx, &global->values, "Can't cut string in key/value pairs");
+            return;
+        }
         assert(v != VALUE_ATOM);
         int size;
         char *chars = value_get(v, &size);

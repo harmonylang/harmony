@@ -907,6 +907,14 @@ class CutOp(Op):
         else:
             return '{ "op": "Cut", "set": "%s", "key": "%s", "value": "%s" }'%(self.s[0], self.convert(self.key), self.convert(self.value))
 
+    def tladump(self):
+        if self.key == None:
+            return 'OpCut(self, "%s", %s)'%(self.s[0],
+                                        self.tlaconvert(self.value))
+        else:
+            return 'OpCut3(self, "%s", %s, %s)'%(self.s[0],
+                        self.tlaconvert(self.value), self.tlaconvert(self.key))
+
     def explain(self):
         if self.key == None:
             return "remove smallest element from %s and assign to %s"%(self.s[0], self.convert(self.value))
@@ -1914,6 +1922,8 @@ class NaryOp(Op):
         (lexeme, file, line, column) = self.op
         if lexeme == "not" and self.n == 1:
             return "Not(self)"
+        if lexeme == "IsEmpty" and self.n == 1:
+            return "IsEmpty(self)"
         if lexeme == "countLabel" and self.n == 1:
             return "CountLabel(self)"
         if lexeme == "==" and self.n == 2:
@@ -1922,6 +1932,12 @@ class NaryOp(Op):
             return "BinMinus(self)"
         if lexeme == "+" and self.n == 2:
             return "BinPlus(self)"
+        if lexeme == "*" and self.n == 2:
+            return "BinTimes(self)"
+        if lexeme == "%" and self.n == 2:
+            return "BinMod(self)"
+        if lexeme == "DictAdd" and self.n == 3:
+            return "DictAdd(self)"
         return 'Skip(self, "%s")'%self
 
     def explain(self):
@@ -6628,6 +6644,16 @@ OpPop(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+OpCut(self, s, v) ==
+    LET svar == HStr(s)
+        sval == self.vs.cvar[svar]
+        pick == CHOOSE e \\in sval: TRUE
+        next == [self EXCEPT !.pc = @ + 1, !.vs = UpdateVars(UpdateVars(@, v, pick), svar, sval \\ pick) ]
+    IN
+        /\\ s.ctype = "set"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 OpStoreVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
     IN
@@ -6689,7 +6715,16 @@ OpSequential(self) ==
 Not(self) ==
     LET v    == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1,
-            !.stack = << [ ctype |-> "bool", cval |-> ~v.cval ] >> \\o Tail(@)]
+            !.stack = << HBool(~v.cval) >> \\o Tail(@)]
+    IN
+        /\\ v.ctype = "bool"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+IsEmpty(self) ==
+    LET v    == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1,
+            !.stack = << HBool(v = HSet({})) >> \\o Tail(@)]
     IN
         /\\ v.ctype = "bool"
         /\\ UpdateContext(self, next)
@@ -6737,6 +6772,40 @@ BinPlus(self) ==
     IN
         /\\ e1.ctype = "int"
         /\\ e2.ctype = "int"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+BinTimes(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << HInt(e2.cval * e1.cval) >> \\o Tail(Tail(@))]
+    IN
+        /\\ e1.ctype = "int"
+        /\\ e2.ctype = "int"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+BinMod(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << HInt(e2.cval % e1.cval) >> \\o Tail(Tail(@))]
+    IN
+        /\\ e1.ctype = "int"
+        /\\ e2.ctype = "int"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+DictAdd(self) ==
+    LET dict  == self.stack[1]
+        key   == self.stack[2]
+        value == self.stack[3]
+        newd  == HDict(UpdateMap(dict.cval, key, value))
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << HDict(newd) >> \\o Tail(Tail(@))]
+    IN
+        /\\ dict.ctype = "dict"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
