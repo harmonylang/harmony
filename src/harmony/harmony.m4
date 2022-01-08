@@ -821,6 +821,7 @@ class Op:
         else:
             assert isinstance(x, list)
             result = '[ vtype |-> "tup", vlist |-> << '
+            result += ",".join([self.tlaconvert(v) for v in x])
             return result + " >> ]"
 
     # Return the set of local variables in x
@@ -6515,11 +6516,16 @@ SharedInvariant == shared.ctype = "dict"
 
 TypeInvariant == SharedInvariant
 
-Str(x)    == [ ctype |-> "str", cval |-> x ]
+HStr(x)     == [ ctype |-> "str",     cval |-> x ]
+HInt(x)     == [ ctype |-> "int",     cval |-> x ]
+HBool(x)    == [ ctype |-> "bool",    cval |-> x ]
+HSet(x)     == [ ctype |-> "set",     cval |-> x ]
+HDict(x)    == [ ctype |-> "dict",    cval |-> x ]
+HAddress(x) == [ ctype |-> "address", cval |-> x ]
 EmptyFunc == [x \in {} |-> TRUE]
-EmptyDict == [ ctype |-> "dict", cval |-> EmptyFunc ]
-None      == [ ctype |-> "address", cval |-> <<>> ]
-Result    == Str("result")
+EmptyDict == HDict(EmptyFunc)
+None      == HAddress(<<>>)
+Result    == HStr("result")
 
 Context(pc, atomic, vs, stack) ==
     [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
@@ -6528,7 +6534,7 @@ UpdateMap(map, key, value) ==
     [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
 
 UpdateDict(dict, key, value) ==
-    [ ctype |-> "dict", cval |-> UpdateMap(dict.cval, key, value) ]
+    HDict(UpdateMap(dict.cval, key, value))
 
 InitContext(pc, atomic, arg) ==
     Context(pc, atomic, EmptyDict, << arg, "process" >>)
@@ -6543,16 +6549,15 @@ UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
-AddrTail(addr) == [ ctype |-> "address", cval |-> Tail(addr.cval) ]
+AddrTail(addr) == HAddress(Tail(addr.cval))
 
 RECURSIVE UpdateDictAddr(_, _, _)
-
 UpdateDictAddr(dict, addr, value) ==
     IF addr.cval = <<>>
     THEN
         value
     ELSE
-        [ ctype |-> "dict", cval |->
+        HDict(
             [ x \\in (DOMAIN dict.cval) \\union {Head(addr.cval)} |->
                 IF x = Head(addr.cval)
                 THEN
@@ -6560,10 +6565,9 @@ UpdateDictAddr(dict, addr, value) ==
                 ELSE
                     dict.cval[x]
             ]
-        ]
+        )
 
 RECURSIVE LoadDictAddr(_, _)
-
 LoadDictAddr(dict, addr) ==
     IF addr.cval = <<>>
     THEN
@@ -6577,12 +6581,31 @@ Skip(self, what) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-UpdateVars(vs, args, value) ==
+Flatten(seq) ==
+    LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
+    IN F[Len(seq)]
+
+\\* Create a sequence of (variable, value) records
+RECURSIVE CollectVars(_, _)
+CollectVars(args, value) ==
     IF args.vtype = "var"
-    THEN
-        UpdateDict(vs, Str(args.vname), value)
+    THEN << [ var |-> HStr(args.vname), val |-> value ] >>
     ELSE
-        vs          \\* TODO
+        Flatten([ i \\in DOMAIN args.vlist |->
+            CollectVars(args.vlist[i], value.cval[HInt(i-1)])
+        ])
+
+RECURSIVE Fold(_, _, _)
+Fold(dict, cv, index) ==
+    IF index = 0
+    THEN dict
+    ELSE
+        LET elt == cv[index]
+        IN Fold(UpdateDict(dict, elt.var, elt.val), cv, index - 1)
+
+UpdateVars(vs, args, value) ==
+    LET cv == CollectVars(args, value)
+    IN Fold(vs, cv, Len(cv))
 
 OpFrame(self, name, args) ==
     LET next == [
@@ -6601,7 +6624,7 @@ OpStoreVar(self, v) ==
         /\\ UNCHANGED shared
 
 OpLoadVar(self, v) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[Str(v.vname)] >> \\o @ ]
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[HStr(v.vname)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6669,7 +6692,7 @@ CountLabel(self) ==
         fbag  == [ c \\in fdom |-> ctxbag[c] ]
         cnt   == BagCardinality(fbag)
         next  == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << [ ctype |-> "int", cval |-> cnt ] >> \\o Tail(@)]
+                    !.stack = << HInt(cnt) >> \\o Tail(@)]
     IN
         /\\ label.ctype = "pc"
         /\\ UpdateContext(self, next)
@@ -6679,7 +6702,7 @@ Equals(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << [ ctype |-> "bool", cval |-> e1 = e2 ] >> \\o Tail(Tail(@))]
+            !.stack = << HBool(e1 = e2) >> \\o Tail(Tail(@))]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6688,7 +6711,7 @@ BinMinus(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << [ ctype |-> "int", cval |-> e2.cval - e1.cval ] >> \\o Tail(Tail(@))]
+            !.stack = << HInt(e2.cval - e1.cval) >> \\o Tail(Tail(@))]
     IN
         /\\ e1.ctype = "int"
         /\\ e2.ctype = "int"
@@ -6699,7 +6722,7 @@ OpAddress(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << [ ctype |-> "address", cval |-> e2.cval \\o <<e1>> ] >> \\o Tail(Tail(@))]
+            !.stack = << HAddress(e2.cval \\o <<e1>>) >> \\o Tail(Tail(@))]
     IN
         /\\ e2.ctype = "address"
         /\\ UpdateContext(self, next)
@@ -6730,7 +6753,7 @@ OpApply(self) ==
         [] method.ctype = "str" ->
             LET char == SubSeq(method.cval, arg.cval+1, arg.cval+1)
                 next == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << Str(char) >> \\o Tail(Tail(@))]
+                    !.stack = << HStr(char) >> \\o Tail(Tail(@))]
             IN
                 /\\ arg.ctype = "int"
                 /\\ UpdateContext(self, next)
@@ -6741,7 +6764,7 @@ OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDict(shared, Str(v), Head(self.stack))
+        /\\ shared' = UpdateDict(shared, HStr(v), Head(self.stack))
 
 OpStoreInd(self) ==
     LET
@@ -6763,7 +6786,7 @@ OpLoadInd(self) ==
 
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
-                        !.stack = << shared.cval[Str(v)] >> \\o @ ]
+                        !.stack = << shared.cval[HStr(v)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -6809,7 +6832,7 @@ OpSpawn(self) ==
         arg   == self.stack[2]
         entry == self.stack[3]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
-        newc  == InitContext(entry.cval, 0, << arg, "process" >>)
+        newc  == InitContext(entry.cval, 0, arg)
     IN
         /\\ entry.ctype = "pc"
         /\\ IF self.atomic > 0
