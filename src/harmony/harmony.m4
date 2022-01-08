@@ -6668,17 +6668,32 @@ OpLoadVar(self, v) ==
         /\\ UNCHANGED shared
 
 OpAtomicInc(self) ==
-    LET apc  == IF self.atomic = 0 THEN self.pc ELSE self.apc
-        next == [self EXCEPT !.pc = @ + 1, !.apc = apc, !.atomic = @ + 1]
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+    IF self.atomic = 0
+    THEN
+        LET next == [self EXCEPT !.pc = @ + 1, !.apc = self.pc, !.atomic = 1]
+        IN
+            /\\ active' = { next }
+            /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
+            /\\ UNCHANGED shared
+    ELSE
+        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ + 1]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
 
 OpAtomicDec(self) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ - 1]
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+    IF self.atomic = 1
+    THEN
+        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = 0]
+        IN
+            /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
+            /\\ active' = DOMAIN ctxbag'
+            /\\ UNCHANGED shared
+    ELSE
+        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ - 1]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
 
 OpAssert(self, msg) ==
     LET cond == Head(self.stack)
