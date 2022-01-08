@@ -1921,21 +1921,21 @@ class NaryOp(Op):
     def tladump(self):
         (lexeme, file, line, column) = self.op
         if lexeme == "not" and self.n == 1:
-            return "Not(self)"
+            return "UnaOp(self, FunNot)"
         if lexeme == "IsEmpty" and self.n == 1:
-            return "IsEmpty(self)"
+            return "UnaOp(self, FunIsEmpty)"
         if lexeme == "countLabel" and self.n == 1:
-            return "CountLabel(self)"
+            return "UnaOp(self, FunCountLabel)"
         if lexeme == "==" and self.n == 2:
-            return "Equals(self)"
+            return "BinOp(self, FunEquals)"
         if lexeme == "-" and self.n == 2:
-            return "BinMinus(self)"
+            return "BinOp(self, FunSubtract)"
         if lexeme == "+" and self.n == 2:
-            return "BinPlus(self)"
+            return "BinOp(self, FunAdd)"
         if lexeme == "*" and self.n == 2:
-            return "BinTimes(self)"
+            return "BinOp(self, FunMult)"
         if lexeme == "%" and self.n == 2:
-            return "BinMod(self)"
+            return "BinOp(self, FunMod)"
         if lexeme == "DictAdd" and self.n == 3:
             return "DictAdd(self)"
         return 'Skip(self, "%s")'%self
@@ -6731,19 +6731,6 @@ UnaOp(self, op(_)) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-OpNot(v) == HBool(~v.cval)
-Not(self) == UnaOp(self, OpNot)
-OpIsEmpty(s) == HBool(s = HSet({}))
-IsEmpty(self) == UnaOp(self, OpIsEmpty)
-
-Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
-OpCountLabel(label) ==
-    LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
-        fbag == [ c \\in fdom |-> ctxbag[c] ]
-    IN
-        HInt(BagCardinality(fbag))
-CountLabel(self) == UnaOp(self, OpCountLabel)
-
 BinOp(self, op(_,_)) ==
     LET e1   == self.stack[1]
         e2   == self.stack[2]
@@ -6753,14 +6740,19 @@ BinOp(self, op(_,_)) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-OpEquals(x, y) == HBool(x = y)
-Equals(self) == BinOp(self, OpEquals)
-OpPlus(x, y) == HInt(x.cval + y.cval)
-BinPlus(self) == BinOp(self, OpPlus)
-OpMinus(x, y) == HInt(x.cval - y.cval)
-BinMinus(self) == BinOp(self, OpMinus)
-OpMod(x, y) == HInt(x.cval % y.cval)
-BinMod(self) == BinOp(self, OpMod)
+Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
+FunCountLabel(label) ==
+    LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
+        fbag == [ c \\in fdom |-> ctxbag[c] ]
+    IN
+        HInt(BagCardinality(fbag))
+
+FunNot(v)         == HBool(~v.cval)
+FunIsEmpty(s)     == HBool(s = HSet({}))
+FunEquals(x, y)   == HBool(x = y)
+FunAdd(x, y)      == HInt(x.cval + y.cval)
+FunSubtract(x, y) == HInt(x.cval - y.cval)
+FunMod(x, y)      == HInt(x.cval % y.cval)
 
 DictTimes(dict, n) ==
     LET odom == { x.cval : x \\in DOMAIN dict.cval }
@@ -6770,7 +6762,7 @@ DictTimes(dict, n) ==
     IN
         HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
 
-OpTimes(e1, e2) ==
+FunMult(e1, e2) ==
     CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
         HInt(e2.cval * e1.cval)
     [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
@@ -6778,8 +6770,6 @@ OpTimes(e1, e2) ==
     [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
         DictTimes(e1, e2)
     [] OTHER -> FALSE
-
-BinTimes(self) == BinOp(self, OpTimes)
 
 DictAdd(self) ==
     LET value == self.stack[1]
