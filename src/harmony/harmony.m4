@@ -1609,6 +1609,9 @@ class PopOp(Op):
     def jdump(self):
         return '{ "op": "Pop" }'
 
+    def tladump(self):
+        return 'OpPop(self)'
+
     def explain(self):
         return "discard the top value on the stack"
 
@@ -1917,6 +1920,8 @@ class NaryOp(Op):
             return "Equals(self)"
         if lexeme == "-" and self.n == 2:
             return "BinMinus(self)"
+        if lexeme == "+" and self.n == 2:
+            return "BinPlus(self)"
         return 'Skip(self, "%s")'%self
 
     def explain(self):
@@ -6617,6 +6622,12 @@ OpFrame(self, name, args) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+OpPop(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 OpStoreVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
     IN
@@ -6712,6 +6723,17 @@ BinMinus(self) ==
         e2    == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1,
             !.stack = << HInt(e2.cval - e1.cval) >> \\o Tail(Tail(@))]
+    IN
+        /\\ e1.ctype = "int"
+        /\\ e2.ctype = "int"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+BinPlus(self) ==
+    LET e1    == self.stack[1]
+        e2    == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << HInt(e2.cval + e1.cval) >> \\o Tail(Tail(@))]
     IN
         /\\ e1.ctype = "int"
         /\\ e2.ctype = "int"
