@@ -6722,62 +6722,39 @@ OpChoose(self) ==
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
 
-OpSequential(self) ==
-    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+OpSequential(self) == OpPop(self)
+
+UnaOp(self, op(_)) ==
+    LET e    == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = << op(e) >> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-Not(self) ==
-    LET v    == Head(self.stack)
-        next == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HBool(~v.cval) >> \\o Tail(@)]
-    IN
-        /\\ v.ctype = "bool"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
-
-IsEmpty(self) ==
-    LET v    == Head(self.stack)
-        next == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HBool(v = HSet({})) >> \\o Tail(@)]
-    IN
-        /\\ v.ctype = "set"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+OpNot(v) == HBool(~v.cval)
+Not(self) == UnaOp(self, OpNot)
+OpIsEmpty(s) == HBool(s = HSet({}))
+IsEmpty(self) == UnaOp(self, OpIsEmpty)
 
 Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
-
-CountLabel(self) ==
-    LET label == Head(self.stack)
-        fdom  == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
-        fbag  == [ c \\in fdom |-> ctxbag[c] ]
-        cnt   == BagCardinality(fbag)
-        next  == [self EXCEPT !.pc = @ + 1,
-                    !.stack = << HInt(cnt) >> \\o Tail(@)]
+OpCountLabel(label) ==
+    LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
+        fbag == [ c \\in fdom |-> ctxbag[c] ]
     IN
-        /\\ label.ctype = "pc"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
-
-Equals(self) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HBool(e1 = e2) >> \\o Tail(Tail(@))]
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+        HInt(BagCardinality(fbag))
+CountLabel(self) == UnaOp(self, OpCountLabel)
 
 BinOp(self, op(_,_)) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
+    LET e1   == self.stack[1]
+        e2   == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1,
             !.stack = << op(e2, e1) >> \\o Tail(Tail(@))]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+OpEquals(x, y) == HBool(x = y)
+Equals(self) == BinOp(self, OpEquals)
 OpPlus(x, y) == HInt(x.cval + y.cval)
 BinPlus(self) == BinOp(self, OpPlus)
 OpMinus(x, y) == HInt(x.cval - y.cval)
