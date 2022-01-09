@@ -1177,6 +1177,7 @@ class LoadOp(Op):
         if self.name == None:
             return "OpLoadInd(self)"
         else:
+            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
             return 'OpLoad(self, "%s")'%lexeme
 
@@ -1232,6 +1233,7 @@ class StoreOp(Op):
         if self.name == None:
             return "OpStoreInd(self)"
         else:
+            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
             return 'OpStore(self, "%s")'%lexeme
 
@@ -1289,8 +1291,17 @@ class DelOp(Op):
         if self.name == None:
             return '{ "op": "Del" }'
         else:
+            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
             return '{ "op": "Del", "value": "%s" }'%lexeme
+
+    def tladump(self):
+        if self.name == None:
+            return "OpDelInd(self)"
+        else:
+            # TODO.  Should deal with prefix
+            (lexeme, file, line, column) = self.name
+            return 'OpDel(self, "%s")'%lexeme
 
     def explain(self):
         if self.name == None:
@@ -1843,6 +1854,9 @@ class ReadonlyIncOp(Op):
     def explain(self):
         return "increment readonly counter of context; thread cannot mutate shared variables if > 0"
 
+    def tladump(self):
+        return 'OpReadonlyInc(self)'
+
     def eval(self, state, context):
         context.readonly += 1
         context.pc += 1
@@ -1853,6 +1867,9 @@ class ReadonlyDecOp(Op):
 
     def jdump(self):
         return '{ "op": "ReadonlyDec" }'
+
+    def tladump(self):
+        return 'OpReadonlyDec(self)'
 
     def explain(self):
         return "decrement readonly counter of context"
@@ -1873,13 +1890,16 @@ class InvariantOp(Op):
     def jdump(self):
         return '{ "op": "Invariant", "end": "%d" }'%self.end
 
+    def tladump(self):
+        return 'OpInvariant(self, %d)'%self.end
+
     def explain(self):
         return "test invariant"
 
     def eval(self, state, context):
-        assert self.cnt > 0
+        assert self.end > 0
         state.invariants |= {context.pc}
-        context.pc += (self.cnt + 1)
+        context.pc += (self.end + 1)
 
     def substitute(self, map):
         if isinstance(self.end, LabelValue):
@@ -1961,6 +1981,8 @@ class NaryOp(Op):
             return "OpUna(self, FunMinus)"
         if lexeme == "not" and self.n == 1:
             return "OpUna(self, FunNot)"
+        if lexeme == "str" and self.n == 1:
+            return "OpUna(self, FunStr)"
         if lexeme == "len" and self.n == 1:
             return "OpUna(self, FunLen)"
         if lexeme == "min" and self.n == 1:
@@ -6842,7 +6864,7 @@ RemoveDictAddr(dict, addr) ==
         THEN
             [ x \\in (DOMAIN dict.cval) \\ {AddrHead(addr)} |-> dict.cval[x] ]
         ELSE
-            [ x \\in (DOMAIN dict.cval) \\union {AddrHead(addr)} |->
+            [ x \\in (DOMAIN dict.cval) |->
                 IF x = AddrHead(addr)
                 THEN
                       RemoveDictAddr(dict.cval[x], AddrTail(addr))
@@ -6921,6 +6943,11 @@ OpContinue(self) ==
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
     /\\ UNCHANGED shared
 
+\* Currently not supporting the read-only counter.
+\* TODO.  Maybe some time in the future...
+OpReadonlyInc(self) == OpContinue(self)
+OpReadonlyDec(self) == OpContinue(self)
+
 \* This is used temporarily for Harmony VM instructions that have not yet
 \* been implemented
 Skip(self, what) == OpContinue(self)
@@ -6980,6 +7007,20 @@ OpCut(self, s, v) ==
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
+
+\* Delete the given shared variable
+OpDel(self, v) ==
+    /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
+    /\\ shared' = HDict(
+        [ x \in (DOMAIN shared.cval) \\ { HStr(v.vname) } |-> shared.cval[x] ])
+
+\* Delete the shared variable whose address is pushed on the stack
+OpDelInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ shared' = RemoveDictAddr(shared, addr)
 
 \* Delete the given local variable
 OpDelVar(self, v) ==
@@ -7103,6 +7144,12 @@ OpChoose(self) ==
 \* just be considered a no-op.
 OpSequential(self) == OpPop(self)
 
+\* "invariant" is essentially a no-op.  Just skip over the code for the
+\* invariant.
+OpInvariant(self, end) ==
+    /\\ UpdateContext(self, [self EXCEPT !.pc = end + 1])
+    /\\ UNCHANGED shared
+
 \* This is the general form of unary operators that replace the top of the
 \* stack with a function computed over that value
 OpUna(self, op(_)) ==
@@ -7183,6 +7230,60 @@ FunCountLabel(label) ==
     IN
         HInt(BagCardinality(fbag))
 
+\* Convert the given integer into a string
+RECURSIVE Int2Str(_)
+Int2Str(x) ==
+    IF x < 10
+    THEN
+        SubSeq("0123456789", x+1, x+1)
+    ELSE
+        LET rem == x % 10
+        IN Int2Str(x \\div 10) \o SubSeq("0123456789", rem+1, rem+1)
+
+\* Bunch of value to string conversion functions coming up
+RECURSIVE Val2Str(_)
+RECURSIVE Seq2Str(_)
+RECURSIVE Addr2Str(_)
+RECURSIVE Dict2StrHelp(_,_)
+
+\* Convert a non-empty sequence of values to a string separated by commas
+Seq2Str(x) ==
+    IF Len(x) = 1
+    THEN Val2Str(Head(x))
+    ELSE Val2Str(Head(x)) \o ", " \o Seq2Str(Tail(x))
+
+\* Convert a sequence of values of an address
+Addr2Str(x) ==
+    IF x = <<>>
+    THEN ""
+    ELSE "[" \o Val2Str(Head(x)) \o "]" \o Addr2Str(Tail(x))
+
+\* Convert a non-empty dictionary to a string
+Dict2StrHelp(keys, dict) ==
+    LET first ==
+        LET k == Head(keys) IN Val2Str(k) \o ": " \o Val2Str(dict[k])
+    IN
+        IF Len(keys) = 1
+        THEN
+            first
+        ELSE
+            first \o ", " \o Dict2StrHelp(Tail(keys), dict)
+
+Dict2Str(x) == Dict2StrHelp(HSort(DOMAIN x), x)
+
+\* Convert Harmony value x into a string
+Val2Str(x) ==
+    CASE x.ctype = "bool"    -> IF x.cval THEN "True" ELSE "False"
+    []   x.ctype = "str"     -> "'" \o x.cval \o "'"
+    []   x.ctype = "int"     -> Int2Str(x.cval)
+    []   x.ctype = "pc"      -> "PC(" \o Int2Str(x.cval) \o ")"
+    []   x.ctype = "dict"    ->
+            IF DOMAIN x.cval = {} THEN "()" ELSE "{ " \o Dict2Str(x.cval) \o " }"
+    []   x.ctype = "set"     ->
+            IF x.cval = {} THEN "{}" ELSE "{ " \o Seq2Str(HSort(x.cval)) \o " }"
+    []   x.ctype = "address" -> "?" \o Head(x.cval).cval \o Addr2Str(Tail(x.cval))
+    [] OTHER -> "<CONVERTING " \o x.ctype \o " NOT SUPPORTED>"
+
 \* Compute the cardinality of a set of dict, or the length of a string
 FunLen(s) ==
     CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
@@ -7246,6 +7347,7 @@ FunSubtract(x, y) ==
     [] OTHER -> FALSE
 
 \* The following are self-explanatory
+FunStr(v)          == HStr(Val2Str(v))
 FunMinus(v)        == HInt(-v.cval)
 FunAbs(v)          == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
 FunNot(v)          == HBool(~v.cval)

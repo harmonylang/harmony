@@ -513,6 +513,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     value_ctx_failure(step->ctx, &global->values, "op_Cut: not a set, dict, or string");
 }
 
+// TODO: should implement "del x", not just "del".
 void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 

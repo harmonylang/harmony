@@ -8203,6 +8203,8 @@ Go & pop context and value, push value on context's stack, and add to context ba
 \hline
 IncVar <{v}> & increment thread variable <{v}> \\
 \hline
+Invariant \textit{end} & code for invariant follows.  Skip to \textit{end} + 1\\
+\hline
 Jump <{p}> & set program counter to <{p}> \\
 \hline
 JumpCond <{e p}> & pop expression and, if equal to <{e}>, set program counter to <{p}> \\
@@ -8353,8 +8355,11 @@ in a Harmony program.
 \section{Formal Specification}
 \label{ap:formal}
 
-A formal specification of the Harmony Virtual Machine is underway but
-not yet completed.
+A formal specification of the Harmony Virtual Machine is well underway but
+not yet completed.  At this time, there is no support yet for bitwise integer
+operations.
+Also, strings are limited to the printable characters minus
+double quotes, back quotes, or backslashes.
 Given a Harmony program, you can output the TLA+ specification for
 the program using the following command:
 
@@ -8364,7 +8369,7 @@ $ harmony -o program.tla program.hny
 \end{verbatim}
 \end{code}
 
-For many Harmony programs, such as Peterson's algorithm and the Dining
+For most Harmony programs, including Peterson's algorithm and the Dining
 Philosophers in this book, the result is complete enough to run through
 the TLC model checker.
 
