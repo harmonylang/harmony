@@ -6993,12 +6993,10 @@ DictConcat(x, y) ==
     IN
         [ i \in dom |-> IF i.cval < xs THEN x[i] ELSE y[HInt(i.cval - xs)] ]
 
-StrConcat(x, y) == FALSE        \* Can it be done in TLC?
-
 FunAdd(x, y) ==
     CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
     []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
-    []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(StrConcat(x.cval, y.cval))
+    []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(x.cval \o y.cval)
     [] OTHER -> FALSE
 
 FunIsEmpty(x) ==
