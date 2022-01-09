@@ -7216,6 +7216,9 @@ FunSetAdd(x, y)    == HSet(x.cval \\union {y})
 FunAddress(x, y)   == HAddress(x.cval \o <<y>>)
 FunExclusion(x, y) == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
 
+FunUnion(x, y) == HSet(x.cval \\union y.cval)
+FunIntersect(x, y) == HSet(x.cval \\intersect y.cval)
+
 FunIn(x, y) ==
     CASE y.ctype = "set"  -> HBool(x \in y.cval)
     []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
@@ -7246,13 +7249,32 @@ FunMult(e1, e2) ==
         DictTimes(e1, e2)
     [] OTHER -> FALSE
 
+\* By Harmony rules, if there are two conflicting key->value1 and key->value2
+\* mappings, the higher values wins.
+InsertMap(map, key, value) ==
+    [ x \\in (DOMAIN map) \\union {key} |->
+        IF x = key
+        THEN
+            IF x \\in DOMAIN map
+            THEN
+                IF HCmp(value, map[x]) > 0
+                THEN
+                    value
+                ELSE
+                    map[x]
+            ELSE
+                value
+        ELSE
+            map[x]
+    ]
+
 \* Pops a value, a key, and a dict, and pushes the dict updated to
-\* reflect key->value
+\* reflect key->value.
 DictAdd(self) ==
     LET value == self.stack[1]
         key   == self.stack[2]
         dict  == self.stack[3]
-        newd  == HDict(UpdateMap(dict.cval, key, value))
+        newd  == HDict(InsertMap(dict.cval, key, value))
         next  == [self EXCEPT !.pc = @ + 1,
             !.stack = << newd >> \\o Tail(Tail(Tail(@)))]
     IN
