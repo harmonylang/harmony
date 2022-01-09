@@ -1,1 +1,0 @@
-def send(m): atomically network = bag.add(network, m)
