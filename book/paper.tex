@@ -8350,6 +8350,24 @@ strings to arbitrary values.  The strings correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
+\section{Formal Specification}
+\label{ap:formal}
+
+A formal specification of the Harmony Virtual Machine is underway but
+not yet completed.
+Given a Harmony program, you can output the TLA+ specification for
+the program using the following command:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -o program.tla program.hny
+\end{verbatim}
+\end{code}
+
+For many Harmony programs, such as Peterson's algorithm and the Dining
+Philosophers in this book, the result is complete enough to run through
+the TLC model checker.
+
 \chapter{How Harmony Works}\label{ap:howitworks}
 
 This appendix gives a very brief overview of how Harmony works.

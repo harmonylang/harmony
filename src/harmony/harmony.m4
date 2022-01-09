@@ -77,6 +77,7 @@ lasttime = 0            # last time status update was printed
 imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
+tlavarcnt = 0           # to generate unique TLA+ variables
 
 m4_include(jsonstring.py)
 m4_include(brief.py)
@@ -639,9 +640,13 @@ class DictValue(Value):
         return "{ " + result + " }"
 
     def tlaval(self):
+        global tlavarcnt
+
+        tlavar = "x%d"%tlavarcnt
+        tlavarcnt += 1
         if len(self.d) == 0:
             return 'EmptyDict'
-        s = "[ x \\in {" + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
+        s = "[ %s \\in {"%tlavar + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
         # special case: all values are the same
         vals = list(self.d.values())
         if vals.count(vals[0]) == len(vals):
@@ -656,7 +661,7 @@ class DictValue(Value):
                 first = False
             else:
                 s += " [] "
-            s += "x = " + tlaValue(k) + " -> " + tlaValue(v)
+            s += "%s = "%tlavar + tlaValue(k) + " -> " + tlaValue(v)
         s += " [] OTHER -> FALSE ]"
         return 'HDict(%s)'%s
 
@@ -1926,10 +1931,16 @@ class NaryOp(Op):
             return "UnaOp(self, FunNot)"
         if lexeme == "len" and self.n == 1:
             return "UnaOp(self, FunLen)"
+        if lexeme == "keys" and self.n == 1:
+            return "UnaOp(self, FunKeys)"
         if lexeme == "IsEmpty" and self.n == 1:
             return "UnaOp(self, FunIsEmpty)"
         if lexeme == "countLabel" and self.n == 1:
             return "UnaOp(self, FunCountLabel)"
+        if lexeme == ".." and self.n == 2:
+            return "BinOp(self, FunRange)"
+        if lexeme == "SetAdd" and self.n == 2:
+            return "BinOp(self, FunSetAdd)"
         if lexeme == "==" and self.n == 2:
             return "BinOp(self, FunEquals)"
         if lexeme == "!=" and self.n == 2:
@@ -6958,6 +6969,8 @@ FunLen(s) ==
 FunMinus(v)        == HInt(-v.cval)
 FunNot(v)          == HBool(~v.cval)
 FunIsEmpty(s)      == HBool(s = HSet({}))
+FunKeys(x)         == HSet(DOMAIN x.cval)
+FunRange(x, y)     == HSet(x.cval .. y.cval)
 FunEquals(x, y)    == HBool(x = y)
 FunNotEquals(x, y) == HBool(x /= y)
 FunLT(x, y)        == HBool(HCmp(x, y) < 0)
@@ -6968,6 +6981,7 @@ FunAdd(x, y)       == HInt(x.cval + y.cval)
 FunSubtract(x, y)  == HInt(x.cval - y.cval)
 FunDiv(x, y)       == HInt(x.cval \\div y.cval)
 FunMod(x, y)       == HInt(x.cval % y.cval)
+FunSetAdd(x, y)    == HSet(x.cval \\union {y})
 
 DictTimes(dict, n) ==
     LET odom == { x.cval : x \\in DOMAIN dict.cval }
