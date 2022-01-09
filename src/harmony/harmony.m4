@@ -1025,6 +1025,9 @@ class GoOp(Op):
     def jdump(self):
         return '{ "op": "Go" }'
 
+    def tladump(self):
+        return 'OpGo(self)'
+
     def explain(self):
         return "pops a context and a value, restores the corresponding thread, and pushes the value on its stack"
 
@@ -1333,6 +1336,13 @@ class StopOp(Op):
             return '{ "op": "Stop", "value": %s }'%lexeme
         else:
             return '{ "op": "Stop" }'
+
+    def tladump(self):
+        if self.name == None:
+            return "OpStopInd(self)"
+        else:
+            (lexeme, file, line, column) = self.name
+            return "OpStop(self, %s)"%lexeme
 
     def explain(self):
         if self.name == None:
@@ -4345,6 +4355,8 @@ class GoAST(AST):
     def __repr__(self):
         return "Go(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
 
+    # TODO.  Seems like context and argument are not evaluated in left to
+    #        right order
     def compile(self, scope, code):
         if self.atomically:
             code.append(AtomicIncOp(True))
@@ -6807,6 +6819,12 @@ UpdateContext(self, next) ==
     /\\ active' = (active \\ { self }) \\union { next }
     /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
 
+\* Remove context from the active set and context bag.  Make all contexts
+\* in the context bag active
+RemoveContext(self) ==
+    /\\ ctxbag' = ctxbag (-) SetToBag({self})
+    /\\ active' = BagToSet(ctxbag')
+
 \* A Harmony address is essentially a sequence of Harmony values
 \* These compute the head (the first element) and the remaining tail
 AddrHead(addr) == Head(addr.cval)
@@ -7408,6 +7426,17 @@ OpLoad(self, v) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Store the context at the pushed address and remove it from the
+\* context bag and active set.  Make all contexts in the context bag
+\* active
+OpStopInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ self.atomic > 0
+        /\\ RemoveContext(self)
+        /\\ shared' = UpdateDictAddr(shared, addr, HContext(next))
+
 \* What Return should do depends on whether the methods was spawned
 \* or called as an ordinary method.  To indicate this, Spawn pushes the
 \* string "process" on the stack, while Apply pushes the string "normal"
@@ -7465,6 +7494,20 @@ OpSpawn(self) ==
         /\\ IF self.atomic > 0
            THEN active' = (active \\ { self }) \\union { next }
            ELSE active' = (active \\ { self }) \\union { next, newc }
+        /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
+        /\\ UNCHANGED shared
+
+\* Restore a context that is pushed on the stack.  Also push the argument
+\* onto the restored context's stack
+\* TODO.  Currently arg and ctx are in the wrong order
+OpGo(self) ==
+    LET ctx  == self.stack[1]
+        arg  == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+        newc == [ctx.cval EXCEPT !.stack = << arg >> \o @]
+    IN
+        /\\ self.atomic > 0
+        /\\ active' = (active \\ { self }) \\union { next }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
