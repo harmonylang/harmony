@@ -1387,6 +1387,7 @@ class ContinueOp(Op):
     def eval(self, state, context):
         context.pc += 1
 
+# TODO.  Address should be a 1-ary operator
 class AddressOp(Op):
     def __repr__(self):
         return "Address"
