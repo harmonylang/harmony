@@ -822,12 +822,12 @@ class Op:
 
     def tlaconvert(self, x):
         if isinstance(x, tuple):
-            return '[ vtype |-> "var", vname |-> "%s" ]'%x[0]
+            return 'VName("%s")'%x[0]
         else:
             assert isinstance(x, list)
-            result = '[ vtype |-> "tup", vlist |-> << '
+            result = 'VList(<< '
             result += ",".join([self.tlaconvert(v) for v in x])
-            return result + " >> ]"
+            return result + " >>)"
 
     # Return the set of local variables in x
     # TODO.  Use reduce()
@@ -963,6 +963,9 @@ class SplitOp(Op):
     def jdump(self):
         return '{ "op": "Split", "count": "%d" }'%self.n
 
+    def tladump(self):
+        return 'OpSplit(self, %d)'%self.n
+
     def explain(self):
         return "splits a tuple value into its elements"
 
@@ -985,6 +988,9 @@ class MoveOp(Op):
     def jdump(self):
         return '{ "op": "Move", "offset": "%d" }'%self.offset
 
+    def tladump(self):
+        return 'OpMove(self, %d)'%self.offset
+
     def explain(self):
         return "move stack element to top"
 
@@ -999,6 +1005,9 @@ class DupOp(Op):
 
     def jdump(self):
         return '{ "op": "Dup" }'
+
+    def tladump(self):
+        return 'OpDup(self)'
 
     def explain(self):
         return "push a copy of the top value on the stack"
@@ -1387,6 +1396,9 @@ class ContinueOp(Op):
     def jdump(self):
         return '{ "op": "Continue" }'
 
+    def tladump(self):
+        return 'OpContinue(self)'
+
     def eval(self, state, context):
         context.pc += 1
 
@@ -1399,7 +1411,7 @@ class AddressOp(Op):
         return '{ "op": "Address" }'
 
     def tladump(self):
-        return "OpAddress(self)"
+        return "OpBin(self, FunAddress)"
 
     def explain(self):
         return "combine the top two values on the stack into an address and push the result"
@@ -1936,43 +1948,63 @@ class NaryOp(Op):
     def tladump(self):
         (lexeme, file, line, column) = self.op
         if lexeme == "-" and self.n == 1:
-            return "UnaOp(self, FunMinus)"
+            return "OpUna(self, FunMinus)"
         if lexeme == "not" and self.n == 1:
-            return "UnaOp(self, FunNot)"
+            return "OpUna(self, FunNot)"
         if lexeme == "len" and self.n == 1:
-            return "UnaOp(self, FunLen)"
+            return "OpUna(self, FunLen)"
+        if lexeme == "min" and self.n == 1:
+            return "OpUna(self, FunMin)"
+        if lexeme == "max" and self.n == 1:
+            return "OpUna(self, FunMax)"
+        if lexeme == "abs" and self.n == 1:
+            return "OpUna(self, FunAbs)"
+        if lexeme == "any" and self.n == 1:
+            return "OpUna(self, FunAny)"
+        if lexeme == "all" and self.n == 1:
+            return "OpUna(self, FunAll)"
         if lexeme == "keys" and self.n == 1:
-            return "UnaOp(self, FunKeys)"
+            return "OpUna(self, FunKeys)"
         if lexeme == "IsEmpty" and self.n == 1:
-            return "UnaOp(self, FunIsEmpty)"
+            return "OpUna(self, FunIsEmpty)"
         if lexeme == "countLabel" and self.n == 1:
-            return "UnaOp(self, FunCountLabel)"
+            return "OpUna(self, FunCountLabel)"
         if lexeme == ".." and self.n == 2:
-            return "BinOp(self, FunRange)"
+            return "OpBin(self, FunRange)"
         if lexeme == "SetAdd" and self.n == 2:
-            return "BinOp(self, FunSetAdd)"
+            return "OpBin(self, FunSetAdd)"
+        if lexeme == "in" and self.n == 2:
+            return "OpBin(self, FunIn)"
         if lexeme == "==" and self.n == 2:
-            return "BinOp(self, FunEquals)"
+            return "OpBin(self, FunEquals)"
         if lexeme == "!=" and self.n == 2:
-            return "BinOp(self, FunNotEquals)"
+            return "OpBin(self, FunNotEquals)"
         if lexeme == "<" and self.n == 2:
-            return "BinOp(self, FunLT)"
+            return "OpBin(self, FunLT)"
         if lexeme == "<=" and self.n == 2:
-            return "BinOp(self, FunLE)"
+            return "OpBin(self, FunLE)"
         if lexeme == ">" and self.n == 2:
-            return "BinOp(self, FunGT)"
+            return "OpBin(self, FunGT)"
         if lexeme == ">=" and self.n == 2:
-            return "BinOp(self, FunGE)"
+            return "OpBin(self, FunGE)"
         if lexeme == "-" and self.n == 2:
-            return "BinOp(self, FunSubtract)"
-        if lexeme == "+" and self.n == 2:
-            return "BinOp(self, FunAdd)"
-        if lexeme == "*" and self.n == 2:
-            return "BinOp(self, FunMult)"
-        if lexeme == "/" and self.n == 2:
-            return "BinOp(self, FunDiv)"
-        if lexeme == "%" and self.n == 2:
-            return "BinOp(self, FunMod)"
+            return "OpBin(self, FunSubtract)"
+        if lexeme == "+":
+            return "OpNary(self, FunAdd, %d)"%self.n
+        if lexeme == "*":
+            return "OpNary(self, FunMult, %d)"%self.n
+        if lexeme == "|":
+            return "OpNary(self, FunUnion, %d)"%self.n
+        if lexeme == "&":
+            return "OpNary(self, FunIntersect, %d)"%self.n
+        if lexeme == "^":
+            return "OpNary(self, FunExclusion, %d)"%self.n
+        if lexeme in { "/", "//" } and self.n == 2:
+            return "OpBin(self, FunDiv)"
+        if lexeme in { "%", "mod" } and self.n == 2:
+            return "OpBin(self, FunMod)"
+        if lexeme == "**" and self.n == 2:
+            return "OpBin(self, FunPower)"
         if lexeme == "DictAdd" and self.n == 3:
             return "DictAdd(self)"
         return 'Skip(self, "%s")'%self
@@ -6721,8 +6753,9 @@ HCmp(x, y) ==
         ELSE
             HRank(x) - HRank(y)
 
-\* The minimum Harmony value in a set
+\* The minimum and maximum Harmony value in a set
 HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) <= 0
+HMax(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
 
 \* Sort a set of Harmony values into a sequence
 HSort(s) ==
@@ -6731,6 +6764,11 @@ HSort(s) ==
         <<>>
     ELSE
         LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
+
+\* This is to represent "variable name hierarchies" used in expressions
+\* such as (x, (y, z)) = (1, (2, 3))
+VName(name) == [ vtype |-> "var", vname |-> name ]
+VList(list) == [ vtype |-> "tup", vlist |-> list ]
 
 \* Representation of a context (the state of a thread).  It includes
 \* the following fields:
@@ -6773,14 +6811,6 @@ UpdateContext(self, next) ==
 \* These compute the head (the first element) and the remaining tail
 AddrHead(addr) == Head(addr.cval)
 AddrTail(addr) == HAddress(Tail(addr.cval))
-
-\* This is used temporarily for Harmony VM instructions that have not yet
-\* been implemented
-Skip(self, what) ==
-    LET next == [self EXCEPT !.pc = @ + 1]
-    IN
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
 
 \* This is to implement !addr = value, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
@@ -6846,6 +6876,15 @@ Fold(dict, cv, index) ==
 UpdateVars(vs, args, value) ==
     LET cv == CollectVars(args, value)
     IN Fold(vs, cv, Len(cv))
+
+\* A no-op
+OpContinue(self) ==
+    /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
+    /\\ UNCHANGED shared
+
+\* This is used temporarily for Harmony VM instructions that have not yet
+\* been implemented
+Skip(self, what) == OpContinue(self)
 
 \* First instruction of every method.  Saves the current variables on the stack,
 \* Assigns the top of the stack to args (see UpdateVars) and initializes variable
@@ -6966,7 +7005,7 @@ OpAtomicDec(self) ==
             /\\ UpdateContext(self, next)
             /\\ UNCHANGED shared
 
-\* Pop the top of stack and check if it is  True.  If not, stop and print the
+\* Pop the top of stack and check if it is True.  If not, stop and print the
 \* message.
 OpAssert(self, msg) ==
     LET cond == Head(self.stack)
@@ -6974,6 +7013,18 @@ OpAssert(self, msg) ==
     IN
         /\\ cond.ctype = "bool"
         /\\ Assert(cond.cval, msg)
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* The top of the stack contains an expression to be printed along with the
+\* message if the next element on the stack is FALSE.
+OpAssert2(self, msg) ==
+    LET data == self.stack[1]
+        cond == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+    IN
+        /\\ cond.ctype = "bool"
+        /\\ Assert(cond.cval, << msg, data >>)
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7006,19 +7057,67 @@ OpSequential(self) == OpPop(self)
 
 \* This is the general form of unary operators that replace the top of the
 \* stack with a function computed over that value
-UnaOp(self, op(_)) ==
+OpUna(self, op(_)) ==
     LET e    == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = << op(e) >> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* Similar to UnaOp but replaces two values on the stack with a single one.
-BinOp(self, op(_,_)) ==
+\* Similar to OpUna but replaces two values on the stack with a single one.
+OpBin(self, op(_,_)) ==
     LET e1   == self.stack[1]
         e2   == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1,
             !.stack = << op(e2, e1) >> \\o Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Apply binary operation op to first and the top of the stack n times
+RECURSIVE StackFold(_,_,_,_)
+StackFold(first, stack, op(_,_), n) ==
+    IF n = 0
+    THEN
+        <<first>> \o stack
+    ELSE
+        StackFold(op(first, Head(stack)), Tail(stack), op, n - 1)
+
+\* Like OpBin, but perform for top n elements of the stack
+OpNary(self, op(_,_), n) ==
+    LET e1   == Head(self.stack)
+        ns   == StackFold(e1, Tail(self.stack), op, n - 1)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = ns ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Turn a Harmony list/tuple into a (reversed) sequence
+List2Seq(list) ==
+    LET n == Cardinality(DOMAIN list)
+    IN [ i \in 1..n |-> list[HInt(n - i)] ]
+
+\* Pop a tuple of the stack and push each of its n components
+OpSplit(self, n) ==
+    LET ns   == List2Seq(Head(self.stack).cval) \o Tail(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = ns ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Move the stack element at position offset to the top
+OpMove(self, offset) ==
+    LET part1 == SubSeq(self.stack, 1, offset - 1)
+        part2 == SubSeq(self.stack, offset, offset)
+        part3 == SubSeq(self.stack, offset + 1, Len(self.stack))
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = part2 \o part1 \o part3 ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Duplicate the top of the stack
+OpDup(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<Head(@)>> \o @]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -7065,8 +7164,42 @@ FunIsEmpty(x) ==
     []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
     [] OTHER -> FALSE
 
+\* Get the range of a dict (i.e., the values, not the keys)
+Range(dict) == { dict[x] : x \in DOMAIN dict }
+
+\* Get the minimum of a set or dict
+FunMin(x) ==
+    CASE x.ctype = "set"  -> HMin(x.cval)
+    []   x.ctype = "dict" -> HMin(Range(x.cval))
+    [] OTHER -> FALSE
+
+\* Get the maximum of a set or dict
+FunMax(x) ==
+    CASE x.ctype = "set"  -> HMax(x.cval)
+    []   x.ctype = "dict" -> HMax(Range(x.cval))
+    [] OTHER -> FALSE
+
+\* See if any element in the set or dict is true
+FunAny(x) ==
+    CASE x.ctype = "set"  -> HBool(HBool(TRUE) \in x.cval)
+    []   x.ctype = "dict" -> HBool(HBool(TRUE) \in Range(x.cval))
+    [] OTHER -> FALSE
+
+\* See if all elements in the set of dict are true
+FunAll(x) ==
+    CASE x.ctype = "set"  -> HBool(x.cval = { HBool(TRUE) })
+    []   x.ctype = "dict" -> HBool(HBool(FALSE) \\notin Range(x.cval))
+    [] OTHER -> FALSE
+
+\* Can be applied to integers or sets
+FunSubtract(x, y) ==
+    CASE x.ctype = "int" /\\ y.ctype = "int" -> HInt(x.cval - y.cval)
+    []   x.ctype = "set" /\\ y.ctype = "set" -> HSet(x.cval \\ y.cval)
+    [] OTHER -> FALSE
+
 \* The following are self-explanatory
 FunMinus(v)        == HInt(-v.cval)
+FunAbs(v)          == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
 FunNot(v)          == HBool(~v.cval)
 FunKeys(x)         == HSet(DOMAIN x.cval)
 FunRange(x, y)     == HSet({ HInt(i) : i \in x.cval .. y.cval })
@@ -7076,10 +7209,18 @@ FunLT(x, y)        == HBool(HCmp(x, y) < 0)
 FunLE(x, y)        == HBool(HCmp(x, y) <= 0)
 FunGT(x, y)        == HBool(HCmp(x, y) > 0)
 FunGE(x, y)        == HBool(HCmp(x, y) >= 0)
-FunSubtract(x, y)  == HInt(x.cval - y.cval)
 FunDiv(x, y)       == HInt(x.cval \\div y.cval)
 FunMod(x, y)       == HInt(x.cval % y.cval)
+FunPower(x, y)     == HInt(x.cval ^ y.cval)
 FunSetAdd(x, y)    == HSet(x.cval \\union {y})
+FunAddress(x, y)   == HAddress(x.cval \o <<y>>)
+FunExclusion(x, y) == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
+
+FunIn(x, y) ==
+    CASE y.ctype = "set"  -> HBool(x \in y.cval)
+    []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
+    []   y.ctype = "str"  -> FALSE \* TODO
+    [] OTHER -> FALSE
 
 \* Concatenate n copies of dict, which represents a list
 DictTimes(dict, n) ==
@@ -7111,21 +7252,6 @@ DictAdd(self) ==
             !.stack = << newd >> \\o Tail(Tail(Tail(@)))]
     IN
         /\\ dict.ctype = "dict"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
-
-\* Pop a value and an address (which is a sequence of values), and
-\* push a new address consisting of the value added to the end of
-\* the sequence
-\* 
-\* TODO: this can be a binary operation in Harmony
-OpAddress(self) ==
-    LET e1    == self.stack[1]
-        e2    == self.stack[2]
-        next  == [self EXCEPT !.pc = @ + 1,
-            !.stack = << HAddress(e2.cval \\o <<e1>>) >> \\o Tail(Tail(@))]
-    IN
-        /\\ e2.ctype = "address"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7184,11 +7310,31 @@ OpStoreInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, addr, val)
 
+\* Pop a value and an address and store the *local* value at the given address
+OpStoreVarInd(self) ==
+    LET val  == self.stack[1]
+        addr == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
+                                    !.vs = UpdateDictAddr(@, addr, val)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 \* Pop an address and push the value at the address onto the stack
 OpLoadInd(self) ==
     LET
         addr == self.stack[1]
         val  == LoadDictAddr(shared, addr)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pop an address and push the value of the addressed local variable onto the stack
+OpLoadVarInd(self) ==
+    LET
+        addr == self.stack[1]
+        val  == LoadDictAddr(self.vs, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
         /\\ UpdateContext(self, next)
