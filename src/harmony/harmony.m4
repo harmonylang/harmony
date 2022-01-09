@@ -6880,7 +6880,13 @@ OpCut(self, s, v) ==
             IN
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
-        [] sval.ctype = "str" -> FALSE      \* TODO
+        [] sval.ctype = "str" ->
+            LET intm == UpdateVars(self.vs, v, HStr(Head(sval.cval)))
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HStr(Tail(sval.cval)))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
 OpStoreVar(self, v) ==
