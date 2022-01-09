@@ -7216,9 +7216,42 @@ FunSetAdd(x, y)    == HSet(x.cval \\union {y})
 FunAddress(x, y)   == HAddress(x.cval \o <<y>>)
 FunExclusion(x, y) == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
 
-FunUnion(x, y) == HSet(x.cval \\union y.cval)
-FunIntersect(x, y) == HSet(x.cval \\intersect y.cval)
+\* Merge two dictionaries.  If two keys conflict, use the minimum value
+MergeDictMin(x, y) ==
+    [ k \in DOMAIN x \\union DOMAIN y |->
+        CASE k \\notin DOMAIN x -> y[k]
+        []   k \\notin DOMAIN y -> x[k]
+        [] OTHER -> IF HCmp(x[k], y[k]) < 0 THEN x[k] ELSE y[k]
+    ]
 
+\* Merge two dictionaries.  If two keys conflict, use the maximum value
+MergeDictMax(x, y) ==
+    [ k \in DOMAIN x \\union DOMAIN y |->
+        CASE k \\notin DOMAIN x -> y[k]
+        []   k \\notin DOMAIN y -> x[k]
+        [] OTHER -> IF HCmp(x[k], y[k]) > 0 THEN x[k] ELSE y[k]
+    ]
+
+\* Union of two sets or dictionaries
+\* TODO: also bitwise OR of integers
+FunUnion(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet(x.cval \\union y.cval)
+    [] x.ctype = "dict" /\\ y.ctype = "dict" ->
+        HDict(MergeDictMax(x.cval, y.cval))
+    [] OTHER -> FALSE
+
+\* Intersection of two sets or dictionaries
+\* TODO: also bitwise AND of integers
+FunIntersect(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet(x.cval \\intersect y.cval)
+    [] x.ctype = "dict" /\\ y.ctype = "dict" ->
+        HDict(MergeDictMin(x.cval, y.cval))
+    [] OTHER -> FALSE
+
+\* See if x is in y, where y is a set, a dict, or a string. In case of
+\* a string, check if x is a substring of y
 FunIn(x, y) ==
     CASE y.ctype = "set"  -> HBool(x \in y.cval)
     []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
