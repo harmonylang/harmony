@@ -1095,6 +1095,9 @@ class IncVarOp(Op):
     def jdump(self):
         return '{ "op": "IncVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        return 'OpIncVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         return "increment the value of " + self.convert(self.v)
 
@@ -2655,7 +2658,7 @@ class AST:
             elif ctype == "list":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
                 code.append(IncVarOp(N))
-            elif ctype == "bag":
+            elif ctype == "bag":        # TODO.  Probably dead code
                 code.append(NaryOp(("BagAdd", file, line, column), 2))
                 code.append(IncVarOp(N))
             return
@@ -6697,6 +6700,7 @@ SeqCmp(x, y) ==
                 [] OTHER -> SeqCmp(Tail(x), Tail(y))
 
 \* Compare two Harmony values as specified in the book
+\* Return negative if x < y, 0 if x = y, and positive if x > y
 HCmp(x, y) ==
     IF x = y
     THEN
@@ -6718,7 +6722,7 @@ HCmp(x, y) ==
             HRank(x) - HRank(y)
 
 \* The minimum Harmony value in a set
-HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
+HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) <= 0
 
 \* Sort a set of Harmony values into a sequence
 HSort(s) ==
@@ -6903,6 +6907,15 @@ OpCut(self, s, v) ==
 OpDelVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1,
         !.vs = HDict([ x \in (DOMAIN @.cval) \\ { HStr(v.vname) } |-> @.cval[x] ]) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the given local variable
+OpIncVar(self, v) ==
+    LET var  == HStr(v.vname)
+        next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(@, var, HInt(@.cval[var].cval + 1)) ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
