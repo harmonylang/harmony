@@ -7219,7 +7219,12 @@ FunExclusion(x, y) == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval
 FunIn(x, y) ==
     CASE y.ctype = "set"  -> HBool(x \in y.cval)
     []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
-    []   y.ctype = "str"  -> FALSE \* TODO
+    []   y.ctype = "str"  ->
+            LET xn == Len(x.cval)
+                yn == Len(y.cval)
+            IN
+                HBool(\E i \in 0..(yn - xn): 
+                    x.cval = SubSeq(y.cval, i+1, i+xn))
     [] OTHER -> FALSE
 
 \* Concatenate n copies of dict, which represents a list
