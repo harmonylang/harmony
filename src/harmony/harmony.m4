@@ -1497,6 +1497,12 @@ class DelVarOp(Op):
         else:
             return '{ "op": "DelVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        if self.v == None:
+            return 'OpDelVarInd(self)'
+        else:
+            return 'OpDelVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop an address of a method variable and delete that variable"
@@ -6893,7 +6899,15 @@ OpCut(self, s, v) ==
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
-\* Assign the top of the stack to a variable
+\* Delete the given local variable
+OpDelVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1,
+        !.vs = HDict([ x \in (DOMAIN @.cval) \\ { HStr(v.vname) } |-> @.cval[x] ]) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Assign the top of the stack to a local variable
 OpStoreVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
     IN
