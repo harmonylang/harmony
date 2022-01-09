@@ -6836,6 +6836,9 @@ UpdateVars(vs, args, value) ==
     LET cv == CollectVars(args, value)
     IN Fold(vs, cv, Len(cv))
 
+\* First instruction of every method.  Saves the current variables on the stack,
+\* Assigns the top of the stack to args (see UpdateVars) and initializes variable
+\* result to None.
 OpFrame(self, name, args) ==
     LET next == [
         self EXCEPT !.pc = @ + 1,
@@ -6889,18 +6892,22 @@ OpCut(self, s, v) ==
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
+\* Assign the top of the stack to a variable
 OpStoreVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Push the value of the given variable onto the stack
 OpLoadVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[HStr(v.vname)] >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Increment the atomic counter for this thread.  If it was 0, boot every other
+\* context out of the set of active contexts.
 OpAtomicInc(self) ==
     IF self.atomic = 0
     THEN
@@ -6915,6 +6922,8 @@ OpAtomicInc(self) ==
             /\\ UpdateContext(self, next)
             /\\ UNCHANGED shared
 
+\* Decrement the atomic counter.  If it becomes 0, let all other contexts
+\* back into the active set.
 OpAtomicDec(self) ==
     IF self.atomic = 1
     THEN
@@ -6929,6 +6938,8 @@ OpAtomicDec(self) ==
             /\\ UpdateContext(self, next)
             /\\ UNCHANGED shared
 
+\* Pop the top of stack and check if it is  True.  If not, stop and print the
+\* message.
 OpAssert(self, msg) ==
     LET cond == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
@@ -6938,6 +6949,7 @@ OpAssert(self, msg) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Print what is on top of the stack (and pop it)
 OpPrint(self) ==
     LET msg == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
@@ -6946,6 +6958,8 @@ OpPrint(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Pop the top of the stack, which must be a set.  Then select one of the
+\* elements and push it back onto the stack.
 OpChoose(self) ==
     LET choices == Head(self.stack)
     IN
@@ -6956,8 +6970,14 @@ OpChoose(self) ==
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
 
+\* "sequential" pops the address of a variable and indicates to the model
+\* checker that the variable is assumed to have sequential consistency.
+\* This turns off race condition checking for the variable.  For here, it can
+\* just be considered a no-op.
 OpSequential(self) == OpPop(self)
 
+\* This is the general form of unary operators that replace the top of the
+\* stack with a function computed over that value
 UnaOp(self, op(_)) ==
     LET e    == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = << op(e) >> \\o Tail(@)]
@@ -6965,6 +6985,7 @@ UnaOp(self, op(_)) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Similar to UnaOp but replaces two values on the stack with a single one.
 BinOp(self, op(_,_)) ==
     LET e1   == self.stack[1]
         e2   == self.stack[2]
@@ -6980,18 +7001,21 @@ BinOp(self, op(_,_)) ==
 \* the thread became atomic.
 Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
 
+\* Compute how many threads are currently at the given location
 FunCountLabel(label) ==
     LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
         fbag == [ c \\in fdom |-> ctxbag[c] ]
     IN
         HInt(BagCardinality(fbag))
 
+\* Compute the cardinality of a set of dict, or the length of a string
 FunLen(s) ==
     CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
     []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
     []   s.ctype = "str"  -> HInt(Len(s.cval))
     [] OTHER -> FALSE
 
+\* Concatenate two sequences.  Helper function for FunAdd
 DictConcat(x, y) ==
     LET xs  == Cardinality(DOMAIN x)
         ys  == Cardinality(DOMAIN y)
@@ -6999,18 +7023,21 @@ DictConcat(x, y) ==
     IN
         [ i \in dom |-> IF i.cval < xs THEN x[i] ELSE y[HInt(i.cval - xs)] ]
 
+\* Add two integers, or concatenate two sequences or strings
 FunAdd(x, y) ==
     CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
     []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
     []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(x.cval \o y.cval)
     [] OTHER -> FALSE
 
+\* Check to see if x is the empty set, dict, or string
 FunIsEmpty(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = {})
     []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
     []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
     [] OTHER -> FALSE
 
+\* The following are self-explanatory
 FunMinus(v)        == HInt(-v.cval)
 FunNot(v)          == HBool(~v.cval)
 FunKeys(x)         == HSet(DOMAIN x.cval)
@@ -7026,6 +7053,7 @@ FunDiv(x, y)       == HInt(x.cval \\div y.cval)
 FunMod(x, y)       == HInt(x.cval % y.cval)
 FunSetAdd(x, y)    == HSet(x.cval \\union {y})
 
+\* Concatenate n copies of dict, which represents a list
 DictTimes(dict, n) ==
     LET odom == { x.cval : x \\in DOMAIN dict.cval }
         max  == CHOOSE x \in odom: \A y \in odom: y <= x
@@ -7034,6 +7062,7 @@ DictTimes(dict, n) ==
     IN
         HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
 
+\* Multiply two integers, or concatenate copies of a list
 FunMult(e1, e2) ==
     CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
         HInt(e2.cval * e1.cval)
@@ -7043,6 +7072,8 @@ FunMult(e1, e2) ==
         DictTimes(e1, e2)
     [] OTHER -> FALSE
 
+\* Pops a value, a key, and a dict, and pushes the dict updated to
+\* reflect key->value
 DictAdd(self) ==
     LET value == self.stack[1]
         key   == self.stack[2]
@@ -7055,6 +7086,11 @@ DictAdd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Pop a value and an address (which is a sequence of values), and
+\* push a new address consisting of the value added to the end of
+\* the sequence
+\* 
+\* TODO: this can be a binary operation in Harmony
 OpAddress(self) ==
     LET e1    == self.stack[1]
         e2    == self.stack[2]
@@ -7104,21 +7140,23 @@ OpApply(self) ==
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
+\* Pop the top of the stack and store in shared variable v
 OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDict(shared, HStr(v), Head(self.stack))
 
+\* Pop a value and an address and store the value at the given address
 OpStoreInd(self) ==
-    LET
-        val  == self.stack[1]
+    LET val  == self.stack[1]
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
     IN
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, addr, val)
 
+\* Pop an address and push the value at the address onto the stack
 OpLoadInd(self) ==
     LET
         addr == self.stack[1]
@@ -7128,6 +7166,7 @@ OpLoadInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Push the value of shared variable v onto the stack
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
                         !.stack = << shared.cval[HStr(v)] >> \\o @ ]
@@ -7135,7 +7174,7 @@ OpLoad(self, v) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* What return should do depends on whether the methods was spawned
+\* What Return should do depends on whether the methods was spawned
 \* or called as an ordinary method.  To indicate this, Spawn pushes the
 \* string "process" on the stack, while Apply pushes the string "normal"
 \* onto the stack.  The Frame operation also pushed the saved variables
@@ -7163,12 +7202,15 @@ OpReturn(self) ==
             /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
+\* Set the program counter pc to the given value
 OpJump(self, pc) ==
     LET next == [ self EXCEPT !.pc = pc ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Pop a value of the stack.  If it equals cond, set the pc to the
+\* given value.
 OpJumpCond(self, pc, cond) ==
     LET next == [ self EXCEPT !.pc = IF self.stack[1] = cond
                     THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
@@ -7176,6 +7218,8 @@ OpJumpCond(self, pc, cond) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Spawn a new thread.  If the current thread is not atomic, the
+\* thread goes into the active set as well.
 OpSpawn(self) ==
     LET local == self.stack[1]
         arg   == self.stack[2]
