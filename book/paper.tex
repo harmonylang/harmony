@@ -501,6 +501,7 @@ Harmony is heavily influenced by Leslie Lamport's work on
 TLA+, TLC, and PlusCal~\cite{Lamport02, Lamport09},
 Gerard Holzmann's work on Promela and SPIN~\cite{SPIN},
 and University of Washington's DSLabs system~\cite{MWA19}.
+Some of the examples in this book are derived from those sources.
 Harmony is designed to have a lower learning curve than those
 systems, but is not as powerful.  When you finish this book
 and want to learn more, we strongly encourage checking
@@ -598,9 +599,15 @@ Paxos consensus protocol.
 \item \autoref{ch:ns} demonstrates using Harmony to find a (known) bug in the original Needham-Schroeder authentication protocol.
 \end{itemize}
 
+If you already know about concurrent and distributed programming and
+are just interested in a ``speed course'' on Harmony, I would recommend
+reading \autoref{ch:harmonyintro}, \autoref{ch:harmonymachine},
+\autoref{ch:method}, \autoref{ch:specification}, and \autoref{ch:cds}.
 The appendices contain various details about Harmony itself, including
-an appendix that explains how Harmony works (\autoref{app:howitworks}) and
-an appendix on installing and running Harmony (\autoref{app:install}).
+an appendix on convenient Harmony modules (\autoref{ap:module}),
+an appendix that explains how Harmony works (\autoref{ap:howitworks}),
+and
+an appendix on installing and running Harmony (\autoref{ap:install}).
 
 <{:const:tas}>
 <{:const:cas}>
@@ -2294,8 +2301,51 @@ For example:
 <{y}>.
 See \autoref{sec:vars} for more information.
 
-<{:const:ref}>
+<{:const:head}>
+<{:const:tail}>
+\begin{figure}
+\begin{code}
+<{:input:../code/hanoi.hny}>
+\end{code}
+\caption{\harmonylink{code/hanoi.hny} Towers of Hanoi}
+\label{fig:hanoi}
+\end{figure}
 
+As an example of using <{import}> and <{let}>,
+\autoref{fig:hanoi} solves the \emph{Towers of Hanoi} problem.
+If you are not familiar with this problem:
+there are three towers with disks of varying sizes.
+In the initial configuration, the first tower has three disks (of
+sizes 1, 2, and 3), with the largest disk at the bottom, while the
+other two towers are empty.  You are allowed to move a top disk
+from one tower to another, but you are not allowed to stack a larger
+disk on a smaller one.  The objective is to move the disks from the
+first tower to the third one.
+
+The program uses the <{list}> module documented in \autoref{ap:list}.
+It has methods to extract the \emph{head} (first element) and
+the \emph{tail} (remaining elements) of a list.
+(The code is simple and available in \texttt{modules/list.hny}.)
+The program tries valid moves at random until it finds a solution.
+Curiously, the program then asserts <{False}>.  This is to cause
+the model checker to stop and output the trace.  If you look in the
+output column of the trace, you will find the minimal number of moves
+necessary to solve the problem.
+
+It is even cooler to remove that assertion and let Harmony generate
+all possible solutions to the problem like so:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -o hanoi.png code/hanoi.hny
+\end{verbatim}
+\end{code}
+
+The resulting \texttt{hanoi.png} file contains a DFA describing
+the possible solutions.  It is a little too big to include here,
+but well worth looking at.
+
+<{:const:ref}>
 \begin{figure}
 \begin{code}
 <{:input:../code/clock.hny}>
@@ -2351,6 +2401,21 @@ the program finds the same anomaly that
 B\'{e}l\'{a}dy et al.~found: 1 2 3 4 1 2 5 1 2 3 4 5.
 For the <{CLOCK}> algorithm the program actually finds a shorter
 reference string: 1 2 3 4 2 1 2 5 1 2.
+
+\section*{Exercises}
+\begin{problems}
+\item (This is just for fun or exercise as it is not a concurrent or
+distributed problem.)
+Implement a Harmony program that finds solutions to the
+``cabbage, goat, and wolf'' problem.  In this problem, a person
+accompanied by these three items has to cross a stream in a small
+boat, but can only take one item at a time. So, the person has to
+cross back and forth several times, leaving two items on one or
+the other shore by themselves.
+Unfortunately, if left to themselves, the goat would
+eat the cabbage and the wolf would eat the goat.  What crossings
+does the person need to make in order not to lose any items?
+\end{problems}
 
 \chapter{Specification}
 \label{ch:specification}
@@ -6706,7 +6771,7 @@ representation;
 ordered;
 \item an address is a list of Harmony values.  <{None}> is the empty list.
 Addresses are lexicographically ordered accordingly;
-\item contexts (\autoref{app:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
+\item contexts (\autoref{ap:context}) are ordered first by name, then by program counter, then by the remaining content in an unspecified way.
 \end{itemize}
 
 Generic operators on Harmony values include:
@@ -6803,6 +6868,26 @@ If it consists entirely of alphanumerical characters or underscore
 characters and does not start with a digit,
 then a string can be represented by a ``.'' followed by the characters.
 For example, <{.example}> is the same as the string <{"example"}>.
+
+Native operations on strings include the following:
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+<{s k}> & indexing \\
+\hline
+<{s + s + ...}> & concatenation \\
+\hline
+<{s * n}> & <{n}> copies of <{s}> concatenated \\
+\hline
+<{v [not] in s}> & check if <{v}> is [not] a substring in <{s}> \\
+\hline
+<{len s}> & the length of <{s}> \\
+\hline
+<{str e}> & string representation of any value <{e}> \\
+\hline
+\end{tabular}
+\end{center}
 
 \subsection*{Set}
 
@@ -7098,7 +7183,7 @@ Harmony currently supports the following statements
 \hline
 <{del lv}> & delete <{lv}>\\
 \hline
-<{for a[:b] in e [where c]: S}> & <{a}> and <{b}> are bound variables, <{e}> is a set or dictionary \\
+<{for a[:b] in e [where c]: S}> & <{a}> and <{b}> are bound variables, <{e}> is a set, dictionary, or string \\
 \hline
 <{from m import ...}> & <{m}> identifies a module \\
 \hline
@@ -7269,7 +7354,7 @@ from Python:
 The statement <{for x in y: S1; S2; ...}>
 iterates over <{y}> and executes for each element the statements
 <{S1, S2, ...}>.
-<{y}> must be a set or a dictionary.  <{y}> is evaluated only once at
+<{y}> must be a set, dictionary, or string.  <{y}> is evaluated only once at
 the beginning of the evaluation of this statement.  In case of a set,
 the result is sorted (using Harmony's global order on all values).
 In case of a dictionary, the statement iterates over the values of
@@ -7888,7 +7973,7 @@ multisets:
 \section{The \texttt{hoare} module}
 \label{ap:hoare}
 
-\index{list module}%
+\index{hoare module}%
 The \texttt{hoare} module implements support for Hoare-style monitors
 and condition variables.
 
@@ -8017,7 +8102,7 @@ and lock <{lk}> \\ \hline
 \end{tabular}
 
 
-\chapter{The Harmony Virtual Machine}\label{app:hvm}
+\chapter{The Harmony Virtual Machine}\label{ap:hvm}
 
 The Harmony Virtual Machine (HVM, \autoref{ch:harmonymachine})
 has the following state:
@@ -8206,7 +8291,7 @@ instructions, the atomic section may not even cause a switch point.
 \end{itemize}
 
 \section{Contexts and Threads}
-\label{app:context}
+\label{ap:context}
 
 A context captures the state of a thread.  Each time the thread
 executes an instruction, it goes from one context to another.
@@ -8265,7 +8350,25 @@ strings to arbitrary values.  The strings correspond to the variable names
 in a Harmony program.
 \end{itemize}
 
-\chapter{How Harmony Works}\label{app:howitworks}
+\section{Formal Specification}
+\label{ap:formal}
+
+A formal specification of the Harmony Virtual Machine is underway but
+not yet completed.
+Given a Harmony program, you can output the TLA+ specification for
+the program using the following command:
+
+\begin{code}
+\begin{verbatim}
+$ harmony -o program.tla program.hny
+\end{verbatim}
+\end{code}
+
+For many Harmony programs, such as Peterson's algorithm and the Dining
+Philosophers in this book, the result is complete enough to run through
+the TLC model checker.
+
+\chapter{How Harmony Works}\label{ap:howitworks}
 
 This appendix gives a very brief overview of how Harmony works.
 In a nutshell, Harmony goes through the following three phases:
@@ -8282,7 +8385,7 @@ is written in C as it needs to be highly efficient (see \texttt{charm.c}).
 The model checker starts from the initial state, and then, iteratively,
 checks for each state that it has found what next steps are possible and
 generates the next states using the Harmony virtual machine
-(\autoref{app:hvm}).  If the model is finite, eventually the model
+(\autoref{ap:hvm}).  If the model is finite, eventually the model
 checker will generate a graph with all possible states.
 If there is a problematic path in this graph (see below), then it will
 report the shortest such path in the \texttt{x.hco} output file in JSON
@@ -8548,7 +8651,7 @@ This results in the operations being executed sequentially against the
 sequential specification in the same order of the linearization points
 of the concurrent specification.
 
-\chapter{Installing and Running Harmony}\label{app:install}
+\chapter{Installing and Running Harmony}\label{ap:install}
 
 There are currently three options for using Harmony:
 

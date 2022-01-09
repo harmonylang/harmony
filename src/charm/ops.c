@@ -177,10 +177,10 @@ void interrupt_invoke(struct step *step){
     step->ctx->interruptlevel = true;
 }
 
-bool ind_tryload(hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
+bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
     hvalue_t d = dict;
     for (int i = 0; i < n; i++) {
-        if (!value_dict_tryload(d, indices[i], &d)) {
+        if (!value_dict_tryload(values, d, indices[i], &d)) {
             return false;
         }
     }
@@ -334,7 +334,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
     case VALUE_DICT:
         {
             hvalue_t v;
-            if (!value_dict_tryload(method, e, &v)) {
+            if (!value_dict_tryload(&global->values, method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
                 value_ctx_failure(step->ctx, &global->values, "Bad index %s: not in %s", x, m);
@@ -342,6 +342,24 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 free(x);
                 return;
             }
+            value_ctx_push(&step->ctx, v);
+            step->ctx->pc++;
+        }
+        return;
+    case VALUE_ATOM:
+        {
+            if ((e & VALUE_MASK) != VALUE_INT) {
+                value_ctx_failure(step->ctx, &global->values, "Bad index type for string");
+                return;
+            }
+            e >>= VALUE_BITS;
+            int size;
+            char *chars = value_get(method, &size);
+            if (e >= size) {
+                value_ctx_failure(step->ctx, &global->values, "Index out of range");
+                return;
+            }
+            hvalue_t v = value_put_atom(&global->values, &chars[e], 1);
             value_ctx_push(&step->ctx, v);
             step->ctx->pc++;
         }
@@ -355,8 +373,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
         return;
     default:
         {
-            extern char *json_escape_value(hvalue_t v);
-            char *x = json_escape_value(method);
+            char *x = value_string(method);
             value_ctx_failure(step->ctx, &global->values, "Can only apply to methods or dictionaries, not to: %s", x);
             free(x);
         }
@@ -477,7 +494,23 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         step->ctx->pc++;
         return;
     }
-    panic("op_Cut: not a set or dict");
+    if ((v & VALUE_MASK) == VALUE_ATOM) {
+        if (ec->key != NULL) {
+            value_ctx_failure(ctx, &global->values, "Can't cut string in key/value pairs");
+            return;
+        }
+        assert(v != VALUE_ATOM);
+        int size;
+        char *chars = value_get(v, &size);
+        assert(size > 0);
+
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_atom(&global->values, &chars[1], size - 1));
+        hvalue_t e = value_put_atom(&global->values, chars, 1);
+        var_match(step->ctx, ec->value, &global->values, e);
+        step->ctx->pc++;
+        return;
+    }
+    value_ctx_failure(step->ctx, &global->values, "op_Cut: not a set, dict, or string");
 }
 
 void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -614,7 +647,7 @@ void op_Go(
 
     // Remove from stopbag if it's there
     hvalue_t count;
-    if (value_dict_tryload(state->stopbag, ctx, &count)) {
+    if (value_dict_tryload(&global->values, state->stopbag, ctx, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
         count -= 1 << VALUE_BITS;
@@ -731,7 +764,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->load = true;
         }
 
-        if (!ind_tryload(state->vars, indices, size, &v)) {
+        if (!ind_tryload(&global->values, state->vars, indices, size, &v)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &global->values, "Load: unknown address %s", x);
             free(x);
@@ -745,7 +778,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             step->ai->n = el->n;
             step->ai->load = true;
         }
-        if (!ind_tryload(state->vars, el->indices, el->n, &v)) {
+        if (!ind_tryload(&global->values, state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
             value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x+1);
             free(x);
@@ -776,10 +809,10 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
                 value_ctx_failure(step->ctx, &global->values, "LoadVar: 'this' is not a dictionary");
                 return;
             }
-            result = ind_tryload(step->ctx->this, &indices[1], size - 1, &v);
+            result = ind_tryload(&global->values, step->ctx->this, &indices[1], size - 1, &v);
         }
         else {
-            result = ind_tryload(step->ctx->vars, indices, size, &v);
+            result = ind_tryload(&global->values, step->ctx->vars, indices, size, &v);
         }
         if (!result) {
             char *x = indices_string(indices, size);
@@ -793,7 +826,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         if (el->name == this_atom) {
             value_ctx_push(&step->ctx, step->ctx->this);
         }
-        else if (value_dict_tryload(step->ctx->vars, el->name, &v)) {
+        else if (value_dict_tryload(&global->values, step->ctx->vars, el->name, &v)) {
             value_ctx_push(&step->ctx, v);
         }
         else {
@@ -1750,6 +1783,28 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
 	if (s == VALUE_SET || s == VALUE_DICT) {
 		return VALUE_FALSE;
 	}
+    if ((s & VALUE_MASK) == VALUE_ATOM) {
+        if ((e & VALUE_MASK) != VALUE_ATOM) {
+            return value_ctx_failure(ctx, values, "'in <string>' can only be applied to another string");
+        }
+        if (s == VALUE_ATOM) {
+            return ((e == VALUE_ATOM) << VALUE_BITS) | VALUE_BOOL;
+        }
+        int size1, size2;
+        char *v1 = value_get(e, &size1);
+        char *v2 = value_get(s, &size2);
+        if (size1 > size2) {
+            return VALUE_FALSE;
+        }
+        // stupid way of checking if v1 is a substring of v2
+        int n = size2 - size1;
+        for (int i = 0; i <= n; i++) {
+            if (memcmp(v1, v2 + i, size1) == 0) {
+                return VALUE_TRUE;
+            }
+        }
+        return VALUE_FALSE;
+    }
     if ((s & VALUE_MASK) == VALUE_SET) {
         int size;
         hvalue_t *v = value_get(s, &size);
@@ -1969,6 +2024,9 @@ hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int
     if ((e & VALUE_MASK) == VALUE_SET) {
         return ((e == VALUE_SET) << VALUE_BITS) | VALUE_BOOL;
     }
+    if ((e & VALUE_MASK) == VALUE_ATOM) {
+        return ((e == VALUE_ATOM) << VALUE_BITS) | VALUE_BOOL;
+    }
     return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries and sets");
 }
 
@@ -1994,6 +2052,15 @@ hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n,
     return result;
 }
 
+hvalue_t f_str(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+    assert(n == 1);
+    hvalue_t e = args[0];
+    char *s = value_string(e);
+    hvalue_t v = value_put_atom(values, s, strlen(s));
+    free(s);
+    return v;
+}
+
 hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
@@ -2012,7 +2079,12 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         size /= 2 * sizeof(hvalue_t);
         return (size << VALUE_BITS) | VALUE_INT;
     }
-    return value_ctx_failure(ctx, values, "len() can only be applied to sets or dictionaries");
+    if ((e & VALUE_MASK) == VALUE_ATOM) {
+        int size;
+        (void) value_get(e, &size);
+        return (size << VALUE_BITS) | VALUE_INT;
+    }
+    return value_ctx_failure(ctx, values, "len() can only be applied to sets, dictionaries, or strings");
 }
 
 hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
@@ -2237,6 +2309,24 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
             e1 = sum;
         }
         return (e1 << VALUE_BITS) | VALUE_INT;
+    }
+
+    if ((e1 & VALUE_MASK) == VALUE_ATOM) {
+        struct strbuf sb;
+        strbuf_init(&sb);
+        for (int i = n; --i >= 0;) {
+            if ((args[i] & VALUE_MASK) != VALUE_ATOM) {
+                return value_ctx_failure(ctx, values,
+                    "+: applied to mix of strings and other values");
+            }
+            int size;
+            char *chars = value_get(args[i], &size);
+            strbuf_append(&sb, chars, size);
+        }
+        char *result = strbuf_getstr(&sb);
+        hvalue_t v = value_put_atom(values, result, strbuf_getlen(&sb));
+        free(result);
+        return v;
     }
 
     // get all the lists
@@ -2507,16 +2597,16 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
     int list = -1;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
-        if ((e & VALUE_MASK) == VALUE_DICT) {
+        if ((e & VALUE_MASK) == VALUE_DICT || (e & VALUE_MASK) == VALUE_ATOM) {
             if (list >= 0) {
-                return value_ctx_failure(ctx, values, "* can only have at most one list");
+                return value_ctx_failure(ctx, values, "* can only have at most one list or string");
             }
             list = i;
         }
         else {
             if ((e & VALUE_MASK) != VALUE_INT) {
                 return value_ctx_failure(ctx, values,
-                    "* can only be applied to integers and at most one list");
+                    "* can only be applied to integers and at most one list or string");
             }
             e >>= VALUE_BITS;
             if (e == 0) {
@@ -2531,33 +2621,52 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             }
         }
     }
+    if (result != (result << VALUE_BITS) >> VALUE_BITS) {
+        return value_ctx_failure(ctx, values, "*: overflow (model too large)");
+    }
     if (list < 0) {
-        if (result != (result << VALUE_BITS) >> VALUE_BITS) {
-            return value_ctx_failure(ctx, values, "*: overflow (model too large)");
-        }
         return (result << VALUE_BITS) | VALUE_INT;
     }
     if (result == 0) {
-        return VALUE_DICT;
+        return args[list] & VALUE_MASK;
     }
-    int size;
-    hvalue_t *vals = value_get(args[list], &size);
-    if (size == 0) {
-        return VALUE_DICT;
-    }
-    hvalue_t *r = malloc(result * size);
-    unsigned int cnt = size / (2 * sizeof(hvalue_t));
-    int index = 0;
-    for (int i = 0; i < result; i++) {
-        for (int j = 0; j < cnt; j++) {
-            r[2*index] = (index << VALUE_BITS) | VALUE_INT;
-            r[2*index+1] = vals[2*j+1];
-            index++;
+    if ((args[list] & VALUE_MASK) == VALUE_DICT) {
+        int size;
+        hvalue_t *vals = value_get(args[list], &size);
+        if (size == 0) {
+            return VALUE_DICT;
         }
+        hvalue_t *r = malloc(result * size);
+        unsigned int cnt = size / (2 * sizeof(hvalue_t));
+        int index = 0;
+        for (int i = 0; i < result; i++) {
+            for (int j = 0; j < cnt; j++) {
+                r[2*index] = (index << VALUE_BITS) | VALUE_INT;
+                r[2*index+1] = vals[2*j+1];
+                index++;
+            }
+        }
+        hvalue_t v = value_put_dict(values, r, result * size);
+        free(r);
+        return v;
     }
-    hvalue_t v = value_put_dict(values, r, result * size);
-    free(r);
-    return v;
+    if ((args[list] & VALUE_MASK) == VALUE_ATOM) {
+        int size;
+        char *chars = value_get(args[list], &size);
+        if (size == 0) {
+            return VALUE_ATOM;
+        }
+        struct strbuf sb;
+        strbuf_init(&sb);
+        for (int i = 0; i < result; i++) {
+            strbuf_append(&sb, chars, size);
+        }
+        char *s = strbuf_getstr(&sb);
+        hvalue_t v = value_put_atom(values, s, result * size);
+        free(s);
+        return v;
+    }
+    assert(false);
 }
 
 hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
@@ -2809,6 +2918,7 @@ struct f_info f_table[] = {
     { "min", f_min },
 	{ "mod", f_mod },
     { "not", f_not },
+    { "str", f_str },
     { "SetAdd", f_set_add },
     { NULL, NULL }
 };
