@@ -6846,22 +6846,42 @@ OpFrame(self, name, args) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Remove one element from the stack
 OpPop(self) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
+\* Remove key from the given map
+DictCut(dict, key) == [ x \in (DOMAIN dict) \ { key } |-> dict[x] ]
+
+\* s contains the name of a local variable containing a set, a dict, or a string
+\* v contains the name of another local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The objective is to take the "smallest" element of s,
+\* remove it from s, and assign it to v
 OpCut(self, s, v) ==
     LET svar == HStr(s)
         sval == self.vs.cval[svar]
-        pick == HMin(sval.cval)
-        intm == UpdateVars(self.vs, v, pick)
-        next == [self EXCEPT !.pc = @ + 1, !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
     IN
-        /\\ sval.ctype = "set"
-        /\\ UpdateContext(self, next)
-        /\\ UNCHANGED shared
+        CASE sval.ctype = "set" ->
+            LET pick == HMin(sval.cval)
+                intm == UpdateVars(self.vs, v, pick)
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] sval.ctype = "dict" ->
+            LET pick == HMin(DOMAIN sval.cval)
+                intm == UpdateVars(self.vs, v, sval.cval[pick])
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HDict(DictCut(sval.cval, pick)))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] sval.ctype = "str" -> FALSE      \* TODO
+        [] OTHER -> FALSE
 
 OpStoreVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
@@ -6966,18 +6986,37 @@ FunLen(s) ==
     []   s.ctype = "str"  -> HInt(Len(s.cval))
     [] OTHER -> FALSE
 
+DictConcat(x, y) ==
+    LET xs  == Cardinality(DOMAIN x)
+        ys  == Cardinality(DOMAIN y)
+        dom == { HInt(i) : i \in 0 .. (xs + ys - 1) }
+    IN
+        [ i \in dom |-> IF i.cval < xs THEN x[i] ELSE y[HInt(i.cval - xs)] ]
+
+StrConcat(x, y) == FALSE        \* Can it be done in TLC?
+
+FunAdd(x, y) ==
+    CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
+    []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
+    []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(StrConcat(x.cval, y.cval))
+    [] OTHER -> FALSE
+
+FunIsEmpty(x) ==
+    CASE x.ctype = "set"  -> HBool(x.cval = {})
+    []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
+    []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
+    [] OTHER -> FALSE
+
 FunMinus(v)        == HInt(-v.cval)
 FunNot(v)          == HBool(~v.cval)
-FunIsEmpty(s)      == HBool(s = HSet({}))
 FunKeys(x)         == HSet(DOMAIN x.cval)
-FunRange(x, y)     == HSet(x.cval .. y.cval)
+FunRange(x, y)     == HSet({ HInt(i) : i \in x.cval .. y.cval })
 FunEquals(x, y)    == HBool(x = y)
 FunNotEquals(x, y) == HBool(x /= y)
 FunLT(x, y)        == HBool(HCmp(x, y) < 0)
 FunLE(x, y)        == HBool(HCmp(x, y) <= 0)
 FunGT(x, y)        == HBool(HCmp(x, y) > 0)
 FunGE(x, y)        == HBool(HCmp(x, y) >= 0)
-FunAdd(x, y)       == HInt(x.cval + y.cval)
 FunSubtract(x, y)  == HInt(x.cval - y.cval)
 FunDiv(x, y)       == HInt(x.cval \\div y.cval)
 FunMod(x, y)       == HInt(x.cval % y.cval)
