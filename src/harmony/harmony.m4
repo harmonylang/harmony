@@ -1979,6 +1979,8 @@ class NaryOp(Op):
             return "OpUna(self, FunIsEmpty)"
         if lexeme == "countLabel" and self.n == 1:
             return "OpUna(self, FunCountLabel)"
+        if lexeme == "get_context" and self.n == 1:
+            return "OpGetContext(self)"
         if lexeme == ".." and self.n == 2:
             return "OpBin(self, FunRange)"
         if lexeme == "SetAdd" and self.n == 2:
@@ -2016,7 +2018,7 @@ class NaryOp(Op):
         if lexeme == "**" and self.n == 2:
             return "OpBin(self, FunPower)"
         if lexeme == "DictAdd" and self.n == 3:
-            return "DictAdd(self)"
+            return "OpDictAdd(self)"
         return 'Skip(self, "%s")'%self
 
     def explain(self):
@@ -6830,6 +6832,25 @@ RemoveContext(self) ==
 AddrHead(addr) == Head(addr.cval)
 AddrTail(addr) == HAddress(Tail(addr.cval))
 
+\* This is to implement del !addr, where addr is a Harmony address
+\* (a sequence of Harmony values representing a path in dict, a tree of
+\* dictionaries).  It is a recursive operator that returns the new dictionary.
+RECURSIVE RemoveDictAddr(_, _)
+RemoveDictAddr(dict, addr) ==
+    HDict(
+        IF Len(addr.cval) = 1
+        THEN
+            [ x \\in (DOMAIN dict.cval) \\ {AddrHead(addr)} |-> dict.cval[x] ]
+        ELSE
+            [ x \\in (DOMAIN dict.cval) \\union {AddrHead(addr)} |->
+                IF x = AddrHead(addr)
+                THEN
+                      RemoveDictAddr(dict.cval[x], AddrTail(addr))
+                ELSE
+                    dict.cval[x]
+            ]
+    )
+
 \* This is to implement !addr = value, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
 \* dictionaries), and value is the new value.  It is a recursive operator
@@ -6964,6 +6985,15 @@ OpCut(self, s, v) ==
 OpDelVar(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1,
         !.vs = HDict([ x \in (DOMAIN @.cval) \\ { HStr(v.vname) } |-> @.cval[x] ]) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Delete the local variable whose address is pushed on the stack
+OpDelVarInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@),
+                                    !.vs = RemoveDictAddr(@, addr)]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
@@ -7319,9 +7349,18 @@ InsertMap(map, key, value) ==
             map[x]
     ]
 
+\* Push the current context onto the stack.  Pop the top "()" of the stack first.
+OpGetContext(self) == 
+    LET next  == [self EXCEPT !.pc = @ + 1,
+                        !.stack = << HContext(self) >> \\o Tail(@)]
+    IN
+        /\\ Head(self.stack) = EmptyDict
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
 \* Pops a value, a key, and a dict, and pushes the dict updated to
 \* reflect key->value.
-DictAdd(self) ==
+OpDictAdd(self) ==
     LET value == self.stack[1]
         key   == self.stack[2]
         dict  == self.stack[3]
