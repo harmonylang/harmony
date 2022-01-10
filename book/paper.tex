@@ -690,7 +690,7 @@ captures an infinite number of possible outputs.
 \begin{code}
 <{:input:../code/hello3.hny}>
 \end{code}
-\caption{\harmonylink{code/hello3.hny} Two possible outputs}
+\caption{\harmonylink{code/hello3.hny} Harmony program with two possible outputs}
 \label{fig:choice}
 \end{figure}
 
@@ -701,7 +701,7 @@ captures an infinite number of possible outputs.
 \begin{code}
 <{:input:../code/hello4.hny}>
 \end{code}
-\caption{\harmonylink{code/hello4.hny} An infinite number of outputs}
+\caption{\harmonylink{code/hello4.hny} Harmony program with an infinite number of outputs}
 \label{fig:hello4}
 \end{figure}
 
@@ -722,7 +722,7 @@ captures an infinite number of possible outputs.
 (a) \harmonylink{code/hello5.hny} && (b) \harmonylink{code/hello6.hny}
 \end{tabular}
 \end{center}
-\caption{Methods and threads}
+\caption{Demonstrating Harmony methods and threads}
 \label{fig:threads}
 \end{figure}
 
@@ -744,7 +744,7 @@ a possible  output.
 \begin{code}
 <{:input:../code/hello7.hny}>
 \end{code}
-\caption{\harmonylink{code/hello7.hny} Interleaving threads}
+\caption{\harmonylink{code/hello7.hny} Various interleavings of threads}
 \label{fig:hello7}
 \end{figure}
 
@@ -755,7 +755,7 @@ a possible  output.
 \begin{code}
 <{:input:../code/hello8.hny}>
 \end{code}
-\caption{\harmonylink{code/hello8.hny} Less interleaving}
+\caption{\harmonylink{code/hello8.hny} Making groups of operations atomic reduces interleaving}
 \label{fig:hello8}
 \end{figure}
 
@@ -937,7 +937,7 @@ What would the value of <{count}> be at the end of that execution?
 \begin{code}
 <{:input:../code/Up.hny}>
 \end{code}
-\caption{\harmonylink{code/Up.hny} Incrementing twice in parallel}
+\caption{\harmonylink{code/Up.hny} Incrementing the same variable twice in parallel}
 \label{fig:inc}
 \end{figure}
 
@@ -1081,7 +1081,7 @@ or a \emph{lock}, yet.)
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/UpMany.py}
 \end{code}
-\caption{\harmonylink{python/UpMany.py} Incrementing <{N}> times}
+\caption{\harmonylink{python/UpMany.py} Using Python to increment <{N}> times}
 \label{fig:incmany}
 \end{figure}
 
@@ -1543,7 +1543,7 @@ go by very quickly.
 \begin{code}
 <{:input:../code/UpEnter.hny}>
 \end{code}
-\caption{\harmonylink{code/UpEnter.hny} Broken attempt at fixing the code of \autoref{fig:inc}}
+\caption{\harmonylink{code/UpEnter.hny} Incorrect attempt at fixing the code of \autoref{fig:inc}}
 \label{fig:incenter}
 \end{figure}
 
@@ -2443,7 +2443,7 @@ critical section}
 \begin{code}
 <{:input:../code/UpLock.hny}>
 \end{code}
-\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock}
+\caption{\harmonylink{code/UpLock.hny} \autoref{fig:inc} fixed with a lock}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2846,7 +2846,7 @@ A thread that is in an infinite loop is also considered blocked.
 \begin{code}
 <{:input:../code/locksusp.hny}>
 \end{code}
-\caption{\harmonylink{modules/synchS.hny} The lock implementation in the <{synchS}> module uses suspension}
+\caption{\harmonylink{modules/synchS.hny} Lock implementation using suspension}
 \label{fig:suspension}
 \end{figure}
 
@@ -2967,7 +2967,7 @@ keyword.
 \begin{code}
 <{:input:../code/xy.hny}>
 \end{code}
-\caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$}
+\caption{\harmonylink{code/xy.hny} Incomplete code for \autoref{ex:xy} with desired invariant $x + y = 100$}
 \label{fig:xy}
 \end{figure}
 
@@ -6293,7 +6293,7 @@ servers have failed.
 \begin{code}
 <{:input:../code/consensus.hny}>
 \end{code}
-\caption{\harmonylink{code/consensus.hny} Distributed consensus code and DFA}
+\caption{\harmonylink{code/consensus.hny} Distributed consensus code and behavior DFA}
 \label{fig:consensus}
 \end{figure}
 
@@ -6357,7 +6357,7 @@ we will assume there are <{N}> = 3<{F}> + 1 processors.
 \begin{center}
 \includegraphics[width=0.95\textwidth]{figures/bosco.png}
 \end{center}
-\caption{The DFA for \autoref{fig:bosco}}
+\caption{The behavior DFA for \autoref{fig:bosco}}
 \label{fig:boscodfa}
 \end{figure}
 
