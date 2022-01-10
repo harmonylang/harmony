@@ -15,11 +15,11 @@ python3 src/archive/implode.py /dev/null > $dir/version.xml
 
 mkdir -p output
 make
-./harmony code/Up.hny
+./harmony --noweb code/Up.hny
 mv code/Up.htm output/Up.html
-./harmony code/naiveLock.hny
+./harmony --noweb code/naiveLock.hny
 mv code/naiveLock.htm output/naiveLock.html
-./harmony code/naiveFlags.hny
+./harmony --noweb code/naiveFlags.hny
 mv code/naiveFlags.htm output/naiveFlags.html
 cp output/*.html $dir/output
 
