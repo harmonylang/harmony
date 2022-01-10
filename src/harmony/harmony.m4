@@ -1986,6 +1986,8 @@ class NaryOp(Op):
         (lexeme, file, line, column) = self.op
         if lexeme == "-" and self.n == 1:
             return "OpUna(self, FunMinus)"
+        if lexeme == "~" and self.n == 1:
+            return "OpUna(self, FunNegate)"
         if lexeme == "not" and self.n == 1:
             return "OpUna(self, FunNot)"
         if lexeme == "str" and self.n == 1:
@@ -6869,6 +6871,37 @@ RemoveContext(self) ==
 AddrHead(addr) == Head(addr.cval)
 AddrTail(addr) == HAddress(Tail(addr.cval))
 
+\* Given a non-negative integer, return a sequence of bits starting
+\* with least significant one
+RECURSIVE Int2BitsHelp(_)
+Int2BitsHelp(x) ==
+    IF x = 0
+    THEN <<>>
+    ELSE <<x % 2 = 1>> \o Int2BitsHelp(x \\div 2)
+
+\* Convert an integer to a bit sequence, lsb first. neg indicates if the
+\* value is negative.
+Int2Bits(x) ==
+    IF x < 0
+    THEN [ neg |-> TRUE,  bits |-> Int2BitsHelp(-x-1) ]
+    ELSE [ neg |-> FALSE, bits |-> Int2BitsHelp(x)    ]
+
+\* Convert a bit sequence (lsb first) to a non-negative integer
+RECURSIVE Bits2IntHelp(_)
+Bits2IntHelp(x) == 
+    IF x = <<>>
+    THEN 0
+    ELSE (IF Head(x) THEN 1 ELSE 0) + 2 * Bits2IntHelp(Tail(x))
+
+\* Convert a bit sequence to an integer.
+Bits2Int(b) ==
+    IF b.neg
+    THEN -Bits2IntHelp(b.bits) - 1
+    ELSE Bits2IntHelp(b.bits)
+
+\* Compute the bitwise negation of a bit sequence
+BitsNegate(b) == [ neg |-> ~b.neg, bits |-> b.bits ]
+
 \* This is to implement del !addr, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
 \* dictionaries).  It is a recursive operator that returns the new dictionary.
@@ -7374,6 +7407,7 @@ FunSubtract(x, y) ==
 \* The following are self-explanatory
 FunStr(v)          == HStr(Val2Str(v))
 FunMinus(v)        == HInt(-v.cval)
+FunNegate(v)       == HInt(Bits2Int(BitsNegate(Int2Bits(v.cval))))
 FunAbs(v)          == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
 FunNot(v)          == HBool(~v.cval)
 FunKeys(x)         == HSet(DOMAIN x.cval)
@@ -7696,14 +7730,14 @@ def tla_translate(f, code, scope):
             print("              ", end="", file=f)
         print("\\/ self.pc = %d /\\ "%pc, end="", file=f)
         print(code.labeled_ops[pc].op.tladump(), file=f)
-    print(file=f)
-    print("Next == (\\E self \\in active: Step(self)) \\/ Idle", file=f)
-    print("Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)", file=f)
-    print("Spec == Init /\\ [][Next]_allvars /\\ Liveness", file=f)
-    print(file=f)
-    print("THEOREM Spec => []TypeInvariant", file=f)
-    print("THEOREM Spec => []<><<Idle>>_allvars", file=f)
-    print("================", file=f)
+    print("""
+Next == (\\E self \\in active: Step(self)) \\/ Idle
+Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)
+Spec == Init /\\ [][Next]_allvars /\\ Liveness
+
+THEOREM Spec => []TypeInvariant
+THEOREM Spec => []<><<Idle>>_allvars
+================""", file=f)
 
 def usage():
     print("Usage: harmony [options] harmony-file ...")
