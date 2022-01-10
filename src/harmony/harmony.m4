@@ -1177,9 +1177,9 @@ class LoadOp(Op):
         if self.name == None:
             return "OpLoadInd(self)"
         else:
-            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
-            return 'OpLoad(self, "%s")'%lexeme
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpLoad(self, <<%s>>)'%result
 
     def explain(self):
         if self.name == None:
@@ -1233,9 +1233,9 @@ class StoreOp(Op):
         if self.name == None:
             return "OpStoreInd(self)"
         else:
-            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
-            return 'OpStore(self, "%s")'%lexeme
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpStore(self, <<%s>>)'%result
 
     def explain(self):
         if self.name == None:
@@ -1276,9 +1276,9 @@ class StoreOp(Op):
                 context.failure = "Error: " + name + " is not a dictionary " + str(self.token)
 
 class DelOp(Op):
-    # TODO: prefix
     def __init__(self, name):
         self.name = name
+        self.prefix = []        # TODO.  Prefix should be specified as arg
 
     def __repr__(self):
         if self.name != None:
@@ -1291,17 +1291,21 @@ class DelOp(Op):
         if self.name == None:
             return '{ "op": "Del" }'
         else:
-            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Del", "value": "%s" }'%lexeme
+            result = ""
+            for n in self.prefix + [lexeme]:
+                if result != "":
+                    result += ", "
+                result += jsonValue(n)
+            return '{ "op": "Del", "value": [%s] }'%result
 
     def tladump(self):
         if self.name == None:
             return "OpDelInd(self)"
         else:
-            # TODO.  Should deal with prefix
             (lexeme, file, line, column) = self.name
-            return 'OpDel(self, "%s")'%lexeme
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpDel(self, <<%s>>)'%result
 
     def explain(self):
         if self.name == None:
@@ -7008,11 +7012,11 @@ OpCut(self, s, v) ==
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
-\* Delete the given shared variable
+\* Delete the shared variable pointed to be v.  v is a sequence of Harmony
+\* values acting as an address (path in hierarchy of dicts)
 OpDel(self, v) ==
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
-    /\\ shared' = HDict(
-        [ x \in (DOMAIN shared.cval) \\ { HStr(v.vname) } |-> shared.cval[x] ])
+    /\\ shared' = RemoveDictAddr(shared, HAddress(v))
 
 \* Delete the shared variable whose address is pushed on the stack
 OpDelInd(self) ==
@@ -7513,12 +7517,13 @@ OpApply(self) ==
                 /\\ UNCHANGED shared
         [] OTHER -> FALSE
 
-\* Pop the top of the stack and store in shared variable v
+\* Pop the top of the stack and store in the shared variable pointed to
+\* by the sequence v of Harmony values that acts as an address
 OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ UpdateContext(self, next)
-        /\\ shared' = UpdateDict(shared, HStr(v), Head(self.stack))
+        /\\ shared' = UpdateDictAddr(shared, HAddress(v), Head(self.stack))
 
 \* Pop a value and an address and store the value at the given address
 OpStoreInd(self) ==
@@ -7559,10 +7564,11 @@ OpLoadVarInd(self) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* Push the value of shared variable v onto the stack
+\* Push the value of shared variable pointed to by v onto the stack.  v
+\* is a sequence of Harmony values acting as an address
 OpLoad(self, v) ==
     LET next == [ self EXCEPT !.pc = @ + 1,
-                        !.stack = << shared.cval[HStr(v)] >> \\o @ ]
+                    !.stack = << LoadDictAddr(shared, HAddress(v)) >> \\o @ ]
     IN
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared

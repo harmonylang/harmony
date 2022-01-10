@@ -513,8 +513,9 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     value_ctx_failure(step->ctx, &global->values, "op_Cut: not a set, dict, or string");
 }
 
-// TODO: should implement "del x", not just "del".
 void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
+    const struct env_Del *ed = env;
+
     assert((state->vars & VALUE_MASK) == VALUE_DICT);
 
     if (step->ctx->readonly > 0) {
@@ -522,33 +523,50 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
 
-    hvalue_t av = value_ctx_pop(&step->ctx);
-    if ((av & VALUE_MASK) != VALUE_ADDRESS) {
-        char *p = value_string(av);
-        value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
-        free(p);
-        return;
-    }
-    if (av == VALUE_ADDRESS) {
-        value_ctx_failure(step->ctx, &global->values, "Del: address is None");
-        return;
-    }
+    if (ed == 0) {
+        hvalue_t av = value_ctx_pop(&step->ctx);
+        if ((av & VALUE_MASK) != VALUE_ADDRESS) {
+            char *p = value_string(av);
+            value_ctx_failure(step->ctx, &global->values, "Del %s: not an address", p);
+            free(p);
+            return;
+        }
+        if (av == VALUE_ADDRESS) {
+            value_ctx_failure(step->ctx, &global->values, "Del: address is None");
+            return;
+        }
 
-    int size;
-    hvalue_t *indices = value_get(av, &size);
-    size /= sizeof(hvalue_t);
-    if (step->ai != NULL) {
-        step->ai->indices = indices;
-        step->ai->n = size;
-        step->ai->load = false;
-    }
-    hvalue_t nd;
-    if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
-        value_ctx_failure(step->ctx, &global->values, "Del: no such variable");
+        int size;
+        hvalue_t *indices = value_get(av, &size);
+        size /= sizeof(hvalue_t);
+        if (step->ai != NULL) {
+            step->ai->indices = indices;
+            step->ai->n = size;
+            step->ai->load = false;
+        }
+        hvalue_t nd;
+        if (!ind_remove(state->vars, indices, size, &global->values, &nd)) {
+            value_ctx_failure(step->ctx, &global->values, "Del: no such variable");
+        }
+        else {
+            state->vars = nd;
+            step->ctx->pc++;
+        }
     }
     else {
-        state->vars = nd;
-        step->ctx->pc++;
+        if (step->ai != NULL) {
+            step->ai->indices = ed->indices;
+            step->ai->n = ed->n;
+            step->ai->load = false;
+        }
+        hvalue_t nd;
+        if (!ind_remove(state->vars, ed->indices, ed->n, &global->values, &nd)) {
+            value_ctx_failure(step->ctx, &global->values, "Del: bad variable");
+        }
+        else {
+            state->vars = nd;
+            step->ctx->pc++;
+        }
     }
 }
 
@@ -1305,7 +1323,6 @@ void *init_Assert2(struct dict *map, struct values_t *values){ return NULL; }
 void *init_AtomicDec(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Choose(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Continue(struct dict *map, struct values_t *values){ return NULL; }
-void *init_Del(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Dup(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Go(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Print(struct dict *map, struct values_t *values){ return NULL; }
@@ -1353,6 +1370,23 @@ void *init_AtomicInc(struct dict *map, struct values_t *values){
             char *p = lazy->u.atom.base;
             env->lazy = *p == 't' || *p == 'T';
         }
+    }
+    return env;
+}
+
+void *init_Del(struct dict *map, struct values_t *values){
+    struct json_value *jv = dict_lookup(map, "value", 5);
+    if (jv == NULL) {
+        return NULL;
+    }
+    assert(jv->type == JV_LIST);
+    struct env_Del *env = new_alloc(struct env_Del);
+    env->n = jv->u.list.nvals;
+    env->indices = malloc(env->n * sizeof(hvalue_t));
+    for (int i = 0; i < env->n; i++) {
+        struct json_value *index = jv->u.list.vals[i];
+        assert(index->type == JV_MAP);
+        env->indices[i] = value_from_json(values, index->u.map);
     }
     return env;
 }
