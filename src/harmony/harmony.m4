@@ -2012,6 +2012,10 @@ class NaryOp(Op):
             return "OpUna(self, FunCountLabel)"
         if lexeme == "get_context" and self.n == 1:
             return "OpGetContext(self)"
+        if lexeme == ">>" and self.n == 2:
+            return "OpBin(self, FunShiftRight)"
+        if lexeme == "<<" and self.n == 2:
+            return "OpBin(self, FunShiftLeft)"
         if lexeme == ".." and self.n == 2:
             return "OpBin(self, FunRange)"
         if lexeme == "SetAdd" and self.n == 2:
@@ -6902,6 +6906,16 @@ Bits2Int(b) ==
 \* Compute the bitwise negation of a bit sequence
 BitsNegate(b) == [ neg |-> ~b.neg, bits |-> b.bits ]
 
+\* Compute b >> n
+BitsShiftRight(b, n) ==
+    IF n >= Len(b.bits)
+    THEN [ neg |-> b.neg, bits |-> <<>> ]
+    ELSE [ neg |-> b.neg, bits |-> SubSeq(b.bits, n + 1, Len(b.bits)) ]
+
+\* Compute b << n
+BitsShiftLeft(b, n) ==
+    [ neg |-> b.neg, bits |-> [ x \in 1..n |-> b.neg ] \o b.bits ]
+
 \* This is to implement del !addr, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
 \* dictionaries).  It is a recursive operator that returns the new dictionary.
@@ -7405,25 +7419,27 @@ FunSubtract(x, y) ==
     [] OTHER -> FALSE
 
 \* The following are self-explanatory
-FunStr(v)          == HStr(Val2Str(v))
-FunMinus(v)        == HInt(-v.cval)
-FunNegate(v)       == HInt(Bits2Int(BitsNegate(Int2Bits(v.cval))))
-FunAbs(v)          == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
-FunNot(v)          == HBool(~v.cval)
-FunKeys(x)         == HSet(DOMAIN x.cval)
-FunRange(x, y)     == HSet({ HInt(i) : i \in x.cval .. y.cval })
-FunEquals(x, y)    == HBool(x = y)
-FunNotEquals(x, y) == HBool(x /= y)
-FunLT(x, y)        == HBool(HCmp(x, y) < 0)
-FunLE(x, y)        == HBool(HCmp(x, y) <= 0)
-FunGT(x, y)        == HBool(HCmp(x, y) > 0)
-FunGE(x, y)        == HBool(HCmp(x, y) >= 0)
-FunDiv(x, y)       == HInt(x.cval \\div y.cval)
-FunMod(x, y)       == HInt(x.cval % y.cval)
-FunPower(x, y)     == HInt(x.cval ^ y.cval)
-FunSetAdd(x, y)    == HSet(x.cval \\union {y})
-FunAddress(x, y)   == HAddress(x.cval \o <<y>>)
-FunExclusion(x, y) == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
+FunStr(v)           == HStr(Val2Str(v))
+FunMinus(v)         == HInt(-v.cval)
+FunNegate(v)        == HInt(Bits2Int(BitsNegate(Int2Bits(v.cval))))
+FunAbs(v)           == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
+FunNot(v)           == HBool(~v.cval)
+FunKeys(x)          == HSet(DOMAIN x.cval)
+FunRange(x, y)      == HSet({ HInt(i) : i \in x.cval .. y.cval })
+FunEquals(x, y)     == HBool(x = y)
+FunNotEquals(x, y)  == HBool(x /= y)
+FunLT(x, y)         == HBool(HCmp(x, y) < 0)
+FunLE(x, y)         == HBool(HCmp(x, y) <= 0)
+FunGT(x, y)         == HBool(HCmp(x, y) > 0)
+FunGE(x, y)         == HBool(HCmp(x, y) >= 0)
+FunDiv(x, y)        == HInt(x.cval \\div y.cval)
+FunMod(x, y)        == HInt(x.cval % y.cval)
+FunPower(x, y)      == HInt(x.cval ^ y.cval)
+FunSetAdd(x, y)     == HSet(x.cval \\union {y})
+FunAddress(x, y)    == HAddress(x.cval \o <<y>>)
+FunExclusion(x, y)  == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
+FunShiftRight(x, y) == HInt(Bits2Int(BitsShiftRight(Int2Bits(x.cval), y.cval)))
+FunShiftLeft(x, y) == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
 
 \* Merge two dictionaries.  If two keys conflict, use the minimum value
 MergeDictMin(x, y) ==
