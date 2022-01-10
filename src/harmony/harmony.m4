@@ -1279,14 +1279,14 @@ class StoreOp(Op):
                 context.failure = "Error: " + name + " is not a dictionary " + str(self.token)
 
 class DelOp(Op):
-    def __init__(self, name):
+    def __init__(self, name, prefix):
         self.name = name
-        self.prefix = []        # TODO.  Prefix should be specified as arg
+        self.prefix = prefix
 
     def __repr__(self):
         if self.name != None:
             (lexeme, file, line, column) = self.name
-            return "Del " + lexeme
+            return "Del " + ".".join(self.prefix + [lexeme])
         else:
             return "Del"
 
@@ -3764,10 +3764,10 @@ class DelAST(AST):
             code.append(AtomicIncOp(True))
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
-            op = DelOp(self.lv.name) if lvar == None else DelVarOp(self.lv.name)
+            op = DelOp(self.lv.name, scope.prefix) if lvar == None else DelVarOp(self.lv.name)
         else:
             self.lv.ph1(scope, code)
-            op = DelOp(None) if lvar == None else DelVarOp(None, lvar)
+            op = DelOp(None, None) if lvar == None else DelVarOp(None, lvar)
         code.append(op)
         if self.atomically:
             code.append(AtomicDecOp())
