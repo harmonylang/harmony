@@ -6916,6 +6916,47 @@ BitsShiftRight(b, n) ==
 BitsShiftLeft(b, n) ==
     [ neg |-> b.neg, bits |-> [ x \in 1..n |-> b.neg ] \o b.bits ]
 
+\* Helper functions for BitsXOR
+RECURSIVE BitsXORhelp(_,_)
+BitsXORhelp(x, y) ==
+    CASE x = <<>> -> y
+    []   y = <<>> -> x
+    [] OTHER -> << Head(x) # Head (y) >> \o BitsXORhelp(Tail(x), Tail(y))
+
+\* Compute x XOR y
+BitsXOR(x, y) ==
+    [ neg |-> x.neg # y.neg, bits |-> BitsXORhelp(x.bits, y.bits) ]
+
+\* Helper function for BitsOr
+RECURSIVE BitsOrHelp(_,_)
+BitsOrHelp(x, y) ==
+    CASE x.bits = <<>> -> IF x.neg THEN <<>> ELSE y.bits
+    []   y.bits = <<>> -> IF y.neg THEN <<>> ELSE x.bits
+    [] OTHER -> << (x.neg \\/ y.neg) #
+            ((Head(x.bits) # x.neg) \\/ (Head(y.bits) # y.neg)) >> \o
+            BitsOrHelp(
+                [ neg |-> x.neg, bits |-> Tail(x.bits) ],
+                [ neg |-> y.neg, bits |-> Tail(y.bits) ])
+
+\* Compute x OR y
+BitsOr(x, y) ==
+    [ neg  |-> x.neg \\/ y.neg, bits |-> BitsOrHelp(x, y) ]
+
+\* Helper function for BitsAnd
+RECURSIVE BitsAndHelp(_,_)
+BitsAndHelp(x, y) ==
+    CASE x.bits = <<>> -> IF x.neg THEN y.bits ELSE <<>>
+    []   y.bits = <<>> -> IF y.neg THEN x.bits ELSE <<>>
+    [] OTHER -> << (x.neg /\\ y.neg) #
+            ((Head(x.bits) # x.neg) /\\ (Head(y.bits) # y.neg)) >> \o
+            BitsAndHelp(
+                [ neg |-> x.neg, bits |-> Tail(x.bits) ],
+                [ neg |-> y.neg, bits |-> Tail(y.bits) ])
+
+\* Compute x AND y
+BitsAnd(x, y) ==
+    [ neg  |-> x.neg /\\ y.neg, bits |-> BitsAndHelp(x, y) ]
+
 \* This is to implement del !addr, where addr is a Harmony address
 \* (a sequence of Harmony values representing a path in dict, a tree of
 \* dictionaries).  It is a recursive operator that returns the new dictionary.
@@ -7437,9 +7478,15 @@ FunMod(x, y)        == HInt(x.cval % y.cval)
 FunPower(x, y)      == HInt(x.cval ^ y.cval)
 FunSetAdd(x, y)     == HSet(x.cval \\union {y})
 FunAddress(x, y)    == HAddress(x.cval \o <<y>>)
-FunExclusion(x, y)  == HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
 FunShiftRight(x, y) == HInt(Bits2Int(BitsShiftRight(Int2Bits(x.cval), y.cval)))
 FunShiftLeft(x, y) == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
+
+FunExclusion(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsXOR(Int2Bits(x.cval), Int2Bits(y.cval))))
+    [] OTHER -> FALSE
 
 \* Merge two dictionaries.  If two keys conflict, use the minimum value
 MergeDictMin(x, y) ==
@@ -7464,15 +7511,18 @@ FunUnion(x, y) ==
         HSet(x.cval \\union y.cval)
     [] x.ctype = "dict" /\\ y.ctype = "dict" ->
         HDict(MergeDictMax(x.cval, y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsOr(Int2Bits(x.cval), Int2Bits(y.cval))))
     [] OTHER -> FALSE
 
 \* Intersection of two sets or dictionaries
-\* TODO: also bitwise AND of integers
 FunIntersect(x, y) ==
     CASE x.ctype = "set" /\\ y.ctype = "set" ->
         HSet(x.cval \\intersect y.cval)
     [] x.ctype = "dict" /\\ y.ctype = "dict" ->
         HDict(MergeDictMin(x.cval, y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsAnd(Int2Bits(x.cval), Int2Bits(y.cval))))
     [] OTHER -> FALSE
 
 \* See if x is in y, where y is a set, a dict, or a string. In case of
