@@ -876,6 +876,9 @@ class SetIntLevelOp(Op):
     def jdump(self):
         return '{ "op": "SetIntLevel" }'
 
+    def tladump(self):
+        return 'OpSetIntLevel(self)'
+
     def explain(self):
         return "pops new boolean interrupt level and pushes old one"
 
@@ -6817,13 +6820,21 @@ VList(list) == [ vtype |-> "tup", vlist |-> list ]
 \*  atomic: a counter: 0 means not atomic, larger than 0 is atomic
 \*  vs:     a Harmony dictionary containing the variables of this thread
 \*  stack:  a sequence of Harmony values
-Context(pc, atomic, vs, stack) ==
-    [ pc |-> pc, apc |-> pc, atomic |-> atomic, vs |-> vs, stack |-> stack ]
+\*  interruptLevel: false if enabled, true if disabled
+Context(pc, atomic, vs, stack, interruptLevel) ==
+    [
+        pc |-> pc,
+        apc |-> pc,
+        atomic |-> atomic,
+        vs |-> vs,
+        stack |-> stack,
+        interruptLevel |-> interruptLevel
+    ]
 
 \* An initial context of a thread.  arg is the argument given when the thread
 \* thread was spawned.  "process" is used by the OpReturn operator.
 InitContext(pc, atomic, arg) ==
-    Context(pc, atomic, EmptyDict, << arg, "process" >>)
+    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE)
 
 \* Update the given map with a new key -> value mapping
 UpdateMap(map, key, value) ==
@@ -6951,6 +6962,16 @@ OpContinue(self) ==
 \* TODO.  Maybe some time in the future...
 OpReadonlyInc(self) == OpContinue(self)
 OpReadonlyDec(self) == OpContinue(self)
+
+\* Pop the new interrupt level and push the old one
+OpSetIntLevel(self) ==
+    LET nl   == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.interruptLevel = nl.cval,
+            !.stack = << HBool(self.interruptLevel) >> \\o Tail(@)]
+    IN
+        /\\ nl.ctype = "bool"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 \* This is used temporarily for Harmony VM instructions that have not yet
 \* been implemented
