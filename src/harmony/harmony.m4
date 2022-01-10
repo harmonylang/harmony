@@ -1804,6 +1804,9 @@ class TrapOp(Op):
     def jdump(self):
         return '{ "op": "Trap" }'
 
+    def tladump(self):
+        return 'OpTrap(self)'
+
     def eval(self, state, context):
         method = context.pop()
         assert isinstance(method, PcValue)
@@ -4379,6 +4382,7 @@ class TrapAST(AST):
         return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
+        # TODO.  These should be swapped
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(TrapOp())
@@ -6710,7 +6714,6 @@ HRank(x) ==
     []   x.ctype = "set"     -> 5
     []   x.ctype = "address" -> 6
     []   x.ctype = "context" -> 7
-    [] OTHER -> FALSE
 
 \* TLA+ does not seem to have a direct way to compare characters in a
 \* string, so...  Note that this only contains the printable ASCII
@@ -6734,7 +6737,6 @@ CRank(c) ==
     []c="s"->115[]c="t"->116[]c="u"->117[]c="v"->118[]c="w"->119
     []c="x"->120[]c="y"->121[]c="z"->122[]c="{"->123[]c="|"->124
     []c="}"->125[]c="~"->126
-    [] OTHER -> FALSE
 
 \* Comparing two TLA+ strings
 RECURSIVE StrCmp(_,_)
@@ -6751,7 +6753,7 @@ StrCmp(x, y) ==
             IN
                 CASE rx < ry -> -1
                 []   rx > ry ->  1
-                [] OTHER -> StrCmp(Tail(x), Tail(y))
+                []   rx = ry -> StrCmp(Tail(x), Tail(y))
 
 \* Setting up to compare two arbitrary Harmony values
 RECURSIVE SeqCmp(_,_)
@@ -6764,6 +6766,8 @@ RECURSIVE DictSeq(_)
 DictSeq(dict) ==
     LET dom == HSort(DOMAIN dict)
     IN [ x \in 1..Len(dom) |-> << dom[x], dict[dom[x]] >> ]
+
+DictCmp(x, y) == SeqCmp(Flatten(DictSeq(x)), Flatten(DictSeq(y)))
 
 \* Lexicographically compare two sequences of Harmony values
 SeqCmp(x, y) ==
@@ -6778,7 +6782,20 @@ SeqCmp(x, y) ==
             IN
                 CASE c < 0 -> -1
                 []   c > 0 ->  1
-                [] OTHER -> SeqCmp(Tail(x), Tail(y))
+                []   c = 0 -> SeqCmp(Tail(x), Tail(y))
+
+\* Compare two contexts.  Essentially done lexicographically
+CtxCmp(x, y) ==
+    IF x = y THEN 0
+    ELSE IF x.pc # y.pc THEN x.pc - y.pc
+    ELSE IF x.apc # y.apc THEN x.apc - y.apc
+    ELSE IF x.atomic # y.atomic THEN x.atomic - y.atomic
+    ELSE IF x.vs # y.vs THEN DictCmp(x.vs, y.vs)
+    ELSE IF x.stack # y.stack THEN SeqCmp(x.stack.cval, y.stack.cal)
+    ELSE IF x.interruptLevel # y.interruptLevel THEN
+                        x.interruptLevel - y.interruptLevel
+    ELSE IF x.trap # y.trap THEN SeqCmp(x.trap, y.trap)
+    ELSE Assert(FALSE, "CtxCmp: this should not happen")
 
 \* Compare two Harmony values as specified in the book
 \* Return negative if x < y, 0 if x = y, and positive if x > y
@@ -6794,11 +6811,9 @@ HCmp(x, y) ==
             []   x.ctype = "str"     -> StrCmp(x.cval, y.cval)
             []   x.ctype = "pc"      -> x.cval - y.cval
             []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
-            []   x.ctype = "dict"    ->
-                SeqCmp(Flatten(DictSeq(x.cval)), Flatten(DictSeq(y.cval)))
+            []   x.ctype = "dict"    -> DictCmp(x.cval, y.cval)
             []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
-            []   x.ctype = "context" -> FALSE \* TODO
-            [] OTHER -> FALSE
+            []   x.ctype = "context" -> CtxCmp(x.cval, y.cval)
         ELSE
             HRank(x) - HRank(y)
 
@@ -6827,20 +6842,22 @@ VList(list) == [ vtype |-> "tup", vlist |-> list ]
 \*  vs:     a Harmony dictionary containing the variables of this thread
 \*  stack:  a sequence of Harmony values
 \*  interruptLevel: false if enabled, true if disabled
-Context(pc, atomic, vs, stack, interruptLevel) ==
+\*  trap:   either <<>> or a tuple containing the trap method and argument
+Context(pc, atomic, vs, stack, interruptLevel, trap) ==
     [
-        pc |-> pc,
-        apc |-> pc,
-        atomic |-> atomic,
-        vs |-> vs,
-        stack |-> stack,
-        interruptLevel |-> interruptLevel
+        pc             |-> pc,
+        apc            |-> pc,
+        atomic         |-> atomic,
+        vs             |-> vs,
+        stack          |-> stack,
+        interruptLevel |-> interruptLevel,
+        trap           |-> trap
     ]
 
 \* An initial context of a thread.  arg is the argument given when the thread
 \* thread was spawned.  "process" is used by the OpReturn operator.
 InitContext(pc, atomic, arg) ==
-    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE)
+    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>)
 
 \* Update the given map with a new key -> value mapping
 UpdateMap(map, key, value) ==
@@ -7119,7 +7136,6 @@ OpCut(self, s, v) ==
             IN
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
-        [] OTHER -> FALSE
 
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)
@@ -7196,7 +7212,7 @@ OpAtomicInc(self) ==
 OpAtomicDec(self) ==
     IF self.atomic = 1
     THEN
-        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = 0]
+        LET next == [self EXCEPT !.pc = @ + 1, !.apc = 0, !.atomic = 0]
         IN
             /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
             /\\ active' = DOMAIN ctxbag'
@@ -7395,14 +7411,12 @@ Val2Str(x) ==
     []   x.ctype = "set"     ->
             IF x.cval = {} THEN "{}" ELSE "{ " \o Seq2Str(HSort(x.cval)) \o " }"
     []   x.ctype = "address" -> "?" \o Head(x.cval).cval \o Addr2Str(Tail(x.cval))
-    [] OTHER -> "<CONVERTING " \o x.ctype \o " NOT SUPPORTED>"
 
 \* Compute the cardinality of a set of dict, or the length of a string
 FunLen(s) ==
     CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
     []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
     []   s.ctype = "str"  -> HInt(Len(s.cval))
-    [] OTHER -> FALSE
 
 \* Concatenate two sequences.  Helper function for FunAdd
 DictConcat(x, y) ==
@@ -7417,14 +7431,12 @@ FunAdd(x, y) ==
     CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
     []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
     []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(x.cval \o y.cval)
-    [] OTHER -> FALSE
 
 \* Check to see if x is the empty set, dict, or string
 FunIsEmpty(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = {})
     []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
     []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
-    [] OTHER -> FALSE
 
 \* Get the range of a dict (i.e., the values, not the keys)
 Range(dict) == { dict[x] : x \in DOMAIN dict }
@@ -7433,31 +7445,26 @@ Range(dict) == { dict[x] : x \in DOMAIN dict }
 FunMin(x) ==
     CASE x.ctype = "set"  -> HMin(x.cval)
     []   x.ctype = "dict" -> HMin(Range(x.cval))
-    [] OTHER -> FALSE
 
 \* Get the maximum of a set or dict
 FunMax(x) ==
     CASE x.ctype = "set"  -> HMax(x.cval)
     []   x.ctype = "dict" -> HMax(Range(x.cval))
-    [] OTHER -> FALSE
 
 \* See if any element in the set or dict is true
 FunAny(x) ==
     CASE x.ctype = "set"  -> HBool(HBool(TRUE) \in x.cval)
     []   x.ctype = "dict" -> HBool(HBool(TRUE) \in Range(x.cval))
-    [] OTHER -> FALSE
 
 \* See if all elements in the set of dict are true
 FunAll(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = { HBool(TRUE) })
     []   x.ctype = "dict" -> HBool(HBool(FALSE) \\notin Range(x.cval))
-    [] OTHER -> FALSE
 
 \* Can be applied to integers or sets
 FunSubtract(x, y) ==
     CASE x.ctype = "int" /\\ y.ctype = "int" -> HInt(x.cval - y.cval)
     []   x.ctype = "set" /\\ y.ctype = "set" -> HSet(x.cval \\ y.cval)
-    [] OTHER -> FALSE
 
 \* The following are self-explanatory
 FunStr(v)           == HStr(Val2Str(v))
@@ -7488,7 +7495,6 @@ FunExclusion(x, y) ==
         HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
     [] x.ctype = "int" /\\ y.ctype = "int" ->
         HInt(Bits2Int(BitsXOR(Int2Bits(x.cval), Int2Bits(y.cval))))
-    [] OTHER -> FALSE
 
 \* Merge two dictionaries.  If two keys conflict, use the minimum value
 MergeDictMin(x, y) ==
@@ -7515,7 +7521,6 @@ FunUnion(x, y) ==
         HDict(MergeDictMax(x.cval, y.cval))
     [] x.ctype = "int" /\\ y.ctype = "int" ->
         HInt(Bits2Int(BitsOr(Int2Bits(x.cval), Int2Bits(y.cval))))
-    [] OTHER -> FALSE
 
 \* Intersection of two sets or dictionaries
 FunIntersect(x, y) ==
@@ -7525,7 +7530,6 @@ FunIntersect(x, y) ==
         HDict(MergeDictMin(x.cval, y.cval))
     [] x.ctype = "int" /\\ y.ctype = "int" ->
         HInt(Bits2Int(BitsAnd(Int2Bits(x.cval), Int2Bits(y.cval))))
-    [] OTHER -> FALSE
 
 \* See if x is in y, where y is a set, a dict, or a string. In case of
 \* a string, check if x is a substring of y
@@ -7538,7 +7542,6 @@ FunIn(x, y) ==
             IN
                 HBool(\E i \in 0..(yn - xn): 
                     x.cval = SubSeq(y.cval, i+1, i+xn))
-    [] OTHER -> FALSE
 
 \* Concatenate n copies of dict, which represents a list
 DictTimes(dict, n) ==
@@ -7557,7 +7560,6 @@ FunMult(e1, e2) ==
         DictTimes(e2, e1)
     [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
         DictTimes(e1, e2)
-    [] OTHER -> FALSE
 
 \* By Harmony rules, if there are two conflicting key->value1 and key->value2
 \* mappings, the higher values wins.
@@ -7638,7 +7640,6 @@ OpApply(self) ==
                 /\\ arg.ctype = "int"
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
-        [] OTHER -> FALSE
 
 \* Pop the top of the stack and store in the shared variable pointed to
 \* by the sequence v of Harmony values that acts as an address
@@ -7733,7 +7734,6 @@ OpReturn(self) ==
                THEN active' = DOMAIN ctxbag'
                ELSE active' = active \\ { self }
             /\\ UNCHANGED shared
-        [] OTHER -> FALSE
 
 \* Set the program counter pc to the given value
 OpJump(self, pc) ==
@@ -7765,6 +7765,16 @@ OpSpawn(self) ==
            THEN active' = (active \\ { self }) \\union { next }
            ELSE active' = (active \\ { self }) \\union { next, newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
+        /\\ UNCHANGED shared
+
+\* Operation to set a trap.  Not really supported yet here.
+OpTrap(self) ==
+    LET entry == self.stack[1]
+        arg   == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
+                                            !.trap = << entry, arg >>]
+    IN
+        /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
 \* Restore a context that is pushed on the stack.  Also push the argument
