@@ -7481,6 +7481,8 @@ FunAddress(x, y)    == HAddress(x.cval \o <<y>>)
 FunShiftRight(x, y) == HInt(Bits2Int(BitsShiftRight(Int2Bits(x.cval), y.cval)))
 FunShiftLeft(x, y) == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
 
+\* Compute either XOR of two ints or the union minus the intersection
+\* of two sets
 FunExclusion(x, y) ==
     CASE x.ctype = "set" /\\ y.ctype = "set" ->
         HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
