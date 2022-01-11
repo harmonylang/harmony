@@ -330,12 +330,13 @@ Inprecisely, methods that use the <{atomically}> keyword are specifications
 while methods that do not are probably implementation.
 Whether something is a specification or an implementation is in the
 eye of the beholder.
-Importantly, however, is the notion of modularity that is implied here.
+Important, however, is the notion of modularity that is implied here.
 Harmony can model check the implementation of \autoref{fig:ms} using
 the specification of a lock in \autoref{fig:synch}(a).
 Separately, Harmony can check the correctness of implementation of
 \autoref{fig:synch}(b) against the specification of
-\autoref{fig:synch}(a).
+\autoref{fig:synch}(a).  This modularity allows larger systems to
+be model checked that would not be tractable otherwise.
 
 The Harmony distribution comes with a collection of specifications,
 each often with multiple implementations.  The lock specification
@@ -562,7 +563,10 @@ new context and the domain of the context bag.
 
 \paragraph{SetIntLevel.}  A context contains a boolean that determines
 if interrupts are enabled or not.  \texttt{SetIntLevel} pops the
-new interrupt level and pushes the old.
+new interrupt level and pushes the old.  Supporting interrupts is
+important.  First, writing multi-threaded programs that also need
+to handle interrupts is difficult.  Second, distributed algorithms
+often require timer interrupts to trigger actions such as retransmissions.
 
 \paragraph{Stop/Go.}  \texttt{Stop} saves the current context (with
 its program counter incremented) in a specified shared location (usually the
@@ -799,7 +803,7 @@ runs first and acquires <{forks[2]}>, its left fork.  In the table
 in the lower-right, you can see that the thread is currently blocked
 and in atomic as well as read-only mode (conditions in a <{when}>
 clause are not allowed to modify state).  You can also see its stack
-trace: it trying to acquire <{forks[3]}>, its right fork (executing
+trace: it is trying to acquire <{forks[3]}>, its right fork (executing
 the code in \autoref{fig:synch}(a)).  Next <{diner(0)}>, <{diner(3)}>,
 <{diner(4)}>, and <{diner(1)}> take similar turns.  All threads are
 blocked waiting for another thread to release a lock---a classic
@@ -811,9 +815,29 @@ as explained above.
 
 \section{Limitations}
 
-Combinatorial state explosion.
-Production code.
-Lack of formal definition of Harmony itself.
+While Harmony has proven itself to be effective and even fun to use
+for a large variety of synchronization problems and distributed
+algorithms, it is not a panacea.  At the core of Harmony is a model
+checker and with all its optimizations it can still easily suffer
+from combinatorial state explosion in programs that have too many
+threads or too many non-deterministic choices.  Nonetheless, because
+of its systematic state exploration, many problems can often be
+uncovered in small scenarios with few threads and few choices.
+
+The Harmony language, at least currently, is not usable for production
+code.  One reason for this is the <{atomically}> clause.  On a multi-core
+processor it would require an instruction to stop all other cores.
+Harmony was never designed to be a language for production code.  Because
+it is close to languages such as Python and C, it tends to be fairly
+easy to hand-translate code developed in Harmony to a desired target
+programming language.  However, such hand-translation could easily
+introduce a bug that did not exist in the Harmony code.
+
+Finally, the Harmony language currently does not have a formal definition
+itself, and there is no guarantee that the compiler itself is correct.
+Harmony compiles to a virtual machine code that is fully formally
+specified in TLA+, and this is the level of abstraction where model
+checking occurs.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
