@@ -3175,7 +3175,7 @@ set object}
 \begin{code}
 <{:input:../code/linkedlist.hny}>
 \end{code}
-\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking}
+\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of values using a linked list with fine-grained locking}
 \label{fig:linkedlist}
 \end{figure}
 
@@ -3203,21 +3203,22 @@ Method <{contains()}> checks if a particular value is in the list.
 test program to demonstrate the use of set objects.
 
 \autoref{fig:linkedlist} implements a concurrent set object using
-an ordered linked list of integers without duplicates.
-The list has two dummy ``book-end'' nodes with values <{-inf}> and
-<{inf}> (similar to the Python \texttt{math.inf} constant).
+an ordered linked list without duplicates.
+The list has two dummy ``book-end'' nodes with values <{(-1, None)}> and
+<{(1, None)}>.  A value <{v}> is stored as <{(0, v)}>---note that for
+any value <{v}>, <{(-1, None) < (0, v) < (1, None)}>.
 An invariant of the algorithm is that at any point in time the
-list is ``valid,'' starting with a <{-inf}> node and ending
-with an <{inf}> node.
+list is ``valid,'' starting with a <{(-1, None)}> node and ending
+with an <{(1, None)}> node.
 
 \index{hand-over-hand locking}%
 Each node has a lock, a value, and <{next}>, a pointer to the next node
-(which is <{None}> for the <{inf}> node).
+(which is <{None}> for the <{(1, None)}> node to mark the end of the list).
 The <{_find(lst, v)}> helper method first
 finds and locks two consecutive nodes <{before}> and <{after}>
-such that <{before->data.value < v <= after->data.value}>.
+such that <{before->data.value < (0, v) <= after->data.value}>.
 It does so by performing something called \emph{hand-over-hand locking}.
-It first locks the first node, which is the <{-inf}> node.
+It first locks the first node, which is the <{(-1, None)}> node.
 Then, iteratively, it obtains a lock on the next node and release the
 lock on the last one, and so on, similar to climbing a rope
 hand-over-hand.
@@ -3245,7 +3246,7 @@ execution depends on whether the value is found or not.
 If found, it coincides with retrieving the pointer to the node
 that has the value.
 If not found, it coincides with retrieving the pointer to the
-<{inf}> node.
+<{(1, None)}> node.
 \end{comment}
 
 \section*{Exercises}
@@ -6731,7 +6732,7 @@ Below is a complete list of Harmony value types with examples:
 \hline
 Boolean & <{False}>, <{True}> \\
 \hline
-Integer & <{-inf, ..., -2, -1, 0, 1, 2, ..., inf}> \\
+Integer & <{..., -2, -1, 0, 1, 2, ...}> \\
 \hline
 String & <{"example"}>, <{.example}> \\
 \hline
@@ -6819,11 +6820,10 @@ Operations on booleans include:
 
 \subsection*{Integer}
 
-The integer type supports any whole number, as well as $-\mathtt{inf}$
-and $\mathtt{inf}$.  In the Python-based model checker, integers are
-infinite precision.  In the C-based model checker, integers are implemented
-by two's complement 61-bit words, and $-\mathtt{inf}$ is represented by
-the minimal integer and $\mathtt{inf}$ is represented by the maximal integer.
+The integer type supports any whole number.
+In the C-based model checker, integers are currently implemented
+by two's complement 61-bit words.  The model checker checks for
+overflow on various operations.
 
 Operations on integers include:
 

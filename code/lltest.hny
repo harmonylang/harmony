@@ -1,6 +1,6 @@
 from linkedlist import *
 
-mylist = LinkedList()
+mylist = SetObject()
 
 def thread1():
     insert(mylist, 1)

@@ -6753,7 +6753,7 @@ StrCmp(x, y) ==
             IN
                 CASE rx < ry -> -1
                 []   rx > ry ->  1
-                []   rx = ry -> StrCmp(Tail(x), Tail(y))
+                [] OTHER -> StrCmp(Tail(x), Tail(y))
 
 \* Setting up to compare two arbitrary Harmony values
 RECURSIVE SeqCmp(_,_)
@@ -6782,7 +6782,7 @@ SeqCmp(x, y) ==
             IN
                 CASE c < 0 -> -1
                 []   c > 0 ->  1
-                []   c = 0 -> SeqCmp(Tail(x), Tail(y))
+                [] OTHER -> SeqCmp(Tail(x), Tail(y))
 
 \* Compare two contexts.  Essentially done lexicographically
 CtxCmp(x, y) ==
