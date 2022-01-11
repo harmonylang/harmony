@@ -275,16 +275,17 @@ for i in {1..NOPS}: spawn thread(i)
 
 \subsection{Basics}
 
-Harmony is heavily based on Python to reduce the learning curve
-for users.  Many of Python's powerful constructs and operators are
+Harmony is heavily based on Python to reduce the learning curve for
+users.  Many of Python's powerful constructs and operators are
 supported are supported, including comprehensions.  Harmony does
 not support classes, and instead supports memory allocation and
 pointers in a way that is familiar to C programmers.  While this
-seems like a step back in language evolution, many synchronization
-algorithms in the literature explicitly consider memory accesses,
-and perhaps surprisingly this has been a bonus for analyzing
-such algorithms with Harmony.  Moreover, the Harmony model checker 
-can be used to check for memory leaks or access to dangling pointers.
+perhaps seems like a step back in language evolution, many
+synchronization algorithms in the literature explicitly consider
+memory accesses, and perhaps surprisingly this has been a bonus for
+analyzing such algorithms with Harmony.  Moreover, the Harmony model
+checker can be used to check for memory leaks or access to dangling
+pointers.
 
 For example, \autoref{fig:ms} shows a reproduction from the well-known
 Michael\&Scott two-lock concurrent queue~\cite{MS96} along with a
@@ -818,11 +819,15 @@ as explained above.
 While Harmony has proven itself to be effective and even fun to use
 for a large variety of synchronization problems and distributed
 algorithms, it is not a panacea.  At the core of Harmony is a model
-checker and with all its optimizations it can still easily suffer
+checker and---even with all its optimizations---it can still suffer
 from combinatorial state explosion in programs that have too many
 threads or too many non-deterministic choices.  Nonetheless, because
 of its systematic state exploration, many problems can often be
 uncovered in small scenarios with few threads and few choices.
+Harmony's support for anonymous threads is useful for scaling when
+there are many similar threads that do not need to know their own
+identifier.  Also, Harmony's support for modular model checking
+allows larger systems to be built from smaller ones.
 
 The Harmony language, at least currently, is not usable for production
 code.  One reason for this is the <{atomically}> clause.  On a multi-core
@@ -838,6 +843,13 @@ itself, and there is no guarantee that the compiler itself is correct.
 Harmony compiles to a virtual machine code that is fully formally
 specified in TLA+, and this is the level of abstraction where model
 checking occurs.
+
+\section{Related Work}
+
+Harmony does not offer much innovation on the front of model checking
+
+PlusCal and TLA+, Promela and Spin, DSLABS (UW), Java Pathfinder, Zing,
+CBMC/JBMC.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
