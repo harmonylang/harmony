@@ -63,6 +63,8 @@ XX\=XXX\=XXX\kill
 <{:const:hello}>
 <{:const:enqueue}>
 <{:const:dequeue}>
+<{:const:send}>
+<{:const:receive}>
 
 \begin{figure*}
 \begin{center}
@@ -135,6 +137,10 @@ ones, and barrier synchronization implementations.  Harmony has also been
 used to verify a variety of distributed algorithms such as two-phase
 commit, chain replication, various consensus algorithms such as Paxos,
 and the Needham-Schroeder authentication protocols.
+
+This paper provides an overview of the Harmony language and Charm,
+its model checker, and how they may be used by programmers to
+develop reliable concurrent or distributed code.
 
 \begin{figure}
 \begin{tabular}{|l|l|}
@@ -386,6 +392,23 @@ checker ends up verifying the product of the implementation
 and the DFA and ensures that every behavior of the implementation
 program (in terms of its print statements) is also a behavior of
 the specification program.
+
+\subsection{Distributed Programming}
+
+Harmony can be used to model a distributed system in which the
+only shared variable is a set of messages representing the network.
+A message is sent by atomically adding a message to the network:
+<{def send(m): atomically network |= {m}}>.
+To receive a message, a program can use the Harmony <{when}>
+statement to wait for a message.  Typically, however, the program
+does not want to receive just any message, but a message that satisfies
+certain conditions such as: wait for the next message that is addressed
+to me and has a sequence number larger than 3.
+For this, Harmony supports the <{exists clause}> and allows
+<{when}> clauses to be nested:
+<{atomically when exists m in network when (m.dst == self) and (m.seq > 3): ...}>
+With these constructs, Harmony can be effectively used as a
+model checker for distributed algorithms.
 
 \section{Harmony Virtual Machine}
 
@@ -689,7 +712,7 @@ for i in {0..N-1}: spawn diner(i)
 \end{code}
 }
 \end{center}
-\caption{The Dining Philosophers Program in Harmony}
+\caption{Dining Philosophers in Harmony}
 \label{fig:diners}
 \end{figure}
 
@@ -697,7 +720,7 @@ for i in {0..N-1}: spawn diner(i)
 \begin{center}
 \includegraphics[width=\textwidth]{diners.png}
 \end{center}
-\caption{The output of running the Dining Philosophers program}
+\caption{The HTML output of running the Dining Philosophers program}
 \label{fig:dinersHTML}
 \end{figure*}
 
@@ -769,7 +792,28 @@ forwards or backwards to a context switch between threads).  The actual
 HVM code is in the lowerleft of the output.
 
 However, users first want to focus on the rows in the top table.
-In this particular example
+In this particular example, there are 6 threads, the thread that
+first runs and the five threads that are spawned by it.  They take
+``turns'' by context switching.  In this particular trace, <{diner(2)}>
+runs first and acquires <{forks[2]}>, its left fork.  In the table
+in the lower-right, you can see that the thread is currently blocked
+and in atomic as well as read-only mode (conditions in a <{when}>
+clause are not allowed to modify state).  You can also see its stack
+trace: it trying to acquire <{forks[3]}>, its right fork (executing
+the code in \autoref{fig:synch}(a)).  Next <{diner(0)}>, <{diner(3)}>,
+<{diner(4)}>, and <{diner(1)}> take similar turns.  All threads are
+blocked waiting for another thread to release a lock---a classic
+deadlock situation.
+
+Should the programmer need more detailed information, then they can
+run through the counter-example step-by-step, forwards and backwards,
+as explained above.
+
+\section{Limitations}
+
+Combinatorial state explosion.
+Production code.
+Lack of formal definition of Harmony itself.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
