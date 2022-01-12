@@ -7671,7 +7671,7 @@ OpStoreVarInd(self) ==
 \* Pop an address and push the value at the address onto the stack
 OpLoadInd(self) ==
     LET
-        addr == self.stack[1]
+        addr == Head(self.stack)
         val  == LoadDictAddr(shared, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
@@ -7681,7 +7681,7 @@ OpLoadInd(self) ==
 \* Pop an address and push the value of the addressed local variable onto the stack
 OpLoadVarInd(self) ==
     LET
-        addr == self.stack[1]
+        addr == Head(self.stack)
         val  == LoadDictAddr(self.vs, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
@@ -7745,7 +7745,7 @@ OpJump(self, pc) ==
 \* Pop a value of the stack.  If it equals cond, set the pc to the
 \* given value.
 OpJumpCond(self, pc, cond) ==
-    LET next == [ self EXCEPT !.pc = IF self.stack[1] = cond
+    LET next == [ self EXCEPT !.pc = IF Head(self.stack) = cond
                     THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
     IN
         /\\ UpdateContext(self, next)
