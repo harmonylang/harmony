@@ -1,0 +1,96 @@
+import list
+
+def tas(lk):
+    atomically:
+        result = !lk
+        !lk = True
+
+def cas(p, old, new):
+    atomically:
+        result = !p == old
+        if result:
+            !p = new
+
+def BinSema(acquired):
+    result = { .acquired: acquired, .suspended: [] }
+
+def Lock():
+    result = BinSema(False)
+
+def acquire(binsema):
+    atomically:
+        if binsema->acquired:
+            stop binsema->suspended[len binsema->suspended]
+            assert binsema->acquired
+        else:
+            binsema->acquired = True
+
+def release(binsema):
+    atomically:
+        assert binsema->acquired
+        if binsema->suspended == []:
+            binsema->acquired = False
+        else:
+            go (list.head(binsema->suspended)) ()
+            binsema->suspended = list.tail(binsema->suspended)
+
+def held(binsema):
+    result = binsema->acquired
+
+def Condition():
+    result = []
+
+def wait(c, lk):
+    atomically:
+        release(lk)
+        stop (!c)[len !c]
+    acquire(lk)
+
+def notify(c):
+    atomically if !c != []:
+        go (list.head(!c)) ()
+        !c = list.tail(!c)
+        
+def notifyAll(c):
+    atomically:
+        while !c != []:
+            go (list.head(!c)) ()
+            !c = list.tail(!c)
+        
+def Semaphore(cnt):
+    result = { .count: cnt, .waiters: [] }
+
+def P(sema):
+    atomically:
+        if sema->count > 0:
+            sema->count -= 1
+        else:
+            stop sema->waiters[len sema->waiters]
+        
+def V(sema):
+    atomically let cnt, waiters = sema->count, sema->waiters:
+        if waiters != []:
+            assert cnt == 0
+            go (waiters[0]) ()
+            sema->waiters = list.tail(waiters)
+        else:
+            sema->count = cnt + 1
+
+def Queue():
+    result = { .list: [], .waiters: [] }
+
+def get(q):
+    atomically:
+        if q->list == []:
+            stop q->waiters[len q->waiters]
+        
+        result = list.head(q->list)
+        q->list = list.tail(q->list)
+
+def put(q, item):
+    atomically:
+        q->list = list.append(q->list, item)
+        let waiters = q->waiters:
+            if waiters != []:
+                go (waiters[0]) item
+                q->waiters = list.tail(waiters)
