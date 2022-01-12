@@ -78,7 +78,7 @@ The Harmony CLI can be installed using the `pip` via the command below.
 pip install harmony-model-checker
 ```
 
-When installing via pip, you may see a message on the terminal something like the following
+When installing via pip, you may see a message on the terminal something like the following:
 
 ```sh
 
@@ -90,7 +90,7 @@ If so, add the path displayed in the message to the PATH variable.
 
 Download the source code from the [GitHub repository](https://www.github.com) via **Download as ZIP**.
 
-On a command line, navigate to the directory using `cd`. Once there, run the command `make all` to build Harmony.
+On a command line, navigate to the directory using `cd`. Once there, run the command `make setup` to build Harmony.
 
 After successfully building Harmony, run `pwd` to out the path name of the directory with Harmony. Edit your PATH variable to include this path.
 

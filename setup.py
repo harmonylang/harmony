@@ -9,13 +9,18 @@ import subprocess
 PACKAGE_NAME = 'harmony_model_checker'
 PACKAGE_VERSION = "0.0.20a14"
 
+PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
+
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
-        package_config = Path.home() / ".harmony-model-checker"
-        if not package_config.exists():
-            package_config.mkdir()
+        if not PACKAGE_CONFIG.exists():
+            PACKAGE_CONFIG.mkdir()
         super().run()
+
+        pkg_version_file = PACKAGE_CONFIG / "package_version"
+        with pkg_version_file.open("w") as f:
+            f.write(PACKAGE_VERSION)
 
         harmony_cmd = shutil.which("harmony")
         if harmony_cmd is not None:
@@ -26,6 +31,11 @@ class PostInstallCommand(install):
                 level=log.WARN
             )
 
+class InstallCommand(install):
+    def run(self):
+        if not PACKAGE_CONFIG.exists():
+            PACKAGE_CONFIG.mkdir()
+        super().run()
 
 setuptools.setup(
     name=PACKAGE_NAME,
