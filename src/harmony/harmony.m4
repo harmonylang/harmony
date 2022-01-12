@@ -7786,8 +7786,9 @@ OpGo(self) ==
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
         newc == [ctx.cval EXCEPT !.stack = << arg >> \o @]
     IN
-        /\\ self.atomic > 0
-        /\\ active' = (active \\ { self }) \\union { next }
+        /\\ IF self.atomic > 0
+            THEN active' = (active \\ { self }) \\union { next }
+            ELSE active' = (active \\ { self }) \\union { next,newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
