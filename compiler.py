@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 from harmony_model_checker.main import main
 
