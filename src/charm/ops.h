@@ -31,6 +31,11 @@ struct env_Cut {
     struct var_tree *key, *value;
 };
 
+struct env_Del {
+    hvalue_t *indices;
+    int n;
+};
+
 struct env_DelVar {
     hvalue_t name;
 };

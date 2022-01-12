@@ -355,6 +355,7 @@ Creative Commons AttributionNonCommercial-ShareAlike 4.0 International
 \url{http://creativecommons.org/licenses/by-nc-sa/4.0}.
 
 \tableofcontents
+\listoffigures
 
 \chapter{On Concurrent Programming}
 
@@ -689,7 +690,7 @@ captures an infinite number of possible outputs.
 \begin{code}
 <{:input:../code/hello3.hny}>
 \end{code}
-\caption{\harmonylink{code/hello3.hny} Two possible outputs}
+\caption{\harmonylink{code/hello3.hny} Harmony program with two possible outputs}
 \label{fig:choice}
 \end{figure}
 
@@ -700,7 +701,7 @@ captures an infinite number of possible outputs.
 \begin{code}
 <{:input:../code/hello4.hny}>
 \end{code}
-\caption{\harmonylink{code/hello4.hny} An infinite number of outputs}
+\caption{\harmonylink{code/hello4.hny} Harmony program with an infinite number of outputs}
 \label{fig:hello4}
 \end{figure}
 
@@ -721,7 +722,7 @@ captures an infinite number of possible outputs.
 (a) \harmonylink{code/hello5.hny} && (b) \harmonylink{code/hello6.hny}
 \end{tabular}
 \end{center}
-\caption{Methods and threads}
+\caption{Demonstrating Harmony methods and threads}
 \label{fig:threads}
 \end{figure}
 
@@ -743,7 +744,7 @@ a possible  output.
 \begin{code}
 <{:input:../code/hello7.hny}>
 \end{code}
-\caption{\harmonylink{code/hello7.hny} Interleaving threads}
+\caption{\harmonylink{code/hello7.hny} Various interleavings of threads}
 \label{fig:hello7}
 \end{figure}
 
@@ -754,7 +755,7 @@ a possible  output.
 \begin{code}
 <{:input:../code/hello8.hny}>
 \end{code}
-\caption{\harmonylink{code/hello8.hny} Less interleaving}
+\caption{\harmonylink{code/hello8.hny} Making groups of operations atomic reduces interleaving}
 \label{fig:hello8}
 \end{figure}
 
@@ -936,7 +937,7 @@ What would the value of <{count}> be at the end of that execution?
 \begin{code}
 <{:input:../code/Up.hny}>
 \end{code}
-\caption{\harmonylink{code/Up.hny} Incrementing twice in parallel}
+\caption{\harmonylink{code/Up.hny} Incrementing the same variable twice in parallel}
 \label{fig:inc}
 \end{figure}
 
@@ -1080,7 +1081,7 @@ or a \emph{lock}, yet.)
 \begin{code}
 \VerbatimInput[xleftmargin=5mm,numbers=left]{../python/UpMany.py}
 \end{code}
-\caption{\harmonylink{python/UpMany.py} Incrementing <{N}> times}
+\caption{\harmonylink{python/UpMany.py} Using Python to increment <{N}> times}
 \label{fig:incmany}
 \end{figure}
 
@@ -1404,18 +1405,19 @@ The output has four columns:
 \end{center}
 \caption{The
 \harmonyref{Up.html}{HTML output of running Harmony on \autoref{fig:inc}}.
-There are four sections.
-The top shows the turns to the problematic state.
-Each turn shows a thread identifier, the method the thread is executing,
-a ``timeline'' containing a block for each instruction executed, the
-program counter of the thread, the values of the shared variables
-at those turns, and any values the program may have printed.
-The middle section shows the line of code that is being executed.
-The bottom left shows the bytecode of the program.
-The bottom right shows the state of each thread.
-Each row in the stack trace of a thread shows
-the method that is being evaluated and
-the values of its method variables.}
+% There are four sections.
+% The top shows the turns to the problematic state.
+% Each turn shows a thread identifier, the method the thread is executing,
+% a ``timeline'' containing a block for each instruction executed, the
+% program counter of the thread, the values of the shared variables
+% at those turns, and any values the program may have printed.
+% The middle section shows the line of code that is being executed.
+% The bottom left shows the bytecode of the program.
+% The bottom right shows the state of each thread.
+% Each row in the stack trace of a thread shows
+% the method that is being evaluated and
+% the values of its method variables.
+}
 \label{fig:inchtml1}
 \end{figure}
 
@@ -1541,7 +1543,7 @@ go by very quickly.
 \begin{code}
 <{:input:../code/UpEnter.hny}>
 \end{code}
-\caption{\harmonylink{code/UpEnter.hny} Broken attempt at fixing the code of \autoref{fig:inc}}
+\caption{\harmonylink{code/UpEnter.hny} Incorrect attempt at fixing the code of \autoref{fig:inc}}
 \label{fig:incenter}
 \end{figure}
 
@@ -2441,7 +2443,7 @@ critical section}
 \begin{code}
 <{:input:../code/UpLock.hny}>
 \end{code}
-\caption{\harmonylink{code/UpLock.hny} Program of \autoref{fig:inc} fixed with a lock}
+\caption{\harmonylink{code/UpLock.hny} \autoref{fig:inc} fixed with a lock}
 \label{fig:incfixed}
 \end{figure}
 
@@ -2844,7 +2846,7 @@ A thread that is in an infinite loop is also considered blocked.
 \begin{code}
 <{:input:../code/locksusp.hny}>
 \end{code}
-\caption{\harmonylink{modules/synchS.hny} The lock implementation in the <{synchS}> module uses suspension}
+\caption{\harmonylink{modules/synchS.hny} Lock implementation using suspension}
 \label{fig:suspension}
 \end{figure}
 
@@ -2965,7 +2967,7 @@ keyword.
 \begin{code}
 <{:input:../code/xy.hny}>
 \end{code}
-\caption{\harmonylink{code/xy.hny} Incomplete code with desired invariant $x + y = 100$}
+\caption{\harmonylink{code/xy.hny} Incomplete code for \autoref{ex:xy} with desired invariant $x + y = 100$}
 \label{fig:xy}
 \end{figure}
 
@@ -3173,7 +3175,7 @@ set object}
 \begin{code}
 <{:input:../code/linkedlist.hny}>
 \end{code}
-\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of integers using a linked list with fine-grained locking}
+\caption{\harmonylink{code/linkedlist.hny} Implementation of a set of values using a linked list with fine-grained locking}
 \label{fig:linkedlist}
 \end{figure}
 
@@ -3201,21 +3203,22 @@ Method <{contains()}> checks if a particular value is in the list.
 test program to demonstrate the use of set objects.
 
 \autoref{fig:linkedlist} implements a concurrent set object using
-an ordered linked list of integers without duplicates.
-The list has two dummy ``book-end'' nodes with values <{-inf}> and
-<{inf}> (similar to the Python \texttt{math.inf} constant).
+an ordered linked list without duplicates.
+The list has two dummy ``book-end'' nodes with values <{(-1, None)}> and
+<{(1, None)}>.  A value <{v}> is stored as <{(0, v)}>---note that for
+any value <{v}>, <{(-1, None) < (0, v) < (1, None)}>.
 An invariant of the algorithm is that at any point in time the
-list is ``valid,'' starting with a <{-inf}> node and ending
-with an <{inf}> node.
+list is ``valid,'' starting with a <{(-1, None)}> node and ending
+with an <{(1, None)}> node.
 
 \index{hand-over-hand locking}%
 Each node has a lock, a value, and <{next}>, a pointer to the next node
-(which is <{None}> for the <{inf}> node).
+(which is <{None}> for the <{(1, None)}> node to mark the end of the list).
 The <{_find(lst, v)}> helper method first
 finds and locks two consecutive nodes <{before}> and <{after}>
-such that <{before->data.value < v <= after->data.value}>.
+such that <{before->data.value < (0, v) <= after->data.value}>.
 It does so by performing something called \emph{hand-over-hand locking}.
-It first locks the first node, which is the <{-inf}> node.
+It first locks the first node, which is the <{(-1, None)}> node.
 Then, iteratively, it obtains a lock on the next node and release the
 lock on the last one, and so on, similar to climbing a rope
 hand-over-hand.
@@ -3243,7 +3246,7 @@ execution depends on whether the value is found or not.
 If found, it coincides with retrieving the pointer to the node
 that has the value.
 If not found, it coincides with retrieving the pointer to the
-<{inf}> node.
+<{(1, None)}> node.
 \end{comment}
 
 \section*{Exercises}
@@ -6291,7 +6294,7 @@ servers have failed.
 \begin{code}
 <{:input:../code/consensus.hny}>
 \end{code}
-\caption{\harmonylink{code/consensus.hny} Distributed consensus code and DFA}
+\caption{\harmonylink{code/consensus.hny} Distributed consensus code and behavior DFA}
 \label{fig:consensus}
 \end{figure}
 
@@ -6355,7 +6358,7 @@ we will assume there are <{N}> = 3<{F}> + 1 processors.
 \begin{center}
 \includegraphics[width=0.95\textwidth]{figures/bosco.png}
 \end{center}
-\caption{The DFA for \autoref{fig:bosco}}
+\caption{The behavior DFA for \autoref{fig:bosco}}
 \label{fig:boscodfa}
 \end{figure}
 
@@ -6729,7 +6732,7 @@ Below is a complete list of Harmony value types with examples:
 \hline
 Boolean & <{False}>, <{True}> \\
 \hline
-Integer & <{-inf, ..., -2, -1, 0, 1, 2, ..., inf}> \\
+Integer & <{..., -2, -1, 0, 1, 2, ...}> \\
 \hline
 String & <{"example"}>, <{.example}> \\
 \hline
@@ -6817,11 +6820,10 @@ Operations on booleans include:
 
 \subsection*{Integer}
 
-The integer type supports any whole number, as well as $-\mathtt{inf}$
-and $\mathtt{inf}$.  In the Python-based model checker, integers are
-infinite precision.  In the C-based model checker, integers are implemented
-by two's complement 61-bit words, and $-\mathtt{inf}$ is represented by
-the minimal integer and $\mathtt{inf}$ is represented by the maximal integer.
+The integer type supports any whole number.
+In the C-based model checker, integers are currently implemented
+by two's complement 61-bit words.  The model checker checks for
+overflow on various operations.
 
 Operations on integers include:
 
@@ -8203,6 +8205,8 @@ Go & pop context and value, push value on context's stack, and add to context ba
 \hline
 IncVar <{v}> & increment thread variable <{v}> \\
 \hline
+Invariant \textit{end} & code for invariant follows.  Skip to \textit{end} + 1\\
+\hline
 Jump <{p}> & set program counter to <{p}> \\
 \hline
 JumpCond <{e p}> & pop expression and, if equal to <{e}>, set program counter to <{p}> \\
@@ -8353,8 +8357,11 @@ in a Harmony program.
 \section{Formal Specification}
 \label{ap:formal}
 
-A formal specification of the Harmony Virtual Machine is underway but
-not yet completed.
+A formal specification of the Harmony Virtual Machine is well underway but
+not yet completed.  In particular, <{trap}> is not yet specified.
+Also, strings are limited to the printable characters minus
+double quotes, back quotes, or backslashes.
+But everything else is specified.
 Given a Harmony program, you can output the TLA+ specification for
 the program using the following command:
 
@@ -8364,7 +8371,7 @@ $ harmony -o program.tla program.hny
 \end{verbatim}
 \end{code}
 
-For many Harmony programs, such as Peterson's algorithm and the Dining
+For most Harmony programs, including Peterson's algorithm and the Dining
 Philosophers in this book, the result is complete enough to run through
 the TLC model checker.
 
@@ -8768,15 +8775,25 @@ I received considerable help and inspiration from various people
 while writing this book.
 
 First and foremost I would like to thank my student Haobin Ni with
-whom I've had numerous discussions about the design of Harmony.
+whom I've had numerous discussions about the initial design of Harmony.
 Haobin even contributed some code to the Harmony compiler.
+Many thanks are also due to William Ma who refactored the Harmony code
+to make it easier to maintain.
+He also wrote the first version of the behavior automaton generator
+and created the first graphs using the graphviz tool.
+I have had lots of discussions with him about a wide range of
+improvements to the Harmony language, many of which came to fruition.
+I also want to thank Ariel Kellison with whom I discussed approaches
+to formally specify the Harmony virtual machine in TLA+.
 
 Kevin Sun and Anthony Yang built a beautiful VSCode extension for Harmony
 called HarmonyLang and proceeded to build an animator for Harmony
 executions and two cloud-based Harmony offerings, which you can learn
 about at \url{http://harmony.cs.cornell.edu}.  They also developed much of
-that web site.  Later they were joined by Shi Chong Zhao, who also
-made significant contributions.
+that web site and made valuable suggestions for improvements to the
+Harmony language.  Later they were joined by Shi Chong Zhao, who also
+made significant contributions.  Kevin and Anthony continue to make
+great contributions to the Harmony distribution.
 
 Most of what I know about concurrent programming I learned from
 my colleague Fred Schneider.  He suggested I write this book after
@@ -8785,12 +8802,11 @@ assisted significantly with the chapter on the Needham-Schroeder protocol.
 
 Leslie Lamport introduced me to using model checking to test properties
 of a concurrent system.  My experimentation with using TLC on Peterson's
-Algorithm became an aha moment for me.
+Algorithm became an aha moment for me.  I have learned so much from his
+papers.
 
 I first demonstrated Harmony to the students in my CS6480 class on systems
-and formal verification and
-received valuable feedback from them.
-
+and formal verification and received valuable feedback from them.
 The following people contributed by making comments on or finding bugs in
 early drafts of the book:
 Alex Chang,
@@ -8808,7 +8824,6 @@ Saleh Hassen,
 Sunwook Kim,
 Terryn Jung,
 Trishita Tiwari,
-William Ma,
 Xiangyu Zhang,
 Yidan Wang,
 Zhuoyu Xu,
@@ -8829,5 +8844,7 @@ May and June 2020.
 \cleardoublepage
 \phantomsection
 \printglossaries
+
+\addtocontents{toc}{\protect\setcounter{tocdepth}{2}}
 
 \end{document}
