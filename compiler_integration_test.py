@@ -105,7 +105,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     for _ in range(n):
         start_time = time.process_time()
         result = subprocess.run(
-            f'./harmony {harmony_args} {filename}'.split(),
+            f'./harmony -a {harmony_args} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -113,7 +113,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         
         start_time = time.process_time()
         baseline_result = subprocess.run(
-            f'python harmony.py {harmony_args or ""} {filename}'.split(),
+            f'python harmony_model_checker/harmony.py -a {harmony_args or ""} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -125,10 +125,6 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     average_baseline_duration = sum(baseline_durations) / len(baseline_durations)
 
     stdout = result.stdout.strip()
-    match = re.search("#states (\\d+) \\(time.*?\\)", stdout)
-    if match is not None:
-        states = match[1]
-        stdout = stdout.replace(match[0], f"#states ({states})", 1)
     current_execution = ExecutionResult(stdout, average_duration)
 
     stdout = baseline_result.stdout.strip()
