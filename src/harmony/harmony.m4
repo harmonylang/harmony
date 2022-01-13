@@ -7137,6 +7137,24 @@ OpCut(self, s, v) ==
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
 
+\* d contains the name of a local variable containing a dict
+\* v contains the name of another local variable.  v can be a "variable tree"
+\* k contains the name of another local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The objective is to take the "smallest" element of d,
+\* remove it from d, and assign it to k:v
+OpCut3(self, d, v, k) ==
+    LET dvar == HStr(d)
+        dval == self.vs.cval[dvar]
+    IN
+        LET pick == HMin(DOMAIN dval.cval)
+            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
+            next == [self EXCEPT !.pc = @ + 1,
+                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
+        IN
+            /\\ dval.ctype = "dict"
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)
 OpDel(self, v) ==
