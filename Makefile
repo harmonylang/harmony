@@ -19,3 +19,6 @@ iface: iface.py iface.json
 	python3 iface.py iface.json > x.gv
 	dot -Tpdf x.gv > x.pdf
 	open x.pdf
+
+clean:
+	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
