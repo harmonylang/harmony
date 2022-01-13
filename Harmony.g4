@@ -123,6 +123,7 @@ unary_op
     | 'hash'
     | 'len'
     | 'print'
+    | 'str'
     ;
 
 basic_expr

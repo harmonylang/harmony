@@ -413,12 +413,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             stmt_block = [LocationAST(tkn, s, self.file, tkn[2]) for s in stmt]
         if labels:
             block = BlockAST(tkn, False, stmt_block)
-            return [LabelStatAST(tkn, labels, block)]
+            return [LocationAST(tkn, LabelStatAST(tkn, labels, block), self.file, tkn[2])]
         return stmt_block
 
     # Visit a parse tree produced by HarmonyParser#one_line_stmt.
     def visitOne_line_stmt(self, ctx: HarmonyParser.One_line_stmtContext):
         stmts = [self.visit(ctx.simple_stmt())]
+        # if ctx.SEMI_COLON():
+        #     tkn = self.get_token(ctx.SEMI_COLON().symbol, ";")
+        #     stmts.append(PassAST(tkn, False))
         if ctx.one_line_stmt():
             stmts.extend(self.visit(ctx.one_line_stmt()))
         return stmts
@@ -437,13 +440,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitParen_tuple(self, ctx: HarmonyParser.Paren_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
-        return TupleAST([], self.get_token(ctx.start, ctx.start.text))
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#brack_tuple.
     def visitBracket_tuple(self, ctx: HarmonyParser.Bracket_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
-        return TupleAST([], self.get_token(ctx.start, ctx.start.text))
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#set_rule.
     def visitSet_rule(self, ctx: HarmonyParser.Set_ruleContext):

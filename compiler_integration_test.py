@@ -1,3 +1,4 @@
+import os.path
 import subprocess
 import sys
 import time
@@ -5,7 +6,13 @@ import pathlib
 import dataclasses
 from typing import List, Optional, Set, TextIO, Union
 import re
+import time
 
+_results_dir = pathlib.Path("compiler_integration_results")
+if not _results_dir.exists():
+    _results_dir.mkdir()
+results_dir = _results_dir / str(time.time_ns())
+results_dir.mkdir()
 
 @dataclasses.dataclass
 class TestCase:
@@ -105,7 +112,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     for _ in range(n):
         start_time = time.process_time()
         result = subprocess.run(
-            f'./harmony -a {harmony_args} {filename}'.split(),
+            f'./harmony -A {harmony_args} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -113,7 +120,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         
         start_time = time.process_time()
         baseline_result = subprocess.run(
-            f'python harmony_model_checker/harmony.py -a {harmony_args or ""} {filename}'.split(),
+            f'python harmony_model_checker/harmony.py -A {harmony_args or ""} {filename}'.split(),
             capture_output=True,
             encoding='utf8'
         )
@@ -211,16 +218,11 @@ def merge_expected_outputs(
     print('```')
     print(curr)
     print('```')
-
-    if input('Are the outputs satisfactory? [y/N]: ') == 'y':
-        print('Accepting the current output')
-        print()
-        return True
-
-    else:
-        print('Output is not satisfactory')
-        print()
-        return False
+    with (results_dir / (os.path.basename(test_case.filename) + str(test_case.harmony_args) + "prev").replace(" ", "_")).open("w") as f:
+        f.write(prev)
+    with (results_dir / (os.path.basename(test_case.filename) + str(test_case.harmony_args) + "next").replace(" ", "_")).open("w") as f:
+        f.write(curr)
+    return False
 
 
 def merge_average_durations(
@@ -245,15 +247,7 @@ def merge_average_durations(
     print(f'Previous duration: {prev}')
     print(f'Current duration: {curr}')
     print()
-    if input('Take current average duration? [y/N]: ') == 'y':
-        print('Taking current average duration')
-        print()
-        return True
-
-    else:
-        print('Leaving previous average duration')
-        print()
-        return False
+    return True
 
 
 def compare_result(
