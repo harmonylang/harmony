@@ -656,6 +656,28 @@ each edge of the Kripke structure a list of accesses that were made
 during the transition.  After all transitions from a state have been
 computed, Charm checks for data races.
 
+\section{Harmony Compiler}
+
+The compiler translates the Harmony language to a sequence of HVM
+instructions.  The compiler is mostly straightforward.  This section
+describes some of its unusual features.
+
+To help the programmer reason about the behavior of the generated code,
+the compiler preserves the left-to-right evaluation order of
+expresssions.  In other words, if expression $e_1$ appears before
+$e_2$ in the source language, then $e_1$ is evaluated before $e_2$
+in the HVM translation.  There is one exception, for the Harmony/Python
+$e_1~<{if}>~c~<{else}>~e_2$ expression, $c$ is evaluated first, and
+depending on the outcome, either $e_1$ or $e_2$ is evaluated.
+
+The compiler performs some standard optimizations that do not re-order
+expression evaluations, such as constant folding and jump threading.
+A more interesting optimization is \emph{dead variable elimination}:
+local variables that are no longer in use are automatically removed
+from the state using the HVM \texttt{DelVar} instruction.  The reason
+for this is to reduce state explosion by removing state that is no
+longer in use.
+
 \section{Analysis}
 
 After running the Charm model checker, there are two cases to
