@@ -245,7 +245,6 @@ def dequeue(q):
             result = list.head(!q)
             !q = list.tail(!q)
 
-
 <{:end:}>
 \end{tcolorbox}
 }
@@ -259,15 +258,14 @@ const NOPS = 4
 q = queue.Queue()
 
 def thread(self):
-    let op = choose({ "deq", "enq" }):
-        if op == "enq":
-            print("call enqueue", self)
-            queue.enqueue(?q, self)
-            print("done enqueue", self)
-        else:
-            print("call dequeue", self)
-            let v = queue.dequeue(?q):
-                print("done dequeue", self, v)
+    if choose({ "deq", "enq" }) == "enq":
+        print("call enqueue", self)
+        queue.enqueue(?q, self)
+        print("done enqueue", self)
+    else:
+        print("call dequeue", self)
+        let v = queue.dequeue(?q):
+            print("done dequeue", self, v)
 
 for i in {1..NOPS}: spawn thread(i)
 <{:end:}>

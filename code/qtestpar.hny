@@ -5,15 +5,14 @@ const NOPS = 4
 q = queue.Queue()
 
 def thread(self):
-    let op = choose({ "get", "put" }):
-        if op == "put":
-            print("call put", self)
-            queue.put(?q, self)
-            print("done put", self)
-        else:
-            print("call get", self)
-            let v = queue.get(?q):
-                print("done get", self, v)
+    if choose({ "get", "put" }) == "put":
+        print("call put", self)
+        queue.put(?q, self)
+        print("done put", self)
+    else:
+        print("call get", self)
+        let v = queue.get(?q):
+            print("done get", self, v)
 
 for i in {1..NOPS}:
     spawn thread(i)
