@@ -625,7 +625,7 @@ sequence of operations as atomic if only its first operation is an
 operation that accesses the shared state (\texttt{Load}, \texttt{Store},
 \texttt{Del}, or \texttt{Stop}) or a \texttt{Choose} or \texttt{Print}
 operation.  We call such operations \emph{breakable}.
-Note that this is essentially a form of Partial Order Reduction~\cite{}.
+Note that this is essentially a form of Partial Order Reduction~\cite{Val91}.
 
 Reducing the state space this way is highly effective for Harmony.
 For example, when model checking Peterson's algorithm expressed in
