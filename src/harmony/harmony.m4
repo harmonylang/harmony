@@ -2625,7 +2625,7 @@ class Code:
                 lop.pre_del |= live_out - lop.live_in
 
             labels = lop.labels
-            for d in lop.pre_del - { 'this' }:
+            for d in sorted(lop.pre_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), file, line, labels)
                 labels = set()
             newcode.append(lop.op, file, line, labels)
@@ -2635,7 +2635,7 @@ class Code:
             # TODO.  Can optimize StoreVar by replacing it with Pop
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
-            for d in lop.post_del - { 'this' }:
+            for d in sorted(lop.post_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), file, line)
 
         return newcode
