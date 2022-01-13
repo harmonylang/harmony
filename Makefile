@@ -37,3 +37,7 @@ dist: gen
 
 upload: dist
 	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+clean:
+	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
+

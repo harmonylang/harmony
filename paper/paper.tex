@@ -79,7 +79,7 @@ XX\=XXX\=XXX\kill
 
 \emph{Harmony} is a Python-like programming language designed to teach
 concurrent and distributed programming to students who do not have a
-background in formal methods.  Harmony programs are model checked.
+background in formal methods.  Harmony programs are model checked~\cite{CES86}.
 Without any special formalism, Harmony can diagnose a large variety
 of problems:
 \begin{compactitem}
@@ -115,10 +115,10 @@ using the <{atomically}> keyword.  Finally, Harmony supports
 waiting until some condition is reached with the <{when}> statement.
 
 Harmony programs compile to a virtual machine.  The Harmony virtual
-machine is formally specified using TLA+, allowing Harmony programs
-to run using TLC, the model checker that comes with the TLA+
-toolbox.  Harmony has its own custom concurrent model checker that
-scales significantly better for Harmony programs.
+machine is formally specified using TLA+~\cite{Lamport02}, allowing
+Harmony programs to run using TLC, the model checker that comes
+with the TLA+ toolbox.  Harmony has its own custom concurrent model
+checker that scales significantly better for Harmony programs.
 
 The Harmony language can be used both to \emph{specify} desired
 behaviors and to \emph{implement} them.  To check that the implementation
@@ -138,6 +138,15 @@ ones, and barrier synchronization implementations.  Harmony has also been
 used to verify a variety of distributed algorithms such as two-phase
 commit, chain replication, various consensus algorithms such as Paxos,
 and the Needham-Schroeder authentication protocols.
+
+Harmony's unique combination of features are a familiar and easy
+to learn high-level programming language, the ability to concisely
+specify an interface, the ability to compare behaviors of specification
+and implementation, the ability to modularly model check programs,
+and support for continuations and interrupts.  Harmony finds various common
+problems automatically without a complicated property specification
+language, such as Harmony's ability to find instances of undesirable
+busy waiting.
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
@@ -236,7 +245,6 @@ def dequeue(q):
             result = list.head(!q)
             !q = list.tail(!q)
 
-
 <{:end:}>
 \end{tcolorbox}
 }
@@ -250,15 +258,14 @@ const NOPS = 4
 q = queue.Queue()
 
 def thread(self):
-    let op = choose({ "deq", "enq" }):
-        if op == "enq":
-            print("call enqueue", self)
-            queue.enqueue(?q, self)
-            print("done enqueue", self)
-        else:
-            print("call dequeue", self)
-            let v = queue.dequeue(?q):
-                print("done dequeue", self, v)
+    if choose({ "deq", "enq" }) == "enq":
+        print("call enqueue", self)
+        queue.enqueue(?q, self)
+        print("done enqueue", self)
+    else:
+        print("call dequeue", self)
+        let v = queue.dequeue(?q):
+            print("done dequeue", self, v)
 
 for i in {1..NOPS}: spawn thread(i)
 <{:end:}>
@@ -343,8 +350,9 @@ The Harmony distribution comes with a collection of specifications,
 each often with multiple implementations.  The lock specification
 comes with the spinlock implementation of \autoref{fig:synch}(a), but
 also a ticket lock implementation and one based on continuations and
-a ready queue.  There are various concurrent queue implementations,
-including the lock-free implementation of~\cite{MS96}.
+a ready queue.  The distribution also includes various concurrent
+queue implementations, including the lock-free implementation
+of~\cite{MS96}.
 
 \subsection{Checking an implementation}
 
@@ -570,7 +578,8 @@ important.  First, writing multi-threaded programs that also need
 to handle interrupts is difficult.  Second, distributed algorithms
 often require timer interrupts to trigger actions such as retransmissions.
 
-\paragraph{Stop/Go.}  \texttt{Stop} saves the current context (with
+\paragraph{Stop/Go.}  Harmony supports continuations as a first-class
+construct.  To enable this, \texttt{Stop} saves the current context (with
 its program counter incremented) in a specified shared location (usually the
 tail of a queue) and removes the context from the context bag and active set.
 If the context was atomic (which is usually the case), the active set is
@@ -614,7 +623,7 @@ sequence of operations as atomic if only its first operation is an
 operation that accesses the shared state (\texttt{Load}, \texttt{Store},
 \texttt{Del}, or \texttt{Stop}) or a \texttt{Choose} or \texttt{Print}
 operation.  We call such operations \emph{breakable}.
-Note that this is essentially a form of Partial Order Reduction~\cite{}.
+Note that this is essentially a form of Partial Order Reduction~\cite{Val91}.
 
 Reducing the state space this way is highly effective for Harmony.
 For example, when model checking Peterson's algorithm expressed in
@@ -655,6 +664,28 @@ effectively turning off data race detection.  Charm maintains on
 each edge of the Kripke structure a list of accesses that were made
 during the transition.  After all transitions from a state have been
 computed, Charm checks for data races.
+
+\section{Harmony Compiler}
+
+The compiler translates the Harmony language to a sequence of HVM
+instructions.  The compiler is mostly straightforward.  This section
+describes some of its unusual features.
+
+To help the programmer reason about the behavior of the generated code,
+the compiler preserves the left-to-right evaluation order of
+expresssions.  In other words, if expression $e_1$ appears before
+$e_2$ in the source language, then $e_1$ is evaluated before $e_2$
+in the HVM translation.  There is one exception, for the Harmony/Python
+$e_1~<{if}>~c~<{else}>~e_2$ expression, $c$ is evaluated first, and
+depending on the outcome, either $e_1$ or $e_2$ is evaluated.
+
+The compiler performs some standard optimizations that do not re-order
+expression evaluations, such as constant folding and jump threading.
+A more interesting optimization is \emph{dead variable elimination}:
+local variables that are no longer in use are automatically removed
+from the state using the HVM \texttt{DelVar} instruction.  The reason
+for this is to reduce state explosion by removing state that is no
+longer in use.
 
 \section{Analysis}
 
@@ -853,8 +884,55 @@ checking occurs.
 
 \section{Related Work}
 
-PlusCal and TLA+, Promela and Spin, DSLABS (UW), Java Pathfinder, Zing,
-CBMC/JBMC.
+Harmony is preceded by many other model checkers and accompanying
+languages.  This section mentions some of Harmony's strongest influences.
+
+PlusCal~\cite{Lamport09} is an imperative programming language that,
+after translation to TLA+~\cite{Lamport02} (a formal verification
+language), can be run through the TLC model checker.  Harmony also
+supports compilation to TLA+.  While similar in spirit to Harmony,
+Harmony first compiles to a virtual machine that is close to CPUs
+like x86, ARM, and RISC-V, using a stack and common control flow
+techniques.  The resulting HVM has a TLA+ specification.  PlusCal,
+instead, \emph{trans\-piles} to TLA+.  Informally, the gap between
+PlusCal programs and their TLA+ representations is much smaller
+than the gap between Harmony programs and their TLA+ representations,
+making PlusCal more amenable to formal verification.  On the other
+hand, working effectively with PlusCal does require significant
+knowledge of TLA+, increasing the learning curve.
+
+Promela~\cite{SPIN} is a programming language that serves as input
+to the SPIN model checker.  Promela has many of the same features
+as Harmony and also includes explicit message channels.  Promela
+does not have a call stack and does not support procedure calls,
+making it hard to do modular development and verification.
+
+Zing~\cite{Zing} is a modeling language that, like Harmony, compiles to an
+intermediate language that resembles a conventional processor,
+including a call stack and dynamically allocated memory.  Like
+Harmony it supports procedure calls and concurrency.  Zing goes
+further in that it also support object-orientation.  Zing is
+mostly used as an intermediate language, transpiled from sources
+written in languages such as C\#.
+
+Java Pathfinder~\cite{Pathfinder} and JBMC~\cite{JBMC} are model
+checkers for Java bytecode, and,
+like Charm, can diagnose data races and deadlock in concurrent
+programs.  Because they operate at the level of Java bytecode, they
+have no support for atomic code blocks, which allows Harmony to be
+used both as a specification and an implementation language.
+Particularly the Harmony <{atomically when}> statement is very
+useful as a specification construct, for example to specify new
+synchronization primitives.
+
+DSLabs~\cite{MWA19} is an educational framework for model checking distributed
+systems.  Distributed algorithms are specified in Java in terms of
+nodes, messages, and timers in an event-driven style.  DSLabs does not
+support model checking sequential or concurrent programs.  Java
+also has the disadvantage that it is a verbose language.  Just the
+boilerplate for the Paxos project in DSLabs is well over 100 lines
+of Java code.  The entire Paxos implementation in Harmony is less
+than 50 lines.
 
 \bibliographystyle{alpha}
 \bibliography{paper}

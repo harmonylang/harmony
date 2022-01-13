@@ -6812,6 +6812,7 @@ CtxCmp(x, y) ==
     ELSE IF x.interruptLevel # y.interruptLevel THEN
                         x.interruptLevel - y.interruptLevel
     ELSE IF x.trap # y.trap THEN SeqCmp(x.trap, y.trap)
+    ELSE IF x.readonly # y.readonly THEN x.readonly - y.readonly
     ELSE Assert(FALSE, "CtxCmp: this should not happen")
 
 \* Compare two Harmony values as specified in the book
@@ -6860,7 +6861,8 @@ VList(list) == [ vtype |-> "tup", vlist |-> list ]
 \*  stack:  a sequence of Harmony values
 \*  interruptLevel: false if enabled, true if disabled
 \*  trap:   either <<>> or a tuple containing the trap method and argument
-Context(pc, atomic, vs, stack, interruptLevel, trap) ==
+\*  readonly: larger than 0 means not allowed to modify shared state
+Context(pc, atomic, vs, stack, interruptLevel, trap, readonly) ==
     [
         pc             |-> pc,
         apc            |-> pc,
@@ -6868,13 +6870,14 @@ Context(pc, atomic, vs, stack, interruptLevel, trap) ==
         vs             |-> vs,
         stack          |-> stack,
         interruptLevel |-> interruptLevel,
-        trap           |-> trap
+        trap           |-> trap,
+        readonly       |-> readonly
     ]
 
 \* An initial context of a thread.  arg is the argument given when the thread
 \* thread was spawned.  "process" is used by the OpReturn operator.
 InitContext(pc, atomic, arg) ==
-    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>)
+    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>, 0)
 
 \* Update the given map with a new key -> value mapping
 UpdateMap(map, key, value) ==
@@ -7080,11 +7083,6 @@ OpContinue(self) ==
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
     /\\ UNCHANGED shared
 
-\* Currently not supporting the read-only counter.
-\* TODO.  Maybe some time in the future...
-OpReadonlyInc(self) == OpContinue(self)
-OpReadonlyDec(self) == OpContinue(self)
-
 \* Pop the new interrupt level and push the old one
 OpSetIntLevel(self) ==
     LET nl   == Head(self.stack)
@@ -7092,6 +7090,21 @@ OpSetIntLevel(self) ==
             !.stack = << HBool(self.interruptLevel) >> \\o Tail(@)]
     IN
         /\\ nl.ctype = "bool"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the readonly counter (counter because of nesting)
+OpReadonlyInc(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Decrement the readonly counter
+OpReadonlyDec(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ - 1]
+    IN
+        /\\ self.readonly > 0
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7154,9 +7167,28 @@ OpCut(self, s, v) ==
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
 
+\* d contains the name of a local variable containing a dict
+\* v contains the name of another local variable.  v can be a "variable tree"
+\* k contains the name of another local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The objective is to take the "smallest" element of d,
+\* remove it from d, and assign it to k:v
+OpCut3(self, d, v, k) ==
+    LET dvar == HStr(d)
+        dval == self.vs.cval[dvar]
+    IN
+        LET pick == HMin(DOMAIN dval.cval)
+            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
+            next == [self EXCEPT !.pc = @ + 1,
+                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
+        IN
+            /\\ dval.ctype = "dict"
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)
 OpDel(self, v) ==
+    /\\ Assert(self.readonly = 0, "Del in readonly mode")
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
     /\\ shared' = RemoveDictAddr(shared, HAddress(v))
 
@@ -7663,6 +7695,7 @@ OpApply(self) ==
 OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
+        /\\ Assert(self.readonly = 0, "Store in readonly mode")
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, HAddress(v), Head(self.stack))
 
@@ -7672,6 +7705,7 @@ OpStoreInd(self) ==
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
     IN
+        /\\ Assert(self.readonly = 0, "StoreInd in readonly mode")
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, addr, val)
 
@@ -7688,7 +7722,7 @@ OpStoreVarInd(self) ==
 \* Pop an address and push the value at the address onto the stack
 OpLoadInd(self) ==
     LET
-        addr == self.stack[1]
+        addr == Head(self.stack)
         val  == LoadDictAddr(shared, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
@@ -7698,7 +7732,7 @@ OpLoadInd(self) ==
 \* Pop an address and push the value of the addressed local variable onto the stack
 OpLoadVarInd(self) ==
     LET
-        addr == self.stack[1]
+        addr == Head(self.stack)
         val  == LoadDictAddr(self.vs, addr)
         next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
     IN
@@ -7762,7 +7796,7 @@ OpJump(self, pc) ==
 \* Pop a value of the stack.  If it equals cond, set the pc to the
 \* given value.
 OpJumpCond(self, pc, cond) ==
-    LET next == [ self EXCEPT !.pc = IF self.stack[1] = cond
+    LET next == [ self EXCEPT !.pc = IF Head(self.stack) = cond
                     THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
     IN
         /\\ UpdateContext(self, next)
@@ -7803,8 +7837,9 @@ OpGo(self) ==
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
         newc == [ctx.cval EXCEPT !.stack = << arg >> \o @]
     IN
-        /\\ self.atomic > 0
-        /\\ active' = (active \\ { self }) \\union { next }
+        /\\ IF self.atomic > 0
+            THEN active' = (active \\ { self }) \\union { next }
+            ELSE active' = (active \\ { self }) \\union { next,newc }
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
