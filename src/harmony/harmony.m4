@@ -6795,6 +6795,7 @@ CtxCmp(x, y) ==
     ELSE IF x.interruptLevel # y.interruptLevel THEN
                         x.interruptLevel - y.interruptLevel
     ELSE IF x.trap # y.trap THEN SeqCmp(x.trap, y.trap)
+    ELSE IF x.readonly # y.readonly THEN x.readonly - y.readonly
     ELSE Assert(FALSE, "CtxCmp: this should not happen")
 
 \* Compare two Harmony values as specified in the book
@@ -6843,7 +6844,8 @@ VList(list) == [ vtype |-> "tup", vlist |-> list ]
 \*  stack:  a sequence of Harmony values
 \*  interruptLevel: false if enabled, true if disabled
 \*  trap:   either <<>> or a tuple containing the trap method and argument
-Context(pc, atomic, vs, stack, interruptLevel, trap) ==
+\*  readonly: larger than 0 means not allowed to modify shared state
+Context(pc, atomic, vs, stack, interruptLevel, trap, readonly) ==
     [
         pc             |-> pc,
         apc            |-> pc,
@@ -6851,13 +6853,14 @@ Context(pc, atomic, vs, stack, interruptLevel, trap) ==
         vs             |-> vs,
         stack          |-> stack,
         interruptLevel |-> interruptLevel,
-        trap           |-> trap
+        trap           |-> trap,
+        readonly       |-> readonly
     ]
 
 \* An initial context of a thread.  arg is the argument given when the thread
 \* thread was spawned.  "process" is used by the OpReturn operator.
 InitContext(pc, atomic, arg) ==
-    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>)
+    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>, 0)
 
 \* Update the given map with a new key -> value mapping
 UpdateMap(map, key, value) ==
@@ -7063,11 +7066,6 @@ OpContinue(self) ==
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
     /\\ UNCHANGED shared
 
-\* Currently not supporting the read-only counter.
-\* TODO.  Maybe some time in the future...
-OpReadonlyInc(self) == OpContinue(self)
-OpReadonlyDec(self) == OpContinue(self)
-
 \* Pop the new interrupt level and push the old one
 OpSetIntLevel(self) ==
     LET nl   == Head(self.stack)
@@ -7075,6 +7073,21 @@ OpSetIntLevel(self) ==
             !.stack = << HBool(self.interruptLevel) >> \\o Tail(@)]
     IN
         /\\ nl.ctype = "bool"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the readonly counter (counter because of nesting)
+OpReadonlyInc(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Decrement the readonly counter
+OpReadonlyDec(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ - 1]
+    IN
+        /\\ self.readonly > 0
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7158,6 +7171,7 @@ OpCut3(self, d, v, k) ==
 \* Delete the shared variable pointed to be v.  v is a sequence of Harmony
 \* values acting as an address (path in hierarchy of dicts)
 OpDel(self, v) ==
+    /\\ Assert(self.readonly = 0, "Del in readonly mode")
     /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
     /\\ shared' = RemoveDictAddr(shared, HAddress(v))
 
@@ -7664,6 +7678,7 @@ OpApply(self) ==
 OpStore(self, v) ==
     LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
+        /\\ Assert(self.readonly = 0, "Store in readonly mode")
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, HAddress(v), Head(self.stack))
 
@@ -7673,6 +7688,7 @@ OpStoreInd(self) ==
         addr == self.stack[2]
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
     IN
+        /\\ Assert(self.readonly = 0, "StoreInd in readonly mode")
         /\\ UpdateContext(self, next)
         /\\ shared' = UpdateDictAddr(shared, addr, val)
 
