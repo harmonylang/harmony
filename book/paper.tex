@@ -3028,9 +3028,13 @@ if <{x}> is empty or <{r = v}> if <{v}> was at the head of <{x}>.
 \noindent
 \autoref{fig:queues}(a) shows a sequential specification for such a
 queue in Harmony (exploiting some methods from the \texttt{list}
-module described in \autoref{ap:list}),
+module described in \autoref{ap:list}).
+It is a credible queue implementation,
 but it cannot be used with threads concurrently accessing this queue.
 \autoref{fig:queues}(b) shows the corresponding concurrent specification.
+It cannot be used as an implementation for a queue, as processors generally
+do not have atomic operations on lists, but it will work well as a
+specification.
 See \autoref{fig:queuedemo} for a simple demonstration program that uses
 a concurrent queue.
 
@@ -3165,10 +3169,10 @@ set object}
 
 \begin{figure}
 \begin{code}
-<{:input:../code/intsettest.hny}>
+<{:input:../code/setobjtest.hny}>
 \end{code}
-\caption{\harmonylink{code/intsettest.hny} Test code for set objects}
-\label{fig:intsettest}
+\caption{\harmonylink{code/setobjtest.hny} Test code for set objects}
+\label{fig:setobjtest}
 \end{figure}
 
 \begin{figure}
@@ -3199,7 +3203,7 @@ like a value in its own right.
 Values can be added to the set object using
 <{insert()}> or deleted using <{remove()}>.
 Method <{contains()}> checks if a particular value is in the list.
-\autoref{fig:intsettest} contains a simple (although not very thorough)
+\autoref{fig:setobjtest} contains a simple (although not very thorough)
 test program to demonstrate the use of set objects.
 
 \autoref{fig:linkedlist} implements a concurrent set object using
@@ -3295,7 +3299,7 @@ for an implementation such as the one in \autoref{fig:queueconc}
 and does little to increase our confidence in its correctness.
 To wit, if <{get()}> always returned 1, the program
 would find no problems.
-Similarly, \autoref{fig:intsettest} is not a good test program
+Similarly, \autoref{fig:setobjtest} is not a good test program
 for something as complicated as \autoref{fig:linkedlist}.
 In this chapter, we will look at approaches to testing
 concurrent code.
@@ -3506,120 +3510,6 @@ run of the test program is also a behavior of the first run.
 You can try the same using the \texttt{code/queueseq.hny} implementation
 and find that this implementation has behaviors that are not allowed by
 the specification.
-
-\begin{comment}
-
-\begin{figure}
-\begin{code}
-<{:input:../code/qtest1.hny}>
-\end{code}
-\caption{\harmonylink{code/qtest1.hny} Concurrent \texttt{put()}}
-\label{fig:qtest1}
-\end{figure}
-
-If you want a purely black box test for testing a queue implementation,
-then adding linearization points is not possible.
-We will present a few test
-programs that try to identify incorrect behavior of
-a black box queue implementation in the presence of concurrency.
-
-\autoref{fig:qtest1} shows a program that
-checks concurrent <{put}> operations using
-<{N}> threads.  Thread \texttt{putter(<{v}>)}
-adds <{v}> to the queue.
-Thread \texttt{main()} waits until all \texttt{putter}
-threads have finished, and then dequeues <{N}>
-items, verifying that they form the set
-$\{ 0 .. <{N}> - 1 \}$.
-
-\begin{figure}
-\begin{code}
-<{:input:../code/qtest2.hny}>
-\end{code}
-\caption{\harmonylink{code/qtest2.hny} Concurrent <{get()}>}
-\label{fig:qtest2}
-\end{figure}
-
-Similarly, \autoref{fig:qtest2} shows a program that
-checks concurrent <{get}> operations using
-<{N}> threads.
-The queue is initialized with the sequence
-$0 .. <{N}> - 1$.
-Thread \texttt{getter(<{v}>)} removes an entry from the
-queue and makes sure that no other thread got the
-same entry.
-Thread \texttt{main()} waits until all <{getter}>
-threads have finished and checks to make sure that
-the queue is empty.
-
-\begin{figure}
-\begin{code}
-<{:input:../code/qtest3.hny}>
-\end{code}
-\caption{\harmonylink{code/qtest3.hny} Mix of concurrent
-<{get()}> and \texttt{put()} operations}
-\label{fig:qtest3}
-\end{figure}
-
-\autoref{fig:qtest3} checks a mixture of
-concurrent <{get}> and <{put}> operations.
-It starts <{N getter}> threads and
-<{N}> \texttt{putter} threads.
-Thread <{main}> waits until all have finished,
-and then checks to make sure that whatever is left
-on the queue was not also consumed by some
-<{getter}> thread.
-Finally, it makes sure that the queue is empty
-once all the values that were added
-to it by the \texttt{putter} threads have been consumed.
-
-A common mistake that people make is to use
-a globally shared variable in the implementation of
-a concurrent data structure.
-The <{get()}> method of the queue implementation
-uses a local variable <{node}>, declared using
-a <{let}> statement, but it would be easy to
-mistakenly use a global variable <{node}> instead.
-If there is only one queue, this is not an issue.
-So, it is important to test not just one queue at a
-time, but also multiple queues.
-\autoref{fig:qtest4} gives an example that
-tests the <{get}> method for use of global
-variables.  Even if the assertion does not fail,
-Harmony might find a data race if there are global
-variables shared between different queues.
-
-While having five different test programs is fine,
-it would be nice if we can combine them all in one
-test program.
-This has to be done with some care, as running the
-concurrent test programs simultaneously would
-lead to a state space explosion.
-Instead, we can leverage the <{choose}>
-expression.
-\autoref{fig:multitest} shows how one might go
-about this.
-Harmony will run all the tests, but the
-tests do not interfere with one another.
-
-\begin{figure}
-\begin{code}
-<{:input:../code/qtest4.hny}>
-\end{code}
-\caption{\harmonylink{code/qtest4.hny} Test with multiple queues}
-\label{fig:qtest4}
-\end{figure}
-
-\begin{figure}
-\begin{code}
-<{:input:../code/multitest.hny}>
-\end{code}
-\caption{\harmonylink{code/multitest.hny} Running a
-sequential test followed by several concurrent tests}
-\label{fig:multitest}
-\end{figure}
-
-\end{comment}
 
 \section*{Exercises}
 \begin{problems}
@@ -4936,7 +4826,12 @@ back to the top of the <{while}> loop.
 A common mistake is to write the following code instead:
 
 \begin{code}
-<{:input:../code/baddblwait.hny}>
+<{:inline:}>
+while forks[left]:
+    synch.wait(?conds[left], ?mutex)
+while forks[right]:
+    synch.wait(?conds[right], ?mutex)
+<{:end:}>
 \end{code}
 
 \begin{quote}
