@@ -216,18 +216,10 @@ args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
 
-import ctypes
-from ctypes import *
 
-def main() -> int:
-    shared_object_files = [f for f in pathlib.Path(__file__).parent.glob("*.so")]
-
-    if len(shared_object_files) != 1:
-        print("Multiple or no shared object files")
-        print(', '.join([str(p) for p in shared_object_files]))
-        return 1
-
+def main():
     ns = args.parse_args()
+
     if ns.version:
         print("Version", ".".join([str(v) for v in version]))
         return 0
@@ -290,7 +282,7 @@ def main() -> int:
     suppress_output = ns.suppress
 
     behavior = None
-    charm_options: List[str] = ns.cf or []
+    charm_options = ns.cf or []
     if ns.B:
         charm_options.append("-B" + ns.B)
         behavior = ns.B
@@ -340,15 +332,7 @@ def main() -> int:
         outfile = CHARM_EXECUTABLE_FILE
         with open(output_files["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
-
-        libCalc = CDLL(os.path.join(".", shared_object_files[0]))
-        c_argv = []
-        c_argv.append(str(outfile).encode("utf-8"))
-        c_argv.extend([o.encode("utf-8") for o in charm_options])
-        c_argv.append(("-o" + output_files["hco"]).encode("utf-8"))
-        c_argv.append(output_files["hvm"].encode("utf-8"))
-        c_argc = len(c_argv)
-        r = libCalc.main(c_argc, (ctypes.c_char_p * c_argc)(*c_argv))
+        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), output_files["hco"], output_files["hvm"]))
         if r != 0:
             print("charm model checker failed")
             return r
