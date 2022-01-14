@@ -48,7 +48,7 @@ XX\=XXX\=XXX\kill
 \endtcolorbox
 }
 
-\title{Concurrent and Distributed Programming in Harmony}
+\title{Harmony: A Verifiable Systems Programming Language}
 \author{Robbert van Renesse \and William Ma \and Kevin Sun \and Anthony Yang}
 \date{Department of Computer Science, Cornell University}
 
@@ -78,8 +78,9 @@ XX\=XXX\=XXX\kill
 \section{Introduction}
 
 \emph{Harmony} is a Python-like programming language designed to teach
-concurrent and distributed programming to students who do not have a
-background in formal methods.  Harmony programs are model checked~\cite{CES86}.
+systems programming and verification techniques to students who do not have a
+background in formal methods.  Harmony programs, which can be multi-threaded
+or distributed, are model checked~\cite{CES86}.
 Without any special formalism, Harmony can diagnose a large variety
 of problems:
 \begin{compactitem}
@@ -92,6 +93,8 @@ with one another, and many more.
 \item Incomplete behaviors: specification has behaviors not seen with implementation, such as multiple readers not able to get a reader/writer lock simultaneously.
 \item Data races: variables accessed without a lock.
 \item Busy Waiting: waiting for a condition without blocking.
+\item Violations of interrupt safety: a race condition caused by the execution
+of an interrupt handler.
 \end{compactitem}
 
 \begin{figure*}
@@ -111,8 +114,8 @@ statements.  Since Harmony programs are model-checked and multiple
 executions are explored across a finite set of states, the output of a
 Harmony program is a finite automaton that describes all possible
 outputs of the program.  Groups of statements can be made atomic
-using the <{atomically}> keyword.  Finally, Harmony supports
-waiting until some condition is reached with the <{when}> statement.
+using the <{atomically}> keyword.  Harmony supports
+waiting until some condition is reached with its <{when}> statement.
 
 Harmony programs compile to a virtual machine.  The Harmony virtual
 machine is formally specified using TLA+~\cite{Lamport02}, allowing
@@ -131,6 +134,12 @@ The Harmony model checker generates the Cartesian product of the test program
 and the behavior automaton to find discrepancies in the implementation
 with respect to its specification.
 
+Harmony supports continuations as first-class objects, allowing the
+state of a thread can be saved in a variable and later restored.
+Continuations enable the implementation of specialized thread
+schedulers as well as the implementation of thread forking by
+reinstantiating a saved thread state multiple times.
+
 Harmony has been used to verify the correctness of various lock
 implementations, monitors and condition variables (both Hoare and Mesa),
 various implementations of concurrent data structures including lock-free
@@ -143,14 +152,15 @@ Harmony's unique combination of features are a familiar and easy
 to learn high-level programming language, the ability to concisely
 specify an interface, the ability to compare behaviors of specification
 and implementation, the ability to modularly model check programs,
-and support for continuations and interrupts.  Harmony finds various common
-problems automatically without a complicated property specification
-language, such as Harmony's ability to find instances of undesirable
-busy waiting.
+and support for continuations and interrupts.  In addition, Harmony
+finds various common problems automatically without a complicated
+property specification language, such as Harmony's ability to find
+instances of undesirable busy waiting.
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
-develop code for reliable concurrent or distributed applications.
+develop specify and implement reliable concurrent and/or
+distributed systems.
 
 \begin{figure}
 \begin{tabular}{|l|l|}
@@ -218,7 +228,7 @@ def acquire(lk):
 (a) & (b)
 \end{tabular}
 \end{center}
-\caption{Lock specification and a spinlock implementation based on
+\caption{(a) Lock specification and (b) a spinlock implementation based on
 test-and-set}
 \label{fig:synch}
 \end{figure*}
@@ -933,6 +943,11 @@ also has the disadvantage that it is a verbose language.  Just the
 boilerplate for the Paxos project in DSLabs is well over 100 lines
 of Java code.  The entire Paxos implementation in Harmony is less
 than 50 lines.
+
+Dist\-Algo~\cite{DistAlgo} is a programming language based on Python to
+simplify the specification and verification of distributed algorithms.
+Dist\-Algo includes a framework for runtime checking of safety and liveness
+properties~\cite{LS20}.
 
 \bibliographystyle{alpha}
 \bibliography{paper}
