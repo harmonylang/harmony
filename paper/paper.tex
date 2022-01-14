@@ -71,7 +71,8 @@ XX\=XXX\=XXX\kill
 \begin{center}
 \includegraphics[width=.9\textwidth]{hello.pdf}
 \end{center}
-\caption{A selection of Harmony programs and their outputs}
+\caption{A demonstration of various Harmony language constructs.  The DFAs
+are the actual outputs of the given programs.}
 \label{fig:helloworld}
 \end{figure*}
 
@@ -391,8 +392,10 @@ and <{dequeue}> operations concurrently.
 The test program spawns 4 threads that each select an operation
 using the nondetermistic <{choose}> statement.  In case <{enqueue}>
 is selected, the thread enqueues its identifier <{self}>.  The program
-includes a print statement at the beginning and end of every queue
-operation.
+includes a <{print}> statement at the beginning and end of every queue
+operation.  Think of the <{print}> statement as \emph{annotations}
+that tell Harmony what the interesting events are with respect to
+queue operations.
 
 The test program is similar to what a programmer might have written
 as a unit test.  The programmer would run the program a bunch of
@@ -473,6 +476,8 @@ The Harmony <{trap f(x)}> statement sets an interrupt handler
 of it as setting an unspecified timer, but it can model any type
 of interrupt.  In addition, the Harmony <{setintlevel L}> statement
 enables or disables interrupts and returns the old interrupt level.
+The model checker tries calling the interrupt handler at every
+possible point in the execution of the Harmony program.
 
 \subsection{Distributed Programming}
 
