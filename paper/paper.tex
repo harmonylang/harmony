@@ -78,15 +78,17 @@ XX\=XXX\=XXX\kill
 \section{Introduction}
 
 \emph{Harmony} is a Python-like programming language designed to teach
-systems programming and verification techniques to students who do not have a
-background in formal methods.  Harmony programs, which can be multi-threaded
+systems specification, implementation, and verification techniques to
+students who do not have a background in formal methods.
+Harmony programs, which can be multi-threaded
 or distributed, are model checked~\cite{CES86}.
 Without any special formalism, Harmony can diagnose a large variety
 of problems:
 \begin{compactitem}
 \item ``Silly errors'': accessing non-existent variables,
-divide-by-zero, out-of-bounds array access, trying to multiply two lists
-with one another, and many more.
+divide-by-zero, out-of-bounds array access, dereferencing dangling
+pointers, trying to multiply two lists with one another,
+and many more.
 \item Safety violations due to assertions failing, such as an assertion to ensure mutual exclusion.
 \item Liveness violations (deadlock).
 \item Faulty behaviors: implementation has behaviors not seen with specification, such as violations of linearizability~\cite{HW90}.
@@ -95,6 +97,7 @@ with one another, and many more.
 \item Busy Waiting: waiting for a condition without blocking.
 \item Violations of interrupt safety: a race condition caused by the execution
 of an interrupt handler.
+\item Memory leaks.
 \end{compactitem}
 
 \begin{figure*}
@@ -152,10 +155,11 @@ Harmony's unique combination of features are a familiar and easy
 to learn high-level programming language, the ability to concisely
 specify an interface, the ability to compare behaviors of specification
 and implementation, the ability to modularly model check programs,
-and support for continuations and interrupts.  In addition, Harmony
-finds various common problems automatically without a complicated
-property specification language, such as Harmony's ability to find
-instances of undesirable busy waiting.
+and support for dynamic memory allocation, continuations, and
+interrupts.  In addition, Harmony finds various common problems
+automatically without a complicated property specification language,
+such as Harmony's ability to find instances of undesirable busy
+waiting.
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
@@ -360,7 +364,7 @@ The Harmony distribution comes with a collection of specifications,
 each often with multiple implementations.  The lock specification
 comes with the spinlock implementation of \autoref{fig:synch}(a), but
 also a ticket lock implementation and one based on continuations and
-a ready queue.  The distribution also includes various concurrent
+a blocked queue.  The distribution also includes various concurrent
 queue implementations, including the lock-free implementation
 of~\cite{MS96}.
 
@@ -412,6 +416,63 @@ checker ends up verifying the Cartesian product of the implementation
 and the DFA and ensures that every behavior of the implementation
 program (in terms of its print statements) is also a behavior of
 the specification program.
+
+\begin{figure}
+\begin{center}
+{\footnotesize
+\begin{code}
+<{:inline:}>
+import list
+
+def Lock(held):
+    result = { .held: False, .blocked: [] }
+
+def acquire(lk):
+    atomically:
+        if lk->held:
+            stop lk->blocked[len lk->blocked]
+        else:
+            lk->held = True
+
+def release(lk):
+    atomically:
+        if lk->blocked == []:
+            lk->held = False
+        else:
+            go (list.head(lk->blocked)) ()
+            lk->blocked = list.tail(lk->blocked)
+<{:end:}>
+\end{code}
+}
+\end{center}
+\caption{FIFO lock using continuation}
+\label{fig:continuation}
+\end{figure}
+
+\subsection{Continuations}
+
+The Harmony <{stop x}> expression stops the current thread and
+saves its state in the variable <{x}>.  Another thread can
+resume the thread using the statement <{go x r}>, which causes
+the original thread to resume, with the <{stop x}> expression
+evaluating to the value <{r}>.
+\autoref{fig:continuation} shows another implementation of
+\autoref{fig:synch}(a) using continuations, where blocked
+threads are placed on a FIFO queue and released in that order.
+Besides synchronization and scheduling, continuations also enable
+the implementation of a primitive such as Posix \texttt{fork}.
+
+\subsection{Interrupts}
+
+Correct interrupt handling is another difficult aspect of
+systems programming.  Interrupt handlers typically have various
+stringent limitations in what they are allowed to do in order
+to ensure the absence of race conditions due to re-entrant code.
+The Harmony <{trap f(x)}> statement sets an interrupt handler
+<{f(x}}> to be called at an unspecified later time.  You can think
+of it as setting an unspecified timer, but it can model any type
+of interrupt.  In addition, the Harmony <{setintlevel L}> statement
+enables or disables interrupts and returns the old interrupt level.
 
 \subsection{Distributed Programming}
 
@@ -539,6 +600,7 @@ Each transition modifies at least the context bag and set of active
 contexts.
 A few operations (\texttt{Store}, \texttt{Stop}, and \texttt{Del})
 also modify one of the shared variables.
+Below we describe in more detail some of the more unusual ones.
 
 \paragraph{Choose.} \texttt{Choose} pops a set value of the stack
 and pushes a selected element back onto the stack.  The model checker
@@ -554,6 +616,7 @@ the stack.  This way, a dictionary acts much like a method that maps keys
 to values.  If $f$ is a string, then the operation returns the $x^{th}$
 character of the string.
 
+\begin{comment}
 \paragraph{Frame/Return.}  \texttt{Frame} is the first operation of
 a method and \texttt{Return} its last.  \texttt{Frame} pops a value of
 the stack and assigns it to the argument (or argument list) of the
@@ -566,6 +629,7 @@ If the stack is not empty, then (1) the saved local variables are popped
 and restored, (2) the return address is popped and assigned to the
 program counter, and (3) the value of <{result}> is pushed onto the
 stack.
+\end{comment}
 
 \paragraph{Spawn.}  Spawn pops a program counter and argument from the
 stack and uses them to create a new context.  The new context is added
@@ -581,12 +645,14 @@ set of context with just the current context.  When decremented
 from 1 to 0, the active set is replaced with the union of the
 new context and the domain of the context bag.
 
+\begin{comment}
 \paragraph{SetIntLevel.}  A context contains a boolean that determines
 if interrupts are enabled or not.  \texttt{SetIntLevel} pops the
 new interrupt level and pushes the old.  Supporting interrupts is
 important.  First, writing multi-threaded programs that also need
 to handle interrupts is difficult.  Second, distributed algorithms
 often require timer interrupts to trigger actions such as retransmissions.
+\end{comment}
 
 \paragraph{Stop/Go.}  Harmony supports continuations as a first-class
 construct.  To enable this, \texttt{Stop} saves the current context (with
@@ -770,7 +836,7 @@ for i in {0..N-1}: spawn diner(i)
 
 \begin{figure*}
 \begin{center}
-\includegraphics[width=\textwidth]{diners.png}
+\includegraphics[width=.8\textwidth]{diners.png}
 \end{center}
 \caption{The HTML output of running the Dining Philosophers program}
 \label{fig:dinersHTML}
