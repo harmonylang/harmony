@@ -1879,7 +1879,7 @@ int main(int argc, char **argv){
         postproc += gettime() - before_postproc;
     }
 
-    printf("#states %d (time %.3lf+%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc);
+    printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
     if (minheap_empty(global->failures)) {
         // find the strongly connected components

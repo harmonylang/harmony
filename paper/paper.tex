@@ -48,7 +48,7 @@ XX\=XXX\=XXX\kill
 \endtcolorbox
 }
 
-\title{Concurrent and Distributed Programming in Harmony}
+\title{Harmony: A Verifiable Systems Programming Language}
 \author{Robbert van Renesse \and William Ma \and Kevin Sun \and Anthony Yang}
 \date{Department of Computer Science, Cornell University}
 
@@ -64,6 +64,8 @@ XX\=XXX\=XXX\kill
 <{:const:hello}>
 <{:const:enqueue}>
 <{:const:dequeue}>
+<{:const:enq_test}>
+<{:const:deq_test}>
 <{:const:send}>
 <{:const:receive}>
 
@@ -71,27 +73,34 @@ XX\=XXX\=XXX\kill
 \begin{center}
 \includegraphics[width=.9\textwidth]{hello.pdf}
 \end{center}
-\caption{A selection of Harmony programs and their outputs}
+\caption{A demonstration of various Harmony language constructs.  The DFAs
+are the actual outputs of the given programs.}
 \label{fig:helloworld}
 \end{figure*}
 
 \section{Introduction}
 
 \emph{Harmony} is a Python-like programming language designed to teach
-concurrent and distributed programming to students who do not have a
-background in formal methods.  Harmony programs are model checked~\cite{CES86}.
+systems specification, implementation, and verification techniques to
+students who do not have a background in formal methods.
+Harmony programs, which can be multi-threaded
+or distributed, are model checked~\cite{CES86}.
 Without any special formalism, Harmony can diagnose a large variety
 of problems:
 \begin{compactitem}
 \item ``Silly errors'': accessing non-existent variables,
-divide-by-zero, out-of-bounds array access, trying to multiply two lists
-with one another, and many more.
+divide-by-zero, out-of-bounds array access, dereferencing dangling
+pointers, trying to multiply two lists with one another,
+and many more.
 \item Safety violations due to assertions failing, such as an assertion to ensure mutual exclusion.
 \item Liveness violations (deadlock).
-\item Faulty behaviors: implementation has behaviors not seen with specification, such as violations of linearizability~\cite{HW90}.
+\item Faulty behaviors: implementation has behaviors not seen in the specification, such as violations of linearizability~\cite{HW90}.
 \item Incomplete behaviors: specification has behaviors not seen with implementation, such as multiple readers not able to get a reader/writer lock simultaneously.
-\item Data races: variables accessed without a lock.
+\item Data races: shared variables accessed without a lock.
 \item Busy Waiting: waiting for a condition without blocking.
+\item Violations of interrupt safety: a race condition caused by the execution
+of an interrupt handler.
+\item Memory leaks.
 \end{compactitem}
 
 \begin{figure*}
@@ -106,13 +115,14 @@ implementation and its equivalent in Harmony (within the box)}
 Harmony programs have three sources of non-determinism:
 <{choose}> operations that select a value from a set,
 \emph{interleaving} due to multi-threading, and \emph{interrupts}.
-\autoref{fig:helloworld} demonstrates the <{choose}> and the <{spawn}>
-statements.  Since Harmony programs are model-checked and multiple
+\autoref{fig:helloworld} demonstrates various non-deterministic
+Harmony programs.
+Since Harmony programs are model-checked and all possible
 executions are explored across a finite set of states, the output of a
 Harmony program is a finite automaton that describes all possible
 outputs of the program.  Groups of statements can be made atomic
-using the <{atomically}> keyword.  Finally, Harmony supports
-waiting until some condition is reached with the <{when}> statement.
+using the <{atomically}> keyword.  Harmony supports
+waiting until some condition is reached with its <{when}> statement.
 
 Harmony programs compile to a virtual machine.  The Harmony virtual
 machine is formally specified using TLA+~\cite{Lamport02}, allowing
@@ -131,6 +141,13 @@ The Harmony model checker generates the Cartesian product of the test program
 and the behavior automaton to find discrepancies in the implementation
 with respect to its specification.
 
+Harmony supports continuations as first-class objects, allowing the
+state of a thread to be saved in a variable and later restored.
+Continuations enable the implementation of specialized thread
+schedulers as well as the implementation of thread forking by
+reinstantiating a saved thread state multiple times.
+Other uses include exception handlers, coroutines, and generators.
+
 Harmony has been used to verify the correctness of various lock
 implementations, monitors and condition variables (both Hoare and Mesa),
 various implementations of concurrent data structures including lock-free
@@ -143,38 +160,15 @@ Harmony's unique combination of features are a familiar and easy
 to learn high-level programming language, the ability to concisely
 specify an interface, the ability to compare behaviors of specification
 and implementation, the ability to modularly model check programs,
-and support for continuations and interrupts.  Harmony finds various common
-problems automatically without a complicated property specification
-language, such as Harmony's ability to find instances of undesirable
-busy waiting.
+and support for dynamic memory allocation, continuations, and
+interrupts.  In addition, Harmony finds various common problems
+automatically without a complicated property specification language,
+such as Harmony's ability to find instances of undesirable busy
+waiting.
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
-develop code for reliable concurrent or distributed applications.
-
-\begin{figure}
-\begin{tabular}{|l|l|}
-\hline
-Boolean & <{False}>, <{True}> \\
-\hline
-Integer & <{..., -2, -1, 0, 1, 2, ...}> \\
-\hline
-String & <{"example"}>, <{.example}> \\
-\hline
-PC & (program counters) \\
-\hline
-Dictionary & <{{ .acct: 12345, .valid: False }}> \\
-\hline
-Set & <{{}, { 1, 2, 3 }, { False, .id, 3 }}> \\
-\hline
-Address & <{?lock, ?flags[2], None}> \\
-\hline
-Context & (generated by <{stop}> expression) \\
-\hline
-\end{tabular}
-\caption{Harmony values}
-\label{fig:values}
-\end{figure}
+specify and implement reliable concurrent and/or distributed systems.
 
 \begin{figure*}[h]
 \begin{center}
@@ -218,7 +212,7 @@ def acquire(lk):
 (a) & (b)
 \end{tabular}
 \end{center}
-\caption{Lock specification and a spinlock implementation based on
+\caption{(a) Lock specification and (b) a spinlock implementation based on
 test-and-set}
 \label{fig:synch}
 \end{figure*}
@@ -245,6 +239,8 @@ def dequeue(q):
             result = list.head(!q)
             !q = list.tail(!q)
 
+
+
 <{:end:}>
 \end{tcolorbox}
 }
@@ -257,17 +253,19 @@ import queue
 const NOPS = 4
 q = queue.Queue()
 
-def thread(self):
-    if choose({ "deq", "enq" }) == "enq":
-        print("call enqueue", self)
-        queue.enqueue(?q, self)
-        print("done enqueue", self)
-    else:
-        print("call dequeue", self)
-        let v = queue.dequeue(?q):
-            print("done dequeue", self, v)
+def enq_test(self):
+    print("call enqueue", self)
+    queue.enqueue(?q, self)
+    print("done enqueue", self)
 
-for i in {1..NOPS}: spawn thread(i)
+def deq_test(self):
+    print("call dequeue", self)
+    let v = queue.dequeue(?q):
+        print("done dequeue", self, v)
+
+nenq = choose {1..NOPS-1}
+for i in {1..nenq}:      spawn enq_test(i)
+for i in {1..NOPS-nenq}: spawn deq_test(i)
 <{:end:}>
 \end{tcolorbox}
 }
@@ -290,12 +288,12 @@ not support classes and instead supports memory allocation and
 pointers in a way that is familiar to C programmers.  While this
 perhaps seems like a step back in language evolution, many
 synchronization algorithms in the literature explicitly consider
-memory accesses, and perhaps surprisingly this has been a bonus for
+memory accesses, and this has been a bonus for
 analyzing such algorithms with Harmony.  Moreover, the Harmony model
 checker can be used to check for memory leaks or access to dangling
 pointers.
 
-For example, \autoref{fig:ms} shows a reproduction from the well-known
+For example, \autoref{fig:ms} shows a reproduction of the well-known
 Michael\&Scott two-lock concurrent queue~\cite{MS96} along with a
 Harmony version of the same algorithm.
 Harmony uses the `<{?}>' instead of the `<{&}>' symbol to take the address
@@ -303,7 +301,7 @@ of a memory location, but inherits the same <{q->field}> notation
 from C to access the given field in the dictionary pointed to by
 pointer <{q}>.  <{q->field}> is shorthand for <{(!q)["field"]}> in
 Harmony, where `<{!}>' is the Harmony operator to dereference a pointer.
-Harmony also complaints, correctly, about a data race when
+Harmony also complains, correctly, about a data race when
 there is a concurrent \texttt{enqueue} and \texttt{dequeue} operation
 on an empty queue---the implementer should ensure that accesses to the
 \texttt{next} field are sequentially consistent.
@@ -312,10 +310,30 @@ The Harmony example in \autoref{fig:ms} shows some other language
 features in Harmony that are not in Python.
 The <{let x = e: S}> statement introduces a new bound variable <{x}>
 with value <{e}> that is only valid within the statement block <{S}>.
-Also, Harmony does not have \texttt{return}, \texttt{break}, or
+Harmony does not have \texttt{return}, \texttt{break}, or
 \texttt{continue} statements to force the programmer into a purely
 nested control flow.  Each method has a variable <{result}> in which
 the return value of the method is stored.
+
+\begin{figure*}
+\begin{center}
+\begin{tabular}{l|c|c|c|c}
+           & <{NOPS=2}> & <{NOPS=3}> & <{NOPS=4}> & <{NOPS=5}> \\ \hline\hline
+queue specification    &  30/0.0 &  350/0.0 &  3,385/0.0 &    32,010/0.1 \\ \hline
+queue impl. w/o check  &  90/0.0 & 1905/0.0 & 39,519/0.1 & 1,089,222/5.6 \\ \hline
+queue impl. with check & 101/0.0 & 2566/0.0 & 75,974/0.3 & 3,400,555/22.8 \\
+\end{tabular}
+\end{center}
+\caption{The number of states generated by the model checker and the
+execution time (in seconds) for running \autoref{fig:queue}(b).
+This is done for three configurations, varying the value of <{NOPS}>:
+the specification (\autoref{fig:queue}(a)), a simple linked list
+implementation using locks, and the same implementation combined with
+the behavior automaton generated by the first configuration.  The
+hardware consisted of a 2.8 GHz Quad-Core Intel Core i7
+(2 hyperthreads per core) with 2,133 MHz LPDDR3 memory.}
+\label{fig:qcmp}
+\end{figure*}
 
 \subsection{\texttt{atomically}}
 
@@ -343,14 +361,36 @@ Harmony can model check the implementation of \autoref{fig:ms} using
 the specification of a lock in \autoref{fig:synch}(a).
 Separately, Harmony can check the correctness of the implementation in
 \autoref{fig:synch}(b) against the specification in
-\autoref{fig:synch}(a).  This modularity allows larger systems to
-be model checked in a way that would not be tractable otherwise.
+\autoref{fig:synch}(a).
+
+This modularity allows larger systems to be model checked in a way
+that would not be tractable otherwise.
+\autoref{fig:qcmp} shows some measurements taken from running
+Harmony against the test program in \autoref{fig:queue}(b).
+The Harmony compiler allows both constants and modules to be
+specified on the command line, so the test program can easily be
+run with different versions of the <{queue}> module and different
+values for <{NOPS}>, the number of threads spawned to choose and
+perform a queue operation.  The table has a row for three different
+configurations and a column for four different values for <{NOPS}>.
+It is clear that running the test program against the specification
+involves significantly fewer states, and therefore less time, than
+running the test program against an implementation, particularly
+if the behavior of that implementation must be checked as well.
+
+With Harmony, one can check the implementation of a lock separately,
+but use the specification of the lock in the implementation of the
+queue.  Similarly, one can check the implementation of a queue,
+but then use the specification of the queue in a larger application.
+Doing so is essentially a form of \emph{Partial Order Reduction}~\cite{Val91},
+replacing the <{enqueue}> and <{dequeue}> implementations
+by atomic actions.
 
 The Harmony distribution comes with a collection of specifications,
 each often with multiple implementations.  The lock specification
 comes with the spinlock implementation of \autoref{fig:synch}(a), but
 also a ticket lock implementation and one based on continuations and
-a ready queue.  The distribution also includes various concurrent
+a queue of blocked threads.  The distribution also includes various concurrent
 queue implementations, including the lock-free implementation
 of~\cite{MS96}.
 
@@ -368,7 +408,7 @@ various concurrent interleavings of <{enqueue}> and <{dequeue}> operations.
 
 \autoref{fig:queue}(a) shows the specification of a concurrent
 <{queue}> module.  A queue is represented as a list.
-The <{enqueue}> method add a value onto the end of the list,
+The <{enqueue}> method appends a value onto the end of the list,
 while the <{dequeue}> method extracts the head, both as atomic actions.
 
 To test a queue, we want to perform a set of concurrent <{enqueue}>
@@ -377,19 +417,21 @@ and <{dequeue}> operations concurrently.
 The test program spawns 4 threads that each select an operation
 using the nondetermistic <{choose}> statement.  In case <{enqueue}>
 is selected, the thread enqueues its identifier <{self}>.  The program
-includes a print statement at the beginning and end of every queue
-operation.
+includes a <{print}> statement at the beginning and end of every queue
+operation.  Think of the <{print}> statements as \emph{annotations}
+that tell Harmony what the interesting events are with respect to
+queue operations.
 
 The test program is similar to what a programmer might have written
 as a unit test.  The programmer would run the program a bunch of
 times and look at the output in order to see if it looks reasonable.
-Doing so is, however, difficult and error prone, as the output tends
+Doing so is difficult and error prone, as the output tends
 to be complex and in the mess of many lines of output it is easy
 to overlook problems such as two threads dequeuing the same item
 or items being dequeued in the wrong order.  The output of concurrent
 print statement can be mangled together.  Not only that, but the
 programmer would need to run this test program many times and check
-each the output each time.  It even is hard to write a program that
+the output each time.  It even is hard to write a program that
 checks the output automatically.
 
 This process is automated in Harmony.  The approach is to
@@ -401,7 +443,92 @@ concurrent queue, but with the inclusion of the DFA.  The model
 checker ends up verifying the Cartesian product of the implementation
 and the DFA and ensures that every behavior of the implementation
 program (in terms of its print statements) is also a behavior of
-the specification program.
+the specification program.  In case the implementation has a behavior
+that is not allowed by the specificatino, the model checker can
+provide the shortest counter-example.
+
+\begin{figure}
+\begin{center}
+{\footnotesize
+\begin{code}
+<{:inline:}>
+import list
+
+def Lock(held):
+    result = { .held: False, .blocked: [] }
+
+def acquire(lk):
+    atomically:
+        if lk->held:
+            stop lk->blocked[len lk->blocked]
+        else:
+            lk->held = True
+
+def release(lk):
+    atomically:
+        if lk->blocked == []:
+            lk->held = False
+        else:
+            go (list.head(lk->blocked)) ()
+            lk->blocked = list.tail(lk->blocked)
+<{:end:}>
+\end{code}
+}
+\end{center}
+\caption{FIFO lock using continuation}
+\label{fig:continuation}
+\end{figure}
+
+\subsection{Continuations}
+
+The Harmony <{stop x}> expression stops the current thread and saves
+its state in the variable <{x}>.  Another thread can resume the
+thread using the statement <{go x r}>, which causes the original
+thread to resume, with the <{stop x}> expression evaluating to the
+value <{r}>.  \autoref{fig:continuation} shows another implementation
+of the lock specification of \autoref{fig:synch}(a) using continuations,
+where blocked threads are placed on a FIFO queue and released in
+that order.  Besides synchronization and scheduling, continuations
+also enable the implementation of a primitive such as Posix
+\texttt{fork}.
+
+\subsection{Interrupts}
+
+Correct interrupt handling is another difficult aspect of
+systems programming.  Interrupt handlers typically have various
+stringent limitations in what they are allowed to do in order
+to ensure the absence of race conditions due to re-entrant code.
+The Harmony <{trap f(x)}> statement sets an interrupt handler
+<{f(x)}> to be called at an unspecified later time.  You can think
+of it as setting an unspecified timer, but it can model any type
+of interrupt.  In addition, the Harmony <{setintlevel L}> statement
+enables or disables interrupts and returns the old interrupt level.
+The model checker tries calling the interrupt handler at every
+possible point in the execution of the Harmony program.
+
+\begin{figure}
+\begin{tabular}{|l|l|}
+\hline
+Boolean & <{False}>, <{True}> \\
+\hline
+Integer & <{..., -2, -1, 0, 1, 2, ...}> \\
+\hline
+String & <{"example"}>, <{.example}> \\
+\hline
+PC & (program counters) \\
+\hline
+Dictionary & <{{ .acct: 12345, .valid: False }}> \\
+\hline
+Set & <{{}, { 1, 2, 3 }, { False, .id, 3 }}> \\
+\hline
+Address & <{?lock, ?flags[2], None}> \\
+\hline
+Context & (generated by <{stop}> expression) \\
+\hline
+\end{tabular}
+\caption{Harmony values}
+\label{fig:values}
+\end{figure}
 
 \subsection{Distributed Programming}
 
@@ -413,9 +540,9 @@ operator in Python).
 To receive a message, a program can use the Harmony <{when}>
 statement to wait for a message.  Typically, however, the program
 does not want to receive just any message, but a message that satisfies
-certain conditions such as: wait for the next message that is addressed
-to me and has a sequence number larger than 3.
-For this, Harmony supports the <{exists clause}> and allows
+certain conditions such as: \emph{wait for the next message that is addressed
+to me and has a sequence number larger than 3}.
+For this, Harmony supports the <{exists}> clause and allows
 <{when}> clauses to be nested:
 <{atomically when exists m in network when (m.dst == self) and (m.seq > 3): ...}>
 With these constructs, Harmony can be effectively used as a
@@ -432,7 +559,7 @@ Below we summarize its most important aspects.
 Harmony has 8 types of values listed in \autoref{fig:values}.
 There are no exceptions: a set can contain dictionaries, a dictionary
 can map dictionaries to dictionaries, and so on.  Unlike many
-object-oriented programming languages, the programmer never
+object-oriented programming languages including Python, the programmer never
 has to specify what it means for two values to be the same or what the
 hash of a value is.
 
@@ -453,19 +580,20 @@ An \emph{address} represents a path in a hierarchy of dictionaries, with
 Examples of \emph{program counters} include method constants and program labels.
 A \emph{context} represents the state of a thread.  It includes a program
 counter, a map of local variable names to values, and a stack of values.
-Harmony makes no difference between lists and tuples and implements
-both as dictionaries from integers to values.
-So <{[7, 4] = (7, 4) = { 0: 7, 1: 4 }}>.
-Note that <{[7, 4][0] = 7}>, as expected.
-The empty dictionary is represented as either <{()}> or <{[]}>
-(<{{}}> is the empty set).
+% Harmony makes no difference between lists and tuples and implements
+% both as dictionaries from integers to values.
+% So <{[7, 4] = (7, 4) = { 0: 7, 1: 4 }}>.
+% Note that <{[7, 4][0] = 7}>, as expected.
+% The empty dictionary is represented as either <{()}> or <{[]}>
+% (<{{}}> is the empty set).
 
 Except for <{choose}>, any operation on values is deterministic and
 defined in the formal specification of the Harmony virtual machine.
 For example, like Python, Harmony supports merging of dictionaries
 using the union operator, but, unlike Python, Harmony defines
 what happens when two dictionaries have the same key but different values.
-In that case, Harmony will use the maximum value as defined above.
+In that case, Harmony will use the maximum value according to the order
+defined above.
 For dictionary  intersection, Harmony uses the minimum value instead.
 Doing so makes dictionary union and intersection deterministic and
 commutative.  Moreover, Harmony represents multisets as dictionaries
@@ -529,6 +657,7 @@ Each transition modifies at least the context bag and set of active
 contexts.
 A few operations (\texttt{Store}, \texttt{Stop}, and \texttt{Del})
 also modify one of the shared variables.
+Below we describe in more detail some of the more unusual ones.
 
 \paragraph{Choose.} \texttt{Choose} pops a set value of the stack
 and pushes a selected element back onto the stack.  The model checker
@@ -544,6 +673,7 @@ the stack.  This way, a dictionary acts much like a method that maps keys
 to values.  If $f$ is a string, then the operation returns the $x^{th}$
 character of the string.
 
+\begin{comment}
 \paragraph{Frame/Return.}  \texttt{Frame} is the first operation of
 a method and \texttt{Return} its last.  \texttt{Frame} pops a value of
 the stack and assigns it to the argument (or argument list) of the
@@ -556,6 +686,7 @@ If the stack is not empty, then (1) the saved local variables are popped
 and restored, (2) the return address is popped and assigned to the
 program counter, and (3) the value of <{result}> is pushed onto the
 stack.
+\end{comment}
 
 \paragraph{Spawn.}  Spawn pops a program counter and argument from the
 stack and uses them to create a new context.  The new context is added
@@ -571,21 +702,24 @@ set of context with just the current context.  When decremented
 from 1 to 0, the active set is replaced with the union of the
 new context and the domain of the context bag.
 
+\begin{comment}
 \paragraph{SetIntLevel.}  A context contains a boolean that determines
 if interrupts are enabled or not.  \texttt{SetIntLevel} pops the
 new interrupt level and pushes the old.  Supporting interrupts is
 important.  First, writing multi-threaded programs that also need
 to handle interrupts is difficult.  Second, distributed algorithms
 often require timer interrupts to trigger actions such as retransmissions.
+\end{comment}
 
 \paragraph{Stop/Go.}  Harmony supports continuations as a first-class
-construct.  To enable this, \texttt{Stop} saves the current context (with
-its program counter incremented) in a specified shared location (usually the
-tail of a queue) and removes the context from the context bag and active set.
-If the context was atomic (which is usually the case), the active set is
-replaced with the domain of the context bag.  Even though its atomic counter
-is not zero, the stopped context is not considered atomic at this time, but
-will resume being atomic once it is scheduled to run.
+construct.  To enable this, \texttt{Stop} saves the current context
+(with its program counter incremented) in a specified shared location
+(such as the tail of a scheduling queue) and removes the context
+from the context bag and active set.  If the context was atomic
+(which is usually the case), the active set is replaced with the
+domain of the context bag.  Even though its atomic counter is not
+zero, the stopped context is not considered atomic at this time,
+but will resume being atomic once it is scheduled to run.
 
 \texttt{Go} pops a context value and a return value of the stack,
 pushes the return value onto the stack of the popped context, and adds
@@ -602,10 +736,12 @@ the program counter.  In case a behavior automaton has been specified, the
 value is applied to the DFA state and checked for validity.
 To reduce state explosion, the HVM does not keep track of the value itself
 in the state (like keeping the value in a shared list as part of the state).
+Instead, Harmony keeps printed values on the edges between the states
+in the Kripke structure.
 
 \subsection{Model Checker}
 
-\emph{Charm}, the Harmony model checker, is an explicit state model
+\emph{Charm}, Harmony's concurrent model checker, is an explicit state model
 checker that computes a \emph{Kripke structure} (essentially, a graph)
 of states reachable
 from the initial state in a breadth-first manner, stopping only if
@@ -623,7 +759,8 @@ sequence of operations as atomic if only its first operation is an
 operation that accesses the shared state (\texttt{Load}, \texttt{Store},
 \texttt{Del}, or \texttt{Stop}) or a \texttt{Choose} or \texttt{Print}
 operation.  We call such operations \emph{breakable}.
-Note that this is essentially a form of Partial Order Reduction~\cite{Val91}.
+Note that this optimization is essentially Partial Order
+Reduction~\cite{Val91}.
 
 Reducing the state space this way is highly effective for Harmony.
 For example, when model checking Peterson's algorithm expressed in
@@ -639,7 +776,7 @@ the active set is the singleton set (such as when the thread is in
 atomic mode) or, if not, as long as the next instruction is not
 breakable.  Only the resulting state is added to the Kripke structure,
 and the edge indicates the starting context.  During this loop, Charm
-does check if the same state recurs---if so it aborts
+does check if the same state recurs---if so, it aborts
 and reports an infinite loop.
 
 In the case the first instruction is a \texttt{Choose} instruction,
@@ -648,8 +785,8 @@ on top of the stack.  If not, Charm will check to
 see if a trap is outstanding and interrupts are enabled.  If so,
 Charm will try an interrupt transition as well.
 
-About half of the work of the model checking is trivially parallelizable,
-allowing for significant speedups on multi-core machines.
+In practice, about half of the work of the model checking is trivially
+parallelizable, allowing for significant speedups on multi-core machines.
 
 \subsection{Data Race Detection}
 
@@ -681,7 +818,7 @@ depending on the outcome, either $e_1$ or $e_2$ is evaluated.
 
 The compiler performs some standard optimizations that do not re-order
 expression evaluations, such as constant folding and jump threading.
-A more interesting optimization is \emph{dead variable elimination}:
+An unusual optimization is \emph{dead variable elimination}:
 local variables that are no longer in use are automatically removed
 from the state using the HVM \texttt{DelVar} instruction.  The reason
 for this is to reduce state explosion by removing state that is no
@@ -694,7 +831,7 @@ consider.  If Charm aborted due to some problematic transition,
 then Charm reports the shortest path as a so-called \emph{counter-example}.
 If not, the resulting graph is analyzed for various other problems,
 including deadlock, busy waiting, and executions
-that ended in a state that is not considered final according to
+that ended in a state that is not considered final according to the
 behavior DFA if specified.  We detail below how these problems are
 found.
 
@@ -705,10 +842,11 @@ connected components.  The states in the sink components of this
 DAG can be considered the terminal states of the Harmony program.
 States in which the context bag is empty represent states in which
 all threads have terminated.  In the case the context bag is not
-empty, we check if there are any non-\emph{eternal} contexts.  If
-so, Harmony reports a \emph{deadlock}.  (Harmony programmers can
+empty, we check if there are any non-\emph{eternal} contexts.
+(Harmony programmers can
 specify that certain threads are eternal, such as server threads
-that operate in an infinite loop waiting for requests.) If there
+that operate in an infinite loop waiting for requests.) If
+so, Harmony reports a \emph{deadlock}. If there
 is no deadlock and a behavior automaton was specified, Harmony also
 checks if the automaton is in a terminal state.  If not, a
 \emph{behavior violation} is reported.
@@ -728,7 +866,7 @@ updating the shared state first.  A common example of this is a
 synchronization algorithm that checks for a condition in a loop,
 acquiring and releasing the lock each time.  Harmony checks each
 strongly connected component for the existence of such situations
-and reports them.
+and reports the shortest example.
 
 \begin{figure}
 \begin{center}
@@ -760,7 +898,7 @@ for i in {0..N-1}: spawn diner(i)
 
 \begin{figure*}
 \begin{center}
-\includegraphics[width=\textwidth]{diners.png}
+\includegraphics[width=.9\textwidth]{diners.png}
 \end{center}
 \caption{The HTML output of running the Dining Philosophers program}
 \label{fig:dinersHTML}
@@ -790,14 +928,17 @@ Having such behaviors is not always a problem, but it can be.  For
 example, a reader/writer lock implemented as a plain lock meets the
 specification of a reader/writer lock, but it does not allow multiple
 readers in the critical section.  Unfortunately, checking ${\mathcal
-Spec} \subset {\mathcal Impl}$ does not scale well and can only be
-done for relatively small Kripke structures.
+Spec} \subset {\mathcal Impl}$ does not scale well in general and can
+only be done for relatively small Kripke structures.
 
 \paragraph{Constructing a Counter-Example.}
 
 When Charm finds a problematic state or transition, it outputs
 a detailed trace that is called a \emph{counter-example}.
 Harmony always outputs the shortest such trace.
+For ease of debugging, traces are ordered first by the number of
+context switches they make, and then by the number of states on
+the path.
 However, in order to save memory, Charm does not actually keep
 the required information during the construction of the Kripke
 structure.  In particular, its edges only contain the context
@@ -813,7 +954,7 @@ it could find.  However, this counter-example is at the level of the HVM,
 not the Harmony program that the programmer wrote.  It can be hard to
 dig through a list of HVM instructions.
 Harmony includes tools to quickly focus on the root cause of the
-problem without having to dig through the HVM instructions.
+problem without having to look at the HVM instructions themselves.
 In particular, in case of a problem, Harmony outputs a compact
 but detailed and interactive overview of the problem in HTML format that
 can be accessed from any web browser.
@@ -829,7 +970,8 @@ shown in \autoref{fig:dinersHTML}.
 
 The little orange boxes represent individual HVM instructions of the
 problematic trace.  You can click on any such box to see the state
-at that time, or you can navigate in various ways (forwards one step,
+at that time and the HVM instruction it is executing,
+or you can navigate in various ways (forwards one step,
 backwards one step, jump to the next line of Harmony code, or jumps
 forwards or backwards to a context switch between threads).  The actual
 HVM code is in the lower left of the output.
@@ -870,7 +1012,7 @@ allows larger systems to be built from smaller ones.
 The Harmony language, at least currently, is not usable for production
 code.  One reason for this is the <{atomically}> clause.  On a multi-core
 processor it would require an instruction to stop all other cores.
-Harmony was never designed to be a language for production code.  Because
+Harmony was not designed to be a language for production code.  Because
 it is close to languages such as Python and C, it tends to be fairly
 easy to hand-translate code developed in Harmony to a desired target
 programming language.  However, such hand-translation could easily
@@ -903,7 +1045,7 @@ knowledge of TLA+, increasing the learning curve.
 
 Promela~\cite{SPIN} is a programming language that serves as input
 to the SPIN model checker.  Promela has many of the same features
-as Harmony and also includes explicit message channels.  Promela
+as Harmony and also includes behavior checking.  Promela
 does not have a call stack and does not support procedure calls,
 making it hard to do modular development and verification.
 
@@ -933,6 +1075,11 @@ also has the disadvantage that it is a verbose language.  Just the
 boilerplate for the Paxos project in DSLabs is well over 100 lines
 of Java code.  The entire Paxos implementation in Harmony is less
 than 50 lines.
+
+Dist\-Algo~\cite{DistAlgo} is a programming language based on Python to
+simplify the specification and verification of distributed algorithms.
+Dist\-Algo includes a framework for runtime checking of safety and liveness
+properties~\cite{LS20}.
 
 \bibliographystyle{alpha}
 \bibliography{paper}

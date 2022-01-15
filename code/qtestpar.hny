@@ -1,18 +1,20 @@
 import queue
 
 const NOPS = 4
-
 q = queue.Queue()
 
-def thread(self):
-    if choose({ "get", "put" }) == "put":
-        print("call put", self)
-        queue.put(?q, self)
-        print("done put", self)
-    else:
-        print("call get", self)
-        let v = queue.get(?q):
-            print("done get", self, v)
+def put_test(self):
+    print("call put", self)
+    queue.put(?q, self)
+    print("done put", self)
 
-for i in {1..NOPS}:
-    spawn thread(i)
+def get_test(self):
+    print("call get", self)
+    let v = queue.get(?q):
+        print("done get", self, v)
+
+nputs = choose {1..NOPS-1}
+for i in {1..nputs}:
+    spawn put_test(i)
+for i in {1..NOPS-nputs}:
+    spawn get_test(i)
