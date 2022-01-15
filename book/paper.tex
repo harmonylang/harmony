@@ -3440,8 +3440,11 @@ from the specification.
 We will start with a test program that tries concurrent combinations
 of various queue operations.
 \autoref{fig:qtestpar} shows the test program.  It starts
-<{NOPS}> threads, and each choose to do either a <{put}>
-or a <{get}> operation.  In case of a <{put}> operation,
+<{NOPS}> threads doing either a <{put}>
+or a <{get}> operation.  It selects the fraction of <{put}>
+over <{get}> operations nondetermistically, although avoiding the
+uninteresting case in which there are none of one of them.
+In case of a <{put}> operation,
 the thread enqueues its own name (which is provided as an argument
 to the thread).  In order to capture the behaviors,
 each thread prints what operation it is about to perform,
