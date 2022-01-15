@@ -7860,13 +7860,14 @@ def tla_translate(f, code, scope):
         print(code.labeled_ops[pc].op.tladump(), file=f)
     print("""
 Interrupt(self) ==
-    /\\ self.trap # <<>>
-    /\\ ~self.interruptLevel
-    /\\ LET intr == [ self EXCEPT !.pc = self.trap[1],
-                !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
-                !.interruptLevel = TRUE, !.trap = <<>> ]
-       IN
-            Step(intr)
+    LET next == [ self EXCEPT !.pc = self.trap[1],
+                    !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
+                    !.interruptLevel = TRUE, !.trap = <<>> ]
+    IN
+        /\\ self.trap # <<>>
+        /\\ ~self.interruptLevel
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
 
 Next == (\\E self \\in active: Step(self) \\/ Interrupt(self)) \\/ Idle
 Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)
