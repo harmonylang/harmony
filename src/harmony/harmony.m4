@@ -7864,7 +7864,7 @@ Interrupt(self) ==
     /\\ ~self.interruptLevel
     /\\ LET intr == [ self EXCEPT !.pc = self.trap[1],
                 !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
-                !.trap = <<>> ]
+                !.interruptLevel = TRUE, !.trap = <<>> ]
        IN
             Step(intr)
 
