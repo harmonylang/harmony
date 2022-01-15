@@ -1,4 +1,7 @@
 """
+print "hello"
+
+spawn f()
 	This is the Harmony compiler.
 
     Copyright (C) 2020, 2021, 2022  Robbert van Renesse
@@ -7817,8 +7820,9 @@ OpTrap(self) ==
     LET entry == self.stack[1]
         arg   == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
-                                            !.trap = << entry, arg >>]
+                                        !.trap = << entry.cval, arg >>]
     IN
+        /\\ entry.ctype = "pc"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7858,8 +7862,8 @@ def tla_translate(f, code, scope):
 Interrupt(self) ==
     /\\ self.trap # <<>>
     /\\ ~self.interruptLevel
-    /\\ LET intr == [ self EXCEPT !.pc = self.trap[0],
-                !.stack = << self.trap[1], "interrupt", self.pc >> \o @,
+    /\\ LET intr == [ self EXCEPT !.pc = self.trap[1],
+                !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
                 !.trap = <<>> ]
        IN
             Step(intr)
