@@ -965,7 +965,6 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
             }
             break;
 		case CALLTYPE_INTERRUPT:
-			assert(step->ctx->interruptlevel);
 			step->ctx->interruptlevel = false;
 			hvalue_t pc = value_ctx_pop(&step->ctx);
 			assert((pc & VALUE_MASK) == VALUE_PC);
