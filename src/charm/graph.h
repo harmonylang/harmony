@@ -81,7 +81,9 @@ struct node {
 struct failure {
     enum fail_type type;
     struct node *node;      // failed state
+    struct node *parent;    // if NULL, use node->parent
     hvalue_t choice;        // choice if any
+    bool interrupt;         // interrupt transition
     hvalue_t address;       // in case of data race
 };
 
