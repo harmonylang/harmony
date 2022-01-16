@@ -2,16 +2,6 @@ grammar Harmony;
 
 tokens { INDENT, DEDENT }
 
-@parser::members {
-@property
-def indentation(self):
-    try:
-        return self._indentation
-    except AttributeError:
-        self._indentation = [0]
-        return self._indentation
-}
-
 @lexer::header{
 from .custom_denter import ModifiedDenterHelper
 from .HarmonyParser import HarmonyParser
@@ -252,16 +242,7 @@ else_block: ELSE COLON block;
 
 if_block: IF expr COLON block elif_block* else_block?;
 
-block_stmts
-@init{
-token = self.getCurrentToken()
-self.indentation.append(token.column)
-}
-@after{
-self.indentation.pop()
-}
-    : stmt+
-    ;
+block_stmts: stmt+;
 
 block
     : normal_block // Normal block
@@ -362,7 +343,7 @@ WHERE   : 'where';
 EQ      : '=';
 FOR     : 'for' {self.opened_for += 1};
 IN      : 'in' {
-if self.opened_for >= 0:
+if self.opened_for > 0:
     self.opened_for -= 1
 };
 COLON   : ':';

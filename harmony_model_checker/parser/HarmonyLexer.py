@@ -651,7 +651,7 @@ class HarmonyLexer(Lexer):
     def IN_action(self, localctx:RuleContext , actionIndex:int):
         if actionIndex == 2:
 
-            if self.opened_for >= 0:
+            if self.opened_for > 0:
                 self.opened_for -= 1
 
      

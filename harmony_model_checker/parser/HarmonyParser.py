@@ -576,15 +576,6 @@ class HarmonyParser ( Parser ):
 
 
 
-    @property
-    def indentation(self):
-        try:
-            return self._indentation
-        except AttributeError:
-            self._indentation = [0]
-            return self._indentation
-
-
 
     class ProgramContext(ParserRuleContext):
         __slots__ = 'parser'
@@ -4157,10 +4148,6 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.Block_stmtsContext(self, self._ctx, self.state)
         self.enterRule(localctx, 104, self.RULE_block_stmts)
-
-        token = self.getCurrentToken()
-        self.indentation.append(token.column)
-
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
@@ -4175,10 +4162,6 @@ class HarmonyParser ( Parser ):
                 _la = self._input.LA(1)
                 if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__7) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.T__36) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF) | (1 << HarmonyParser.IMPORT))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.PRINT - 64)) | (1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.POSSIBLY - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0)):
                     break
-
-            self._ctx.stop = self._input.LT(-1)
-
-            self.indentation.pop()
 
         except RecognitionException as re:
             localctx.exception = re
