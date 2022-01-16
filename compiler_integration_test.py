@@ -4,8 +4,7 @@ import sys
 import time
 import pathlib
 import dataclasses
-from typing import List, Optional, Set, TextIO, Union
-import re
+from typing import List, Set, TextIO, Union
 import time
 
 _results_dir = pathlib.Path("compiler_integration_results")
@@ -135,10 +134,6 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     current_execution = ExecutionResult(stdout, average_duration)
 
     stdout = baseline_result.stdout.strip()
-    match = re.search("#states (\\d+) \\(time.*?\\)", stdout)
-    if match is not None:
-        states = match[1]
-        stdout = stdout.replace(match[0], f"#states ({states})", 1)
     baseline_execution = ExecutionResult(stdout, average_baseline_duration)
 
     return TestResult(
@@ -184,12 +179,9 @@ def expected_outputs_match(
                 f'test_case.lines_to_check'
             )
             print()
-
         return True
-
     elif test_case.lines_to_check == 'all':
         return prev_expected_output == curr_expected_output
-
     else:
         assert False
 
@@ -209,7 +201,9 @@ def merge_expected_outputs(
     ):
         return True
 
-    print(f'{" ".join(test_case.harmony_args or [])}: difference on expected_output')
+    harmony_args = " ".join(test_case.harmony_args or [])
+    basename = os.path.basename(test_case.filename)
+    print(f'{harmony_args}: difference on expected_output')
     print('Previous results expected output:')
     print('```')
     print(prev, end='')
@@ -218,9 +212,9 @@ def merge_expected_outputs(
     print('```')
     print(curr)
     print('```')
-    with (results_dir / (os.path.basename(test_case.filename) + str(test_case.harmony_args) + "prev").replace(" ", "_")).open("w") as f:
+    with (results_dir / f"{basename}-{harmony_args}-prev".replace(" ", "_")).open("w") as f:
         f.write(prev)
-    with (results_dir / (os.path.basename(test_case.filename) + str(test_case.harmony_args) + "next").replace(" ", "_")).open("w") as f:
+    with (results_dir / f"{basename}-{harmony_args}-next".replace(" ", "_")).open("w") as f:
         f.write(curr)
     return False
 
