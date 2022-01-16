@@ -370,7 +370,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009709000000000002
+Duration: 0.0009526000000000014
 
 ### Current Output
 
@@ -733,7 +733,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001067499999999999
+Duration: 0.001450400000000001
 
 ---
 ##  harmony_model_checker/modules/synchBusy.hny
@@ -858,7 +858,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009329000000000004
+Duration: 0.0009732000000000005
 
 ### Current Output
 
@@ -974,7 +974,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008593999999999997
+Duration: 0.0008395
 
 ---
 ##  harmony_model_checker/modules/synchImprecise.hny
@@ -1179,7 +1179,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008342000000000002
+Duration: 0.0009540000000000035
 
 ### Current Output
 
@@ -1375,7 +1375,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007729000000000034
+Duration: 0.000870799999999998
 
 ---
 ##  harmony_model_checker/modules/synch.hny
@@ -2430,7 +2430,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009844999999999993
+Duration: 0.001207699999999999
 
 ### Current Output
 
@@ -3476,7 +3476,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008077000000000015
+Duration: 0.0009551999999999963
 
 ---
 ##  harmony_model_checker/modules/alloc.hny
@@ -3539,7 +3539,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008625000000000022
+Duration: 0.0009421999999999972
 
 ### Current Output
 
@@ -3593,7 +3593,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008992999999999987
+Duration: 0.0008870000000000058
 
 ---
 ##  harmony_model_checker/modules/hoare.hny
@@ -4743,7 +4743,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011134000000000005
+Duration: 0.0011272999999999977
 
 ### Current Output
 
@@ -5884,7 +5884,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009557999999999997
+Duration: 0.0009646999999999989
 
 ---
 ##  harmony_model_checker/modules/synchS.hny
@@ -6699,7 +6699,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009266999999999956
+Duration: 0.0011207999999999982
 
 ### Current Output
 
@@ -7505,7 +7505,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010555999999999968
+Duration: 0.0010020999999999988
 
 ---
 ##  harmony_model_checker/modules/set.hny
@@ -7664,7 +7664,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009103999999999987
+Duration: 0.0007593000000000044
 
 ### Current Output
 
@@ -7814,7 +7814,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007783000000000026
+Duration: 0.0007341999999999974
 
 ---
 ##  harmony_model_checker/modules/list.hny
@@ -8197,7 +8197,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011234999999999995
+Duration: 0.0008509000000000017
 
 ### Current Output
 
@@ -8571,7 +8571,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009110000000000021
+Duration: 0.0008749000000000048
 
 ---
 ##  code/prog1.hny
@@ -8614,7 +8614,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009475999999999998
+Duration: 0.0009955999999999993
 
 ### Current Output
 
@@ -8648,7 +8648,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008079999999999962
+Duration: 0.0008123999999999978
 
 ---
 ##  code/prog2.hny
@@ -8691,7 +8691,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010216000000000044
+Duration: 0.0008820999999999968
 
 ### Current Output
 
@@ -8725,7 +8725,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008917000000000022
+Duration: 0.0008497000000000018
 
 ---
 ##  code/Up.hny
@@ -8786,7 +8786,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000882800000000003
+Duration: 0.000958500000000001
 
 ### Current Output
 
@@ -8838,7 +8838,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008514000000000022
+Duration: 0.000987800000000004
 
 ---
 ##  code/UpEnter.hny
@@ -8922,7 +8922,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009043999999999996
+Duration: 0.0009520999999999974
 
 ### Current Output
 
@@ -8997,7 +8997,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009457000000000007
+Duration: 0.000882899999999999
 
 ---
 ##  code/csbarebones.hny
@@ -9041,7 +9041,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009064999999999976
+Duration: 0.001011000000000005
 
 ### Current Output
 
@@ -9076,7 +9076,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008644999999999972
+Duration: 0.0009279999999999983
 
 ---
 ##  code/cs.hny
@@ -9121,7 +9121,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009725000000000011
+Duration: 0.0009433000000000011
 
 ### Current Output
 
@@ -9157,7 +9157,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008311999999999972
+Duration: 0.0008955000000000005
 
 ---
 ##  code/naiveLock.hny
@@ -9214,7 +9214,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008780999999999997
+Duration: 0.000847599999999997
 
 ### Current Output
 
@@ -9262,7 +9262,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000951500000000001
+Duration: 0.0008876999999999982
 
 ---
 ##  code/naiveFlags.hny
@@ -9330,7 +9330,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009873999999999994
+Duration: 0.0009884000000000004
 
 ### Current Output
 
@@ -9389,7 +9389,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008037000000000044
+Duration: 0.0008369000000000015
 
 ---
 ##  code/naiveTurn.hny
@@ -9447,7 +9447,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010544999999999999
+Duration: 0.0009689999999999976
 
 ### Current Output
 
@@ -9496,7 +9496,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009421000000000013
+Duration: 0.0009168999999999983
 
 ---
 ##  code/Peterson.hny
@@ -9581,7 +9581,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009150000000000061
+Duration: 0.0008284999999999959
 
 ### Current Output
 
@@ -9657,7 +9657,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008806000000000022
+Duration: 0.0008584000000000092
 
 ---
 ##  code/PetersonInductive.hny
@@ -9758,7 +9758,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010470999999999953
+Duration: 0.0008458999999999967
 
 ### Current Output
 
@@ -9850,7 +9850,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009107999999999894
+Duration: 0.0008743999999999974
 
 ---
 ##  code/csonebit.hny
@@ -9928,7 +9928,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010075000000000084
+Duration: 0.0009192000000000089
 
 ### Current Output
 
@@ -9997,7 +9997,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009356000000000086
+Duration: 0.0008817999999999881
 
 ---
 ##  code/PetersonMethod.hny
@@ -10134,7 +10134,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009061000000000069
+Duration: 0.0010193000000000008
 
 ### Current Output
 
@@ -10262,7 +10262,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009036000000000044
+Duration: 0.0008398000000000017
 
 ---
 ##  code/clock.hny
@@ -10509,7 +10509,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000897900000000007
+Duration: 0.0009475000000000039
 
 ### Current Output
 
@@ -10747,7 +10747,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007614999999999983
+Duration: 0.0008650999999999937
 
 ---
 ##  code/spinlock.hny
@@ -10898,7 +10898,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009308000000000094
+Duration: 0.000988799999999998
 
 ### Current Output
 
@@ -11040,7 +11040,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008154000000000078
+Duration: 0.0009346999999999966
 
 ---
 ##  code/UpLock.hny
@@ -12153,7 +12153,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009039999999999881
+Duration: 0.001211799999999999
 
 ### Current Output
 
@@ -13257,7 +13257,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008280000000000093
+Duration: 0.0010136999999999924
 
 ---
 ## -msynch=synchS code/UpLock.hny
@@ -14130,7 +14130,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009586000000000039
+Duration: 0.0008998000000000062
 
 ### Current Output
 
@@ -14994,7 +14994,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007553000000000004
+Duration: 0.0011303000000000007
 
 ---
 ##  code/xy.hny
@@ -15074,7 +15074,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008572000000000024
+Duration: 0.0009740000000000026
 
 ### Current Output
 
@@ -15145,7 +15145,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007291999999999993
+Duration: 0.000826399999999991
 
 ---
 ##  code/atm.hny
@@ -16370,7 +16370,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000934299999999999
+Duration: 0.0011615999999999987
 
 ### Current Output
 
@@ -17586,7 +17586,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008301000000000003
+Duration: 0.0009949000000000069
 
 ---
 ##  code/queuedemo.hny
@@ -18089,7 +18089,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009603000000000111
+Duration: 0.0009818999999999939
 
 ### Current Output
 
@@ -18583,7 +18583,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007436999999999999
+Duration: 0.0009291000000000021
 
 ---
 ## -msynch=synchS code/queuedemo.hny
@@ -19086,7 +19086,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008005000000000095
+Duration: 0.0010080000000000089
 
 ### Current Output
 
@@ -19580,7 +19580,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008023000000000058
+Duration: 0.0010605000000000059
 
 ---
 ##  code/qtestseq.hny
@@ -20949,7 +20949,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001019099999999995
+Duration: 0.0010724000000000011
 
 ### Current Output
 
@@ -22309,7 +22309,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007966999999999974
+Duration: 0.0008437999999999918
 
 ---
 ##  code/qtest1.hny
@@ -22844,7 +22844,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008458000000000077
+Duration: 0.0010203000000000018
 
 ### Current Output
 
@@ -23370,7 +23370,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007983000000000018
+Duration: 0.0009330000000000033
 
 ---
 ## -msynch=synchS code/qtest1.hny
@@ -23905,7 +23905,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008264000000000049
+Duration: 0.0010393000000000069
 
 ### Current Output
 
@@ -24431,7 +24431,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007661000000000057
+Duration: 0.0009636000000000089
 
 ---
 ##  code/qtest2.hny
@@ -24969,7 +24969,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008381000000000083
+Duration: 0.0010020999999999919
 
 ### Current Output
 
@@ -25498,7 +25498,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007482000000000044
+Duration: 0.0008972999999999898
 
 ---
 ## -msynch=synchS code/qtest2.hny
@@ -26036,7 +26036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000833399999999998
+Duration: 0.000859600000000002
 
 ### Current Output
 
@@ -26565,7 +26565,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007482999999999934
+Duration: 0.0008583000000000063
 
 ---
 ##  code/qtest3.hny
@@ -27130,7 +27130,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009889000000000009
+Duration: 0.0008190000000000003
 
 ### Current Output
 
@@ -27686,7 +27686,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010590000000000044
+Duration: 0.0007797999999999972
 
 ---
 ## -msynch=synchS code/qtest3.hny
@@ -28251,7 +28251,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009829000000000088
+Duration: 0.0009672000000000014
 
 ### Current Output
 
@@ -28807,7 +28807,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008163999999999949
+Duration: 0.0008033000000000068
 
 ---
 ##  code/qtest4.hny
@@ -29310,7 +29310,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010232000000000019
+Duration: 0.0009711999999999915
 
 ### Current Output
 
@@ -29804,7 +29804,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008739999999999998
+Duration: 0.0010555000000000009
 
 ---
 ## -msynch=synchS code/qtest4.hny
@@ -30307,7 +30307,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010094000000000075
+Duration: 0.0009535999999999989
 
 ### Current Output
 
@@ -30801,7 +30801,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000938300000000003
+Duration: 0.0008615000000000012
 
 ---
 ##  code/qtestconc.hny
@@ -32229,7 +32229,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00113400000000001
+Duration: 0.0008930000000000049
 
 ### Current Output
 
@@ -33648,7 +33648,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001038200000000003
+Duration: 0.0008599999999999997
 
 ---
 ## -msynch=synchS code/qtestconc.hny
@@ -34836,7 +34836,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011395000000000016
+Duration: 0.0009233000000000019
 
 ### Current Output
 
@@ -36015,7 +36015,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010639000000000065
+Duration: 0.0007936000000000054
 
 ---
 ## -mqueue=queueMS code/queuedemo.hny
@@ -37311,7 +37311,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011649999999999994
+Duration: 0.000914100000000001
 
 ### Current Output
 
@@ -38598,7 +38598,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011695999999999929
+Duration: 0.0010113000000000066
 
 ---
 ## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
@@ -39654,7 +39654,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011393999999999987
+Duration: 0.0009774999999999923
 
 ### Current Output
 
@@ -40701,7 +40701,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010048999999999891
+Duration: 0.000784999999999994
 
 ---
 ##  code/RWtest.hny
@@ -40891,7 +40891,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010151999999999939
+Duration: 0.0008294000000000079
 
 ### Current Output
 
@@ -41072,7 +41072,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009800000000000086
+Duration: 0.0007240000000000024
 
 ---
 ## -msynch=synchS code/RWtest.hny
@@ -41262,7 +41262,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010364000000000068
+Duration: 0.0008177999999999935
 
 ### Current Output
 
@@ -41443,7 +41443,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009851999999999916
+Duration: 0.0007390999999999925
 
 ---
 ## -mRW=RWsbs code/RWtest.hny
@@ -42865,7 +42865,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011656999999999917
+Duration: 0.000925200000000001
 
 ### Current Output
 
@@ -44278,7 +44278,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010565000000000019
+Duration: 0.0007912000000000058
 
 ---
 ## -mRW=RWsbs -msynch=synchS code/RWtest.hny
@@ -45460,7 +45460,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011255000000000015
+Duration: 0.0009848000000000079
 
 ### Current Output
 
@@ -46633,7 +46633,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010679999999999995
+Duration: 0.0009733999999999993
 
 ---
 ## -mRW=RWfair code/RWtest.hny
@@ -48092,7 +48092,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011344999999999966
+Duration: 0.0010035000000000044
 
 ### Current Output
 
@@ -49542,7 +49542,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001033100000000009
+Duration: 0.0010227999999999904
 
 ---
 ## -mRW=RWfair -msynch=synchS code/RWtest.hny
@@ -50761,7 +50761,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011339000000000071
+Duration: 0.0008902000000000077
 
 ### Current Output
 
@@ -51971,7 +51971,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010499999999999954
+Duration: 0.0007821999999999968
 
 ---
 ## -mboundedbuffer=BBhoare code/BBtest.hny
@@ -53413,7 +53413,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014107000000000008
+Duration: 0.0009477000000000096
 
 ### Current Output
 
@@ -54846,7 +54846,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010647999999999908
+Duration: 0.0008409999999999945
 
 ---
 ## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
@@ -56048,7 +56048,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011877999999999889
+Duration: 0.0009109000000000061
 
 ### Current Output
 
@@ -57241,7 +57241,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011066000000000131
+Duration: 0.0008738999999999969
 
 ---
 ## -mRW=RWcv code/RWtest.hny
@@ -58573,7 +58573,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011532000000000209
+Duration: 0.0009470000000000034
 
 ### Current Output
 
@@ -59896,7 +59896,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001086699999999996
+Duration: 0.0010748999999999898
 
 ---
 ## -mRW=RWcv -msynch=synchS code/RWtest.hny
@@ -60988,7 +60988,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011011000000000215
+Duration: 0.000970500000000013
 
 ### Current Output
 
@@ -62071,7 +62071,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012283000000000155
+Duration: 0.0009864000000000261
 
 ---
 ##  code/qsorttest.hny
@@ -62770,7 +62770,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010814000000000101
+Duration: 0.0008579999999999977
 
 ### Current Output
 
@@ -63460,7 +63460,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009479000000000015
+Duration: 0.0007911999999999919
 
 ---
 ##  code/Diners.hny
@@ -64585,7 +64585,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011400000000000021
+Duration: 0.0010782000000000014
 
 ### Current Output
 
@@ -65701,7 +65701,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001103899999999991
+Duration: 0.0007855999999999974
 
 ---
 ## -msynch=synchS code/Diners.hny
@@ -66586,7 +66586,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010676000000000019
+Duration: 0.0011410999999999782
 
 ### Current Output
 
@@ -67462,7 +67462,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011919999999999986
+Duration: 0.0010037999999999991
 
 ---
 ##  code/DinersCV.hny
@@ -68685,7 +68685,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011567999999999856
+Duration: 0.0010942999999999925
 
 ### Current Output
 
@@ -69899,7 +69899,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010632999999999893
+Duration: 0.0008282000000000012
 
 ---
 ## -msynch=synchS code/DinersCV.hny
@@ -70882,7 +70882,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011728999999999767
+Duration: 0.0008530999999999955
 
 ### Current Output
 
@@ -71856,7 +71856,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010277000000000203
+Duration: 0.0009836000000000011
 
 ---
 ##  code/DinersAvoid.hny
@@ -72993,7 +72993,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010949000000000098
+Duration: 0.0011190000000000089
 
 ### Current Output
 
@@ -74121,7 +74121,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010557999999999956
+Duration: 0.0010002999999999818
 
 ---
 ## -msynch=synchS code/DinersAvoid.hny
@@ -75018,7 +75018,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011554000000000009
+Duration: 0.0010061000000000098
 
 ### Current Output
 
@@ -75906,7 +75906,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001008900000000007
+Duration: 0.0008342999999999823
 
 ---
 ##  code/bank.hny
@@ -77107,7 +77107,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010932999999999915
+Duration: 0.0009494000000000169
 
 ### Current Output
 
@@ -78299,7 +78299,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011116999999999932
+Duration: 0.0007859999999999812
 
 ---
 ##  code/counter.hny
@@ -79450,7 +79450,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012297999999999754
+Duration: 0.0009510000000000074
 
 ### Current Output
 
@@ -80592,7 +80592,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012141999999999986
+Duration: 0.0009233000000000158
 
 ---
 ##  code/qbarrier.hny
@@ -81749,7 +81749,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011602000000000001
+Duration: 0.001019099999999995
 
 ### Current Output
 
@@ -82897,7 +82897,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010521000000000003
+Duration: 0.0009989999999999999
 
 ---
 ## -msynch=synchS code/qbarrier.hny
@@ -83814,7 +83814,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011407999999999974
+Duration: 0.00091090000000002
 
 ### Current Output
 
@@ -84722,7 +84722,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010341999999999851
+Duration: 0.0008124999999999938
 
 ---
 ##  code/barriertest.hny
@@ -85947,7 +85947,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011783999999999961
+Duration: 0.0009035000000000015
 
 ### Current Output
 
@@ -87163,7 +87163,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010891000000000095
+Duration: 0.0008060999999999763
 
 ---
 ## -msynch=synchS code/barriertest.hny
@@ -88148,7 +88148,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017893999999999965
+Duration: 0.0010735999999999801
 
 ### Current Output
 
@@ -89124,7 +89124,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012751000000000012
+Duration: 0.0007981999999999989
 
 ---
 ##  code/trap.hny
@@ -89180,7 +89180,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010390000000000121
+Duration: 0.0009094999999999798
 
 ### Current Output
 
@@ -89227,7 +89227,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013793
+Duration: 0.0007513000000000103
 
 ---
 ##  code/trap2.hny
@@ -89236,23 +89236,109 @@ Duration: 0.0013793
 
 Duration is good: ✅
 
-Output is good: ❌
+Output is good: ✅
 
 ### Baseline Output
 
 ```
-constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19) ErrorToken(line=1, message="constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)", column=5, lexeme='LABEL(0, ok)', filename='code/trap2.hny', is_eof_error=False)
+Frame __init__ ()
+Push ?done
+Sequential
+Push 0
+Store count
+Push False
+Store done
+Jump 38
+Frame handler ()
+Load count
+Push 1
+2-ary +
+Store count
+Push True
+Store done
+Return
+Jump 38
+Frame main ()
+Push ()
+Push PC(8)
+Trap
+Load count
+Push 1
+2-ary +
+Store count
+Load done
+JumpCond False 25
+Jump 29
+Jump 25
+ReadonlyInc
+AtomicInc(lazy)
+Load count
+Push 2
+2-ary ==
+Assert
+AtomicDec
+ReadonlyDec
+Return
+Push PC(17)
+Push ()
+Push ()
+Spawn
+Return
+DelVar result
 ```
 
-Duration: 0.0009801000000000115
+Duration: 0.0008463999999999972
 
 ### Current Output
 
 ```
-Line 1:5 at code/trap2.hny, constant cannot be an lvalue: ('ok', 'code/trap2.hny', 4, 19)
+Frame __init__ ()
+Push ?done
+Sequential
+Push 0
+Store count
+Push False
+Store done
+Jump 38
+Frame handler ()
+Load count
+Push 1
+2-ary +
+Store count
+Push True
+Store done
+Return
+Jump 38
+Frame main ()
+Push ()
+Push PC(8)
+Trap
+Load count
+Push 1
+2-ary +
+Store count
+Load done
+JumpCond False 25
+Jump 29
+Jump 25
+ReadonlyInc
+AtomicInc(lazy)
+Load count
+Push 2
+2-ary ==
+Assert
+AtomicDec
+ReadonlyDec
+Return
+Push PC(17)
+Push ()
+Push ()
+Spawn
+Return
+DelVar result
 ```
 
-Duration: 0.0011163000000000145
+Duration: 0.0007421000000000233
 
 ---
 ##  code/trap3.hny
@@ -90370,7 +90456,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011657999999999946
+Duration: 0.0010666000000000009
 
 ### Current Output
 
@@ -91479,7 +91565,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001097899999999985
+Duration: 0.0008133999999999919
 
 ---
 ##  code/trap4.hny
@@ -91545,7 +91631,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010995999999999784
+Duration: 0.0008054999999999868
 
 ### Current Output
 
@@ -91602,7 +91688,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009212000000000109
+Duration: 0.0007479999999999987
 
 ---
 ##  code/trap5.hny
@@ -91676,7 +91762,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009697999999999929
+Duration: 0.000812299999999988
 
 ### Current Output
 
@@ -91741,7 +91827,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009688999999999948
+Duration: 0.0006946000000000174
 
 ---
 ##  code/trap6.hny
@@ -92876,7 +92962,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011353000000000057
+Duration: 0.0008953999999999906
 
 ### Current Output
 
@@ -94002,7 +94088,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010647000000000018
+Duration: 0.0008017999999999914
 
 ---
 ## -msynch=synchS code/trap6.hny
@@ -94897,7 +94983,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013354000000000144
+Duration: 0.0010851000000000055
 
 ### Current Output
 
@@ -95783,7 +95869,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001568999999999987
+Duration: 0.001086500000000018
 
 ---
 ##  code/hw.hny
@@ -95916,7 +96002,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014939999999999953
+Duration: 0.000786900000000007
 
 ### Current Output
 
@@ -96040,7 +96126,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001289399999999996
+Duration: 0.0007686000000000082
 
 ---
 ##  code/abptest.hny
@@ -96261,7 +96347,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011548000000000114
+Duration: 0.0008163999999999949
 
 ### Current Output
 
@@ -96473,7 +96559,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010737000000000108
+Duration: 0.000716499999999981
 
 ---
 ##  code/byzbosco.hny
@@ -96490,7 +96576,7 @@ Output is good: ❌
 Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)
 ```
 
-Duration: 0.0015526999999999902
+Duration: 0.0017821999999999838
 
 ### Current Output
 
@@ -96498,7 +96584,7 @@ Duration: 0.0015526999999999902
 Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)
 ```
 
-Duration: 0.0010587999999999986
+Duration: 0.0010536000000000156
 
 ---
 ##  code/BBsematest.hny
@@ -97691,7 +97777,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013051000000000035
+Duration: 0.0008680000000000077
 
 ### Current Output
 
@@ -98875,7 +98961,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010999000000000148
+Duration: 0.0009492000000000111
 
 ---
 ##  code/ky.hny
@@ -98982,7 +99068,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011343000000000047
+Duration: 0.0008971000000000118
 
 ### Current Output
 
@@ -99080,7 +99166,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011222999999999927
+Duration: 0.0007353999999999972
 
 ---
 ##  code/bosco.hny
@@ -99696,7 +99782,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010515000000000108
+Duration: 0.0009310999999999903
 
 ### Current Output
 
@@ -100303,7 +100389,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009703000000000073
+Duration: 0.0011399999999999744
 
 ---
 ##  code/RWsbs.hny
@@ -101641,7 +101727,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012162000000000006
+Duration: 0.0011353000000000057
 
 ### Current Output
 
@@ -102970,7 +103056,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010985000000000023
+Duration: 0.000976699999999997
 
 ---
 ##  code/queuebroken.hny
@@ -104199,7 +104285,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016209000000000084
+Duration: 0.0009194999999999898
 
 ### Current Output
 
@@ -105419,7 +105505,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012566999999999995
+Duration: 0.0008952000000000127
 
 ---
 ##  code/hello7.hny
@@ -105454,7 +105540,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011187000000000002
+Duration: 0.0009258000000000044
 
 ### Current Output
 
@@ -105480,7 +105566,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011556000000000066
+Duration: 0.0007279000000000035
 
 ---
 ##  code/multitest.hny
@@ -105523,7 +105609,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013113000000000152
+Duration: 0.0008350000000000024
 
 ### Current Output
 
@@ -105557,2650 +105643,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010986000000000051
-
----
-##  code/BBsemadata.hny
-
-### Summary
-
-Duration is good: ✅
-
-Output is good: ✅
-
-### Baseline Output
-
-```
-Frame __init__ ()
-Push ()
-Store BBsema
-Push ()
-Store synch
-Push ()
-Store list
-Jump 371
-Frame subseq (s, b, e)
-DelVar result
-Push 0
-StoreVar $n9
-Push ()
-LoadVar b
-DelVar b
-LoadVar e
-DelVar e
-Push 1
-2-ary -
-2-ary ..
-StoreVar $s12
-LoadVar $s12
-1-ary IsEmpty
-JumpCond True 33
-Cut($s12, x)
-LoadVar $n9
-LoadVar s
-LoadVar x
-DelVar x
-Apply
-3-ary DictAdd
-IncVar $n9
-Jump 21
-DelVar $n9
-DelVar $s12
-DelVar s
-StoreVar result
-Return
-Jump 371
-Frame append (s, e)
-DelVar result
-LoadVar s
-DelVar s
-Push ()
-Push 0
-LoadVar e
-DelVar e
-3-ary DictAdd
-2-ary +
-StoreVar result
-Return
-Jump 371
-Frame head s
-DelVar result
-LoadVar s
-DelVar s
-Push 0
-Apply
-StoreVar result
-Return
-Jump 371
-Frame tail s
-DelVar result
-Push PC(8)
-Push ()
-Push 0
-LoadVar s
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-Push 2
-LoadVar s
-DelVar s
-1-ary len
-3-ary DictAdd
-Apply
-StoreVar result
-Return
-Jump 371
-Frame sum a
-DelVar result
-Push 0
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s69
-LoadVar $s69
-1-ary IsEmpty
-JumpCond True 98
-Cut($s69, v)
-LoadVar result
-DelVar result
-LoadVar v
-DelVar v
-2-ary +
-StoreVar result
-Jump 87
-DelVar $s69
-Return
-Jump 371
-Frame set a
-DelVar result
-Push {}
-LoadVar a
-DelVar a
-StoreVar $s84
-LoadVar $s84
-1-ary IsEmpty
-JumpCond True 115
-Cut($s84, v)
-LoadVar v
-DelVar v
-2-ary SetAdd
-Jump 107
-DelVar $s84
-StoreVar result
-Return
-Jump 371
-Frame list a
-DelVar result
-Push 0
-StoreVar $n97
-Push ()
-LoadVar a
-DelVar a
-StoreVar $s100
-LoadVar $s100
-1-ary IsEmpty
-JumpCond True 137
-Cut($s100, v)
-LoadVar $n97
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n97
-Jump 127
-DelVar $n97
-DelVar $s100
-StoreVar result
-Return
-Jump 371
-Frame values d
-DelVar result
-Push 0
-StoreVar $n115
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s118
-LoadVar $s118
-1-ary IsEmpty
-JumpCond True 162
-Cut($s118, k)
-LoadVar $n115
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-IncVar $n115
-Jump 150
-DelVar $n115
-DelVar $s118
-DelVar d
-StoreVar result
-Return
-Jump 371
-Frame items d
-DelVar result
-Push 0
-StoreVar $n136
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s139
-LoadVar $s139
-1-ary IsEmpty
-JumpCond True 194
-Cut($s139, k)
-LoadVar $n136
-Push ()
-Push 0
-LoadVar k
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-IncVar $n136
-Jump 176
-DelVar $n136
-DelVar $s139
-DelVar d
-StoreVar result
-Return
-Jump 371
-Frame enumerate d
-DelVar result
-Push 0
-StoreVar index
-Push ()
-StoreVar result
-LoadVar d
-1-ary keys
-StoreVar $s167
-LoadVar $s167
-1-ary IsEmpty
-JumpCond True 236
-Cut($s167, k)
-LoadVar result
-DelVar result
-Push ()
-Push 0
-Push ()
-Push 0
-LoadVar index
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-2-ary +
-StoreVar result
-LoadVar index
-DelVar index
-Push 1
-2-ary +
-StoreVar index
-Jump 209
-DelVar $s167
-DelVar d
-DelVar index
-Return
-Jump 371
-Frame qsort a
-DelVar result
-LoadVar a
-Push ()
-2-ary ==
-JumpCond False 251
-DelVar a
-Push ()
-StoreVar result
-Jump 326
-Push ()
-Push 0
-Push PC(52)
-LoadVar a
-Apply
-3-ary DictAdd
-Push 1
-Push PC(61)
-LoadVar a
-DelVar a
-Apply
-3-ary DictAdd
-StoreVar (pivot, rest)
-Push 0
-StoreVar $n216
-Push ()
-LoadVar rest
-StoreVar $s219
-DelVar v
-LoadVar $s219
-1-ary IsEmpty
-JumpCond True 284
-Cut($s219, v)
-LoadVar v
-LoadVar pivot
-2-ary <
-JumpCond False 269
-LoadVar $n216
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n216
-Jump 269
-DelVar $n216
-DelVar $s219
-StoreVar lower
-Push 0
-StoreVar $n235
-Push ()
-LoadVar rest
-DelVar rest
-StoreVar $s238
-DelVar v
-LoadVar $s238
-1-ary IsEmpty
-JumpCond True 308
-Cut($s238, v)
-LoadVar v
-LoadVar pivot
-2-ary >=
-JumpCond False 293
-LoadVar $n235
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n235
-Jump 293
-DelVar $n235
-DelVar $s238
-StoreVar higher
-Push PC(241)
-LoadVar lower
-DelVar lower
-Apply
-Push ()
-Push 0
-LoadVar pivot
-DelVar pivot
-3-ary DictAdd
-Push PC(241)
-LoadVar higher
-DelVar higher
-Apply
-3-ary +
-StoreVar result
-Return
-Jump 371
-Frame sorted d
-DelVar result
-Push PC(241)
-Push PC(119)
-LoadVar d
-DelVar d
-Apply
-Apply
-StoreVar result
-Return
-Jump 371
-Frame reversed d
-DelVar result
-LoadVar d
-1-ary len
-StoreVar n
-Push 0
-StoreVar $n281
-Push ()
-Push 1
-LoadVar n
-2-ary ..
-StoreVar $s284
-LoadVar $s284
-1-ary IsEmpty
-JumpCond True 365
-Cut($s284, i)
-LoadVar $n281
-LoadVar d
-LoadVar n
-LoadVar i
-DelVar i
-2-ary -
-Apply
-3-ary DictAdd
-IncVar $n281
-Jump 351
-DelVar $n281
-DelVar $s284
-DelVar d
-DelVar n
-StoreVar result
-Return
-Push ()
-Store bag
-Jump 1111
-Frame empty ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1111
-Frame fromSet s
-DelVar result
-Push ()
-LoadVar s
-DelVar s
-StoreVar $s313
-LoadVar $s313
-1-ary IsEmpty
-JumpCond True 395
-Cut($s313, elt)
-LoadVar elt
-DelVar elt
-Push 1
-3-ary DictAdd
-Jump 386
-DelVar $s313
-StoreVar result
-Return
-Jump 1111
-Frame fromList a
-DelVar result
-Push ()
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s329
-LoadVar $s329
-1-ary IsEmpty
-JumpCond True 432
-Cut($s329, v)
-LoadVar v
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 425
-Push ?result
-LoadVar v
-DelVar v
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 406
-Push ?result
-LoadVar v
-DelVar v
-Address
-Push 1
-StoreVar [result]
-Jump 406
-DelVar $s329
-Return
-Jump 1111
-Frame multiplicity (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar elt
-LoadVar bg
-1-ary keys
-2-ary in
-JumpCond False 458
-LoadVar bg
-DelVar bg
-LoadVar elt
-DelVar elt
-Apply
-StoreVar result
-Jump 462
-DelVar bg
-DelVar elt
-Push 0
-StoreVar result
-Return
-Jump 1111
-Frame size bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-Push 0
-StoreVar result
-LoadVar bg
-DelVar bg
-StoreVar $s393
-LoadVar $s393
-1-ary IsEmpty
-JumpCond True 491
-Cut($s393, c)
-LoadVar result
-DelVar result
-LoadVar c
-DelVar c
-2-ary +
-StoreVar result
-Jump 480
-DelVar $s393
-Return
-Jump 1111
-Frame bmin bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
-StoreVar result
-Return
-Jump 1111
-Frame bmax bg
-DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
-StoreVar result
-Return
-Jump 1111
-Frame bchoose bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-Choose
-StoreVar result
-Return
-Jump 1111
-Frame add (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 568
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 574
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Push 1
-StoreVar [result]
-Return
-Jump 1111
-Frame remove (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 601
-LoadVar result
-LoadVar elt
-Apply
-Push 0
-2-ary >
-Jump 602
-Push False
-JumpCond False 611
-Push ?result
-LoadVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary -
-StoreVar [result]
-LoadVar result
-LoadVar elt
-Apply
-Push 0
-2-ary <=
-JumpCond False 622
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-DelVar [result]
-DelVar elt
-Return
-Jump 1111
-Frame combinations (bg, k)
-DelVar result
-LoadVar k
-Push 0
-2-ary ==
-JumpCond False 640
-DelVar bg
-DelVar k
-Push {}
-Push PC(374)
-Push ()
-Apply
-2-ary SetAdd
-StoreVar result
-Jump 725
-Push PC(464)
-LoadVar bg
-Apply
-StoreVar n
-LoadVar k
-LoadVar n
-2-ary >
-JumpCond False 654
-DelVar bg
-DelVar k
-DelVar n
-Push {}
-StoreVar result
-Jump 725
-LoadVar k
-LoadVar n
-DelVar n
-2-ary ==
-JumpCond False 666
-DelVar k
-Push {}
-LoadVar bg
-DelVar bg
-2-ary SetAdd
-StoreVar result
-Jump 725
-Push PC(494)
-LoadVar bg
-Apply
-StoreVar hd
-Push PC(576)
-Push ()
-Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
-Apply
-StoreVar tl
-Push {}
-Push PC(625)
-Push ()
-Push 0
-LoadVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
-Push 1
-2-ary -
-3-ary DictAdd
-Apply
-StoreVar $s570
-LoadVar $s570
-1-ary IsEmpty
-JumpCond True 710
-Cut($s570, x)
-Push PC(539)
-Push ()
-Push 0
-LoadVar x
-DelVar x
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
-Apply
-2-ary SetAdd
-Jump 694
-DelVar $s570
-DelVar hd
-Push PC(625)
-Push ()
-Push 0
-LoadVar tl
-DelVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
-DelVar k
-3-ary DictAdd
-Apply
-2-ary |
-StoreVar result
-Return
-Jump 1111
-Frame tas lk
-DelVar result
-AtomicInc(lazy)
-LoadVar lk
-Load
-StoreVar result
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame cas (p, old, new)
-DelVar result
-AtomicInc(lazy)
-LoadVar p
-Load
-LoadVar old
-DelVar old
-2-ary ==
-StoreVar result
-LoadVar result
-JumpCond False 756
-LoadVar p
-DelVar p
-LoadVar new
-DelVar new
-Store
-DelVar new
-DelVar p
-AtomicDec
-Return
-Jump 1111
-Frame BinSema acquired
-DelVar result
-LoadVar acquired
-DelVar acquired
-StoreVar result
-Return
-Jump 1111
-Frame Lock ()
-DelVar result
-Push PC(761)
-Push False
-Apply
-StoreVar result
-Return
-Jump 1111
-Frame acquired binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1111
-Frame acquire binsema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar binsema
-Load
-1-ary not
-JumpCond False 792
-Jump 795
-ReadonlyDec
-AtomicDec
-Jump 785
-ReadonlyDec
-LoadVar binsema
-DelVar binsema
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame release binsema
-ReadonlyInc
-AtomicInc(lazy)
-LoadVar binsema
-Load
-Assert
-AtomicDec
-ReadonlyDec
-AtomicInc(lazy)
-LoadVar binsema
-DelVar binsema
-Push False
-Store
-AtomicDec
-Return
-Jump 1111
-Frame held binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1111
-Frame Condition ()
-DelVar result
-Push PC(374)
-Push ()
-Apply
-StoreVar result
-Return
-Jump 1111
-Frame wait (c, lk)
-Push 0
-StoreVar cnt
-DelVar cnt
-Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push PC(435)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-StoreVar cnt
-LoadVar c
-Push PC(539)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 889
-Push PC(435)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-LoadVar cnt
-2-ary <=
-Jump 890
-Push False
-JumpCond False 895
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 898
-ReadonlyDec
-AtomicDec
-Jump 870
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push PC(374)
-Push ()
-Apply
-2-ary !=
-JumpCond False 931
-LoadVar c
-Push PC(576)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-Push PC(521)
-LoadVar c
-DelVar c
-Load
-Apply
-3-ary DictAdd
-Apply
-Store
-DelVar c
-AtomicDec
-Return
-Jump 1111
-Frame notifyAll c
-AtomicInc(lazy)
-LoadVar c
-DelVar c
-Push PC(374)
-Push ()
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame Semaphore cnt
-DelVar result
-LoadVar cnt
-DelVar cnt
-StoreVar result
-Return
-Jump 1111
-Frame P sema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar sema
-Load
-Push 0
-2-ary >
-JumpCond False 962
-Jump 965
-ReadonlyDec
-AtomicDec
-Jump 954
-ReadonlyDec
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary -
-Store
-AtomicDec
-Return
-Jump 1111
-Frame V sema
-AtomicInc(lazy)
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary +
-Store
-AtomicDec
-Return
-Jump 1111
-Frame Queue ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1111
-Frame get q
-DelVar result
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar q
-Load
-Push ()
-2-ary !=
-JumpCond False 1004
-Jump 1007
-ReadonlyDec
-AtomicDec
-Jump 995
-ReadonlyDec
-Push PC(52)
-LoadVar q
-Load
-Apply
-StoreVar result
-LoadVar q
-Push PC(61)
-LoadVar q
-DelVar q
-Load
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame put (q, item)
-AtomicInc(lazy)
-LoadVar q
-Push PC(39)
-Push ()
-Push 0
-LoadVar q
-DelVar q
-Load
-3-ary DictAdd
-Push 1
-LoadVar item
-DelVar item
-3-ary DictAdd
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame produce item
-Push ?BBsema"P"
-Push ?BBsema"n_empty"
-Address
-Load
-Pop
-Push ?BBsema"P"
-Push ?BBsema"l_in"
-Address
-Load
-Pop
-Push ?BBsema"buf"
-Load BBsema.b_in
-Address
-LoadVar item
-DelVar item
-Store
-Load BBsema.b_in
-Push 2
-2-ary %
-Push 1
-2-ary +
-Store BBsema.b_in
-Push ?BBsema"V"
-Push ?BBsema"l_in"
-Address
-Load
-Pop
-Push ?BBsema"V"
-Push ?BBsema"n_full"
-Address
-Load
-Pop
-Return
-Jump 1111
-Frame consume ()
-DelVar result
-Push ?BBsema"P"
-Push ?BBsema"n_full"
-Address
-Load
-Pop
-Push ?BBsema"P"
-Push ?BBsema"l_out"
-Address
-Load
-Pop
-Push ?BBsema"buf"
-Load BBsema.b_out
-Address
-Load
-StoreVar result
-Load BBsema.b_out
-Push 2
-2-ary %
-Push 1
-2-ary +
-Store BBsema.b_out
-Push ?BBsema"V"
-Push ?BBsema"l_out"
-Address
-Load
-Pop
-Push ?BBsema"V"
-Push ?BBsema"n_empty"
-Address
-Load
-Pop
-Return
-Push ()
-Push { 1, 2 }
-StoreVar $s958
-LoadVar $s958
-1-ary IsEmpty
-JumpCond True 1123
-Cut($s958, x)
-LoadVar x
-DelVar x
-Push ()
-3-ary DictAdd
-Jump 1114
-DelVar $s958
-Store BBsema.buf
-Push 1
-Store BBsema.b_in
-Push 1
-Store BBsema.b_out
-Push ?BBsema"Semaphore"
-Push 1
-Address
-Load
-Store BBsema.l_in
-Push ?BBsema"Semaphore"
-Push 1
-Address
-Load
-Store BBsema.l_out
-Push ?BBsema"Semaphore"
-Push 0
-Address
-Load
-Store BBsema.n_full
-Push ?BBsema"Semaphore"
-Push 2
-Address
-Load
-Store BBsema.n_empty
-Jump 1276
-Frame producer i
-Push ?produce
-Push ()
-Push 0
-LoadVar i
-3-ary DictAdd
-Push 1
-Push 0
-3-ary DictAdd
-Address
-Load
-Pop
-Push ?produce
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-Address
-Load
-Pop
-Return
-Jump 1276
-Frame consumer ()
-Push ?consume
-Push ()
-Address
-Load
-StoreVar first
-Push ?consume
-Push ()
-Address
-Load
-StoreVar second
-ReadonlyInc
-AtomicInc(lazy)
-LoadVar first
-Push 0
-Apply
-LoadVar second
-Push 0
-Apply
-2-ary !=
-JumpCond True 1205
-LoadVar first
-Push 1
-Apply
-LoadVar second
-Push 1
-Apply
-2-ary <
-Jump 1206
-Push True
-Assert
-AtomicDec
-ReadonlyDec
-AtomicInc(lazy)
-Load received
-Push {}
-LoadVar first
-DelVar first
-2-ary SetAdd
-LoadVar second
-DelVar second
-2-ary SetAdd
-2-ary |
-Store received
-AtomicDec
-Return
-Jump 1276
-Frame main ()
-Load received
-1-ary len
-Push 4
-2-ary ==
-JumpCond False 1224
-Jump 1231
-Jump 1224
-ReadonlyInc
-AtomicInc(lazy)
-Load received
-Push {}
-Push { 1, 2 }
-StoreVar $s1076
-LoadVar $s1076
-1-ary IsEmpty
-JumpCond True 1251
-Cut($s1076, i)
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 0
-3-ary DictAdd
-2-ary SetAdd
-Jump 1237
-DelVar $s1076
-Push {}
-Push { 1, 2 }
-StoreVar $s1092
-LoadVar $s1092
-1-ary IsEmpty
-JumpCond True 1269
-Cut($s1092, i)
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-2-ary SetAdd
-Jump 1255
-DelVar $s1092
-2-ary |
-2-ary ==
-Assert
-AtomicDec
-ReadonlyDec
-Return
-Push {}
-Store received
-Push { 1, 2 }
-StoreVar $s1115
-LoadVar $s1115
-1-ary IsEmpty
-JumpCond True 1290
-Cut($s1115, i)
-Push PC(1150)
-LoadVar i
-DelVar i
-Push ()
-Spawn
-Jump 1280
-DelVar $s1115
-Push { 1, 2 }
-StoreVar $s1126
-LoadVar $s1126
-1-ary IsEmpty
-JumpCond True 1303
-Cut($s1126, i)
-DelVar i
-Push PC(1176)
-Push ()
-Push ()
-Spawn
-Jump 1293
-DelVar $s1126
-Push PC(1223)
-Push ()
-Push ()
-Spawn
-Return
-DelVar result
-```
-
-Duration: 0.0011305000000000065
-
-### Current Output
-
-```
-Frame __init__ ()
-Push ()
-Store BBsema
-Push ()
-Store synch
-Push ()
-Store list
-Jump 371
-Frame subseq (s, b, e)
-DelVar result
-Push 0
-StoreVar $n9
-Push ()
-LoadVar b
-DelVar b
-LoadVar e
-DelVar e
-Push 1
-2-ary -
-2-ary ..
-StoreVar $s12
-LoadVar $s12
-1-ary IsEmpty
-JumpCond True 33
-Cut($s12, x)
-LoadVar $n9
-LoadVar s
-LoadVar x
-DelVar x
-Apply
-3-ary DictAdd
-IncVar $n9
-Jump 21
-DelVar $n9
-DelVar $s12
-DelVar s
-StoreVar result
-Return
-Jump 371
-Frame append (s, e)
-DelVar result
-LoadVar s
-DelVar s
-Push ()
-Push 0
-LoadVar e
-DelVar e
-3-ary DictAdd
-2-ary +
-StoreVar result
-Return
-Jump 371
-Frame head s
-DelVar result
-LoadVar s
-DelVar s
-Push 0
-Apply
-StoreVar result
-Return
-Jump 371
-Frame tail s
-DelVar result
-Push PC(8)
-Push ()
-Push 0
-LoadVar s
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-Push 2
-LoadVar s
-DelVar s
-1-ary len
-3-ary DictAdd
-Apply
-StoreVar result
-Return
-Jump 371
-Frame sum a
-DelVar result
-Push 0
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s69
-LoadVar $s69
-1-ary IsEmpty
-JumpCond True 98
-Cut($s69, v)
-LoadVar result
-DelVar result
-LoadVar v
-DelVar v
-2-ary +
-StoreVar result
-Jump 87
-DelVar $s69
-Return
-Jump 371
-Frame set a
-DelVar result
-Push {}
-LoadVar a
-DelVar a
-StoreVar $s84
-LoadVar $s84
-1-ary IsEmpty
-JumpCond True 115
-Cut($s84, v)
-LoadVar v
-DelVar v
-2-ary SetAdd
-Jump 107
-DelVar $s84
-StoreVar result
-Return
-Jump 371
-Frame list a
-DelVar result
-Push 0
-StoreVar $n97
-Push ()
-LoadVar a
-DelVar a
-StoreVar $s100
-LoadVar $s100
-1-ary IsEmpty
-JumpCond True 137
-Cut($s100, v)
-LoadVar $n97
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n97
-Jump 127
-DelVar $n97
-DelVar $s100
-StoreVar result
-Return
-Jump 371
-Frame values d
-DelVar result
-Push 0
-StoreVar $n115
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s118
-LoadVar $s118
-1-ary IsEmpty
-JumpCond True 162
-Cut($s118, k)
-LoadVar $n115
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-IncVar $n115
-Jump 150
-DelVar $n115
-DelVar $s118
-DelVar d
-StoreVar result
-Return
-Jump 371
-Frame items d
-DelVar result
-Push 0
-StoreVar $n136
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s139
-LoadVar $s139
-1-ary IsEmpty
-JumpCond True 194
-Cut($s139, k)
-LoadVar $n136
-Push ()
-Push 0
-LoadVar k
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-IncVar $n136
-Jump 176
-DelVar $n136
-DelVar $s139
-DelVar d
-StoreVar result
-Return
-Jump 371
-Frame enumerate d
-DelVar result
-Push 0
-StoreVar index
-Push ()
-StoreVar result
-LoadVar d
-1-ary keys
-StoreVar $s167
-LoadVar $s167
-1-ary IsEmpty
-JumpCond True 236
-Cut($s167, k)
-LoadVar result
-DelVar result
-Push ()
-Push 0
-Push ()
-Push 0
-LoadVar index
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-2-ary +
-StoreVar result
-LoadVar index
-DelVar index
-Push 1
-2-ary +
-StoreVar index
-Jump 209
-DelVar $s167
-DelVar d
-DelVar index
-Return
-Jump 371
-Frame qsort a
-DelVar result
-LoadVar a
-Push ()
-2-ary ==
-JumpCond False 251
-DelVar a
-Push ()
-StoreVar result
-Jump 326
-Push ()
-Push 0
-Push PC(52)
-LoadVar a
-Apply
-3-ary DictAdd
-Push 1
-Push PC(61)
-LoadVar a
-DelVar a
-Apply
-3-ary DictAdd
-StoreVar (pivot, rest)
-Push 0
-StoreVar $n216
-Push ()
-LoadVar rest
-StoreVar $s219
-DelVar v
-LoadVar $s219
-1-ary IsEmpty
-JumpCond True 284
-Cut($s219, v)
-LoadVar v
-LoadVar pivot
-2-ary <
-JumpCond False 269
-LoadVar $n216
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n216
-Jump 269
-DelVar $n216
-DelVar $s219
-StoreVar lower
-Push 0
-StoreVar $n235
-Push ()
-LoadVar rest
-DelVar rest
-StoreVar $s238
-DelVar v
-LoadVar $s238
-1-ary IsEmpty
-JumpCond True 308
-Cut($s238, v)
-LoadVar v
-LoadVar pivot
-2-ary >=
-JumpCond False 293
-LoadVar $n235
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n235
-Jump 293
-DelVar $n235
-DelVar $s238
-StoreVar higher
-Push PC(241)
-LoadVar lower
-DelVar lower
-Apply
-Push ()
-Push 0
-LoadVar pivot
-DelVar pivot
-3-ary DictAdd
-Push PC(241)
-LoadVar higher
-DelVar higher
-Apply
-3-ary +
-StoreVar result
-Return
-Jump 371
-Frame sorted d
-DelVar result
-Push PC(241)
-Push PC(119)
-LoadVar d
-DelVar d
-Apply
-Apply
-StoreVar result
-Return
-Jump 371
-Frame reversed d
-DelVar result
-LoadVar d
-1-ary len
-StoreVar n
-Push 0
-StoreVar $n281
-Push ()
-Push 1
-LoadVar n
-2-ary ..
-StoreVar $s284
-LoadVar $s284
-1-ary IsEmpty
-JumpCond True 365
-Cut($s284, i)
-LoadVar $n281
-LoadVar d
-LoadVar n
-LoadVar i
-DelVar i
-2-ary -
-Apply
-3-ary DictAdd
-IncVar $n281
-Jump 351
-DelVar $n281
-DelVar $s284
-DelVar d
-DelVar n
-StoreVar result
-Return
-Push ()
-Store bag
-Jump 1111
-Frame empty ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1111
-Frame fromSet s
-DelVar result
-Push ()
-LoadVar s
-DelVar s
-StoreVar $s313
-LoadVar $s313
-1-ary IsEmpty
-JumpCond True 395
-Cut($s313, elt)
-LoadVar elt
-DelVar elt
-Push 1
-3-ary DictAdd
-Jump 386
-DelVar $s313
-StoreVar result
-Return
-Jump 1111
-Frame fromList a
-DelVar result
-Push ()
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s329
-LoadVar $s329
-1-ary IsEmpty
-JumpCond True 432
-Cut($s329, v)
-LoadVar v
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 425
-Push ?result
-LoadVar v
-DelVar v
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 406
-Push ?result
-LoadVar v
-DelVar v
-Address
-Push 1
-StoreVar [result]
-Jump 406
-DelVar $s329
-Return
-Jump 1111
-Frame multiplicity (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar elt
-LoadVar bg
-1-ary keys
-2-ary in
-JumpCond False 458
-LoadVar bg
-DelVar bg
-LoadVar elt
-DelVar elt
-Apply
-StoreVar result
-Jump 462
-DelVar bg
-DelVar elt
-Push 0
-StoreVar result
-Return
-Jump 1111
-Frame size bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-Push 0
-StoreVar result
-LoadVar bg
-DelVar bg
-StoreVar $s393
-LoadVar $s393
-1-ary IsEmpty
-JumpCond True 491
-Cut($s393, c)
-LoadVar result
-DelVar result
-LoadVar c
-DelVar c
-2-ary +
-StoreVar result
-Jump 480
-DelVar $s393
-Return
-Jump 1111
-Frame bmin bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
-StoreVar result
-Return
-Jump 1111
-Frame bmax bg
-DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
-StoreVar result
-Return
-Jump 1111
-Frame bchoose bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-Choose
-StoreVar result
-Return
-Jump 1111
-Frame add (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 568
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 574
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Push 1
-StoreVar [result]
-Return
-Jump 1111
-Frame remove (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 601
-LoadVar result
-LoadVar elt
-Apply
-Push 0
-2-ary >
-Jump 602
-Push False
-JumpCond False 611
-Push ?result
-LoadVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary -
-StoreVar [result]
-LoadVar result
-LoadVar elt
-Apply
-Push 0
-2-ary <=
-JumpCond False 622
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-DelVar [result]
-DelVar elt
-Return
-Jump 1111
-Frame combinations (bg, k)
-DelVar result
-LoadVar k
-Push 0
-2-ary ==
-JumpCond False 640
-DelVar bg
-DelVar k
-Push {}
-Push PC(374)
-Push ()
-Apply
-2-ary SetAdd
-StoreVar result
-Jump 725
-Push PC(464)
-LoadVar bg
-Apply
-StoreVar n
-LoadVar k
-LoadVar n
-2-ary >
-JumpCond False 654
-DelVar bg
-DelVar k
-DelVar n
-Push {}
-StoreVar result
-Jump 725
-LoadVar k
-LoadVar n
-DelVar n
-2-ary ==
-JumpCond False 666
-DelVar k
-Push {}
-LoadVar bg
-DelVar bg
-2-ary SetAdd
-StoreVar result
-Jump 725
-Push PC(494)
-LoadVar bg
-Apply
-StoreVar hd
-Push PC(576)
-Push ()
-Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
-Apply
-StoreVar tl
-Push {}
-Push PC(625)
-Push ()
-Push 0
-LoadVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
-Push 1
-2-ary -
-3-ary DictAdd
-Apply
-StoreVar $s570
-LoadVar $s570
-1-ary IsEmpty
-JumpCond True 710
-Cut($s570, x)
-Push PC(539)
-Push ()
-Push 0
-LoadVar x
-DelVar x
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
-Apply
-2-ary SetAdd
-Jump 694
-DelVar $s570
-DelVar hd
-Push PC(625)
-Push ()
-Push 0
-LoadVar tl
-DelVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
-DelVar k
-3-ary DictAdd
-Apply
-2-ary |
-StoreVar result
-Return
-Jump 1111
-Frame tas lk
-DelVar result
-AtomicInc(lazy)
-LoadVar lk
-Load
-StoreVar result
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame cas (p, old, new)
-DelVar result
-AtomicInc(lazy)
-LoadVar p
-Load
-LoadVar old
-DelVar old
-2-ary ==
-StoreVar result
-LoadVar result
-JumpCond False 756
-LoadVar p
-DelVar p
-LoadVar new
-DelVar new
-Store
-DelVar new
-DelVar p
-AtomicDec
-Return
-Jump 1111
-Frame BinSema acquired
-DelVar result
-LoadVar acquired
-DelVar acquired
-StoreVar result
-Return
-Jump 1111
-Frame Lock ()
-DelVar result
-Push PC(761)
-Push False
-Apply
-StoreVar result
-Return
-Jump 1111
-Frame acquired binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1111
-Frame acquire binsema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar binsema
-Load
-1-ary not
-JumpCond False 792
-Jump 795
-ReadonlyDec
-AtomicDec
-Jump 785
-ReadonlyDec
-LoadVar binsema
-DelVar binsema
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame release binsema
-ReadonlyInc
-AtomicInc(lazy)
-LoadVar binsema
-Load
-Assert
-AtomicDec
-ReadonlyDec
-AtomicInc(lazy)
-LoadVar binsema
-DelVar binsema
-Push False
-Store
-AtomicDec
-Return
-Jump 1111
-Frame held binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1111
-Frame Condition ()
-DelVar result
-Push PC(374)
-Push ()
-Apply
-StoreVar result
-Return
-Jump 1111
-Frame wait (c, lk)
-Push 0
-StoreVar cnt
-DelVar cnt
-Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push PC(435)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-StoreVar cnt
-LoadVar c
-Push PC(539)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 889
-Push PC(435)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-LoadVar cnt
-2-ary <=
-Jump 890
-Push False
-JumpCond False 895
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 898
-ReadonlyDec
-AtomicDec
-Jump 870
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1111
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push PC(374)
-Push ()
-Apply
-2-ary !=
-JumpCond False 931
-LoadVar c
-Push PC(576)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-Push PC(521)
-LoadVar c
-DelVar c
-Load
-Apply
-3-ary DictAdd
-Apply
-Store
-DelVar c
-AtomicDec
-Return
-Jump 1111
-Frame notifyAll c
-AtomicInc(lazy)
-LoadVar c
-DelVar c
-Push PC(374)
-Push ()
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame Semaphore cnt
-DelVar result
-LoadVar cnt
-DelVar cnt
-StoreVar result
-Return
-Jump 1111
-Frame P sema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar sema
-Load
-Push 0
-2-ary >
-JumpCond False 962
-Jump 965
-ReadonlyDec
-AtomicDec
-Jump 954
-ReadonlyDec
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary -
-Store
-AtomicDec
-Return
-Jump 1111
-Frame V sema
-AtomicInc(lazy)
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary +
-Store
-AtomicDec
-Return
-Jump 1111
-Frame Queue ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1111
-Frame get q
-DelVar result
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar q
-Load
-Push ()
-2-ary !=
-JumpCond False 1004
-Jump 1007
-ReadonlyDec
-AtomicDec
-Jump 995
-ReadonlyDec
-Push PC(52)
-LoadVar q
-Load
-Apply
-StoreVar result
-LoadVar q
-Push PC(61)
-LoadVar q
-DelVar q
-Load
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame put (q, item)
-AtomicInc(lazy)
-LoadVar q
-Push PC(39)
-Push ()
-Push 0
-LoadVar q
-DelVar q
-Load
-3-ary DictAdd
-Push 1
-LoadVar item
-DelVar item
-3-ary DictAdd
-Apply
-Store
-AtomicDec
-Return
-Jump 1111
-Frame produce item
-Push ?BBsema"P"
-Push ?BBsema"n_empty"
-Address
-Load
-Pop
-Push ?BBsema"P"
-Push ?BBsema"l_in"
-Address
-Load
-Pop
-Push ?BBsema"buf"
-Load BBsema.b_in
-Address
-LoadVar item
-DelVar item
-Store
-Load BBsema.b_in
-Push 2
-2-ary %
-Push 1
-2-ary +
-Store BBsema.b_in
-Push ?BBsema"V"
-Push ?BBsema"l_in"
-Address
-Load
-Pop
-Push ?BBsema"V"
-Push ?BBsema"n_full"
-Address
-Load
-Pop
-Return
-Jump 1111
-Frame consume ()
-DelVar result
-Push ?BBsema"P"
-Push ?BBsema"n_full"
-Address
-Load
-Pop
-Push ?BBsema"P"
-Push ?BBsema"l_out"
-Address
-Load
-Pop
-Push ?BBsema"buf"
-Load BBsema.b_out
-Address
-Load
-StoreVar result
-Load BBsema.b_out
-Push 2
-2-ary %
-Push 1
-2-ary +
-Store BBsema.b_out
-Push ?BBsema"V"
-Push ?BBsema"l_out"
-Address
-Load
-Pop
-Push ?BBsema"V"
-Push ?BBsema"n_empty"
-Address
-Load
-Pop
-Return
-Push ()
-Push { 1, 2 }
-StoreVar $s958
-LoadVar $s958
-1-ary IsEmpty
-JumpCond True 1123
-Cut($s958, x)
-LoadVar x
-DelVar x
-Push ()
-3-ary DictAdd
-Jump 1114
-DelVar $s958
-Store BBsema.buf
-Push 1
-Store BBsema.b_in
-Push 1
-Store BBsema.b_out
-Push ?BBsema"Semaphore"
-Push 1
-Address
-Load
-Store BBsema.l_in
-Push ?BBsema"Semaphore"
-Push 1
-Address
-Load
-Store BBsema.l_out
-Push ?BBsema"Semaphore"
-Push 0
-Address
-Load
-Store BBsema.n_full
-Push ?BBsema"Semaphore"
-Push 2
-Address
-Load
-Store BBsema.n_empty
-Jump 1276
-Frame producer i
-Push ?produce
-Push ()
-Push 0
-LoadVar i
-3-ary DictAdd
-Push 1
-Push 0
-3-ary DictAdd
-Address
-Load
-Pop
-Push ?produce
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-Address
-Load
-Pop
-Return
-Jump 1276
-Frame consumer ()
-Push ?consume
-Push ()
-Address
-Load
-StoreVar first
-Push ?consume
-Push ()
-Address
-Load
-StoreVar second
-ReadonlyInc
-AtomicInc(lazy)
-LoadVar first
-Push 0
-Apply
-LoadVar second
-Push 0
-Apply
-2-ary !=
-JumpCond True 1205
-LoadVar first
-Push 1
-Apply
-LoadVar second
-Push 1
-Apply
-2-ary <
-Jump 1206
-Push True
-Assert
-AtomicDec
-ReadonlyDec
-AtomicInc(lazy)
-Load received
-Push {}
-LoadVar first
-DelVar first
-2-ary SetAdd
-LoadVar second
-DelVar second
-2-ary SetAdd
-2-ary |
-Store received
-AtomicDec
-Return
-Jump 1276
-Frame main ()
-Load received
-1-ary len
-Push 4
-2-ary ==
-JumpCond False 1224
-Jump 1231
-Jump 1224
-ReadonlyInc
-AtomicInc(lazy)
-Load received
-Push {}
-Push { 1, 2 }
-StoreVar $s1076
-LoadVar $s1076
-1-ary IsEmpty
-JumpCond True 1251
-Cut($s1076, i)
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 0
-3-ary DictAdd
-2-ary SetAdd
-Jump 1237
-DelVar $s1076
-Push {}
-Push { 1, 2 }
-StoreVar $s1092
-LoadVar $s1092
-1-ary IsEmpty
-JumpCond True 1269
-Cut($s1092, i)
-Push ()
-Push 0
-LoadVar i
-DelVar i
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-2-ary SetAdd
-Jump 1255
-DelVar $s1092
-2-ary |
-2-ary ==
-Assert
-AtomicDec
-ReadonlyDec
-Return
-Push {}
-Store received
-Push { 1, 2 }
-StoreVar $s1115
-LoadVar $s1115
-1-ary IsEmpty
-JumpCond True 1290
-Cut($s1115, i)
-Push PC(1150)
-LoadVar i
-DelVar i
-Push ()
-Spawn
-Jump 1280
-DelVar $s1115
-Push { 1, 2 }
-StoreVar $s1126
-LoadVar $s1126
-1-ary IsEmpty
-JumpCond True 1303
-Cut($s1126, i)
-DelVar i
-Push PC(1176)
-Push ()
-Push ()
-Spawn
-Jump 1293
-DelVar $s1126
-Push PC(1223)
-Push ()
-Push ()
-Spawn
-Return
-DelVar result
-```
-
-Duration: 0.0011262999999999967
+Duration: 0.0007442000000000004
 
 ---
 ##  code/qsort.hny
@@ -108462,7 +105905,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010649000000000075
+Duration: 0.0008176000000000017
 
 ### Current Output
 
@@ -108715,7 +106158,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010126000000000024
+Duration: 0.0007384999999999753
 
 ---
 ##  code/setobj.hny
@@ -108831,7 +106274,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009989999999999999
+Duration: 0.0008079999999999754
 
 ### Current Output
 
@@ -108938,7 +106381,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009573999999999971
+Duration: 0.0008095999999999937
 
 ---
 ##  code/baddblwait.hny
@@ -108999,7 +106442,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010143999999999986
+Duration: 0.0009629999999999916
 
 ### Current Output
 
@@ -109051,7 +106494,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009093000000000018
+Duration: 0.0007643000000000233
 
 ---
 ##  code/nbqueuetest.hny
@@ -109548,7 +106991,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010900000000000076
+Duration: 0.0008805000000000063
 
 ### Current Output
 
@@ -110036,7 +107479,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010433000000000248
+Duration: 0.0008863999999999816
 
 ---
 ##  code/cssynch.hny
@@ -111136,7 +108579,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012939999999999896
+Duration: 0.0009254999999999958
 
 ### Current Output
 
@@ -112227,7 +109670,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012163000000000035
+Duration: 0.0008379999999999777
 
 ---
 ##  code/stack3.hny
@@ -112282,7 +109725,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010193000000000008
+Duration: 0.0009129999999999971
 
 ### Current Output
 
@@ -112328,7 +109771,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011015000000000053
+Duration: 0.0006984999999999908
 
 ---
 ##  code/RWqueue.hny
@@ -113612,7 +111055,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001294400000000001
+Duration: 0.0009467999999999976
 
 ### Current Output
 
@@ -114887,7 +112330,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011069999999999969
+Duration: 0.0008689999999999809
 
 ---
 ##  code/RWcv.hny
@@ -116135,7 +113578,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013071000000000055
+Duration: 0.0010522000000000031
 
 ### Current Output
 
@@ -117374,7 +114817,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011092000000000046
+Duration: 0.0008560999999999985
 
 ---
 ##  code/2pc.hny
@@ -117391,7 +114834,7 @@ Output is good: ❌
 Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009861000000000175
+Duration: 0.000876700000000008
 
 ### Current Output
 
@@ -117399,7 +114842,7 @@ Duration: 0.0009861000000000175
 Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
 ```
 
-Duration: 0.0009801999999999866
+Duration: 0.0009014999999999995
 
 ---
 ##  code/queueconc.hny
@@ -118644,7 +116087,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011449000000000042
+Duration: 0.0010953999999999964
 
 ### Current Output
 
@@ -119880,7 +117323,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010590000000000044
+Duration: 0.0007734000000000074
 
 ---
 ##  code/queuelin.hny
@@ -121155,7 +118598,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011927999999999939
+Duration: 0.0009916000000000091
 
 ### Current Output
 
@@ -122421,7 +119864,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001127099999999992
+Duration: 0.0009041999999999939
 
 ---
 ##  code/lockspec.hny
@@ -122481,7 +119924,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010647999999999769
+Duration: 0.0008184000000000247
 
 ### Current Output
 
@@ -122532,7 +119975,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000954499999999997
+Duration: 0.0007868000000000042
 
 ---
 ##  code/ky2.hny
@@ -122568,7 +120011,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009755999999999931
+Duration: 0.0007925000000000015
 
 ### Current Output
 
@@ -122595,7 +120038,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009986000000000161
+Duration: 0.0007497000000000198
 
 ---
 ##  code/cslock.hny
@@ -123720,7 +121163,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011095000000000133
+Duration: 0.0008830999999999978
 
 ### Current Output
 
@@ -124836,7 +122279,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010595000000000188
+Duration: 0.0008854000000000084
 
 ---
 ##  code/abp.hny
@@ -125004,7 +122447,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010175000000000045
+Duration: 0.0009003000000000205
 
 ### Current Output
 
@@ -125163,7 +122606,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009490000000000054
+Duration: 0.0007358000000000087
 
 ---
 ##  code/hello9.hny
@@ -125216,7 +122659,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009837999999999791
+Duration: 0.0008915000000000173
 
 ### Current Output
 
@@ -125260,7 +122703,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010790999999999995
+Duration: 0.000762700000000005
 
 ---
 ##  code/hello2.hny
@@ -125296,7 +122739,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009947999999999901
+Duration: 0.0009177999999999964
 
 ### Current Output
 
@@ -125323,7 +122766,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009185999999999916
+Duration: 0.0007063999999999959
 
 ---
 ##  code/actortest.hny
@@ -125340,7 +122783,7 @@ Output is good: ❌
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009925000000000073
+Duration: 0.000998899999999997
 
 ### Current Output
 
@@ -125348,7 +122791,7 @@ Duration: 0.0009925000000000073
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.0009376000000000106
+Duration: 0.0008568999999999938
 
 ---
 ##  code/hello4.hny
@@ -125373,7 +122816,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011483999999999939
+Duration: 0.0008418000000000037
 
 ### Current Output
 
@@ -125389,7 +122832,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009472000000000091
+Duration: 0.0007814000000000154
 
 ---
 ##  code/actor.hny
@@ -125406,7 +122849,7 @@ Output is good: ❌
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0010322000000000386
+Duration: 0.0008354000000000139
 
 ### Current Output
 
@@ -125414,7 +122857,7 @@ Duration: 0.0010322000000000386
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.0010924999999999963
+Duration: 0.000695100000000004
 
 ---
 ##  code/chain.hny
@@ -125717,7 +123160,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010883999999999894
+Duration: 0.00081210000000001
 
 ### Current Output
 
@@ -126011,7 +123454,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009444000000000119
+Duration: 0.0007053000000000198
 
 ---
 ##  code/boundedbuffer.hny
@@ -126486,7 +123929,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010460999999999943
+Duration: 0.0008587999999999929
 
 ### Current Output
 
@@ -126952,7 +124395,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009273000000000198
+Duration: 0.0007469000000000225
 
 ---
 ##  code/taslock.hny
@@ -127008,7 +124451,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010155999999999499
+Duration: 0.0007951999999999959
 
 ### Current Output
 
@@ -127055,7 +124498,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009726000000000457
+Duration: 0.0007157000000000135
 
 ---
 ##  code/RW.hny
@@ -127161,7 +124604,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001059499999999991
+Duration: 0.000934299999999999
 
 ### Current Output
 
@@ -127258,7 +124701,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009361999999999981
+Duration: 0.0007321000000000133
 
 ---
 ##  code/DinersCV2.hny
@@ -128450,7 +125893,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013307999999999653
+Duration: 0.0011211000000000138
 
 ### Current Output
 
@@ -129633,7 +127076,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010822000000000331
+Duration: 0.0008071999999999802
 
 ---
 ##  code/2pc2.hny
@@ -130543,7 +127986,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012251999999999819
+Duration: 0.0009013000000000215
 
 ### Current Output
 
@@ -131444,7 +128887,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010367000000000015
+Duration: 0.000834499999999988
 
 ---
 ##  code/rsmspec.hny
@@ -131591,7 +129034,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010612000000000399
+Duration: 0.0008074999999999888
 
 ### Current Output
 
@@ -131729,7 +129172,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009373999999999771
+Duration: 0.000747500000000012
 
 ---
 ##  code/paxos1.hny
@@ -132240,7 +129683,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001039100000000015
+Duration: 0.0008184999999999998
 
 ### Current Output
 
@@ -132742,7 +130185,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009923000000000015
+Duration: 0.0007608000000000059
 
 ---
 ##  code/queuespec.hny
@@ -133175,7 +130618,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012483000000000355
+Duration: 0.0008855000000000113
 
 ### Current Output
 
@@ -133599,7 +131042,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009640999999999678
+Duration: 0.0009633000000000003
 
 ---
 ##  code/RWbtest.hny
@@ -133854,7 +131297,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010522000000000031
+Duration: 0.0008518999999999888
 
 ### Current Output
 
@@ -134100,7 +131543,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001363000000000003
+Duration: 0.0007498000000000227
 
 ---
 ##  code/RWhoare.hny
@@ -135382,7 +132825,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012307999999999764
+Duration: 0.0008921999999999819
 
 ### Current Output
 
@@ -136655,7 +134098,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012657000000000362
+Duration: 0.0009247000000000005
 
 ---
 ##  code/RWbusy.hny
@@ -137864,7 +135307,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011297000000000113
+Duration: 0.000953300000000018
 
 ### Current Output
 
@@ -139064,7 +136507,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012892999999999932
+Duration: 0.0009795999999999971
 
 ---
 ##  code/setobjtest.hny
@@ -139252,7 +136695,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001003099999999979
+Duration: 0.0008038999999999963
 
 ### Current Output
 
@@ -139431,7 +136874,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000921100000000008
+Duration: 0.0007235000000000158
 
 ---
 ##  code/qtestpar.hny
@@ -139967,7 +137410,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011341999999999741
+Duration: 0.0009471999999999814
 
 ### Current Output
 
@@ -140494,7 +137937,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008910000000000307
+Duration: 0.0007472999999999785
 
 ---
 ##  code/hanoi.hny
@@ -140995,7 +138438,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010530999999999735
+Duration: 0.0008443999999999952
 
 ### Current Output
 
@@ -141487,7 +138930,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009452999999999823
+Duration: 0.0009200000000000041
 
 ---
 ##  code/leader.hny
@@ -141744,7 +139187,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010295000000000165
+Duration: 0.0009123000000000325
 
 ### Current Output
 
@@ -141992,7 +139435,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009345000000000048
+Duration: 0.0008264999999999523
 
 ---
 ##  code/hoare.hny
@@ -143142,7 +140585,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011713000000000418
+Duration: 0.0009327000000000085
 
 ### Current Output
 
@@ -144283,7 +141726,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010310000000000041
+Duration: 0.0009413000000000338
 
 ---
 ##  code/RWfair.hny
@@ -145658,7 +143101,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011503999999999959
+Duration: 0.0009647999999999879
 
 ### Current Output
 
@@ -147024,7 +144467,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010943999999999954
+Duration: 0.0008971000000000395
 
 ---
 ##  code/register.hny
@@ -147066,7 +144509,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010014999999999885
+Duration: 0.0008216999999999808
 
 ### Current Output
 
@@ -147099,7 +144542,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000877500000000031
+Duration: 0.0008536000000000099
 
 ---
 ##  code/paxos.hny
@@ -147932,7 +145375,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013394999999999935
+Duration: 0.0008962000000000137
 
 ### Current Output
 
@@ -148756,7 +146199,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010410000000000141
+Duration: 0.0007966999999999835
 
 ---
 ##  code/mesa.hny
@@ -148765,309 +146208,23 @@ Duration: 0.0010410000000000141
 
 Duration is good: ✅
 
-Output is good: ✅
+Output is good: ❌
 
 ### Baseline Output
 
 ```
-Frame __init__ ()
-Jump 142
-Frame Condition ()
-DelVar result
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-StoreVar result
-Return
-Jump 142
-Frame wait (c, lk)
-Push 0
-StoreVar cnt
-DelVar cnt
-Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-StoreVar cnt
-LoadVar c
-Push ?bag
-Push "add"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 76
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-LoadVar cnt
-2-ary <=
-Jump 77
-Push False
-JumpCond False 82
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 85
-ReadonlyDec
-AtomicDec
-Jump 54
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 142
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-2-ary !=
-JumpCond False 127
-LoadVar c
-Push ?bag
-Push "remove"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-Push ?bag
-Push "bchoose"
-Address
-LoadVar c
-DelVar c
-Load
-Address
-Load
-3-ary DictAdd
-Address
-Load
-Store
-DelVar c
-AtomicDec
-Return
-Jump 142
-Frame notifyAll c
-LoadVar c
-DelVar c
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-Store
-Return
-Return
-DelVar result
+Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '=' ErrorToken(line=5, message="Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '='", column=13, lexeme='0', filename='code/mesa.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009387000000000145
+Duration: 0.0009942000000000006
 
 ### Current Output
 
 ```
-Frame __init__ ()
-Jump 142
-Frame Condition ()
-DelVar result
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-StoreVar result
-Return
-Jump 142
-Frame wait (c, lk)
-Push 0
-StoreVar cnt
-DelVar cnt
-Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-StoreVar cnt
-LoadVar c
-Push ?bag
-Push "add"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 76
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-LoadVar cnt
-2-ary <=
-Jump 77
-Push False
-JumpCond False 82
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 85
-ReadonlyDec
-AtomicDec
-Jump 54
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 142
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-2-ary !=
-JumpCond False 127
-LoadVar c
-Push ?bag
-Push "remove"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-Push ?bag
-Push "bchoose"
-Address
-LoadVar c
-DelVar c
-Load
-Address
-Load
-3-ary DictAdd
-Address
-Load
-Store
-DelVar c
-AtomicDec
-Return
-Jump 142
-Frame notifyAll c
-LoadVar c
-DelVar c
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-Store
-Return
-Return
-DelVar result
+Line 5:12 at code/mesa.hny, missing '=' at '0'
 ```
 
-Duration: 0.0011224999999999707
+Duration: 0.0009091999999999989
 
 ---
 ##  code/RWqtest.hny
@@ -150454,7 +147611,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009823999999999944
+Duration: 0.0011810999999999905
 
 ### Current Output
 
@@ -151832,7 +148989,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001109500000000041
+Duration: 0.0010896000000000239
 
 ---
 ##  code/BBsema.hny
@@ -152997,7 +150154,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013556000000000124
+Duration: 0.000884700000000016
 
 ### Current Output
 
@@ -154153,7 +151310,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001172699999999971
+Duration: 0.0009528000000000314
 
 ---
 ##  code/queue.hny
@@ -154590,7 +151747,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001111899999999999
+Duration: 0.0008177999999999797
 
 ### Current Output
 
@@ -155018,7 +152175,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001005600000000051
+Duration: 0.0008045999999999887
 
 ---
 ##  code/barrier.hny
@@ -156187,7 +153344,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011669000000000262
+Duration: 0.0011075999999999864
 
 ### Current Output
 
@@ -157347,7 +154504,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011576000000000364
+Duration: 0.0009995999999999894
 
 ---
 ##  code/ticket.hny
@@ -157437,7 +154594,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010193000000000008
+Duration: 0.0008710000000000107
 
 ### Current Output
 
@@ -157518,7 +154675,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009404000000000079
+Duration: 0.0008256000000000374
 
 ---
 ##  code/atomicinc.hny
@@ -157555,7 +154712,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010903999999999914
+Duration: 0.0009173000000000098
 
 ### Current Output
 
@@ -157583,7 +154740,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001159100000000024
+Duration: 0.0007150000000000212
 
 ---
 ##  code/nbqueue.hny
@@ -158982,7 +156139,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012076999999999782
+Duration: 0.0009240999999999833
 
 ### Current Output
 
@@ -160372,7 +157529,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010804999999999843
+Duration: 0.0010780000000000234
 
 ---
 ##  code/stack2.hny
@@ -160809,7 +157966,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010570000000000301
+Duration: 0.0008048000000000499
 
 ### Current Output
 
@@ -161237,7 +158394,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000960699999999981
+Duration: 0.00075989999999998
 
 ---
 ##  code/gpu.hny
@@ -161281,7 +158438,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010248999999999953
+Duration: 0.0009529999999999816
 
 ### Current Output
 
@@ -161316,7 +158473,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010638000000000036
+Duration: 0.0007489999999999997
 
 ---
 ##  code/triangle.hny
@@ -161377,7 +158534,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010359999999999814
+Duration: 0.000843499999999997
 
 ### Current Output
 
@@ -161429,7 +158586,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011023000000000005
+Duration: 0.0007640999999999898
 
 ---
 ##  code/barrier1.hny
@@ -162674,7 +159831,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011386999999999925
+Duration: 0.0008664999999999923
 
 ### Current Output
 
@@ -163910,7 +161067,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010657000000000028
+Duration: 0.0007784000000000124
 
 ---
 ##  code/bosco2.hny
@@ -164532,7 +161689,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010880999999999807
+Duration: 0.000989899999999988
 
 ### Current Output
 
@@ -165145,7 +162302,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011163000000000145
+Duration: 0.0007754999999999845
 
 ---
 ##  code/paxos2.hny
@@ -165497,7 +162654,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011983999999999884
+Duration: 0.0008311999999999764
 
 ### Current Output
 
@@ -165840,7 +162997,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001299500000000009
+Duration: 0.0007829999999999782
 
 ---
 ##  code/bqueue.hny
@@ -166279,7 +163436,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010355999999999699
+Duration: 0.0008091999999999544
 
 ### Current Output
 
@@ -166709,7 +163866,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009749000000000008
+Duration: 0.0008284000000000069
 
 ---
 ##  code/hello6.hny
@@ -166742,7 +163899,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001274200000000003
+Duration: 0.000798299999999974
 
 ### Current Output
 
@@ -166766,7 +163923,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010475999999999819
+Duration: 0.0007261000000000073
 
 ---
 ##  code/stack1.hny
@@ -166824,7 +163981,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012174999999999825
+Duration: 0.0009487000000000245
 
 ### Current Output
 
@@ -166873,7 +164030,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010761000000000243
+Duration: 0.0007276999999999978
 
 ---
 ##  code/hello5.hny
@@ -166906,7 +164063,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010783999999999794
+Duration: 0.0008344000000000129
 
 ### Current Output
 
@@ -166930,7 +164087,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011271999999999949
+Duration: 0.0009137000000000173
 
 ---
 ##  code/abd.hny
@@ -167767,7 +164924,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013636000000000204
+Duration: 0.0009284999999999988
 
 ### Current Output
 
@@ -168595,7 +165752,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001508599999999971
+Duration: 0.000978699999999999
 
 ---
 ##  code/hello8.hny
@@ -168632,7 +165789,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00130779999999997
+Duration: 0.0008128000000000024
 
 ### Current Output
 
@@ -168660,7 +165817,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011964999999999892
+Duration: 0.0007735999999999854
 
 ---
 ##  code/stack4.hny
@@ -168772,7 +165929,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012371999999999939
+Duration: 0.0008244000000000029
 
 ### Current Output
 
@@ -168875,7 +166032,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011405000000000443
+Duration: 0.000762700000000005
 
 ---
 ##  code/BBhoare.hny
@@ -170251,7 +167408,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001153499999999974
+Duration: 0.0009070000000000467
 
 ### Current Output
 
@@ -171618,7 +168775,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011413000000000117
+Duration: 0.0008020999999999723
 
 ---
 ##  code/RWcheat.hny
@@ -172715,7 +169872,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012083999999999984
+Duration: 0.0009109000000000478
 
 ### Current Output
 
@@ -173803,7 +170960,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010905999999999971
+Duration: 0.0008376999999999968
 
 ---
 ##  code/stacktest.hny
@@ -173820,7 +170977,7 @@ Output is good: ❌
 Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)
 ```
 
-Duration: 0.0010690000000000421
+Duration: 0.0008198000000000372
 
 ### Current Output
 
@@ -173828,7 +170985,7 @@ Duration: 0.0010690000000000421
 Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']
 ```
 
-Duration: 0.0015571999999999808
+Duration: 0.0007301999999999587
 
 ---
 ##  code/queueMS.hny
@@ -175058,7 +172215,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012154000000000331
+Duration: 0.0008687
 
 ### Current Output
 
@@ -176279,7 +173436,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011182000000000136
+Duration: 0.0008081000000000338
 
 ---
 ##  code/abdtest.hny
@@ -176412,7 +173569,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010630999999999835
+Duration: 0.0009364000000000039
 
 ### Current Output
 
@@ -176536,7 +173693,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009177000000000213
+Duration: 0.0008761999999999937
 
 ---
 ##  code/locksusp.hny
@@ -177013,7 +174170,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000993099999999969
+Duration: 0.0011029000000000178
 
 ### Current Output
 
@@ -177481,7 +174638,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009448000000000234
+Duration: 0.000736300000000023
 
 ---
 ##  code/2pc1.hny
@@ -177498,7 +174655,7 @@ Output is good: ❌
 Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009832000000000174
+Duration: 0.0008172999999999653
 
 ### Current Output
 
@@ -177506,7 +174663,7 @@ Duration: 0.0009832000000000174
 Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)
 ```
 
-Duration: 0.0009265999999999996
+Duration: 0.0007932999999999968
 
 ---
 ##  code/needhamschroeder.hny
@@ -177944,7 +175101,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012608000000000064
+Duration: 0.0009926000000000101
 
 ### Current Output
 
@@ -178373,7 +175530,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011093999999999826
+Duration: 0.0007809000000000288
 
 ---
 ##  code/linkedlist.hny
@@ -179750,7 +176907,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011987999999999999
+Duration: 0.0010331999999999564
 
 ### Current Output
 
@@ -181118,7 +178275,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012988999999999917
+Duration: 0.001081500000000013
 
 ---
 ##  code/barriertest2.hny
@@ -182368,7 +179525,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011820999999999637
+Duration: 0.000900700000000032
 
 ### Current Output
 
@@ -183609,7 +180766,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011759000000000075
+Duration: 0.0008942000000000117
 
 ---
 ##  code/queuefix.hny
@@ -184864,7 +182021,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013402000000000136
+Duration: 0.0009483999999999604
 
 ### Current Output
 
@@ -186110,7 +183267,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011161000000000088
+Duration: 0.001015099999999991
 
 ---
 ##  code/hello3.hny
@@ -186132,7 +183289,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010389000000000093
+Duration: 0.0009212000000000109
 
 ### Current Output
 
@@ -186145,7 +183302,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010747000000000395
+Duration: 0.0007700999999999958
 
 ---
 ##  code/queueseq.hny
@@ -186232,7 +183389,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010912000000000144
+Duration: 0.0008155000000000245
 
 ### Current Output
 
@@ -186310,7 +183467,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008680999999999828
+Duration: 0.0007672999999999708
 
 ---
 ##  code/hello1.hny
@@ -186331,7 +183488,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011538999999999855
+Duration: 0.0008755999999999764
 
 ### Current Output
 
@@ -186343,7 +183500,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011356000000000144
+Duration: 0.0007547999999999999
 
 ---
 ##  code/consensus.hny
@@ -186422,7 +183579,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001385399999999981
+Duration: 0.000865500000000019
 
 ### Current Output
 
@@ -186492,6 +183649,6 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010949000000000098
+Duration: 0.0008325999999999611
 
 ---
