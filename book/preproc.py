@@ -96,10 +96,6 @@ reserved = {
 }
 
 constants = {
-    "False",
-    "True",
-    "None",
-    "inf",
     "synch",
     "synchS",
     "barrier",
