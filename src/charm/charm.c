@@ -391,14 +391,17 @@ static bool onestep(
     minheap_insert(w->results[weight], next);
 
     // Check for a final interrupt after terminating
-    if (step->ctx->terminated && step->ctx->trap_pc != 0 && !step->ctx->interruptlevel) {
+    if (0 && step->ctx->terminated && step->ctx->trap_pc != 0 && !step->ctx->interruptlevel) {
+        printf("TRY INTERRUPT\n");
         step->ctx->terminated = false;
         value_ctx_push(&step->ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
         value_ctx_push(&step->ctx, step->ctx->trap_arg);
         step->ctx->pc = step->ctx->trap_pc;
         ctx = value_put_context(&global->values, step->ctx);
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
+        printf("INTERRUPT RECURSE\n");
         (void) onestep(w, next, sc, ctx, step, 0, false, true, multiplicity);
+        printf("INTERRUPT RECURSE DONE\n");
     }
     return true;
 }
