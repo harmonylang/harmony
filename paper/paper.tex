@@ -253,6 +253,18 @@ Harmony does not have \texttt{return}, \texttt{break}, or
 nested control flow.  Each method has a variable <{result}> in which
 the return value of the method is stored.
 
+In order to make deadlock detection possible, Harmony programs are
+required to eventually terminate under fair selection of its
+nondetermistic choices.  In other words, from each state there
+should always exist an extension of the execution in which the
+Harmony program terminates.  Harmony supports \emph{eternal}
+threads---threads that never terminate---for example to model
+servers.  A Harmony program is considered terminated if it is in a
+state in which all its remaining threads are eternal and \emph{blocked}.
+A thread is considered blocked if it can only update the shared
+state after another thread has updated the shared state (for example,
+a thread waiting on a spinlock).
+
 \begin{figure*}[h]
 \begin{center}
 \begin{tabular}{cc}
@@ -848,23 +860,21 @@ connected components.  The states in the sink components of this
 DAG can be considered the terminal states of the Harmony program.
 States in which the context bag is empty represent states in which
 all threads have terminated.  In the case the context bag is not
-empty, we check if there are any non-\emph{eternal} contexts.
-(Harmony programmers can
-specify that certain threads are eternal, such as server threads
-that operate in an infinite loop waiting for requests.) If
-so, Harmony reports a \emph{deadlock}. If there
+empty, we check if there are any non-\emph{eternal} contexts or
+contexts that are not blocked.
+If so, Harmony reports a \emph{deadlock}. If there
 is no deadlock and a behavior automaton was specified, Harmony also
 checks if the automaton is in a terminal state.  If not, a
 \emph{behavior violation} is reported.
 
 \paragraph{Active Busy Waiting.}
 
-A thread is considered \emph{blocked} if it can only make progress
-(modify the state) if another thread makes a transition first.
-This is not usually a problem: a thread waiting on a lock in a spinloop
-is a common way of synchronizing threads, and Harmony does not report
-such issues.  We call this \emph{passive busy waiting} as the thread
-does not modify the state.
+As mentioned above, a thread is considered blocked if it can only
+modify the shared state if another thread updates the shared state
+first.  This is not usually a problem: a thread waiting on a lock
+in a spinloop is a common way of synchronizing threads, and Harmony
+does not report such issues.  We call this \emph{passive busy
+waiting} as the thread does not modify the state.
 
 A thread is considered \emph{actively busy waiting} if it cannot
 escape its strongly connected component without another thread
