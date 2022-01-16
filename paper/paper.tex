@@ -1,5 +1,5 @@
 \documentclass[twocolumn]{article}
-\usepackage{fullpage}
+\usepackage{usenix2019}
 \usepackage{graphicx}
 \usepackage{framed}
 \usepackage{tcolorbox}
@@ -13,7 +13,8 @@
 \usepackage{paralist}
 % \usepackage{bold-extra}
 \usepackage{xcolor}
-\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=violet]{hyperref}
+% \usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=violet]{hyperref}
+\usepackage{hyperref}
 
 \renewcommand{\topfraction}{.99}
 \renewcommand{\bottomfraction}{.99}
@@ -157,14 +158,14 @@ commit, chain replication, various consensus algorithms such as Paxos,
 and the Needham-Schroeder authentication protocols.
 
 Harmony's unique combination of features are a familiar and easy
-to learn high-level programming language, the ability to concisely
-specify an interface, the ability to compare behaviors of specification
-and implementation, the ability to modularly model check programs,
-and support for dynamic memory allocation, continuations, and
-interrupts.  In addition, Harmony finds various common problems
-automatically without a complicated property specification language,
-such as Harmony's ability to find instances of undesirable busy
-waiting.
+to learn high-level and highly expressive programming language, the
+ability to concisely specify an interface, the ability to compare
+behaviors of specification and implementation, the ability to
+modularly model check programs, and support for dynamic memory
+allocation, continuations, and interrupts.  In addition, Harmony
+finds various common problems automatically without a complicated
+property specification language, such as Harmony's ability to find
+instances of undesirable busy waiting.
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
@@ -221,15 +222,19 @@ a specification of test-and-set}
 
 Harmony is heavily based on Python to reduce the learning curve for
 users.  Many of Python's powerful constructs and operators are
-supported, including comprehensions.  Harmony does
-not support classes and instead supports memory allocation and
-pointers in a way that is familiar to C programmers.  While this
-perhaps seems like a step back in language evolution, many
-synchronization algorithms in the literature explicitly consider
-memory accesses, and this has been a bonus for
-analyzing such algorithms with Harmony.  Moreover, the Harmony model
-checker can be used to check for memory leaks or access to dangling
-pointers.
+supported, including sets, lists, tuples, dictionaries, and
+comprehensions.  In certain cases Harmony goes further than Python,
+for example by allowing sets of dictionaries (Harmony does not have
+so-called ``unhashable types'').
+
+Harmony does not
+support classes and instead supports memory allocation and pointers
+in a way that is familiar to C programmers.  While this perhaps
+seems like a step back in language evolution, many synchronization
+algorithms in the literature explicitly consider memory accesses,
+and this has been a bonus for analyzing such algorithms with Harmony.
+Moreover, the Harmony model checker can be used to check for memory
+leaks or access to dangling pointers.
 
 For example, \autoref{fig:ms} shows a reproduction of the well-known
 Michael\&Scott two-lock concurrent queue~\cite{MS96} along with a
