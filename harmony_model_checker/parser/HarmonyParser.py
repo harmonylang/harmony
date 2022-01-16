@@ -3972,9 +3972,6 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.Elif_blockContext(self, self._ctx, self.state)
         self.enterRule(localctx, 98, self.RULE_elif_block)
-
-        self.getTokenStream().handle_compound()
-
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 503
@@ -4648,9 +4645,6 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.Compound_stmtContext(self, self._ctx, self.state)
         self.enterRule(localctx, 114, self.RULE_compound_stmt)
-
-        self.getTokenStream().handle_compound()
-
         try:
             self.state = 578
             self._errHandler.sync(self)
@@ -4734,9 +4728,6 @@ class HarmonyParser ( Parser ):
 
         localctx = HarmonyParser.One_line_stmtContext(self, self._ctx, self.state)
         self.enterRule(localctx, 116, self.RULE_one_line_stmt)
-
-        self.getTokenStream().handle_assignment()
-
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)

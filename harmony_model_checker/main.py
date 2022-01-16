@@ -16,20 +16,18 @@ from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, Return
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.model_checker_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
-from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 
 
-def build_parser(progam_input):
+def build_parser(progam_input: InputStream):
     lexer = HarmonyLexer(progam_input)
-    parser = HarmonyParser(None)
+    stream = CommonTokenStream(lexer)
+    parser = HarmonyParser(stream)
 
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
 
-    stream = HarmonyTokenStream(lexer, parser)
-    parser._input = stream
     return parser
 
 
@@ -334,6 +332,10 @@ def main():
         outfile = CHARM_EXECUTABLE_FILE
         with open(output_files["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
+
+        if parse_code_only:
+            return 0
+
         r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), output_files["hco"], output_files["hvm"]))
         if r != 0:
             print("charm model checker failed")
