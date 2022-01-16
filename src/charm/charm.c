@@ -319,17 +319,27 @@ static bool onestep(
         // breaking until strictly necessary (lazy atomic), in the hopes
         // of not having to at all (because breaking causes an expensive
         // context switch).  If the instruction is not "breakable" (Load,
-        // Store, Del, eager AtomicInc), or a print instruction (Print),
-        // then there's no need to break yet.  Otherwise, if the atomic
-        // count > 0, we should set the atomicFlag and break.  Otherwise
-        // if it's a breakable instruction, we should just break.  If
-        // it's a print instruction, we should break if it's not the first.
-        struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
-        if (!step->ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
-            if (step->ctx->atomic > 0) {
-                step->ctx->atomicFlag = true;
+        // Store, Del, Print, eager AtomicInc), then there's no need to
+        // break yet.  Otherwise, if the atomic count > 0, we should set
+        // the atomicFlag and break.  Otherwise  if it's a breakable
+        // instruction, we should just break.
+        if (!step->ctx->atomicFlag) {
+            struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+            bool breakable = next_instr->breakable;
+            if (next_instr->retop && step->ctx->trap_pc != 0 &&
+                                            !step->ctx->interruptlevel) {
+                hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
+                assert((ct & VALUE_MASK) == VALUE_INT);
+                if ((ct >> VALUE_BITS) == CALLTYPE_PROCESS) {
+                    breakable = true;
+                }
             }
-            break;
+            if (breakable) {
+                if (step->ctx->atomic > 0) {
+                    step->ctx->atomicFlag = true;
+                }
+                break;
+            }
         }
     }
 
@@ -396,20 +406,6 @@ static bool onestep(
     int nctxs;
     hvalue_t *ctxs = value_get(sc->ctxbag, &nctxs);
     minheap_insert(w->results[weight], next);
-
-    // Check for a final interrupt after terminating
-    if (0 && step->ctx->terminated && step->ctx->trap_pc != 0 && !step->ctx->interruptlevel) {
-        printf("TRY INTERRUPT\n");
-        step->ctx->terminated = false;
-        value_ctx_push(&step->ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
-        value_ctx_push(&step->ctx, step->ctx->trap_arg);
-        step->ctx->pc = step->ctx->trap_pc;
-        ctx = value_put_context(&global->values, step->ctx);
-        sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
-        printf("INTERRUPT RECURSE\n");
-        (void) onestep(w, next, sc, ctx, step, 0, false, true, multiplicity);
-        printf("INTERRUPT RECURSE DONE\n");
-    }
     return true;
 }
 
@@ -951,7 +947,7 @@ hvalue_t twostep(
             step.ctx->stack[step.ctx->sp - 1] = choice;
             step.ctx->pc++;
         }
-        else if (instrs[pc].log) {
+        else if (instrs[pc].print) {
             print = value_json(step.ctx->stack[step.ctx->sp - 1]);
             (*oi->op)(instrs[pc].env, sc, &step, global);
         }
@@ -1022,12 +1018,23 @@ hvalue_t twostep(
             }
         }
 
-        struct instr_t *next_instr = &global->code.instrs[step.ctx->pc];
-        if (!step.ctx->atomicFlag && (next_instr->breakable || next_instr->log)) {
-            if (step.ctx->atomic > 0) {
-                step.ctx->atomicFlag = true;
+        if (!step.ctx->atomicFlag) {
+            struct instr_t *next_instr = &global->code.instrs[step.ctx->pc];
+            bool breakable = next_instr->breakable;
+            if (next_instr->retop && step.ctx->trap_pc != 0 &&
+                                            !step.ctx->interruptlevel) {
+                hvalue_t ct = step.ctx->stack[step.ctx->sp - 4];
+                assert((ct & VALUE_MASK) == VALUE_INT);
+                if ((ct >> VALUE_BITS) == CALLTYPE_PROCESS) {
+                    breakable = true;
+                }
             }
-            break;
+            if (breakable) {
+                if (step.ctx->atomic > 0) {
+                    step.ctx->atomicFlag = true;
+                }
+                break;
+            }
         }
     }
 
@@ -2043,6 +2050,7 @@ nworkers = 1;
     }
 
     // Look for data races
+    // TODO.  Can easily be parallelized
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
         for (int i = 0; i < global->graph.size; i++) {

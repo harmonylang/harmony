@@ -24,8 +24,9 @@ static struct instr_t code_instr_parse(struct values_t *values, struct json_valu
     i.load = strcmp(oi->name, "Load") == 0;
     i.store = strcmp(oi->name, "Store") == 0;
     i.del = strcmp(oi->name, "Del") == 0;
-    i.log = strcmp(oi->name, "Print") == 0;
-    i.breakable = i.load || i.store || i.del;
+    i.print = strcmp(oi->name, "Print") == 0;
+    i.retop = strcmp(oi->name, "Return") == 0;
+    i.breakable = i.load || i.store || i.del || i.print;
     if (strcmp(oi->name, "AtomicInc") == 0) {
         const struct env_AtomicInc *ea = i.env;
         if (!ea->lazy) {
