@@ -895,9 +895,10 @@ in a spinloop is a common way of synchronizing threads, and Harmony
 does not report such issues.  We call this \emph{passive busy
 waiting} as the thread does not modify the state.
 
-A thread is considered \emph{actively busy waiting} if it cannot
+A thread is considered \emph{actively busy waiting} if it is in a
+loop updating the shared state, but cannot
 escape its strongly connected component without another thread
-updating the shared state first.  A common example of this is a
+also updating the shared state.  A common example of this is a
 synchronization algorithm that checks for a condition in a loop,
 acquiring and releasing the lock each time.  Harmony checks each
 strongly connected component for the existence of such situations
