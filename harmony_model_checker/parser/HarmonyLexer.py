@@ -572,7 +572,7 @@ class HarmonyLexer(Lexer):
         self._predicates = None
 
 
-    class MyCoolDenter(DenterHelper):
+    class HarmonyDenter(DenterHelper):
         def __init__(self, lexer, nl_token, indent_token, dedent_token, ignore_eof):
             super().__init__(nl_token, indent_token, dedent_token, ignore_eof)
             self.lexer: HarmonyLexer = lexer
@@ -596,7 +596,7 @@ class HarmonyLexer(Lexer):
 
     def nextToken(self):
         if not self.denter:
-            self.denter = self.MyCoolDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
+            self.denter = self.HarmonyDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
         token = self.denter.next_token()
         return token
 

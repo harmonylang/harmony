@@ -16,20 +16,6 @@ class HarmonyTokenStream(CommonTokenStream):
         super().__init__(lexer)
         self.parser = parser
 
-    def _handle_var_let(self):
-        """
-        Handles multi-line tokens in a for-declaration.
-        Skips newlines until it encounters [=] in the token stream
-        """
-        pass
-
-    def _handle_for_start(self):
-        """
-        Handles multi-line tokens in a for-declaration.
-        Skips newlines until it encounters [in] in the token stream
-        """
-        pass
-
     def handle_compound(self):
         idx = 1
         end_token_str = ':'

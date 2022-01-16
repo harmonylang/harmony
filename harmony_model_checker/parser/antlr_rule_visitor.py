@@ -65,7 +65,16 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#program.
     def visitProgram(self, ctx: HarmonyParser.ProgramContext):
         stmts = [s for stmt in ctx.stmt() for s in self.visit(stmt) if s is not None]
-        return BlockAST(self.get_token(ctx.start, ctx.start.text), False, stmts)
+        token = self.get_token(ctx.start, ctx.start.text)
+        if len(stmts) == 0:
+            raise HarmonyCompilerError(
+                message="Empty program",
+                filename=self.file,
+                line=token[2],
+                column=token[3],
+                lexeme=token[0]
+            )
+        return BlockAST(token, False, stmts)
 
     # Visit a parse tree produced by HarmonyParser#tuple_bound.
     def visitTuple_bound(self, ctx:HarmonyParser.Tuple_boundContext):

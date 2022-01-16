@@ -15,16 +15,16 @@ class HarmonyParserErrorListener(ErrorListener):
         line = offending_symbol.line
         column = offending_symbol.column
 
-        # if offending_symbol.type == HarmonyParser.INDENT:
-        #     self.errors.append(ErrorToken(
-        #         filename=self.filename,
-        #         lexeme=lexeme,
-        #         message="Indentation error",
-        #         line=line,
-        #         column=column,
-        #         is_eof_error=False
-        #     ))
-        #     return
+        if offending_symbol.type == HarmonyParser.INDENT:
+            self.errors.append(ErrorToken(
+                filename=self.filename,
+                lexeme=lexeme,
+                message="Indentation error",
+                line=line,
+                column=column,
+                is_eof_error=False
+            ))
+            return
 
         self.errors.append(ErrorToken(
             filename=self.filename,

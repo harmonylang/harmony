@@ -14,7 +14,7 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
-from harmony_model_checker.package_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
+from harmony_model_checker.model_checker_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyTokenStream import HarmonyTokenStream
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
@@ -152,8 +152,10 @@ def parse(filename: str) -> BlockAST:
         raise HarmonyCompilerErrorCollection(error_listener.errors)
 
     visitor = HarmonyVisitorImpl(filename)
-    return visitor.visit(tree)
-
+    try:
+        return visitor.visit(tree)
+    except HarmonyCompilerError as e:
+        raise HarmonyCompilerErrorCollection([e.token])
 
 def do_compile(filenames: List[str], consts: List[str], mods: List[str], interface: List[str]):
     for c in consts:

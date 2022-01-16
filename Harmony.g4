@@ -17,7 +17,7 @@ from antlr_denter.DenterHelper import DenterHelper
 from .HarmonyParser import HarmonyParser
 }
 @lexer::members {
-class MyCoolDenter(DenterHelper):
+class HarmonyDenter(DenterHelper):
     def __init__(self, lexer, nl_token, indent_token, dedent_token, ignore_eof):
         super().__init__(nl_token, indent_token, dedent_token, ignore_eof)
         self.lexer: HarmonyLexer = lexer
@@ -41,7 +41,7 @@ denter = None
 
 def nextToken(self):
     if not self.denter:
-        self.denter = self.MyCoolDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
+        self.denter = self.HarmonyDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
     token = self.denter.next_token()
     return token
 }
@@ -305,12 +305,12 @@ self.getTokenStream().handle_assignment()
     : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
-stmt: (label? ATOMICALLY? (
+stmt: ((label? ATOMICALLY? (
           SEMI_COLON* NL
         | one_line_stmt
         | compound_stmt
         | import_stmt
-    ) | label ATOMICALLY? normal_block);
+    )) | (label ATOMICALLY? normal_block));
 
 COMMENT_START: '#';
 OPEN_MULTI_COMMENT: '(*';
