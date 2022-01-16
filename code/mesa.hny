@@ -2,7 +2,7 @@ def Condition():
     result = bag.empty()
 
 def wait(c, lk):
-    var cnt = 0
+    var cnt 0
     let ctx = get_context():
         atomically:
             cnt = bag.multiplicity(!c, ctx)
