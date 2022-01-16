@@ -13,17 +13,29 @@ def indentation(self):
 }
 
 @lexer::header{
-from antlr_denter.DenterHelper import DenterHelper
+from .custom_denter import ModifiedDenterHelper
 from .HarmonyParser import HarmonyParser
 }
 @lexer::members {
-class HarmonyDenter(DenterHelper):
-    def __init__(self, lexer, nl_token, indent_token, dedent_token, ignore_eof):
-        super().__init__(nl_token, indent_token, dedent_token, ignore_eof)
+class HarmonyDenter(ModifiedDenterHelper):
+    def __init__(self, lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof):
+        super().__init__(nl_token, colon_token, indent_token, dedent_token, ignore_eof)
         self.lexer: HarmonyLexer = lexer
 
     def pull_token(self):
         return super(HarmonyLexer, self.lexer).nextToken()
+
+@property
+def opened_for(self):
+    try:
+        return self._opened_for
+    except AttributeError:
+        self._opened_for = 0
+        return self._opened_for
+
+@opened_for.setter
+def opened_for(self, value):
+    self._opened_for = value
 
 @property
 def opened(self):
@@ -41,13 +53,13 @@ denter = None
 
 def nextToken(self):
     if not self.denter:
-        self.denter = self.HarmonyDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
+        self.denter = self.HarmonyDenter(self, self.NL, self.COLON, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
     token = self.denter.next_token()
     return token
 }
 
 NL: '\r'? '\n' (' '* | '\t') {
-if self.opened:
+if self.opened or self.opened_for:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
 WS : (' '+ | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
@@ -235,9 +247,7 @@ let_when_block: let_when_decl COLON block;
 
 method_decl: DEF NAME OPEN_PAREN bound? CLOSE_PAREN COLON block;
 while_block: WHILE expr COLON block;
-elif_block @init{
-self.getTokenStream().handle_compound()
-}: ELIF expr COLON block;
+elif_block: ELIF expr COLON block;
 else_block: ELSE COLON block;
 
 if_block: IF expr COLON block elif_block* else_block?;
@@ -288,9 +298,7 @@ simple_stmt
     ;
 
 // Statements that may introduce a new indentation block
-compound_stmt @init{
-self.getTokenStream().handle_compound()
-}
+compound_stmt
     : if_block
     | while_block
     | for_block
@@ -299,9 +307,7 @@ self.getTokenStream().handle_compound()
     | method_decl
     ;
 
-one_line_stmt @init {
-self.getTokenStream().handle_assignment()
-}
+one_line_stmt
     : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
@@ -354,8 +360,11 @@ DEF     : 'def';
 EXISTS  : 'exists';
 WHERE   : 'where';
 EQ      : '=';
-FOR     : 'for';
-IN      : 'in';
+FOR     : 'for' {self.opened_for += 1};
+IN      : 'in' {
+if self.opened_for >= 0:
+    self.opened_for -= 1
+};
 COLON   : ':';
 NONE    : 'None';
 ATOMICALLY: 'atomically';
