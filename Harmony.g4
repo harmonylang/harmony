@@ -46,7 +46,7 @@ def nextToken(self):
     return token
 }
 
-NL: '\r'? '\n' ' '* {
+NL: '\r'? '\n' (' '* | '\t') {
 if self.opened:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
@@ -305,13 +305,12 @@ self.getTokenStream().handle_assignment()
     : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
-stmt: label? ATOMICALLY? (
+stmt: (label? ATOMICALLY? (
           SEMI_COLON* NL
         | one_line_stmt
         | compound_stmt
         | import_stmt
-        | normal_block
-    );
+    ) | label ATOMICALLY? normal_block);
 
 COMMENT_START: '#';
 OPEN_MULTI_COMMENT: '(*';

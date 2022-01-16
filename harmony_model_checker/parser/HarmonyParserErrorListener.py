@@ -2,7 +2,7 @@ from typing import List
 from antlr4.error.ErrorListener import ErrorListener
 
 from harmony_model_checker.exception import ErrorToken, HarmonyCompilerError
-
+from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 
 class HarmonyParserErrorListener(ErrorListener):
     def __init__(self, filename: str):
@@ -14,6 +14,17 @@ class HarmonyParserErrorListener(ErrorListener):
         lexeme = offending_symbol.text
         line = offending_symbol.line
         column = offending_symbol.column
+
+        # if offending_symbol.type == HarmonyParser.INDENT:
+        #     self.errors.append(ErrorToken(
+        #         filename=self.filename,
+        #         lexeme=lexeme,
+        #         message="Indentation error",
+        #         line=line,
+        #         column=column,
+        #         is_eof_error=False
+        #     ))
+        #     return
 
         self.errors.append(ErrorToken(
             filename=self.filename,
