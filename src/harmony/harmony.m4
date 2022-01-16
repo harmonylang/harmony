@@ -7870,11 +7870,12 @@ Interrupt(self) ==
         /\\ UNCHANGED shared
 
 Next == (\\E self \\in active: Step(self) \\/ Interrupt(self)) \\/ Idle
-Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)
-Spec == Init /\\ [][Next]_allvars /\\ Liveness
+Spec == Init /\\ [][Next]_allvars
 
 THEOREM Spec => []TypeInvariant
-THEOREM Spec => []<><<Idle>>_allvars
+THEOREM Spec => [](active \subseteq (DOMAIN ctxbag))
+THEOREM Spec => ((active = {}) => [](active = {}))
+\* THEOREM Spec => []<>(active = {})
 ================""", file=f)
 
 def usage():

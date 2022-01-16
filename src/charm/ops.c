@@ -918,63 +918,60 @@ void op_ReadonlyInc(const void *env, struct state *state, struct step *step, str
     ctx->pc++;
 }
 
+// On the stack are:
+//  - frame pointer
+//  - saved variables
+//  - saved argument for stack trace
+//  - process, normal, or interrupt
+//  - return address if normal or interrupt
 void op_Return(const void *env, struct state *state, struct step *step, struct global_t *global){
-    if (step->ctx->sp == 0) {     // __init__    TODO: no longer the case
-        assert(false);
+    hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
+    hvalue_t fp = value_ctx_pop(&step->ctx);
+    if ((fp & VALUE_MASK) != VALUE_INT) {
+        printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
+        value_ctx_failure(step->ctx, &global->values, "XXX");
+        return;
+        // exit(1);
+    }
+    assert((fp & VALUE_MASK) == VALUE_INT);
+    step->ctx->fp = fp >> VALUE_BITS;
+    hvalue_t oldvars = value_ctx_pop(&step->ctx);
+    assert((oldvars & VALUE_MASK) == VALUE_DICT);
+    step->ctx->vars = oldvars;
+    (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
+    if (step->ctx->sp == 0) {     // __init__
         step->ctx->terminated = true;
         if (false) {
             printf("RETURN INIT\n");
         }
+        return;
     }
-    else {
-        hvalue_t result = value_dict_load(step->ctx->vars, value_put_atom(&global->values, "result", 6));
-        hvalue_t fp = value_ctx_pop(&step->ctx);
-        if ((fp & VALUE_MASK) != VALUE_INT) {
-            printf("XXX %d %d %s\n", step->ctx->pc, step->ctx->sp, value_string(fp));
-            value_ctx_failure(step->ctx, &global->values, "XXX");
-            return;
-            // exit(1);
+    hvalue_t calltype = value_ctx_pop(&step->ctx);
+    assert((calltype & VALUE_MASK) == VALUE_INT);
+    switch (calltype >> VALUE_BITS) {
+    case CALLTYPE_PROCESS:
+        step->ctx->terminated = true;
+        break;
+    case CALLTYPE_NORMAL:
+        {
+            hvalue_t pc = value_ctx_pop(&step->ctx);
+            assert((pc & VALUE_MASK) == VALUE_PC);
+            pc >>= VALUE_BITS;
+            assert(pc != step->ctx->pc);
+            value_ctx_push(&step->ctx, result);
+            step->ctx->pc = pc;
         }
-        assert((fp & VALUE_MASK) == VALUE_INT);
-        step->ctx->fp = fp >> VALUE_BITS;
-        hvalue_t oldvars = value_ctx_pop(&step->ctx);
-        assert((oldvars & VALUE_MASK) == VALUE_DICT);
-        step->ctx->vars = oldvars;
-        (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
-        if (step->ctx->sp == 0) {     // __init__
-            step->ctx->terminated = true;
-            if (false) {
-                printf("RETURN INIT\n");
-            }
-            return;
-        }
-        hvalue_t calltype = value_ctx_pop(&step->ctx);
-        assert((calltype & VALUE_MASK) == VALUE_INT);
-        switch (calltype >> VALUE_BITS) {
-        case CALLTYPE_PROCESS:
-            step->ctx->terminated = true;
-            break;
-        case CALLTYPE_NORMAL:
-            {
-                hvalue_t pc = value_ctx_pop(&step->ctx);
-                assert((pc & VALUE_MASK) == VALUE_PC);
-                pc >>= VALUE_BITS;
-                assert(pc != step->ctx->pc);
-                value_ctx_push(&step->ctx, result);
-                step->ctx->pc = pc;
-            }
-            break;
-		case CALLTYPE_INTERRUPT:
-			step->ctx->interruptlevel = false;
-			hvalue_t pc = value_ctx_pop(&step->ctx);
-			assert((pc & VALUE_MASK) == VALUE_PC);
-			pc >>= VALUE_BITS;
-			assert(pc != step->ctx->pc);
-			step->ctx->pc = pc;
-			break;
-        default:
-            panic("op_Return: bad call type");
-        }
+        break;
+    case CALLTYPE_INTERRUPT:
+        step->ctx->interruptlevel = false;
+        hvalue_t pc = value_ctx_pop(&step->ctx);
+        assert((pc & VALUE_MASK) == VALUE_PC);
+        pc >>= VALUE_BITS;
+        assert(pc != step->ctx->pc);
+        step->ctx->pc = pc;
+        break;
+    default:
+        panic("op_Return: bad call type");
     }
 }
 

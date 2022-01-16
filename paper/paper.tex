@@ -747,8 +747,8 @@ Instead, Harmony keeps printed values on the edges between the states.
 \subsection{Model Checker}
 
 \emph{Charm}, Harmony's concurrent model checker, is an explicit state model
-checker that computes a \emph{Kripke structure} (essentially, a graph)
-of states reachable
+checker that computes a \emph{Kripke structure}~\cite{Kripke1963}
+(essentially, a graph) of states reachable
 from the initial state in a breadth-first manner, stopping only if
 it encounters an error (such as divide-by-zero or a failing assertion)
 or until there are no more new states.
@@ -797,7 +797,8 @@ parallelizable, allowing for significant speedups on multi-core machines.
 
 A data race occurs when two or more threads simultaneously try to
 access the same shared data location, at least one of which is a
-\texttt{Store}, \texttt{Stop}, or \texttt{Del} instruction.  Harmony
+\texttt{Store}, \texttt{Stop}, or \texttt{Del} instruction.  Data races
+can also occur in a single thread that experiences an interrupt.  Harmony
 only considers this a problem it at least one of those threads is
 not in atomic mode.  After all, we do not want to consider accesses
 to a spinlock as a problem.  Also, the Harmony language allows
