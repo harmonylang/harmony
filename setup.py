@@ -7,7 +7,7 @@ import shutil
 import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.20a14"
+PACKAGE_VERSION = "0.0.20a15"
 
 PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
 
@@ -17,10 +17,6 @@ class PostInstallCommand(install):
         if not PACKAGE_CONFIG.exists():
             PACKAGE_CONFIG.mkdir()
         super().run()
-
-        pkg_version_file = PACKAGE_CONFIG / "package_version"
-        with pkg_version_file.open("w") as f:
-            f.write(PACKAGE_VERSION)
 
         harmony_cmd = shutil.which("harmony")
         if harmony_cmd is not None:
