@@ -113,7 +113,7 @@ def eps_closure(states, transitions, current):
     return frozenset(x)
 
 def behavior_parse(js, minify, outputfiles, behavior):
-    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None: #  and behavior == None:
+    if outputfiles["hfa"] == None and outputfiles["png"] == None and outputfiles["gv"] == None and behavior == None:
         return
 
     states = set()

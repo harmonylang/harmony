@@ -1,4 +1,7 @@
 """
+print "hello"
+
+spawn f()
 	This is the Harmony compiler.
 
     Copyright (C) 2020, 2021, 2022  Robbert van Renesse
@@ -6810,7 +6813,7 @@ CtxCmp(x, y) ==
     ELSE IF x.vs # y.vs THEN DictCmp(x.vs, y.vs)
     ELSE IF x.stack # y.stack THEN SeqCmp(x.stack.cval, y.stack.cal)
     ELSE IF x.interruptLevel # y.interruptLevel THEN
-                        x.interruptLevel - y.interruptLevel
+             IF x.interruptLevel THEN -1 ELSE 1
     ELSE IF x.trap # y.trap THEN SeqCmp(x.trap, y.trap)
     ELSE IF x.readonly # y.readonly THEN x.readonly - y.readonly
     ELSE Assert(FALSE, "CtxCmp: this should not happen")
@@ -7779,6 +7782,17 @@ OpReturn(self) ==
             IN
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
+        [] calltype = "interrupt" ->
+            LET raddr == self.stack[3]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.interruptLevel = FALSE,
+                            !.vs = savedvars,
+                            !.stack = Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
         [] calltype = "process" ->
             /\\ ctxbag' = ctxbag (-) SetToBag({self})
             /\\ IF self.atomic > 0
@@ -7823,8 +7837,9 @@ OpTrap(self) ==
     LET entry == self.stack[1]
         arg   == self.stack[2]
         next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
-                                            !.trap = << entry, arg >>]
+                                        !.trap = << entry.cval, arg >>]
     IN
+        /\\ entry.ctype = "pc"
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
@@ -7861,7 +7876,17 @@ def tla_translate(f, code, scope):
         print("\\/ self.pc = %d /\\ "%pc, end="", file=f)
         print(code.labeled_ops[pc].op.tladump(), file=f)
     print("""
-Next == (\\E self \\in active: Step(self)) \\/ Idle
+Interrupt(self) ==
+    LET next == [ self EXCEPT !.pc = self.trap[1],
+                    !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
+                    !.interruptLevel = TRUE, !.trap = <<>> ]
+    IN
+        /\\ self.trap # <<>>
+        /\\ ~self.interruptLevel
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+Next == (\\E self \\in active: Step(self) \\/ Interrupt(self)) \\/ Idle
 Liveness == WF_allvars(Idle) /\\ WF_allvars(Next)
 Spec == Init /\\ [][Next]_allvars /\\ Liveness
 
