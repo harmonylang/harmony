@@ -100095,6 +100095,9 @@ DelVar msg
 Apply
 Store network
 AtomicDec
+Jump 458
+DelVar $s391
+DelVar decided
 Return
 Jump 580
 Frame receive (round, k)
@@ -101057,12 +101060,7 @@ Return
 Jump 1320
 Frame cas (p, old, new)
 DelVar result
-AtomicInc(lazy)
-LoadVar p
-Load
-LoadVar old
-DelVar old
-2-ary ==
+Push ()
 StoreVar result
 LoadVar result
 JumpCond False 754
@@ -101257,6 +101255,32 @@ DelVar c
 Push PC(372)
 Push ()
 Apply
+StoreVar result
+Return
+Jump 1320
+Frame acquired binsema
+DelVar result
+LoadVar binsema
+DelVar binsema
+Load
+StoreVar result
+Return
+Jump 1320
+Frame acquire binsema
+AtomicInc(lazy)
+ReadonlyInc
+LoadVar binsema
+Load
+1-ary not
+JumpCond False 790
+Jump 793
+ReadonlyDec
+AtomicDec
+Jump 783
+ReadonlyDec
+LoadVar binsema
+DelVar binsema
+Push True
 Store
 AtomicDec
 Return
@@ -101273,6 +101297,10 @@ AtomicInc(lazy)
 ReadonlyInc
 LoadVar sema
 Load
+1-ary not
+JumpCond False 887
+Push PC(433)
+Push ()
 Push 0
 2-ary >
 JumpCond False 960
@@ -101285,8 +101313,27 @@ LoadVar sema
 DelVar sema
 Dup
 Load
+3-ary DictAdd
 Push 1
-2-ary -
+LoadVar ctx
+3-ary DictAdd
+Apply
+LoadVar cnt
+2-ary <=
+Jump 888
+Push False
+JumpCond False 893
+DelVar c
+DelVar cnt
+DelVar ctx
+Jump 896
+ReadonlyDec
+AtomicDec
+Jump 868
+ReadonlyDec
+LoadVar lk
+DelVar lk
+Push True
 Store
 AtomicDec
 Return
@@ -102761,6 +102808,7 @@ Load
 LoadVar rw
 Push "nwriters"
 Address
+Dup
 Load
 2-ary +
 Push 0
@@ -104196,6 +104244,8 @@ Apply
 Pop
 Return
 Return
+Jump 369
+Frame items d
 DelVar result
 ```
 
@@ -104578,8 +104628,31 @@ Store bag
 Jump 1039
 Frame empty ()
 DelVar result
+AtomicInc(lazy)
+ReadonlyInc
+LoadVar q
+Load
 Push ()
+2-ary !=
+JumpCond False 1002
+Jump 1005
+ReadonlyDec
+AtomicDec
+Jump 993
+ReadonlyDec
+Push PC(50)
+LoadVar q
+Load
+Apply
 StoreVar result
+LoadVar q
+Push PC(59)
+LoadVar q
+DelVar q
+Load
+Apply
+Store
+AtomicDec
 Return
 Jump 1039
 Frame fromSet s
@@ -104595,6 +104668,8 @@ Cut($s311, elt)
 LoadVar elt
 DelVar elt
 Push 1
+LoadVar item
+DelVar item
 3-ary DictAdd
 Jump 384
 DelVar $s311
@@ -104630,7 +104705,12 @@ Jump 404
 Push ?result
 LoadVar v
 DelVar v
+Store
+Push ?alloc"pool"
+Load alloc.next
 Address
+StoreVar result
+Load alloc.next
 Push 1
 StoreVar [result]
 Jump 404
@@ -104670,11 +104750,9 @@ Frame size bg
 DelVar result
 ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
+LoadVar r
+DelVar r
+Del
 AtomicDec
 ReadonlyDec
 Push 0
@@ -104700,26 +104778,29 @@ Frame bmin bg
 DelVar result
 ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
+Load alloc.pool
+Push ()
+2-ary ==
+Push "alloc_leak"
+Assert2
 AtomicDec
 ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
-StoreVar result
 Return
 Jump 1039
 Frame bmax bg
 DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
+Push ()
+Push "next"
+Push None
+3-ary DictAdd
+Push "value"
+Push None
+3-ary DictAdd
+Push "lock"
+Push PC(766)
+Push ()
+Apply
+3-ary DictAdd
 StoreVar result
 Return
 Jump 1039
@@ -104743,17 +104824,20 @@ Return
 Jump 1039
 Frame add (bg, elt)
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+Push PC(782)
+LoadVar q
+Push "lock"
+Address
+Apply
+Pop
+LoadVar q
+Push "next"
+Address
+Load
+Push None
+2-ary ==
+JumpCond False 1180
+Push None
 StoreVar result
 LoadVar elt
 LoadVar result
@@ -104808,13 +104892,6 @@ JumpCond False 609
 Push ?result
 LoadVar elt
 Address
-Dup
-LoadVar [result]
-Push 1
-2-ary -
-StoreVar [result]
-LoadVar result
-LoadVar elt
 Apply
 Push 0
 2-ary <=
@@ -104874,23 +104951,45 @@ Apply
 StoreVar hd
 Push PC(574)
 Push ()
-Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
 Apply
-StoreVar tl
+Pop
+Return
+DelVar result
+```
+
+Duration: 0.0007442000000000004
+
+---
+##  code/qsort.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Jump 244
+Frame Qsort arr
+DelVar result
+Push ()
+Push "arr"
+LoadVar arr
+3-ary DictAdd
+Push "todo"
 Push {}
 Push PC(623)
 Push ()
 Push 0
-LoadVar tl
+Push 0
 3-ary DictAdd
 Push 1
-LoadVar k
+LoadVar arr
+DelVar arr
+1-ary len
 Push 1
 2-ary -
 3-ary DictAdd
@@ -104903,11 +105002,14 @@ Cut($s568, x)
 Push PC(537)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+LoadVar q
+DelVar q
+Load
 3-ary DictAdd
 Push 1
-LoadVar hd
+LoadVar p
+DelVar p
+Load
 3-ary DictAdd
 Apply
 2-ary SetAdd
@@ -104917,15 +105019,26 @@ DelVar hd
 Push PC(623)
 Push ()
 Push 0
-LoadVar tl
-DelVar tl
+LoadVar qs
+Push "arr"
+Address
+LoadVar result
+Address
 3-ary DictAdd
 Push 1
-LoadVar k
-DelVar k
+LoadVar qs
+Push "arr"
+Address
+LoadVar i
+DelVar i
+Address
 3-ary DictAdd
 Apply
-2-ary |
+Pop
+LoadVar result
+DelVar result
+Push 1
+2-ary +
 StoreVar result
 Return
 Jump 1039
@@ -105964,6 +106077,8 @@ Cut($s313, elt)
 LoadVar elt
 DelVar elt
 Push 1
+LoadVar v
+DelVar v
 3-ary DictAdd
 Jump 386
 DelVar $s313
@@ -105972,7 +106087,14 @@ Return
 Jump 1111
 Frame fromList a
 DelVar result
+AtomicInc(lazy)
+LoadVar q
+Load
 Push ()
+2-ary ==
+JumpCond False 407
+DelVar q
+Push None
 StoreVar result
 LoadVar a
 DelVar a
@@ -106010,10 +106132,17 @@ Frame multiplicity (bg, elt)
 DelVar result
 ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
+LoadVar v
+Push None
+2-ary ==
+JumpCond True 460
+LoadVar v
+DelVar v
+Push { 1, 2, 3, 4 }
 2-ary in
-1-ary not
+Jump 462
+DelVar v
+Push True
 Assert
 AtomicDec
 ReadonlyDec
@@ -106027,26 +106156,49 @@ DelVar bg
 LoadVar elt
 DelVar elt
 Apply
+3-ary DictAdd
+IncVar $n7
+Jump 19
+DelVar $n7
+DelVar $s10
+DelVar s
 StoreVar result
 Jump 462
 DelVar bg
 DelVar elt
 Push 0
+LoadVar e
+DelVar e
+3-ary DictAdd
+2-ary +
 StoreVar result
 Return
 Jump 1111
 Frame size bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
+LoadVar s
+DelVar s
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
+Apply
+StoreVar result
+Return
+Jump 421
+Frame tail s
+DelVar result
+Push PC(6)
+Push ()
 Push 0
+LoadVar s
+3-ary DictAdd
+Push 1
+Push 1
+3-ary DictAdd
+Push 2
+LoadVar s
+DelVar s
+1-ary len
+3-ary DictAdd
+Apply
 StoreVar result
 LoadVar bg
 DelVar bg
@@ -106057,8 +106209,8 @@ JumpCond True 491
 Cut($s393, c)
 LoadVar result
 DelVar result
-LoadVar c
-DelVar c
+LoadVar v
+DelVar v
 2-ary +
 StoreVar result
 Jump 480
@@ -106067,65 +106219,92 @@ Return
 Jump 1111
 Frame bmin bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
+StoreVar $n95
+Push ()
+LoadVar a
+DelVar a
+StoreVar $s98
+LoadVar $s98
+1-ary IsEmpty
+JumpCond True 135
+Cut($s98, v)
+LoadVar $n95
+LoadVar v
+DelVar v
+3-ary DictAdd
+IncVar $n95
+Jump 125
+DelVar $n95
+DelVar $s98
 StoreVar result
 Return
 Jump 1111
 Frame bmax bg
 DelVar result
-LoadVar bg
-DelVar bg
+Push 0
+StoreVar $n113
+Push ()
+LoadVar d
 1-ary keys
-1-ary max
+StoreVar $s116
+LoadVar $s116
+1-ary IsEmpty
+JumpCond True 160
+Cut($s116, k)
+LoadVar $n113
+LoadVar d
+LoadVar k
+DelVar k
+Apply
+3-ary DictAdd
+IncVar $n113
+Jump 148
+DelVar $n113
+DelVar $s116
+DelVar d
 StoreVar result
 Return
 Jump 1111
 Frame bchoose bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+StoreVar $n134
+Push ()
+LoadVar d
 1-ary keys
-Choose
+StoreVar $s137
+LoadVar $s137
+1-ary IsEmpty
+JumpCond True 192
+Cut($s137, k)
+LoadVar $n134
+Push ()
+Push 0
+LoadVar k
+3-ary DictAdd
+Push 1
+LoadVar d
+LoadVar k
+DelVar k
+Apply
+3-ary DictAdd
+3-ary DictAdd
+IncVar $n134
+Jump 174
+DelVar $n134
+DelVar $s137
+DelVar d
 StoreVar result
 Return
 Jump 1111
 Frame add (bg, elt)
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+StoreVar index
+Push ()
 StoreVar result
-LoadVar elt
-LoadVar result
+LoadVar d
 1-ary keys
 2-ary in
 JumpCond False 568
@@ -106149,8 +106328,7 @@ Return
 Jump 1111
 Frame remove (bg, elt)
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
+Push ()
 Push 0
 LoadVar bg
 2-ary in
@@ -106244,12 +106422,8 @@ StoreVar hd
 Push PC(576)
 Push ()
 Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
+Push PC(50)
+LoadVar a
 Apply
 StoreVar tl
 Push {}
@@ -106259,10 +106433,9 @@ Push 0
 LoadVar tl
 3-ary DictAdd
 Push 1
-LoadVar k
-Push 1
-2-ary -
-3-ary DictAdd
+Push PC(59)
+LoadVar a
+DelVar a
 Apply
 StoreVar $s570
 LoadVar $s570
@@ -106272,12 +106445,55 @@ Cut($s570, x)
 Push PC(539)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+StoreVar $n214
+Push ()
+LoadVar rest
+StoreVar $s217
+DelVar v
+LoadVar $s217
+1-ary IsEmpty
+JumpCond True 282
+Cut($s217, v)
+LoadVar v
+LoadVar pivot
+2-ary <
+JumpCond False 267
+LoadVar $n214
+LoadVar v
+DelVar v
 3-ary DictAdd
-Push 1
-LoadVar hd
+IncVar $n214
+Jump 267
+DelVar $n214
+DelVar $s217
+StoreVar lower
+Push 0
+StoreVar $n233
+Push ()
+LoadVar rest
+DelVar rest
+StoreVar $s236
+DelVar v
+LoadVar $s236
+1-ary IsEmpty
+JumpCond True 306
+Cut($s236, v)
+LoadVar v
+LoadVar pivot
+2-ary >=
+JumpCond False 291
+LoadVar $n233
+LoadVar v
+DelVar v
 3-ary DictAdd
+IncVar $n233
+Jump 291
+DelVar $n233
+DelVar $s236
+StoreVar higher
+Push PC(239)
+LoadVar lower
+DelVar lower
 Apply
 2-ary SetAdd
 Jump 694
@@ -106286,13 +106502,12 @@ DelVar hd
 Push PC(625)
 Push ()
 Push 0
-LoadVar tl
-DelVar tl
+LoadVar pivot
+DelVar pivot
 3-ary DictAdd
-Push 1
-LoadVar k
-DelVar k
-3-ary DictAdd
+Push PC(239)
+LoadVar higher
+DelVar higher
 Apply
 2-ary |
 StoreVar result
@@ -106416,13 +106631,20 @@ StoreVar ctx
 AtomicInc(lazy)
 Push PC(435)
 Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
 Push 1
-LoadVar ctx
-3-ary DictAdd
+LoadVar n
+2-ary ..
+StoreVar $s282
+LoadVar $s282
+1-ary IsEmpty
+JumpCond True 363
+Cut($s282, i)
+LoadVar $n279
+LoadVar d
+LoadVar n
+LoadVar i
+DelVar i
+2-ary -
 Apply
 StoreVar cnt
 LoadVar c
@@ -106490,7 +106712,8 @@ LoadVar c
 Push PC(576)
 Push ()
 Push 0
-LoadVar c
+LoadVar q
+DelVar q
 Load
 3-ary DictAdd
 Push 1
@@ -106568,7 +106791,6 @@ Jump 1111
 Frame get q
 DelVar result
 AtomicInc(lazy)
-ReadonlyInc
 LoadVar q
 Load
 Push ()
@@ -106885,7 +107107,16 @@ DelVar result
 
 Duration: 0.0010932999999999915
 
-### Current Output
+---
+##  code/cssynch.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
 
 ```
 Frame __init__ ()
@@ -108711,6 +108942,19 @@ Address
 Load
 StoreVar result
 Return
+Push { 1, 2 }
+StoreVar $s917
+LoadVar $s917
+1-ary IsEmpty
+JumpCond True 1081
+Cut($s917, i)
+DelVar i
+Push PC(1044)
+Push ()
+Push ()
+Spawn
+Jump 1071
+DelVar $s917
 Return
 DelVar result
 ```
@@ -108726,7 +108970,7 @@ Duration is good: ✅
 
 Output is good: ✅
 
-### Baseline Output
+### Current Output
 
 ```
 Frame __init__ ()
@@ -110421,13 +110665,13 @@ StoreVar result
 Return
 Push ()
 Store bag
-Jump 1039
+Jump 1251
 Frame empty ()
 DelVar result
 Push ()
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame fromSet s
 DelVar result
 Push ()
@@ -110446,7 +110690,7 @@ Jump 384
 DelVar $s311
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame fromList a
 DelVar result
 Push ()
@@ -110482,7 +110726,7 @@ StoreVar [result]
 Jump 404
 DelVar $s327
 Return
-Jump 1039
+Jump 1251
 Frame multiplicity (bg, elt)
 DelVar result
 ReadonlyInc
@@ -110511,7 +110755,7 @@ DelVar elt
 Push 0
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame size bg
 DelVar result
 ReadonlyInc
@@ -110541,7 +110785,7 @@ StoreVar result
 Jump 478
 DelVar $s391
 Return
-Jump 1039
+Jump 1251
 Frame bmin bg
 DelVar result
 ReadonlyInc
@@ -110559,7 +110803,7 @@ DelVar bg
 1-ary min
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame bmax bg
 DelVar result
 LoadVar bg
@@ -110568,7 +110812,7 @@ DelVar bg
 1-ary max
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame bchoose bg
 DelVar result
 ReadonlyInc
@@ -110586,7 +110830,7 @@ DelVar bg
 Choose
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame add (bg, elt)
 DelVar result
 ReadonlyInc
@@ -110623,7 +110867,7 @@ Address
 Push 1
 StoreVar [result]
 Return
-Jump 1039
+Jump 1251
 Frame remove (bg, elt)
 DelVar result
 ReadonlyInc
@@ -110672,7 +110916,7 @@ Address
 DelVar [result]
 DelVar elt
 Return
-Jump 1039
+Jump 1251
 Frame combinations (bg, k)
 DelVar result
 LoadVar k
@@ -110774,7 +111018,7 @@ Apply
 2-ary |
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame tas lk
 DelVar result
 AtomicInc(lazy)
@@ -110787,7 +111031,7 @@ Push True
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame cas (p, old, new)
 DelVar result
 AtomicInc(lazy)
@@ -110808,14 +111052,14 @@ DelVar new
 DelVar p
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame BinSema acquired
 DelVar result
 LoadVar acquired
 DelVar acquired
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame Lock ()
 DelVar result
 Push PC(759)
@@ -110823,7 +111067,7 @@ Push False
 Apply
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame acquired binsema
 DelVar result
 LoadVar binsema
@@ -110831,7 +111075,7 @@ DelVar binsema
 Load
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame acquire binsema
 AtomicInc(lazy)
 ReadonlyInc
@@ -110850,7 +111094,7 @@ Push True
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame release binsema
 ReadonlyInc
 AtomicInc(lazy)
@@ -110866,7 +111110,7 @@ Push False
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame held binsema
 DelVar result
 LoadVar binsema
@@ -110874,7 +111118,7 @@ DelVar binsema
 Load
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame Condition ()
 DelVar result
 Push PC(372)
@@ -110882,7 +111126,7 @@ Push ()
 Apply
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame wait (c, lk)
 Push 0
 StoreVar cnt
@@ -110953,7 +111197,7 @@ Push True
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame notify c
 AtomicInc(lazy)
 LoadVar c
@@ -110982,7 +111226,7 @@ Store
 DelVar c
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame notifyAll c
 AtomicInc(lazy)
 LoadVar c
@@ -110993,14 +111237,14 @@ Apply
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame Semaphore cnt
 DelVar result
 LoadVar cnt
 DelVar cnt
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame P sema
 AtomicInc(lazy)
 ReadonlyInc
@@ -111023,7 +111267,7 @@ Push 1
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame V sema
 AtomicInc(lazy)
 LoadVar sema
@@ -111035,13 +111279,13 @@ Push 1
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame Queue ()
 DelVar result
 Push ()
 StoreVar result
 Return
-Jump 1039
+Jump 1251
 Frame get q
 DelVar result
 AtomicInc(lazy)
@@ -111070,7 +111314,7 @@ Apply
 Store
 AtomicDec
 Return
-Jump 1039
+Jump 1251
 Frame put (q, item)
 AtomicInc(lazy)
 LoadVar q
@@ -113390,7 +113634,7 @@ JumpCond False 1051
 Push ?V
 Push ?mutex
 Address
-Load
+Apply
 Pop
 Jump 1106
 Push ?head
@@ -113416,7 +113660,7 @@ DelVar h
 Push 1
 Apply
 Address
-Load
+Apply
 Pop
 Jump 1106
 LoadVar h
@@ -113440,13 +113684,21 @@ Push 1
 Apply
 Address
 Load
+Push 0
+2-ary ==
+JumpCond False 1141
+Push PC(904)
+LoadVar rw
+Push "w_cond"
+Address
+Apply
 Pop
 Jump 1106
 DelVar h
 Push ?V
 Push ?mutex
 Address
-Load
+Apply
 Pop
 Return
 Jump 1251
@@ -113476,6 +113728,12 @@ Push ()
 Push 0
 Push "read"
 3-ary DictAdd
+Apply
+Pop
+Jump 1157
+LoadVar rw
+Push "nwriters"
+Address
 Push 1
 LoadVar psema
 3-ary DictAdd
@@ -114891,6 +115149,23 @@ Duration: 0.0010343999999999909
 
 ---
 ##  code/RWcv.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
+```
+
+Duration: 0.0009014999999999995
+
+---
+##  code/queueconc.hny
 
 ### Summary
 
@@ -117223,6 +117498,9 @@ Push 0
 JumpCond False 1096
 Push PC(833)
 Push ()
+Apply
+3-ary DictAdd
+Push "time"
 Push 0
 LoadVar rw
 Push "r_cond"
@@ -117393,7 +117671,16 @@ Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=2
 
 Duration: 0.0009957999999999911
 
-### Current Output
+---
+##  code/queuelin.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
 
 ```
 Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
@@ -118561,6 +118848,7 @@ Jump 1159
 LoadVar q
 Push "tail"
 Address
+Dup
 Load
 Push "next"
 Address
@@ -119884,6 +120172,129 @@ Duration: 0.0011266999999999805
 
 ---
 ##  code/queuelin.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Jump 42
+Frame Lock ()
+DelVar result
+Push False
+StoreVar result
+Return
+Jump 42
+Frame acquire lk
+AtomicInc(lazy)
+ReadonlyInc
+LoadVar lk
+Load
+1-ary not
+JumpCond False 16
+Jump 19
+ReadonlyDec
+AtomicDec
+Jump 9
+ReadonlyDec
+LoadVar lk
+DelVar lk
+Push True
+Store
+AtomicDec
+Return
+Jump 42
+Frame release lk
+ReadonlyInc
+AtomicInc(lazy)
+LoadVar lk
+Load
+Assert
+AtomicDec
+ReadonlyDec
+AtomicInc(lazy)
+LoadVar lk
+DelVar lk
+Push False
+Store
+AtomicDec
+Return
+Return
+DelVar result
+```
+
+Duration: 0.0007868000000000042
+
+---
+##  code/ky2.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Push [[1, 2], [3, 4], [5, 6], [1, 11], [12, 13], [14, 15], [16, 2]]
+Store transitions
+Push 0
+Store x
+Load x
+Push 11
+2-ary <
+JumpCond False 18
+Push ?transitions
+Load x
+Address
+Push { 0, 1 }
+Choose
+Address
+Load
+Store x
+Jump 5
+Return
+DelVar result
+```
+
+Duration: 0.0007925000000000015
+
+### Current Output
+
+```
+Frame __init__ ()
+Push [[1, 2], [3, 4], [5, 6], [1, 11], [12, 13], [14, 15], [16, 2]]
+Store transitions
+Push 0
+Store x
+Load x
+Push 11
+2-ary <
+JumpCond False 18
+Push ?transitions
+Load x
+Address
+Push { 0, 1 }
+Choose
+Address
+Load
+Store x
+Jump 5
+Return
+DelVar result
+```
+
+Duration: 0.0007497000000000198
+
+---
+##  code/cslock.hny
 
 ### Summary
 
@@ -122352,6 +122763,14 @@ Push "lock"
 Address
 Apply
 Pop
+LoadVar __cmp__895
+DelVar __cmp__895
+Push 1
+2-ary <=
+DelVar __cmp__895
+DelVar __cmp__895
+DelVar __cmp__895
+Continue
 Return
 Jump 1257
 Frame get q
@@ -122417,6 +122836,19 @@ Address
 Apply
 Pop
 Return
+Push { 1, 2, 3, 4, 5 }
+StoreVar $s939
+LoadVar $s939
+1-ary IsEmpty
+JumpCond True 1106
+Cut($s939, i)
+DelVar i
+Push PC(1064)
+Push ()
+Push ()
+Spawn
+Jump 1096
+DelVar $s939
 Return
 DelVar result
 ```
@@ -122483,7 +122915,16 @@ DelVar result
 
 Duration: 0.000888899999999998
 
-### Current Output
+---
+##  code/abp.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
 
 ```
 Frame __init__ ()
@@ -122611,373 +123052,355 @@ Output is good: ✅
 ```
 Frame __init__ ()
 Push ()
-Store synch
-Push ()
-Store list
-Jump 369
-Frame subseq (s, b, e)
-DelVar result
+Dup
+Store r_chan
+Store s_chan
 Push 0
-StoreVar $n7
+Dup
+Store r_seq
+Store s_seq
+Jump 150
+Frame net_send (pchan, m, reliable)
+LoadVar pchan
+DelVar pchan
+LoadVar reliable
+DelVar reliable
+JumpCond True 23
+Push { False, True }
+Choose
+Jump 24
+Push True
+JumpCond False 28
+LoadVar m
+DelVar m
+Jump 30
+DelVar m
 Push ()
-LoadVar b
-DelVar b
-LoadVar e
-DelVar e
+Store
+Return
+Jump 150
+Frame net_recv pchan
+DelVar result
+LoadVar pchan
+DelVar pchan
+Load
+StoreVar result
+Return
+Jump 150
+Frame app_send payload
 Push 1
+Load s_seq
 2-ary -
-2-ary ..
-StoreVar $s10
-LoadVar $s10
-1-ary IsEmpty
-JumpCond True 31
-Cut($s10, x)
-LoadVar $n7
-LoadVar s
-LoadVar x
-DelVar x
-Apply
+Store s_seq
+Push ()
+Push "seq"
+Load s_seq
 3-ary DictAdd
-IncVar $n7
-Jump 19
-DelVar $n7
-DelVar $s10
-DelVar s
-StoreVar result
-Return
-Jump 369
-Frame append (s, e)
-DelVar result
-LoadVar s
-DelVar s
+Push "payload"
+LoadVar payload
+DelVar payload
+3-ary DictAdd
+StoreVar m
+Push True
+StoreVar blocked
+LoadVar blocked
+DelVar blocked
+JumpCond False 92
+Push PC(14)
 Push ()
 Push 0
-LoadVar e
-DelVar e
-3-ary DictAdd
-2-ary +
-StoreVar result
-Return
-Jump 369
-Frame head s
-DelVar result
-LoadVar s
-DelVar s
-Push 0
-Apply
-StoreVar result
-Return
-Jump 369
-Frame tail s
-DelVar result
-Push PC(6)
-Push ()
-Push 0
-LoadVar s
+Push ?s_chan
 3-ary DictAdd
 Push 1
-Push 1
+LoadVar m
 3-ary DictAdd
 Push 2
-LoadVar s
-DelVar s
-1-ary len
+Push False
 3-ary DictAdd
 Apply
-StoreVar result
-Return
-Jump 369
-Frame sum a
-DelVar result
-Push 0
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s67
-LoadVar $s67
-1-ary IsEmpty
-JumpCond True 96
-Cut($s67, v)
-LoadVar result
-DelVar result
-LoadVar v
-DelVar v
-2-ary +
-StoreVar result
-Jump 85
-DelVar $s67
-Return
-Jump 369
-Frame set a
-DelVar result
-Push {}
-LoadVar a
-DelVar a
-StoreVar $s82
-LoadVar $s82
-1-ary IsEmpty
-JumpCond True 113
-Cut($s82, v)
-LoadVar v
-DelVar v
-2-ary SetAdd
-Jump 105
-DelVar $s82
-StoreVar result
-Return
-Jump 369
-Frame list a
-DelVar result
-Push 0
-StoreVar $n95
-Push ()
-LoadVar a
-DelVar a
-StoreVar $s98
-LoadVar $s98
-1-ary IsEmpty
-JumpCond True 135
-Cut($s98, v)
-LoadVar $n95
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n95
-Jump 125
-DelVar $n95
-DelVar $s98
-StoreVar result
-Return
-Jump 369
-Frame values d
-DelVar result
-Push 0
-StoreVar $n113
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s116
-LoadVar $s116
-1-ary IsEmpty
-JumpCond True 160
-Cut($s116, k)
-LoadVar $n113
-LoadVar d
-LoadVar k
-DelVar k
+Pop
+Push PC(33)
+Push ?r_chan
 Apply
-3-ary DictAdd
-IncVar $n113
-Jump 148
-DelVar $n113
-DelVar $s116
-DelVar d
-StoreVar result
-Return
-Jump 369
-Frame items d
-DelVar result
-Push 0
-StoreVar $n134
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s137
-LoadVar $s137
-1-ary IsEmpty
-JumpCond True 192
-Cut($s137, k)
-LoadVar $n134
-Push ()
-Push 0
-LoadVar k
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-IncVar $n134
-Jump 174
-DelVar $n134
-DelVar $s137
-DelVar d
-StoreVar result
-Return
-Jump 369
-Frame enumerate d
-DelVar result
-Push 0
-StoreVar index
-Push ()
-StoreVar result
-LoadVar d
-1-ary keys
-StoreVar $s165
-LoadVar $s165
-1-ary IsEmpty
-JumpCond True 234
-Cut($s165, k)
-LoadVar result
-DelVar result
-Push ()
-Push 0
-Push ()
-Push 0
-LoadVar index
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-2-ary +
-StoreVar result
-LoadVar index
-DelVar index
-Push 1
-2-ary +
-StoreVar index
-Jump 207
-DelVar $s165
-DelVar d
-DelVar index
-Return
-Jump 369
-Frame qsort a
-DelVar result
-LoadVar a
+StoreVar response
+LoadVar response
 Push ()
 2-ary ==
-JumpCond False 249
-DelVar a
-Push ()
-StoreVar result
-Jump 324
-Push ()
-Push 0
-Push PC(50)
-LoadVar a
+JumpCond True 88
+LoadVar response
+DelVar response
+Push "ack"
 Apply
-3-ary DictAdd
-Push 1
-Push PC(59)
-LoadVar a
-DelVar a
-Apply
-3-ary DictAdd
-StoreVar (pivot, rest)
-Push 0
-StoreVar $n214
-Push ()
-LoadVar rest
-StoreVar $s217
-DelVar v
-LoadVar $s217
-1-ary IsEmpty
-JumpCond True 282
-Cut($s217, v)
-LoadVar v
-LoadVar pivot
-2-ary <
-JumpCond False 267
-LoadVar $n214
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n214
-Jump 267
-DelVar $n214
-DelVar $s217
-StoreVar lower
-Push 0
-StoreVar $n233
-Push ()
-LoadVar rest
-DelVar rest
-StoreVar $s236
-DelVar v
-LoadVar $s236
-1-ary IsEmpty
-JumpCond True 306
-Cut($s236, v)
-LoadVar v
-LoadVar pivot
-2-ary >=
-JumpCond False 291
-LoadVar $n233
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n233
-Jump 291
-DelVar $n233
-DelVar $s236
-StoreVar higher
-Push PC(239)
-LoadVar lower
-DelVar lower
-Apply
-Push ()
-Push 0
-LoadVar pivot
-DelVar pivot
-3-ary DictAdd
-Push PC(239)
-LoadVar higher
-DelVar higher
-Apply
-3-ary +
-StoreVar result
+Load s_seq
+2-ary !=
+Jump 90
+DelVar response
+Push True
+StoreVar blocked
+Jump 57
+DelVar m
 Return
-Jump 369
-Frame sorted d
-DelVar result
-Push PC(239)
-Push PC(117)
-LoadVar d
-DelVar d
-Apply
-Apply
-StoreVar result
-Return
-Jump 369
-Frame reversed d
-DelVar result
-LoadVar d
-1-ary len
-StoreVar n
-Push 0
-StoreVar $n279
-Push ()
+Jump 150
+Frame app_recv reliable
 Push 1
-LoadVar n
-2-ary ..
-StoreVar $s282
-LoadVar $s282
-1-ary IsEmpty
-JumpCond True 363
-Cut($s282, i)
-LoadVar $n279
-LoadVar d
-LoadVar n
-LoadVar i
-DelVar i
+Load r_seq
 2-ary -
+Store r_seq
+Push True
+StoreVar blocked
+LoadVar blocked
+JumpCond False 147
+Push PC(33)
+Push ?s_chan
+Apply
+StoreVar m
+LoadVar m
+Push ()
+2-ary !=
+JumpCond False 145
+Push PC(14)
+Push ()
+Push 0
+Push ?r_chan
+3-ary DictAdd
+Push 1
+Push ()
+Push "ack"
+LoadVar m
+Push "seq"
 Apply
 3-ary DictAdd
-IncVar $n279
-Jump 349
-DelVar $n279
-DelVar $s282
-DelVar d
-DelVar n
+3-ary DictAdd
+Push 2
+LoadVar reliable
+3-ary DictAdd
+Apply
+Pop
+LoadVar m
+Push "seq"
+Apply
+Load r_seq
+2-ary ==
+JumpCond False 145
+DelVar blocked
+DelVar result
+LoadVar m
+DelVar m
+Push "payload"
+Apply
+StoreVar result
+Push False
+StoreVar blocked
+DelVar m
+Jump 102
+DelVar blocked
+DelVar reliable
+Return
+Return
+DelVar result
+```
+
+Duration: 0.0009003000000000205
+
+### Current Output
+
+```
+Frame __init__ ()
+Push ?s_chan
+Sequential
+Push ?r_chan
+Sequential
+Push ()
+Dup
+Store r_chan
+Store s_chan
+Push 0
+Dup
+Store r_seq
+Store s_seq
+Jump 150
+Frame net_send (pchan, m, reliable)
+LoadVar pchan
+DelVar pchan
+LoadVar reliable
+DelVar reliable
+JumpCond True 23
+Push { False, True }
+Choose
+Jump 24
+Push True
+JumpCond False 28
+LoadVar m
+DelVar m
+Jump 30
+DelVar m
+Push ()
+Store
+Return
+Jump 150
+Frame net_recv pchan
+DelVar result
+LoadVar pchan
+DelVar pchan
+Load
 StoreVar result
 Return
+Jump 150
+Frame app_send payload
+Push 1
+Load s_seq
+2-ary -
+Store s_seq
+Push ()
+Push "seq"
+Load s_seq
+3-ary DictAdd
+Push "payload"
+LoadVar payload
+DelVar payload
+3-ary DictAdd
+StoreVar m
+Push True
+StoreVar blocked
+LoadVar blocked
+DelVar blocked
+JumpCond False 92
+Push PC(14)
+Push ()
+Push 0
+Push ?s_chan
+3-ary DictAdd
+Push 1
+LoadVar m
+3-ary DictAdd
+Push 2
+Push False
+3-ary DictAdd
+Apply
+Pop
+Push PC(33)
+Push ?r_chan
+Apply
+StoreVar response
+LoadVar response
+Push ()
+2-ary ==
+JumpCond True 88
+LoadVar response
+DelVar response
+Push "ack"
+Apply
+Load s_seq
+2-ary !=
+Jump 90
+DelVar response
+Push True
+StoreVar blocked
+Jump 57
+DelVar m
+Return
+Jump 150
+Frame app_recv reliable
+Push 1
+Load r_seq
+2-ary -
+Store r_seq
+Push True
+StoreVar blocked
+LoadVar blocked
+JumpCond False 147
+Push PC(33)
+Push ?s_chan
+Apply
+StoreVar m
+LoadVar m
+Push ()
+2-ary !=
+JumpCond False 145
+Push PC(14)
+Push ()
+Push 0
+Push ?r_chan
+3-ary DictAdd
+Push 1
+Push ()
+Push "ack"
+LoadVar m
+Push "seq"
+Apply
+3-ary DictAdd
+3-ary DictAdd
+Push 2
+LoadVar reliable
+3-ary DictAdd
+Apply
+Pop
+LoadVar m
+Push "seq"
+Apply
+Load r_seq
+2-ary ==
+JumpCond False 145
+DelVar blocked
+DelVar result
+LoadVar m
+DelVar m
+Push "payload"
+Apply
+StoreVar result
+Push False
+StoreVar blocked
+DelVar m
+Jump 102
+DelVar blocked
+DelVar reliable
+Return
+Return
+DelVar result
+```
+
+Duration: 0.0007358000000000087
+
+---
+##  code/hello9.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Push False
+Store x
+Jump 27
+Frame f ()
+Push "hello"
+Print
+AtomicInc(lazy)
+Push True
+Store x
+AtomicDec
+Return
+Jump 27
+Frame g ()
+AtomicInc(lazy)
+ReadonlyInc
+Load x
+JumpCond False 19
+Jump 22
+ReadonlyDec
+AtomicDec
+Jump 14
+ReadonlyDec
+Push "world"
+Print
+AtomicDec
+Return
+Push PC(4)
 Push ()
 Store bag
 Jump 1039
@@ -123009,176 +123432,283 @@ Jump 1039
 Frame fromList a
 DelVar result
 Push ()
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s327
-LoadVar $s327
-1-ary IsEmpty
-JumpCond True 430
-Cut($s327, v)
-LoadVar v
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 423
-Push ?result
-LoadVar v
-DelVar v
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 404
-Push ?result
-LoadVar v
-DelVar v
-Address
-Push 1
-StoreVar [result]
-Jump 404
-DelVar $s327
+Spawn
 Return
 Jump 1039
 Frame multiplicity (bg, elt)
 DelVar result
-ReadonlyInc
+```
+
+Duration: 0.0008915000000000173
+
+### Current Output
+
+```
+Frame __init__ ()
+Push False
+Store x
+Jump 27
+Frame f ()
+Push "hello"
+Print
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
+Push True
+Store x
 AtomicDec
-ReadonlyDec
-LoadVar elt
-LoadVar bg
-1-ary keys
-2-ary in
-JumpCond False 456
-LoadVar bg
-DelVar bg
-LoadVar elt
-DelVar elt
-Apply
-StoreVar result
-Jump 460
-DelVar bg
-DelVar elt
-Push 0
-StoreVar result
 Return
 Jump 1039
 Frame size bg
 DelVar result
 ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
+ReadonlyInc
+Load x
+JumpCond False 19
+Jump 22
 ReadonlyDec
-Push 0
-StoreVar result
-LoadVar bg
-DelVar bg
-StoreVar $s391
-LoadVar $s391
-1-ary IsEmpty
-JumpCond True 489
-Cut($s391, c)
-LoadVar result
+AtomicDec
+Jump 14
+ReadonlyDec
+Push "world"
+Print
+AtomicDec
+Return
+Push PC(4)
+Push ()
+Push ()
+Spawn
+Push PC(13)
+Push ()
+Push ()
+Spawn
+Return
 DelVar result
-LoadVar c
-DelVar c
-2-ary +
-StoreVar result
-Jump 478
-DelVar $s391
+```
+
+Duration: 0.000762700000000005
+
+---
+##  code/hello2.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Jump 14
+Frame handler ()
+Push "interrupt"
+Print
+Return
+Jump 14
+Frame thread ()
+Push ()
+Push PC(2)
+Trap
+Push "hello world"
+Print
+Return
+Push PC(7)
+Push ()
+Push ()
+Spawn
 Return
 Jump 1039
 Frame bmin bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
-StoreVar result
+```
+
+Duration: 0.0009177999999999964
+
+### Current Output
+
+```
+Frame __init__ ()
+Jump 14
+Frame handler ()
+Push "interrupt"
+Print
+Return
+Jump 14
+Frame thread ()
+Push ()
+Push PC(2)
+Trap
+Push "hello world"
+Print
+Return
+Push PC(7)
+Push ()
+Push ()
+Spawn
 Return
 Jump 1039
 Frame bmax bg
 DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
-StoreVar result
+```
+
+Duration: 0.0007063999999999959
+
+---
+##  code/actortest.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ❌
+
+### Baseline Output
+
+```
+Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
+```
+
+Duration: 0.000998899999999997
+
+### Current Output
+
+```
+Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
+```
+
+Duration: 0.0008568999999999938
+
+---
+##  code/hello4.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Push { False, True }
+Choose
+JumpCond False 7
+Push "hello world"
+Print
+Jump 1
 Return
 Jump 1039
 Frame bchoose bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
+```
+
+Duration: 0.0008418000000000037
+
+### Current Output
+
+```
+Frame __init__ ()
+Push { False, True }
 Choose
-StoreVar result
+JumpCond False 7
+Push "hello world"
+Print
+Jump 1
 Return
 Jump 1039
 Frame add (bg, elt)
 DelVar result
-ReadonlyInc
+```
+
+Duration: 0.0007814000000000154
+
+---
+##  code/actor.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ❌
+
+### Baseline Output
+
+```
+Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
+```
+
+Duration: 0.0008354000000000139
+
+### Current Output
+
+```
+Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
+```
+
+Duration: 0.000695100000000004
+
+---
+##  code/chain.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Push {}
+Store network
+Jump 247
+Frame send m
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
+Load network
+Push {}
+LoadVar m
+DelVar m
+2-ary SetAdd
+2-ary |
+Store network
 AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+Return
+Jump 247
+Frame receive predecessor
+DelVar result
+Push {}
+Load network
+StoreVar $s17
+DelVar payload
+LoadVar $s17
+1-ary IsEmpty
+JumpCond True 35
+Cut($s17, (id, payload))
+LoadVar id
+DelVar id
+LoadVar predecessor
+2-ary ==
+JumpCond False 21
+LoadVar payload
+DelVar payload
+2-ary SetAdd
+Jump 21
+DelVar $s17
+DelVar predecessor
 StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 566
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Dup
-LoadVar [result]
+Return
+Jump 247
+Frame replica (self, immortal)
+Push ()
+Push 0
+Push ()
+3-ary DictAdd
 Push 1
-2-ary +
-StoreVar [result]
-Jump 572
-Push ?result
-LoadVar elt
-DelVar elt
-Address
+Push 0
+LoadVar self
 Push 1
 StoreVar [result]
 Return
@@ -123187,12 +123717,30 @@ Frame remove (bg, elt)
 DelVar result
 ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
+ReadonlyInc
+Push PC(16)
+Push "client"
+Apply
+Dup
+Push {}
+2-ary ==
+JumpCond False 84
+Pop
+ReadonlyDec
+AtomicDec
+Jump 71
+Choose
+StoreVar update
+LoadVar update
+LoadVar hist
 2-ary in
 1-ary not
-Assert
+JumpCond False 92
+Jump 96
+DelVar update
+ReadonlyDec
 AtomicDec
+Jump 71
 ReadonlyDec
 LoadVar bg
 DelVar bg
@@ -123236,124 +123784,230 @@ Frame combinations (bg, k)
 DelVar result
 LoadVar k
 Push 0
-2-ary ==
-JumpCond False 638
-DelVar bg
-DelVar k
-Push {}
-Push PC(372)
+LoadVar update
+DelVar update
+3-ary DictAdd
+2-ary +
+StoreVar hist
+Push PC(4)
 Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+LoadVar hist
+3-ary DictAdd
 Apply
+Pop
+AtomicDec
+Jump 53
+AtomicInc(lazy)
+ReadonlyInc
+Push PC(16)
+LoadVar predecessors
+1-ary max
+Apply
+Dup
+Push {}
+2-ary ==
+JumpCond False 132
+Pop
+ReadonlyDec
+AtomicDec
+Jump 118
+Choose
+StoreVar payload
+Jump 138
+ReadonlyDec
+AtomicDec
+Jump 118
+ReadonlyDec
+LoadVar payload
+Push "crash"
+2-ary ==
+JumpCond False 153
+DelVar payload
+LoadVar predecessors
+Push {}
+LoadVar predecessors
+DelVar predecessors
+1-ary max
 2-ary SetAdd
-StoreVar result
-Jump 723
-Push PC(462)
-LoadVar bg
-Apply
-StoreVar n
-LoadVar k
-LoadVar n
+2-ary -
+StoreVar predecessors
+Jump 205
+LoadVar payload
+1-ary len
+LoadVar hist
+1-ary len
 2-ary >
-JumpCond False 652
-DelVar bg
-DelVar k
-DelVar n
-Push {}
-StoreVar result
-Jump 723
-LoadVar k
-LoadVar n
-DelVar n
-2-ary ==
-JumpCond False 664
-DelVar k
-Push {}
-LoadVar bg
-DelVar bg
-2-ary SetAdd
-StoreVar result
-Jump 723
-Push PC(492)
-LoadVar bg
-Apply
-StoreVar hd
-Push PC(574)
+JumpCond False 189
+Push 0
+StoreVar $n147
 Push ()
 Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
-Apply
-StoreVar tl
-Push {}
-Push PC(623)
-Push ()
-Push 0
-LoadVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
+LoadVar hist
+1-ary len
 Push 1
 2-ary -
-3-ary DictAdd
-Apply
-StoreVar $s568
-LoadVar $s568
+2-ary ..
+StoreVar $s150
+LoadVar $s150
 1-ary IsEmpty
-JumpCond True 708
-Cut($s568, x)
-Push PC(537)
+JumpCond True 185
+Cut($s150, i)
+LoadVar $n147
+LoadVar hist
+LoadVar i
+Apply
+LoadVar payload
+LoadVar i
+DelVar i
+Apply
+2-ary ==
+3-ary DictAdd
+IncVar $n147
+Jump 169
+DelVar $n147
+DelVar $s150
+1-ary all
+Jump 190
+Push False
+JumpCond False 205
+DelVar hist
+LoadVar payload
+DelVar payload
+StoreVar hist
+Push PC(4)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+LoadVar self
 3-ary DictAdd
 Push 1
-LoadVar hd
+LoadVar hist
 3-ary DictAdd
 Apply
-2-ary SetAdd
-Jump 692
-DelVar $s568
-DelVar hd
-Push PC(623)
+Pop
+DelVar payload
+AtomicDec
+Jump 53
+DelVar immortal
+DelVar predecessors
+LoadVar hist
+1-ary len
+Push 3
+2-ary ==
+JumpCond False 220
+DelVar self
+LoadVar hist
+DelVar hist
+Print
+Jump 232
+DelVar hist
+Push PC(4)
 Push ()
 Push 0
-LoadVar tl
-DelVar tl
+LoadVar self
+DelVar self
 3-ary DictAdd
 Push 1
-LoadVar k
-DelVar k
+Push "crash"
 3-ary DictAdd
 Apply
-2-ary |
-StoreVar result
+Pop
+Return
+Jump 247
+Frame client self
+Push PC(4)
+Push ()
+Push 0
+Push "client"
+3-ary DictAdd
+Push 1
+LoadVar self
+DelVar self
+3-ary DictAdd
+Apply
+Pop
+Return
+Push { 0, 1, 2 }
+Choose
+StoreVar survivor
+Push { 0, 1, 2 }
+StoreVar $s225
+LoadVar $s225
+1-ary IsEmpty
+JumpCond True 270
+Cut($s225, i)
+Push PC(40)
+Push ()
+Push 0
+LoadVar i
+3-ary DictAdd
+Push 1
+LoadVar i
+DelVar i
+LoadVar survivor
+2-ary ==
+3-ary DictAdd
+Push ()
+Spawn
+Jump 252
+DelVar $s225
+DelVar survivor
+Push { 1, 2, 3 }
+StoreVar $s244
+LoadVar $s244
+1-ary IsEmpty
+JumpCond True 284
+Cut($s244, i)
+Push PC(234)
+LoadVar i
+DelVar i
+Push ()
+Spawn
+Jump 274
+DelVar $s244
 Return
 Jump 1039
 Frame tas lk
 DelVar result
+```
+
+Duration: 0.00081210000000001
+
+### Current Output
+
+```
+Frame __init__ ()
+Push {}
+Store network
+Jump 247
+Frame send m
 AtomicInc(lazy)
-LoadVar lk
-Load
-StoreVar result
-LoadVar lk
-DelVar lk
-Push True
-Store
+Load network
+Push {}
+LoadVar m
+DelVar m
+2-ary SetAdd
+2-ary |
+Store network
 AtomicDec
 Return
 Jump 1039
 Frame cas (p, old, new)
 DelVar result
-AtomicInc(lazy)
-LoadVar p
-Load
-LoadVar old
-DelVar old
+Push {}
+Load network
+StoreVar $s17
+DelVar payload
+LoadVar $s17
+1-ary IsEmpty
+JumpCond True 35
+Cut($s17, (id, payload))
+LoadVar id
+DelVar id
+LoadVar predecessor
 2-ary ==
 StoreVar result
 LoadVar result
@@ -123444,72 +124098,57 @@ Return
 Jump 1039
 Frame wait (c, lk)
 Push 0
-StoreVar cnt
-DelVar cnt
 Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push PC(433)
-Push ()
-Push 0
-LoadVar c
-Load
 3-ary DictAdd
 Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-StoreVar cnt
-LoadVar c
-Push PC(537)
-Push ()
 Push 0
-LoadVar c
-Load
-3-ary DictAdd
+LoadVar self
 Push 1
-LoadVar ctx
+2-ary -
+2-ary ..
 3-ary DictAdd
-Apply
-Store
-LoadVar lk
+StoreVar (hist, predecessors)
+Push {}
+LoadVar immortal
+2-ary SetAdd
+Push True
+2-ary SetAdd
+Choose
+JumpCond False 65
+LoadVar hist
+1-ary len
+Push 3
+2-ary <
+Jump 66
 Push False
-Store
-AtomicDec
+JumpCond False 208
+LoadVar predecessors
+Push {}
+2-ary ==
+JumpCond False 118
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 887
-Push PC(433)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
+Push PC(16)
+Push "client"
 Apply
-LoadVar cnt
-2-ary <=
-Jump 888
-Push False
-JumpCond False 893
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 896
+Dup
+Push {}
+2-ary ==
+JumpCond False 84
+Pop
 ReadonlyDec
 AtomicDec
-Jump 868
+Jump 71
+Choose
+StoreVar update
+LoadVar update
+LoadVar hist
+2-ary in
+1-ary not
+JumpCond False 92
+Jump 96
+DelVar update
 ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
 AtomicDec
 Return
 Jump 1039
@@ -123519,22 +124158,19 @@ LoadVar c
 Load
 Push PC(372)
 Push ()
-Apply
-2-ary !=
-JumpCond False 929
-LoadVar c
-Push PC(574)
+Push 0
+LoadVar update
+DelVar update
+3-ary DictAdd
+2-ary +
+StoreVar hist
+Push PC(4)
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar self
 3-ary DictAdd
 Push 1
-Push PC(519)
-LoadVar c
-DelVar c
-Load
-Apply
+LoadVar hist
 3-ary DictAdd
 Apply
 Store
@@ -123563,12 +124199,15 @@ Jump 1039
 Frame P sema
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar sema
-Load
-Push 0
-2-ary >
-JumpCond False 960
-Jump 963
+Push PC(16)
+LoadVar predecessors
+1-ary max
+Apply
+Dup
+Push {}
+2-ary ==
+JumpCond False 132
+Pop
 ReadonlyDec
 AtomicDec
 Jump 952
@@ -123613,7 +124252,7 @@ JumpCond False 1002
 Jump 1005
 ReadonlyDec
 AtomicDec
-Jump 993
+Jump 118
 ReadonlyDec
 Push PC(50)
 LoadVar q
@@ -123636,14 +124275,19 @@ LoadVar q
 Push PC(37)
 Push ()
 Push 0
-LoadVar q
-DelVar q
-Load
-3-ary DictAdd
+LoadVar hist
+1-ary len
 Push 1
-LoadVar item
-DelVar item
-3-ary DictAdd
+2-ary -
+2-ary ..
+StoreVar $s150
+LoadVar $s150
+1-ary IsEmpty
+JumpCond True 185
+Cut($s150, i)
+LoadVar $n147
+LoadVar hist
+LoadVar i
 Apply
 Store
 AtomicDec
@@ -124142,8 +124786,8 @@ Push ?result
 LoadVar v
 DelVar v
 Address
-Dup
-LoadVar [result]
+Load
+3-ary DictAdd
 Push 1
 2-ary +
 StoreVar [result]
@@ -124160,14 +124804,19 @@ Return
 Jump 1039
 Frame multiplicity (bg, elt)
 DelVar result
-ReadonlyInc
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
+ReadonlyInc
+LoadVar bb
+Push "buffer"
+Address
+Load
+Push ()
+2-ary !=
+JumpCond False 433
+Jump 436
+ReadonlyDec
 AtomicDec
+Jump 422
 ReadonlyDec
 LoadVar elt
 LoadVar bg
@@ -124184,21 +124833,53 @@ Jump 460
 DelVar bg
 DelVar elt
 Push 0
+StoreVar $n5
+Push ()
+LoadVar b
+DelVar b
+LoadVar e
+DelVar e
+Push 1
+2-ary -
+2-ary ..
+StoreVar $s8
+LoadVar $s8
+1-ary IsEmpty
+JumpCond True 29
+Cut($s8, x)
+LoadVar $n5
+LoadVar s
+LoadVar x
+DelVar x
+Apply
+3-ary DictAdd
+IncVar $n5
+Jump 17
+DelVar $n5
+DelVar $s8
+DelVar s
 StoreVar result
 Return
 Jump 1039
 Frame size bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
+LoadVar s
+DelVar s
+Push ()
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
+LoadVar e
+DelVar e
+3-ary DictAdd
+2-ary +
+StoreVar result
+Return
+Jump 457
+Frame head s
+DelVar result
+LoadVar s
+DelVar s
 Push 0
+Apply
 StoreVar result
 LoadVar bg
 DelVar bg
@@ -124209,8 +124890,8 @@ JumpCond True 489
 Cut($s391, c)
 LoadVar result
 DelVar result
-LoadVar c
-DelVar c
+LoadVar v
+DelVar v
 2-ary +
 StoreVar result
 Jump 478
@@ -124219,65 +124900,77 @@ Return
 Jump 1039
 Frame bmin bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
+Push {}
+LoadVar a
+DelVar a
+StoreVar $s80
+LoadVar $s80
+1-ary IsEmpty
+JumpCond True 111
+Cut($s80, v)
+LoadVar v
+DelVar v
+2-ary SetAdd
+Jump 103
+DelVar $s80
 StoreVar result
 Return
 Jump 1039
 Frame bmax bg
 DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
+Push 0
+StoreVar $n93
+Push ()
+LoadVar a
+DelVar a
+StoreVar $s96
+LoadVar $s96
+1-ary IsEmpty
+JumpCond True 133
+Cut($s96, v)
+LoadVar $n93
+LoadVar v
+DelVar v
+3-ary DictAdd
+IncVar $n93
+Jump 123
+DelVar $n93
+DelVar $s96
 StoreVar result
 Return
 Jump 1039
 Frame bchoose bg
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+StoreVar $n111
+Push ()
+LoadVar d
 1-ary keys
-Choose
+StoreVar $s114
+LoadVar $s114
+1-ary IsEmpty
+JumpCond True 158
+Cut($s114, k)
+LoadVar $n111
+LoadVar d
+LoadVar k
+DelVar k
+Apply
+3-ary DictAdd
+IncVar $n111
+Jump 146
+DelVar $n111
+DelVar $s114
+DelVar d
 StoreVar result
 Return
 Jump 1039
 Frame add (bg, elt)
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
+StoreVar $n132
+Push ()
+LoadVar d
 1-ary keys
 2-ary in
 JumpCond False 566
@@ -124296,31 +124989,33 @@ LoadVar elt
 DelVar elt
 Address
 Push 1
-StoreVar [result]
+LoadVar d
+LoadVar k
+DelVar k
+Apply
+3-ary DictAdd
+3-ary DictAdd
+IncVar $n132
+Jump 172
+DelVar $n132
+DelVar $s135
+DelVar d
+StoreVar result
 Return
 Jump 1039
 Frame remove (bg, elt)
 DelVar result
-ReadonlyInc
-AtomicInc(lazy)
 Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
+StoreVar index
+Push ()
 StoreVar result
-LoadVar elt
-LoadVar result
+LoadVar d
 1-ary keys
 2-ary in
 JumpCond False 599
 LoadVar result
-LoadVar elt
-Apply
+DelVar result
+Push ()
 Push 0
 2-ary >
 Jump 600
@@ -124396,12 +125091,8 @@ StoreVar hd
 Push PC(574)
 Push ()
 Push 0
-LoadVar bg
-DelVar bg
-3-ary DictAdd
-Push 1
-LoadVar hd
-3-ary DictAdd
+Push PC(48)
+LoadVar a
 Apply
 StoreVar tl
 Push {}
@@ -124411,10 +125102,9 @@ Push 0
 LoadVar tl
 3-ary DictAdd
 Push 1
-LoadVar k
-Push 1
-2-ary -
-3-ary DictAdd
+Push PC(57)
+LoadVar a
+DelVar a
 Apply
 StoreVar $s568
 LoadVar $s568
@@ -124424,12 +125114,55 @@ Cut($s568, x)
 Push PC(537)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+StoreVar $n212
+Push ()
+LoadVar rest
+StoreVar $s215
+DelVar v
+LoadVar $s215
+1-ary IsEmpty
+JumpCond True 280
+Cut($s215, v)
+LoadVar v
+LoadVar pivot
+2-ary <
+JumpCond False 265
+LoadVar $n212
+LoadVar v
+DelVar v
 3-ary DictAdd
-Push 1
-LoadVar hd
+IncVar $n212
+Jump 265
+DelVar $n212
+DelVar $s215
+StoreVar lower
+Push 0
+StoreVar $n231
+Push ()
+LoadVar rest
+DelVar rest
+StoreVar $s234
+DelVar v
+LoadVar $s234
+1-ary IsEmpty
+JumpCond True 304
+Cut($s234, v)
+LoadVar v
+LoadVar pivot
+2-ary >=
+JumpCond False 289
+LoadVar $n231
+LoadVar v
+DelVar v
 3-ary DictAdd
+IncVar $n231
+Jump 289
+DelVar $n231
+DelVar $s234
+StoreVar higher
+Push PC(237)
+LoadVar lower
+DelVar lower
 Apply
 2-ary SetAdd
 Jump 692
@@ -124438,13 +125171,12 @@ DelVar hd
 Push PC(623)
 Push ()
 Push 0
-LoadVar tl
-DelVar tl
+LoadVar pivot
+DelVar pivot
 3-ary DictAdd
-Push 1
-LoadVar k
-DelVar k
-3-ary DictAdd
+Push PC(237)
+LoadVar higher
+DelVar higher
 Apply
 2-ary |
 StoreVar result
@@ -124486,8 +125218,12 @@ Return
 Jump 1039
 Frame BinSema acquired
 DelVar result
-LoadVar acquired
-DelVar acquired
+Push PC(237)
+Push PC(115)
+LoadVar d
+DelVar d
+Apply
+Apply
 StoreVar result
 Return
 Jump 1039
@@ -124496,21 +125232,35 @@ DelVar result
 Push PC(759)
 Push False
 Apply
+3-ary DictAdd
+IncVar $n277
+Jump 347
+DelVar $n277
+DelVar $s280
+DelVar d
+DelVar n
 StoreVar result
 Return
 Jump 1039
 Frame acquired binsema
 DelVar result
-LoadVar binsema
-DelVar binsema
-Load
+Push ()
+Push "buffer"
+Push ()
+3-ary DictAdd
+Push "size"
+LoadVar size
+DelVar size
+3-ary DictAdd
 StoreVar result
 Return
 Jump 1039
 Frame acquire binsema
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar binsema
+LoadVar bb
+Push "buffer"
+Address
 Load
 1-ary not
 JumpCond False 790
@@ -124519,9 +125269,23 @@ ReadonlyDec
 AtomicDec
 Jump 783
 ReadonlyDec
-LoadVar binsema
-DelVar binsema
-Push True
+LoadVar bb
+Push "buffer"
+Address
+Push PC(35)
+Push ()
+Push 0
+LoadVar bb
+DelVar bb
+Push "buffer"
+Address
+Load
+3-ary DictAdd
+Push 1
+LoadVar v
+DelVar v
+3-ary DictAdd
+Apply
 Store
 AtomicDec
 Return
@@ -124529,25 +125293,71 @@ Jump 1039
 Frame release binsema
 ReadonlyInc
 AtomicInc(lazy)
-LoadVar binsema
+ReadonlyInc
+LoadVar bb
+Push "buffer"
+Address
 Load
-Assert
-AtomicDec
+Push ()
+2-ary !=
+JumpCond False 433
+Jump 436
 ReadonlyDec
-AtomicInc(lazy)
-LoadVar binsema
-DelVar binsema
-Push False
+AtomicDec
+Jump 422
+ReadonlyDec
+Push PC(48)
+LoadVar bb
+Push "buffer"
+Address
+Load
+Apply
+StoreVar result
+LoadVar bb
+Push "buffer"
+Address
+Push PC(57)
+LoadVar bb
+DelVar bb
+Push "buffer"
+Address
+Load
+Apply
 Store
 AtomicDec
 Return
 Jump 1039
 Frame held binsema
 DelVar result
-LoadVar binsema
-DelVar binsema
+```
+
+Duration: 0.0007469000000000225
+
+---
+##  code/taslock.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Jump 38
+Frame test_and_set s
+DelVar result
+AtomicInc(lazy)
+LoadVar s
 Load
 StoreVar result
+LoadVar s
+DelVar s
+Push True
+Store
+AtomicDec
 Return
 Jump 1039
 Frame Condition ()
@@ -124588,11 +125398,32 @@ Push 1
 LoadVar ctx
 3-ary DictAdd
 Apply
-Store
+JumpCond False 27
+Jump 22
+DelVar lk
+Return
+Jump 38
+Frame release lk
+AtomicInc(lazy)
 LoadVar lk
+DelVar lk
 Push False
 Store
 AtomicDec
+Return
+Return
+DelVar result
+```
+
+Duration: 0.0007951999999999959
+
+### Current Output
+
+```
+Frame __init__ ()
+Jump 38
+Frame test_and_set s
+DelVar result
 AtomicInc(lazy)
 ReadonlyInc
 LoadVar lk
@@ -124653,9 +125484,9 @@ Load
 Apply
 3-ary DictAdd
 Apply
-Store
-DelVar c
-AtomicDec
+JumpCond False 27
+Jump 22
+DelVar lk
 Return
 Jump 1039
 Frame notifyAll c
@@ -124671,15 +125502,36 @@ Return
 Jump 1039
 Frame Semaphore cnt
 DelVar result
-LoadVar cnt
-DelVar cnt
+```
+
+Duration: 0.0007157000000000135
+
+---
+##  code/RW.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
+
+```
+Frame __init__ ()
+Jump 88
+Frame RWlock ()
+DelVar result
+Push { "nreaders":0, "nwriters":0 }
 StoreVar result
 Return
 Jump 1039
 Frame P sema
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar sema
+LoadVar rw
+Push "nwriters"
+Address
 Load
 Push 0
 2-ary >
@@ -124689,24 +125541,28 @@ ReadonlyDec
 AtomicDec
 Jump 952
 ReadonlyDec
-LoadVar sema
-DelVar sema
+LoadVar rw
+DelVar rw
+Push "nreaders"
+Address
 Dup
 Load
 Push 1
-2-ary -
+2-ary +
 Store
 AtomicDec
 Return
 Jump 1039
 Frame V sema
 AtomicInc(lazy)
-LoadVar sema
-DelVar sema
+LoadVar rw
+DelVar rw
+Push "nreaders"
+Address
 Dup
 Load
 Push 1
-2-ary +
+2-ary -
 Store
 AtomicDec
 Return
@@ -124721,7 +125577,9 @@ Frame get q
 DelVar result
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar q
+LoadVar rw
+Push "nreaders"
+Address
 Load
 Push ()
 2-ary !=
@@ -124752,15 +125610,6 @@ LoadVar q
 Push PC(37)
 Push ()
 Push 0
-LoadVar q
-DelVar q
-Load
-3-ary DictAdd
-Push 1
-LoadVar item
-DelVar item
-3-ary DictAdd
-Apply
 Store
 AtomicDec
 Return
@@ -125968,6 +126817,14 @@ DelVar self
 3-ary DictAdd
 Apply
 Pop
+Push PC(801)
+Push ?mutex
+Apply
+Pop
+Jump 1068
+DelVar left
+DelVar right
+DelVar which
 Return
 Push { 0, 1, 2 }
 Choose
@@ -127254,6 +128111,19 @@ Push 0
 Store
 AtomicDec
 Return
+Push { 0, 1, 2, 3, 4 }
+StoreVar $s1006
+LoadVar $s1006
+1-ary IsEmpty
+JumpCond True 1173
+Cut($s1006, i)
+Push PC(1055)
+LoadVar i
+DelVar i
+Push ()
+Spawn
+Jump 1163
+DelVar $s1006
 Return
 DelVar result
 ```
@@ -127274,14 +128144,12 @@ Output is good: ✅
 ```
 Frame __init__ ()
 Push ()
-Store synch
-Push ()
 Store list
-Jump 369
+Jump 735
 Frame subseq (s, b, e)
 DelVar result
 Push 0
-StoreVar $n7
+StoreVar $n5
 Push ()
 LoadVar b
 DelVar b
@@ -127290,25 +128158,25 @@ DelVar e
 Push 1
 2-ary -
 2-ary ..
-StoreVar $s10
-LoadVar $s10
+StoreVar $s8
+LoadVar $s8
 1-ary IsEmpty
-JumpCond True 31
-Cut($s10, x)
-LoadVar $n7
+JumpCond True 29
+Cut($s8, x)
+LoadVar $n5
 LoadVar s
 LoadVar x
 DelVar x
 Apply
 3-ary DictAdd
-IncVar $n7
-Jump 19
-DelVar $n7
-DelVar $s10
+IncVar $n5
+Jump 17
+DelVar $n5
+DelVar $s8
 DelVar s
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame append (s, e)
 DelVar result
 LoadVar s
@@ -127321,7 +128189,7 @@ DelVar e
 2-ary +
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame head s
 DelVar result
 LoadVar s
@@ -127330,10 +128198,10 @@ Push 0
 Apply
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame tail s
 DelVar result
-Push PC(6)
+Push PC(4)
 Push ()
 Push 0
 LoadVar s
@@ -127349,108 +128217,108 @@ DelVar s
 Apply
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame sum a
 DelVar result
 Push 0
 StoreVar result
 LoadVar a
 DelVar a
-StoreVar $s67
-LoadVar $s67
+StoreVar $s65
+LoadVar $s65
 1-ary IsEmpty
-JumpCond True 96
-Cut($s67, v)
+JumpCond True 94
+Cut($s65, v)
 LoadVar result
 DelVar result
 LoadVar v
 DelVar v
 2-ary +
 StoreVar result
-Jump 85
-DelVar $s67
+Jump 83
+DelVar $s65
 Return
-Jump 369
+Jump 735
 Frame set a
 DelVar result
 Push {}
 LoadVar a
 DelVar a
-StoreVar $s82
-LoadVar $s82
+StoreVar $s80
+LoadVar $s80
 1-ary IsEmpty
-JumpCond True 113
-Cut($s82, v)
+JumpCond True 111
+Cut($s80, v)
 LoadVar v
 DelVar v
 2-ary SetAdd
-Jump 105
-DelVar $s82
+Jump 103
+DelVar $s80
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame list a
 DelVar result
 Push 0
-StoreVar $n95
+StoreVar $n93
 Push ()
 LoadVar a
 DelVar a
-StoreVar $s98
-LoadVar $s98
+StoreVar $s96
+LoadVar $s96
 1-ary IsEmpty
-JumpCond True 135
-Cut($s98, v)
-LoadVar $n95
+JumpCond True 133
+Cut($s96, v)
+LoadVar $n93
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n95
-Jump 125
-DelVar $n95
-DelVar $s98
+IncVar $n93
+Jump 123
+DelVar $n93
+DelVar $s96
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame values d
 DelVar result
 Push 0
-StoreVar $n113
+StoreVar $n111
 Push ()
 LoadVar d
 1-ary keys
-StoreVar $s116
-LoadVar $s116
+StoreVar $s114
+LoadVar $s114
 1-ary IsEmpty
-JumpCond True 160
-Cut($s116, k)
-LoadVar $n113
+JumpCond True 158
+Cut($s114, k)
+LoadVar $n111
 LoadVar d
 LoadVar k
 DelVar k
 Apply
 3-ary DictAdd
-IncVar $n113
-Jump 148
-DelVar $n113
-DelVar $s116
+IncVar $n111
+Jump 146
+DelVar $n111
+DelVar $s114
 DelVar d
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame items d
 DelVar result
 Push 0
-StoreVar $n134
+StoreVar $n132
 Push ()
 LoadVar d
 1-ary keys
-StoreVar $s137
-LoadVar $s137
+StoreVar $s135
+LoadVar $s135
 1-ary IsEmpty
-JumpCond True 192
-Cut($s137, k)
-LoadVar $n134
+JumpCond True 190
+Cut($s135, k)
+LoadVar $n132
 Push ()
 Push 0
 LoadVar k
@@ -127462,14 +128330,14 @@ DelVar k
 Apply
 3-ary DictAdd
 3-ary DictAdd
-IncVar $n134
-Jump 174
-DelVar $n134
-DelVar $s137
+IncVar $n132
+Jump 172
+DelVar $n132
+DelVar $s135
 DelVar d
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame enumerate d
 DelVar result
 Push 0
@@ -127478,11 +128346,11 @@ Push ()
 StoreVar result
 LoadVar d
 1-ary keys
-StoreVar $s165
-LoadVar $s165
+StoreVar $s163
+LoadVar $s163
 1-ary IsEmpty
-JumpCond True 234
-Cut($s165, k)
+JumpCond True 232
+Cut($s163, k)
 LoadVar result
 DelVar result
 Push ()
@@ -127505,83 +128373,83 @@ DelVar index
 Push 1
 2-ary +
 StoreVar index
-Jump 207
-DelVar $s165
+Jump 205
+DelVar $s163
 DelVar d
 DelVar index
 Return
-Jump 369
+Jump 735
 Frame qsort a
 DelVar result
 LoadVar a
 Push ()
 2-ary ==
-JumpCond False 249
+JumpCond False 247
 DelVar a
 Push ()
 StoreVar result
-Jump 324
+Jump 322
 Push ()
 Push 0
-Push PC(50)
+Push PC(48)
 LoadVar a
 Apply
 3-ary DictAdd
 Push 1
-Push PC(59)
+Push PC(57)
 LoadVar a
 DelVar a
 Apply
 3-ary DictAdd
 StoreVar (pivot, rest)
 Push 0
-StoreVar $n214
+StoreVar $n212
 Push ()
 LoadVar rest
-StoreVar $s217
+StoreVar $s215
 DelVar v
-LoadVar $s217
+LoadVar $s215
 1-ary IsEmpty
-JumpCond True 282
-Cut($s217, v)
+JumpCond True 280
+Cut($s215, v)
 LoadVar v
 LoadVar pivot
 2-ary <
-JumpCond False 267
-LoadVar $n214
+JumpCond False 265
+LoadVar $n212
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n214
-Jump 267
-DelVar $n214
-DelVar $s217
+IncVar $n212
+Jump 265
+DelVar $n212
+DelVar $s215
 StoreVar lower
 Push 0
-StoreVar $n233
+StoreVar $n231
 Push ()
 LoadVar rest
 DelVar rest
-StoreVar $s236
+StoreVar $s234
 DelVar v
-LoadVar $s236
+LoadVar $s234
 1-ary IsEmpty
-JumpCond True 306
-Cut($s236, v)
+JumpCond True 304
+Cut($s234, v)
 LoadVar v
 LoadVar pivot
 2-ary >=
-JumpCond False 291
-LoadVar $n233
+JumpCond False 289
+LoadVar $n231
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n233
-Jump 291
-DelVar $n233
-DelVar $s236
+IncVar $n231
+Jump 289
+DelVar $n231
+DelVar $s234
 StoreVar higher
-Push PC(239)
+Push PC(237)
 LoadVar lower
 DelVar lower
 Apply
@@ -127590,42 +128458,42 @@ Push 0
 LoadVar pivot
 DelVar pivot
 3-ary DictAdd
-Push PC(239)
+Push PC(237)
 LoadVar higher
 DelVar higher
 Apply
 3-ary +
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame sorted d
 DelVar result
-Push PC(239)
-Push PC(117)
+Push PC(237)
+Push PC(115)
 LoadVar d
 DelVar d
 Apply
 Apply
 StoreVar result
 Return
-Jump 369
+Jump 735
 Frame reversed d
 DelVar result
 LoadVar d
 1-ary len
 StoreVar n
 Push 0
-StoreVar $n279
+StoreVar $n277
 Push ()
 Push 1
 LoadVar n
 2-ary ..
-StoreVar $s282
-LoadVar $s282
+StoreVar $s280
+LoadVar $s280
 1-ary IsEmpty
-JumpCond True 363
-Cut($s282, i)
-LoadVar $n279
+JumpCond True 361
+Cut($s280, i)
+LoadVar $n277
 LoadVar d
 LoadVar n
 LoadVar i
@@ -127633,680 +128501,356 @@ DelVar i
 2-ary -
 Apply
 3-ary DictAdd
-IncVar $n279
-Jump 349
-DelVar $n279
-DelVar $s282
+IncVar $n277
+Jump 347
+DelVar $n277
+DelVar $s280
 DelVar d
 DelVar n
 StoreVar result
 Return
+Jump 735
+Frame transfer (self, b1, b2, amt)
+Push ?send
 Push ()
-Store bag
-Jump 1039
-Frame empty ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1039
-Frame fromSet s
-DelVar result
-Push ()
-LoadVar s
-DelVar s
-StoreVar $s311
-LoadVar $s311
-1-ary IsEmpty
-JumpCond True 393
-Cut($s311, elt)
-LoadVar elt
-DelVar elt
-Push 1
+Push "dst"
+LoadVar b1
 3-ary DictAdd
-Jump 384
-DelVar $s311
-StoreVar result
-Return
-Jump 1039
-Frame fromList a
-DelVar result
+Push "src"
+LoadVar self
+3-ary DictAdd
+Push "request"
+Push "withdraw"
+3-ary DictAdd
+Push "amount"
+LoadVar amt
+3-ary DictAdd
+Address
+Load
+Pop
+Push ?send
 Push ()
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s327
-LoadVar $s327
-1-ary IsEmpty
-JumpCond True 430
-Cut($s327, v)
-LoadVar v
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 423
-Push ?result
-LoadVar v
-DelVar v
+Push "dst"
+LoadVar b2
+3-ary DictAdd
+Push "src"
+LoadVar self
+3-ary DictAdd
+Push "request"
+Push "deposit"
+3-ary DictAdd
+Push "amount"
+LoadVar amt
+DelVar amt
+3-ary DictAdd
 Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 404
-Push ?result
-LoadVar v
-DelVar v
-Address
-Push 1
-StoreVar [result]
-Jump 404
-DelVar $s327
-Return
-Jump 1039
-Frame multiplicity (bg, elt)
-DelVar result
-ReadonlyInc
+Load
+Pop
 AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar elt
-LoadVar bg
-1-ary keys
-2-ary in
-JumpCond False 456
-LoadVar bg
-DelVar bg
-LoadVar elt
-DelVar elt
+ReadonlyInc
+Push {}
+Load network
+StoreVar $s338
+DelVar m
+LoadVar $s338
+1-ary IsEmpty
+JumpCond True 424
+Cut($s338, m)
+LoadVar m
+Push "dst"
 Apply
-StoreVar result
+LoadVar self
+2-ary ==
+JumpCond False 409
+LoadVar m
+DelVar m
+2-ary SetAdd
+Jump 409
+DelVar $s338
+StoreVar msgs
+Push {}
+LoadVar msgs
+StoreVar $s355
+LoadVar $s355
+1-ary IsEmpty
+JumpCond True 439
+Cut($s355, m)
+LoadVar m
+DelVar m
+Push "src"
+Apply
+2-ary SetAdd
+Jump 429
+DelVar $s355
+Push {}
+LoadVar b1
+2-ary SetAdd
+LoadVar b2
+2-ary SetAdd
+2-ary ==
+JumpCond False 450
+DelVar b1
+DelVar b2
+Jump 454
+DelVar msgs
+ReadonlyDec
+AtomicDec
+Jump 404
+ReadonlyDec
+Push 0
+StoreVar $n378
+Push ()
+LoadVar msgs
+StoreVar $s381
+LoadVar $s381
+1-ary IsEmpty
+JumpCond True 474
+Cut($s381, m)
+LoadVar $n378
+LoadVar m
+DelVar m
+Push "response"
+Apply
+Push "yes"
+2-ary ==
+3-ary DictAdd
+IncVar $n378
 Jump 460
-DelVar bg
-DelVar elt
-Push 0
-StoreVar result
-Return
-Jump 1039
-Frame size bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-Push 0
-StoreVar result
-LoadVar bg
-DelVar bg
-StoreVar $s391
-LoadVar $s391
+DelVar $n378
+DelVar $s381
+1-ary all
+JumpCond False 513
+LoadVar msgs
+DelVar msgs
+StoreVar $s398
+DelVar m
+LoadVar $s398
 1-ary IsEmpty
-JumpCond True 489
-Cut($s391, c)
-LoadVar result
-DelVar result
-LoadVar c
-DelVar c
-2-ary +
-StoreVar result
-Jump 478
-DelVar $s391
-Return
-Jump 1039
-Frame bmin bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary min
-StoreVar result
-Return
-Jump 1039
-Frame bmax bg
-DelVar result
-LoadVar bg
-DelVar bg
-1-ary keys
-1-ary max
-StoreVar result
-Return
-Jump 1039
-Frame bchoose bg
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-1-ary keys
-Choose
-StoreVar result
-Return
-Jump 1039
-Frame add (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 566
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary +
-StoreVar [result]
-Jump 572
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-Push 1
-StoreVar [result]
-Return
-Jump 1039
-Frame remove (bg, elt)
-DelVar result
-ReadonlyInc
-AtomicInc(lazy)
-Push 0
-LoadVar bg
-2-ary in
-1-ary not
-Assert
-AtomicDec
-ReadonlyDec
-LoadVar bg
-DelVar bg
-StoreVar result
-LoadVar elt
-LoadVar result
-1-ary keys
-2-ary in
-JumpCond False 599
-LoadVar result
-LoadVar elt
+JumpCond True 510
+Cut($s398, m)
+LoadVar m
+Push "response"
 Apply
-Push 0
-2-ary >
-Jump 600
-Push False
-JumpCond False 609
-Push ?result
-LoadVar elt
-Address
-Dup
-LoadVar [result]
-Push 1
-2-ary -
-StoreVar [result]
-LoadVar result
-LoadVar elt
-Apply
-Push 0
-2-ary <=
-JumpCond False 620
-Push ?result
-LoadVar elt
-DelVar elt
-Address
-DelVar [result]
-DelVar elt
-Return
-Jump 1039
-Frame combinations (bg, k)
-DelVar result
-LoadVar k
-Push 0
+Push "yes"
 2-ary ==
-JumpCond False 638
-DelVar bg
-DelVar k
-Push {}
-Push PC(372)
+JumpCond False 481
+Push ?send
 Push ()
+Push "dst"
+LoadVar m
+DelVar m
+Push "src"
 Apply
-2-ary SetAdd
-StoreVar result
-Jump 723
-Push PC(462)
-LoadVar bg
-Apply
-StoreVar n
-LoadVar k
-LoadVar n
-2-ary >
-JumpCond False 652
-DelVar bg
-DelVar k
-DelVar n
-Push {}
-StoreVar result
-Jump 723
-LoadVar k
-LoadVar n
-DelVar n
-2-ary ==
-JumpCond False 664
-DelVar k
-Push {}
-LoadVar bg
-DelVar bg
-2-ary SetAdd
-StoreVar result
-Jump 723
-Push PC(492)
-LoadVar bg
-Apply
-StoreVar hd
-Push PC(574)
-Push ()
-Push 0
-LoadVar bg
-DelVar bg
 3-ary DictAdd
-Push 1
-LoadVar hd
+Push "src"
+LoadVar self
 3-ary DictAdd
-Apply
-StoreVar tl
-Push {}
-Push PC(623)
-Push ()
-Push 0
-LoadVar tl
+Push "request"
+Push "commit"
 3-ary DictAdd
-Push 1
-LoadVar k
-Push 1
-2-ary -
-3-ary DictAdd
-Apply
-StoreVar $s568
-LoadVar $s568
+Address
+Load
+Pop
+Jump 481
+DelVar $s398
+DelVar self
+Jump 545
+LoadVar msgs
+DelVar msgs
+StoreVar $s428
+DelVar m
+LoadVar $s428
 1-ary IsEmpty
-JumpCond True 708
-Cut($s568, x)
-Push PC(537)
+JumpCond True 545
+Cut($s428, m)
+LoadVar m
+Push "response"
+Apply
+Push "yes"
+2-ary ==
+JumpCond False 516
+Push ?send
+Push ()
+Push "dst"
+LoadVar m
+DelVar m
+Push "src"
+Apply
+3-ary DictAdd
+Push "src"
+LoadVar self
+3-ary DictAdd
+Push "request"
+Push "abort"
+3-ary DictAdd
+Address
+Load
+Pop
+Jump 516
+DelVar $s428
+DelVar self
+AtomicDec
+Return
+Jump 735
+Frame check (self, total)
+Push {}
+Push 1
+Load NBANKS
+2-ary ..
+StoreVar $s462
+LoadVar $s462
+1-ary IsEmpty
+JumpCond True 570
+Cut($s462, i)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+Push "bank"
 3-ary DictAdd
 Push 1
-LoadVar hd
+LoadVar i
+DelVar i
 3-ary DictAdd
+2-ary SetAdd
+Jump 556
+DelVar $s462
+StoreVar allbanks
+LoadVar allbanks
+StoreVar $s480
+LoadVar $s480
+1-ary IsEmpty
+JumpCond True 597
+Cut($s480, bank)
+Push ?send
+Push ()
+Push "dst"
+LoadVar bank
+DelVar bank
+3-ary DictAdd
+Push "src"
+LoadVar self
+3-ary DictAdd
+Push "request"
+Push "withdraw"
+3-ary DictAdd
+Push "amount"
+Push 0
+3-ary DictAdd
+Address
+Load
+Pop
+Jump 574
+DelVar $s480
+AtomicInc(lazy)
+ReadonlyInc
+Push {}
+Load network
+StoreVar $s507
+DelVar m
+LoadVar $s507
+1-ary IsEmpty
+JumpCond True 618
+Cut($s507, m)
+LoadVar m
+Push "dst"
+Apply
+LoadVar self
+2-ary ==
+JumpCond False 603
+LoadVar m
+DelVar m
+2-ary SetAdd
+Jump 603
+DelVar $s507
+StoreVar msgs
+Push {}
+LoadVar msgs
+StoreVar $s524
+LoadVar $s524
+1-ary IsEmpty
+JumpCond True 633
+Cut($s524, m)
+LoadVar m
+DelVar m
+Push "src"
 Apply
 2-ary SetAdd
-Jump 692
-DelVar $s568
-DelVar hd
-Push PC(623)
-Push ()
-Push 0
-LoadVar tl
-DelVar tl
-3-ary DictAdd
-Push 1
-LoadVar k
-DelVar k
-3-ary DictAdd
-Apply
-2-ary |
-StoreVar result
-Return
-Jump 1039
-Frame tas lk
-DelVar result
-AtomicInc(lazy)
-LoadVar lk
-Load
-StoreVar result
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1039
-Frame cas (p, old, new)
-DelVar result
-AtomicInc(lazy)
-LoadVar p
-Load
-LoadVar old
-DelVar old
+Jump 623
+DelVar $s524
+LoadVar allbanks
 2-ary ==
-StoreVar result
-LoadVar result
-JumpCond False 754
-LoadVar p
-DelVar p
-LoadVar new
-DelVar new
-Store
-DelVar new
-DelVar p
+JumpCond False 639
+DelVar allbanks
+Jump 643
+DelVar msgs
+ReadonlyDec
 AtomicDec
-Return
-Jump 1039
-Frame BinSema acquired
-DelVar result
-LoadVar acquired
-DelVar acquired
-StoreVar result
-Return
-Jump 1039
-Frame Lock ()
-DelVar result
-Push PC(759)
-Push False
+Jump 597
+ReadonlyDec
+ReadonlyInc
+AtomicInc(lazy)
+Push 0
+StoreVar $n545
+Push ()
+LoadVar msgs
+StoreVar $s548
+LoadVar $s548
+1-ary IsEmpty
+JumpCond True 665
+Cut($s548, m)
+LoadVar $n545
+LoadVar m
+DelVar m
+Push "response"
 Apply
-StoreVar result
-Return
-Jump 1039
-Frame acquired binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1039
-Frame acquire binsema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar binsema
-Load
-1-ary not
-JumpCond False 790
-Jump 793
-ReadonlyDec
-AtomicDec
-Jump 783
-ReadonlyDec
-LoadVar binsema
-DelVar binsema
+Push "yes"
+2-ary ==
+3-ary DictAdd
+IncVar $n545
+Jump 651
+DelVar $n545
+DelVar $s548
+1-ary all
+JumpCond False 694
+Push PC(76)
+Push 0
+StoreVar $n566
+Push ()
+LoadVar msgs
+StoreVar $s569
+LoadVar $s569
+1-ary IsEmpty
+JumpCond True 687
+Cut($s569, m)
+LoadVar $n566
+LoadVar m
+DelVar m
+Push "funds"
+Apply
+3-ary DictAdd
+IncVar $n566
+Jump 675
+DelVar $n566
+DelVar $s569
+Apply
+LoadVar total
+DelVar total
+2-ary ==
+Jump 696
+DelVar total
 Push True
-Store
-AtomicDec
-Return
-Jump 1039
-Frame release binsema
-ReadonlyInc
-AtomicInc(lazy)
-LoadVar binsema
-Load
 Assert
 AtomicDec
 ReadonlyDec
-AtomicInc(lazy)
-LoadVar binsema
-DelVar binsema
-Push False
-Store
-AtomicDec
-Return
-Jump 1039
-Frame held binsema
-DelVar result
-LoadVar binsema
-DelVar binsema
-Load
-StoreVar result
-Return
-Jump 1039
-Frame Condition ()
-DelVar result
-Push PC(372)
-Push ()
-Apply
-StoreVar result
-Return
-Jump 1039
-Frame wait (c, lk)
-Push 0
-StoreVar cnt
-DelVar cnt
-Push ()
-1-ary get_context
-StoreVar ctx
-AtomicInc(lazy)
-Push PC(433)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-StoreVar cnt
-LoadVar c
-Push PC(537)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 887
-Push PC(433)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Apply
-LoadVar cnt
-2-ary <=
-Jump 888
-Push False
-JumpCond False 893
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 896
-ReadonlyDec
-AtomicDec
-Jump 868
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 1039
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push PC(372)
-Push ()
-Apply
-2-ary !=
-JumpCond False 929
-LoadVar c
-Push PC(574)
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-Push PC(519)
-LoadVar c
-DelVar c
-Load
-Apply
-3-ary DictAdd
-Apply
-Store
-DelVar c
-AtomicDec
-Return
-Jump 1039
-Frame notifyAll c
-AtomicInc(lazy)
-LoadVar c
-DelVar c
-Push PC(372)
-Push ()
-Apply
-Store
-AtomicDec
-Return
-Jump 1039
-Frame Semaphore cnt
-DelVar result
-LoadVar cnt
-DelVar cnt
-StoreVar result
-Return
-Jump 1039
-Frame P sema
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar sema
-Load
-Push 0
-2-ary >
-JumpCond False 960
-Jump 963
-ReadonlyDec
-AtomicDec
-Jump 952
-ReadonlyDec
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary -
-Store
-AtomicDec
-Return
-Jump 1039
-Frame V sema
-AtomicInc(lazy)
-LoadVar sema
-DelVar sema
-Dup
-Load
-Push 1
-2-ary +
-Store
-AtomicDec
-Return
-Jump 1039
-Frame Queue ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1039
-Frame get q
-DelVar result
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar q
-Load
-Push ()
-2-ary !=
-JumpCond False 1002
-Jump 1005
-ReadonlyDec
-AtomicDec
-Jump 993
-ReadonlyDec
-Push PC(50)
-LoadVar q
-Load
-Apply
-StoreVar result
-LoadVar q
-Push PC(59)
-LoadVar q
-DelVar q
-Load
-Apply
-Store
-AtomicDec
-Return
-Jump 1039
-Frame put (q, item)
-AtomicInc(lazy)
-LoadVar q
-Push PC(37)
-Push ()
-Push 0
-LoadVar q
-DelVar q
-Load
-3-ary DictAdd
-Push 1
-LoadVar item
-DelVar item
-3-ary DictAdd
+LoadVar msgs
+DelVar msgs
+StoreVar $s590
+DelVar m
+LoadVar $s590
+1-ary IsEmpty
+JumpCond True 731
+Cut($s590, m)
+LoadVar m
+Push "response"
 Apply
 Store
 AtomicDec
@@ -128466,386 +129010,129 @@ DelVar result
 Push 0
 StoreVar $n7
 Push ()
-LoadVar b
-DelVar b
-LoadVar e
-DelVar e
 Push 1
-2-ary -
+Load NBANKS
 2-ary ..
-StoreVar $s10
-LoadVar $s10
+StoreVar $s622
+LoadVar $s622
 1-ary IsEmpty
-JumpCond True 31
-Cut($s10, x)
-LoadVar $n7
-LoadVar s
-LoadVar x
-DelVar x
-Apply
-3-ary DictAdd
-IncVar $n7
-Jump 19
-DelVar $n7
-DelVar $s10
-DelVar s
-StoreVar result
-Return
-Jump 369
-Frame append (s, e)
-DelVar result
-LoadVar s
-DelVar s
-Push ()
-Push 0
-LoadVar e
-DelVar e
-3-ary DictAdd
-2-ary +
-StoreVar result
-Return
-Jump 369
-Frame head s
-DelVar result
-LoadVar s
-DelVar s
-Push 0
-Apply
-StoreVar result
-Return
-Jump 369
-Frame tail s
-DelVar result
-Push PC(6)
-Push ()
-Push 0
-LoadVar s
-3-ary DictAdd
-Push 1
-Push 1
-3-ary DictAdd
-Push 2
-LoadVar s
-DelVar s
-1-ary len
-3-ary DictAdd
-Apply
-StoreVar result
-Return
-Jump 369
-Frame sum a
-DelVar result
-Push 0
-StoreVar result
-LoadVar a
-DelVar a
-StoreVar $s67
-LoadVar $s67
-1-ary IsEmpty
-JumpCond True 96
-Cut($s67, v)
-LoadVar result
-DelVar result
-LoadVar v
-DelVar v
-2-ary +
-StoreVar result
-Jump 85
-DelVar $s67
-Return
-Jump 369
-Frame set a
-DelVar result
-Push {}
-LoadVar a
-DelVar a
-StoreVar $s82
-LoadVar $s82
-1-ary IsEmpty
-JumpCond True 113
-Cut($s82, v)
-LoadVar v
-DelVar v
-2-ary SetAdd
-Jump 105
-DelVar $s82
-StoreVar result
-Return
-Jump 369
-Frame list a
-DelVar result
-Push 0
-StoreVar $n95
-Push ()
-LoadVar a
-DelVar a
-StoreVar $s98
-LoadVar $s98
-1-ary IsEmpty
-JumpCond True 135
-Cut($s98, v)
-LoadVar $n95
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n95
-Jump 125
-DelVar $n95
-DelVar $s98
-StoreVar result
-Return
-Jump 369
-Frame values d
-DelVar result
-Push 0
-StoreVar $n113
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s116
-LoadVar $s116
-1-ary IsEmpty
-JumpCond True 160
-Cut($s116, k)
-LoadVar $n113
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-IncVar $n113
-Jump 148
-DelVar $n113
-DelVar $s116
-DelVar d
-StoreVar result
-Return
-Jump 369
-Frame items d
-DelVar result
-Push 0
-StoreVar $n134
-Push ()
-LoadVar d
-1-ary keys
-StoreVar $s137
-LoadVar $s137
-1-ary IsEmpty
-JumpCond True 192
-Cut($s137, k)
-LoadVar $n134
-Push ()
-Push 0
-LoadVar k
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-IncVar $n134
-Jump 174
-DelVar $n134
-DelVar $s137
-DelVar d
-StoreVar result
-Return
-Jump 369
-Frame enumerate d
-DelVar result
-Push 0
-StoreVar index
-Push ()
-StoreVar result
-LoadVar d
-1-ary keys
-StoreVar $s165
-LoadVar $s165
-1-ary IsEmpty
-JumpCond True 234
-Cut($s165, k)
-LoadVar result
-DelVar result
-Push ()
-Push 0
-Push ()
-Push 0
-LoadVar index
-3-ary DictAdd
-Push 1
-LoadVar d
-LoadVar k
-DelVar k
-Apply
-3-ary DictAdd
-3-ary DictAdd
-2-ary +
-StoreVar result
-LoadVar index
-DelVar index
-Push 1
-2-ary +
-StoreVar index
-Jump 207
-DelVar $s165
-DelVar d
-DelVar index
-Return
-Jump 369
-Frame qsort a
-DelVar result
-LoadVar a
-Push ()
-2-ary ==
-JumpCond False 249
-DelVar a
-Push ()
-StoreVar result
-Jump 324
-Push ()
-Push 0
-Push PC(50)
-LoadVar a
-Apply
-3-ary DictAdd
-Push 1
-Push PC(59)
-LoadVar a
-DelVar a
-Apply
-3-ary DictAdd
-StoreVar (pivot, rest)
-Push 0
-StoreVar $n214
-Push ()
-LoadVar rest
-StoreVar $s217
-DelVar v
-LoadVar $s217
-1-ary IsEmpty
-JumpCond True 282
-Cut($s217, v)
-LoadVar v
-LoadVar pivot
-2-ary <
-JumpCond False 267
-LoadVar $n214
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n214
-Jump 267
-DelVar $n214
-DelVar $s217
-StoreVar lower
-Push 0
-StoreVar $n233
-Push ()
-LoadVar rest
-DelVar rest
-StoreVar $s236
-DelVar v
-LoadVar $s236
-1-ary IsEmpty
-JumpCond True 306
-Cut($s236, v)
-LoadVar v
-LoadVar pivot
-2-ary >=
-JumpCond False 291
-LoadVar $n233
-LoadVar v
-DelVar v
-3-ary DictAdd
-IncVar $n233
-Jump 291
-DelVar $n233
-DelVar $s236
-StoreVar higher
-Push PC(239)
-LoadVar lower
-DelVar lower
-Apply
-Push ()
-Push 0
-LoadVar pivot
-DelVar pivot
-3-ary DictAdd
-Push PC(239)
-LoadVar higher
-DelVar higher
-Apply
-3-ary +
-StoreVar result
-Return
-Jump 369
-Frame sorted d
-DelVar result
-Push PC(239)
-Push PC(117)
-LoadVar d
-DelVar d
-Apply
-Apply
-StoreVar result
-Return
-Jump 369
-Frame reversed d
-DelVar result
-LoadVar d
-1-ary len
-StoreVar n
-Push 0
-StoreVar $n279
-Push ()
-Push 1
-LoadVar n
-2-ary ..
-StoreVar $s282
-LoadVar $s282
-1-ary IsEmpty
-JumpCond True 363
-Cut($s282, i)
-LoadVar $n279
-LoadVar d
-LoadVar n
+JumpCond True 752
+Cut($s622, i)
 LoadVar i
 DelVar i
-2-ary -
+Push 0
+Load MAX_BALANCE
+2-ary ..
+Choose
+3-ary DictAdd
+Jump 740
+DelVar $s622
+StoreVar balances
+Push 1
+Load NBANKS
+2-ary ..
+StoreVar $s638
+LoadVar $s638
+1-ary IsEmpty
+JumpCond True 782
+Cut($s638, i)
+Load bank
+Push ()
+Push 0
+Push ()
+Push 0
+Push "bank"
+3-ary DictAdd
+Push 1
+LoadVar i
+3-ary DictAdd
+3-ary DictAdd
+Push 1
+LoadVar balances
+LoadVar i
+DelVar i
 Apply
 3-ary DictAdd
-IncVar $n279
-Jump 349
-DelVar $n279
-DelVar $s282
-DelVar d
-DelVar n
-StoreVar result
-Return
 Push ()
-Store bag
-Jump 1039
-Frame empty ()
-DelVar result
-Push ()
-StoreVar result
-Return
-Jump 1039
-Frame fromSet s
-DelVar result
-Push ()
-LoadVar s
-DelVar s
-StoreVar $s311
-LoadVar $s311
-1-ary IsEmpty
-JumpCond True 393
-Cut($s311, elt)
-LoadVar elt
-DelVar elt
+Spawn
+Jump 758
+DelVar $s638
 Push 1
+Load NCOORDS
+2-ary ..
+StoreVar $s665
+LoadVar $s665
+1-ary IsEmpty
+JumpCond True 890
+Cut($s665, i)
+Push { "check", "transfer" }
+Choose
+Push "transfer"
+2-ary ==
+JumpCond False 870
+Push {}
+Push 1
+Load NBANKS
+2-ary ..
+StoreVar $s679
+LoadVar $s679
+1-ary IsEmpty
+JumpCond True 815
+Cut($s679, j)
+Push ()
+Push 0
+Push "bank"
+3-ary DictAdd
+Push 1
+LoadVar j
+DelVar j
+3-ary DictAdd
+2-ary SetAdd
+Jump 801
+DelVar $s679
+Choose
+StoreVar b1
+Push {}
+Push 1
+Load NBANKS
+2-ary ..
+StoreVar $s699
+LoadVar $s699
+1-ary IsEmpty
+JumpCond True 837
+Cut($s699, j)
+Push ()
+Push 0
+Push "bank"
+3-ary DictAdd
+Push 1
+LoadVar j
+DelVar j
+3-ary DictAdd
+2-ary SetAdd
+Jump 823
+DelVar $s699
+Push {}
+LoadVar b1
+2-ary SetAdd
+2-ary -
+Choose
+StoreVar b2
+Push PC(368)
+Push ()
+Push 0
+Push ()
+Push 0
+Push "coord"
+3-ary DictAdd
+Push 1
+LoadVar i
+DelVar i
+3-ary DictAdd
+3-ary DictAdd
+Push 1
+LoadVar b1
+DelVar b1
 3-ary DictAdd
 Jump 384
 DelVar $s311
@@ -134038,6 +134325,263 @@ Push ()
 Push 0
 LoadVar self
 3-ary DictAdd
+Print
+AtomicInc(eager)
+ReadonlyInc
+AtomicInc(lazy)
+Push PC(124)
+1-ary countLabel
+Push 0
+2-ary ==
+JumpCond False 196
+Push PC(183)
+1-ary countLabel
+Push 1
+2-ary ==
+Jump 197
+Push False
+Assert
+AtomicDec
+ReadonlyDec
+AtomicDec
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "enter wr"
+3-ary DictAdd
+Print
+Push PC(80)
+Push ?rw
+Apply
+Pop
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "enter wr"
+3-ary DictAdd
+Print
+Jump 96
+DelVar self
+Return
+Push { 1, 2, 3 }
+StoreVar $s218
+LoadVar $s218
+1-ary IsEmpty
+JumpCond True 236
+Cut($s218, i)
+Push PC(95)
+LoadVar i
+DelVar i
+Push ()
+Spawn
+Jump 226
+DelVar $s218
+Return
+DelVar result
+```
+
+Duration: 0.0008518999999999888
+
+### Current Output
+
+```
+Frame __init__ ()
+Push ()
+Store RW
+Jump 90
+Frame RWlock ()
+DelVar result
+Push { "nreaders":0, "nwriters":0 }
+StoreVar result
+Return
+Jump 90
+Frame read_acquire rw
+AtomicInc(lazy)
+ReadonlyInc
+LoadVar rw
+Push "nwriters"
+Address
+Load
+Push 0
+2-ary ==
+JumpCond False 21
+Jump 24
+ReadonlyDec
+AtomicDec
+Jump 11
+ReadonlyDec
+LoadVar rw
+DelVar rw
+Push "nreaders"
+Address
+Dup
+Load
+Push 1
+2-ary +
+Store
+AtomicDec
+Return
+Jump 90
+Frame read_release rw
+AtomicInc(lazy)
+LoadVar rw
+DelVar rw
+Push "nreaders"
+Address
+Dup
+Load
+Push 1
+2-ary -
+Store
+AtomicDec
+Return
+Jump 90
+Frame write_acquire rw
+AtomicInc(lazy)
+ReadonlyInc
+LoadVar rw
+Push "nreaders"
+Address
+Load
+LoadVar rw
+Push "nwriters"
+Address
+Load
+2-ary +
+Push 0
+2-ary ==
+JumpCond False 67
+Jump 70
+ReadonlyDec
+AtomicDec
+Jump 52
+ReadonlyDec
+LoadVar rw
+DelVar rw
+Push "nwriters"
+Address
+Push 1
+Store
+AtomicDec
+Return
+Jump 90
+Frame write_release rw
+AtomicInc(lazy)
+LoadVar rw
+DelVar rw
+Push "nwriters"
+Address
+Push 0
+Store
+AtomicDec
+Return
+Push PC(4)
+Push ()
+Apply
+Store rw
+Jump 224
+Frame thread self
+Push { False, True }
+Choose
+JumpCond False 222
+Push { "read", "write" }
+Choose
+Push "read"
+2-ary ==
+JumpCond False 163
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "enter ra"
+3-ary DictAdd
+Print
+Push PC(10)
+Push ?rw
+Apply
+Pop
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "exit ra"
+3-ary DictAdd
+Print
+AtomicInc(eager)
+ReadonlyInc
+AtomicInc(lazy)
+Push PC(124)
+1-ary countLabel
+Push 1
+2-ary >=
+JumpCond False 137
+Push PC(183)
+1-ary countLabel
+Push 0
+2-ary ==
+Jump 138
+Push False
+Assert
+AtomicDec
+ReadonlyDec
+AtomicDec
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "enter rr"
+3-ary DictAdd
+Print
+Push PC(37)
+Push ?rw
+Apply
+Pop
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "exit rr"
+3-ary DictAdd
+Print
+Jump 96
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "enter wa"
+3-ary DictAdd
+Print
+Push PC(51)
+Push ?rw
+Apply
+Pop
+Push ()
+Push 0
+LoadVar self
+3-ary DictAdd
+Push 1
+Push "exit wa"
+3-ary DictAdd
+Print
+AtomicInc(eager)
+ReadonlyInc
+AtomicInc(lazy)
+Push PC(124)
+1-ary countLabel
+Push 0
+2-ary ==
+JumpCond False 196
+Push PC(183)
+1-ary countLabel
 Push 1
 Push "exit wa"
 3-ary DictAdd
@@ -136178,6 +136722,10 @@ Load
 JumpCond False 790
 Jump 793
 ReadonlyDec
+LoadVar binsema
+DelVar binsema
+Push True
+Store
 AtomicDec
 Jump 783
 ReadonlyDec
@@ -139442,7 +139990,7 @@ Duration is good: ✅
 
 Output is good: ✅
 
-### Baseline Output
+### Current Output
 
 ```
 Frame __init__ ()
@@ -139969,7 +140517,16 @@ DelVar result
 
 Duration: 0.001002299999999956
 
-### Current Output
+---
+##  code/hanoi.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+### Baseline Output
 
 ```
 Frame __init__ ()
@@ -139981,7 +140538,7 @@ Jump 421
 Frame subseq (s, b, e)
 DelVar result
 Push 0
-StoreVar $n7
+StoreVar $n5
 Push ()
 LoadVar b
 DelVar b
@@ -139990,21 +140547,21 @@ DelVar e
 Push 1
 2-ary -
 2-ary ..
-StoreVar $s10
-LoadVar $s10
+StoreVar $s8
+LoadVar $s8
 1-ary IsEmpty
-JumpCond True 31
-Cut($s10, x)
-LoadVar $n7
+JumpCond True 29
+Cut($s8, x)
+LoadVar $n5
 LoadVar s
 LoadVar x
 DelVar x
 Apply
 3-ary DictAdd
-IncVar $n7
-Jump 19
-DelVar $n7
-DelVar $s10
+IncVar $n5
+Jump 17
+DelVar $n5
+DelVar $s8
 DelVar s
 StoreVar result
 Return
@@ -140033,7 +140590,7 @@ Return
 Jump 421
 Frame tail s
 DelVar result
-Push PC(6)
+Push PC(4)
 Push ()
 Push 0
 LoadVar s
@@ -140056,19 +140613,19 @@ Push 0
 StoreVar result
 LoadVar a
 DelVar a
-StoreVar $s67
-LoadVar $s67
+StoreVar $s65
+LoadVar $s65
 1-ary IsEmpty
-JumpCond True 96
-Cut($s67, v)
+JumpCond True 94
+Cut($s65, v)
 LoadVar result
 DelVar result
 LoadVar v
 DelVar v
 2-ary +
 StoreVar result
-Jump 85
-DelVar $s67
+Jump 83
+DelVar $s65
 Return
 Jump 421
 Frame set a
@@ -140076,64 +140633,64 @@ DelVar result
 Push {}
 LoadVar a
 DelVar a
-StoreVar $s82
-LoadVar $s82
+StoreVar $s80
+LoadVar $s80
 1-ary IsEmpty
-JumpCond True 113
-Cut($s82, v)
+JumpCond True 111
+Cut($s80, v)
 LoadVar v
 DelVar v
 2-ary SetAdd
-Jump 105
-DelVar $s82
+Jump 103
+DelVar $s80
 StoreVar result
 Return
 Jump 421
 Frame list a
 DelVar result
 Push 0
-StoreVar $n95
+StoreVar $n93
 Push ()
 LoadVar a
 DelVar a
-StoreVar $s98
-LoadVar $s98
+StoreVar $s96
+LoadVar $s96
 1-ary IsEmpty
-JumpCond True 135
-Cut($s98, v)
-LoadVar $n95
+JumpCond True 133
+Cut($s96, v)
+LoadVar $n93
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n95
-Jump 125
-DelVar $n95
-DelVar $s98
+IncVar $n93
+Jump 123
+DelVar $n93
+DelVar $s96
 StoreVar result
 Return
 Jump 421
 Frame values d
 DelVar result
 Push 0
-StoreVar $n113
+StoreVar $n111
 Push ()
 LoadVar d
 1-ary keys
-StoreVar $s116
-LoadVar $s116
+StoreVar $s114
+LoadVar $s114
 1-ary IsEmpty
-JumpCond True 160
-Cut($s116, k)
-LoadVar $n113
+JumpCond True 158
+Cut($s114, k)
+LoadVar $n111
 LoadVar d
 LoadVar k
 DelVar k
 Apply
 3-ary DictAdd
-IncVar $n113
-Jump 148
-DelVar $n113
-DelVar $s116
+IncVar $n111
+Jump 146
+DelVar $n111
+DelVar $s114
 DelVar d
 StoreVar result
 Return
@@ -140141,16 +140698,16 @@ Jump 421
 Frame items d
 DelVar result
 Push 0
-StoreVar $n134
+StoreVar $n132
 Push ()
 LoadVar d
 1-ary keys
-StoreVar $s137
-LoadVar $s137
+StoreVar $s135
+LoadVar $s135
 1-ary IsEmpty
-JumpCond True 192
-Cut($s137, k)
-LoadVar $n134
+JumpCond True 190
+Cut($s135, k)
+LoadVar $n132
 Push ()
 Push 0
 LoadVar k
@@ -140162,10 +140719,10 @@ DelVar k
 Apply
 3-ary DictAdd
 3-ary DictAdd
-IncVar $n134
-Jump 174
-DelVar $n134
-DelVar $s137
+IncVar $n132
+Jump 172
+DelVar $n132
+DelVar $s135
 DelVar d
 StoreVar result
 Return
@@ -140178,11 +140735,11 @@ Push ()
 StoreVar result
 LoadVar d
 1-ary keys
-StoreVar $s165
-LoadVar $s165
+StoreVar $s163
+LoadVar $s163
 1-ary IsEmpty
-JumpCond True 234
-Cut($s165, k)
+JumpCond True 232
+Cut($s163, k)
 LoadVar result
 DelVar result
 Push ()
@@ -140205,8 +140762,8 @@ DelVar index
 Push 1
 2-ary +
 StoreVar index
-Jump 207
-DelVar $s165
+Jump 205
+DelVar $s163
 DelVar d
 DelVar index
 Return
@@ -140216,72 +140773,72 @@ DelVar result
 LoadVar a
 Push ()
 2-ary ==
-JumpCond False 249
+JumpCond False 247
 DelVar a
 Push ()
 StoreVar result
-Jump 324
+Jump 322
 Push ()
 Push 0
-Push PC(50)
+Push PC(48)
 LoadVar a
 Apply
 3-ary DictAdd
 Push 1
-Push PC(59)
+Push PC(57)
 LoadVar a
 DelVar a
 Apply
 3-ary DictAdd
 StoreVar (pivot, rest)
 Push 0
-StoreVar $n214
+StoreVar $n212
 Push ()
 LoadVar rest
-StoreVar $s217
+StoreVar $s215
 DelVar v
-LoadVar $s217
+LoadVar $s215
 1-ary IsEmpty
-JumpCond True 282
-Cut($s217, v)
+JumpCond True 280
+Cut($s215, v)
 LoadVar v
 LoadVar pivot
 2-ary <
-JumpCond False 267
-LoadVar $n214
+JumpCond False 265
+LoadVar $n212
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n214
-Jump 267
-DelVar $n214
-DelVar $s217
+IncVar $n212
+Jump 265
+DelVar $n212
+DelVar $s215
 StoreVar lower
 Push 0
-StoreVar $n233
+StoreVar $n231
 Push ()
 LoadVar rest
 DelVar rest
-StoreVar $s236
+StoreVar $s234
 DelVar v
-LoadVar $s236
+LoadVar $s234
 1-ary IsEmpty
-JumpCond True 306
-Cut($s236, v)
+JumpCond True 304
+Cut($s234, v)
 LoadVar v
 LoadVar pivot
 2-ary >=
-JumpCond False 291
-LoadVar $n233
+JumpCond False 289
+LoadVar $n231
 LoadVar v
 DelVar v
 3-ary DictAdd
-IncVar $n233
-Jump 291
-DelVar $n233
-DelVar $s236
+IncVar $n231
+Jump 289
+DelVar $n231
+DelVar $s234
 StoreVar higher
-Push PC(239)
+Push PC(237)
 LoadVar lower
 DelVar lower
 Apply
@@ -140290,7 +140847,7 @@ Push 0
 LoadVar pivot
 DelVar pivot
 3-ary DictAdd
-Push PC(239)
+Push PC(237)
 LoadVar higher
 DelVar higher
 Apply
@@ -140300,8 +140857,8 @@ Return
 Jump 421
 Frame sorted d
 DelVar result
-Push PC(239)
-Push PC(117)
+Push PC(237)
+Push PC(115)
 LoadVar d
 DelVar d
 Apply
@@ -140315,17 +140872,17 @@ LoadVar d
 1-ary len
 StoreVar n
 Push 0
-StoreVar $n279
+StoreVar $n277
 Push ()
 Push 1
 LoadVar n
 2-ary ..
-StoreVar $s282
-LoadVar $s282
+StoreVar $s280
+LoadVar $s280
 1-ary IsEmpty
-JumpCond True 363
-Cut($s282, i)
-LoadVar $n279
+JumpCond True 361
+Cut($s280, i)
+LoadVar $n277
 LoadVar d
 LoadVar n
 LoadVar i
@@ -140333,10 +140890,10 @@ DelVar i
 2-ary -
 Apply
 3-ary DictAdd
-IncVar $n279
-Jump 349
-DelVar $n279
-DelVar $s282
+IncVar $n277
+Jump 347
+DelVar $n277
+DelVar $s280
 DelVar d
 DelVar n
 StoreVar result
@@ -141178,6 +141735,11 @@ JumpCond True 190
 Cut($s135, k)
 LoadVar $n132
 Push ()
+2-ary ==
+JumpCond True 418
+Push ?current
+LoadVar s
+Address
 Push 0
 LoadVar k
 3-ary DictAdd
@@ -141557,12 +142119,35 @@ Push ()
 Push 0
 LoadVar succ
 3-ary DictAdd
+2-ary +
+StoreVar procs
+LoadVar next
+Load leader
+2-ary >
+JumpCond False 202
+LoadVar next
+DelVar next
+Store leader
+DelVar next
+Jump 172
+DelVar $s149
+DelVar ids
+Push 0
+LoadVar nprocs
 Push 1
 LoadVar self
 3-ary DictAdd
 Push 2
 Push False
 3-ary DictAdd
+Push 1
+LoadVar procs
+LoadVar i
+DelVar i
+Push 1
+2-ary +
+LoadVar nprocs
+2-ary %
 Apply
 Pop
 Push True
@@ -145711,6 +146296,14 @@ DelVar e
 3-ary DictAdd
 2-ary +
 StoreVar result
+LoadVar q
+Push PC(59)
+LoadVar q
+DelVar q
+Load
+Apply
+Store
+AtomicDec
 Return
 Jump 369
 Frame head s
@@ -145726,6 +146319,7 @@ Frame tail s
 DelVar result
 Push PC(6)
 Push ()
+Push "nreaders"
 Push 0
 LoadVar s
 3-ary DictAdd
@@ -145737,6 +146331,11 @@ LoadVar s
 DelVar s
 1-ary len
 3-ary DictAdd
+Push "r_gate"
+Push ()
+Push "sema"
+Push PC(759)
+Push True
 Apply
 StoreVar result
 Return
@@ -148252,12 +148851,11 @@ Push {}
 Push PC(255)
 Push ()
 Push 0
-LoadVar tl
+Load network
 3-ary DictAdd
 Push 1
-LoadVar k
-Push 1
-2-ary -
+LoadVar m
+DelVar m
 3-ary DictAdd
 Apply
 StoreVar $s268
@@ -148268,11 +148866,16 @@ Cut($s268, x)
 Push PC(169)
 Push ()
 Push 0
-LoadVar x
-DelVar x
+LoadVar b
+DelVar b
 3-ary DictAdd
 Push 1
-LoadVar hd
+LoadVar p
+DelVar p
+3-ary DictAdd
+Push 2
+LoadVar t
+DelVar t
 3-ary DictAdd
 Apply
 2-ary SetAdd
@@ -148282,12 +148885,13 @@ DelVar hd
 Push PC(255)
 Push ()
 Push 0
-LoadVar tl
-DelVar tl
+LoadVar ballot
 3-ary DictAdd
 Push 1
-LoadVar k
-DelVar k
+LoadVar phase
+3-ary DictAdd
+Push 2
+Push "B"
 3-ary DictAdd
 Apply
 2-ary |
@@ -148791,113 +149395,104 @@ Push ()
 1-ary get_context
 StoreVar ctx
 AtomicInc(lazy)
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-StoreVar cnt
-LoadVar c
-Push ?bag
-Push "add"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-Store
-LoadVar lk
-Push False
-Store
+LoadVar estimate
+Load proposals
+2-ary in
+Assert
 AtomicDec
+ReadonlyDec
+LoadVar estimate
+Print
+LoadVar ballot
+DelVar ballot
+Push 2
+2-ary +
+StoreVar ballot
+LoadVar ballot
+Push 2
+2-ary <=
+JumpCond False 643
+Push PC(380)
+Push ()
+Push 0
+LoadVar ballot
+3-ary DictAdd
+Push 1
+Push 1
+3-ary DictAdd
+Push 2
+Push "A"
+3-ary DictAdd
+Push 3
+Push None
+3-ary DictAdd
+Apply
+Pop
+AtomicDec
+Jump 482
+DelVar ballot
+DelVar estimate
+Return
+Jump 776
+Frame acceptor ()
+Push [0, None, {}]
+StoreVar (ballot, last_accepted, received)
+Push True
+JumpCond False 772
 AtomicInc(lazy)
 ReadonlyInc
-LoadVar lk
-Load
+Push {}
+Load network
+StoreVar $s579
+DelVar b
+DelVar e
+DelVar p
+LoadVar $s579
+1-ary IsEmpty
+JumpCond True 701
+Cut($s579, (b, p, t, e), _)
+DelVar _
+Push ()
+Push 0
+LoadVar b
+3-ary DictAdd
+Push 1
+LoadVar p
+3-ary DictAdd
+LoadVar received
+2-ary in
 1-ary not
-JumpCond False 76
-Push ?bag
-Push "multiplicity"
-Address
-Push ()
-Push 0
-LoadVar c
-Load
-3-ary DictAdd
-Push 1
-LoadVar ctx
-3-ary DictAdd
-Address
-Load
-LoadVar cnt
-2-ary <=
-Jump 77
+JumpCond False 683
+LoadVar t
+DelVar t
+Push "A"
+2-ary ==
+Jump 685
+DelVar t
 Push False
-JumpCond False 82
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 85
-ReadonlyDec
-AtomicDec
-Jump 54
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
-Return
-Jump 142
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-2-ary !=
-JumpCond False 127
-LoadVar c
-Push ?bag
-Push "remove"
-Address
+JumpCond False 659
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar b
+DelVar b
 3-ary DictAdd
 Push 1
-Push ?bag
-Push "bchoose"
-Address
-LoadVar c
-DelVar c
-Load
-Address
-Load
+LoadVar p
+DelVar p
 3-ary DictAdd
-Address
-Load
-Store
-DelVar c
+Push 2
+LoadVar e
+DelVar e
+3-ary DictAdd
+2-ary SetAdd
+Jump 659
+DelVar $s579
+Dup
+Push {}
+2-ary ==
+JumpCond False 710
+Pop
+ReadonlyDec
 AtomicDec
 Return
 Jump 142
@@ -148947,122 +149542,99 @@ Push "multiplicity"
 Address
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar b
 3-ary DictAdd
 Push 1
-LoadVar ctx
+LoadVar p
 3-ary DictAdd
-Address
-Load
-StoreVar cnt
-LoadVar c
-Push ?bag
-Push "add"
-Address
+2-ary SetAdd
+2-ary |
+StoreVar received
+LoadVar b
+LoadVar ballot
+2-ary >=
+JumpCond False 751
+DelVar ballot
+LoadVar b
+StoreVar ballot
+LoadVar p
+Push 2
+2-ary ==
+JumpCond False 751
+DelVar last_accepted
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar ballot
 3-ary DictAdd
 Push 1
-LoadVar ctx
+LoadVar e
+DelVar e
 3-ary DictAdd
-Address
-Load
-Store
-LoadVar lk
-Push False
-Store
-AtomicDec
-AtomicInc(lazy)
-ReadonlyInc
-LoadVar lk
-Load
-1-ary not
-JumpCond False 76
-Push ?bag
-Push "multiplicity"
-Address
+StoreVar last_accepted
+DelVar e
+Push PC(380)
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar b
+DelVar b
 3-ary DictAdd
 Push 1
-LoadVar ctx
+LoadVar p
+DelVar p
 3-ary DictAdd
-Address
-Load
-LoadVar cnt
-2-ary <=
-Jump 77
-Push False
-JumpCond False 82
-DelVar c
-DelVar cnt
-DelVar ctx
-Jump 85
-ReadonlyDec
+Push 2
+Push "B"
+3-ary DictAdd
+Push 3
+LoadVar last_accepted
+3-ary DictAdd
+Apply
+Pop
 AtomicDec
-Jump 54
-ReadonlyDec
-LoadVar lk
-DelVar lk
-Push True
-Store
-AtomicDec
+Jump 652
+DelVar ballot
+DelVar last_accepted
+DelVar received
 Return
-Jump 142
-Frame notify c
-AtomicInc(lazy)
-LoadVar c
-Load
-Push ?bag
-Push "empty"
-Address
-Push ()
-Address
-Load
-2-ary !=
-JumpCond False 127
-LoadVar c
-Push ?bag
-Push "remove"
-Address
+Load proposals
+Print
+Push { 0, 1 }
+StoreVar $s680
+LoadVar $s680
+1-ary IsEmpty
+JumpCond True 801
+Cut($s680, i)
+Push PC(455)
 Push ()
 Push 0
-LoadVar c
-Load
+LoadVar i
+Push 1
+2-ary +
 3-ary DictAdd
 Push 1
-Push ?bag
-Push "bchoose"
-Address
-LoadVar c
-DelVar c
-Load
+Push ?proposals
+LoadVar i
+DelVar i
 Address
 Load
 3-ary DictAdd
-Address
-Load
-Store
-DelVar c
-AtomicDec
-Return
-Jump 142
-Frame notifyAll c
-LoadVar c
-DelVar c
-Push ?bag
-Push "empty"
-Address
 Push ()
-Address
-Load
-Store
-Return
+Spawn
+Jump 780
+DelVar $s680
+Push { 1, 2, 3 }
+StoreVar $s702
+LoadVar $s702
+1-ary IsEmpty
+JumpCond True 814
+Cut($s702, i)
+DelVar i
+Push PC(649)
+Push ()
+Push ()
+Spawn
+Jump 804
+DelVar $s702
 Return
 DelVar result
 ```

@@ -20,3 +20,4 @@ harmony_model_checker/harmony.py
 package_buildversion
 
 dist/
+compiler_integration_results/
