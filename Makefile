@@ -40,4 +40,4 @@ upload: dist
 
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
-
+	rm -f harmony_model_checker/modules/*.htm harmony_model_checker/modules/*.hvm harmony_model_checker/modules/*.hco
