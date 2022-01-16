@@ -572,8 +572,8 @@ From a model checking perspective, it is convenient that message and
 timer handling can be performed atomically, as the only interaction
 between threads is through the network variable.
 A message is sent by atomically adding a message to the network:
-<{def send(m): atomically network |= {m}}> (`<{|}>' is the union
-operator in Python).
+<{def send(m): atomically network |= {m}}> (`<{|}>' is the symbol for
+the union operator in Python).
 To receive a message, a program can use the Harmony <{when}>
 statement to wait for a message.  Typically, however, the program
 does not want to receive just any message, but a message that satisfies
