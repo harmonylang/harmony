@@ -9,7 +9,7 @@ from .HarmonyParser import HarmonyParser
 @lexer::members {
 class HarmonyDenter(ModifiedDenterHelper):
     def __init__(self, lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof):
-        super().__init__(nl_token, colon_token, indent_token, dedent_token, ignore_eof)
+        super().__init__(lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof)
         self.lexer: HarmonyLexer = lexer
 
     def pull_token(self):
@@ -52,7 +52,7 @@ NL: '\r'? '\n' (' '* | '\t') {
 if self.opened or self.opened_for:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
-WS : (' '+ | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
+WS : (' '+ | '\t' | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
 
 fragment COMMENT
     : OPEN_MULTI_COMMENT .*? CLOSE_MULTI_COMMENT

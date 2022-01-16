@@ -4,9 +4,26 @@ from antlr4.error.ErrorListener import ErrorListener
 from harmony_model_checker.exception import ErrorToken, HarmonyCompilerError
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 
+class HarmonyLexerErrorListener(ErrorListener):
+    def __init__(self, filename: str):
+        super().__init__()
+        self.filename = filename
+        self.errors: List[ErrorToken] = []
+
+    def syntaxError(self, recognizer, offending_symbol, line, column, msg, e):
+        lexeme = str(offending_symbol.text) if offending_symbol and hasattr(offending_symbol, 'text') else ""
+        self.errors.append(ErrorToken(
+            filename=self.filename,
+            lexeme=lexeme,
+            message=msg,
+            line=line,
+            column=column,
+            is_eof_error=False
+        ))
+
 class HarmonyParserErrorListener(ErrorListener):
     def __init__(self, filename: str):
-        super(HarmonyParserErrorListener, self).__init__()
+        super().__init__()
         self.filename = filename
         self.errors: List[ErrorToken] = []
 

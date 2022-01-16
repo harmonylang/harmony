@@ -1,4 +1,5 @@
 import dataclasses
+from distutils.log import error
 import json
 import os
 import pathlib
@@ -15,18 +16,22 @@ from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, Return
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.model_checker_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
-from harmony_model_checker.parser.HarmonyParserErrorListener import HarmonyParserErrorListener
+from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 
 
-def build_parser(progam_input: InputStream):
+def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_error_listener=None):
     lexer = HarmonyLexer(progam_input)
     stream = CommonTokenStream(lexer)
     parser = HarmonyParser(stream)
 
     lexer.removeErrorListeners()
     parser.removeErrorListeners()
+    if lexer_error_listener:
+        lexer.addErrorListener(lexer_error_listener)
+    if parser_error_listener:
+        parser.addErrorListener(parser_error_listener)
 
     return parser
 
@@ -141,13 +146,18 @@ def parse_string(string: str):
 
 def parse(filename: str) -> BlockAST:
     _input = FileStream(filename)
-    parser = build_parser(_input)
     error_listener = HarmonyParserErrorListener(filename)
-    parser.addErrorListener(error_listener)
+    lexer_error_listener = HarmonyLexerErrorListener(filename)
+    parser = build_parser(_input,
+        lexer_error_listener=lexer_error_listener,
+        parser_error_listener=error_listener
+    )
 
     tree = parser.program()
-    if error_listener.errors:
-        raise HarmonyCompilerErrorCollection(error_listener.errors)
+    if error_listener.errors or lexer_error_listener.errors:
+        raise HarmonyCompilerErrorCollection(
+            lexer_error_listener.errors + error_listener.errors
+        )
 
     visitor = HarmonyVisitorImpl(filename)
     try:
