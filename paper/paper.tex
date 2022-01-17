@@ -49,7 +49,7 @@ XX\=XXX\=XXX\kill
 \endtcolorbox
 }
 
-\title{Harmony: A Verifiable Systems Programming Language}
+\title{Harmony: A Systems Programming Language and Model Checker}
 \author{Robbert van Renesse \and William Ma \and Kevin Sun \and Anthony Yang}
 \date{Department of Computer Science, Cornell University}
 
@@ -94,7 +94,7 @@ divide-by-zero, out-of-bounds array access, dereferencing dangling
 pointers, trying to multiply two lists with one another,
 and many more.
 \item Safety violations due to assertions failing, such as an assertion to ensure mutual exclusion.
-\item Liveness violations (deadlock).
+\item Liveness violations such as caused by deadlock or infinite loops.
 \item Faulty behaviors: implementation has behaviors not seen in the specification, such as violations of linearizability~\cite{HW90}.
 \item Incomplete behaviors: specification has behaviors not seen with implementation, such as multiple readers not able to get a reader/writer lock simultaneously.
 \item Data races: shared variables accessed without a lock.
@@ -125,7 +125,8 @@ outputs of the program.  Groups of statements can be made atomic
 using the <{atomically}> keyword.  Harmony supports
 waiting until some condition is reached with its <{when}> statement.
 
-Harmony programs compile to a virtual machine.  The Harmony virtual
+Harmony programs compile to a virtual machine.  The virtual machine
+instructions are the units of atomicity.  The Harmony virtual
 machine is formally specified using TLA+~\cite{Lamport02}, allowing
 Harmony programs to run using TLC, the model checker that comes
 with the TLA+ toolbox.  Harmony has its own custom concurrent model
@@ -149,11 +150,11 @@ schedulers as well as the implementation of thread forking by
 reinstantiating a saved thread state multiple times.
 Other uses include exception handlers, coroutines, and generators.
 
-Harmony has been used to verify the correctness of various lock
+Harmony has been used to model check the correctness of various lock
 implementations, monitors and condition variables (both Hoare and Mesa),
 various implementations of concurrent data structures including lock-free
 ones, and barrier synchronization implementations.  Harmony has also been
-used to verify a variety of distributed algorithms such as two-phase
+used to model check a variety of distributed algorithms such as two-phase
 commit, chain replication, various consensus algorithms such as Paxos,
 and the Needham-Schroeder authentication protocols.
 
@@ -258,6 +259,15 @@ Harmony does not have \texttt{return}, \texttt{break}, or
 nested control flow.  Each method has a variable <{result}> in which
 the return value of the method is stored.
 
+A \emph{blocked} thread is waiting on a condition
+(for example, a lock becoming available) using the <{when}> statement.
+This is implemented in the Harmony virtual machine
+by executing in a loop until the condition holds, without changing the
+shared state, and thus the thread can only be unblocked by another thread
+changing the state.
+
+\emph{Deadlock} is the situation in which threads are waiting for
+one another.
 In order to make deadlock detection possible, Harmony programs are
 required to eventually terminate under fair selection of its
 nondetermistic choices.  In other words, from each state there
@@ -265,10 +275,7 @@ should always exist an extension of the execution in which the
 Harmony program terminates.  Harmony supports \emph{eternal}
 threads---threads that never terminate---for example to model
 servers.  A Harmony program is considered terminated if it is in a
-state in which all its remaining threads are eternal and \emph{blocked}.
-A thread is considered blocked if it can only update the shared
-state after another thread has updated the shared state (for example,
-a thread waiting on a spinlock).
+state in which all its remaining threads are eternal and blocked.
 
 \begin{figure*}[h]
 \begin{center}
@@ -332,11 +339,16 @@ for i in {1..NOPS-nenq}: spawn deq_test(i)
 
 \subsection{\texttt{atomically}}
 
-Statements in Harmony, including groups of statements, can be tagged with
-the \texttt{atomically} keyword to make them atomic.  What this means
-is that the statement is evaluated atomically by the Harmony virtual
-machine without interleaving of instructions from other threads or interrupt
-handlers.  It is
+A Harmony program compiles to instructions for a virtual machine.
+Those instructions are normally the units of atomicity, but threads
+can be temporarily placed in \emph{atomic mode} to prevent instructions
+interleaving with those of other threads or interrupt handlers.
+At the Harmony language level, even simple statements should not be
+assumed to be atomic.
+However, statements---including groups of statements---can be tagged with
+the \texttt{atomically} keyword to make them execute as if they were
+a single atomic instruction.
+It is
 a \emph{stronger} condition than holding a lock---a lock still allows
 concurrent execution of multiple threads, but it prevents multiple
 threads from executing in the same critical section.
@@ -432,7 +444,7 @@ run against the specification of the concurrent queue.  Harmony
 outputs a DFA such as shown in \autoref{fig:helloworld}.  The second
 time, the same test program is run against the implementation of the
 concurrent queue, but with the inclusion of the DFA.  The model
-checker ends up verifying the Cartesian product of the implementation
+checker ends up executing the Cartesian product of the implementation
 and the DFA and ensures that every behavior of the implementation
 program (in terms of its print statements) is also a behavior of
 the specification program.  In case the implementation has a behavior
@@ -464,7 +476,8 @@ With Harmony, one can check the implementation of a lock separately,
 but use the specification of the lock in the implementation of the
 queue.  Similarly, one can check the implementation of a queue,
 but then use the specification of the queue in a larger application.
-Doing so is essentially a form of \emph{Partial Order Reduction}~\cite{Val91},
+Doing so is essentially a form of
+\emph{Partial Order Reduction}~\cite{Owicki75,Lipton75,Val91},
 replacing the <{enqueue}> and <{dequeue}> implementations
 by atomic actions.
 
@@ -496,7 +509,7 @@ def release(lk):
 \end{code}
 }
 \end{center}
-\caption{FIFO lock using continuation}
+\caption{FIFO lock using continuations}
 \label{fig:continuation}
 \end{figure}
 
@@ -559,8 +572,8 @@ From a model checking perspective, it is convenient that message and
 timer handling can be performed atomically, as the only interaction
 between threads is through the network variable.
 A message is sent by atomically adding a message to the network:
-<{def send(m): atomically network |= {m}}> (`<{|}>' is the union
-operator in Python).
+<{def send(m): atomically network |= {m}}> (`<{|}>' is the symbol for
+the union operator in Python).
 To receive a message, a program can use the Harmony <{when}>
 statement to wait for a message.  Typically, however, the program
 does not want to receive just any message, but a message that satisfies
@@ -591,8 +604,8 @@ Any two values can be compared using the standard comparison operators.
 If two values have different types, then their order is defined as by
 the order in \autoref{fig:values} (e.g., <{False < 0}>).
 For any two values of the same type, Harmony defines a deterministic order.
-For example, for two sets, the values in the sets are first ordered and
-then lexicographically compared, so that <{{ 1, 2 } < { 1, 3 }}>.
+For example, for two sets, the sets are first converted into ordered lists
+and then lexicographically compared, so that <{{ 1, 2 } < { 1, 3 }}>.
 (Note that, unlike Python, the $<$ operator is a total order and
 $<$ on sets does not represent the subset relationship.)
 Dictionaries are lexicographically ordered by their (key, value) pairs.
@@ -611,8 +624,9 @@ counter, a map of local variable names to values, and a stack of values.
 % The empty dictionary is represented as either <{()}> or <{[]}>
 % (<{{}}> is the empty set).
 
-Except for <{choose}>, any operation on values is deterministic and
-defined in the formal specification of the Harmony virtual machine.
+Except for <{choose}>, any operation on values is a deterministic
+function and unequivocally defined in the formal specification of the
+Harmony virtual machine.
 For example, like Python, Harmony supports merging of dictionaries
 using the union operator, but, unlike Python, Harmony defines
 what happens when two dictionaries have the same key but different values.
@@ -881,9 +895,10 @@ in a spinloop is a common way of synchronizing threads, and Harmony
 does not report such issues.  We call this \emph{passive busy
 waiting} as the thread does not modify the state.
 
-A thread is considered \emph{actively busy waiting} if it cannot
+A thread is considered \emph{actively busy waiting} if it is in a
+loop updating the shared state, but cannot
 escape its strongly connected component without another thread
-updating the shared state first.  A common example of this is a
+also updating the shared state.  A common example of this is a
 synchronization algorithm that checks for a condition in a loop,
 acquiring and releasing the lock each time.  Harmony checks each
 strongly connected component for the existence of such situations
@@ -895,17 +910,17 @@ The Kripke structure can be considered as a non-deterministic
 automaton, with on each edge zero or more \emph{symbols} (values
 that were printed).  If a behavior automaton was specified,
 then there are now two automata: the specified automaton
-${\mathcal Spec}$ that was presented to Charm as an input as
+${\mathcal S}$ that was presented to Charm as an input as
 part of the \emph{specification}, and the generated automaton
-${\mathcal Impl}$ that was generated by the given Harmony
+${\mathcal I}$ that was generated by the given Harmony
 \emph{implementation}.  Harmony already checks on-the-fly whether
-${\mathcal Impl} \subseteq {\mathcal Spec}$, that is, that every
+${\mathcal I} \subseteq {\mathcal S}$, that is, that every
 behavior (sequence of symbols) of the implementation is also a
 behavior of the specification.  Harmony also checks if
-${\mathcal Spec} \subset {\mathcal Impl}$ and, if so,
+${\mathcal S} \subset {\mathcal I}$ and, if so,
 produces a warning.
 Although not currently performed automatically, it is possible to compute
-${\mathcal Spec}~\backslash~{\mathcal Impl}$
+${\mathcal S}~\backslash~{\mathcal I}$
 to generate an automaton for all behaviors allowed by the
 specification that are not in the implementation.
 
@@ -913,7 +928,7 @@ Having such behaviors is not always a problem, but it can be.  For
 example, a reader/writer lock implemented as a plain lock meets the
 specification of a reader/writer lock, but it does not allow multiple
 readers in the critical section.  Unfortunately, checking ${\mathcal
-Spec} \subset {\mathcal Impl}$ does not scale well in general and can
+S} \subset {\mathcal I}$ does not scale well in general and can
 only be done for relatively small Kripke structures.
 
 \paragraph{Constructing a Counter-Example.}

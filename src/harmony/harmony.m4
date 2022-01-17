@@ -1,7 +1,4 @@
 """
-print "hello"
-
-spawn f()
 	This is the Harmony compiler.
 
     Copyright (C) 2020, 2021, 2022  Robbert van Renesse
@@ -8023,6 +8020,7 @@ def main():
     if outputfiles["png"] != None and outputfiles["gv"] == None:
         outputfiles["gv"] = stem + ".gv"
 
+    print("Phase 1: compile Harmony program to bytecode")
     try:
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
@@ -8053,6 +8051,7 @@ def main():
         outfile = "%s/charm.exe"%install_path
         with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
+        print("Phase 2: run the model checker")
         r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")

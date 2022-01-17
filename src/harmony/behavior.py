@@ -36,13 +36,16 @@ def read_hfa(file, dfa, nfa):
         final_states=final
     )
 
+    print("Phase 7: comparing behaviors", len(dfa.states), len(hfa.states))
+    if len(dfa.states) > 100 or len(hfa.states) > 100:
+        print("  warning: this could take a while")
+
     assert dfa.input_symbols <= hfa.input_symbols
     if dfa.input_symbols < hfa.input_symbols:
         print("behavior warning: symbols missing from behavior:",
             hfa.input_symbols - dfa.input_symbols)
         return
     
-    print("comparing behaviors", len(dfa.states), len(hfa.states))
     if dfa < hfa:
         print("behavior warning: strict subset of specified behavior")
         diff = hfa - dfa
@@ -171,7 +174,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     # print("symbols", input_symbols, file=sys.stderr)
     # print("transitions", transitions, file=sys.stderr)
 
-    print("NFA -> DFA", file=sys.stderr)
+    print("Phase 6: convert NFA (%d states) to DFA"%len(states), file=sys.stderr)
 
     if got_automata:
         nfa = NFA(
@@ -183,9 +186,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
         )
         intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            print("minify %d"%len(intermediate.states), file=sys.stderr)
+            print("minify #states=%d"%len(intermediate.states), file=sys.stderr)
             dfa = intermediate.minify(retain_names = True)
-            print("minify done %d"%len(dfa.states), file=sys.stderr)
+            print("minify done #states=%d"%len(dfa.states), file=sys.stderr)
         else:
             dfa = intermediate
         dfa_states = dfa.states

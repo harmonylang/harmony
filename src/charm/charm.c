@@ -1791,7 +1791,6 @@ int main(int argc, char **argv){
 
     // Determine how many worker threads to use
     int nworkers = getNumCores();
-nworkers = 1;
 	printf("nworkers = %d\n", nworkers);
     pthread_barrier_t start_barrier, end_barrier;
     pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
@@ -1894,6 +1893,7 @@ nworkers = 1;
 
     printf("#states %d (time %.3lf+%.3lf=%.3lf)\n", global->graph.size, gettime() - before - postproc, postproc, gettime() - before);
 
+    printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // find the strongly connected components
         int ncomponents = graph_find_scc(&global->graph);
@@ -2062,16 +2062,22 @@ nworkers = 1;
         }
     }
 
+    bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
+    if (no_issues) {
+        printf("No issues\n");
+    }
+
     FILE *out = fopen(outfile, "w");
     if (out == NULL) {
         fprintf(stderr, "charm: can't create %s\n", outfile);
         exit(1);
     }
+
+    printf("Phase 4: write results to %s\n", outfile);
+
     fprintf(out, "{\n");
 
-    bool no_issues = minheap_empty(global->failures) && minheap_empty(warnings);
     if (no_issues) {
-        printf("No issues\n");
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
         destutter1(&global->graph);
