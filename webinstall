@@ -33,3 +33,5 @@ cp code/*.hny $dir/code
 cp modules/*.hny $dir/modules
 cp python/*.py $dir/python
 cp distributions/*.zip $dir/distributions
+
+zip -r $dir/sources.zip code modules python
