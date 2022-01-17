@@ -6767,6 +6767,10 @@ DictSeq(dict) ==
     LET dom == HSort(DOMAIN dict)
     IN [ x \in 1..Len(dom) |-> << dom[x], dict[dom[x]] >> ]
 
+\* Two dictionaries are ordered by their sequence of (key, value) pairs
+\* Equivalently, we can flatten the sequence of (key, value) pairs first
+\* into a single sequence of alternating keys and values.  Then we
+\* compare the two sequences.
 DictCmp(x, y) == SeqCmp(Flatten(DictSeq(x)), Flatten(DictSeq(y)))
 
 \* Lexicographically compare two sequences of Harmony values
@@ -7812,7 +7816,7 @@ OpSpawn(self) ==
         /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
         /\\ UNCHANGED shared
 
-\* Operation to set a trap.  Not really supported yet here.
+\* Operation to set a trap.
 OpTrap(self) ==
     LET entry == self.stack[1]
         arg   == self.stack[2]
