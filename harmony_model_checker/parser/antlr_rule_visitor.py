@@ -14,8 +14,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         assert isinstance(file, str)
         self.file = file
 
-    def get_token(self, tkn: CommonToken, value: Any = None) -> tuple:
-        value = value or tkn.text or ""
+    def get_token(self, tkn: CommonToken, value: Any) -> tuple:
         return value, self.file, tkn.line, tkn.column + 1
 
     # Visit a parse tree produced by HarmonyParser#import_stmt.
@@ -24,7 +23,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.import_from())
         elif ctx.import_name():
             return self.visit(ctx.import_name())
-        tkn = self.get_token(ctx.start)
+        tkn = self.get_token(ctx.start, ctx.start.text)
         raise HarmonyCompilerError(
             message="Failed to parse import",
             filename=self.file,
@@ -230,7 +229,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
         if not isinstance(func, ApplyAST):
-            tkn = self.get_token(ctx.start)
+            tkn = self.get_token(ctx.start, ctx.start.text)
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
@@ -263,7 +262,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            tkn = self.get_token(ctx.start)
+            tkn = self.get_token(ctx.start, ctx.start.text)
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
@@ -324,7 +323,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.let_decl() is not None:
             decl.append(self.visit(ctx.let_decl()))
         else:
-            tkn = self.get_token(ctx.start)
+            tkn = self.get_token(ctx.start, ctx.start.text)
             raise HarmonyCompilerError(
                 message="Unexpected declaration in let/when block declaration.",
                 filename=self.file,
@@ -401,7 +400,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.normal_block())
         elif ctx.simple_stmt_block() is not None:
             return self.visit(ctx.simple_stmt_block())
-        tkn = self.get_token(ctx.start)
+        tkn = self.get_token(ctx.start, ctx.start.text)
         raise HarmonyCompilerError(
             message="Unexpected block structure.",
             filename=self.file,
@@ -424,7 +423,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.block_stmts() is not None:
             stmts = self.visit(ctx.block_stmts())
             return BlockAST(tkn, False, stmts)
-        tkn = self.get_token(ctx.start)
+        tkn = self.get_token(ctx.start, ctx.start.text)
         raise HarmonyCompilerError(
             message="Unexpected block structure.",
             filename=self.file,

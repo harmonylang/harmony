@@ -85,6 +85,9 @@ def dump_result(result: ComparisonResult, f: TextIO):
     f.write(f"Duration is good: {'✅' if result.duration_expected else '❌'}\n\n")
     f.write(f"Output is good: {'✅' if result.output_expected else '❌'}\n\n")
 
+    if result.output_expected:
+        return
+
     f.write("### Baseline Output\n\n")
     f.write(f"```\n{baseline.output}\n```\n\nDuration: {baseline.average_duration}\n\n")
 
