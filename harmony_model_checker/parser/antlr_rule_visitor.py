@@ -14,7 +14,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         assert isinstance(file, str)
         self.file = file
 
-    def get_token(self, tkn: CommonToken, value: Any) -> tuple:
+    def get_token(self, tkn: CommonToken, value: Any = None) -> tuple:
+        value = value or tkn.text or ""
         return value, self.file, tkn.line, tkn.column + 1
 
     # Visit a parse tree produced by HarmonyParser#import_stmt.
@@ -23,7 +24,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.import_from())
         elif ctx.import_name():
             return self.visit(ctx.import_name())
-        raise ValueError("Failed to parse import")
+        tkn = self.get_token(ctx.start)
+        raise HarmonyCompilerError(
+            message="Failed to parse import",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#import_name.
     def visitImport_name(self, ctx: HarmonyParser.Import_nameContext):
@@ -142,7 +150,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif value.startswith('"') and value.endswith('"'):
             s = value[1:-1]
         else:
-            raise ValueError("Unable to parse string")
+            tkn = self.get_token(ctx.start, value)
+            raise HarmonyCompilerError(
+                message="Unable to parse string",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         tkn = self.get_token(ctx.start, s)
         return ConstantAST(tkn)
 
@@ -215,7 +230,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
         if not isinstance(func, ApplyAST):
-            raise ValueError("Expected a method call!")
+            tkn = self.get_token(ctx.start)
+            raise HarmonyCompilerError(
+                message="Expected a method call but found something else.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         tkn = self.get_token(ctx.start, ctx.start.text)
         return TrapAST(tkn, False, func.method, func.arg)
 
@@ -241,7 +263,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            raise ValueError("Expected a method call!")
+            tkn = self.get_token(ctx.start)
+            raise HarmonyCompilerError(
+                message="Expected a method call but found something else.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         method, arg = target.method, target.arg
         tkn = self.get_token(ctx.start, ctx.start.text)
         return SpawnAST(tkn, False, method, arg, None, is_eternal)
@@ -295,7 +324,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.let_decl() is not None:
             decl.append(self.visit(ctx.let_decl()))
         else:
-            raise ValueError("Unexpected declaration in let/when block declaration")
+            tkn = self.get_token(ctx.start)
+            raise HarmonyCompilerError(
+                message="Unexpected declaration in let/when block declaration.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         if ctx.let_when_decl() is not None:
             decl.extend(self.visit(ctx.let_when_decl()))
         return decl
@@ -365,7 +401,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.normal_block())
         elif ctx.simple_stmt_block() is not None:
             return self.visit(ctx.simple_stmt_block())
-        raise ValueError("Unexpected block value")
+        tkn = self.get_token(ctx.start)
+        raise HarmonyCompilerError(
+            message="Unexpected block structure.",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#simple_stmt_block.
     def visitSimple_stmt_block(self, ctx:HarmonyParser.Simple_stmt_blockContext):
@@ -381,7 +424,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.block_stmts() is not None:
             stmts = self.visit(ctx.block_stmts())
             return BlockAST(tkn, False, stmts)
-        raise ValueError("Unexpected block value")
+        tkn = self.get_token(ctx.start)
+        raise HarmonyCompilerError(
+            message="Unexpected block structure.",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#block_stmts.
     def visitBlock_stmts(self, ctx: HarmonyParser.Block_stmtsContext):
@@ -518,9 +568,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             comps = [self.visit(o) for o in ctx.comp_op()]
             return CmpAST(comps[0], comps, expressions)
         if ctx.arith_op():
-            ops = {self.visit(o) for o in ctx.arith_op()}
-            if len({c[0] for c in ops}) > 1:
-                raise ValueError("Cannot have multiple types of operators in one expression")
+            ops = [self.visit(o) for o in ctx.arith_op()]
+            num_of_unique_ops = len({c[0] for c in ops})
+            if num_of_unique_ops > 1:
+                op = ops[0]
+                raise HarmonyCompilerError(
+                    message="Cannot have multiple types of operators in one expression",
+                    filename=self.file,
+                    line=op[2],
+                    column=op[3],
+                    lexeme=op[0]
+                )
             binop = ops.pop()
             return NaryAST(binop, expressions)
         if ctx.IF():
@@ -559,7 +617,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return NaryAST(op, [expr])
         if ctx.application():
             return self.visit(ctx.application())
-        raise ValueError("Invalid expression")
+        raise HarmonyCompilerError(
+            message="Invalid expression",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#application.
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):
