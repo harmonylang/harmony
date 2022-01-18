@@ -35,8 +35,11 @@ dist: gen
 	rm -rf harmony_model_checker.egg-info/
 	python setup.py sdist
 
+upload-test: dist
+	twine upload -r testpypi dist/*
+
 upload: dist
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+	twine upload dist/*
 
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
