@@ -12,6 +12,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 354
 Frame empty ()
@@ -370,11 +371,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010085000000000025
+Duration: 0.0016071000000000002
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 354
 Frame empty ()
@@ -733,7 +735,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010173000000000022
+Duration: 0.001807000000000003
 
 ---
 ##  harmony_model_checker/modules/synchBusy.hny
@@ -747,6 +749,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 107
 Frame tas lk
@@ -858,11 +861,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009553000000000027
+Duration: 0.0013215999999999992
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 107
 Frame tas lk
@@ -974,7 +978,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008916999999999987
+Duration: 0.0018328000000000025
 
 ---
 ##  harmony_model_checker/modules/synchImprecise.hny
@@ -988,6 +992,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 187
 Frame tas lk
@@ -1179,11 +1184,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008997999999999992
+Duration: 0.0013475999999999974
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 187
 Frame tas lk
@@ -1375,7 +1381,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008848999999999975
+Duration: 0.0014522999999999966
 
 ---
 ##  harmony_model_checker/modules/synch.hny
@@ -1389,6 +1395,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -2430,11 +2437,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011241000000000029
+Duration: 0.0016407000000000019
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -3476,7 +3484,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009397999999999976
+Duration: 0.0014794000000000057
 
 ---
 ##  harmony_model_checker/modules/alloc.hny
@@ -3490,6 +3498,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store pool
@@ -3539,11 +3548,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009789000000000048
+Duration: 0.0016474999999999962
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store pool
@@ -3593,7 +3603,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008668000000000009
+Duration: 0.0013253999999999974
 
 ---
 ##  harmony_model_checker/modules/hoare.hny
@@ -3607,6 +3617,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -4743,11 +4754,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010703000000000032
+Duration: 0.001633599999999999
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -5884,7 +5896,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010307000000000024
+Duration: 0.0014662000000000008
 
 ---
 ##  harmony_model_checker/modules/synchS.hny
@@ -5898,6 +5910,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -6699,11 +6712,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010268999999999973
+Duration: 0.001755699999999999
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -7505,7 +7519,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011294000000000026
+Duration: 0.0013666999999999985
 
 ---
 ##  harmony_model_checker/modules/set.hny
@@ -7519,6 +7533,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 141
 Frame issubset (s, t)
@@ -7664,11 +7679,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.000989700000000003
+Duration: 0.0015495999999999982
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 141
 Frame issubset (s, t)
@@ -7814,7 +7830,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009548999999999946
+Duration: 0.0013877999999999946
 
 ---
 ##  harmony_model_checker/modules/list.hny
@@ -7828,6 +7844,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 365
 Frame subseq (s, b, e)
@@ -8197,11 +8214,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009170000000000011
+Duration: 0.0013021000000000005
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 365
 Frame subseq (s, b, e)
@@ -8571,7 +8589,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009055999999999995
+Duration: 0.0014047000000000087
 
 ---
 ##  code/prog1.hny
@@ -8585,6 +8603,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push True
 Store shared
@@ -8614,11 +8633,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009720999999999966
+Duration: 0.0013837000000000016
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push True
 Store shared
@@ -8648,7 +8668,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009325000000000028
+Duration: 0.0012479999999999991
 
 ---
 ##  code/prog2.hny
@@ -8662,6 +8682,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push True
 Store shared
@@ -8691,11 +8712,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013707999999999984
+Duration: 0.0013267
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push True
 Store shared
@@ -8725,7 +8747,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008799000000000029
+Duration: 0.0012746999999999897
 
 ---
 ##  code/Up.hny
@@ -8739,6 +8761,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store count
@@ -8786,11 +8809,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010090999999999989
+Duration: 0.001776800000000009
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store count
@@ -8838,7 +8862,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014320999999999987
+Duration: 0.001584199999999994
 
 ---
 ##  code/UpEnter.hny
@@ -8852,6 +8876,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store count
@@ -8922,11 +8947,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009873000000000035
+Duration: 0.0016695000000000043
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store count
@@ -8997,7 +9023,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009045000000000025
+Duration: 0.0011947000000000069
 
 ---
 ##  code/csbarebones.hny
@@ -9011,6 +9037,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 18
 Frame thread ()
@@ -9041,11 +9068,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010544999999999999
+Duration: 0.0019409000000000093
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 18
 Frame thread ()
@@ -9076,7 +9104,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007525999999999991
+Duration: 0.002084600000000006
 
 ---
 ##  code/cs.hny
@@ -9090,6 +9118,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 19
 Frame thread ()
@@ -9121,11 +9150,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010118999999999961
+Duration: 0.0014914000000000038
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 19
 Frame thread ()
@@ -9157,7 +9187,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009294999999999998
+Duration: 0.0016453000000000023
 
 ---
 ##  code/naiveLock.hny
@@ -9171,6 +9201,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store lockTaken
@@ -9214,11 +9245,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008973999999999996
+Duration: 0.001327700000000001
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store lockTaken
@@ -9262,7 +9294,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009104999999999946
+Duration: 0.0013885000000000008
 
 ---
 ##  code/naiveFlags.hny
@@ -9276,6 +9308,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push [False, False]
 Store flags
@@ -9330,11 +9363,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009477999999999986
+Duration: 0.0012014000000000052
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push [False, False]
 Store flags
@@ -9389,7 +9423,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008553999999999992
+Duration: 0.0012587000000000015
 
 ---
 ##  code/naiveTurn.hny
@@ -9403,6 +9437,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store turn
@@ -9447,11 +9482,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009520999999999974
+Duration: 0.0015542999999999946
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store turn
@@ -9496,7 +9532,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008934999999999915
+Duration: 0.001425700000000002
 
 ---
 ##  code/Peterson.hny
@@ -9510,6 +9546,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9581,11 +9618,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009682000000000024
+Duration: 0.001406499999999991
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9657,7 +9695,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008843999999999935
+Duration: 0.0015985000000000027
 
 ---
 ##  code/PetersonInductive.hny
@@ -9671,6 +9709,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9758,11 +9797,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009923000000000015
+Duration: 0.001242000000000007
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9850,7 +9890,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009571999999999914
+Duration: 0.0014222999999999875
 
 ---
 ##  code/csonebit.hny
@@ -9864,6 +9904,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9928,11 +9969,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009350999999999943
+Duration: 0.0016504000000000102
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?flags
 Sequential
@@ -9997,7 +10039,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009071000000000079
+Duration: 0.0014022000000000062
 
 ---
 ##  code/PetersonMethod.hny
@@ -10011,6 +10053,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 66
 Frame P_enter (pm, pid)
@@ -10134,11 +10177,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009778000000000009
+Duration: 0.0012659000000000004
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 66
 Frame P_enter (pm, pid)
@@ -10262,7 +10306,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000846599999999989
+Duration: 0.0013058000000000097
 
 ---
 ##  code/clock.hny
@@ -10276,6 +10320,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 132
 Frame CLOCK n
@@ -10509,11 +10554,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010497000000000006
+Duration: 0.0013592000000000048
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 132
 Frame CLOCK n
@@ -10747,7 +10793,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008589999999999987
+Duration: 0.001617499999999994
 
 ---
 ##  code/spinlock.hny
@@ -10761,6 +10807,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store shared
@@ -10898,11 +10945,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010407000000000055
+Duration: 0.0014233999999999913
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store shared
@@ -11040,7 +11088,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008046999999999915
+Duration: 0.0012767999999999946
 
 ---
 ##  code/UpLock.hny
@@ -11054,6 +11102,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -12153,11 +12202,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011641000000000012
+Duration: 0.0015647999999999912
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -13257,7 +13307,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010316000000000075
+Duration: 0.0015138000000000096
 
 ---
 ## -msynch=synchS code/UpLock.hny
@@ -13271,6 +13321,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -14130,11 +14181,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011671000000000042
+Duration: 0.0016922000000000048
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -14994,7 +15046,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009902000000000105
+Duration: 0.0015196000000000098
 
 ---
 ##  code/xy.hny
@@ -15008,6 +15060,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?x
 Push ?y
@@ -15074,11 +15127,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010159999999999891
+Duration: 0.0012565999999999966
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?x
 Push ?y
@@ -15145,7 +15199,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00090090000000001
+Duration: 0.00138930000000001
 
 ---
 ##  code/atm.hny
@@ -15159,6 +15213,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -16370,11 +16425,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010661000000000004
+Duration: 0.0022515999999999925
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -17586,7 +17642,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008944999999999925
+Duration: 0.0014302000000000203
 
 ---
 ##  code/queuedemo.hny
@@ -17600,6 +17656,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -18089,11 +18146,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011748000000000036
+Duration: 0.0016836000000000073
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -18583,7 +18641,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000811199999999998
+Duration: 0.0020900000000000085
 
 ---
 ## -msynch=synchS code/queuedemo.hny
@@ -18597,6 +18655,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -19086,11 +19145,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009967999999999921
+Duration: 0.0021314000000000055
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -19580,7 +19640,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009078000000000003
+Duration: 0.0015965000000000007
 
 ---
 ##  code/qtestseq.hny
@@ -19594,6 +19654,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -20949,11 +21010,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010010000000000019
+Duration: 0.0016579999999999928
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -22309,7 +22371,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008690999999999977
+Duration: 0.0015795999999999866
 
 ---
 ##  code/qtest1.hny
@@ -22323,6 +22385,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -22844,11 +22907,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010465000000000058
+Duration: 0.001374299999999995
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -23370,7 +23434,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009072999999999998
+Duration: 0.0013822
 
 ---
 ## -msynch=synchS code/qtest1.hny
@@ -23384,6 +23448,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -23905,11 +23970,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010228999999999933
+Duration: 0.0013434999999999975
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -24431,7 +24497,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009639999999999926
+Duration: 0.00125119999999998
 
 ---
 ##  code/qtest2.hny
@@ -24445,6 +24511,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -24969,11 +25036,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010756999999999989
+Duration: 0.0013046000000000169
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -25498,7 +25566,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008015999999999995
+Duration: 0.001444899999999999
 
 ---
 ## -msynch=synchS code/qtest2.hny
@@ -25512,6 +25580,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -26036,11 +26105,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010612000000000121
+Duration: 0.0015081999999999873
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -26565,7 +26635,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009378000000000025
+Duration: 0.001393499999999992
 
 ---
 ##  code/qtest3.hny
@@ -26579,6 +26649,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -27130,11 +27201,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008799000000000029
+Duration: 0.0014313999999999993
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -27686,7 +27758,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008930000000000049
+Duration: 0.0015374999999999972
 
 ---
 ## -msynch=synchS code/qtest3.hny
@@ -27700,6 +27772,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -28251,11 +28324,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009733999999999993
+Duration: 0.0019647000000000137
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -28807,7 +28881,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009307000000000065
+Duration: 0.0011845999999999801
 
 ---
 ##  code/qtest4.hny
@@ -28821,6 +28895,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -29310,11 +29385,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010267000000000054
+Duration: 0.0013950000000000073
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -29804,7 +29880,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008013999999999938
+Duration: 0.0015572000000000086
 
 ---
 ## -msynch=synchS code/qtest4.hny
@@ -29818,6 +29894,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -30307,11 +30384,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010549000000000114
+Duration: 0.001454800000000006
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -30801,7 +30879,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00075879999999999
+Duration: 0.001327600000000012
 
 ---
 ##  code/qtestconc.hny
@@ -30815,6 +30893,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queuelin
@@ -32229,11 +32308,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011091000000000018
+Duration: 0.001895999999999981
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queuelin
@@ -33648,7 +33728,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010597999999999996
+Duration: 0.0017642999999999964
 
 ---
 ## -msynch=synchS code/qtestconc.hny
@@ -33662,6 +33742,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queuelin
@@ -34836,11 +34917,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009206000000000075
+Duration: 0.0016504999999999992
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queuelin
@@ -36015,7 +36097,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008613000000000093
+Duration: 0.001639400000000013
 
 ---
 ## -mqueue=queueMS code/queuedemo.hny
@@ -36029,6 +36111,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -37311,11 +37394,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010436000000000056
+Duration: 0.0013822
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -38598,7 +38682,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009330999999999923
+Duration: 0.0013623999999999858
 
 ---
 ## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
@@ -38612,6 +38696,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -39654,11 +39739,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011796000000000029
+Duration: 0.0017630999999999897
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -40701,7 +40787,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001043299999999997
+Duration: 0.0012976000000000099
 
 ---
 ##  code/RWtest.hny
@@ -40715,6 +40801,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -40891,11 +40978,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.000940399999999994
+Duration: 0.0014452000000000076
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -41072,7 +41160,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008603000000000083
+Duration: 0.0015454000000000023
 
 ---
 ## -msynch=synchS code/RWtest.hny
@@ -41086,6 +41174,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -41262,11 +41351,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009745999999999921
+Duration: 0.0013088000000000266
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -41443,7 +41533,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009158999999999973
+Duration: 0.001291500000000001
 
 ---
 ## -mRW=RWsbs code/RWtest.hny
@@ -41457,6 +41547,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -42865,11 +42956,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011180999999999969
+Duration: 0.00194430000000001
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -44278,7 +44370,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010201999999999989
+Duration: 0.0015292999999999835
 
 ---
 ## -mRW=RWsbs -msynch=synchS code/RWtest.hny
@@ -44292,6 +44384,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -45460,11 +45553,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011047000000000001
+Duration: 0.0019228000000000023
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -46633,7 +46727,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001137100000000002
+Duration: 0.0016612000000000016
 
 ---
 ## -mRW=RWfair code/RWtest.hny
@@ -46647,6 +46741,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -48092,11 +48187,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011697000000000096
+Duration: 0.0014189000000000007
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -49542,7 +49638,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011031000000000096
+Duration: 0.0014868999999999855
 
 ---
 ## -mRW=RWfair -msynch=synchS code/RWtest.hny
@@ -49556,6 +49652,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -50761,11 +50858,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010927999999999771
+Duration: 0.001489100000000021
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -51971,7 +52069,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009667999999999899
+Duration: 0.0014232000000000133
 
 ---
 ## -mboundedbuffer=BBhoare code/BBtest.hny
@@ -51985,6 +52083,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store boundedbuffer
@@ -53413,11 +53512,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011017999999999861
+Duration: 0.0019370999999999972
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store boundedbuffer
@@ -54846,7 +54946,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010293000000000108
+Duration: 0.0017639999999999878
 
 ---
 ## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
@@ -54860,6 +54960,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store boundedbuffer
@@ -56048,11 +56149,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008871000000000018
+Duration: 0.0018250999999999962
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store boundedbuffer
@@ -57241,7 +57343,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008266000000000107
+Duration: 0.0016111999999999793
 
 ---
 ## -mRW=RWcv code/RWtest.hny
@@ -57255,6 +57357,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -58573,11 +58676,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009725999999999901
+Duration: 0.001464099999999996
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -59896,7 +60000,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010497999999999896
+Duration: 0.0016965000000000174
 
 ---
 ## -mRW=RWcv -msynch=synchS code/RWtest.hny
@@ -59910,6 +60014,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -60988,11 +61093,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010892000000000124
+Duration: 0.0013553999999999788
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -62071,7 +62177,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008298999999999945
+Duration: 0.0011783999999999961
 
 ---
 ##  code/qsorttest.hny
@@ -62085,6 +62191,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store qsort
@@ -62770,11 +62877,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010344999999999938
+Duration: 0.0014624000000000026
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store qsort
@@ -63460,7 +63568,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008961000000000108
+Duration: 0.0022204000000000113
 
 ---
 ##  code/Diners.hny
@@ -63474,6 +63582,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -64585,11 +64694,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010956000000000021
+Duration: 0.0018469000000000124
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -65701,7 +65811,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001071500000000003
+Duration: 0.001745400000000008
 
 ---
 ## -msynch=synchS code/Diners.hny
@@ -65715,6 +65825,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -66586,11 +66697,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011210000000000109
+Duration: 0.0015309000000000017
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -67462,7 +67574,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008670000000000067
+Duration: 0.0019376000000000115
 
 ---
 ##  code/DinersCV.hny
@@ -67476,6 +67588,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -68685,11 +68798,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011419000000000012
+Duration: 0.0017488000000000226
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -69899,7 +70013,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010387000000000035
+Duration: 0.001632400000000006
 
 ---
 ## -msynch=synchS code/DinersCV.hny
@@ -69913,6 +70027,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -70882,11 +70997,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008674000000000182
+Duration: 0.0012525999999999926
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -71856,7 +71972,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010594000000000159
+Duration: 0.0014561000000000157
 
 ---
 ##  code/DinersAvoid.hny
@@ -71870,6 +71986,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -72993,11 +73110,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009602999999999973
+Duration: 0.002185500000000007
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -74121,7 +74239,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00104410000000002
+Duration: 0.0016695999999999933
 
 ---
 ## -msynch=synchS code/DinersAvoid.hny
@@ -74135,6 +74253,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -75018,11 +75137,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010894999999999933
+Duration: 0.001544600000000007
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -75906,7 +76026,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010700000000000154
+Duration: 0.0013588999999999962
 
 ---
 ##  code/bank.hny
@@ -75920,6 +76040,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -77107,11 +77228,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011383999999999839
+Duration: 0.001596299999999995
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -78299,7 +78421,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008782999999999985
+Duration: 0.0015833999999999848
 
 ---
 ##  code/counter.hny
@@ -78313,6 +78435,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -79450,11 +79573,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001108899999999996
+Duration: 0.0018094999999999917
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -80592,7 +80716,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001053499999999985
+Duration: 0.001936199999999999
 
 ---
 ##  code/qbarrier.hny
@@ -80606,6 +80730,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -81749,11 +81874,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011151000000000078
+Duration: 0.0015519000000000227
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -82897,7 +83023,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010474000000000039
+Duration: 0.0018096999999999974
 
 ---
 ## -msynch=synchS code/qbarrier.hny
@@ -82911,6 +83037,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -83814,11 +83941,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011014000000000024
+Duration: 0.0018245000000000067
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -84722,7 +84850,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010144999999999738
+Duration: 0.0014732000000000078
 
 ---
 ##  code/barriertest.hny
@@ -84736,6 +84864,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -85947,11 +86076,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001104899999999992
+Duration: 0.00148029999999999
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -87163,7 +87293,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008988000000000052
+Duration: 0.001736599999999977
 
 ---
 ## -msynch=synchS code/barriertest.hny
@@ -87177,6 +87307,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -88148,11 +88279,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011455999999999966
+Duration: 0.0017906999999999784
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -89124,7 +89256,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008539000000000185
+Duration: 0.0018203999999999998
 
 ---
 ##  code/trap.hny
@@ -89138,6 +89270,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -89180,11 +89313,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009846999999999773
+Duration: 0.0012924000000000269
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -89227,7 +89361,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008077999999999974
+Duration: 0.0011773999999999951
 
 ---
 ##  code/trap2.hny
@@ -89241,6 +89375,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -89287,11 +89422,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010044999999999915
+Duration: 0.001512200000000019
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -89338,7 +89474,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008313999999999822
+Duration: 0.0011329999999999951
 
 ---
 ##  code/trap3.hny
@@ -89352,6 +89488,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -90456,11 +90593,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010822000000000054
+Duration: 0.0018420000000000103
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -91565,7 +91703,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010525000000000118
+Duration: 0.00141589999999997
 
 ---
 ##  code/trap4.hny
@@ -91579,6 +91717,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -91631,11 +91770,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011113999999999846
+Duration: 0.0011376000000000164
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -91688,7 +91828,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009224999999999928
+Duration: 0.0012184000000000084
 
 ---
 ##  code/trap5.hny
@@ -91702,6 +91842,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -91762,11 +91903,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010861999999999816
+Duration: 0.0013844000000000078
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?done
 Sequential
@@ -91827,7 +91969,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009763000000000133
+Duration: 0.001346600000000031
 
 ---
 ##  code/trap6.hny
@@ -91841,6 +91983,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -92962,11 +93105,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009424000000000099
+Duration: 0.0022040999999999866
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -94088,7 +94232,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009450000000000014
+Duration: 0.001671400000000045
 
 ---
 ## -msynch=synchS code/trap6.hny
@@ -94102,6 +94246,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -94983,11 +95128,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011176999999999992
+Duration: 0.0018991999999999898
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -95869,7 +96015,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010121999999999909
+Duration: 0.0017278000000000016
 
 ---
 ##  code/hw.hny
@@ -95883,6 +96029,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?back
 Sequential
@@ -96002,11 +96149,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008713999999999944
+Duration: 0.0015494999999999814
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?back
 Sequential
@@ -96126,7 +96274,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008589999999999987
+Duration: 0.0012689000000000172
 
 ---
 ##  code/abptest.hny
@@ -96140,6 +96288,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store abp
@@ -96347,11 +96496,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009832000000000174
+Duration: 0.001594299999999993
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store abp
@@ -96559,7 +96709,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009013999999999966
+Duration: 0.0012435000000000085
 
 ---
 ##  code/byzbosco.hny
@@ -96573,18 +96723,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009744999999999893
+Duration: 0.001336299999999957
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)
 ```
 
-Duration: 0.0009646000000000099
+Duration: 0.001310599999999995
 
 ---
 ##  code/BBsematest.hny
@@ -96598,6 +96750,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store BBsema
@@ -97777,11 +97930,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010554000000000119
+Duration: 0.001487000000000016
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store BBsema
@@ -98961,7 +99115,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009247000000000005
+Duration: 0.00130269999999999
 
 ---
 ##  code/ky.hny
@@ -98975,6 +99129,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store x
@@ -99068,11 +99223,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001000899999999999
+Duration: 0.0014254999999999685
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 Store x
@@ -99166,7 +99322,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008471999999999924
+Duration: 0.001241900000000018
 
 ---
 ##  code/bosco.hny
@@ -99180,6 +99336,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -99782,11 +99939,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010499999999999954
+Duration: 0.0013876999999999917
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -100389,7 +100547,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010710999999999915
+Duration: 0.001269499999999979
 
 ---
 ##  code/RWsbs.hny
@@ -100403,6 +100561,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -101727,11 +101886,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011797000000000057
+Duration: 0.0016795000000000004
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -103056,7 +103216,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010605999999999949
+Duration: 0.0015905999999999976
 
 ---
 ##  code/queuebroken.hny
@@ -103070,6 +103230,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -104285,11 +104446,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011337000000000153
+Duration: 0.0015742000000000256
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -105505,7 +105667,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010626999999999998
+Duration: 0.0014388999999999652
 
 ---
 ##  code/hello7.hny
@@ -105519,6 +105681,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 9
 Frame hello name
@@ -105540,11 +105703,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009697000000000178
+Duration: 0.0023586999999999914
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 9
 Frame hello name
@@ -105566,7 +105730,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009636000000000089
+Duration: 0.0017019999999999813
 
 ---
 ##  code/multitest.hny
@@ -105580,6 +105744,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 13
 Frame seq_test ()
@@ -105609,11 +105774,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010053999999999896
+Duration: 0.0015236000000000138
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 13
 Frame seq_test ()
@@ -105643,7 +105809,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009240000000000081
+Duration: 0.0015160000000000173
 
 ---
 ##  code/qsort.hny
@@ -105657,6 +105823,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 244
 Frame Qsort arr
@@ -105905,11 +106072,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009994999999999865
+Duration: 0.0014817000000000302
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 244
 Frame Qsort arr
@@ -106158,7 +106326,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010229999999999961
+Duration: 0.0015223999999999793
 
 ---
 ##  code/setobj.hny
@@ -106172,6 +106340,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -106274,11 +106443,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008655999999999942
+Duration: 0.0014059000000000155
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -106381,7 +106551,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007522000000000084
+Duration: 0.0013776000000000344
 
 ---
 ##  code/baddblwait.hny
@@ -106395,6 +106565,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?forks
 Load left
@@ -106442,11 +106613,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009545000000000248
+Duration: 0.0015624000000000193
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?forks
 Load left
@@ -106494,7 +106666,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007380000000000164
+Duration: 0.006289099999999992
 
 ---
 ##  code/nbqueuetest.hny
@@ -106508,6 +106680,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -106991,11 +107164,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009500000000000064
+Duration: 0.001363900000000029
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -107479,7 +107653,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009745999999999921
+Duration: 0.001167100000000032
 
 ---
 ##  code/cssynch.hny
@@ -107493,6 +107667,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -108579,11 +108754,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009214999999999918
+Duration: 0.0014133000000000062
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -109670,7 +109846,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000992899999999991
+Duration: 0.0015524000000000093
 
 ---
 ##  code/stack3.hny
@@ -109684,6 +109860,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 37
 Frame Stack ()
@@ -109725,11 +109902,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008033000000000068
+Duration: 0.0012294999999999945
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 37
 Frame Stack ()
@@ -109771,7 +109949,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007511999999999797
+Duration: 0.0016335999999999573
 
 ---
 ##  code/RWqueue.hny
@@ -109785,6 +109963,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -111055,11 +111234,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011729999999999796
+Duration: 0.0015084000000000208
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -112330,7 +112510,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009871999999999936
+Duration: 0.00158419999999998
 
 ---
 ##  code/RWcv.hny
@@ -112344,6 +112524,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -113578,11 +113759,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008838000000000179
+Duration: 0.0015721000000000207
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -114817,7 +114999,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009297999999999806
+Duration: 0.0015547999999999673
 
 ---
 ##  code/2pc.hny
@@ -114831,18 +115013,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)
 ```
 
-Duration: 0.0008330000000000004
+Duration: 0.0014612999999999987
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
 ```
 
-Duration: 0.0008160000000000112
+Duration: 0.0017117999999999856
 
 ---
 ##  code/queueconc.hny
@@ -114856,6 +115040,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -116087,11 +116272,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010809999999999986
+Duration: 0.0013560999999999712
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -117323,7 +117509,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010577999999999976
+Duration: 0.0015422999999999965
 
 ---
 ##  code/queuelin.hny
@@ -117337,6 +117523,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -118598,11 +118785,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009027000000000063
+Duration: 0.001547400000000032
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -119864,7 +120052,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008752999999999955
+Duration: 0.0014683999999999808
 
 ---
 ##  code/lockspec.hny
@@ -119878,6 +120066,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 42
 Frame Lock ()
@@ -119924,11 +120113,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008364000000000149
+Duration: 0.0014645999999999826
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 42
 Frame Lock ()
@@ -119975,7 +120165,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008876000000000162
+Duration: 0.0016456999999999722
 
 ---
 ##  code/ky2.hny
@@ -119989,6 +120179,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push [[1, 2], [3, 4], [5, 6], [1, 11], [12, 13], [14, 15], [16, 2]]
 Store transitions
@@ -120011,11 +120202,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008502999999999983
+Duration: 0.0015360999999999847
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push [[1, 2], [3, 4], [5, 6], [1, 11], [12, 13], [14, 15], [16, 2]]
 Store transitions
@@ -120038,7 +120230,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007384000000000002
+Duration: 0.001309799999999972
 
 ---
 ##  code/cslock.hny
@@ -120052,6 +120244,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -121163,11 +121356,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008962000000000137
+Duration: 0.0018076000000000203
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -122279,7 +122473,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008209000000000133
+Duration: 0.0022707000000000144
 
 ---
 ##  code/abp.hny
@@ -122293,6 +122487,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?s_chan
 Sequential
@@ -122447,11 +122642,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009800000000000086
+Duration: 0.0017612000000000183
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ?s_chan
 Sequential
@@ -122606,7 +122802,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008237000000000105
+Duration: 0.0014879999999999893
 
 ---
 ##  code/hello9.hny
@@ -122620,6 +122816,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store x
@@ -122659,11 +122856,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009762000000000104
+Duration: 0.001688999999999996
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push False
 Store x
@@ -122703,7 +122901,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007611000000000145
+Duration: 0.0014056000000000068
 
 ---
 ##  code/hello2.hny
@@ -122717,6 +122915,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 14
 Frame handler ()
@@ -122739,11 +122938,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.000897900000000007
+Duration: 0.0013403000000000165
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 14
 Frame handler ()
@@ -122766,7 +122966,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007709000000000188
+Duration: 0.0011340000000000239
 
 ---
 ##  code/actortest.hny
@@ -122780,18 +122980,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009009999999999851
+Duration: 0.0017199999999999993
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.0009126000000000134
+Duration: 0.001507399999999992
 
 ---
 ##  code/hello4.hny
@@ -122805,6 +123007,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { False, True }
 Choose
@@ -122816,11 +123019,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008680000000000077
+Duration: 0.0016151999999999833
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { False, True }
 Choose
@@ -122832,7 +123036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009060000000000179
+Duration: 0.0017204999999999582
 
 ---
 ##  code/actor.hny
@@ -122846,18 +123050,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009491999999999834
+Duration: 0.0012749999999999706
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.000884899999999994
+Duration: 0.001342600000000027
 
 ---
 ##  code/chain.hny
@@ -122871,6 +123077,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -123160,11 +123367,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008217000000000085
+Duration: 0.0013767000000000085
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -123454,7 +123662,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008448999999999818
+Duration: 0.0012930999999999915
 
 ---
 ##  code/boundedbuffer.hny
@@ -123468,6 +123676,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -123929,11 +124138,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008284000000000069
+Duration: 0.0014798999999999785
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -124395,7 +124605,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007207000000000185
+Duration: 0.001343099999999986
 
 ---
 ##  code/taslock.hny
@@ -124409,6 +124619,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 38
 Frame test_and_set s
@@ -124451,11 +124662,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009794000000000191
+Duration: 0.001571099999999992
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 38
 Frame test_and_set s
@@ -124498,7 +124710,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007437000000000138
+Duration: 0.0013546999999999865
 
 ---
 ##  code/RW.hny
@@ -124512,6 +124724,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 88
 Frame RWlock ()
@@ -124604,11 +124817,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008956999999999993
+Duration: 0.0013129000000000057
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 88
 Frame RWlock ()
@@ -124701,7 +124915,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008180000000000132
+Duration: 0.0018743999999999983
 
 ---
 ##  code/DinersCV2.hny
@@ -124715,6 +124929,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -125893,11 +126108,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011597999999999886
+Duration: 0.0016456999999999722
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -127076,7 +127292,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000845499999999999
+Duration: 0.0015627999999999753
 
 ---
 ##  code/2pc2.hny
@@ -127090,6 +127306,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -127986,11 +128203,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011062000000000016
+Duration: 0.0015229999999999966
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -128887,7 +129105,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008465
+Duration: 0.0017312999999999912
 
 ---
 ##  code/rsmspec.hny
@@ -128901,6 +129119,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store network
@@ -129034,11 +129253,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009212000000000109
+Duration: 0.0017027999999999488
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store network
@@ -129172,7 +129392,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009668999999999928
+Duration: 0.0014099000000000195
 
 ---
 ##  code/paxos1.hny
@@ -129186,6 +129406,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -129683,11 +129904,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009065999999999796
+Duration: 0.0014252000000000153
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -130185,7 +130407,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009126000000000412
+Duration: 0.0011161000000000088
 
 ---
 ##  code/queuespec.hny
@@ -130199,6 +130421,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -130618,11 +130841,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009360999999999953
+Duration: 0.0015460999999999947
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -131042,7 +131266,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008115999999999679
+Duration: 0.0013191000000000175
 
 ---
 ##  code/RWbtest.hny
@@ -131056,6 +131280,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -131297,11 +131522,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009172000000000069
+Duration: 0.0016201000000000132
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RW
@@ -131543,7 +131769,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009782999999999875
+Duration: 0.0012801000000000062
 
 ---
 ##  code/RWhoare.hny
@@ -131557,6 +131783,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -132825,11 +133052,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009389000000000203
+Duration: 0.0015228999999999937
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -134098,7 +134326,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010466000000000086
+Duration: 0.0017217999999999956
 
 ---
 ##  code/RWbusy.hny
@@ -134112,6 +134340,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -135307,11 +135536,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008982000000000157
+Duration: 0.0014143999999999823
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -136507,7 +136737,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008316999999999908
+Duration: 0.0015412000000000203
 
 ---
 ##  code/setobjtest.hny
@@ -136521,6 +136751,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store setobj
@@ -136695,11 +136926,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010282000000000346
+Duration: 0.0013555000000000095
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store setobj
@@ -136874,7 +137106,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009035000000000015
+Duration: 0.0013133999999999646
 
 ---
 ##  code/qtestpar.hny
@@ -136888,6 +137120,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -137410,11 +137643,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008814999999999795
+Duration: 0.0020850000000000035
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store queue
@@ -137937,7 +138171,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007511000000000045
+Duration: 0.0013527999999999873
 
 ---
 ##  code/hanoi.hny
@@ -137951,6 +138185,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -138438,11 +138673,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008541000000000243
+Duration: 0.0015731999999999968
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -138930,7 +139166,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008796999999999833
+Duration: 0.0012781000000000042
 
 ---
 ##  code/leader.hny
@@ -138944,6 +139180,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -139187,11 +139424,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008601999999999776
+Duration: 0.001407799999999959
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -139435,7 +139673,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008345000000000158
+Duration: 0.0015212000000000003
 
 ---
 ##  code/hoare.hny
@@ -139449,6 +139687,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -140585,11 +140824,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010303999999999869
+Duration: 0.00156909999999999
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -141726,7 +141966,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009429000000000243
+Duration: 0.0015412000000000203
 
 ---
 ##  code/RWfair.hny
@@ -141740,6 +141980,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -143101,11 +143342,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010426000000000046
+Duration: 0.0018716000000000288
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -144467,7 +144709,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011095999999999884
+Duration: 0.0015561000000000047
 
 ---
 ##  code/register.hny
@@ -144481,6 +144723,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push None
 Store register
@@ -144509,11 +144752,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009681000000000273
+Duration: 0.0016269000000000422
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push None
 Store register
@@ -144542,7 +144786,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008039999999999714
+Duration: 0.0018974999999999964
 
 ---
 ##  code/paxos.hny
@@ -144556,6 +144800,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -145375,11 +145620,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010011999999999799
+Duration: 0.0014603999999999728
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -146199,7 +146445,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000938300000000003
+Duration: 0.0014779999999999793
 
 ---
 ##  code/mesa.hny
@@ -146213,18 +146459,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '=' ErrorToken(line=5, message="Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '='", column=13, lexeme='0', filename='code/mesa.hny', is_eof_error=False)
 ```
 
-Duration: 0.0009116000000000124
+Duration: 0.0016437000000000257
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 5:12 at code/mesa.hny, missing '=' at '0'
 ```
 
-Duration: 0.0008683999999999914
+Duration: 0.0012523999999999869
 
 ---
 ##  code/RWqtest.hny
@@ -146238,6 +146486,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RWqueue
@@ -147611,11 +147860,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001243099999999997
+Duration: 0.001647500000000024
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store RWqueue
@@ -148989,7 +149239,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010217000000000143
+Duration: 0.0014456000000000468
 
 ---
 ##  code/BBsema.hny
@@ -149003,6 +149253,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -150154,11 +150405,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009890000000000176
+Duration: 0.0018206000000000055
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -151310,7 +151562,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010944999999999983
+Duration: 0.0015635999999999983
 
 ---
 ##  code/queue.hny
@@ -151324,6 +151576,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -151747,11 +152000,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009408999999999668
+Duration: 0.0016753999999999936
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -152175,7 +152429,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007744999999999558
+Duration: 0.0012546999999999975
 
 ---
 ##  code/barrier.hny
@@ -152189,6 +152443,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -153344,11 +153599,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009437999999999946
+Duration: 0.0015481999999999996
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -154504,7 +154760,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009504000000000179
+Duration: 0.0013721000000000427
 
 ---
 ##  code/ticket.hny
@@ -154518,6 +154774,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 72
 Frame fetch_and_increment p
@@ -154594,11 +154851,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0007715999999999834
+Duration: 0.0013920000000000043
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 72
 Frame fetch_and_increment p
@@ -154675,7 +154933,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008450000000000402
+Duration: 0.001251900000000028
 
 ---
 ##  code/atomicinc.hny
@@ -154689,6 +154947,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 13
 Frame atomic_inc ptr
@@ -154712,11 +154971,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.00088309999999997
+Duration: 0.001562299999999961
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 13
 Frame atomic_inc ptr
@@ -154740,7 +155000,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008920000000000039
+Duration: 0.001341800000000004
 
 ---
 ##  code/nbqueue.hny
@@ -154754,6 +155014,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -156139,11 +156400,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011653999999999831
+Duration: 0.001490199999999997
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -157529,7 +157791,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009356999999999838
+Duration: 0.0014448999999999712
 
 ---
 ##  code/stack2.hny
@@ -157543,6 +157805,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -157966,11 +158229,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010899000000000325
+Duration: 0.0014643999999999768
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -158394,7 +158658,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010345999999999966
+Duration: 0.001326700000000014
 
 ---
 ##  code/gpu.hny
@@ -158408,6 +158672,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
 Store availGPUs
@@ -158438,11 +158703,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011354000000000086
+Duration: 0.0014872000000000218
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
 Store availGPUs
@@ -158473,7 +158739,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010394000000000236
+Duration: 0.0015901000000000387
 
 ---
 ##  code/triangle.hny
@@ -158487,6 +158753,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 24
 Frame triangle n
@@ -158534,11 +158801,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001105899999999993
+Duration: 0.0014413999999999816
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 24
 Frame triangle n
@@ -158586,7 +158854,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011057999999999901
+Duration: 0.0016155000000000475
 
 ---
 ##  code/barrier1.hny
@@ -158600,6 +158868,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -159831,11 +160100,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012706000000000106
+Duration: 0.001743799999999962
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -161067,7 +161337,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011799000000000115
+Duration: 0.001586199999999982
 
 ---
 ##  code/bosco2.hny
@@ -161081,6 +161351,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -161689,11 +161960,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010316999999999688
+Duration: 0.0015685999999999756
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -162302,7 +162574,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011083000000000065
+Duration: 0.001578700000000044
 
 ---
 ##  code/paxos2.hny
@@ -162316,6 +162588,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 334
 Frame leader (self, proposal)
@@ -162654,11 +162927,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009841000000000433
+Duration: 0.0015684000000000253
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 334
 Frame leader (self, proposal)
@@ -162997,7 +163271,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001013900000000012
+Duration: 0.0013800000000000479
 
 ---
 ##  code/bqueue.hny
@@ -163011,6 +163285,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -163436,11 +163711,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010370000000000101
+Duration: 0.0014822000000000446
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -163866,7 +164142,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009365000000000068
+Duration: 0.0012744999999999562
 
 ---
 ##  code/hello6.hny
@@ -163880,6 +164156,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 7
 Frame p s
@@ -163899,11 +164176,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010805999999999871
+Duration: 0.0012558999999999765
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 7
 Frame p s
@@ -163923,7 +164201,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009578000000000086
+Duration: 0.0016015000000000335
 
 ---
 ##  code/stack1.hny
@@ -163937,6 +164215,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 40
 Frame Stack ()
@@ -163981,11 +164260,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010357000000000283
+Duration: 0.001502699999999968
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 40
 Frame Stack ()
@@ -164030,7 +164310,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0008913000000000393
+Duration: 0.001221099999999975
 
 ---
 ##  code/hello5.hny
@@ -164044,6 +164324,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 7
 Frame p s
@@ -164063,11 +164344,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.000999899999999998
+Duration: 0.0021748000000000323
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 7
 Frame p s
@@ -164087,7 +164369,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009037000000000073
+Duration: 0.0013760999999999912
 
 ---
 ##  code/abd.hny
@@ -164101,6 +164383,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -164924,11 +165207,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010903999999999914
+Duration: 0.0013441999999999066
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store bag
@@ -165752,7 +166036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010288999999999993
+Duration: 0.0013102000000000391
 
 ---
 ##  code/hello8.hny
@@ -165766,6 +166050,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 11
 Frame hello name
@@ -165789,11 +166074,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010407000000000055
+Duration: 0.0012645000000000017
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 11
 Frame hello name
@@ -165817,7 +166103,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.000982700000000003
+Duration: 0.0013156999999999197
 
 ---
 ##  code/stack4.hny
@@ -165831,6 +166117,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -165929,11 +166216,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010194000000000036
+Duration: 0.00140589999999996
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store alloc
@@ -166032,7 +166320,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009244999999999948
+Duration: 0.001498200000000005
 
 ---
 ##  code/BBhoare.hny
@@ -166046,6 +166334,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store hoare
@@ -167408,11 +167697,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011243999999999699
+Duration: 0.001635000000000053
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store hoare
@@ -168775,7 +169065,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011365999999999876
+Duration: 0.002042199999999994
 
 ---
 ##  code/RWcheat.hny
@@ -168789,6 +169079,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -169872,11 +170163,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001151100000000016
+Duration: 0.0016635999999999873
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -170960,7 +171252,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010681000000000163
+Duration: 0.001471800000000023
 
 ---
 ##  code/stacktest.hny
@@ -170974,18 +171266,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)
 ```
 
-Duration: 0.0010111000000000425
+Duration: 0.0019145999999999885
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']
 ```
 
-Duration: 0.0009596000000000049
+Duration: 0.001518200000000025
 
 ---
 ##  code/queueMS.hny
@@ -170999,6 +171293,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -172215,11 +172510,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011287999999999854
+Duration: 0.0015545000000000142
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -173436,7 +173732,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011001999999999956
+Duration: 0.002082499999999987
 
 ---
 ##  code/abdtest.hny
@@ -173450,6 +173746,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store register
@@ -173569,11 +173866,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010021000000000058
+Duration: 0.0020988999999999036
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store register
@@ -173693,7 +173991,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009317999999999826
+Duration: 0.0017167000000000154
 
 ---
 ##  code/locksusp.hny
@@ -173707,6 +174005,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -174170,11 +174469,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010373000000000188
+Duration: 0.0015924999999999967
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store list
@@ -174638,7 +174938,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009346000000000076
+Duration: 0.0013385999999999676
 
 ---
 ##  code/2pc1.hny
@@ -174652,18 +174952,20 @@ Output is good: ❌
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)
 ```
 
-Duration: 0.001055499999999987
+Duration: 0.001488299999999998
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)
 ```
 
-Duration: 0.0009109999999999951
+Duration: 0.001768300000000056
 
 ---
 ##  code/needhamschroeder.hny
@@ -174677,6 +174979,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -175101,11 +175404,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009839999999999849
+Duration: 0.001638999999999946
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push {}
 Store network
@@ -175530,7 +175834,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009461000000000053
+Duration: 0.0015315999999999663
 
 ---
 ##  code/linkedlist.hny
@@ -175544,6 +175848,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -176907,11 +177212,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001111899999999999
+Duration: 0.0014815999999999718
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -178275,7 +178581,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010738000000000136
+Duration: 0.0018856000000000428
 
 ---
 ##  code/barriertest2.hny
@@ -178289,6 +178595,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -179525,11 +179832,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011967999999999979
+Duration: 0.0016743000000000174
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store barrier
@@ -180766,7 +181074,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001103500000000035
+Duration: 0.0016410000000000036
 
 ---
 ##  code/queuefix.hny
@@ -180780,6 +181088,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -182021,11 +182330,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001139100000000004
+Duration: 0.0022832000000000408
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push ()
 Store synch
@@ -183267,7 +183577,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0010566000000000186
+Duration: 0.001388300000000009
 
 ---
 ##  code/hello3.hny
@@ -183281,6 +183591,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { "hello", "world" }
 Choose
@@ -183289,11 +183600,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009892999999999708
+Duration: 0.0012934
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push { "hello", "world" }
 Choose
@@ -183302,7 +183614,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009488999999999748
+Duration: 0.001466699999999932
 
 ---
 ##  code/queueseq.hny
@@ -183316,6 +183628,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 69
 Frame Queue ()
@@ -183389,11 +183702,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.001043499999999975
+Duration: 0.001577399999999951
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Jump 69
 Frame Queue ()
@@ -183467,7 +183781,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009460000000000024
+Duration: 0.0016347999999999363
 
 ---
 ##  code/hello1.hny
@@ -183481,6 +183795,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push "hello world"
 Print
@@ -183488,11 +183803,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009679000000000215
+Duration: 0.0014104000000000338
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push "hello world"
 Print
@@ -183500,7 +183816,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009125000000000383
+Duration: 0.0017508000000000523
 
 ---
 ##  code/consensus.hny
@@ -183514,6 +183830,7 @@ Output is good: ✅
 ### Baseline Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 StoreVar $n1
@@ -183579,11 +183896,12 @@ Return
 DelVar result
 ```
 
-Duration: 0.0009897999999999851
+Duration: 0.0012381000000000197
 
 ### Current Output
 
 ```
+Phase 1: compile Harmony program to bytecode
 Frame __init__ ()
 Push 0
 StoreVar $n1
@@ -183649,6 +183967,6 @@ Return
 DelVar result
 ```
 
-Duration: 0.000925900000000035
+Duration: 0.0012327000000000865
 
 ---

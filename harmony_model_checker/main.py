@@ -318,6 +318,7 @@ def main():
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
 
+    print("Phase 1: compile Harmony program to bytecode")
     try:
         code, scope = do_compile(filenames, consts, mods, interface)
     except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
@@ -346,6 +347,7 @@ def main():
         if parse_code_only:
             return 0
 
+        print("Phase 2: run the model checker")
         r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), output_files["hco"], output_files["hvm"]))
         if r != 0:
             print("charm model checker failed")
