@@ -2,8 +2,6 @@ from antlr4.Token import Token
 from antlr_denter.DenterHelper import DenterHelper
 
 
-_MIXED_INDENTATION_ERROR_TEXT = """Indentation Error: Mixing tabs and spaces for indentation"""
-
 class ModifiedDenterHelper(DenterHelper):
     def __init__(self, lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof):
         super().__init__(nl_token, indent_token, dedent_token, ignore_eof)
