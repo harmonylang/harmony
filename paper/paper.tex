@@ -93,15 +93,15 @@ of problems in programs:
 divide-by-zero, out-of-bounds array access, dereferencing dangling
 pointers, trying to multiply two lists with one another,
 and many more.
-\item Safety violations due to assertions failing, such as an assertion to ensure mutual exclusion.
-\item Liveness violations such as caused by deadlock or infinite loops.
+\item Safety violations: Harmony supports both assertions that must hold in a particular location and general invariants.
+\item Liveness violations: not reaching a final state, often due to deadlock or an infinite loop.
 \item Faulty behaviors: implementation has behaviors not seen in the specification, such as violations of linearizability~\cite{HW90}.
 \item Incomplete behaviors: specification has behaviors not seen with implementation, such as multiple readers not able to get a reader/writer lock simultaneously.
 \item Data races: shared variables accessed without a lock.
 \item Busy Waiting: waiting for a condition without blocking.
 \item Violations of interrupt safety: a race condition caused by the execution
 of an interrupt handler.
-\item Memory leaks.
+\item Memory leaks: memory unintentionally allocated in a final state.
 \end{compactitem}
 
 \begin{figure*}
@@ -158,15 +158,18 @@ used to model check a variety of distributed algorithms such as two-phase
 commit, chain replication, various consensus algorithms such as Paxos,
 and the Needham-Schroeder authentication protocols.
 
-Harmony's unique combination of features are a familiar and easy
-to learn high-level and highly expressive programming language, the
-ability to concisely specify an interface, the ability to compare
-behaviors of specification and implementation, the ability to
-modularly model check programs, and support for dynamic memory
-allocation, continuations, and interrupts.  In addition, Harmony
-finds various common problems automatically without a complicated
-property specification language, such as Harmony's ability to find
-instances of undesirable busy waiting.
+Harmony's unique combination of features are
+\begin{compactitem}
+\item a familiar and easy-to-learn high-level programming language.
+\item the ability to concisely specify an interface.
+\item the ability to compare behaviors of specification and implementation.
+\item the ability to modularly model check programs.
+\item support for dynamic memory allocation.
+\item support for continuations.
+\item support for interrupts.
+\item automatic diagnosis of various common problems such as
+undesirable busy waiting.
+\end{compactitem}
 
 This paper provides an overview of the Harmony language and Charm,
 its model checker, and how they may be used by programmers to
@@ -230,7 +233,7 @@ so-called ``unhashable types'').
 
 Harmony does not
 support classes and instead supports memory allocation and pointers
-in a way that is familiar to C programmers.  While this perhaps
+in a way that is familiar to C programmers.  While perhaps this
 seems like a step back in language evolution, many synchronization
 algorithms in the literature explicitly consider memory accesses,
 and this has been a bonus for analyzing such algorithms with Harmony.
@@ -268,7 +271,7 @@ changing the state.
 
 \emph{Deadlock} is the situation in which threads are waiting for
 one another.
-In order to make deadlock detection possible, Harmony programs are
+In order to make deadlock detection possible, a Harmony program is
 required to eventually terminate under fair selection of its
 nondetermistic choices.  In other words, from each state there
 should always exist an extension of the execution in which the
@@ -394,17 +397,18 @@ various concurrent interleavings of <{enqueue}> and <{dequeue}> operations.
 The <{enqueue}> method appends a value onto the end of the list,
 while the <{dequeue}> method extracts the head, both as atomic actions.
 
-To test a queue, we want to perform a set of concurrent <{enqueue}>
-and <{dequeue}> operations concurrently.
-\autoref{fig:queue}(b) shows how this can be specified in Harmony.
-The test program spawns <{NOPS = 4}> threads, at least one of which
-does an <{enqueue}> operation and at least one of which does a
-<{dequeue}> operation.  A thread that does an <{enqueue}> enqueues
-its identifier <{self}>.  The program
-includes a <{print}> statement at the beginning and end of every queue
-operation.  Think of the <{print}> statements as \emph{annotations}
-that tell Harmony what the interesting events are with respect to
-queue operations.
+To test a concurrent queue, we need to perform a set of <{enqueue}>
+and <{dequeue}> operations concurrently.  \autoref{fig:queue}(b)
+shows how this can be specified in Harmony.  The test program spawns
+<{NOPS = 4}> threads, at least one of which does an <{enqueue}>
+operation and at least one of which does a <{dequeue}> operation.
+A thread that does an <{enqueue}> enqueues its identifier <{self}>.
+The program includes a <{print}> statement at the beginning and end
+of every queue operation.  Think of the <{print}> statements as
+\emph{annotations} that tell Harmony what the interesting events
+are with respect to queue operations.  We will use the output of
+those <{print}> statements to compare the behavior of an implementation
+with that of its specification.
 
 \begin{figure*}
 \begin{center}
@@ -429,14 +433,14 @@ hardware consisted of a 2.8 GHz Quad-Core Intel Core i7
 The test program is similar to what a programmer might have written
 as a unit test.  The programmer would run the program a bunch of
 times and look at the output in order to see if it looks reasonable.
-Doing so is difficult and error prone, as the output tends
-to be complex and in the mess of many lines of output it is easy
-to overlook problems such as two threads dequeuing the same item
-or items being dequeued in the wrong order.  The output of concurrent
-print statement can be mangled together.  Not only that, but the
+Doing so is difficult and error prone, as the output tends to be
+complex and---in the mess of many lines of output---it is easy to
+overlook problems such as two threads dequeuing the same item or
+items being dequeued in the wrong order.  Not only that, but the
 programmer would need to run this test program many times and check
-the output each time.  It even is hard to write a program that
-checks the output automatically.
+the output each time.  It is hard to write a program that checks
+the output automatically as it is difficult to characterize what
+correct outputs are.
 
 This process is automated in Harmony.  The approach is to
 run the model checker twice.  The first time, the test program is
@@ -676,19 +680,18 @@ one of the contexts in the active set.  There are about 30 basic
 transitions, which, for this paper, we classify as follows:
 
 \begin{compactitem}
-\item \emph{basic operations}: do a simple operation to a context
-such as pushing a value onto its stack, and increase its program
-counter by one.
-\item \emph{jumps}: to implement loops.
+\item \emph{basic operations}: a deterministic operation that only
+involves a single context and no shared state, such as pushing a value
+onto the stack or increment the program counter.
+\item \texttt{Frame/Return}: method start/end.
 \item \texttt{Choose}: nondetermistic selection from a set.
-\item \texttt{Apply}: to call a method \emph{or} to index into a dictionary.
-\item \texttt{Frame/Return}: method start/stop.
-\item \texttt{Spawn}: create a new thread.
-\item \texttt{AtomicInc/AtomicDec}: modify the atomic counter of the context.
-\item \texttt{SetIntLevel}: enable/disable interrupts.
-\item \texttt{Stop/Go}: manipulating continuations.
-\item \texttt{Assert}: check a value.
-\item \texttt{Print}: add a value to the print log.
+\item \texttt{Apply}: method call \emph{or} index into a dictionary.
+\item \texttt{Spawn}: thread creation.
+\item \texttt{AtomicInc/AtomicDec}: atomic section enter/leave.
+\item \texttt{SetIntLevel}: interrupt enable/disable.
+\item \texttt{Stop/Go}: continuation save/restart.
+\item \texttt{Assert}: value check.
+\item \texttt{Print}: output.
 \end{compactitem}
 
 Each transition modifies at least the context bag and set of active
@@ -1005,13 +1008,13 @@ their right fork.
 Harmony quickly finds the problem and produces the output
 shown in \autoref{fig:dinersHTML}.
 
-The little orange boxes represent individual HVM instructions of the
-problematic trace.  You can click on any such box to see the state
-at that time and the HVM instruction it is executing,
-or you can navigate in various ways (forwards one step,
-backwards one step, jump to the next line of Harmony code, or jumps
-forwards or backwards to a context switch between threads).  The actual
-HVM code is in the lower left of the output.
+The little orange boxes represent individual HVM instructions of
+the problematic trace.  The programmer can click on any such box
+to see the state at that time and the HVM instruction it is executing,
+or can navigate in various ways (forwards one step, backwards
+one step, jump to the next line of Harmony code, or jumps forwards
+or backwards to a context switch between threads).  The actual HVM
+code is in the lower left of the output.
 
 However, users first want to focus on the rows in the top table.
 In this particular example, there are 6 threads, the thread that
@@ -1074,12 +1077,13 @@ supports compilation to TLA+.  While similar in spirit to Harmony,
 Harmony first compiles to a virtual machine that is close to CPUs
 like x86, ARM, and RISC-V, using a stack and common control flow
 techniques.  The resulting HVM has a TLA+ specification.  PlusCal,
-instead, \emph{trans\-piles} to TLA+.  Informally, the gap between
-PlusCal programs and their TLA+ representations is much smaller
-than the gap between Harmony programs and their TLA+ representations,
-making PlusCal programs more amenable to formal verification.  On the other
-hand, working effectively with PlusCal does require significant
-knowledge of TLA+, increasing the learning curve.
+instead, \emph{trans\-piles} to TLA+ (source-to-source translation).
+Informally, the gap between PlusCal programs and their TLA+
+representations is much smaller than the gap between Harmony programs
+and their TLA+ representations, making PlusCal programs more amenable
+to formal verification.  On the other hand, working effectively
+with PlusCal does require significant knowledge of TLA+, increasing
+the learning curve.
 
 Promela~\cite{SPIN} is a programming language that serves as input
 to the SPIN model checker.  Promela has many of the same features
