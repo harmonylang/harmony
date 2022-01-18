@@ -371,7 +371,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016071000000000002
+Duration: 0.0015784999999999966
 
 ### Current Output
 
@@ -735,7 +735,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001807000000000003
+Duration: 0.002041099999999997
 
 ---
 ##  harmony_model_checker/modules/synchBusy.hny
@@ -861,7 +861,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013215999999999992
+Duration: 0.002417599999999999
 
 ### Current Output
 
@@ -978,7 +978,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018328000000000025
+Duration: 0.0018629999999999966
 
 ---
 ##  harmony_model_checker/modules/synchImprecise.hny
@@ -1184,7 +1184,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013475999999999974
+Duration: 0.0012497999999999954
 
 ### Current Output
 
@@ -1381,7 +1381,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014522999999999966
+Duration: 0.001294400000000001
 
 ---
 ##  harmony_model_checker/modules/synch.hny
@@ -2437,7 +2437,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016407000000000019
+Duration: 0.0012242999999999976
 
 ### Current Output
 
@@ -3484,7 +3484,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014794000000000057
+Duration: 0.001256100000000003
 
 ---
 ##  harmony_model_checker/modules/alloc.hny
@@ -3548,7 +3548,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016474999999999962
+Duration: 0.0014375999999999972
 
 ### Current Output
 
@@ -3603,7 +3603,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013253999999999974
+Duration: 0.0012267000000000042
 
 ---
 ##  harmony_model_checker/modules/hoare.hny
@@ -4754,7 +4754,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001633599999999999
+Duration: 0.0017165999999999987
 
 ### Current Output
 
@@ -5896,7 +5896,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014662000000000008
+Duration: 0.001533599999999996
 
 ---
 ##  harmony_model_checker/modules/synchS.hny
@@ -6712,7 +6712,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001755699999999999
+Duration: 0.0012633999999999979
 
 ### Current Output
 
@@ -7519,7 +7519,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013666999999999985
+Duration: 0.0012686999999999976
 
 ---
 ##  harmony_model_checker/modules/set.hny
@@ -7679,7 +7679,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015495999999999982
+Duration: 0.0012001999999999985
 
 ### Current Output
 
@@ -7830,7 +7830,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013877999999999946
+Duration: 0.0013203999999999994
 
 ---
 ##  harmony_model_checker/modules/list.hny
@@ -8214,7 +8214,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013021000000000005
+Duration: 0.001454899999999995
 
 ### Current Output
 
@@ -8589,7 +8589,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014047000000000087
+Duration: 0.0011874999999999941
 
 ---
 ##  code/prog1.hny
@@ -8633,7 +8633,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013837000000000016
+Duration: 0.0013210000000000027
 
 ### Current Output
 
@@ -8668,7 +8668,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012479999999999991
+Duration: 0.0011654999999999999
 
 ---
 ##  code/prog2.hny
@@ -8712,7 +8712,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013267
+Duration: 0.001509300000000005
 
 ### Current Output
 
@@ -8747,7 +8747,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012746999999999897
+Duration: 0.0012805999999999929
 
 ---
 ##  code/Up.hny
@@ -8809,7 +8809,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001776800000000009
+Duration: 0.001531599999999994
 
 ### Current Output
 
@@ -8862,7 +8862,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001584199999999994
+Duration: 0.001254099999999994
 
 ---
 ##  code/UpEnter.hny
@@ -8947,7 +8947,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016695000000000043
+Duration: 0.001619499999999996
 
 ### Current Output
 
@@ -9023,7 +9023,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011947000000000069
+Duration: 0.001423599999999997
 
 ---
 ##  code/csbarebones.hny
@@ -9068,7 +9068,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0019409000000000093
+Duration: 0.001319700000000007
 
 ### Current Output
 
@@ -9104,7 +9104,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.002084600000000006
+Duration: 0.0016331000000000123
 
 ---
 ##  code/cs.hny
@@ -9150,7 +9150,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014914000000000038
+Duration: 0.0014654999999999946
 
 ### Current Output
 
@@ -9187,7 +9187,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016453000000000023
+Duration: 0.0011245000000000005
 
 ---
 ##  code/naiveLock.hny
@@ -9245,7 +9245,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001327700000000001
+Duration: 0.001397400000000007
 
 ### Current Output
 
@@ -9294,7 +9294,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013885000000000008
+Duration: 0.0011715000000000059
 
 ---
 ##  code/naiveFlags.hny
@@ -9363,7 +9363,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012014000000000052
+Duration: 0.0017139000000000043
 
 ### Current Output
 
@@ -9423,7 +9423,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012587000000000015
+Duration: 0.0013532999999999878
 
 ---
 ##  code/naiveTurn.hny
@@ -9482,7 +9482,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015542999999999946
+Duration: 0.0014119999999999966
 
 ### Current Output
 
@@ -9532,7 +9532,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001425700000000002
+Duration: 0.001435699999999998
 
 ---
 ##  code/Peterson.hny
@@ -9618,7 +9618,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001406499999999991
+Duration: 0.001552800000000007
 
 ### Current Output
 
@@ -9695,7 +9695,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015985000000000027
+Duration: 0.0013521999999999978
 
 ---
 ##  code/PetersonInductive.hny
@@ -9797,7 +9797,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001242000000000007
+Duration: 0.0013021000000000005
 
 ### Current Output
 
@@ -9890,7 +9890,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014222999999999875
+Duration: 0.0010582000000000091
 
 ---
 ##  code/csonebit.hny
@@ -9969,7 +9969,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016504000000000102
+Duration: 0.0018326999999999927
 
 ### Current Output
 
@@ -10039,7 +10039,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014022000000000062
+Duration: 0.0012252999999999986
 
 ---
 ##  code/PetersonMethod.hny
@@ -10177,7 +10177,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012659000000000004
+Duration: 0.0016313999999999912
 
 ### Current Output
 
@@ -10306,7 +10306,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013058000000000097
+Duration: 0.0013263000000000025
 
 ---
 ##  code/clock.hny
@@ -10554,7 +10554,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013592000000000048
+Duration: 0.0012426999999999994
 
 ### Current Output
 
@@ -10793,7 +10793,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001617499999999994
+Duration: 0.0012100000000000027
 
 ---
 ##  code/spinlock.hny
@@ -10945,7 +10945,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014233999999999913
+Duration: 0.0013905000000000028
 
 ### Current Output
 
@@ -11088,7 +11088,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012767999999999946
+Duration: 0.0012215000000000004
 
 ---
 ##  code/UpLock.hny
@@ -12202,7 +12202,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015647999999999912
+Duration: 0.0018248000000000014
 
 ### Current Output
 
@@ -13307,7 +13307,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015138000000000096
+Duration: 0.001576999999999995
 
 ---
 ## -msynch=synchS code/UpLock.hny
@@ -14181,7 +14181,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016922000000000048
+Duration: 0.0016775999999999874
 
 ### Current Output
 
@@ -15046,7 +15046,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015196000000000098
+Duration: 0.0014769000000000032
 
 ---
 ##  code/xy.hny
@@ -15127,7 +15127,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012565999999999966
+Duration: 0.0011429999999999774
 
 ### Current Output
 
@@ -15199,7 +15199,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00138930000000001
+Duration: 0.0016887999999999903
 
 ---
 ##  code/atm.hny
@@ -16425,7 +16425,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0022515999999999925
+Duration: 0.0019431000000000032
 
 ### Current Output
 
@@ -17642,7 +17642,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014302000000000203
+Duration: 0.0013084999999999902
 
 ---
 ##  code/queuedemo.hny
@@ -18146,7 +18146,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016836000000000073
+Duration: 0.0012402999999999997
 
 ### Current Output
 
@@ -18641,7 +18641,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0020900000000000085
+Duration: 0.0016050999999999982
 
 ---
 ## -msynch=synchS code/queuedemo.hny
@@ -19145,7 +19145,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0021314000000000055
+Duration: 0.0012938000000000116
 
 ### Current Output
 
@@ -19640,7 +19640,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015965000000000007
+Duration: 0.0011245000000000005
 
 ---
 ##  code/qtestseq.hny
@@ -21010,7 +21010,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016579999999999928
+Duration: 0.001422699999999999
 
 ### Current Output
 
@@ -22371,7 +22371,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015795999999999866
+Duration: 0.001953200000000016
 
 ---
 ##  code/qtest1.hny
@@ -22907,7 +22907,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001374299999999995
+Duration: 0.0013547999999999893
 
 ### Current Output
 
@@ -23434,7 +23434,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013822
+Duration: 0.0013441000000000147
 
 ---
 ## -msynch=synchS code/qtest1.hny
@@ -23970,7 +23970,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013434999999999975
+Duration: 0.0018015999999999865
 
 ### Current Output
 
@@ -24497,7 +24497,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00125119999999998
+Duration: 0.001305400000000012
 
 ---
 ##  code/qtest2.hny
@@ -25036,7 +25036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013046000000000169
+Duration: 0.0016165000000000207
 
 ### Current Output
 
@@ -25566,7 +25566,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001444899999999999
+Duration: 0.0016401000000000054
 
 ---
 ## -msynch=synchS code/qtest2.hny
@@ -26105,7 +26105,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015081999999999873
+Duration: 0.0012030999999999847
 
 ### Current Output
 
@@ -26635,7 +26635,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001393499999999992
+Duration: 0.0010875999999999941
 
 ---
 ##  code/qtest3.hny
@@ -27201,7 +27201,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014313999999999993
+Duration: 0.0014747999999999983
 
 ### Current Output
 
@@ -27758,7 +27758,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015374999999999972
+Duration: 0.0012593999999999939
 
 ---
 ## -msynch=synchS code/qtest3.hny
@@ -28324,7 +28324,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0019647000000000137
+Duration: 0.0018633000000000122
 
 ### Current Output
 
@@ -28881,7 +28881,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011845999999999801
+Duration: 0.001425599999999999
 
 ---
 ##  code/qtest4.hny
@@ -29385,7 +29385,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013950000000000073
+Duration: 0.0016915999999999876
 
 ### Current Output
 
@@ -29880,7 +29880,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015572000000000086
+Duration: 0.0017631000000000174
 
 ---
 ## -msynch=synchS code/qtest4.hny
@@ -30384,7 +30384,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001454800000000006
+Duration: 0.0014402000000000026
 
 ### Current Output
 
@@ -30879,7 +30879,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001327600000000012
+Duration: 0.0012466999999999895
 
 ---
 ##  code/qtestconc.hny
@@ -32308,7 +32308,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001895999999999981
+Duration: 0.0018582000000000043
 
 ### Current Output
 
@@ -33728,7 +33728,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017642999999999964
+Duration: 0.0018893999999999855
 
 ---
 ## -msynch=synchS code/qtestconc.hny
@@ -34917,7 +34917,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016504999999999992
+Duration: 0.0017038000000000053
 
 ### Current Output
 
@@ -36097,7 +36097,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001639400000000013
+Duration: 0.001474100000000006
 
 ---
 ## -mqueue=queueMS code/queuedemo.hny
@@ -37394,7 +37394,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013822
+Duration: 0.0012617999999999796
 
 ### Current Output
 
@@ -38682,7 +38682,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013623999999999858
+Duration: 0.001419400000000015
 
 ---
 ## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
@@ -39739,7 +39739,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017630999999999897
+Duration: 0.0020883999999999903
 
 ### Current Output
 
@@ -40787,7 +40787,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012976000000000099
+Duration: 0.0015650000000000108
 
 ---
 ##  code/RWtest.hny
@@ -40978,7 +40978,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014452000000000076
+Duration: 0.0010962999999999945
 
 ### Current Output
 
@@ -41160,7 +41160,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015454000000000023
+Duration: 0.0012526999999999955
 
 ---
 ## -msynch=synchS code/RWtest.hny
@@ -41351,7 +41351,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013088000000000266
+Duration: 0.0013431999999999888
 
 ### Current Output
 
@@ -41533,7 +41533,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001291500000000001
+Duration: 0.0011364000000000096
 
 ---
 ## -mRW=RWsbs code/RWtest.hny
@@ -42956,7 +42956,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00194430000000001
+Duration: 0.0017840000000000078
 
 ### Current Output
 
@@ -44370,7 +44370,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015292999999999835
+Duration: 0.001387399999999983
 
 ---
 ## -mRW=RWsbs -msynch=synchS code/RWtest.hny
@@ -45553,7 +45553,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0019228000000000023
+Duration: 0.0017109999999999903
 
 ### Current Output
 
@@ -46727,7 +46727,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016612000000000016
+Duration: 0.0015795000000000115
 
 ---
 ## -mRW=RWfair code/RWtest.hny
@@ -48187,7 +48187,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014189000000000007
+Duration: 0.0015200999999999965
 
 ### Current Output
 
@@ -49638,7 +49638,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014868999999999855
+Duration: 0.0013179999999999858
 
 ---
 ## -mRW=RWfair -msynch=synchS code/RWtest.hny
@@ -50858,7 +50858,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001489100000000021
+Duration: 0.0015934000000000226
 
 ### Current Output
 
@@ -52069,7 +52069,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014232000000000133
+Duration: 0.0014083000000000012
 
 ---
 ## -mboundedbuffer=BBhoare code/BBtest.hny
@@ -53512,7 +53512,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0019370999999999972
+Duration: 0.001583000000000001
 
 ### Current Output
 
@@ -54946,7 +54946,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017639999999999878
+Duration: 0.001642899999999975
 
 ---
 ## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
@@ -56149,7 +56149,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018250999999999962
+Duration: 0.001608200000000004
 
 ### Current Output
 
@@ -57343,7 +57343,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016111999999999793
+Duration: 0.0014965999999999868
 
 ---
 ## -mRW=RWcv code/RWtest.hny
@@ -58676,7 +58676,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001464099999999996
+Duration: 0.0019890999999999937
 
 ### Current Output
 
@@ -60000,7 +60000,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016965000000000174
+Duration: 0.001356299999999977
 
 ---
 ## -mRW=RWcv -msynch=synchS code/RWtest.hny
@@ -61093,7 +61093,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013553999999999788
+Duration: 0.0013371999999999828
 
 ### Current Output
 
@@ -62177,7 +62177,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011783999999999961
+Duration: 0.0014879000000000142
 
 ---
 ##  code/qsorttest.hny
@@ -62877,7 +62877,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014624000000000026
+Duration: 0.0016489000000000087
 
 ### Current Output
 
@@ -63568,7 +63568,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0022204000000000113
+Duration: 0.001391300000000012
 
 ---
 ##  code/Diners.hny
@@ -64694,7 +64694,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018469000000000124
+Duration: 0.0016866999999999854
 
 ### Current Output
 
@@ -65811,7 +65811,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001745400000000008
+Duration: 0.0022052999999999934
 
 ---
 ## -msynch=synchS code/Diners.hny
@@ -66697,7 +66697,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015309000000000017
+Duration: 0.0016871999999999998
 
 ### Current Output
 
@@ -67574,7 +67574,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0019376000000000115
+Duration: 0.0013734999999999997
 
 ---
 ##  code/DinersCV.hny
@@ -68798,7 +68798,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017488000000000226
+Duration: 0.001669900000000002
 
 ### Current Output
 
@@ -70013,7 +70013,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001632400000000006
+Duration: 0.0012543000000000137
 
 ---
 ## -msynch=synchS code/DinersCV.hny
@@ -70997,7 +70997,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012525999999999926
+Duration: 0.0014611999999999958
 
 ### Current Output
 
@@ -71972,7 +71972,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014561000000000157
+Duration: 0.0012981999999999994
 
 ---
 ##  code/DinersAvoid.hny
@@ -73110,7 +73110,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.002185500000000007
+Duration: 0.0019416000000000155
 
 ### Current Output
 
@@ -74239,7 +74239,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016695999999999933
+Duration: 0.0017542999999999864
 
 ---
 ## -msynch=synchS code/DinersAvoid.hny
@@ -75137,7 +75137,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001544600000000007
+Duration: 0.0016570999999999947
 
 ### Current Output
 
@@ -76026,7 +76026,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013588999999999962
+Duration: 0.0018287999999999915
 
 ---
 ##  code/bank.hny
@@ -77228,7 +77228,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001596299999999995
+Duration: 0.0015734000000000026
 
 ### Current Output
 
@@ -78421,7 +78421,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015833999999999848
+Duration: 0.0014282999999999935
 
 ---
 ##  code/counter.hny
@@ -79573,7 +79573,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018094999999999917
+Duration: 0.0016372000000000053
 
 ### Current Output
 
@@ -80716,7 +80716,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001936199999999999
+Duration: 0.001442799999999994
 
 ---
 ##  code/qbarrier.hny
@@ -81874,7 +81874,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015519000000000227
+Duration: 0.0016000999999999932
 
 ### Current Output
 
@@ -83023,7 +83023,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018096999999999974
+Duration: 0.0015923999999999938
 
 ---
 ## -msynch=synchS code/qbarrier.hny
@@ -83941,7 +83941,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018245000000000067
+Duration: 0.0014766999999999975
 
 ### Current Output
 
@@ -84850,7 +84850,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014732000000000078
+Duration: 0.001430600000000004
 
 ---
 ##  code/barriertest.hny
@@ -86076,7 +86076,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00148029999999999
+Duration: 0.0027165999999999857
 
 ### Current Output
 
@@ -87293,7 +87293,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001736599999999977
+Duration: 0.0017025999999999986
 
 ---
 ## -msynch=synchS code/barriertest.hny
@@ -88279,7 +88279,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017906999999999784
+Duration: 0.0018478000000000105
 
 ### Current Output
 
@@ -89256,7 +89256,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018203999999999998
+Duration: 0.0020218999999999654
 
 ---
 ##  code/trap.hny
@@ -89313,7 +89313,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012924000000000269
+Duration: 0.0018280999999999992
 
 ### Current Output
 
@@ -89361,7 +89361,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011773999999999951
+Duration: 0.0017563999999999913
 
 ---
 ##  code/trap2.hny
@@ -89422,7 +89422,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001512200000000019
+Duration: 0.0012022000000000421
 
 ### Current Output
 
@@ -89474,7 +89474,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011329999999999951
+Duration: 0.0011432000000000109
 
 ---
 ##  code/trap3.hny
@@ -90593,7 +90593,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018420000000000103
+Duration: 0.0016012999999999722
 
 ### Current Output
 
@@ -91703,7 +91703,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00141589999999997
+Duration: 0.0013577999999999646
 
 ---
 ##  code/trap4.hny
@@ -91770,7 +91770,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011376000000000164
+Duration: 0.0011493000000000198
 
 ### Current Output
 
@@ -91828,7 +91828,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012184000000000084
+Duration: 0.0012772999999999812
 
 ---
 ##  code/trap5.hny
@@ -91903,7 +91903,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013844000000000078
+Duration: 0.001344600000000029
 
 ### Current Output
 
@@ -91969,7 +91969,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001346600000000031
+Duration: 0.0013219999999999898
 
 ---
 ##  code/trap6.hny
@@ -93105,7 +93105,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0022040999999999866
+Duration: 0.0015585000000000182
 
 ### Current Output
 
@@ -94232,7 +94232,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001671400000000045
+Duration: 0.0016320000000000223
 
 ---
 ## -msynch=synchS code/trap6.hny
@@ -95128,7 +95128,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018991999999999898
+Duration: 0.001347900000000013
 
 ### Current Output
 
@@ -96015,7 +96015,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017278000000000016
+Duration: 0.001583399999999957
 
 ---
 ##  code/hw.hny
@@ -96149,7 +96149,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015494999999999814
+Duration: 0.001547899999999991
 
 ### Current Output
 
@@ -96274,7 +96274,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012689000000000172
+Duration: 0.0012938000000000116
 
 ---
 ##  code/abptest.hny
@@ -96496,7 +96496,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001594299999999993
+Duration: 0.001520200000000027
 
 ### Current Output
 
@@ -96709,7 +96709,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012435000000000085
+Duration: 0.001298699999999986
 
 ---
 ##  code/byzbosco.hny
@@ -96727,7 +96727,7 @@ Phase 1: compile Harmony program to bytecode
 Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)
 ```
 
-Duration: 0.001336299999999957
+Duration: 0.0016851999999999978
 
 ### Current Output
 
@@ -96736,7 +96736,7 @@ Phase 1: compile Harmony program to bytecode
 Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)
 ```
 
-Duration: 0.001310599999999995
+Duration: 0.0014746999999999955
 
 ---
 ##  code/BBsematest.hny
@@ -97930,7 +97930,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001487000000000016
+Duration: 0.0015916000000000263
 
 ### Current Output
 
@@ -99115,7 +99115,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00130269999999999
+Duration: 0.0013659999999999783
 
 ---
 ##  code/ky.hny
@@ -99223,7 +99223,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014254999999999685
+Duration: 0.00139659999999997
 
 ### Current Output
 
@@ -99322,7 +99322,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001241900000000018
+Duration: 0.0012220000000000009
 
 ---
 ##  code/bosco.hny
@@ -99939,7 +99939,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013876999999999917
+Duration: 0.00166229999999995
 
 ### Current Output
 
@@ -100547,7 +100547,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001269499999999979
+Duration: 0.001680999999999988
 
 ---
 ##  code/RWsbs.hny
@@ -101886,7 +101886,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016795000000000004
+Duration: 0.0014547999999999783
 
 ### Current Output
 
@@ -103216,7 +103216,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015905999999999976
+Duration: 0.0017484000000000388
 
 ---
 ##  code/queuebroken.hny
@@ -104446,7 +104446,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015742000000000256
+Duration: 0.0016402999999999834
 
 ### Current Output
 
@@ -105667,7 +105667,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014388999999999652
+Duration: 0.0015611999999999848
 
 ---
 ##  code/hello7.hny
@@ -105703,7 +105703,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0023586999999999914
+Duration: 0.001504200000000011
 
 ### Current Output
 
@@ -105730,7 +105730,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017019999999999813
+Duration: 0.0012655999999999779
 
 ---
 ##  code/multitest.hny
@@ -105774,7 +105774,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015236000000000138
+Duration: 0.001674700000000029
 
 ### Current Output
 
@@ -105809,7 +105809,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015160000000000173
+Duration: 0.0017186000000000146
 
 ---
 ##  code/qsort.hny
@@ -106072,7 +106072,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014817000000000302
+Duration: 0.0013152000000000164
 
 ### Current Output
 
@@ -106326,7 +106326,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015223999999999793
+Duration: 0.0013684000000000474
 
 ---
 ##  code/setobj.hny
@@ -106443,7 +106443,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014059000000000155
+Duration: 0.0013299999999999979
 
 ### Current Output
 
@@ -106551,7 +106551,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013776000000000344
+Duration: 0.0011851999999999974
 
 ---
 ##  code/baddblwait.hny
@@ -106613,7 +106613,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015624000000000193
+Duration: 0.0013010999999999995
 
 ### Current Output
 
@@ -106666,7 +106666,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.006289099999999992
+Duration: 0.0012759999999999994
 
 ---
 ##  code/nbqueuetest.hny
@@ -107164,7 +107164,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001363900000000029
+Duration: 0.0012326999999999755
 
 ### Current Output
 
@@ -107653,7 +107653,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001167100000000032
+Duration: 0.0011409000000000002
 
 ---
 ##  code/cssynch.hny
@@ -108754,7 +108754,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014133000000000062
+Duration: 0.001568999999999987
 
 ### Current Output
 
@@ -109846,7 +109846,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015524000000000093
+Duration: 0.0014282999999999935
 
 ---
 ##  code/stack3.hny
@@ -109902,7 +109902,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012294999999999945
+Duration: 0.0016433000000000142
 
 ### Current Output
 
@@ -109949,7 +109949,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016335999999999573
+Duration: 0.001353900000000019
 
 ---
 ##  code/RWqueue.hny
@@ -111234,7 +111234,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015084000000000208
+Duration: 0.001709900000000042
 
 ### Current Output
 
@@ -112510,7 +112510,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00158419999999998
+Duration: 0.0016144000000000158
 
 ---
 ##  code/RWcv.hny
@@ -113759,7 +113759,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015721000000000207
+Duration: 0.0017868000000000328
 
 ### Current Output
 
@@ -114999,7 +114999,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015547999999999673
+Duration: 0.0014820000000000388
 
 ---
 ##  code/2pc.hny
@@ -115017,7 +115017,7 @@ Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)
 ```
 
-Duration: 0.0014612999999999987
+Duration: 0.0017478000000000216
 
 ### Current Output
 
@@ -115026,7 +115026,7 @@ Phase 1: compile Harmony program to bytecode
 Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
 ```
 
-Duration: 0.0017117999999999856
+Duration: 0.0018964000000000203
 
 ---
 ##  code/queueconc.hny
@@ -116272,7 +116272,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013560999999999712
+Duration: 0.0017256999999999967
 
 ### Current Output
 
@@ -117509,7 +117509,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015422999999999965
+Duration: 0.001393399999999989
 
 ---
 ##  code/queuelin.hny
@@ -118785,7 +118785,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001547400000000032
+Duration: 0.0021381000000000316
 
 ### Current Output
 
@@ -120052,7 +120052,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014683999999999808
+Duration: 0.001689099999999999
 
 ---
 ##  code/lockspec.hny
@@ -120113,7 +120113,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014645999999999826
+Duration: 0.0012984000000000329
 
 ### Current Output
 
@@ -120165,7 +120165,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016456999999999722
+Duration: 0.0013572999999999502
 
 ---
 ##  code/ky2.hny
@@ -120202,7 +120202,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015360999999999847
+Duration: 0.0015065000000000217
 
 ### Current Output
 
@@ -120230,7 +120230,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001309799999999972
+Duration: 0.0011369999999999991
 
 ---
 ##  code/cslock.hny
@@ -121356,7 +121356,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018076000000000203
+Duration: 0.0016859999999999653
 
 ### Current Output
 
@@ -122473,7 +122473,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0022707000000000144
+Duration: 0.0012324000000000224
 
 ---
 ##  code/abp.hny
@@ -122642,7 +122642,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017612000000000183
+Duration: 0.0012396000000000074
 
 ### Current Output
 
@@ -122802,7 +122802,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014879999999999893
+Duration: 0.0012687000000000115
 
 ---
 ##  code/hello9.hny
@@ -122856,7 +122856,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001688999999999996
+Duration: 0.0013445999999999736
 
 ### Current Output
 
@@ -122901,7 +122901,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014056000000000068
+Duration: 0.0012318000000000051
 
 ---
 ##  code/hello2.hny
@@ -122938,7 +122938,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013403000000000165
+Duration: 0.0025020000000000042
 
 ### Current Output
 
@@ -122966,7 +122966,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011340000000000239
+Duration: 0.001675099999999985
 
 ---
 ##  code/actortest.hny
@@ -122984,7 +122984,7 @@ Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0017199999999999993
+Duration: 0.0013473999999999986
 
 ### Current Output
 
@@ -122993,7 +122993,7 @@ Phase 1: compile Harmony program to bytecode
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.001507399999999992
+Duration: 0.0014332999999999707
 
 ---
 ##  code/hello4.hny
@@ -123019,7 +123019,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016151999999999833
+Duration: 0.001158699999999957
 
 ### Current Output
 
@@ -123036,7 +123036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017204999999999582
+Duration: 0.0014633000000000007
 
 ---
 ##  code/actor.hny
@@ -123054,7 +123054,7 @@ Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
 ```
 
-Duration: 0.0012749999999999706
+Duration: 0.0017329999999999846
 
 ### Current Output
 
@@ -123063,7 +123063,7 @@ Phase 1: compile Harmony program to bytecode
 Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
 ```
 
-Duration: 0.001342600000000027
+Duration: 0.0013748000000000093
 
 ---
 ##  code/chain.hny
@@ -123367,7 +123367,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013767000000000085
+Duration: 0.001907900000000018
 
 ### Current Output
 
@@ -123662,7 +123662,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012930999999999915
+Duration: 0.0010662000000000171
 
 ---
 ##  code/boundedbuffer.hny
@@ -124138,7 +124138,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014798999999999785
+Duration: 0.001285499999999995
 
 ### Current Output
 
@@ -124605,7 +124605,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001343099999999986
+Duration: 0.0011808000000000374
 
 ---
 ##  code/taslock.hny
@@ -124662,7 +124662,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001571099999999992
+Duration: 0.0012157999999999891
 
 ### Current Output
 
@@ -124710,7 +124710,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013546999999999865
+Duration: 0.001262299999999994
 
 ---
 ##  code/RW.hny
@@ -124817,7 +124817,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013129000000000057
+Duration: 0.0014662000000000286
 
 ### Current Output
 
@@ -124915,7 +124915,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018743999999999983
+Duration: 0.0015095999999999998
 
 ---
 ##  code/DinersCV2.hny
@@ -126108,7 +126108,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016456999999999722
+Duration: 0.002048300000000003
 
 ### Current Output
 
@@ -127292,7 +127292,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015627999999999753
+Duration: 0.0019594
 
 ---
 ##  code/2pc2.hny
@@ -128203,7 +128203,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015229999999999966
+Duration: 0.0014803999999999928
 
 ### Current Output
 
@@ -129105,7 +129105,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017312999999999912
+Duration: 0.0018356999999999957
 
 ---
 ##  code/rsmspec.hny
@@ -129253,7 +129253,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017027999999999488
+Duration: 0.0013561000000000267
 
 ### Current Output
 
@@ -129392,7 +129392,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014099000000000195
+Duration: 0.00141589999999997
 
 ---
 ##  code/paxos1.hny
@@ -129904,7 +129904,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014252000000000153
+Duration: 0.001463900000000018
 
 ### Current Output
 
@@ -130407,7 +130407,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0011161000000000088
+Duration: 0.001225900000000002
 
 ---
 ##  code/queuespec.hny
@@ -130841,7 +130841,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015460999999999947
+Duration: 0.001496599999999959
 
 ### Current Output
 
@@ -131266,7 +131266,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013191000000000175
+Duration: 0.0014049999999999896
 
 ---
 ##  code/RWbtest.hny
@@ -131522,7 +131522,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016201000000000132
+Duration: 0.0011822000000000221
 
 ### Current Output
 
@@ -131769,7 +131769,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012801000000000062
+Duration: 0.0012272999999999867
 
 ---
 ##  code/RWhoare.hny
@@ -133052,7 +133052,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015228999999999937
+Duration: 0.0016456999999999722
 
 ### Current Output
 
@@ -134326,7 +134326,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017217999999999956
+Duration: 0.0014879999999999893
 
 ---
 ##  code/RWbusy.hny
@@ -135536,7 +135536,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014143999999999823
+Duration: 0.001512599999999975
 
 ### Current Output
 
@@ -136737,7 +136737,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015412000000000203
+Duration: 0.0011772999999999922
 
 ---
 ##  code/setobjtest.hny
@@ -136926,7 +136926,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013555000000000095
+Duration: 0.001284599999999969
 
 ### Current Output
 
@@ -137106,7 +137106,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013133999999999646
+Duration: 0.0015068999999999777
 
 ---
 ##  code/qtestpar.hny
@@ -137643,7 +137643,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0020850000000000035
+Duration: 0.001612200000000008
 
 ### Current Output
 
@@ -138171,7 +138171,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013527999999999873
+Duration: 0.0014341999999999966
 
 ---
 ##  code/hanoi.hny
@@ -138673,7 +138673,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015731999999999968
+Duration: 0.0015247999999999928
 
 ### Current Output
 
@@ -139166,7 +139166,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012781000000000042
+Duration: 0.0013467999999999813
 
 ---
 ##  code/leader.hny
@@ -139424,7 +139424,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001407799999999959
+Duration: 0.0016841000000000217
 
 ### Current Output
 
@@ -139673,7 +139673,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015212000000000003
+Duration: 0.0012664000000000009
 
 ---
 ##  code/hoare.hny
@@ -140824,7 +140824,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00156909999999999
+Duration: 0.001597499999999974
 
 ### Current Output
 
@@ -141966,7 +141966,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015412000000000203
+Duration: 0.0019031999999999938
 
 ---
 ##  code/RWfair.hny
@@ -143342,7 +143342,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018716000000000288
+Duration: 0.0021588999999999636
 
 ### Current Output
 
@@ -144709,7 +144709,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015561000000000047
+Duration: 0.0015121000000000162
 
 ---
 ##  code/register.hny
@@ -144752,7 +144752,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016269000000000422
+Duration: 0.0015528000000000208
 
 ### Current Output
 
@@ -144786,7 +144786,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018974999999999964
+Duration: 0.0014104000000000338
 
 ---
 ##  code/paxos.hny
@@ -145620,7 +145620,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014603999999999728
+Duration: 0.0016854000000000036
 
 ### Current Output
 
@@ -146445,7 +146445,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014779999999999793
+Duration: 0.001565900000000009
 
 ---
 ##  code/mesa.hny
@@ -146463,7 +146463,7 @@ Phase 1: compile Harmony program to bytecode
 Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '=' ErrorToken(line=5, message="Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '='", column=13, lexeme='0', filename='code/mesa.hny', is_eof_error=False)
 ```
 
-Duration: 0.0016437000000000257
+Duration: 0.0016199000000000074
 
 ### Current Output
 
@@ -146472,7 +146472,7 @@ Phase 1: compile Harmony program to bytecode
 Line 5:12 at code/mesa.hny, missing '=' at '0'
 ```
 
-Duration: 0.0012523999999999869
+Duration: 0.0015955999999999748
 
 ---
 ##  code/RWqtest.hny
@@ -147860,7 +147860,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001647500000000024
+Duration: 0.0012493000000000087
 
 ### Current Output
 
@@ -149239,7 +149239,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014456000000000468
+Duration: 0.0012255999999999934
 
 ---
 ##  code/BBsema.hny
@@ -150405,7 +150405,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018206000000000055
+Duration: 0.0016782000000000186
 
 ### Current Output
 
@@ -151562,7 +151562,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015635999999999983
+Duration: 0.001583800000000024
 
 ---
 ##  code/queue.hny
@@ -152000,7 +152000,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016753999999999936
+Duration: 0.001877099999999965
 
 ### Current Output
 
@@ -152429,7 +152429,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012546999999999975
+Duration: 0.0015663000000000205
 
 ---
 ##  code/barrier.hny
@@ -153599,7 +153599,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015481999999999996
+Duration: 0.001558600000000021
 
 ### Current Output
 
@@ -154760,7 +154760,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013721000000000427
+Duration: 0.0017329999999999846
 
 ---
 ##  code/ticket.hny
@@ -154851,7 +154851,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013920000000000043
+Duration: 0.0014985000000000137
 
 ### Current Output
 
@@ -154933,7 +154933,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001251900000000028
+Duration: 0.0012028000000000039
 
 ---
 ##  code/atomicinc.hny
@@ -154971,7 +154971,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001562299999999961
+Duration: 0.0014076000000000088
 
 ### Current Output
 
@@ -155000,7 +155000,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001341800000000004
+Duration: 0.001652700000000007
 
 ---
 ##  code/nbqueue.hny
@@ -156400,7 +156400,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001490199999999997
+Duration: 0.0017380000000000173
 
 ### Current Output
 
@@ -157791,7 +157791,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014448999999999712
+Duration: 0.0016763000000000194
 
 ---
 ##  code/stack2.hny
@@ -158229,7 +158229,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014643999999999768
+Duration: 0.0016744000000000203
 
 ### Current Output
 
@@ -158658,7 +158658,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001326700000000014
+Duration: 0.0013394999999999935
 
 ---
 ##  code/gpu.hny
@@ -158703,7 +158703,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014872000000000218
+Duration: 0.0017004999999999937
 
 ### Current Output
 
@@ -158739,7 +158739,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015901000000000387
+Duration: 0.0012398000000000131
 
 ---
 ##  code/triangle.hny
@@ -158801,7 +158801,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014413999999999816
+Duration: 0.0015682000000000196
 
 ### Current Output
 
@@ -158854,7 +158854,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016155000000000475
+Duration: 0.0012824000000000169
 
 ---
 ##  code/barrier1.hny
@@ -160100,7 +160100,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001743799999999962
+Duration: 0.0017550000000000066
 
 ### Current Output
 
@@ -161337,7 +161337,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001586199999999982
+Duration: 0.0014586999999999795
 
 ---
 ##  code/bosco2.hny
@@ -161960,7 +161960,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015685999999999756
+Duration: 0.001758599999999999
 
 ### Current Output
 
@@ -162574,7 +162574,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001578700000000044
+Duration: 0.0014322999999999975
 
 ---
 ##  code/paxos2.hny
@@ -162927,7 +162927,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015684000000000253
+Duration: 0.0018023000000000344
 
 ### Current Output
 
@@ -163271,7 +163271,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013800000000000479
+Duration: 0.0013505000000000322
 
 ---
 ##  code/bqueue.hny
@@ -163711,7 +163711,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014822000000000446
+Duration: 0.0016129000000000282
 
 ### Current Output
 
@@ -164142,7 +164142,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012744999999999562
+Duration: 0.0016943000000000374
 
 ---
 ##  code/hello6.hny
@@ -164176,7 +164176,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012558999999999765
+Duration: 0.0014332000000000233
 
 ### Current Output
 
@@ -164201,7 +164201,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016015000000000335
+Duration: 0.001324700000000012
 
 ---
 ##  code/stack1.hny
@@ -164260,7 +164260,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001502699999999968
+Duration: 0.0015382999999999925
 
 ### Current Output
 
@@ -164310,7 +164310,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001221099999999975
+Duration: 0.001205099999999959
 
 ---
 ##  code/hello5.hny
@@ -164344,7 +164344,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0021748000000000323
+Duration: 0.0013485000000000302
 
 ### Current Output
 
@@ -164369,7 +164369,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013760999999999912
+Duration: 0.0012982999999999745
 
 ---
 ##  code/abd.hny
@@ -165207,7 +165207,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013441999999999066
+Duration: 0.0014495999999999953
 
 ### Current Output
 
@@ -166036,7 +166036,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013102000000000391
+Duration: 0.0015724000000000293
 
 ---
 ##  code/hello8.hny
@@ -166074,7 +166074,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012645000000000017
+Duration: 0.0011764000000000219
 
 ### Current Output
 
@@ -166103,7 +166103,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013156999999999197
+Duration: 0.0012137000000000397
 
 ---
 ##  code/stack4.hny
@@ -166216,7 +166216,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.00140589999999996
+Duration: 0.0013600000000000279
 
 ### Current Output
 
@@ -166320,7 +166320,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001498200000000005
+Duration: 0.0010806999999999345
 
 ---
 ##  code/BBhoare.hny
@@ -167697,7 +167697,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001635000000000053
+Duration: 0.001399500000000109
 
 ### Current Output
 
@@ -169065,7 +169065,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.002042199999999994
+Duration: 0.0013687000000000005
 
 ---
 ##  code/RWcheat.hny
@@ -170163,7 +170163,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016635999999999873
+Duration: 0.0014608000000000398
 
 ### Current Output
 
@@ -171252,7 +171252,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001471800000000023
+Duration: 0.0014644000000000323
 
 ---
 ##  code/stacktest.hny
@@ -171270,7 +171270,7 @@ Phase 1: compile Harmony program to bytecode
 Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)
 ```
 
-Duration: 0.0019145999999999885
+Duration: 0.0012919000000000125
 
 ### Current Output
 
@@ -171279,7 +171279,7 @@ Phase 1: compile Harmony program to bytecode
 Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']
 ```
 
-Duration: 0.001518200000000025
+Duration: 0.0013343000000000105
 
 ---
 ##  code/queueMS.hny
@@ -172510,7 +172510,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015545000000000142
+Duration: 0.0015354000000000756
 
 ### Current Output
 
@@ -173732,7 +173732,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.002082499999999987
+Duration: 0.0011992000000000669
 
 ---
 ##  code/abdtest.hny
@@ -173866,7 +173866,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0020988999999999036
+Duration: 0.001325099999999968
 
 ### Current Output
 
@@ -173991,7 +173991,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017167000000000154
+Duration: 0.0012397000000000657
 
 ---
 ##  code/locksusp.hny
@@ -174469,7 +174469,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015924999999999967
+Duration: 0.0016672999999999272
 
 ### Current Output
 
@@ -174938,7 +174938,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0013385999999999676
+Duration: 0.0015859999999999763
 
 ---
 ##  code/2pc1.hny
@@ -174956,7 +174956,7 @@ Phase 1: compile Harmony program to bytecode
 Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)
 ```
 
-Duration: 0.001488299999999998
+Duration: 0.0017127000000000114
 
 ### Current Output
 
@@ -174965,7 +174965,7 @@ Phase 1: compile Harmony program to bytecode
 Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)
 ```
 
-Duration: 0.001768300000000056
+Duration: 0.0014372000000000273
 
 ---
 ##  code/needhamschroeder.hny
@@ -175404,7 +175404,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001638999999999946
+Duration: 0.001415500000000014
 
 ### Current Output
 
@@ -175834,7 +175834,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0015315999999999663
+Duration: 0.001441899999999996
 
 ---
 ##  code/linkedlist.hny
@@ -177212,7 +177212,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014815999999999718
+Duration: 0.0016785999999999746
 
 ### Current Output
 
@@ -178581,7 +178581,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0018856000000000428
+Duration: 0.001655500000000032
 
 ---
 ##  code/barriertest2.hny
@@ -179832,7 +179832,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016743000000000174
+Duration: 0.0015559000000000545
 
 ### Current Output
 
@@ -181074,7 +181074,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016410000000000036
+Duration: 0.0013594000000000106
 
 ---
 ##  code/queuefix.hny
@@ -182330,7 +182330,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0022832000000000408
+Duration: 0.001689099999999999
 
 ### Current Output
 
@@ -183577,7 +183577,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001388300000000009
+Duration: 0.0014858000000000926
 
 ---
 ##  code/hello3.hny
@@ -183600,7 +183600,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012934
+Duration: 0.0013744999999999452
 
 ### Current Output
 
@@ -183614,7 +183614,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001466699999999932
+Duration: 0.0015895000000000215
 
 ---
 ##  code/queueseq.hny
@@ -183702,7 +183702,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.001577399999999951
+Duration: 0.0013668999999999487
 
 ### Current Output
 
@@ -183781,7 +183781,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0016347999999999363
+Duration: 0.0018541000000000807
 
 ---
 ##  code/hello1.hny
@@ -183803,7 +183803,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0014104000000000338
+Duration: 0.0015028999999999737
 
 ### Current Output
 
@@ -183816,7 +183816,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0017508000000000523
+Duration: 0.0014775000000000205
 
 ---
 ##  code/consensus.hny
@@ -183896,7 +183896,7 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012381000000000197
+Duration: 0.0012076999999999227
 
 ### Current Output
 
@@ -183967,6 +183967,6 @@ Return
 DelVar result
 ```
 
-Duration: 0.0012327000000000865
+Duration: 0.001464600000000038
 
 ---
