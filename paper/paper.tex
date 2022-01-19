@@ -680,18 +680,19 @@ one of the contexts in the active set.  There are about 30 basic
 transitions, which, for this paper, we classify as follows:
 
 \begin{compactitem}
-\item \emph{basic operations}: a deterministic operation that only
+\item \emph{local operations}: a deterministic operation that only
 involves a single context and no shared state, such as pushing a value
 onto the stack or increment the program counter.
-\item \texttt{Frame/Return}: method start/end.
+\item \texttt{Load/Store/Del}: an operation that modifies the shared state.
+\item \texttt{Print}: output.
 \item \texttt{Choose}: nondetermistic selection from a set.
+\item \texttt{Frame/Return}: method start/end.
 \item \texttt{Apply}: method call \emph{or} index into a dictionary.
 \item \texttt{Spawn}: thread creation.
 \item \texttt{AtomicInc/AtomicDec}: atomic section enter/leave.
 \item \texttt{SetIntLevel}: interrupt enable/disable.
 \item \texttt{Stop/Go}: continuation save/restart.
 \item \texttt{Assert}: value check.
-\item \texttt{Print}: output.
 \end{compactitem}
 
 Each transition modifies at least the context bag and set of active
@@ -789,17 +790,23 @@ or until there are no more new states.
 
 There are three sources of nondetermism in Harmony: \texttt{Choose}
 operations, thread interleaving, and interrupts.
+Each of these cause branching in the state graph and contribute
+to the combinatorial explosion of states.
 When it comes to interleaving, an important observation is that
 local operations on the state of a context (updates to its program
-counter, local variables, or stack) are not visible to other threads.
+counter, local variables, or stack) are not visible to other threads
+and therefore two such operations executed by different threads
+commute.
+Operations that do not commute that way are Load, Store, and Del
+instructions, as well as the Print instruction.  We call those
+instructions \emph{breakable}.
 An important optimization that significantly
 reduces the size of the set of generated states is to treat a
-sequence of operations as atomic if only its first operation is an
-operation that accesses the shared state (\texttt{Load}, \texttt{Store},
-\texttt{Del}, or \texttt{Stop}) or a \texttt{Choose} or \texttt{Print}
-operation.  We call such operations \emph{breakable}.
-Note that this optimization is essentially Partial Order
-Reduction~\cite{Val91}.
+sequence of operations as atomic if only its first instruction
+is breakable.  Given two such sequences $\sigma_1$ and $\sigma_2$,
+the execution of any interleaving would either be equivalent to
+$\sigma_1\sigma_2$ or $\sigma_2\sigma_1$.
+This is another example of Partial Order Reduction~\cite{Val91}.
 
 Reducing the state space this way is highly effective for Harmony.
 For example, when model checking Peterson's algorithm expressed in
@@ -814,7 +821,8 @@ Then it continues to apply instructions as long as
 the active set is the singleton set (such as when the thread is in
 atomic mode) or, if not, as long as the next instruction is not
 breakable.  Only the resulting state is added to the Kripke structure,
-and the edge indicates the starting context.  During this loop, Charm
+and the resulting edge is labeled with the starting context.
+During this loop, Charm
 does check if the same state recurs---if so, it aborts
 and reports an infinite loop.
 
@@ -824,8 +832,8 @@ on top of the stack.  If not, Charm will check to
 see if a trap is outstanding and interrupts are enabled.  If so,
 Charm will try an interrupt transition as well.
 
-In practice, about half of the work of the model checking is trivially
-parallelizable, allowing for significant speedups on multi-core machines.
+% In practice, about half of the work of the model checking is trivially
+% parallelizable, allowing for significant speedups on multi-core machines.
 
 \subsection{Data Race Detection}
 
