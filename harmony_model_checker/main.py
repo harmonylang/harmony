@@ -36,9 +36,9 @@ def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_er
     return parser
 
 
-def load_string(string, scope, code):
-    namestack.append("/string-code/")
-    ast = parse_string(string)
+def load_string(string, scope, code, filename="<string-code>"):
+    namestack.append(filename)
+    ast = parse_string(string, filename)
     for mod in ast.getImports():
         do_import(scope, code, mod)
     # method names and label names get a temporary value
@@ -115,9 +115,9 @@ def do_import(scope, code, module):
     scope.names[lexeme] = ("module", imported[lexeme])
 
 
-def parse_constant(name: str, v: str):
+def parse_constant(name: str, value: str):
     filename = "<constant argument>"
-    _input = InputStream(v)
+    _input = InputStream(value)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -135,10 +135,10 @@ def parse_constant(name: str, v: str):
     constants[name] = ctx.pop()
 
 
-def parse_string(string: str):
+def parse_string(string: str, filename: str="<string-code>"):
     _input = InputStream(string)
     parser = build_parser(_input)
-    visitor = HarmonyVisitorImpl("<string code>")
+    visitor = HarmonyVisitorImpl(filename)
 
     tree = parser.program()
     return visitor.visit(tree)
@@ -190,7 +190,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     for fname in filenames:
         load_file(str(fname), scope, code)
     if interface is not None:
-        load_string("def __iface__(): result = (%s)" % interface, scope, code)
+        load_string("def __iface__(): result = (%s)" % interface, scope, code, "interface")
 
     code.append(ReturnOp())  # to terminate "__init__" process
 

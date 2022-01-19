@@ -7,6 +7,10 @@ from .custom_denter import ModifiedDenterHelper
 from .HarmonyParser import HarmonyParser
 }
 @lexer::members {
+
+opened_for = 0
+opened = 0
+
 class HarmonyDenter(ModifiedDenterHelper):
     def __init__(self, lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof):
         super().__init__(lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof)
@@ -15,32 +19,7 @@ class HarmonyDenter(ModifiedDenterHelper):
     def pull_token(self):
         return super(HarmonyLexer, self.lexer).nextToken()
 
-@property
-def opened_for(self):
-    try:
-        return self._opened_for
-    except AttributeError:
-        self._opened_for = 0
-        return self._opened_for
-
-@opened_for.setter
-def opened_for(self, value):
-    self._opened_for = value
-
-@property
-def opened(self):
-    try:
-        return self._opened
-    except AttributeError:
-        self._opened = 0
-        return self._opened
-
-@opened.setter
-def opened(self, value):
-    self._opened = value
-
 denter = None
-
 def nextToken(self):
     if not self.denter:
         self.denter = self.HarmonyDenter(self, self.NL, self.COLON, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
@@ -61,16 +40,11 @@ fragment COMMENT
 
 program: (stmt)* EOF;
 
-// Used from Python3's Antlr4 Grammar
+// Adapted from Python3's Antlr4 Grammar
 import_stmt: (import_name | import_from) SEMI_COLON? NL;
-import_name: IMPORT dotted_as_names;
-import_from: (FROM ((DOT | '...')* dotted_name | (DOT | '...')+)
-              IMPORT (STAR | OPEN_PAREN import_as_names CLOSE_PAREN | import_as_names));
-import_as_name: NAME;
-dotted_as_name: dotted_name (AS NAME)?;
-import_as_names: import_as_name (COMMA import_as_name)* (COMMA)?;
-dotted_as_names: dotted_as_name (COMMA dotted_as_name)*;
-dotted_name: NAME;
+import_name: IMPORT import_names_seq;
+import_from: FROM NAME IMPORT (STAR | import_names_seq);
+import_names_seq: NAME (COMMA NAME)*;
 
 tuple_bound
     : NAME

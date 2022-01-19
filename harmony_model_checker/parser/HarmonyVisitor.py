@@ -29,28 +29,8 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by HarmonyParser#import_as_name.
-    def visitImport_as_name(self, ctx:HarmonyParser.Import_as_nameContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_name.
-    def visitDotted_as_name(self, ctx:HarmonyParser.Dotted_as_nameContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by HarmonyParser#import_as_names.
-    def visitImport_as_names(self, ctx:HarmonyParser.Import_as_namesContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_names.
-    def visitDotted_as_names(self, ctx:HarmonyParser.Dotted_as_namesContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by HarmonyParser#dotted_name.
-    def visitDotted_name(self, ctx:HarmonyParser.Dotted_nameContext):
+    # Visit a parse tree produced by HarmonyParser#import_names_seq.
+    def visitImport_names_seq(self, ctx:HarmonyParser.Import_names_seqContext):
         return self.visitChildren(ctx)
 
 

@@ -35,39 +35,19 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#import_name.
     def visitImport_name(self, ctx: HarmonyParser.Import_nameContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return ImportAST(tkn, False, self.visit(ctx.dotted_as_names()))
+        return ImportAST(tkn, False, self.visit(ctx.import_names_seq()))
 
     # Visit a parse tree produced by HarmonyParser#import_from.
     def visitImport_from(self, ctx: HarmonyParser.Import_fromContext):
-        dotted_name = self.visit(ctx.dotted_name())
+        dotted_name = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
         tkn = self.get_token(ctx.start, ctx.start.text)
         if ctx.STAR():
             return FromAST(tkn, False, dotted_name, [])
-        names = self.visit(ctx.import_as_names())
+        names = self.visit(ctx.import_names_seq())
         return FromAST(tkn, False, dotted_name, names)
-
-    # Visit a parse tree produced by HarmonyParser#import_as_name.
-    def visitImport_as_name(self, ctx: HarmonyParser.Import_as_nameContext):
-        name = str(ctx.NAME())
-        return self.get_token(ctx.NAME().symbol, name)
-
-    # Visit a parse tree produced by HarmonyParser#import_as_names.
-    def visitImport_as_names(self, ctx: HarmonyParser.Import_as_namesContext):
-        return [self.visit(i) for i in ctx.import_as_name()]
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_name.
-    def visitDotted_as_name(self, ctx: HarmonyParser.Dotted_as_nameContext):
-        name = self.visit(ctx.dotted_name())
-        return name
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_names.
-    def visitDotted_as_names(self, ctx: HarmonyParser.Dotted_as_namesContext):
-        return [self.visit(d) for d in ctx.dotted_as_name()]
-
-    # Visit a parse tree produced by HarmonyParser#dotted_name.
-    def visitDotted_name(self, ctx: HarmonyParser.Dotted_nameContext):
-        name = ctx.NAME()
-        return self.get_token(name.symbol, str(name))
+    
+    def visitImport_names_seq(self, ctx: HarmonyParser.Import_names_seqContext):
+        return [self.get_token(d.symbol, str(d)) for d in ctx.NAME()]
 
     # Visit a parse tree produced by HarmonyParser#program.
     def visitProgram(self, ctx: HarmonyParser.ProgramContext):
