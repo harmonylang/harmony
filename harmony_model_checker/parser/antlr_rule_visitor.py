@@ -67,8 +67,10 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTuple_bound(self, ctx:HarmonyParser.Tuple_boundContext):
         if ctx.bound() is not None:
             return self.visit(ctx.bound())
-        name = ctx.NAME()
-        return self.get_token(name.symbol, str(name))
+        if ctx.NAME():
+            name = ctx.NAME()
+            return self.get_token(name.symbol, str(name))
+        return []
 
     # Visit a parse tree produced by HarmonyParser#bound.
     def visitBound(self, ctx: HarmonyParser.BoundContext):

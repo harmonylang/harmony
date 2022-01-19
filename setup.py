@@ -45,7 +45,8 @@ setuptools.setup(
         'matplotlib; python_version >= "3.5"',
         'antlr-denter; python_version >= "1.3.1"',
         'antlr4-python3-runtime; python_version == "4.9.3"',
-        'automata-lib; python_version >= "5.0"'
+        'automata-lib; python_version >= "5.0"',
+        'pydot; python_version == "1.4.2"'
     ],
     include_package_data=True,
     package_data={

@@ -36,7 +36,7 @@ def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_er
     return parser
 
 
-def load_string(string, scope, code, filename="<string-code>"):
+def load_string(string, scope: Scope, code: Code, filename="<string-code>"):
     namestack.append(filename)
     ast = parse_string(string, filename)
     for mod in ast.getImports():
@@ -78,7 +78,7 @@ def load_file(filename: str, scope: Scope, code: Code):
     namestack.pop()
 
 
-def do_import(scope, code, module):
+def do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO
     if lexeme not in imported:
