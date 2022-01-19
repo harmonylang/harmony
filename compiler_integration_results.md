@@ -676,31 +676,49 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
+## -mstack=stack1 code/stacktest.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+---
+## -mstack=stack2 code/stacktest.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+---
+## -mstack=stack3 code/stacktest.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+---
+## -mstack=stack4 code/stacktest.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+---
 ##  code/byzbosco.hny
 
 ### Summary
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17) ErrorToken(line=23, message="Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)", column=26, lexeme='=', filename='code/byzbosco.hny', is_eof_error=False)
-```
-
-Duration: 0.00152979999999997
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 23:17 at code/byzbosco.hny, Cannot assign to constant ('proposal', 'code/byzbosco.hny', 23, 17)
-```
-
-Duration: 0.0013159999999999838
+Output is good: ✅
 
 ---
 ##  code/BBsematest.hny
@@ -844,25 +862,7 @@ Output is good: ✅
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21) ErrorToken(line=20, message="Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)", column=29, lexeme='-=', filename='code/2pc.hny', is_eof_error=False)
-```
-
-Duration: 0.0015087999999999768
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 20:29 at code/2pc.hny, Cannot operate on constant ('balance', 'code/2pc.hny', 20, 21)
-```
-
-Duration: 0.0013602000000000336
+Output is good: ✅
 
 ---
 ##  code/queueconc.hny
@@ -943,25 +943,7 @@ Output is good: ✅
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
-```
-
-Duration: 0.0014433000000000362
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
-```
-
-Duration: 0.0013463000000000225
+Output is good: ✅
 
 ---
 ##  code/hello4.hny
@@ -979,25 +961,7 @@ Output is good: ✅
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9) ErrorToken(line=26, message="Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)", column=19, lexeme='-=', filename='code/actor.hny', is_eof_error=False)
-```
-
-Duration: 0.001622599999999974
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 26:19 at code/actor.hny, Cannot operate on constant ('nrequests', 'code/actor.hny', 26, 9)
-```
-
-Duration: 0.0014624999999999777
+Output is good: ✅
 
 ---
 ##  code/chain.hny
@@ -1055,6 +1019,15 @@ Output is good: ✅
 
 ---
 ##  code/rsmspec.hny
+
+### Summary
+
+Duration is good: ✅
+
+Output is good: ✅
+
+---
+##  code/stack.hny
 
 ### Summary
 
@@ -1186,25 +1159,7 @@ Output is good: ✅
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '=' ErrorToken(line=5, message="Parse error in var statement. Got ('0', 'code/mesa.hny', 5, 13), but expected '='", column=13, lexeme='0', filename='code/mesa.hny', is_eof_error=False)
-```
-
-Duration: 0.0014588999999999852
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 5:12 at code/mesa.hny, missing '=' at '0'
-```
-
-Duration: 0.0011956000000000189
+Output is good: ✅
 
 ---
 ##  code/RWqtest.hny
@@ -1405,33 +1360,6 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stacktest.hny
-
-### Summary
-
-Duration is good: ✅
-
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Can't import module stack from ['code/stacktest.hny'] ErrorToken(line=1, message="Can't import module stack from ['code/stacktest.hny']", column=6, lexeme='stack', filename='code/stacktest.hny', is_eof_error=False)
-```
-
-Duration: 0.0013031000000000015
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 1:6 at code/stacktest.hny, Can't import module stack from ['code/stacktest.hny']
-```
-
-Duration: 0.0013196999999999237
-
----
 ##  code/queueMS.hny
 
 ### Summary
@@ -1465,25 +1393,7 @@ Output is good: ✅
 
 Duration is good: ✅
 
-Output is good: ❌
-
-### Baseline Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21) ErrorToken(line=16, message="Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)", column=29, lexeme='-=', filename='code/2pc1.hny', is_eof_error=False)
-```
-
-Duration: 0.0019007000000000884
-
-### Current Output
-
-```
-Phase 1: compile Harmony program to bytecode
-Line 16:29 at code/2pc1.hny, Cannot operate on constant ('balance', 'code/2pc1.hny', 16, 21)
-```
-
-Duration: 0.002147800000000033
+Output is good: ✅
 
 ---
 ##  code/needhamschroeder.hny
