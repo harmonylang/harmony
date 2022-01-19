@@ -50,6 +50,8 @@ tuple_bound
     : NAME
     | OPEN_PAREN bound CLOSE_PAREN
     | OPEN_BRACK bound CLOSE_BRACK
+    | OPEN_PAREN CLOSE_PAREN
+    | OPEN_BRACK CLOSE_BRACK
     ;
 bound: (tuple_bound COMMA)* tuple_bound;
 
@@ -209,7 +211,7 @@ when_decl: WHEN (EXISTS bound IN expr | expr) NL?;
 let_when_decl: (let_decl | when_decl) let_when_decl?;
 let_when_block: let_when_decl COLON block;
 
-method_decl: DEF NAME OPEN_PAREN bound? CLOSE_PAREN COLON block;
+method_decl: DEF NAME bound COLON block;
 while_block: WHILE expr COLON block;
 elif_block: ELIF expr COLON block;
 else_block: ELSE COLON block;
