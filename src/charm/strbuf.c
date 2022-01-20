@@ -9,7 +9,7 @@
 
 // Initializes a string buffer
 void strbuf_init(struct strbuf *sb){
-    sb->allocated = 256;              // random constant
+    sb->allocated = 64;               // random constant
     sb->buf = malloc(sb->allocated);  // initial size;
     *sb->buf = 0;                     // always keep buf \0-terminated
     sb->len = '\0';
@@ -30,17 +30,35 @@ void strbuf_append(struct strbuf *sb, const char *str, unsigned int len){
 
 // Formatted print, appended to string buffer
 void strbuf_printf(struct strbuf *sb, const char *fmt, ...) {
-    char *r;
     va_list args;
 
+    // figure out how long the string to be appended is.
     va_start(args, fmt);
-    if (vasprintf(&r, fmt, args) < 0) {
-		fprintf(stderr, "strbuf_printf: vasprintf failed\n");
+    int len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    if (len < 0) {
+		fprintf(stderr, "strbuf_printf: vsnprintf failed\n");
+        exit(1);
+    }
+
+    // allocate enough space also for the null byte
+    if (sb->len + len + 1 > sb->allocated) {
+        sb->allocated += len + 1;   // include room for \0
+        sb->allocated *= 2;         // add some buffer space
+        sb->buf = realloc(sb->buf, sb->allocated);
+    }
+
+    // print into the buffer, including null byte
+    va_start(args, fmt);
+    len = vsprintf(&sb->buf[sb->len], fmt, args);
+    va_end(args);
+    if (len < 0) {
+		fprintf(stderr, "strbuf_printf: vsprintf failed\n");
         exit(1);
 	}
+    sb->len += len;
+
     va_end(args);
-    strbuf_append(sb, r, strlen(r));
-    free(r);
 }
 
 // Get a pointer to the current string, which is \0-terminated
