@@ -2082,8 +2082,6 @@ int main(int argc, char **argv){
             bad = minheap_getmin(global->failures);
         }
 
-        printf("BAD %d\n", bad->interrupt);
-
         switch (bad->type) {
         case FAIL_SAFETY:
             printf("Safety Violation\n");
