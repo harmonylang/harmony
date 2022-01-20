@@ -5,7 +5,6 @@
 #include <stdlib.h> /* malloc/calloc */
 #include <stdint.h> /* uint32_t */
 #include <string.h> /* memcpy/memcmp */
-#include <pthread.h>
 
 #define HASHDICT_VALUE_TYPE void*
 
@@ -22,7 +21,7 @@ struct keynode {
 struct dict_bucket {
     struct keynode *stable;
     struct keynode *unstable;
-    pthread_mutex_t lock;
+    mutex_t lock;
 	int count;
 };
 		

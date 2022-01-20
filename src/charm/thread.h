@@ -1,12 +1,19 @@
-#ifdef WIN32
+#ifdef _WIN32
+#ifndef __MINGW32__
+#define CHARM_WINDOWS
+#endif
+#endif
 
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
+#ifdef CHARM_WINDOWS
 typedef HANDLE *mutex_t;
 
 typedef struct {
     CRITICAL_SECTION mutex;
-    CONDITION_VARIABLE cond
+    CONDITION_VARIABLE cond;
     unsigned int threads_required;
     unsigned int threads_left;
     unsigned int cycle;
@@ -14,10 +21,12 @@ typedef struct {
 
 #else // pthreads
 
+#include <sys/time.h>
 #include <pthread.h>
 #include <unistd.h>
 
-#ifndef _SC_NPROCESSORS_ONLN
+#ifdef __APPLE__
+#include <sys/param.h>
 #include <sys/sysctl.h>
 #endif
 

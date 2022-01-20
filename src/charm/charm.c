@@ -3,9 +3,9 @@
 #else
 #include <sys/time.h>
 #include <sys/param.h>
+#include <unistd.h>
 #endif
 
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,18 +86,6 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             break;
         }
     }
-}
-
-static double gettime(){
-#ifdef WIN32
-    struct timespec ts;
-    timespec_get(&ts, TIME_UTC);
-    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
-#else
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + (double) tv.tv_usec / 1000000;
-#endif
 }
 
 static bool onestep(

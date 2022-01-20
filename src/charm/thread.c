@@ -2,7 +2,7 @@
 #include "thread.h"
 #endif
 
-#ifdef WIN32
+#ifdef CHARM_WINDOWS
 
 void thread_create(void (*f)(void *arg), void *arg){
     (void) CreateThread( 
@@ -10,7 +10,7 @@ void thread_create(void (*f)(void *arg), void *arg){
          0,            // default stack size
          (LPTHREAD_START_ROUTINE) f, arg,
          0,            // default creation flags
-         &dwThreadID); // receive thread identifier
+         NULL); 	   // receive thread identifier
 }
 
 void mutex_init(mutex_t *mutex){
@@ -54,18 +54,11 @@ void barrier_wait(barrier_t *barrier){
                         &barrier->mutex, INFINITE);
     }
 
-    ExitCriticalSection(&barrier->mutex);
+    LeaveCriticalSection(&barrier->mutex);
 }
 
 void barrier_destroy(barrier_t *barrier){
     DeleteCriticalSection(&barrier->mutex);
-    DeleteConditionVariable(&barrier->cond);
-}
-
-int getNumCores(){
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
 }
 
 #else // pthreads
@@ -119,8 +112,14 @@ void barrier_destroy(barrier_t *barrier){
     pthread_mutex_destroy(&barrier->mutex);
 }
 
+#endif
+
 int getNumCores(){
-#ifdef _SC_NPROCESSORS_ONLN
+#ifdef _WIN32
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors;
+#elif defined(_SC_NPROCESSORS_ONLN)
     return sysconf(_SC_NPROCESSORS_ONLN);
 #else
     int nm[2];
@@ -130,7 +129,6 @@ int getNumCores(){
     nm[0] = CTL_HW;
     nm[1] = HW_AVAILCPU;
     sysctl(nm, 2, &count, &len, NULL, 0);
-
     if (count < 1) {
         nm[1] = HW_NCPU;
         sysctl(nm, 2, &count, &len, NULL, 0);
@@ -141,5 +139,3 @@ int getNumCores(){
     return count;
 #endif
 }
-
-#endif

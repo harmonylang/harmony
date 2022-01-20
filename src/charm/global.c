@@ -14,13 +14,16 @@
 
 #define CHUNK_SIZE	4096
 
-/* Return current time.
- */
-double timer_now(void){
-    struct timeval now;
-
-    gettimeofday(&now, 0);
-	return now.tv_sec + (double) now.tv_usec / 1000000;
+double gettime(){
+#ifdef TIME_UTC
+    struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    return ts.tv_sec + (double) ts.tv_nsec / 1000000000;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + (double) tv.tv_usec / 1000000;
+#endif
 }
 
 unsigned long to_ulong(const char *p, int len){
