@@ -15,7 +15,11 @@ typedef struct {
 #else // pthreads
 
 #include <pthread.h>
+#include <unistd.h>
+
+#ifndef _SC_NPROCESSORS_ONLN
 #include <sys/sysctl.h>
+#endif
 
 typedef pthread_mutex_t mutex_t;
 
