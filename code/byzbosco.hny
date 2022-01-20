@@ -14,7 +14,8 @@ def receive(round, k):
     let msgs = { e:c for (r,e):c in network where r == round }:
         result = bag.combinations(msgs, k)
 
-def process(proposal):
+def process(_proposal):
+    var proposal = _proposal
     broadcast(0, proposal)
     for round in {0..NROUNDS-1}:
         atomically when exists quorum in receive(round, N - F):

@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import time
-from typing import TextIO, Optional, Union
+from typing import List, TextIO, Optional, Union
 
 
 class TestCase:
@@ -9,7 +9,7 @@ class TestCase:
     def __init__(
         self,
         harmony_args: str,
-        lines_to_check: Union[list[int], str] = 'all',
+        lines_to_check: Union[List[int], str] = 'all',
         is_ephemeral: bool = False
     ):
         self.harmony_args = harmony_args
@@ -32,7 +32,7 @@ class ExecutionResult:
 
 # negative values in lines_to_check index lines from the end of the expected
 # output
-TEST_CASES: list[TestCase] = [
+TEST_CASES: List[TestCase] = [
     TestCase('code/prog1.hny'),
     TestCase('code/prog2.hny', lines_to_check=[0, 1]),
     TestCase('code/Up.hny'),
@@ -105,7 +105,7 @@ def find_test_case(harmony_args: str) -> Optional[TestCase]:
 
 
 def find_execution_result(
-    execution_results: list[ExecutionResult],
+    execution_results: List[ExecutionResult],
     harmony_args: str
 ) -> Optional[ExecutionResult]:
 
@@ -115,9 +115,9 @@ def find_execution_result(
     return None
 
 
-def load_results(f: TextIO) -> list[ExecutionResult]:
+def load_results(f: TextIO) -> List[ExecutionResult]:
     state = 'header'
-    results: list[ExecutionResult] = []
+    results: List[ExecutionResult] = []
 
     average_duration: Optional[float] = None
     expected_output: str = ''
@@ -223,7 +223,7 @@ def dump_result(result: ExecutionResult, f: TextIO):
     f.write('\n')
 
 
-def dump_results(results: list[ExecutionResult], f: TextIO):
+def dump_results(results: List[ExecutionResult], f: TextIO):
     f.write('# Integration Test Results\n')
     f.write('\n')
 
@@ -269,7 +269,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> ExecutionResult:
     )
 
 
-def evaluate_test_cases(test_cases: list[TestCase], n: int) -> list[ExecutionResult]:
+def evaluate_test_cases(test_cases: List[TestCase], n: int) -> List[ExecutionResult]:
     curr_results = []
 
     for test_case in test_cases:
@@ -388,9 +388,9 @@ def merge_average_durations(
 
 
 def merge_results(
-    prev_results: list[ExecutionResult],
-    curr_results: list[ExecutionResult]
-) -> list[ExecutionResult]:
+    prev_results: List[ExecutionResult],
+    curr_results: List[ExecutionResult]
+) -> List[ExecutionResult]:
 
     # The merge process biases towards keeping the final results equal to the
     # prev results, except where noted.
@@ -398,7 +398,7 @@ def merge_results(
     # The merge process should not depend on the list of all test cases, since
     # it may be useful to merge two arbitrary results lists in the future.
 
-    final_results: list[ExecutionResult] = []
+    final_results: List[ExecutionResult] = []
 
     for prev_result in prev_results:
         harmony_args = prev_result.test_case.harmony_args

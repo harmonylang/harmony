@@ -23,56 +23,54 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.import_from())
         elif ctx.import_name():
             return self.visit(ctx.import_name())
-        raise ValueError("Failed to parse import")
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        raise HarmonyCompilerError(
+            message="Failed to parse import",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#import_name.
     def visitImport_name(self, ctx: HarmonyParser.Import_nameContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return ImportAST(tkn, False, self.visit(ctx.dotted_as_names()))
+        return ImportAST(tkn, False, self.visit(ctx.import_names_seq()))
 
     # Visit a parse tree produced by HarmonyParser#import_from.
     def visitImport_from(self, ctx: HarmonyParser.Import_fromContext):
-        dotted_name = self.visit(ctx.dotted_name())
+        dotted_name = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
         tkn = self.get_token(ctx.start, ctx.start.text)
         if ctx.STAR():
             return FromAST(tkn, False, dotted_name, [])
-        names = self.visit(ctx.import_as_names())
+        names = self.visit(ctx.import_names_seq())
         return FromAST(tkn, False, dotted_name, names)
-
-    # Visit a parse tree produced by HarmonyParser#import_as_name.
-    def visitImport_as_name(self, ctx: HarmonyParser.Import_as_nameContext):
-        name = str(ctx.NAME())
-        return self.get_token(ctx.NAME().symbol, name)
-
-    # Visit a parse tree produced by HarmonyParser#import_as_names.
-    def visitImport_as_names(self, ctx: HarmonyParser.Import_as_namesContext):
-        return [self.visit(i) for i in ctx.import_as_name()]
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_name.
-    def visitDotted_as_name(self, ctx: HarmonyParser.Dotted_as_nameContext):
-        name = self.visit(ctx.dotted_name())
-        return name
-
-    # Visit a parse tree produced by HarmonyParser#dotted_as_names.
-    def visitDotted_as_names(self, ctx: HarmonyParser.Dotted_as_namesContext):
-        return [self.visit(d) for d in ctx.dotted_as_name()]
-
-    # Visit a parse tree produced by HarmonyParser#dotted_name.
-    def visitDotted_name(self, ctx: HarmonyParser.Dotted_nameContext):
-        name = ctx.NAME()
-        return self.get_token(name.symbol, str(name))
+    
+    def visitImport_names_seq(self, ctx: HarmonyParser.Import_names_seqContext):
+        return [self.get_token(d.symbol, str(d)) for d in ctx.NAME()]
 
     # Visit a parse tree produced by HarmonyParser#program.
     def visitProgram(self, ctx: HarmonyParser.ProgramContext):
         stmts = [s for stmt in ctx.stmt() for s in self.visit(stmt) if s is not None]
-        return BlockAST(self.get_token(ctx.start, ctx.start.text), False, stmts)
+        token = self.get_token(ctx.start, ctx.start.text)
+        if len(stmts) == 0:
+            raise HarmonyCompilerError(
+                message="Empty program",
+                filename=self.file,
+                line=token[2],
+                column=token[3],
+                lexeme=token[0]
+            )
+        return BlockAST(token, False, stmts)
 
     # Visit a parse tree produced by HarmonyParser#tuple_bound.
     def visitTuple_bound(self, ctx:HarmonyParser.Tuple_boundContext):
         if ctx.bound() is not None:
             return self.visit(ctx.bound())
-        name = ctx.NAME()
-        return self.get_token(name.symbol, str(name))
+        if ctx.NAME():
+            name = ctx.NAME()
+            return self.get_token(name.symbol, str(name))
+        return []
 
     # Visit a parse tree produced by HarmonyParser#bound.
     def visitBound(self, ctx: HarmonyParser.BoundContext):
@@ -107,7 +105,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#atom.
     def visitAtom(self, ctx: HarmonyParser.AtomContext):
         lexeme = ctx.getText()
-        # tkn = self.tkn_factory.make(ctx.start, ctx.stop)
         if lexeme.startswith("0x"):
             v = chr(int(lexeme, 16))
             tkn = self.get_token(ctx.start, v)
@@ -134,7 +131,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif value.startswith('"') and value.endswith('"'):
             s = value[1:-1]
         else:
-            raise ValueError("Unable to parse string")
+            tkn = self.get_token(ctx.start, value)
+            raise HarmonyCompilerError(
+                message="Unable to parse string",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         tkn = self.get_token(ctx.start, s)
         return ConstantAST(tkn)
 
@@ -207,7 +211,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
         if not isinstance(func, ApplyAST):
-            raise ValueError("Expected a method call!")
+            tkn = self.get_token(ctx.start, ctx.start.text)
+            raise HarmonyCompilerError(
+                message="Expected a method call but found something else.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         tkn = self.get_token(ctx.start, ctx.start.text)
         return TrapAST(tkn, False, func.method, func.arg)
 
@@ -233,7 +244,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            raise ValueError("Expected a method call!")
+            tkn = self.get_token(ctx.start, ctx.start.text)
+            raise HarmonyCompilerError(
+                message="Expected a method call but found something else.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         method, arg = target.method, target.arg
         tkn = self.get_token(ctx.start, ctx.start.text)
         return SpawnAST(tkn, False, method, arg, None, is_eternal)
@@ -287,7 +305,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.let_decl() is not None:
             decl.append(self.visit(ctx.let_decl()))
         else:
-            raise ValueError("Unexpected declaration in let/when block declaration")
+            tkn = self.get_token(ctx.start, ctx.start.text)
+            raise HarmonyCompilerError(
+                message="Unexpected declaration in let/when block declaration.",
+                filename=self.file,
+                line=tkn[2],
+                column=tkn[3],
+                lexeme=tkn[0]
+            )
         if ctx.let_when_decl() is not None:
             decl.extend(self.visit(ctx.let_when_decl()))
         return decl
@@ -357,12 +382,20 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.normal_block())
         elif ctx.simple_stmt_block() is not None:
             return self.visit(ctx.simple_stmt_block())
-        raise ValueError("Unexpected block value")
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        raise HarmonyCompilerError(
+            message="Unexpected block structure.",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#simple_stmt_block.
     def visitSimple_stmt_block(self, ctx:HarmonyParser.Simple_stmt_blockContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return BlockAST(tkn, False, [self.visit(ctx.simple_stmt())])
+        is_atomic = ctx.ATOMICALLY() is not None
+        return BlockAST(tkn, is_atomic, [self.visit(ctx.simple_stmt())])
 
     # Visit a parse tree produced by HarmonyParser#normal_block.
     def visitNormal_block(self, ctx: HarmonyParser.Normal_blockContext):
@@ -372,7 +405,14 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         elif ctx.block_stmts() is not None:
             stmts = self.visit(ctx.block_stmts())
             return BlockAST(tkn, False, stmts)
-        raise ValueError("Unexpected block value")
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        raise HarmonyCompilerError(
+            message="Unexpected block structure.",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#block_stmts.
     def visitBlock_stmts(self, ctx: HarmonyParser.Block_stmtsContext):
@@ -397,8 +437,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             stmt = self.visit(ctx.compound_stmt())
         elif ctx.import_stmt() is not None:
             stmt = self.visit(ctx.import_stmt())
-        elif ctx.block() is not None:
-            stmt = self.visit(ctx.block())
+        elif ctx.normal_block() is not None:
+            stmt = self.visit(ctx.normal_block())
         else:
             return []
 
@@ -413,12 +453,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             stmt_block = [LocationAST(tkn, s, self.file, tkn[2]) for s in stmt]
         if labels:
             block = BlockAST(tkn, False, stmt_block)
-            return [LabelStatAST(tkn, labels, block)]
+            return [LocationAST(tkn, LabelStatAST(tkn, labels, block), self.file, tkn[2])]
         return stmt_block
 
     # Visit a parse tree produced by HarmonyParser#one_line_stmt.
     def visitOne_line_stmt(self, ctx: HarmonyParser.One_line_stmtContext):
         stmts = [self.visit(ctx.simple_stmt())]
+        # if ctx.SEMI_COLON():
+        #     tkn = self.get_token(ctx.SEMI_COLON().symbol, ";")
+        #     stmts.append(PassAST(tkn, False))
         if ctx.one_line_stmt():
             stmts.extend(self.visit(ctx.one_line_stmt()))
         return stmts
@@ -437,13 +480,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitParen_tuple(self, ctx: HarmonyParser.Paren_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
-        return TupleAST([], self.get_token(ctx.start, ctx.start.text))
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#brack_tuple.
     def visitBracket_tuple(self, ctx: HarmonyParser.Bracket_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
-        return TupleAST([], self.get_token(ctx.start, ctx.start.text))
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#set_rule.
     def visitSet_rule(self, ctx: HarmonyParser.Set_ruleContext):
@@ -504,9 +549,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             comps = [self.visit(o) for o in ctx.comp_op()]
             return CmpAST(comps[0], comps, expressions)
         if ctx.arith_op():
-            ops = {self.visit(o) for o in ctx.arith_op()}
-            if len({c[0] for c in ops}) > 1:
-                raise ValueError("Cannot have multiple types of operators in one expression")
+            ops = [self.visit(o) for o in ctx.arith_op()]
+            num_of_unique_ops = len({c[0] for c in ops})
+            if num_of_unique_ops > 1:
+                op = ops[0]
+                raise HarmonyCompilerError(
+                    message="Cannot have multiple types of operators in one expression",
+                    filename=self.file,
+                    line=op[2],
+                    column=op[3],
+                    lexeme=op[0]
+                )
             binop = ops.pop()
             return NaryAST(binop, expressions)
         if ctx.IF():
@@ -545,7 +598,13 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return NaryAST(op, [expr])
         if ctx.application():
             return self.visit(ctx.application())
-        raise ValueError("Invalid expression")
+        raise HarmonyCompilerError(
+            message="Invalid expression",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#application.
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):

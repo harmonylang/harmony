@@ -1,3 +1,6 @@
+mkdir -p output
+make
+
 dir=/research/harmony
 mkdir -p $dir/code
 mkdir -p $dir/modules
@@ -13,13 +16,11 @@ python3 src/archive/implode.py manifest > archive.xml
 cp archive.xml $dir
 python3 src/archive/implode.py /dev/null > $dir/version.xml
 
-mkdir -p output
-make
-./harmony code/Up.hny
+./harmony --noweb code/Up.hny
 mv code/Up.htm output/Up.html
-./harmony code/naiveLock.hny
+./harmony --noweb code/naiveLock.hny
 mv code/naiveLock.htm output/naiveLock.html
-./harmony code/naiveFlags.hny
+./harmony --noweb code/naiveFlags.hny
 mv code/naiveFlags.htm output/naiveFlags.html
 cp output/*.html $dir/output
 
@@ -32,3 +33,5 @@ cp code/*.hny $dir/code
 cp modules/*.hny $dir/modules
 cp python/*.py $dir/python
 cp distributions/*.zip $dir/distributions
+
+zip -r $dir/sources.zip code modules python

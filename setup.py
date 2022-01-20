@@ -9,14 +9,15 @@ import shutil
 import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.20a13"
+PACKAGE_VERSION = "0.0.20a23"
+
+PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
-        # package_config = Path.home() / ".harmony-model-checker"
-        # if not package_config.exists():
-        #     package_config.mkdir()
+        if not PACKAGE_CONFIG.exists():
+            PACKAGE_CONFIG.mkdir()
         super().run()
 
         # harmony_cmd = shutil.which("harmony")
@@ -56,7 +57,8 @@ setuptools.setup(
         'matplotlib; python_version >= "3.5"',
         'antlr-denter; python_version >= "1.3.1"',
         'antlr4-python3-runtime; python_version == "4.9.3"',
-        'automata-lib; python_version >= "5.0"'
+        'automata-lib; python_version >= "5.0"',
+        'pydot; python_version == "1.4.2"'
     ],
     include_package_data=True,
     package_data={

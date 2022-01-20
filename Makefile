@@ -1,8 +1,13 @@
-all: gen
+all: parser
+	./harmony --build-model-checker
+
+parser: gen
+	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
+
+setup: gen
 	./harmony --build-model-checker
 
 gen:
-	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
 	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
 	(cd src/charm; sh gen.scr) > harmony_model_checker/charm.c
 	chmod +x harmony
@@ -30,8 +35,13 @@ dist: gen
 	rm -rf harmony_model_checker.egg-info/
 	python setup.py sdist
 
-wheel: dist
-	python setup.py bdist_wheel
+upload-test: dist
+	twine upload -r testpypi dist/*
 
 upload: dist
-	twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+	twine upload dist/*
+
+clean:
+	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
+	rm -f harmony_model_checker/modules/*.htm harmony_model_checker/modules/*.hvm harmony_model_checker/modules/*.hco
+	rm -rf compiler_integration_results/

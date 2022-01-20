@@ -1,0 +1,7 @@
+x = False
+def f():
+    print "hello"
+    atomically: x = True
+def g():
+    atomically when x: print "world"
+spawn f(); spawn g()

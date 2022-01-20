@@ -1,6 +1,7 @@
 import synch
 
-def pc_actor(q, nrequests):
+def pc_actor(q, _nrequests):
+    var nrequests = _nrequests
     var requests, balance = {}, 0
     while nrequests > 0:
         let req = synch.get(q):

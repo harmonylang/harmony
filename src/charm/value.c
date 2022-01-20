@@ -12,7 +12,7 @@
 #include "global.h"
 #endif
 
-void *value_get(uint64_t v, int *psize){
+void *value_get(hvalue_t v, int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
         *psize = 0;
@@ -21,7 +21,7 @@ void *value_get(uint64_t v, int *psize){
     return dict_retrieve((void *) v, psize);
 }
 
-void *value_copy(uint64_t v, int *psize){
+void *value_copy(hvalue_t v, int *psize){
     v &= ~VALUE_MASK;
     if (v == 0) {
         *psize = 0;
@@ -37,56 +37,57 @@ void *value_copy(uint64_t v, int *psize){
     return r;
 }
 
-uint64_t value_put_atom(struct values_t *values, const void *p, int size){
-    assert(size > 0);
+hvalue_t value_put_atom(struct values_t *values, const void *p, int size){
+    if (size == 0) {
+        return VALUE_ATOM;
+    }
     void *q = dict_find(values->atoms, p, size);
-    return (uint64_t) q | VALUE_ATOM;
+    return (hvalue_t) q | VALUE_ATOM;
 }
 
-uint64_t value_put_set(struct values_t *values, void *p, int size){
+hvalue_t value_put_set(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_SET;
     }
     void *q = dict_find(values->sets, p, size);
-    return (uint64_t) q | VALUE_SET;
+    return (hvalue_t) q | VALUE_SET;
 }
 
-uint64_t value_put_dict(struct values_t *values, void *p, int size){
+hvalue_t value_put_dict(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_DICT;
     }
     void *q = dict_find(values->dicts, p, size);
-    return (uint64_t) q | VALUE_DICT;
+    return (hvalue_t) q | VALUE_DICT;
 }
 
-uint64_t value_put_address(struct values_t *values, void *p, int size){
+hvalue_t value_put_address(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;
     }
     void *q = dict_find(values->addresses, p, size);
-    return (uint64_t) q | VALUE_ADDRESS;
+    return (hvalue_t) q | VALUE_ADDRESS;
 }
 
-uint64_t value_put_context(struct values_t *values, struct context *ctx){
+hvalue_t value_put_context(struct values_t *values, struct context *ctx){
 	assert(ctx->pc >= 0);
-    int size = sizeof(*ctx) + (ctx->sp * sizeof(uint64_t));
+    int size = sizeof(*ctx) + (ctx->sp * sizeof(hvalue_t));
     void *q = dict_find(values->contexts, ctx, size);
-    return (uint64_t) q | VALUE_CONTEXT;
+    return (hvalue_t) q | VALUE_CONTEXT;
 }
 
-int value_cmp_bool(uint64_t v1, uint64_t v2){
+int value_cmp_bool(hvalue_t v1, hvalue_t v2){
     return v1 == 0 ? -1 : 1;
 }
 
-int value_cmp_int(uint64_t v1, uint64_t v2){
+int value_cmp_int(hvalue_t v1, hvalue_t v2){
     return (int64_t) v1 < (int64_t) v2 ? -1 : 1;
 }
 
-int value_cmp_atom(uint64_t v1, uint64_t v2){
-    void *p1 = (void *) v1, *p2 = (void *) v2;
+int value_cmp_atom(hvalue_t v1, hvalue_t v2){
     int size1, size2;
-    char *s1 = dict_retrieve(p1, &size1);
-    char *s2 = dict_retrieve(p2, &size2);
+    char *s1 = value_get(v1, &size1);
+    char *s2 = value_get(v2, &size2);
     int size = size1 < size2 ? size1 : size2;
     int cmp = strncmp(s1, s2, size);
     if (cmp != 0) {
@@ -95,11 +96,11 @@ int value_cmp_atom(uint64_t v1, uint64_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_pc(uint64_t v1, uint64_t v2){
+int value_cmp_pc(hvalue_t v1, hvalue_t v2){
     return v1 < v2 ? -1 : 1;
 }
 
-int value_cmp_dict(uint64_t v1, uint64_t v2){
+int value_cmp_dict(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -108,10 +109,10 @@ int value_cmp_dict(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dict_retrieve(p1, &size1);
-    uint64_t *vals2 = dict_retrieve(p2, &size2);
-    size1 /= sizeof(uint64_t);
-    size2 /= sizeof(uint64_t);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    size1 /= sizeof(hvalue_t);
+    size2 /= sizeof(hvalue_t);
     int size = size1 < size2 ? size1 : size2;
     for (int i = 0; i < size; i++) {
         int cmp = value_cmp(vals1[i], vals2[i]);
@@ -122,7 +123,7 @@ int value_cmp_dict(uint64_t v1, uint64_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_set(uint64_t v1, uint64_t v2){
+int value_cmp_set(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -131,10 +132,10 @@ int value_cmp_set(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dict_retrieve(p1, &size1);
-    uint64_t *vals2 = dict_retrieve(p2, &size2);
-    size1 /= sizeof(uint64_t);
-    size2 /= sizeof(uint64_t);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    size1 /= sizeof(hvalue_t);
+    size2 /= sizeof(hvalue_t);
     int size = size1 < size2 ? size1 : size2;
     for (int i = 0; i < size; i++) {
         int cmp = value_cmp(vals1[i], vals2[i]);
@@ -145,7 +146,7 @@ int value_cmp_set(uint64_t v1, uint64_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp_address(uint64_t v1, uint64_t v2){
+int value_cmp_address(hvalue_t v1, hvalue_t v2){
     if (v1 == 0) {
         return v2 == 0 ? 0 : -1;
     }
@@ -154,10 +155,10 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
     }
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
-    uint64_t *vals1 = dict_retrieve(p1, &size1);
-    uint64_t *vals2 = dict_retrieve(p2, &size2);
-    size1 /= sizeof(uint64_t);
-    size2 /= sizeof(uint64_t);
+    hvalue_t *vals1 = dict_retrieve(p1, &size1);
+    hvalue_t *vals2 = dict_retrieve(p2, &size2);
+    size1 /= sizeof(hvalue_t);
+    size2 /= sizeof(hvalue_t);
     int size = size1 < size2 ? size1 : size2;
     for (int i = 0; i < size; i++) {
         int cmp = value_cmp(vals1[i], vals2[i]);
@@ -169,7 +170,7 @@ int value_cmp_address(uint64_t v1, uint64_t v2){
 }
 
 // TODO.  Maybe should compare name tag, pc, ...
-int value_cmp_context(uint64_t v1, uint64_t v2){
+int value_cmp_context(hvalue_t v1, hvalue_t v2){
     void *p1 = (void *) v1, *p2 = (void *) v2;
     int size1, size2;
     char *s1 = dict_retrieve(p1, &size1);
@@ -182,7 +183,7 @@ int value_cmp_context(uint64_t v1, uint64_t v2){
     return size1 < size2 ? -1 : 1;
 }
 
-int value_cmp(uint64_t v1, uint64_t v2){
+int value_cmp(hvalue_t v1, hvalue_t v2){
     if (v1 == v2) {
         return 0;
     }
@@ -246,10 +247,10 @@ void append_printf(char **p, char *fmt, ...){
     }
 }
 
-static char *value_string_bool(uint64_t v) {
+static char *value_string_bool(hvalue_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_string_bool %"PRIu64"\n", v);
+        fprintf(stderr, "value_string_bool %"PRI_HVAL"\n", v);
         panic("value_string_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
@@ -257,10 +258,10 @@ static char *value_string_bool(uint64_t v) {
     return r;
 }
 
-static char *value_json_bool(uint64_t v) {
+static char *value_json_bool(hvalue_t v) {
     char *r;
     if (v != 0 && v != (1 << VALUE_BITS)) {
-        fprintf(stderr, "value_json_bool %"PRIu64"\n", v);
+        fprintf(stderr, "value_json_bool %"PRI_HVAL"\n", v);
         panic("value_json_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
@@ -268,7 +269,7 @@ static char *value_json_bool(uint64_t v) {
     return r;
 }
 
-static char *value_string_int(uint64_t v) {
+static char *value_string_int(hvalue_t v) {
     int64_t w = ((int64_t) v) >> VALUE_BITS;
     char *r;
 
@@ -279,12 +280,12 @@ static char *value_string_int(uint64_t v) {
         alloc_printf(&r, "-inf");
     }
     else {
-        alloc_printf(&r, "%"PRId64"", w);
+        alloc_printf(&r, "%"PRId64"", (int64_t) w);
     }
     return r;
 }
 
-static char *value_json_int(uint64_t v) {
+static char *value_json_int(hvalue_t v) {
     int64_t w = ((int64_t) v) >> VALUE_BITS;
     char *r;
 
@@ -295,15 +296,14 @@ static char *value_json_int(uint64_t v) {
         alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"-inf\" }");
     }
     else {
-        alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", w);
+        alloc_printf(&r, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", (int64_t) w);
     }
     return r;
 }
 
-static char *value_string_atom(uint64_t v) {
-    void *p = (void *) v;
+static char *value_string_atom(hvalue_t v) {
     int size;
-    char *s = dict_retrieve(p, &size), *r;
+    char *s = value_get(v, &size), *r;
 	struct strbuf sb;
 
 	strbuf_init(&sb);
@@ -332,36 +332,29 @@ static char *value_string_atom(uint64_t v) {
 	return strbuf_getstr(&sb);
 }
 
-static char *value_json_atom(uint64_t v) {
-    void *p = (void *) v;
+static char *value_json_atom(hvalue_t v) {
     int size;
-    char *s = dict_retrieve(p, &size), *r;
-    assert(size > 0);
-    if (size > 1 || (isprint(s[0]) && s[0] != '"' && s[0] != '\\')) {
-        char *esc = json_escape(s, size);
-        alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
-        free(esc);
-    }
-    else {
-        alloc_printf(&r, "{ \"type\": \"char\", \"value\": \"%02x\" }", s[0]);
-    }
+    char *s = value_get(v, &size), *r;
+    char *esc = json_escape(s, size);
+    alloc_printf(&r, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
+    free(esc);
     return r;
 }
 
-static char *value_string_pc(uint64_t v) {
+static char *value_string_pc(hvalue_t v) {
     char *r;
     assert((v >> VALUE_BITS) < 10000);      // debug
-    alloc_printf(&r, "PC(%"PRIu64")", v >> VALUE_BITS);
+    alloc_printf(&r, "PC(%u)", (unsigned int) (v >> VALUE_BITS));
     return r;
 }
 
-static char *value_json_pc(uint64_t v) {
+static char *value_json_pc(hvalue_t v) {
     char *r;
-    alloc_printf(&r, "{ \"type\": \"pc\", \"value\": \"%"PRIu64"\" }", v >> VALUE_BITS);
+    alloc_printf(&r, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) (v >> VALUE_BITS));
     return r;
 }
 
-static char *value_string_dict(uint64_t v) {
+static char *value_string_dict(hvalue_t v) {
     char *r;
 
     if (v == 0) {
@@ -371,11 +364,11 @@ static char *value_string_dict(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dict_retrieve(p, &size);
-    size /= 2 * sizeof(uint64_t);
+    hvalue_t *vals = dict_retrieve(p, &size);
+    size /= 2 * sizeof(hvalue_t);
 
     bool islist = true;
-    for (uint64_t i = 0; i < size; i++) {
+    for (hvalue_t i = 0; i < size; i++) {
         if (vals[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
             islist = false;
             break;
@@ -411,7 +404,7 @@ static char *value_string_dict(uint64_t v) {
     return r;
 }
 
-static char *value_json_dict(uint64_t v) {
+static char *value_json_dict(hvalue_t v) {
     char *r;
 
     if (v == 0) {
@@ -421,8 +414,8 @@ static char *value_json_dict(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dict_retrieve(p, &size);
-    size /= 2 * sizeof(uint64_t);
+    hvalue_t *vals = dict_retrieve(p, &size);
+    size /= 2 * sizeof(hvalue_t);
 
     alloc_printf(&r, "{ \"type\": \"dict\", \"value\": [");
     for (int i = 0; i < size; i++) {
@@ -439,7 +432,7 @@ static char *value_json_dict(uint64_t v) {
     return r;
 }
 
-static char *value_string_set(uint64_t v) {
+static char *value_string_set(hvalue_t v) {
     char *r;
 
     if (v == 0) {
@@ -449,8 +442,8 @@ static char *value_string_set(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dict_retrieve(p, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = dict_retrieve(p, &size);
+    size /= sizeof(hvalue_t);
 
     alloc_printf(&r, "{ ");
     for (int i = 0; i < size; i++) {
@@ -467,7 +460,7 @@ static char *value_string_set(uint64_t v) {
     return r;
 }
 
-static char *value_json_set(uint64_t v) {
+static char *value_json_set(hvalue_t v) {
     char *r;
 
     if (v == 0) {
@@ -477,8 +470,8 @@ static char *value_json_set(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dict_retrieve(p, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = dict_retrieve(p, &size);
+    size /= sizeof(hvalue_t);
 
     alloc_printf(&r, "{ \"type\": \"set\", \"value\": [");
     for (int i = 0; i < size; i++) {
@@ -495,7 +488,7 @@ static char *value_json_set(uint64_t v) {
     return r;
 }
 
-char *indices_string(const uint64_t *vec, int size) {
+char *indices_string(const hvalue_t *vec, int size) {
     char *r;
     if (size == 0) {
         alloc_printf(&r, "None");
@@ -515,7 +508,7 @@ char *indices_string(const uint64_t *vec, int size) {
     return r;
 }
 
-static char *value_string_address(uint64_t v) {
+static char *value_string_address(hvalue_t v) {
     if (v == 0) {
         char *r;
         alloc_printf(&r, "None");
@@ -524,13 +517,13 @@ static char *value_string_address(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *indices = dict_retrieve(p, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *indices = dict_retrieve(p, &size);
+    size /= sizeof(hvalue_t);
     assert(size > 0);
     return indices_string(indices, size);
 }
 
-static char *value_json_address(uint64_t v) {
+static char *value_json_address(hvalue_t v) {
     char *r;
     if (v == 0) {
         alloc_printf(&r, "{ \"type\": \"address\", \"value\": [] }");
@@ -539,8 +532,8 @@ static char *value_json_address(uint64_t v) {
 
     void *p = (void *) v;
     int size;
-    uint64_t *vals = dict_retrieve(p, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = dict_retrieve(p, &size);
+    size /= sizeof(hvalue_t);
     assert(size > 0);
     alloc_printf(&r, "{ \"type\": \"address\", \"value\": [");
     for (int i = 0; i < size; i++) {
@@ -558,7 +551,7 @@ static char *value_json_address(uint64_t v) {
     return r;
 }
 
-static char *value_string_context(uint64_t v) {
+static char *value_string_context(hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     char *r;
 #ifdef SHORT
@@ -634,7 +627,7 @@ static char *value_string_context(uint64_t v) {
     return r;
 }
 
-static char *value_json_context(uint64_t v) {
+static char *value_json_context(hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     char *r, *val;
     alloc_printf(&r, "{ \"type\": \"context\", \"value\": {");
@@ -653,7 +646,7 @@ static char *value_json_context(uint64_t v) {
     return r;
 }
 
-char *value_string(uint64_t v){
+char *value_string(hvalue_t v){
     switch (v & VALUE_MASK) {
     case VALUE_BOOL:
         return value_string_bool(v & ~VALUE_MASK);
@@ -677,7 +670,7 @@ char *value_string(uint64_t v){
     }
 }
 
-char *value_json(uint64_t v){
+char *value_json(hvalue_t v){
     switch (v & VALUE_MASK) {
     case VALUE_BOOL:
         return value_json_bool(v & ~VALUE_MASK);
@@ -709,7 +702,7 @@ bool atom_cmp(json_buf_t buf, char *s){
     return strncmp(buf.base, s, n) == 0;
 }
 
-uint64_t value_bool(struct dict *map){
+hvalue_t value_bool(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (atom_cmp(value->u.atom, "False")) {
@@ -722,10 +715,10 @@ uint64_t value_bool(struct dict *map){
     return 0;
 }
 
-uint64_t value_int(struct dict *map){
+hvalue_t value_int(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
-    uint64_t v;
+    hvalue_t v;
     if (atom_cmp(value->u.atom, "inf")) {
         v = VALUE_MAX;
     }
@@ -742,7 +735,7 @@ uint64_t value_int(struct dict *map){
     return (v << VALUE_BITS) | VALUE_INT;
 }
 
-uint64_t value_pc(struct dict *map){
+hvalue_t value_pc(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     char *copy = malloc(value->u.atom.len + 1);
@@ -753,41 +746,23 @@ uint64_t value_pc(struct dict *map){
     return (v << VALUE_BITS) | VALUE_PC;
 }
 
-uint64_t value_atom(struct values_t *values, struct dict *map){
+hvalue_t value_atom(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
-	assert(value->u.atom.len > 0);
+    if (value->u.atom.len == 0) {
+        return VALUE_ATOM;
+    }
     void *p = dict_find(values->atoms, value->u.atom.base, value->u.atom.len);
-    return (uint64_t) p | VALUE_ATOM;
+    return (hvalue_t) p | VALUE_ATOM;
 }
 
-uint64_t value_char(struct values_t *values, struct dict *map){
-    struct json_value *value = dict_lookup(map, "value", 5);
-    assert(value->type == JV_ATOM);
-    char *copy = malloc(value->u.atom.len + 1);
-    memcpy(copy, value->u.atom.base, value->u.atom.len);
-    copy[value->u.atom.len] = 0;
-    unsigned long x;
-    sscanf(copy, "%lx", &x);
-    free(copy);
-    if (x == 0) {
-        printf("value_char: can't handle null characters yet\n");
-    }
-    else if (x != (x & 0x7F)) {
-        printf("value_char: can only handle ASCII characters right now\n");
-    }
-    char v = x & 0x7F;
-    void *p = dict_find(values->atoms, &v, 1);
-    return (uint64_t) p | VALUE_ATOM;
-}
-
-uint64_t value_dict(struct values_t *values, struct dict *map){
+hvalue_t value_dict(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
         return VALUE_DICT;
     }
-    uint64_t *vals = malloc(value->u.list.nvals * sizeof(uint64_t) * 2);
+    hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t) * 2);
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
@@ -801,18 +776,18 @@ uint64_t value_dict(struct values_t *values, struct dict *map){
 
     // vals is sorted already by harmony compiler
     void *p = dict_find(values->dicts, vals,
-                    value->u.list.nvals * sizeof(uint64_t) * 2);
+                    value->u.list.nvals * sizeof(hvalue_t) * 2);
     free(vals);
-    return (uint64_t) p | VALUE_DICT;
+    return (hvalue_t) p | VALUE_DICT;
 }
 
-uint64_t value_set(struct values_t *values, struct dict *map){
+hvalue_t value_set(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
-        return (uint64_t) VALUE_SET;
+        return (hvalue_t) VALUE_SET;
     }
-    uint64_t *vals = malloc(value->u.list.nvals * sizeof(uint64_t));
+    hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t));
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
@@ -820,30 +795,30 @@ uint64_t value_set(struct values_t *values, struct dict *map){
     }
 
     // vals is sorted already by harmony compiler
-    void *p = dict_find(values->sets, vals, value->u.list.nvals * sizeof(uint64_t));
+    void *p = dict_find(values->sets, vals, value->u.list.nvals * sizeof(hvalue_t));
     free(vals);
-    return (uint64_t) p | VALUE_SET;
+    return (hvalue_t) p | VALUE_SET;
 }
 
-uint64_t value_address(struct values_t *values, struct dict *map){
+hvalue_t value_address(struct values_t *values, struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_LIST);
     if (value->u.list.nvals == 0) {
-        return (uint64_t) VALUE_ADDRESS;
+        return (hvalue_t) VALUE_ADDRESS;
     }
-    uint64_t *vals = malloc(value->u.list.nvals * sizeof(uint64_t));
+    hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t));
     for (int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(values, jv->u.map);
     }
     void *p = dict_find(values->addresses, vals,
-                            value->u.list.nvals * sizeof(uint64_t));
+                            value->u.list.nvals * sizeof(hvalue_t));
     free(vals);
-    return (uint64_t) p | VALUE_ADDRESS;
+    return (hvalue_t) p | VALUE_ADDRESS;
 }
 
-uint64_t value_from_json(struct values_t *values, struct dict *map){
+hvalue_t value_from_json(struct values_t *values, struct dict *map){
     struct json_value *type = dict_lookup(map, "type", 4);
     assert(type != 0);
     assert(type->type == JV_ATOM);
@@ -855,9 +830,6 @@ uint64_t value_from_json(struct values_t *values, struct dict *map){
     }
     else if (atom_cmp(type->u.atom, "atom")) {
         return value_atom(values, map);
-    }
-    else if (atom_cmp(type->u.atom, "char")) {
-        return value_char(values, map);
     }
     else if (atom_cmp(type->u.atom, "dict")) {
         return value_dict(values, map);
@@ -894,7 +866,7 @@ void value_set_concurrent(struct values_t *values, int concurrent){
 }
 
 // Store key:value in the given dictionary and returns its value code
-uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, uint64_t value){
+hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
     assert((dict & VALUE_MASK) == VALUE_DICT);
 
     if (false) {
@@ -907,7 +879,7 @@ uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, 
         free(r);
     }
 
-    uint64_t *vals;
+    hvalue_t *vals;
     int size;
     if (dict == VALUE_DICT) {
         vals = NULL;
@@ -915,7 +887,7 @@ uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, 
     }
     else {
         vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
+        size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
 
@@ -925,11 +897,11 @@ uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, 
             if (vals[i + 1] == value) {
                 return dict;
             }
-            int n = size * sizeof(uint64_t);
-            uint64_t *copy = malloc(n);
+            int n = size * sizeof(hvalue_t);
+            hvalue_t *copy = malloc(n);
             memcpy(copy, vals, n);
             copy[i + 1] = value;
-            uint64_t v = value_put_dict(values, copy, n);
+            hvalue_t v = value_put_dict(values, copy, n);
             free(copy);
             return v;
         }
@@ -938,21 +910,21 @@ uint64_t value_dict_store(struct values_t *values, uint64_t dict, uint64_t key, 
         }
     }
 
-    int n = (size + 2) * sizeof(uint64_t);
-    uint64_t *nvals = malloc(n);
-    memcpy(nvals, vals, i * sizeof(uint64_t));
+    int n = (size + 2) * sizeof(hvalue_t);
+    hvalue_t *nvals = malloc(n);
+    memcpy(nvals, vals, i * sizeof(hvalue_t));
     nvals[i] = key;
     nvals[i+1] = value;
-    memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(uint64_t));
-    uint64_t v = value_put_dict(values, nvals, n);
+    memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
+    hvalue_t v = value_put_dict(values, nvals, n);
     free(nvals);
     return v;
 }
 
-uint64_t value_dict_load(uint64_t dict, uint64_t key){
+hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
     assert((dict & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t *vals;
+    hvalue_t *vals;
     int size;
     if (dict == VALUE_DICT) {
         vals = NULL;
@@ -960,7 +932,7 @@ uint64_t value_dict_load(uint64_t dict, uint64_t key){
     }
     else {
         vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
+        size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
 
@@ -981,16 +953,16 @@ uint64_t value_dict_load(uint64_t dict, uint64_t key){
     return 0;
 }
 
-uint64_t value_dict_remove(struct values_t *values, uint64_t dict, uint64_t key){
+hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key){
     assert((dict & VALUE_MASK) == VALUE_DICT);
 
-    uint64_t *vals;
+    hvalue_t *vals;
     int size;
     if (dict == VALUE_DICT) {
         return VALUE_DICT;
     }
     vals = value_get(dict & ~VALUE_MASK, &size);
-    size /= sizeof(uint64_t);
+    size /= sizeof(hvalue_t);
     assert(size % 2 == 0);
 
     if (size == 2) {
@@ -1000,12 +972,12 @@ uint64_t value_dict_remove(struct values_t *values, uint64_t dict, uint64_t key)
     int i;
     for (i = 0; i < size; i += 2) {
         if (vals[i] == key) {
-            int n = (size - 2) * sizeof(uint64_t);
-            uint64_t *copy = malloc(n);
-            memcpy(copy, vals, i * sizeof(uint64_t));
+            int n = (size - 2) * sizeof(hvalue_t);
+            hvalue_t *copy = malloc(n);
+            memcpy(copy, vals, i * sizeof(hvalue_t));
             memcpy(&copy[i], &vals[i+2],
-                   (size - i - 2) * sizeof(uint64_t));
-            uint64_t v = value_put_dict(values, copy, n);
+                   (size - i - 2) * sizeof(hvalue_t));
+            hvalue_t v = value_put_dict(values, copy, n);
             free(copy);
             return v;
         }
@@ -1019,12 +991,31 @@ uint64_t value_dict_remove(struct values_t *values, uint64_t dict, uint64_t key)
     return dict;
 }
 
-bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
+bool value_dict_tryload(
+    struct values_t *values,
+    hvalue_t dict,
+    hvalue_t key,
+    hvalue_t *result
+){
+    if ((dict & VALUE_MASK) == VALUE_ATOM) {
+        if ((key & VALUE_MASK) != VALUE_INT) {
+            return false;
+        }
+        key >>= VALUE_BITS;
+        int size;
+        char *chars = value_get(dict, &size);
+        if (key >= size) {
+            return false;
+        }
+        *result = value_put_atom(values, chars + key, 1);
+        return true;
+    }
+
     if ((dict & VALUE_MASK) != VALUE_DICT) {
         return false;
     }
 
-    uint64_t *vals;
+    hvalue_t *vals;
     int size;
     if (dict == VALUE_DICT) {
         vals = NULL;
@@ -1032,7 +1023,7 @@ bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
     }
     else {
         vals = value_get(dict & ~VALUE_MASK, &size);
-        size /= sizeof(uint64_t);
+        size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
 
@@ -1051,9 +1042,9 @@ bool value_dict_tryload(uint64_t dict, uint64_t key, uint64_t *result){
     return false;
 }
 
-uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v, int multiplicity){
-    uint64_t count;
-    if (value_dict_tryload(bag, v, &count)) {
+hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity){
+    hvalue_t count;
+    if (value_dict_tryload(values, bag, v, &count)) {
         assert((count & VALUE_MASK) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;
@@ -1064,23 +1055,23 @@ uint64_t value_bag_add(struct values_t *values, uint64_t bag, uint64_t v, int mu
     }
 }
 
-void value_ctx_push(struct context **pctx, uint64_t v){
+void value_ctx_push(struct context **pctx, hvalue_t v){
     assert(*pctx != NULL);
     struct context *ctx = realloc(*pctx, sizeof(struct context) +
-                                         ((*pctx)->sp + 1) * sizeof(uint64_t));
+                                         ((*pctx)->sp + 1) * sizeof(hvalue_t));
 
     ctx->stack[ctx->sp++] = v;
     *pctx = ctx;
 }
 
-uint64_t value_ctx_pop(struct context **pctx){
+hvalue_t value_ctx_pop(struct context **pctx){
     struct context *ctx = *pctx;
 
     assert(ctx->sp > 0);
     return ctx->stack[--ctx->sp];
 }
 
-uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
+hvalue_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
     char *r;
     va_list args;
 
@@ -1098,13 +1089,13 @@ uint64_t value_ctx_failure(struct context *ctx, struct values_t *values, char *f
     return 0;
 }
 
-bool value_ctx_all_eternal(uint64_t ctxbag) {
+bool value_ctx_all_eternal(hvalue_t ctxbag) {
     if (ctxbag == VALUE_DICT) {     // optimization
         return true;
     }
     int size;
-    uint64_t *vals = value_get(ctxbag, &size);
-    size /= sizeof(uint64_t);
+    hvalue_t *vals = value_get(ctxbag, &size);
+    size /= sizeof(hvalue_t);
     bool all = true;
     for (int i = 0; i < size; i += 2) {
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);

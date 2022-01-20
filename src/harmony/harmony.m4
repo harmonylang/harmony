@@ -1,7 +1,7 @@
 """
 	This is the Harmony compiler.
 
-    Copyright (C) 2020, 2021  Robbert van Renesse
+    Copyright (C) 2020, 2021, 2022  Robbert van Renesse
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -50,10 +50,10 @@ import queue
 import functools
 import json
 import subprocess
-import dataclasses
-
+import webbrowser
 from typing import Any
 from typing import Any, List
+import dataclasses
 from dataclasses import dataclass
 
 try:
@@ -80,6 +80,7 @@ lasttime = 0            # last time status update was printed
 imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
+tlavarcnt = 0           # to generate unique TLA+ variables
 
 m4_include(jsonstring.py)
 m4_include(brief.py)
@@ -302,6 +303,7 @@ def isreserved(s):
         "setintlevel",
         "spawn",
         "stop",
+        "str",
         "trap",
         "try",
         "True",
@@ -318,7 +320,7 @@ def isname(s):
 def isunaryop(s):
     return s in { "!", "-", "~", "abs", "all", "any", "atLabel", "choose",
         "contexts", "countLabel", "get_context", "min", "max", "not",
-        "keys", "hash", "len"
+        "keys", "hash", "len", "str"
     }
 
 def isxbinop(s):
@@ -521,6 +523,15 @@ def lexer(s, file):
 
     return result
 
+def tlaValue(lexeme):
+    if isinstance(lexeme, bool):
+        return 'HBool(%s)'%("TRUE" if lexeme else "FALSE")
+    if isinstance(lexeme, int):
+        return 'HInt(%d)'%lexeme
+    if isinstance(lexeme, str):
+        return 'HStr("%s")'%lexeme
+    return lexeme.tlaval()
+
 def strValue(v):
     if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
         return str(v)
@@ -577,6 +588,9 @@ class PcValue(Value):
 
     def __repr__(self):
         return "PC(" + str(self.pc) + ")"
+
+    def tlaval(self):
+        return 'HPc(%d)'%self.pc
 
     def __hash__(self):
         return self.pc.__hash__()
@@ -642,6 +656,32 @@ class DictValue(Value):
             result += strValue(k) + ":" + strValue(self.d[k])
         return "{ " + result + " }"
 
+    def tlaval(self):
+        global tlavarcnt
+
+        tlavar = "x%d"%tlavarcnt
+        tlavarcnt += 1
+        if len(self.d) == 0:
+            return 'EmptyDict'
+        s = "[ %s \\in {"%tlavar + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
+        # special case: all values are the same
+        vals = list(self.d.values())
+        if vals.count(vals[0]) == len(vals):
+            s += tlaValue(vals[0]) + " ]"
+            return 'HDict(%s)'%s
+
+        # not all values are the same
+        first = True
+        for k,v in self.d.items():
+            if first:
+                s += "CASE "
+                first = False
+            else:
+                s += " [] "
+            s += "%s = "%tlavar + tlaValue(k) + " -> " + tlaValue(v)
+        s += " [] OTHER -> FALSE ]"
+        return 'HDict(%s)'%s
+
     def jdump(self):
         result = ""
         keys = sorted(self.d.keys(), key=keyValue)
@@ -695,6 +735,10 @@ class SetValue(Value):
             result += strValue(v)
         return "{ " + result + " }"
 
+    def tlaval(self):
+        s = "{" + ",".join(tlaValue(x) for x in self.s) + "}"
+        return 'HSet(%s)'%s
+
     def jdump(self):
         result = ""
         vals = sorted(self.s, key=keyValue)
@@ -733,6 +777,10 @@ class AddressValue(Value):
                 result += "[" + strValue(index) + "]"
         return result
 
+    def tlaval(self):
+        s = "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
+        return 'HAddress(%s)'%s
+
     def jdump(self):
         result = ""
         for index in self.indexes:
@@ -768,6 +816,9 @@ class Op:
     def jdump(self):
         return '{ "op": "XXX %s" }'%str(self)
 
+    def tladump(self):
+        return 'Skip(self, "%s")'%self
+
     def explain(self):
         return "no explanation yet"
 
@@ -785,6 +836,15 @@ class Op:
                     result += ", "
                 result += self.convert(v)
             return "(" + result + ")"
+
+    def tlaconvert(self, x):
+        if isinstance(x, tuple):
+            return 'VName("%s")'%x[0]
+        else:
+            assert isinstance(x, list)
+            result = 'VList(<< '
+            result += ",".join([self.tlaconvert(v) for v in x])
+            return result + " >>)"
 
     # Return the set of local variables in x
     # TODO.  Use reduce()
@@ -833,6 +893,9 @@ class SetIntLevelOp(Op):
     def jdump(self):
         return '{ "op": "SetIntLevel" }'
 
+    def tladump(self):
+        return 'OpSetIntLevel(self)'
+
     def explain(self):
         return "pops new boolean interrupt level and pushes old one"
 
@@ -868,6 +931,14 @@ class CutOp(Op):
             return '{ "op": "Cut", "set": "%s", "value": "%s" }'%(self.s[0], self.convert(self.value))
         else:
             return '{ "op": "Cut", "set": "%s", "key": "%s", "value": "%s" }'%(self.s[0], self.convert(self.key), self.convert(self.value))
+
+    def tladump(self):
+        if self.key == None:
+            return 'OpCut(self, "%s", %s)'%(self.s[0],
+                                        self.tlaconvert(self.value))
+        else:
+            return 'OpCut3(self, "%s", %s, %s)'%(self.s[0],
+                        self.tlaconvert(self.value), self.tlaconvert(self.key))
 
     def explain(self):
         if self.key == None:
@@ -912,6 +983,9 @@ class SplitOp(Op):
     def jdump(self):
         return '{ "op": "Split", "count": "%d" }'%self.n
 
+    def tladump(self):
+        return 'OpSplit(self, %d)'%self.n
+
     def explain(self):
         return "splits a tuple value into its elements"
 
@@ -934,6 +1008,9 @@ class MoveOp(Op):
     def jdump(self):
         return '{ "op": "Move", "offset": "%d" }'%self.offset
 
+    def tladump(self):
+        return 'OpMove(self, %d)'%self.offset
+
     def explain(self):
         return "move stack element to top"
 
@@ -948,6 +1025,9 @@ class DupOp(Op):
 
     def jdump(self):
         return '{ "op": "Dup" }'
+
+    def tladump(self):
+        return 'OpDup(self)'
 
     def explain(self):
         return "push a copy of the top value on the stack"
@@ -964,6 +1044,9 @@ class GoOp(Op):
 
     def jdump(self):
         return '{ "op": "Go" }'
+
+    def tladump(self):
+        return 'OpGo(self)'
 
     def explain(self):
         return "pops a context and a value, restores the corresponding thread, and pushes the value on its stack"
@@ -1013,6 +1096,12 @@ class LoadVarOp(Op):
         else:
             return '{ "op": "LoadVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        if self.v == None:
+            return 'OpLoadVarInd(self)'
+        else:
+            return 'OpLoadVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop the address of a method variable and push the value of that variable"
@@ -1038,6 +1127,9 @@ class IncVarOp(Op):
     def jdump(self):
         return '{ "op": "IncVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        return 'OpIncVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         return "increment the value of " + self.convert(self.v)
 
@@ -1057,6 +1149,11 @@ class PushOp(Op):
     def jdump(self):
         (lexeme, file, line, column) = self.constant
         return '{ "op": "Push", "value": %s }'%jsonValue(lexeme)
+
+    def tladump(self):
+        (lexeme, file, line, column) = self.constant
+        v = tlaValue(lexeme)
+        return 'OpPush(self, %s)'%v
 
     def explain(self):
         return "push constant " + strValue(self.constant[0])
@@ -1095,6 +1192,14 @@ class LoadOp(Op):
                     result += ", "
                 result += jsonValue(n)
             return '{ "op": "Load", "value": [%s] }'%result
+
+    def tladump(self):
+        if self.name == None:
+            return "OpLoadInd(self)"
+        else:
+            (lexeme, file, line, column) = self.name
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpLoad(self, <<%s>>)'%result
 
     def explain(self):
         if self.name == None:
@@ -1144,6 +1249,14 @@ class StoreOp(Op):
                 result += jsonValue(n)
             return '{ "op": "Store", "value": [%s] }'%result
 
+    def tladump(self):
+        if self.name == None:
+            return "OpStoreInd(self)"
+        else:
+            (lexeme, file, line, column) = self.name
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpStore(self, <<%s>>)'%result
+
     def explain(self):
         if self.name == None:
             return "pop a value and an address and store the value at the address"
@@ -1183,14 +1296,14 @@ class StoreOp(Op):
                 context.failure = "Error: " + name + " is not a dictionary " + str(self.token)
 
 class DelOp(Op):
-    # TODO: prefix
-    def __init__(self, name):
+    def __init__(self, name, prefix):
         self.name = name
+        self.prefix = prefix
 
     def __repr__(self):
         if self.name != None:
             (lexeme, file, line, column) = self.name
-            return "Del " + lexeme
+            return "Del " + ".".join(self.prefix + [lexeme])
         else:
             return "Del"
 
@@ -1199,7 +1312,20 @@ class DelOp(Op):
             return '{ "op": "Del" }'
         else:
             (lexeme, file, line, column) = self.name
-            return '{ "op": "Del", "value": "%s" }'%lexeme
+            result = ""
+            for n in self.prefix + [lexeme]:
+                if result != "":
+                    result += ", "
+                result += jsonValue(n)
+            return '{ "op": "Del", "value": [%s] }'%result
+
+    def tladump(self):
+        if self.name == None:
+            return "OpDelInd(self)"
+        else:
+            (lexeme, file, line, column) = self.name
+            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
+            return 'OpDel(self, <<%s>>)'%result
 
     def explain(self):
         if self.name == None:
@@ -1246,6 +1372,13 @@ class StopOp(Op):
         else:
             return '{ "op": "Stop" }'
 
+    def tladump(self):
+        if self.name == None:
+            return "OpStopInd(self)"
+        else:
+            (lexeme, file, line, column) = self.name
+            return "OpStop(self, %s)"%lexeme
+
     def explain(self):
         if self.name == None:
             return "pop an address and store context at that address"
@@ -1288,6 +1421,9 @@ class SequentialOp(Op):
     def jdump(self):
         return '{ "op": "Sequential" }'
 
+    def tladump(self):
+        return 'OpSequential(self)'
+
     def explain(self):
         return "sequential consistency for variable on top of stack"
 
@@ -1305,15 +1441,22 @@ class ContinueOp(Op):
     def jdump(self):
         return '{ "op": "Continue" }'
 
+    def tladump(self):
+        return 'OpContinue(self)'
+
     def eval(self, state, context):
         context.pc += 1
 
+# TODO.  Address should be a 1-ary operator
 class AddressOp(Op):
     def __repr__(self):
         return "Address"
 
     def jdump(self):
         return '{ "op": "Address" }'
+
+    def tladump(self):
+        return "OpBin(self, FunAddress)"
 
     def explain(self):
         return "combine the top two values on the stack into an address and push the result"
@@ -1353,6 +1496,12 @@ class StoreVarOp(Op):
             return '{ "op": "StoreVar" }'
         else:
             return '{ "op": "StoreVar", "value": "%s" }'%self.convert(self.v)
+
+    def tladump(self):
+        if self.v == None:
+            return 'OpStoreVarInd(self)'
+        else:
+            return 'OpStoreVar(self, %s)'%self.tlaconvert(self.v)
 
     def explain(self):
         if self.v == None:
@@ -1408,6 +1557,12 @@ class DelVarOp(Op):
         else:
             return '{ "op": "DelVar", "value": "%s" }'%self.convert(self.v)
 
+    def tladump(self):
+        if self.v == None:
+            return 'OpDelVarInd(self)'
+        else:
+            return 'OpDelVar(self, %s)'%self.tlaconvert(self.v)
+
     def explain(self):
         if self.v == None:
             return "pop an address of a method variable and delete that variable"
@@ -1430,6 +1585,9 @@ class ChooseOp(Op):
 
     def jdump(self):
         return '{ "op": "Choose" }'
+
+    def tladump(self):
+        return 'OpChoose(self)'
 
     def explain(self):
         return "pop a set value and push one of its elements"
@@ -1455,6 +1613,14 @@ class AssertOp(Op):
             return '{ "op": "Assert2" }'
         else:
             return '{ "op": "Assert" }'
+
+    def tladump(self):
+        (lexeme, file, line, column) = self.token
+        msg = '"Harmony Assertion (file=%s, line=%d) failed"'%(file, line)
+        if self.exprthere:
+            return 'OpAssert2(self, %s)'%msg
+        else:
+            return 'OpAssert(self, %s)'%msg
 
     def explain(self):
         if self.exprthere:
@@ -1488,6 +1654,9 @@ class PrintOp(Op):
     def jdump(self):
         return '{ "op": "Print" }'
 
+    def tladump(self):
+        return 'OpPrint(self)'
+
     def explain(self):
         return "pop a value and add to print history"
 
@@ -1520,6 +1689,9 @@ class PopOp(Op):
     def jdump(self):
         return '{ "op": "Pop" }'
 
+    def tladump(self):
+        return 'OpPop(self)'
+
     def explain(self):
         return "discard the top value on the stack"
 
@@ -1543,6 +1715,10 @@ class FrameOp(Op):
         (lexeme, file, line, column) = self.name
         return '{ "op": "Frame", "name": "%s", "args": "%s" }'%(lexeme, self.convert(self.args))
 
+    def tladump(self):
+        (lexeme, file, line, column) = self.name
+        return 'OpFrame(self, "%s", %s)'%(lexeme, self.tlaconvert(self.args))
+
     def explain(self):
         return "start of method " + str(self.name[0])
 
@@ -1562,6 +1738,9 @@ class ReturnOp(Op):
 
     def jdump(self):
         return '{ "op": "Return" }'
+
+    def tladump(self):
+        return 'OpReturn(self)'
 
     def use(self):
         return { "result" }
@@ -1610,6 +1789,9 @@ class SpawnOp(Op):
     def jdump(self):
         return '{ "op": "Spawn", "eternal": "%s" }'%("True" if self.eternal else "False")
 
+    def tladump(self):
+        return 'OpSpawn(self)'
+
     def explain(self):
         return "pop thread-local state, argument, and pc and spawn a new thread"
 
@@ -1639,6 +1821,9 @@ class TrapOp(Op):
     def jdump(self):
         return '{ "op": "Trap" }'
 
+    def tladump(self):
+        return 'OpTrap(self)'
+
     def eval(self, state, context):
         method = context.pop()
         assert isinstance(method, PcValue)
@@ -1654,6 +1839,9 @@ class AtomicIncOp(Op):
 
     def __repr__(self):
         return "AtomicInc(%s)"%("lazy" if self.lazy else "eager")
+
+    def tladump(self):
+        return 'OpAtomicInc(self)'
 
     def jdump(self):
         return '{ "op": "AtomicInc", "lazy": "%s" }'%str(self.lazy)
@@ -1671,6 +1859,9 @@ class AtomicDecOp(Op):
 
     def jdump(self):
         return '{ "op": "AtomicDec" }'
+
+    def tladump(self):
+        return 'OpAtomicDec(self)'
 
     def explain(self):
         return "decrement atomic counter of context"
@@ -1690,6 +1881,9 @@ class ReadonlyIncOp(Op):
     def explain(self):
         return "increment readonly counter of context; thread cannot mutate shared variables if > 0"
 
+    def tladump(self):
+        return 'OpReadonlyInc(self)'
+
     def eval(self, state, context):
         context.readonly += 1
         context.pc += 1
@@ -1700,6 +1894,9 @@ class ReadonlyDecOp(Op):
 
     def jdump(self):
         return '{ "op": "ReadonlyDec" }'
+
+    def tladump(self):
+        return 'OpReadonlyDec(self)'
 
     def explain(self):
         return "decrement readonly counter of context"
@@ -1720,13 +1917,16 @@ class InvariantOp(Op):
     def jdump(self):
         return '{ "op": "Invariant", "end": "%d" }'%self.end
 
+    def tladump(self):
+        return 'OpInvariant(self, %d)'%self.end
+
     def explain(self):
         return "test invariant"
 
     def eval(self, state, context):
-        assert self.cnt > 0
+        assert self.end > 0
         state.invariants |= {context.pc}
-        context.pc += (self.cnt + 1)
+        context.pc += (self.end + 1)
 
     def substitute(self, map):
         if isinstance(self.end, LabelValue):
@@ -1742,6 +1942,9 @@ class JumpOp(Op):
 
     def jdump(self):
         return '{ "op": "Jump", "pc": "%d" }'%self.pc
+
+    def tladump(self):
+        return 'OpJump(self, %d)'%self.pc
 
     def explain(self):
         return "set program counter to " + str(self.pc)
@@ -1765,6 +1968,9 @@ class JumpCondOp(Op):
 
     def jdump(self):
         return '{ "op": "JumpCond", "pc": "%d", "cond": %s }'%(self.pc, jsonValue(self.cond))
+
+    def tladump(self):
+        return 'OpJumpCond(self, %d, %s)'%(self.pc, tlaValue(self.cond))
 
     def explain(self):
         return "pop a value and jump to " + str(self.pc) + \
@@ -1795,6 +2001,80 @@ class NaryOp(Op):
     def jdump(self):
         (lexeme, file, line, column) = self.op
         return '{ "op": "Nary", "arity": %d, "value": "%s" }'%(self.n, lexeme)
+
+    def tladump(self):
+        (lexeme, file, line, column) = self.op
+        if lexeme == "-" and self.n == 1:
+            return "OpUna(self, FunMinus)"
+        if lexeme == "~" and self.n == 1:
+            return "OpUna(self, FunNegate)"
+        if lexeme == "not" and self.n == 1:
+            return "OpUna(self, FunNot)"
+        if lexeme == "str" and self.n == 1:
+            return "OpUna(self, FunStr)"
+        if lexeme == "len" and self.n == 1:
+            return "OpUna(self, FunLen)"
+        if lexeme == "min" and self.n == 1:
+            return "OpUna(self, FunMin)"
+        if lexeme == "max" and self.n == 1:
+            return "OpUna(self, FunMax)"
+        if lexeme == "abs" and self.n == 1:
+            return "OpUna(self, FunAbs)"
+        if lexeme == "any" and self.n == 1:
+            return "OpUna(self, FunAny)"
+        if lexeme == "all" and self.n == 1:
+            return "OpUna(self, FunAll)"
+        if lexeme == "keys" and self.n == 1:
+            return "OpUna(self, FunKeys)"
+        if lexeme == "IsEmpty" and self.n == 1:
+            return "OpUna(self, FunIsEmpty)"
+        if lexeme == "countLabel" and self.n == 1:
+            return "OpUna(self, FunCountLabel)"
+        if lexeme == "get_context" and self.n == 1:
+            return "OpGetContext(self)"
+        if lexeme == ">>" and self.n == 2:
+            return "OpBin(self, FunShiftRight)"
+        if lexeme == "<<" and self.n == 2:
+            return "OpBin(self, FunShiftLeft)"
+        if lexeme == ".." and self.n == 2:
+            return "OpBin(self, FunRange)"
+        if lexeme == "SetAdd" and self.n == 2:
+            return "OpBin(self, FunSetAdd)"
+        if lexeme == "in" and self.n == 2:
+            return "OpBin(self, FunIn)"
+        if lexeme == "==" and self.n == 2:
+            return "OpBin(self, FunEquals)"
+        if lexeme == "!=" and self.n == 2:
+            return "OpBin(self, FunNotEquals)"
+        if lexeme == "<" and self.n == 2:
+            return "OpBin(self, FunLT)"
+        if lexeme == "<=" and self.n == 2:
+            return "OpBin(self, FunLE)"
+        if lexeme == ">" and self.n == 2:
+            return "OpBin(self, FunGT)"
+        if lexeme == ">=" and self.n == 2:
+            return "OpBin(self, FunGE)"
+        if lexeme == "-" and self.n == 2:
+            return "OpBin(self, FunSubtract)"
+        if lexeme == "+":
+            return "OpNary(self, FunAdd, %d)"%self.n
+        if lexeme == "*":
+            return "OpNary(self, FunMult, %d)"%self.n
+        if lexeme == "|":
+            return "OpNary(self, FunUnion, %d)"%self.n
+        if lexeme == "&":
+            return "OpNary(self, FunIntersect, %d)"%self.n
+        if lexeme == "^":
+            return "OpNary(self, FunExclusion, %d)"%self.n
+        if lexeme in { "/", "//" } and self.n == 2:
+            return "OpBin(self, FunDiv)"
+        if lexeme in { "%", "mod" } and self.n == 2:
+            return "OpBin(self, FunMod)"
+        if lexeme == "**" and self.n == 2:
+            return "OpBin(self, FunPower)"
+        if lexeme == "DictAdd" and self.n == 3:
+            return "OpDictAdd(self)"
+        return 'Skip(self, "%s")'%self
 
     def explain(self):
         return "pop " + str(self.n) + \
@@ -1867,6 +2147,10 @@ class NaryOp(Op):
                         if not self.checktype(state, context, sa, type(e2) == int):
                             return
                         e2 += e1
+                    elif type(e1) == str:
+                        if not self.checktype(state, context, sa, type(e2) == str):
+                            return
+                        e2 = e1 + e2
                     else:
                         if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
                             return
@@ -1880,6 +2164,12 @@ class NaryOp(Op):
                         if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
                             return
                         e2 = self.dmult(e1, e2) if isinstance(e1, DictValue) else self.dmult(e2, e1)
+                    elif isinstance(e1, str) or isinstance(e2, str):
+                        if isinstance(e1, str) and not self.checktype(state, context, sa, isinstance(e2, int)):
+                            return
+                        if isinstance(e2, str) and not self.checktype(state, context, sa, isinstance(e1, int)):
+                            return
+                        e2 *= e1
                     else:
                         if not self.checktype(state, context, sa, type(e1) == int):
                             return
@@ -2022,10 +2312,14 @@ class NaryOp(Op):
             elif op == "len":
                 if isinstance(e, SetValue):
                     context.push(len(e.s))
+                elif isinstance(e, str):
+                    context.push(len(e))
                 else:
                     if not self.checktype(state, context, sa, isinstance(e, DictValue)):
                         return
                     context.push(len(e.d))
+            elif op == "str":
+                context.push(strValue(e))
             elif op == "any":
                 if isinstance(e, SetValue):
                     context.push(any(e.s))
@@ -2120,6 +2414,10 @@ class NaryOp(Op):
             elif op == "in":
                 if isinstance(e2, SetValue):
                     context.push(e1 in e2.s)
+                elif isinstance(e2, str):
+                    if not self.checktype(state, context, sa, isinstance(e1, str)):
+                        return
+                    context.push(e1 in e2)
                 elif not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                     return
                 else:
@@ -2170,6 +2468,9 @@ class ApplyOp(Op):
     def jdump(self):
         return '{ "op": "Apply" }'
 
+    def tladump(self):
+        return 'OpApply(self)'
+
     def explain(self):
         return "pop a pc or dictionary f and an index i and push f(i)"
 
@@ -2203,6 +2504,7 @@ class ApplyOp(Op):
                 else:
                     context.push("normal")
             context.pc += 1
+        # TODO: probably also need to deal with strings
         else:
             # TODO.  Need a token to have location
             if not isinstance(method, PcValue):
@@ -2323,7 +2625,7 @@ class Code:
                 lop.pre_del |= live_out - lop.live_in
 
             labels = lop.labels
-            for d in lop.pre_del - { 'this' }:
+            for d in sorted(lop.pre_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), file, line, labels)
                 labels = set()
             newcode.append(lop.op, file, line, labels)
@@ -2333,7 +2635,7 @@ class Code:
             # TODO.  Can optimize StoreVar by replacing it with Pop
             # lop.post_del = (lop.op.define() | lop.live_in) - lop.live_out
             lop.post_del = lop.live_in - lop.live_out
-            for d in lop.post_del - { 'this' }:
+            for d in sorted(lop.post_del - { 'this' }):
                 newcode.append(DelVarOp((d, None, None, None)), file, line)
 
         return newcode
@@ -2455,7 +2757,7 @@ class AST:
             elif ctype == "list":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
                 code.append(IncVarOp(N))
-            elif ctype == "bag":
+            elif ctype == "bag":        # TODO.  Probably dead code
                 code.append(NaryOp(("BagAdd", file, line, column), 2))
                 code.append(IncVarOp(N))
             return
@@ -2627,7 +2929,7 @@ class NameAST(AST):
         (t, v) = scope.lookup(self.name)
         if t == "local-var":
             if self.name[0] == "_":
-                code.append(PopOp());
+                code.append(PopOp())
             else:
                 code.append(StoreVarOp(None, self.name[0]))
         else:
@@ -2914,7 +3216,7 @@ class ApplyAST(AST):
             if self.method.varCompile(scope, code):
                 self.arg.compile(scope, code)
                 code.append(AddressOp())
-                return True;
+                return True
             else:
                 return False
 
@@ -3459,7 +3761,7 @@ class AssignmentAST(AST):
                     )
                 assert t in { "local-var", "global" }, (t, lvs.name)
                 if v[0] == "_":
-                    code.append(PopOp());
+                    code.append(PopOp())
                 else:
                     st = StoreOp(lvs.name, lvs.name, scope.prefix) if t == "global" else StoreVarOp(lvs.name)
                     code.append(st)
@@ -3482,10 +3784,10 @@ class DelAST(AST):
             code.append(AtomicIncOp(True))
         lvar = self.lv.localVar(scope)
         if isinstance(self.lv, NameAST):
-            op = DelOp(self.lv.name) if lvar == None else DelVarOp(self.lv.name)
+            op = DelOp(self.lv.name, scope.prefix) if lvar == None else DelVarOp(self.lv.name)
         else:
             self.lv.ph1(scope, code)
-            op = DelOp(None) if lvar == None else DelVarOp(None, lvar)
+            op = DelOp(None, None) if lvar == None else DelVarOp(None, lvar)
         code.append(op)
         if self.atomically:
             code.append(AtomicDecOp())
@@ -4097,6 +4399,7 @@ class TrapAST(AST):
         return "Trap(" + str(self.method) + ", " + str(self.arg) + ")"
 
     def compile(self, scope, code):
+        # TODO.  These should be swapped
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(TrapOp())
@@ -4110,6 +4413,8 @@ class GoAST(AST):
     def __repr__(self):
         return "Go(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
 
+    # TODO.  Seems like context and argument are not evaluated in left to
+    #        right order
     def compile(self, scope, code):
         if self.atomically:
             code.append(AtomicIncOp(True))
@@ -6362,23 +6667,1254 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print("  }", file=f)
         print("}", file=f)
 
-config = {
-    "compile": "gcc -O3 -std=c99 -DNDEBUG $$infile$$ -m64 -o $$outfile$$"
-}
+tladefs = """-------- MODULE Harmony --------
+EXTENDS Integers, FiniteSets, Bags, Sequences, TLC
+
+\* This is the Harmony TLA+ module.  All the Harmony virtual machine
+\* instructions are defined below.  Mostly, if the Harmony VM instruction
+\* is called X, then its definition below is under the name OpX.  There
+\* are some cases where there is an extension.  For example, the Store
+\* instruction has two versions: OpStore and OpStoreInd, depending on
+\* whether the variable is directly specified or its address is on the
+\* stack of the current thread.
+
+\* There are three variables:
+\*  active: a set of the currently active contexts
+\*  ctxbag: a multiset of all contexts
+\*  shared: a map of variable names to Harmony values
+\*
+\* A context is the state of a thread.  A context may be atomic or not.
+\* There can be at most one atomic context.  If there is an atomic context,
+\* it and only it is in the active set.  If there is no atomic context,
+\* then the active set is the domain of the ctxbag.
+VARIABLE active, ctxbag, shared
+allvars == << active, ctxbag, shared >>
+
+\* The variable "shared" is a Harmony dict type
+SharedInvariant == shared.ctype = "dict"
+
+TypeInvariant == SharedInvariant
+
+\* Harmony values are represented by a ctype tag that contains the name of
+\* their Harmony type and a cval that contains their TLA+ representation
+HBool(x)    == [ ctype |-> "bool",    cval |-> x ]
+HInt(x)     == [ ctype |-> "int",     cval |-> x ]
+HStr(x)     == [ ctype |-> "str",     cval |-> x ]
+HPc(x)      == [ ctype |-> "pc",      cval |-> x ]
+HDict(x)    == [ ctype |-> "dict",    cval |-> x ]
+HSet(x)     == [ ctype |-> "set",     cval |-> x ]
+HAddress(x) == [ ctype |-> "address", cval |-> x ]
+HContext(x) == [ ctype |-> "context", cval |-> x ]
+
+\* Defining the Harmony constant (), which is an empty dict
+EmptyFunc == [x \in {} |-> TRUE]
+EmptyDict == HDict(EmptyFunc)
+
+\* Defining the Harmony constant None, which is a empty address
+None      == HAddress(<<>>)
+
+\* Convenient definition for the "result" variable in each method
+Result    == HStr("result")
+
+\* Flatten a sequence of sequences
+Flatten(seq) ==
+    LET F[i \\in 0..Len(seq)] == IF i = 0 THEN <<>> ELSE F[i-1] \\o seq[i]
+    IN F[Len(seq)]
+
+\* Harmony values are ordered first by their type
+HRank(x) ==
+    CASE x.ctype = "bool"    -> 0
+    []   x.ctype = "int"     -> 1
+    []   x.ctype = "str"     -> 2
+    []   x.ctype = "pc"      -> 3
+    []   x.ctype = "dict"    -> 4
+    []   x.ctype = "set"     -> 5
+    []   x.ctype = "address" -> 6
+    []   x.ctype = "context" -> 7
+
+\* TLA+ does not seem to have a direct way to compare characters in a
+\* string, so...  Note that this only contains the printable ASCII
+\* characters and excludes the backquote and double quote characters
+\* as well as the backslash
+CRank(c) ==
+    CASE c=" "->32[]c="!"->33[]c="#"->35[]c="$"->36[]c="%"->37[]c="&"->38
+    []c="'"->39[]c="("->40[]c=")"->41[]c="*"->42[]c="+"->43[]c=","->44
+    []c="-"->45[]c="."->46[]c="/"->47[]c="0"->48[]c="1"->49[]c="2"->50
+    []c="3"->51[]c="4"->52[]c="5"->53[]c="6"->54[]c="7"->55[]c="8"->56
+    []c="9"->57[]c=":"->58[]c=";"->59[]c="<"->60[]c="="->61[]c=">"->62
+    []c="?"->63[]c="@"->64[]c="A"->65[]c="B"->66[]c="C"->67[]c="D"->68
+    []c="E"->69[]c="F"->70[]c="G"->71[]c="H"->72[]c="I"->73[]c="J"->74
+    []c="K"->75[]c="L"->76[]c="M"->77[]c="N"->78[]c="O"->79[]c="P"->80
+    []c="Q"->81[]c="R"->82[]c="S"->83[]c="T"->84[]c="U"->85[]c="V"->86
+    []c="W"->87[]c="X"->88[]c="Y"->89[]c="Z"->90[]c="["->91[]c="]"->93
+    []c="^"->94[]c="_"->95[]c="a"->97[]c="b"->98[]c="c"->99
+    []c="d"->100[]c="e"->101[]c="f"->102[]c="g"->103[]c="h"->104
+    []c="i"->105[]c="j"->106[]c="k"->107[]c="l"->108[]c="m"->109
+    []c="n"->110[]c="o"->111[]c="p"->112[]c="q"->113[]c="r"->114
+    []c="s"->115[]c="t"->116[]c="u"->117[]c="v"->118[]c="w"->119
+    []c="x"->120[]c="y"->121[]c="z"->122[]c="{"->123[]c="|"->124
+    []c="}"->125[]c="~"->126
+
+\* Comparing two TLA+ strings
+RECURSIVE StrCmp(_,_)
+StrCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        CASE Len(x) = 0 ->  1
+        []   Len(y) = 0 -> -1
+        [] OTHER ->
+            LET rx == CRank(Head(x))
+                ry == CRank(Head(y))
+            IN
+                CASE rx < ry -> -1
+                []   rx > ry ->  1
+                [] OTHER -> StrCmp(Tail(x), Tail(y))
+
+\* Setting up to compare two arbitrary Harmony values
+RECURSIVE SeqCmp(_,_)
+RECURSIVE HCmp(_,_)
+RECURSIVE HSort(_)
+RECURSIVE DictSeq(_)
+
+\* Given a Harmony dictionary, return a sequence of its key, value
+\* pairs sorted by the corresponding key.
+DictSeq(dict) ==
+    LET dom == HSort(DOMAIN dict)
+    IN [ x \in 1..Len(dom) |-> << dom[x], dict[dom[x]] >> ]
+
+\* Two dictionaries are ordered by their sequence of (key, value) pairs
+\* Equivalently, we can flatten the sequence of (key, value) pairs first
+\* into a single sequence of alternating keys and values.  Then we
+\* compare the two sequences.
+DictCmp(x, y) == SeqCmp(Flatten(DictSeq(x)), Flatten(DictSeq(y)))
+
+\* Lexicographically compare two sequences of Harmony values
+SeqCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        CASE Len(x) = 0 ->  1
+        []   Len(y) = 0 -> -1
+        [] OTHER ->
+            LET c == HCmp(Head(x), Head(y))
+            IN
+                CASE c < 0 -> -1
+                []   c > 0 ->  1
+                [] OTHER -> SeqCmp(Tail(x), Tail(y))
+
+\* Compare two contexts.  Essentially done lexicographically
+CtxCmp(x, y) ==
+    IF x = y THEN 0
+    ELSE IF x.pc # y.pc THEN x.pc - y.pc
+    ELSE IF x.apc # y.apc THEN x.apc - y.apc
+    ELSE IF x.atomic # y.atomic THEN x.atomic - y.atomic
+    ELSE IF x.vs # y.vs THEN DictCmp(x.vs, y.vs)
+    ELSE IF x.stack # y.stack THEN SeqCmp(x.stack.cval, y.stack.cal)
+    ELSE IF x.interruptLevel # y.interruptLevel THEN
+             IF x.interruptLevel THEN -1 ELSE 1
+    ELSE IF x.trap # y.trap THEN SeqCmp(x.trap, y.trap)
+    ELSE IF x.readonly # y.readonly THEN x.readonly - y.readonly
+    ELSE Assert(FALSE, "CtxCmp: this should not happen")
+
+\* Compare two Harmony values as specified in the book
+\* Return negative if x < y, 0 if x = y, and positive if x > y
+HCmp(x, y) ==
+    IF x = y
+    THEN
+        0
+    ELSE
+        IF x.ctype = y.ctype
+        THEN 
+            CASE x.ctype = "bool"    -> IF x.cval THEN 1 ELSE -1
+            []   x.ctype = "int"     -> x.cval - y.cval
+            []   x.ctype = "str"     -> StrCmp(x.cval, y.cval)
+            []   x.ctype = "pc"      -> x.cval - y.cval
+            []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
+            []   x.ctype = "dict"    -> DictCmp(x.cval, y.cval)
+            []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
+            []   x.ctype = "context" -> CtxCmp(x.cval, y.cval)
+        ELSE
+            HRank(x) - HRank(y)
+
+\* The minimum and maximum Harmony value in a set
+HMin(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) <= 0
+HMax(s) == CHOOSE x \in s: \A y \in s: HCmp(x, y) >= 0
+
+\* Sort a set of Harmony values into a sequence
+HSort(s) ==
+    IF s = {}
+    THEN
+        <<>>
+    ELSE
+        LET min == HMin(s) IN << min >> \\o HSort(s \\ {min})
+
+\* This is to represent "variable name hierarchies" used in expressions
+\* such as (x, (y, z)) = (1, (2, 3))
+VName(name) == [ vtype |-> "var", vname |-> name ]
+VList(list) == [ vtype |-> "tup", vlist |-> list ]
+
+\* Representation of a context (the state of a thread).  It includes
+\* the following fields:
+\*  pc:     the program counter (location in the code)
+\*  apc:    if atomic, the location in the code where the thread became atomic
+\*  atomic: a counter: 0 means not atomic, larger than 0 is atomic
+\*  vs:     a Harmony dictionary containing the variables of this thread
+\*  stack:  a sequence of Harmony values
+\*  interruptLevel: false if enabled, true if disabled
+\*  trap:   either <<>> or a tuple containing the trap method and argument
+\*  readonly: larger than 0 means not allowed to modify shared state
+Context(pc, atomic, vs, stack, interruptLevel, trap, readonly) ==
+    [
+        pc             |-> pc,
+        apc            |-> pc,
+        atomic         |-> atomic,
+        vs             |-> vs,
+        stack          |-> stack,
+        interruptLevel |-> interruptLevel,
+        trap           |-> trap,
+        readonly       |-> readonly
+    ]
+
+\* An initial context of a thread.  arg is the argument given when the thread
+\* thread was spawned.  "process" is used by the OpReturn operator.
+InitContext(pc, atomic, arg) ==
+    Context(pc, atomic, EmptyDict, << arg, "process" >>, FALSE, <<>>, 0)
+
+\* Update the given map with a new key -> value mapping
+UpdateMap(map, key, value) ==
+    [ x \\in (DOMAIN map) \\union {key} |-> IF x = key THEN value ELSE map[x] ]
+
+\* Update a Harmony dictionary with a new key -> value mapping
+UpdateDict(dict, key, value) ==
+    HDict(UpdateMap(dict.cval, key, value))
+
+\* The initial state of the Harmony module consists of a single thread starting
+\* at pc = 0 and an empty set of shared variables
+Init ==
+    LET ctx == InitContext(0, 1, EmptyDict)
+    IN /\\ active = { ctx }
+       /\\ ctxbag = SetToBag(active)
+       /\\ shared = EmptyDict
+
+\* The state of the current thread goes from 'self' to 'next'.  Update
+\* both the context bag and the active set
+UpdateContext(self, next) ==
+    /\\ active' = (active \\ { self }) \\union { next }
+    /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
+
+\* Remove context from the active set and context bag.  Make all contexts
+\* in the context bag active
+RemoveContext(self) ==
+    /\\ ctxbag' = ctxbag (-) SetToBag({self})
+    /\\ active' = BagToSet(ctxbag')
+
+\* A Harmony address is essentially a sequence of Harmony values
+\* These compute the head (the first element) and the remaining tail
+AddrHead(addr) == Head(addr.cval)
+AddrTail(addr) == HAddress(Tail(addr.cval))
+
+\* Given a non-negative integer, return a sequence of bits starting
+\* with least significant one
+RECURSIVE Int2BitsHelp(_)
+Int2BitsHelp(x) ==
+    IF x = 0
+    THEN <<>>
+    ELSE <<x % 2 = 1>> \o Int2BitsHelp(x \\div 2)
+
+\* Convert an integer to a bit sequence, lsb first. neg indicates if the
+\* value is negative.
+Int2Bits(x) ==
+    IF x < 0
+    THEN [ neg |-> TRUE,  bits |-> Int2BitsHelp(-x-1) ]
+    ELSE [ neg |-> FALSE, bits |-> Int2BitsHelp(x)    ]
+
+\* Convert a bit sequence (lsb first) to a non-negative integer
+RECURSIVE Bits2IntHelp(_)
+Bits2IntHelp(x) == 
+    IF x = <<>>
+    THEN 0
+    ELSE (IF Head(x) THEN 1 ELSE 0) + 2 * Bits2IntHelp(Tail(x))
+
+\* Convert a bit sequence to an integer.
+Bits2Int(b) ==
+    IF b.neg
+    THEN -Bits2IntHelp(b.bits) - 1
+    ELSE Bits2IntHelp(b.bits)
+
+\* Compute the bitwise negation of a bit sequence
+BitsNegate(b) == [ neg |-> ~b.neg, bits |-> b.bits ]
+
+\* Compute b >> n
+BitsShiftRight(b, n) ==
+    IF n >= Len(b.bits)
+    THEN [ neg |-> b.neg, bits |-> <<>> ]
+    ELSE [ neg |-> b.neg, bits |-> SubSeq(b.bits, n + 1, Len(b.bits)) ]
+
+\* Compute b << n
+BitsShiftLeft(b, n) ==
+    [ neg |-> b.neg, bits |-> [ x \in 1..n |-> b.neg ] \o b.bits ]
+
+\* Helper functions for BitsXOR
+RECURSIVE BitsXORhelp(_,_)
+BitsXORhelp(x, y) ==
+    CASE x = <<>> -> y
+    []   y = <<>> -> x
+    [] OTHER -> << Head(x) # Head (y) >> \o BitsXORhelp(Tail(x), Tail(y))
+
+\* Compute x XOR y
+BitsXOR(x, y) ==
+    [ neg |-> x.neg # y.neg, bits |-> BitsXORhelp(x.bits, y.bits) ]
+
+\* Helper function for BitsOr
+RECURSIVE BitsOrHelp(_,_)
+BitsOrHelp(x, y) ==
+    CASE x.bits = <<>> -> IF x.neg THEN <<>> ELSE y.bits
+    []   y.bits = <<>> -> IF y.neg THEN <<>> ELSE x.bits
+    [] OTHER -> << (x.neg \\/ y.neg) #
+            ((Head(x.bits) # x.neg) \\/ (Head(y.bits) # y.neg)) >> \o
+            BitsOrHelp(
+                [ neg |-> x.neg, bits |-> Tail(x.bits) ],
+                [ neg |-> y.neg, bits |-> Tail(y.bits) ])
+
+\* Compute x OR y
+BitsOr(x, y) ==
+    [ neg  |-> x.neg \\/ y.neg, bits |-> BitsOrHelp(x, y) ]
+
+\* Helper function for BitsAnd
+RECURSIVE BitsAndHelp(_,_)
+BitsAndHelp(x, y) ==
+    CASE x.bits = <<>> -> IF x.neg THEN y.bits ELSE <<>>
+    []   y.bits = <<>> -> IF y.neg THEN x.bits ELSE <<>>
+    [] OTHER -> << (x.neg /\\ y.neg) #
+            ((Head(x.bits) # x.neg) /\\ (Head(y.bits) # y.neg)) >> \o
+            BitsAndHelp(
+                [ neg |-> x.neg, bits |-> Tail(x.bits) ],
+                [ neg |-> y.neg, bits |-> Tail(y.bits) ])
+
+\* Compute x AND y
+BitsAnd(x, y) ==
+    [ neg  |-> x.neg /\\ y.neg, bits |-> BitsAndHelp(x, y) ]
+
+\* This is to implement del !addr, where addr is a Harmony address
+\* (a sequence of Harmony values representing a path in dict, a tree of
+\* dictionaries).  It is a recursive operator that returns the new dictionary.
+RECURSIVE RemoveDictAddr(_, _)
+RemoveDictAddr(dict, addr) ==
+    HDict(
+        IF Len(addr.cval) = 1
+        THEN
+            [ x \\in (DOMAIN dict.cval) \\ {AddrHead(addr)} |-> dict.cval[x] ]
+        ELSE
+            [ x \\in (DOMAIN dict.cval) |->
+                IF x = AddrHead(addr)
+                THEN
+                      RemoveDictAddr(dict.cval[x], AddrTail(addr))
+                ELSE
+                    dict.cval[x]
+            ]
+    )
+
+\* This is to implement !addr = value, where addr is a Harmony address
+\* (a sequence of Harmony values representing a path in dict, a tree of
+\* dictionaries), and value is the new value.  It is a recursive operator
+\* that returns the new dictionary.
+RECURSIVE UpdateDictAddr(_, _, _)
+UpdateDictAddr(dict, addr, value) ==
+    IF addr.cval = <<>>
+    THEN
+        value
+    ELSE
+        HDict(
+            [ x \\in (DOMAIN dict.cval) \\union {AddrHead(addr)} |->
+                IF x = AddrHead(addr)
+                THEN
+                      UpdateDictAddr(dict.cval[x], AddrTail(addr), value)
+                ELSE
+                    dict.cval[x]
+            ]
+        )
+
+\* This is to compute the value of !addr in dict, which is a simple
+\* recursive function
+RECURSIVE LoadDictAddr(_, _)
+LoadDictAddr(dict, addr) ==
+    IF addr.cval = <<>>
+    THEN
+        dict
+    ELSE
+        LoadDictAddr(dict.cval[AddrHead(addr)], AddrTail(addr))
+
+\* This is a helper operator for UpdateVars.
+\* Harmony allows statements of the form: x,(y,z) = v.  For example,
+\* if v = (1, (2, 3)), then this assigns 1 to x, 2 to y, and 3 to z.
+\* For this operator, args is a tree describing the lefthand side,
+\* while value is the righthand side of the equation above.  The
+\* operator creates a sequence of (variable, value) records.  In the
+\* example, the sequence would be << (x,1), (y,2), (z,3) >> essentially.
+RECURSIVE CollectVars(_, _)
+CollectVars(args, value) ==
+    IF args.vtype = "var"
+    THEN << [ var |-> HStr(args.vname), val |-> value ] >>
+    ELSE
+        Flatten([ i \\in DOMAIN args.vlist |->
+            CollectVars(args.vlist[i], value.cval[HInt(i-1)])
+        ])
+
+\* Another helper operator for UpdateVars.  dict is a Harmony dictionary,
+\* cv is a sequence as returned by CollectVars, and index is an index into
+\* this sequence.  Fold returns an updated dictionary.
+RECURSIVE Fold(_, _, _)
+Fold(dict, cv, index) ==
+    IF index = 0
+    THEN dict
+    ELSE
+        LET elt == cv[index]
+        IN Fold(UpdateDict(dict, elt.var, elt.val), cv, index - 1)
+
+\* As explained in CollectVars, args is a tree of variable names that
+\* appears on the lefthandside of a Harmony assignment operation.  value
+\* is the value of the righthandside.  The vs are the variables of the
+\* context that need to be updated.
+UpdateVars(vs, args, value) ==
+    LET cv == CollectVars(args, value)
+    IN Fold(vs, cv, Len(cv))
+
+\* A no-op
+OpContinue(self) ==
+    /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
+    /\\ UNCHANGED shared
+
+\* Pop the new interrupt level and push the old one
+OpSetIntLevel(self) ==
+    LET nl   == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.interruptLevel = nl.cval,
+            !.stack = << HBool(self.interruptLevel) >> \\o Tail(@)]
+    IN
+        /\\ nl.ctype = "bool"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the readonly counter (counter because of nesting)
+OpReadonlyInc(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ + 1]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Decrement the readonly counter
+OpReadonlyDec(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.readonly = @ - 1]
+    IN
+        /\\ self.readonly > 0
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* This is used temporarily for Harmony VM instructions that have not yet
+\* been implemented
+Skip(self, what) == OpContinue(self)
+
+\* First instruction of every method.  Saves the current variables on the stack,
+\* Assigns the top of the stack to args (see UpdateVars) and initializes variable
+\* result to None.
+OpFrame(self, name, args) ==
+    LET next == [
+        self EXCEPT !.pc = @ + 1,
+        !.stack = << self.vs >> \\o Tail(@),
+        !.vs = UpdateVars(UpdateDict(@, Result, None), args, Head(self.stack))
+    ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Remove one element from the stack
+OpPop(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Remove key from the given map
+DictCut(dict, key) == [ x \in (DOMAIN dict) \ { key } |-> dict[x] ]
+
+\* s contains the name of a local variable containing a set, a dict, or a string
+\* v contains the name of another local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The objective is to take the "smallest" element of s,
+\* remove it from s, and assign it to v
+OpCut(self, s, v) ==
+    LET svar == HStr(s)
+        sval == self.vs.cval[svar]
+    IN
+        CASE sval.ctype = "set" ->
+            LET pick == HMin(sval.cval)
+                intm == UpdateVars(self.vs, v, pick)
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HSet(sval.cval \\ {pick}))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] sval.ctype = "dict" ->
+            LET pick == HMin(DOMAIN sval.cval)
+                intm == UpdateVars(self.vs, v, sval.cval[pick])
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HDict(DictCut(sval.cval, pick)))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] sval.ctype = "str" ->
+            LET intm == UpdateVars(self.vs, v, HStr(Head(sval.cval)))
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(intm, svar, HStr(Tail(sval.cval)))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+
+\* d contains the name of a local variable containing a dict
+\* v contains the name of another local variable.  v can be a "variable tree"
+\* k contains the name of another local variable.  v can be a "variable tree"
+\* (see UpdateVars).  The objective is to take the "smallest" element of d,
+\* remove it from d, and assign it to k:v
+OpCut3(self, d, v, k) ==
+    LET dvar == HStr(d)
+        dval == self.vs.cval[dvar]
+    IN
+        LET pick == HMin(DOMAIN dval.cval)
+            intm == UpdateVars(UpdateVars(self.vs, v, dval.cval[pick]), k, pick)
+            next == [self EXCEPT !.pc = @ + 1,
+                !.vs = UpdateDict(intm, dvar, HDict(DictCut(dval.cval, pick)))]
+        IN
+            /\\ dval.ctype = "dict"
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+
+\* Delete the shared variable pointed to be v.  v is a sequence of Harmony
+\* values acting as an address (path in hierarchy of dicts)
+OpDel(self, v) ==
+    /\\ Assert(self.readonly = 0, "Del in readonly mode")
+    /\\ UpdateContext(self, [self EXCEPT !.pc = @ + 1])
+    /\\ shared' = RemoveDictAddr(shared, HAddress(v))
+
+\* Delete the shared variable whose address is pushed on the stack
+OpDelInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ shared' = RemoveDictAddr(shared, addr)
+
+\* Delete the given local variable
+OpDelVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1,
+        !.vs = HDict([ x \in (DOMAIN @.cval) \\ { HStr(v.vname) } |-> @.cval[x] ]) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Delete the local variable whose address is pushed on the stack
+OpDelVarInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@),
+                                    !.vs = RemoveDictAddr(@, addr)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the given local variable
+OpIncVar(self, v) ==
+    LET var  == HStr(v.vname)
+        next == [self EXCEPT !.pc = @ + 1,
+                    !.vs = UpdateDict(@, var, HInt(@.cval[var].cval + 1)) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Assign the top of the stack to a local variable
+OpStoreVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@), !.vs = UpdateVars(@, v, Head(self.stack))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Push the value of the given variable onto the stack
+OpLoadVar(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << self.vs.cval[HStr(v.vname)] >> \\o @ ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Increment the atomic counter for this thread.  If it was 0, boot every other
+\* context out of the set of active contexts.
+OpAtomicInc(self) ==
+    IF self.atomic = 0
+    THEN
+        LET next == [self EXCEPT !.pc = @ + 1, !.apc = self.pc, !.atomic = 1]
+        IN
+            /\\ active' = { next }
+            /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
+            /\\ UNCHANGED shared
+    ELSE
+        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ + 1]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+
+\* Decrement the atomic counter.  If it becomes 0, let all other contexts
+\* back into the active set.
+OpAtomicDec(self) ==
+    IF self.atomic = 1
+    THEN
+        LET next == [self EXCEPT !.pc = @ + 1, !.apc = 0, !.atomic = 0]
+        IN
+            /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next})
+            /\\ active' = DOMAIN ctxbag'
+            /\\ UNCHANGED shared
+    ELSE
+        LET next == [self EXCEPT !.pc = @ + 1, !.atomic = @ - 1]
+        IN
+            /\\ UpdateContext(self, next)
+            /\\ UNCHANGED shared
+
+\* Pop the top of stack and check if it is True.  If not, stop and print the
+\* message.
+OpAssert(self, msg) ==
+    LET cond == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ cond.ctype = "bool"
+        /\\ Assert(cond.cval, msg)
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* The top of the stack contains an expression to be printed along with the
+\* message if the next element on the stack is FALSE.
+OpAssert2(self, msg) ==
+    LET data == self.stack[1]
+        cond == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+    IN
+        /\\ cond.ctype = "bool"
+        /\\ Assert(cond.cval, << msg, data >>)
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Print what is on top of the stack (and pop it)
+OpPrint(self) ==
+    LET msg == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ PrintT(msg)
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pop the top of the stack, which must be a set.  Then select one of the
+\* elements and push it back onto the stack.
+OpChoose(self) ==
+    LET choices == Head(self.stack)
+    IN
+        \\E v \\in choices.cval:
+            LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<v>> \\o Tail(@)]
+            IN
+                /\\ choices.ctype = "set"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+
+\* "sequential" pops the address of a variable and indicates to the model
+\* checker that the variable is assumed to have sequential consistency.
+\* This turns off race condition checking for the variable.  For here, it can
+\* just be considered a no-op.
+OpSequential(self) == OpPop(self)
+
+\* "invariant" is essentially a no-op.  Just skip over the code for the
+\* invariant.
+OpInvariant(self, end) ==
+    /\\ UpdateContext(self, [self EXCEPT !.pc = end + 1])
+    /\\ UNCHANGED shared
+
+\* This is the general form of unary operators that replace the top of the
+\* stack with a function computed over that value
+OpUna(self, op(_)) ==
+    LET e    == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = << op(e) >> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Similar to OpUna but replaces two values on the stack with a single one.
+OpBin(self, op(_,_)) ==
+    LET e1   == self.stack[1]
+        e2   == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1,
+            !.stack = << op(e2, e1) >> \\o Tail(Tail(@))]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Apply binary operation op to first and the top of the stack n times
+RECURSIVE StackFold(_,_,_,_)
+StackFold(first, stack, op(_,_), n) ==
+    IF n = 0
+    THEN
+        <<first>> \o stack
+    ELSE
+        StackFold(op(first, Head(stack)), Tail(stack), op, n - 1)
+
+\* Like OpBin, but perform for top n elements of the stack
+OpNary(self, op(_,_), n) ==
+    LET e1   == Head(self.stack)
+        ns   == StackFold(e1, Tail(self.stack), op, n - 1)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = ns ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Turn a Harmony list/tuple into a (reversed) sequence
+List2Seq(list) ==
+    LET n == Cardinality(DOMAIN list)
+    IN [ i \in 1..n |-> list[HInt(n - i)] ]
+
+\* Pop a tuple of the stack and push each of its n components
+OpSplit(self, n) ==
+    LET ns   == List2Seq(Head(self.stack).cval) \o Tail(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = ns ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Move the stack element at position offset to the top
+OpMove(self, offset) ==
+    LET part1 == SubSeq(self.stack, 1, offset - 1)
+        part2 == SubSeq(self.stack, offset, offset)
+        part3 == SubSeq(self.stack, offset + 1, Len(self.stack))
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = part2 \o part1 \o part3 ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Duplicate the top of the stack
+OpDup(self) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = <<Head(@)>> \o @]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* The official "pc" of a thread depends on whether it is operating in
+\* atomic mode or not.  If not, the pc is simply the current location
+\* in the code.  However, if in atomic mode, the pc is the location where
+\* the thread became atomic.
+Location(ctx) == IF ctx.atomic > 0 THEN ctx.apc ELSE ctx.pc
+
+\* Compute how many threads are currently at the given location
+FunCountLabel(label) ==
+    LET fdom == { c \\in DOMAIN ctxbag: Location(c) = label.cval }
+        fbag == [ c \\in fdom |-> ctxbag[c] ]
+    IN
+        HInt(BagCardinality(fbag))
+
+\* Convert the given integer into a string
+RECURSIVE Int2Str(_)
+Int2Str(x) ==
+    IF x < 10
+    THEN
+        SubSeq("0123456789", x+1, x+1)
+    ELSE
+        LET rem == x % 10
+        IN Int2Str(x \\div 10) \o SubSeq("0123456789", rem+1, rem+1)
+
+\* Bunch of value to string conversion functions coming up
+RECURSIVE Val2Str(_)
+RECURSIVE Seq2Str(_)
+RECURSIVE Addr2Str(_)
+RECURSIVE Dict2StrHelp(_,_)
+
+\* Convert a non-empty sequence of values to a string separated by commas
+Seq2Str(x) ==
+    IF Len(x) = 1
+    THEN Val2Str(Head(x))
+    ELSE Val2Str(Head(x)) \o ", " \o Seq2Str(Tail(x))
+
+\* Convert a sequence of values of an address
+Addr2Str(x) ==
+    IF x = <<>>
+    THEN ""
+    ELSE "[" \o Val2Str(Head(x)) \o "]" \o Addr2Str(Tail(x))
+
+\* Convert a non-empty dictionary to a string
+Dict2StrHelp(keys, dict) ==
+    LET first ==
+        LET k == Head(keys) IN Val2Str(k) \o ": " \o Val2Str(dict[k])
+    IN
+        IF Len(keys) = 1
+        THEN
+            first
+        ELSE
+            first \o ", " \o Dict2StrHelp(Tail(keys), dict)
+
+Dict2Str(x) == Dict2StrHelp(HSort(DOMAIN x), x)
+
+\* Convert Harmony value x into a string
+Val2Str(x) ==
+    CASE x.ctype = "bool"    -> IF x.cval THEN "True" ELSE "False"
+    []   x.ctype = "str"     -> "'" \o x.cval \o "'"
+    []   x.ctype = "int"     -> Int2Str(x.cval)
+    []   x.ctype = "pc"      -> "PC(" \o Int2Str(x.cval) \o ")"
+    []   x.ctype = "dict"    ->
+            IF DOMAIN x.cval = {} THEN "()" ELSE "{ " \o Dict2Str(x.cval) \o " }"
+    []   x.ctype = "set"     ->
+            IF x.cval = {} THEN "{}" ELSE "{ " \o Seq2Str(HSort(x.cval)) \o " }"
+    []   x.ctype = "address" -> "?" \o Head(x.cval).cval \o Addr2Str(Tail(x.cval))
+
+\* Compute the cardinality of a set of dict, or the length of a string
+FunLen(s) ==
+    CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
+    []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
+    []   s.ctype = "str"  -> HInt(Len(s.cval))
+
+\* Concatenate two sequences.  Helper function for FunAdd
+DictConcat(x, y) ==
+    LET xs  == Cardinality(DOMAIN x)
+        ys  == Cardinality(DOMAIN y)
+        dom == { HInt(i) : i \in 0 .. (xs + ys - 1) }
+    IN
+        [ i \in dom |-> IF i.cval < xs THEN x[i] ELSE y[HInt(i.cval - xs)] ]
+
+\* Add two integers, or concatenate two sequences or strings
+FunAdd(x, y) ==
+    CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
+    []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
+    []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(x.cval \o y.cval)
+
+\* Check to see if x is the empty set, dict, or string
+FunIsEmpty(x) ==
+    CASE x.ctype = "set"  -> HBool(x.cval = {})
+    []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
+    []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
+
+\* Get the range of a dict (i.e., the values, not the keys)
+Range(dict) == { dict[x] : x \in DOMAIN dict }
+
+\* Get the minimum of a set or dict
+FunMin(x) ==
+    CASE x.ctype = "set"  -> HMin(x.cval)
+    []   x.ctype = "dict" -> HMin(Range(x.cval))
+
+\* Get the maximum of a set or dict
+FunMax(x) ==
+    CASE x.ctype = "set"  -> HMax(x.cval)
+    []   x.ctype = "dict" -> HMax(Range(x.cval))
+
+\* See if any element in the set or dict is true
+FunAny(x) ==
+    CASE x.ctype = "set"  -> HBool(HBool(TRUE) \in x.cval)
+    []   x.ctype = "dict" -> HBool(HBool(TRUE) \in Range(x.cval))
+
+\* See if all elements in the set of dict are true
+FunAll(x) ==
+    CASE x.ctype = "set"  -> HBool(x.cval = { HBool(TRUE) })
+    []   x.ctype = "dict" -> HBool(HBool(FALSE) \\notin Range(x.cval))
+
+\* Can be applied to integers or sets
+FunSubtract(x, y) ==
+    CASE x.ctype = "int" /\\ y.ctype = "int" -> HInt(x.cval - y.cval)
+    []   x.ctype = "set" /\\ y.ctype = "set" -> HSet(x.cval \\ y.cval)
+
+\* The following are self-explanatory
+FunStr(v)           == HStr(Val2Str(v))
+FunMinus(v)         == HInt(-v.cval)
+FunNegate(v)        == HInt(Bits2Int(BitsNegate(Int2Bits(v.cval))))
+FunAbs(v)           == HInt(IF v.cval < 0 THEN -v.cval ELSE v.cval)
+FunNot(v)           == HBool(~v.cval)
+FunKeys(x)          == HSet(DOMAIN x.cval)
+FunRange(x, y)      == HSet({ HInt(i) : i \in x.cval .. y.cval })
+FunEquals(x, y)     == HBool(x = y)
+FunNotEquals(x, y)  == HBool(x /= y)
+FunLT(x, y)         == HBool(HCmp(x, y) < 0)
+FunLE(x, y)         == HBool(HCmp(x, y) <= 0)
+FunGT(x, y)         == HBool(HCmp(x, y) > 0)
+FunGE(x, y)         == HBool(HCmp(x, y) >= 0)
+FunDiv(x, y)        == HInt(x.cval \\div y.cval)
+FunMod(x, y)        == HInt(x.cval % y.cval)
+FunPower(x, y)      == HInt(x.cval ^ y.cval)
+FunSetAdd(x, y)     == HSet(x.cval \\union {y})
+FunAddress(x, y)    == HAddress(x.cval \o <<y>>)
+FunShiftRight(x, y) == HInt(Bits2Int(BitsShiftRight(Int2Bits(x.cval), y.cval)))
+FunShiftLeft(x, y) == HInt(Bits2Int(BitsShiftLeft(Int2Bits(x.cval), y.cval)))
+
+\* Compute either XOR of two ints or the union minus the intersection
+\* of two sets
+FunExclusion(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet((x.cval \\union y.cval) \\ (x.cval \\intersect y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsXOR(Int2Bits(x.cval), Int2Bits(y.cval))))
+
+\* Merge two dictionaries.  If two keys conflict, use the minimum value
+MergeDictMin(x, y) ==
+    [ k \in DOMAIN x \\union DOMAIN y |->
+        CASE k \\notin DOMAIN x -> y[k]
+        []   k \\notin DOMAIN y -> x[k]
+        [] OTHER -> IF HCmp(x[k], y[k]) < 0 THEN x[k] ELSE y[k]
+    ]
+
+\* Merge two dictionaries.  If two keys conflict, use the maximum value
+MergeDictMax(x, y) ==
+    [ k \in DOMAIN x \\union DOMAIN y |->
+        CASE k \\notin DOMAIN x -> y[k]
+        []   k \\notin DOMAIN y -> x[k]
+        [] OTHER -> IF HCmp(x[k], y[k]) > 0 THEN x[k] ELSE y[k]
+    ]
+
+\* Union of two sets or dictionaries
+\* TODO: also bitwise OR of integers
+FunUnion(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet(x.cval \\union y.cval)
+    [] x.ctype = "dict" /\\ y.ctype = "dict" ->
+        HDict(MergeDictMax(x.cval, y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsOr(Int2Bits(x.cval), Int2Bits(y.cval))))
+
+\* Intersection of two sets or dictionaries
+FunIntersect(x, y) ==
+    CASE x.ctype = "set" /\\ y.ctype = "set" ->
+        HSet(x.cval \\intersect y.cval)
+    [] x.ctype = "dict" /\\ y.ctype = "dict" ->
+        HDict(MergeDictMin(x.cval, y.cval))
+    [] x.ctype = "int" /\\ y.ctype = "int" ->
+        HInt(Bits2Int(BitsAnd(Int2Bits(x.cval), Int2Bits(y.cval))))
+
+\* See if x is in y, where y is a set, a dict, or a string. In case of
+\* a string, check if x is a substring of y
+FunIn(x, y) ==
+    CASE y.ctype = "set"  -> HBool(x \in y.cval)
+    []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
+    []   y.ctype = "str"  ->
+            LET xn == Len(x.cval)
+                yn == Len(y.cval)
+            IN
+                HBool(\E i \in 0..(yn - xn): 
+                    x.cval = SubSeq(y.cval, i+1, i+xn))
+
+\* Concatenate n copies of dict, which represents a list
+DictTimes(dict, n) ==
+    LET odom == { x.cval : x \\in DOMAIN dict.cval }
+        max  == CHOOSE x \in odom: \A y \in odom: y <= x
+        card == max + 1
+        ndom == { HInt(x): x \\in 0..(n.cval * card - 1) }
+    IN
+        HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
+
+\* Multiply two integers, or concatenate copies of a list
+FunMult(e1, e2) ==
+    CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
+        HInt(e2.cval * e1.cval)
+    [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
+        DictTimes(e2, e1)
+    [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
+        DictTimes(e1, e2)
+
+\* By Harmony rules, if there are two conflicting key->value1 and key->value2
+\* mappings, the higher values wins.
+InsertMap(map, key, value) ==
+    [ x \\in (DOMAIN map) \\union {key} |->
+        IF x = key
+        THEN
+            IF x \\in DOMAIN map
+            THEN
+                IF HCmp(value, map[x]) > 0
+                THEN
+                    value
+                ELSE
+                    map[x]
+            ELSE
+                value
+        ELSE
+            map[x]
+    ]
+
+\* Push the current context onto the stack.  Pop the top "()" of the stack first.
+OpGetContext(self) == 
+    LET next  == [self EXCEPT !.pc = @ + 1,
+                        !.stack = << HContext(self) >> \\o Tail(@)]
+    IN
+        /\\ Head(self.stack) = EmptyDict
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pops a value, a key, and a dict, and pushes the dict updated to
+\* reflect key->value.
+OpDictAdd(self) ==
+    LET value == self.stack[1]
+        key   == self.stack[2]
+        dict  == self.stack[3]
+        newd  == HDict(InsertMap(dict.cval, key, value))
+        next  == [self EXCEPT !.pc = @ + 1,
+            !.stack = << newd >> \\o Tail(Tail(Tail(@)))]
+    IN
+        /\\ dict.ctype = "dict"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Push Harmony constant c onto the stack.
+OpPush(self, c) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = << c >> \\o @]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* In Harmony, the expression "x(y)" (or equivalently "x y" or "x[y]")
+\* means something different depending on the type of x, similar to TLA+
+\* actually.  If x is a method, that x should be invoked with the argument y.
+\* When the method finishes, the value is that of its "result" variable.
+\* If x is a dictionary, then the value is that of x[y].  If x is a string,
+\* then y must be an integer index and x[y] returns the specified character.
+OpApply(self) ==
+    LET arg    == self.stack[1]
+        method == self.stack[2]
+    IN
+        CASE method.ctype = "pc" ->
+            LET next == [self EXCEPT !.pc = method.cval,
+                    !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] method.ctype = "dict" ->
+            LET next == [self EXCEPT !.pc = @ + 1,
+                            !.stack = << method.cval[arg] >> \\o Tail(Tail(@))]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] method.ctype = "str" ->
+            LET char == SubSeq(method.cval, arg.cval+1, arg.cval+1)
+                next == [self EXCEPT !.pc = @ + 1,
+                    !.stack = << HStr(char) >> \\o Tail(Tail(@))]
+            IN
+                /\\ arg.ctype = "int"
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+
+\* Pop the top of the stack and store in the shared variable pointed to
+\* by the sequence v of Harmony values that acts as an address
+OpStore(self, v) ==
+    LET next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ Assert(self.readonly = 0, "Store in readonly mode")
+        /\\ UpdateContext(self, next)
+        /\\ shared' = UpdateDictAddr(shared, HAddress(v), Head(self.stack))
+
+\* Pop a value and an address and store the value at the given address
+OpStoreInd(self) ==
+    LET val  == self.stack[1]
+        addr == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+    IN
+        /\\ Assert(self.readonly = 0, "StoreInd in readonly mode")
+        /\\ UpdateContext(self, next)
+        /\\ shared' = UpdateDictAddr(shared, addr, val)
+
+\* Pop a value and an address and store the *local* value at the given address
+OpStoreVarInd(self) ==
+    LET val  == self.stack[1]
+        addr == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
+                                    !.vs = UpdateDictAddr(@, addr, val)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pop an address and push the value at the address onto the stack
+OpLoadInd(self) ==
+    LET
+        addr == Head(self.stack)
+        val  == LoadDictAddr(shared, addr)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pop an address and push the value of the addressed local variable onto the stack
+OpLoadVarInd(self) ==
+    LET
+        addr == Head(self.stack)
+        val  == LoadDictAddr(self.vs, addr)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = <<val>> \\o Tail(@)]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Push the value of shared variable pointed to by v onto the stack.  v
+\* is a sequence of Harmony values acting as an address
+OpLoad(self, v) ==
+    LET next == [ self EXCEPT !.pc = @ + 1,
+                    !.stack = << LoadDictAddr(shared, HAddress(v)) >> \\o @ ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Store the context at the pushed address and remove it from the
+\* context bag and active set.  Make all contexts in the context bag
+\* active
+OpStopInd(self) ==
+    LET addr == Head(self.stack)
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+    IN
+        /\\ self.atomic > 0
+        /\\ RemoveContext(self)
+        /\\ shared' = UpdateDictAddr(shared, addr, HContext(next))
+
+\* What Return should do depends on whether the methods was spawned
+\* or called as an ordinary method.  To indicate this, Spawn pushes the
+\* string "process" on the stack, while Apply pushes the string "normal"
+\* onto the stack.  The Frame operation also pushed the saved variables
+\* which must be restored.
+OpReturn(self) ==
+    LET savedvars == self.stack[1]
+        calltype  == self.stack[2]
+    IN
+        CASE calltype = "normal" ->
+            LET raddr == self.stack[3]
+                result == self.vs.cval[Result]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.vs = savedvars,
+                            !.stack = << result >> \\o Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] calltype = "interrupt" ->
+            LET raddr == self.stack[3]
+                next == [ self EXCEPT
+                            !.pc = raddr,
+                            !.interruptLevel = FALSE,
+                            !.vs = savedvars,
+                            !.stack = Tail(Tail(Tail(@)))
+                        ]
+            IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] calltype = "process" ->
+            /\\ ctxbag' = ctxbag (-) SetToBag({self})
+            /\\ IF self.atomic > 0
+               THEN active' = DOMAIN ctxbag'
+               ELSE active' = active \\ { self }
+            /\\ UNCHANGED shared
+
+\* Set the program counter pc to the given value
+OpJump(self, pc) ==
+    LET next == [ self EXCEPT !.pc = pc ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Pop a value of the stack.  If it equals cond, set the pc to the
+\* given value.
+OpJumpCond(self, pc, cond) ==
+    LET next == [ self EXCEPT !.pc = IF Head(self.stack) = cond
+                    THEN pc ELSE (@ + 1), !.stack = Tail(@) ]
+    IN
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Spawn a new thread.  If the current thread is not atomic, the
+\* thread goes into the active set as well.
+OpSpawn(self) ==
+    LET local == self.stack[1]
+        arg   == self.stack[2]
+        entry == self.stack[3]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(Tail(@)))]
+        newc  == InitContext(entry.cval, 0, arg)
+    IN
+        /\\ entry.ctype = "pc"
+        /\\ IF self.atomic > 0
+           THEN active' = (active \\ { self }) \\union { next }
+           ELSE active' = (active \\ { self }) \\union { next, newc }
+        /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
+        /\\ UNCHANGED shared
+
+\* Operation to set a trap.
+OpTrap(self) ==
+    LET entry == self.stack[1]
+        arg   == self.stack[2]
+        next  == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@)),
+                                        !.trap = << entry.cval, arg >>]
+    IN
+        /\\ entry.ctype = "pc"
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Restore a context that is pushed on the stack.  Also push the argument
+\* onto the restored context's stack
+\* TODO.  Currently arg and ctx are in the wrong order
+OpGo(self) ==
+    LET ctx  == self.stack[1]
+        arg  == self.stack[2]
+        next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(Tail(@))]
+        newc == [ctx.cval EXCEPT !.stack = << arg >> \o @]
+    IN
+        /\\ IF self.atomic > 0
+            THEN active' = (active \\ { self }) \\union { next }
+            ELSE active' = (active \\ { self }) \\union { next,newc }
+        /\\ ctxbag' = (ctxbag (-) SetToBag({self})) (+) SetToBag({next,newc})
+        /\\ UNCHANGED shared
+
+\* When there are no threads left, the Idle action kicks in
+Idle ==
+    /\\ active = {}
+    /\\ UNCHANGED allvars
+"""
+
+def tla_translate(f, code, scope):
+    print(tladefs, file=f)
+    first = True
+    for pc in range(len(code.labeled_ops)):
+        if first:
+            print("Step(self) == ", end="", file=f)
+            first = False
+        else:
+            print("              ", end="", file=f)
+        print("\\/ self.pc = %d /\\ "%pc, end="", file=f)
+        print(code.labeled_ops[pc].op.tladump(), file=f)
+    print("""
+Interrupt(self) ==
+    LET next == [ self EXCEPT !.pc = self.trap[1],
+                    !.stack = << self.trap[2], "interrupt", self.pc >> \o @,
+                    !.interruptLevel = TRUE, !.trap = <<>> ]
+    IN
+        /\\ self.trap # <<>>
+        /\\ ~self.interruptLevel
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+Next == (\\E self \\in active: Step(self) \\/ Interrupt(self)) \\/ Idle
+Spec == Init /\\ [][Next]_allvars
+
+THEOREM Spec => []TypeInvariant
+THEOREM Spec => [](active \subseteq (DOMAIN ctxbag))
+THEOREM Spec => ((active = {}) => [](active = {}))
+\* THEOREM Spec => []<>(active = {})
+================""", file=f)
 
 def usage():
     print("Usage: harmony [options] harmony-file ...")
     print("  options: ")
-    print("    -a: list machine code")
-    print("    -p: parse code without running")
+    print("    -a: list machine code (with labels)")
+    print("    -A: list machine code (without labels)")
+    print("    -B <file>.hfa: check against the given behavior")
     print("    -c name=value: define a constant")
-    print("    -d: htmldump full state into html file")
+    print("    -d: include full state into html file")
     print("    -f: run with internal model checker (not supported)")
     print("    -h: help")
     print("    -i expr: specify in interface function")
+    print("    -j: list machine code in JSON format")
     print("    -m module=version: select a module version")
+    print("    -o <file>: specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
+    print("    -p: parse code without running")
     print("    -s: silent (do not print periodic status updates)")
     print("    -v: print version number")
+    print("    --noweb: do not automatically open web browser")
+    print("    --suppress: generate less terminal output")
     exit(1)
 
 def main():
@@ -6399,15 +7935,17 @@ def main():
         "hco": None,
         "hvm": None,
         "png": None,
+        "tla": None,
         "gv":  None
     }
     testflag = False
     suppressOutput = False
     behavior = None
     charmoptions = []
+    open_browser = True
     try:
         opts, args = getopt.getopt(sys.argv[1:], "AaB:bc:dfhi:jm:o:stvp",
-                ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse"])
+                ["const=", "cf=", "help", "intf=", "module=", "suppress", "version", "parse", "noweb"])
     except getopt.GetoptError as err:
         print(str(err))
         usage()
@@ -6464,6 +8002,8 @@ def main():
             sys.exit(0)
         elif o in { "-p", "--parse" }:
             parse_code_only = True
+        elif o == "--noweb":
+            open_browser = False
         else:
             assert False, "unhandled option"
 
@@ -6484,6 +8024,7 @@ def main():
     if outputfiles["png"] != None and outputfiles["gv"] == None:
         outputfiles["gv"] = stem + ".gv"
 
+    print("Phase 1: compile Harmony program to bytecode")
     try:
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
@@ -6502,6 +8043,10 @@ def main():
             f.write(json.dumps({"status": "ok"}))
         return
 
+    if outputfiles["tla"] != None:
+        with open(outputfiles["tla"], "w") as fd:
+            tla_translate(fd, code, scope)
+
     install_path = os.path.dirname(os.path.realpath(__file__))
 
     if charmflag:
@@ -6510,6 +8055,7 @@ def main():
         outfile = "%s/charm.exe"%install_path
         with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
+        print("Phase 2: run the model checker")
         r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")
@@ -6523,7 +8069,10 @@ def main():
         gh.run(outputfiles)
         if not suppressOutput:
             p = pathlib.Path(stem + ".htm").resolve()
-            print("open file://" + str(p) + " for more information", file=sys.stderr)
+            url = "file://" + str(p)
+            print("open " + url + " for more information", file=sys.stderr)
+            if open_browser:
+                webbrowser.open(url)
         sys.exit(0)
 
     if printCode == None:

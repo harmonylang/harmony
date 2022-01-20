@@ -1,0 +1,44 @@
+def tas(lk):
+    atomically:
+        result = !lk
+        !lk = True
+    
+def Lock():
+    result = False
+
+def lock(lk):
+    while tas(lk):
+        pass
+
+def unlock(lk):
+    !lk = False
+
+def Condition(lk):
+    result = { .lock: lk, .waiters: {} }
+
+def wait(c):
+    var lk = None
+    atomically:
+        lk = c->lock
+        c->waiters += { nametag() }
+        !lk = False
+    atomically when (not (!lk)) and (not ((nametag()) in c->waiters)):
+        !lk = True
+
+def notify(c):
+    atomically let waiters = c->waiters:
+        if waiters != {}:
+            c->waiters = waiters - { choose(waiters) }
+            
+def notifyAll(c):
+    c->waiters = {}
+
+def Semaphore(cnt):
+    result = cnt
+
+def P(sema):
+    atomically when (!sema) > 0:
+        !sema -= 1
+
+def V(sema):
+    atomically !sema += 1

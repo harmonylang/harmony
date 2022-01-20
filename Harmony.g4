@@ -2,55 +2,36 @@ grammar Harmony;
 
 tokens { INDENT, DEDENT }
 
-@parser::members {
-@property
-def indentation(self):
-    try:
-        return self._indentation
-    except AttributeError:
-        self._indentation = [0]
-        return self._indentation
-}
-
 @lexer::header{
-from antlr_denter.DenterHelper import DenterHelper
+from .custom_denter import ModifiedDenterHelper
 from .HarmonyParser import HarmonyParser
 }
 @lexer::members {
-class MyCoolDenter(DenterHelper):
-    def __init__(self, lexer, nl_token, indent_token, dedent_token, ignore_eof):
-        super().__init__(nl_token, indent_token, dedent_token, ignore_eof)
+
+opened_for = 0
+opened = 0
+
+class HarmonyDenter(ModifiedDenterHelper):
+    def __init__(self, lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof):
+        super().__init__(lexer, nl_token, colon_token, indent_token, dedent_token, ignore_eof)
         self.lexer: HarmonyLexer = lexer
 
     def pull_token(self):
         return super(HarmonyLexer, self.lexer).nextToken()
 
-@property
-def opened(self):
-    try:
-        return self._opened
-    except AttributeError:
-        self._opened = 0
-        return self._opened
-
-@opened.setter
-def opened(self, value):
-    self._opened = value
-
 denter = None
-
 def nextToken(self):
     if not self.denter:
-        self.denter = self.MyCoolDenter(self, self.NL, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
+        self.denter = self.HarmonyDenter(self, self.NL, self.COLON, HarmonyParser.INDENT, HarmonyParser.DEDENT, ignore_eof=False)
     token = self.denter.next_token()
     return token
 }
 
-NL: '\r'? '\n' ' '* {
-if self.opened:
+NL: '\r'? '\n' (' '* | '\t') {
+if self.opened or self.opened_for:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
-WS : (' '+ | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
+WS : (' '+ | '\t' | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
 
 fragment COMMENT
     : OPEN_MULTI_COMMENT .*? CLOSE_MULTI_COMMENT
@@ -59,21 +40,18 @@ fragment COMMENT
 
 program: (stmt)* EOF;
 
-// Used from Python3's Antlr4 Grammar
+// Adapted from Python3's Antlr4 Grammar
 import_stmt: (import_name | import_from) SEMI_COLON? NL;
-import_name: IMPORT dotted_as_names;
-import_from: (FROM ((DOT | '...')* dotted_name | (DOT | '...')+)
-              IMPORT (STAR | OPEN_PAREN import_as_names CLOSE_PAREN | import_as_names));
-import_as_name: NAME;
-dotted_as_name: dotted_name (AS NAME)?;
-import_as_names: import_as_name (COMMA import_as_name)* (COMMA)?;
-dotted_as_names: dotted_as_name (COMMA dotted_as_name)*;
-dotted_name: NAME;
+import_name: IMPORT import_names_seq;
+import_from: FROM NAME IMPORT (STAR | import_names_seq);
+import_names_seq: NAME (COMMA NAME)*;
 
 tuple_bound
     : NAME
     | OPEN_PAREN bound CLOSE_PAREN
     | OPEN_BRACK bound CLOSE_BRACK
+    | OPEN_PAREN CLOSE_PAREN
+    | OPEN_BRACK CLOSE_BRACK
     ;
 bound: (tuple_bound COMMA)* tuple_bound;
 
@@ -108,21 +86,22 @@ comp_op
 unary_op
     : '-'
     | '~'
+    | 'not'
     | 'abs'
-    | 'all'
-    | 'any'
     | 'atLabel'
     | 'countLabel'
-    | 'choose'
-    | 'contexts'
     | 'get_context'
+    | 'contexts'
+    | 'isEmpty'
     | 'min'
     | 'max'
-    | 'not'
+    | 'len'
+    | 'str'
+    | 'any'
+    | 'all'
     | 'keys'
     | 'hash'
-    | 'len'
-    | 'print'
+    | 'choose'
     ;
 
 basic_expr
@@ -224,7 +203,7 @@ print_stmt: PRINT expr;
 sequential_stmt: SEQUENTIAL expr (COMMA expr)*;
 
 // Block-able statements
-atomic_block: (ATOMICALLY | ATOMIC) COLON block;
+atomic_block: ATOMICALLY COLON block;
 for_block: iter_parse COLON block;
 
 let_decl: LET bound EQ tuple_rule NL?;
@@ -232,23 +211,14 @@ when_decl: WHEN (EXISTS bound IN expr | expr) NL?;
 let_when_decl: (let_decl | when_decl) let_when_decl?;
 let_when_block: let_when_decl COLON block;
 
-method_decl: DEF NAME OPEN_PAREN bound? CLOSE_PAREN COLON block;
+method_decl: DEF NAME bound COLON block;
 while_block: WHILE expr COLON block;
 elif_block: ELIF expr COLON block;
 else_block: ELSE COLON block;
 
 if_block: IF expr COLON block elif_block* else_block?;
 
-block_stmts
-@init{
-token = self.getCurrentToken()
-self.indentation.append(token.column)
-}
-@after{
-self.indentation.pop()
-}
-    : stmt+
-    ;
+block_stmts: stmt+;
 
 block
     : normal_block // Normal block
@@ -256,7 +226,7 @@ block
 ;
 
 simple_stmt_block:
-    simple_stmt SEMI_COLON? NL
+    ATOMICALLY? simple_stmt SEMI_COLON? NL
 ;
 
 normal_block:
@@ -265,9 +235,7 @@ normal_block:
 ;
 
 // Statements that do not introduce a new indentation block
-simple_stmt @init {
-self.getTokenStream().handle_assignment()
-}
+simple_stmt
     : assign_stmt
     | const_assign_stmt
     | await_stmt
@@ -287,9 +255,7 @@ self.getTokenStream().handle_assignment()
     ;
 
 // Statements that may introduce a new indentation block
-compound_stmt @init{
-self.getTokenStream().handle_compound()
-}
+compound_stmt
     : if_block
     | while_block
     | for_block
@@ -298,17 +264,16 @@ self.getTokenStream().handle_compound()
     | method_decl
     ;
 
-one_line_stmt:
-    simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
+one_line_stmt
+    : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
-stmt: label? ATOMICALLY? (
+stmt: ((label? ATOMICALLY? (
           SEMI_COLON* NL
         | one_line_stmt
         | compound_stmt
         | import_stmt
-        | block
-    );
+    )) | (label ATOMICALLY? normal_block));
 
 COMMENT_START: '#';
 OPEN_MULTI_COMMENT: '(*';
@@ -322,7 +287,6 @@ IMPORT   : 'import';
 PRINT    : 'print';
 FROM     : 'from';
 RANGE    : '..';
-DICT     : 'dict';
 SETINTLEVEL : 'setintlevel';
 ARROW    : '->';
 STOP     : 'stop';
@@ -342,7 +306,6 @@ SPAWN    : 'spawn';
 INVARIANT: 'invariant';
 GO     : 'go';
 SEQUENTIAL: 'sequential';
-ATOMIC  : 'atomic';
 WHEN    : 'when';
 LET     : 'let';
 IF      : 'if';
@@ -354,8 +317,11 @@ DEF     : 'def';
 EXISTS  : 'exists';
 WHERE   : 'where';
 EQ      : '=';
-FOR     : 'for';
-IN      : 'in';
+FOR     : 'for' {self.opened_for += 1};
+IN      : 'in' {
+if self.opened_for > 0:
+    self.opened_for -= 1
+};
 COLON   : ':';
 NONE    : 'None';
 ATOMICALLY: 'atomically';
