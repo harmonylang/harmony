@@ -75,3 +75,8 @@ void strbuf_deinit(struct strbuf *sb){
     free(sb->buf);
     sb->buf = (char *) 1;       // simplifies finding bugs
 }
+
+// alternative to strbuf_deinit
+char *strbuf_convert(struct strbuf *sb){
+    return sb->buf;
+}

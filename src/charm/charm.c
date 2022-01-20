@@ -1162,8 +1162,7 @@ static void enum_loc(
     struct strbuf sb;
     strbuf_init(&sb);
     strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
-    *p = strbuf_getstr(&sb);
-    // do not strbuf_deinit because we're stealing the buffer...
+    *p = strbuf_convert(&sb);
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);
@@ -1392,26 +1391,26 @@ void process_results(
 }
 
 char *state_string(struct state *state){
-    void alloc_printf(char **r, char *fmt, ...);
-    void append_printf(char **p, char *fmt, ...);
+    struct strbuf sb;
+    strbuf_init(&sb);
 
-    char *r, *v;
-    alloc_printf(&r, "{");
+    char *v;
+    strbuf_printf(&sb, "{");
     v = value_string(state->vars);
-    append_printf(&r, "%s", v); free(v);
+    strbuf_printf(&sb, "%s", v); free(v);
     v = value_string(state->seqs);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->choosing);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->ctxbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->termbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->invariants);
-    append_printf(&r, ",%s}", v); free(v);
-    return r;
+    strbuf_printf(&sb, ",%s}", v); free(v);
+    return strbuf_convert(&sb);
 }
 
 // This routine removes all node that have a single incoming edge and it's
