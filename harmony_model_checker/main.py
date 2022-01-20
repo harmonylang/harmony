@@ -1,5 +1,4 @@
 import dataclasses
-from distutils.log import error
 import json
 import os
 import pathlib
@@ -11,7 +10,7 @@ from antlr4 import *
 import sys
 import argparse
 
-from numpy import lib
+from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
@@ -236,27 +235,6 @@ def main():
         print("Version", ".".join([str(v) for v in version]))
         return 0
 
-    import ctypes
-    import glob
-
-    libfile = glob.glob(os.path.join(os.path.dirname(__file__), 'charm*.so'))[0]
-    mylib = ctypes.CDLL(libfile)
-
-    print(mylib.get_number())
-    sys.exit(1)
-
-    # if ns.build_model_checker:
-    #     successfully_built = build_model_checker()
-    #     if successfully_built:
-    #         print("Successfully built model checker")
-    #         return 0
-    #     else:
-    #         print("Failed to build model checker")
-    #         return 1
-
-    # if not check_charm_model_checker_status_is_ok():
-    #     return 1
-
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
     mods: List[str] = ns.module or []
@@ -351,7 +329,6 @@ def main():
     # Analyze liveness of variables
     if charm_flag:
         # see if there is a configuration file
-        outfile = CHARM_EXECUTABLE_FILE
         with open(output_files["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
 
@@ -359,7 +336,11 @@ def main():
             return 0
 
         print("Phase 2: run the model checker")
-        r = os.system("%s %s -o%s %s" % (outfile, " ".join(charm_options), output_files["hco"], output_files["hvm"]))
+        r = charm.run_model_checker(
+            *charm_options,
+            "-o" + output_files["hco"],
+            output_files["hvm"]
+        )
         if r != 0:
             print("charm model checker failed")
             return r

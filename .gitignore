@@ -10,6 +10,8 @@ src/harmony/buildversion
 *.htm
 *.hvm
 *.dump
+*.so
+*.pyd
 .idea
 .vscode
 build

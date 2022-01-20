@@ -7,31 +7,12 @@ from setuptools.command.build_ext import build_ext
 from pathlib import Path
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.22a1"
-
-PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
-
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        # if not PACKAGE_CONFIG.exists():
-        #     PACKAGE_CONFIG.mkdir()
-        super().run()
-
-# class CustomBuildExt(build_ext):
-#     def build_extensions(self) -> None:
-#         self.compiler.set_executable("compiler_so", "gcc")
-#         self.compiler.set_executable("compiler_cxx", "gcc")
-#         self.compiler.set_executable("linker_so", "gcc")
-#         super().build_extensions()
+PACKAGE_VERSION = "0.0.22a6"
 
 
 module = Extension(
     f"{PACKAGE_NAME}.charm",
     sources=[f"{PACKAGE_NAME}/charm.c"],
-    extra_compile_args=["-O3", "-std=c99", "-DNDEBUG", "-m64",
-    # "-o", f"{PACKAGE_NAME}/charm.exe",
-    "-lpthread"],
 )
 
 setuptools.setup(
@@ -60,7 +41,4 @@ setuptools.setup(
     },
     python_requires=">=3.6",
     ext_modules=[module],
-    cmdclass={
-        "install": PostInstallCommand
-    }
 )

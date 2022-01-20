@@ -1,5 +1,5 @@
 all: parser
-	./harmony --build-model-checker
+	python3 setup.py build_ext -i
 
 parser: gen
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
