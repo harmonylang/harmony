@@ -9,7 +9,7 @@ import shutil
 import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.20a23"
+PACKAGE_VERSION = "0.0.20"
 
 PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
 
