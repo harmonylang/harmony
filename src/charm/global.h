@@ -25,3 +25,4 @@ typedef uint64_t            hvalue_t;
 
 void panic(char *s);
 unsigned long to_ulong(const char *p, int len);
+double gettime();
