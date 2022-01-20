@@ -21,7 +21,6 @@ typedef struct {
 
 #else // pthreads
 
-#include <sys/time.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -41,6 +40,8 @@ typedef struct {
 } barrier_t;
 
 #endif
+
+#include <time.h>
 
 void thread_create(void (*f)(void *arg), void *arg);
 void mutex_init(mutex_t *mutex);

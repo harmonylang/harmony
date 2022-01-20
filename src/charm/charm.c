@@ -1,7 +1,6 @@
 #ifdef WIN32
 #include <windows.h>
 #else
-#include <sys/time.h>
 #include <sys/param.h>
 #include <unistd.h>
 #endif
@@ -12,6 +11,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h>
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
