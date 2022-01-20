@@ -16,7 +16,6 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
-from harmony_model_checker.model_checker_setup import CHARM_EXECUTABLE_FILE, build_model_checker, check_charm_model_checker_status_is_ok
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
