@@ -2,6 +2,7 @@
 
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
+#include "thread.h"
 #endif
 
 #define hash_func meiyan
@@ -46,7 +47,7 @@ struct dict *dict_new(int initial_size) {
 	dict->count = 0;
 	dict->table = calloc(sizeof(struct dict_bucket), initial_size);
 	for (int i = 0; i < dict->length; i++) {
-		pthread_mutex_init(&dict->table[i].lock, NULL);
+		mutex_init(&dict->table[i].lock);
 	}
 	dict->growth_treshold = 2.0;
 	dict->growth_factor = 10;
@@ -60,7 +61,7 @@ void dict_delete(struct dict *dict) {
 			keynode_delete(dict->table[i].stable);
 		if (dict->table[i].unstable != NULL)
 			keynode_delete(dict->table[i].unstable);
-		pthread_mutex_destroy(&dict->table[i].lock);
+		mutex_destroy(&dict->table[i].lock);
 	}
 	free(dict->table);
 	free(dict);
@@ -79,7 +80,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 	dict->table = calloc(sizeof(struct dict_bucket), newsize);
 	dict->length = newsize;
 	for (int i = 0; i < newsize; i++) {
-		pthread_mutex_init(&dict->table[i].lock, NULL);
+		mutex_init(&dict->table[i].lock);
 	}
 	for (int i = 0; i < o; i++) {
 		struct dict_bucket *b = &old[i];
@@ -90,7 +91,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 			dict_reinsert_when_resizing(dict, k);
 			k = next;
 		}
-		pthread_mutex_destroy(&b->lock);
+		mutex_destroy(&b->lock);
 	}
 	free(old);
 }
@@ -111,17 +112,13 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 	}
 
     if (dict->concurrent) {
-        int r = pthread_mutex_lock(&db->lock);
-        if (r != 0) {
-            printf("dict_find: lock error %d\n", r);
-            exit(1);
-        }
+        mutex_acquire(&db->lock);
 
         // See if the item is in the unstable list
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
-                pthread_mutex_unlock(&db->lock);
+                mutex_release(&db->lock);
                 return k;
             }
             k = k->next;
@@ -149,7 +146,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
         k->next = db->unstable;
         db->unstable = k;
 		db->count++;
-        pthread_mutex_unlock(&db->lock);
+        mutex_release(&db->lock);
     }
     else {
         k->next = db->stable;
@@ -188,16 +185,16 @@ void *dict_lookup(struct dict *dict, const void *key, unsigned int keyn) {
 
     // Look in the unstable list
     if (dict->concurrent) {
-        pthread_mutex_lock(&db->lock);
+        mutex_acquire(&db->lock);
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && !memcmp(k->key, key, keyn)) {
-                pthread_mutex_unlock(&db->lock);
+                mutex_release(&db->lock);
                 return k->value;
             }
             k = k->next;
         }
-        pthread_mutex_unlock(&db->lock);
+        mutex_release(&db->lock);
     }
 
 	return NULL;
@@ -212,13 +209,13 @@ void dict_iter(struct dict *dict, enumFunc f, void *env) {
             k = k->next;
         }
         if (dict->concurrent) {
-            pthread_mutex_lock(&db->lock);
+            mutex_acquire(&db->lock);
             k = db->unstable;
             while (k != NULL) {
                 (*f)(env, k->key, k->len, k->value);
                 k = k->next;
             }
-            pthread_mutex_unlock(&db->lock);
+            mutex_release(&db->lock);
         }
 	}
 }

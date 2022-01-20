@@ -1,5 +1,6 @@
 echo '#define _GNU_SOURCE'
 echo '#define HARMONY_COMBINE'
+cat thread.h
 cat stack.h
 cat hashdict.h
 cat hashset.h
@@ -18,6 +19,7 @@ cat strbuf.h
 cat iface/iface.h
 cat iface/iface_graph.h
 cat iface/iface_graph.c
+cat thread.c
 cat dfa.c
 cat charm.c
 cat global.c

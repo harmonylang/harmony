@@ -1,29 +1,21 @@
-#ifdef _WIN32
+#ifdef WIN32
 #include <windows.h>
-#elif MACOS
+#else
 #include <sys/param.h>
-#include <sys/sysctl.h>
-#endif
-
-#include <sys/time.h>
-
-#ifdef _WIN32
-    // Accessing the number of available processors is not cross-platform-friendly
-    // On Windows, we can use the sysinfoapi header to access that value instead.
-    #include <sysinfoapi.h>
-#endif
-
 #include <unistd.h>
-#include <pthread.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h>
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
+#include "thread.h"
 #include "charm.h"
 #include "ops.h"
 #include "dot.h"
@@ -31,92 +23,13 @@
 #include "iface/iface.h"
 #endif
 
-int getNumCores() {
-#ifdef WIN32
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
-#elif MACOS
-    int nm[2];
-    size_t len = 4;
-    uint32_t count;
-
-    nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
-    sysctl(nm, 2, &count, &len, NULL, 0);
-
-    if(count < 1) {
-        nm[1] = HW_NCPU;
-        sysctl(nm, 2, &count, &len, NULL, 0);
-        if(count < 1) { count = 1; }
-    }
-    return count;
-#else
-    return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-}
-
-#ifdef __APPLE__
-
-#define PTHREAD_BARRIER_SERIAL_THREAD 1
-
-typedef int pthread_barrierattr_t;
-typedef struct
-{
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    unsigned int threads_required;
-    unsigned int threads_left;
-    unsigned int cycle;
-} pthread_barrier_t;
-
-int pthread_barrier_init(
-    pthread_barrier_t *barrier,
-    const pthread_barrierattr_t *attr,
-    unsigned int count
-){
-    barrier->threads_required = barrier->threads_left = count;
-    barrier->cycle = 0;
-    pthread_mutex_init(&barrier->mutex, NULL);
-    pthread_cond_init(&barrier->cond, NULL);
-    return 0;
-}
-
-int pthread_barrier_destroy(pthread_barrier_t *barrier) {
-    pthread_cond_destroy(&barrier->cond);
-    pthread_mutex_destroy(&barrier->mutex);
-    return 0;
-}
-
-int pthread_barrier_wait(pthread_barrier_t *barrier) {
-    pthread_mutex_lock(&barrier->mutex);
-
-    if (--barrier->threads_left == 0) {
-        barrier->cycle++;
-        barrier->threads_left = barrier->threads_required;
-        pthread_cond_broadcast(&barrier->cond);
-        pthread_mutex_unlock(&barrier->mutex);
-        return PTHREAD_BARRIER_SERIAL_THREAD;
-    }
-    else {
-        unsigned int cycle = barrier->cycle;
-
-        while (cycle == barrier->cycle)
-            pthread_cond_wait(&barrier->cond, &barrier->mutex);
-        pthread_mutex_unlock(&barrier->mutex);
-        return 0;
-    }
-}
-
-#endif // __APPLE__
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
     double timeout;
-    pthread_barrier_t *start_barrier, *end_barrier;
+    barrier_t *start_barrier, *end_barrier;
 
     int index;                   // index of worker
-    pthread_t tid;               // thread identifier
     struct minheap *todo;        // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
@@ -173,12 +86,6 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             break;
         }
     }
-}
-
-static double gettime(){
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec + (double) tv.tv_usec / 1000000;
 }
 
 static bool onestep(
@@ -1252,7 +1159,10 @@ static void enum_loc(
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
     void **p = dict_insert(code_map, &pc, sizeof(pc));
-    int r = asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
+    struct strbuf sb;
+    strbuf_init(&sb);
+    strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
+    *p = strbuf_convert(&sb);
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);
@@ -1397,18 +1307,16 @@ static void do_work(struct worker *w){
 	}
 }
 
-static void *worker(void *arg){
+static void worker(void *arg){
     struct worker *w = arg;
 
     for (int epoch = 0;; epoch++) {
-        pthread_barrier_wait(w->start_barrier);
+        barrier_wait(w->start_barrier);
 		// printf("WORKER %d starting\n", w->index);
 		do_work(w);
 		// printf("WORKER %d finished\n", w->index);
-        pthread_barrier_wait(w->end_barrier);
+        barrier_wait(w->end_barrier);
     }
-
-    return NULL;
 }
 
 void process_results(
@@ -1483,26 +1391,26 @@ void process_results(
 }
 
 char *state_string(struct state *state){
-    void alloc_printf(char **r, char *fmt, ...);
-    void append_printf(char **p, char *fmt, ...);
+    struct strbuf sb;
+    strbuf_init(&sb);
 
-    char *r, *v;
-    alloc_printf(&r, "{");
+    char *v;
+    strbuf_printf(&sb, "{");
     v = value_string(state->vars);
-    append_printf(&r, "%s", v); free(v);
+    strbuf_printf(&sb, "%s", v); free(v);
     v = value_string(state->seqs);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->choosing);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->ctxbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->stopbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->termbag);
-    append_printf(&r, ",%s", v); free(v);
+    strbuf_printf(&sb, ",%s", v); free(v);
     v = value_string(state->invariants);
-    append_printf(&r, ",%s}", v); free(v);
-    return r;
+    strbuf_printf(&sb, ",%s}", v); free(v);
+    return strbuf_convert(&sb);
 }
 
 // This routine removes all node that have a single incoming edge and it's
@@ -1792,9 +1700,9 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
-    pthread_barrier_t start_barrier, end_barrier;
-    pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
-    pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
+    barrier_t start_barrier, end_barrier;
+    barrier_init(&start_barrier, nworkers + 1);
+    barrier_init(&end_barrier, nworkers + 1);
 
     // Allocate space for worker info
     struct worker *workers = calloc(nworkers, sizeof(*workers));
@@ -1821,10 +1729,7 @@ int main(int argc, char **argv){
 
     // Start the workers, who'll wait on the start barrier
     for (int i = 0; i < nworkers; i++) {
-        int r = pthread_create(
-            &workers[i].tid, NULL,
-            worker, &workers[i]
-        );
+        thread_create(worker, &workers[i]);
     }
 
     // Give the initial state to worker 0
@@ -1837,8 +1742,8 @@ int main(int argc, char **argv){
         value_set_concurrent(&global->values, 1);
 
         // make the threads work
-        pthread_barrier_wait(&start_barrier);
-        pthread_barrier_wait(&end_barrier);
+        barrier_wait(&start_barrier);
+        barrier_wait(&end_barrier);
 
         double before_postproc = gettime();
 
@@ -2051,6 +1956,7 @@ int main(int argc, char **argv){
 
     // Look for data races
     // TODO.  Can easily be parallelized
+	// TODO.  Don't need failures/warnings distinction any more
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
         for (int i = 0; i < global->graph.size; i++) {
@@ -2179,8 +2085,6 @@ int main(int argc, char **argv){
         else {
             bad = minheap_getmin(global->failures);
         }
-
-        printf("BAD %d\n", bad->interrupt);
 
         switch (bad->type) {
         case FAIL_SAFETY:
