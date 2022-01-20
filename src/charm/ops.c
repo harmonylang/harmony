@@ -2354,9 +2354,8 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
             char *chars = value_get(args[i], &size);
             strbuf_append(&sb, chars, size);
         }
-        char *result = strbuf_getstr(&sb);
+        char *result = strbuf_convert(&sb);
         hvalue_t v = value_put_atom(values, result, strbuf_getlen(&sb));
-        free(result);
         return v;
     }
 
