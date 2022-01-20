@@ -1,13 +1,11 @@
-#ifdef _WIN32
+#ifdef WIN32
 #include <windows.h>
-#elif MACOS
+#else
+#include <sys/time.h>
 #include <sys/param.h>
-#include <sys/sysctl.h>
 #endif
 
-#include <sys/time.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +15,7 @@
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
+#include "thread.h"
 #include "charm.h"
 #include "ops.h"
 #include "dot.h"
@@ -24,92 +23,13 @@
 #include "iface/iface.h"
 #endif
 
-int getNumCores() {
-#ifdef WIN32
-    SYSTEM_INFO sysinfo;
-    GetSystemInfo(&sysinfo);
-    return sysinfo.dwNumberOfProcessors;
-#elif MACOS
-    int nm[2];
-    size_t len = 4;
-    uint32_t count;
-
-    nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
-    sysctl(nm, 2, &count, &len, NULL, 0);
-
-    if(count < 1) {
-        nm[1] = HW_NCPU;
-        sysctl(nm, 2, &count, &len, NULL, 0);
-        if(count < 1) { count = 1; }
-    }
-    return count;
-#else
-    return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-}
-
-#ifdef __APPLE__
-
-#define PTHREAD_BARRIER_SERIAL_THREAD 1
-
-typedef int pthread_barrierattr_t;
-typedef struct
-{
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-    unsigned int threads_required;
-    unsigned int threads_left;
-    unsigned int cycle;
-} pthread_barrier_t;
-
-int pthread_barrier_init(
-    pthread_barrier_t *barrier,
-    const pthread_barrierattr_t *attr,
-    unsigned int count
-){
-    barrier->threads_required = barrier->threads_left = count;
-    barrier->cycle = 0;
-    pthread_mutex_init(&barrier->mutex, NULL);
-    pthread_cond_init(&barrier->cond, NULL);
-    return 0;
-}
-
-int pthread_barrier_destroy(pthread_barrier_t *barrier) {
-    pthread_cond_destroy(&barrier->cond);
-    pthread_mutex_destroy(&barrier->mutex);
-    return 0;
-}
-
-int pthread_barrier_wait(pthread_barrier_t *barrier) {
-    pthread_mutex_lock(&barrier->mutex);
-
-    if (--barrier->threads_left == 0) {
-        barrier->cycle++;
-        barrier->threads_left = barrier->threads_required;
-        pthread_cond_broadcast(&barrier->cond);
-        pthread_mutex_unlock(&barrier->mutex);
-        return PTHREAD_BARRIER_SERIAL_THREAD;
-    }
-    else {
-        unsigned int cycle = barrier->cycle;
-
-        while (cycle == barrier->cycle)
-            pthread_cond_wait(&barrier->cond, &barrier->mutex);
-        pthread_mutex_unlock(&barrier->mutex);
-        return 0;
-    }
-}
-
-#endif // __APPLE__
-
 // One of these per worker thread
 struct worker {
     struct global_t *global;     // global state
     double timeout;
-    pthread_barrier_t *start_barrier, *end_barrier;
+    barrier_t *start_barrier, *end_barrier;
 
     int index;                   // index of worker
-    pthread_t tid;               // thread identifier
     struct minheap *todo;        // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
@@ -1390,18 +1310,16 @@ static void do_work(struct worker *w){
 	}
 }
 
-static void *worker(void *arg){
+static void worker(void *arg){
     struct worker *w = arg;
 
     for (int epoch = 0;; epoch++) {
-        pthread_barrier_wait(w->start_barrier);
+        barrier_wait(w->start_barrier);
 		// printf("WORKER %d starting\n", w->index);
 		do_work(w);
 		// printf("WORKER %d finished\n", w->index);
-        pthread_barrier_wait(w->end_barrier);
+        barrier_wait(w->end_barrier);
     }
-
-    return NULL;
 }
 
 void process_results(
@@ -1785,9 +1703,9 @@ int main(int argc, char **argv){
     // Determine how many worker threads to use
     int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
-    pthread_barrier_t start_barrier, end_barrier;
-    pthread_barrier_init(&start_barrier, NULL, nworkers + 1);
-    pthread_barrier_init(&end_barrier, NULL, nworkers + 1);
+    barrier_t start_barrier, end_barrier;
+    barrier_init(&start_barrier, nworkers + 1);
+    barrier_init(&end_barrier, nworkers + 1);
 
     // Allocate space for worker info
     struct worker *workers = calloc(nworkers, sizeof(*workers));
@@ -1814,10 +1732,7 @@ int main(int argc, char **argv){
 
     // Start the workers, who'll wait on the start barrier
     for (int i = 0; i < nworkers; i++) {
-        int r = pthread_create(
-            &workers[i].tid, NULL,
-            worker, &workers[i]
-        );
+        thread_create(worker, &workers[i]);
     }
 
     // Give the initial state to worker 0
@@ -1830,8 +1745,8 @@ int main(int argc, char **argv){
         value_set_concurrent(&global->values, 1);
 
         // make the threads work
-        pthread_barrier_wait(&start_barrier);
-        pthread_barrier_wait(&end_barrier);
+        barrier_wait(&start_barrier);
+        barrier_wait(&end_barrier);
 
         double before_postproc = gettime();
 
