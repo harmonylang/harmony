@@ -35,3 +35,4 @@ cat graph.c
 cat strbuf.c
 cat dot.c
 cat iface/iface.c
+cat python_ext/ext.c

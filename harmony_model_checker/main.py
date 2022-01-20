@@ -10,6 +10,8 @@ from antlr4 import *
 
 import sys
 import argparse
+
+from numpy import lib
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
@@ -234,17 +236,26 @@ def main():
         print("Version", ".".join([str(v) for v in version]))
         return 0
 
-    if ns.build_model_checker:
-        successfully_built = build_model_checker()
-        if successfully_built:
-            print("Successfully built model checker")
-            return 0
-        else:
-            print("Failed to build model checker")
-            return 1
+    import ctypes
+    import glob
 
-    if not check_charm_model_checker_status_is_ok():
-        return 1
+    libfile = glob.glob(os.path.join(os.path.dirname(__file__), 'charm*.so'))[0]
+    mylib = ctypes.CDLL(libfile)
+
+    print(mylib.get_number())
+    sys.exit(1)
+
+    # if ns.build_model_checker:
+    #     successfully_built = build_model_checker()
+    #     if successfully_built:
+    #         print("Successfully built model checker")
+    #         return 0
+    #     else:
+    #         print("Failed to build model checker")
+    #         return 1
+
+    # if not check_charm_model_checker_status_is_ok():
+    #     return 1
 
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf

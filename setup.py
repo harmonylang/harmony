@@ -5,36 +5,25 @@ from setuptools.command.install import install
 from setuptools.command.build_ext import build_ext
 
 from pathlib import Path
-import shutil
-import subprocess
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.20"
+PACKAGE_VERSION = "0.0.22a1"
 
 PACKAGE_CONFIG = Path.home() / ".harmony-model-checker"
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
-        if not PACKAGE_CONFIG.exists():
-            PACKAGE_CONFIG.mkdir()
+        # if not PACKAGE_CONFIG.exists():
+        #     PACKAGE_CONFIG.mkdir()
         super().run()
 
-        # harmony_cmd = shutil.which("harmony")
-        # if harmony_cmd is not None:
-        #     ec = subprocess.run([harmony_cmd, "--build-model-checker"])
-        # if harmony_cmd is None or ec != 0:
-        #     super().announce(
-        #         "Cannot build model checker automatically from setup. Please run [harmony --build-model-checker] after installation.",
-        #         level=log.WARN
-        #     )
-
-class CustomBuildExt(build_ext):
-    def build_extensions(self) -> None:
-        self.compiler.set_executable("compiler_so", "gcc")
-        self.compiler.set_executable("compiler_cxx", "gcc")
-        self.compiler.set_executable("linker_so", "gcc")
-        super().build_extensions()
+# class CustomBuildExt(build_ext):
+#     def build_extensions(self) -> None:
+#         self.compiler.set_executable("compiler_so", "gcc")
+#         self.compiler.set_executable("compiler_cxx", "gcc")
+#         self.compiler.set_executable("linker_so", "gcc")
+#         super().build_extensions()
 
 
 module = Extension(
