@@ -7,6 +7,10 @@
 #include <assert.h>
 #include <time.h>
 
+#ifndef TIME_UTC
+#include <sys/time.h>
+#endif
+
 #ifndef HARMONY_COMBINE
 #include "global.h"
 #endif
