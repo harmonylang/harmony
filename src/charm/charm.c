@@ -1159,7 +1159,11 @@ static void enum_loc(
     fprintf(out, "\"line\": \"%.*s\", ", line->u.atom.len, line->u.atom.base);
 
     void **p = dict_insert(code_map, &pc, sizeof(pc));
-    int r = asprintf((char **) p, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
+    struct strbuf sb;
+    strbuf_init(&sb);
+    strbuf_printf(&sb, "%.*s:%.*s", file->u.atom.len, file->u.atom.base, line->u.atom.len, line->u.atom.base);
+    *p = strbuf_getstr(&sb);
+    // do not strbuf_deinit because we're stealing the buffer...
 
     struct json_value *code = dict_lookup(jv->u.map, "code", 4);
     assert(code->type == JV_ATOM);

@@ -28,16 +28,13 @@ void strbuf_append(struct strbuf *sb, const char *str, unsigned int len){
     sb->buf[sb->len] = '\0';
 }
 
-// Formatted print, appended to string buffer
-void strbuf_printf(struct strbuf *sb, const char *fmt, ...) {
-    va_list args;
-
-    // figure out how long the string to be appended is.
-    va_start(args, fmt);
-    int len = vsnprintf(NULL, 0, fmt, args);
-    va_end(args);
+// Formatted vprint, appended to string buffer
+void strbuf_vprintf(struct strbuf *sb, const char *fmt, va_list args) {
+    va_list copy;
+    va_copy(copy, args);
+    int len = vsnprintf(NULL, 0, fmt, copy);
     if (len < 0) {
-		fprintf(stderr, "strbuf_printf: vsnprintf failed\n");
+		fprintf(stderr, "strbuf_vprintf: vsnprintf failed\n");
         exit(1);
     }
 
@@ -49,15 +46,18 @@ void strbuf_printf(struct strbuf *sb, const char *fmt, ...) {
     }
 
     // print into the buffer, including null byte
-    va_start(args, fmt);
-    len = vsprintf(&sb->buf[sb->len], fmt, args);
-    va_end(args);
-    if (len < 0) {
-		fprintf(stderr, "strbuf_printf: vsprintf failed\n");
+    if (vsprintf(&sb->buf[sb->len], fmt, args) < 0) {
+		fprintf(stderr, "strbuf_vprintf: vsprintf failed\n");
         exit(1);
 	}
     sb->len += len;
+}
 
+// Formatted print, appended to string buffer
+void strbuf_printf(struct strbuf *sb, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    strbuf_vprintf(sb, fmt, args);
     va_end(args);
 }
 
