@@ -190,9 +190,6 @@ static struct json_value *json_parse_string(json_buf_t *buf){
 			case 'b':
 				json_string_add(&jv->u.atom, '\b');
 				break;
-			case 'e':
-				json_string_add(&jv->u.atom, '\e');
-				break;
 			case 'f':
 				json_string_add(&jv->u.atom, '\f');
 				break;

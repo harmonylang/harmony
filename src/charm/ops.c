@@ -2681,23 +2681,21 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         free(r);
         return v;
     }
-    if ((args[list] & VALUE_MASK) == VALUE_ATOM) {
-        int size;
-        char *chars = value_get(args[list], &size);
-        if (size == 0) {
-            return VALUE_ATOM;
-        }
-        struct strbuf sb;
-        strbuf_init(&sb);
-        for (int i = 0; i < result; i++) {
-            strbuf_append(&sb, chars, size);
-        }
-        char *s = strbuf_getstr(&sb);
-        hvalue_t v = value_put_atom(values, s, result * size);
-        free(s);
-        return v;
-    }
-    assert(false);
+    assert((args[list] & VALUE_MASK) == VALUE_ATOM);
+	int size;
+	char *chars = value_get(args[list], &size);
+	if (size == 0) {
+		return VALUE_ATOM;
+	}
+	struct strbuf sb;
+	strbuf_init(&sb);
+	for (int i = 0; i < result; i++) {
+		strbuf_append(&sb, chars, size);
+	}
+	char *s = strbuf_getstr(&sb);
+	hvalue_t v = value_put_atom(values, s, result * size);
+	free(s);
+	return v;
 }
 
 hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
