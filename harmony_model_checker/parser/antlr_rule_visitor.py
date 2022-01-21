@@ -239,6 +239,22 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         tkn = self.get_token(ctx.start, ctx.start.text)
         return DelAST(tkn, False, e)
 
+    def visitSimple_stmt(self, ctx: HarmonyParser.Simple_stmtContext):
+        if ctx.ATOMICALLY():
+            a = self.visit(ctx.children[-1])
+            assert isinstance(a, AST)
+            a.atomically = True
+            return a
+        return super().visitSimple_stmt(ctx)
+
+    def visitCompound_stmt(self, ctx: HarmonyParser.Compound_stmtContext):
+        if ctx.ATOMICALLY():
+            a = self.visit(ctx.children[-1])
+            assert isinstance(a, AST)
+            a.atomically = True
+            return a
+        return super().visitCompound_stmt(ctx)
+
     # Visit a parse tree produced by HarmonyParser#spawn_stmt.
     def visitSpawn_stmt(self, ctx: HarmonyParser.Spawn_stmtContext):
         is_eternal = ctx.ETERNAL() is not None
@@ -391,12 +407,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             lexeme=tkn[0]
         )
 
-    # Visit a parse tree produced by HarmonyParser#simple_stmt_block.
-    def visitSimple_stmt_block(self, ctx:HarmonyParser.Simple_stmt_blockContext):
-        tkn = self.get_token(ctx.start, ctx.start.text)
-        is_atomic = ctx.ATOMICALLY() is not None
-        return BlockAST(tkn, is_atomic, [self.visit(ctx.simple_stmt())])
-
     # Visit a parse tree produced by HarmonyParser#normal_block.
     def visitNormal_block(self, ctx: HarmonyParser.Normal_blockContext):
         tkn = self.get_token(ctx.start, ctx.start.text)
@@ -428,7 +438,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitStmt(self, ctx: HarmonyParser.StmtContext):
         labels = []
         tkn = self.get_token(ctx.start, ctx.start.text)
-        is_atomically = ctx.ATOMICALLY() is not None
         if ctx.label() is not None:
             labels = self.visit(ctx.label())
         if ctx.one_line_stmt() is not None:
@@ -444,17 +453,30 @@ class HarmonyVisitorImpl(HarmonyVisitor):
 
         assert stmt is not None
         if isinstance(stmt, AST):
-            stmt.atomically = is_atomically
             stmt_block = [LocationAST(tkn, stmt, self.file, tkn[2])]
         elif isinstance(stmt, list):
-            for s in stmt:
-                if isinstance(s, AST):
-                    s.atomically = is_atomically
             stmt_block = [LocationAST(tkn, s, self.file, tkn[2]) for s in stmt]
-        if labels:
+        if ctx.COLON() or labels:
             block = BlockAST(tkn, False, stmt_block)
-            return [LocationAST(tkn, LabelStatAST(tkn, labels, block), self.file, tkn[2])]
+            if labels:
+                return [LocationAST(tkn, LabelStatAST(tkn, labels, block), self.file, tkn[2])]
+            else:
+                return [block]
         return stmt_block
+
+    def visitBlock(self, ctx: HarmonyParser.BlockContext):
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        if ctx.normal_block():
+            return self.visit(ctx.normal_block())
+        elif ctx.one_line_stmt():
+            return BlockAST(tkn, False, self.visit(ctx.one_line_stmt()))
+        raise HarmonyCompilerError(
+            message="Unable to parse block",
+            filename=self.file,
+            line=tkn[2],
+            column=tkn[3],
+            lexeme=tkn[0]
+        )
 
     # Visit a parse tree produced by HarmonyParser#one_line_stmt.
     def visitOne_line_stmt(self, ctx: HarmonyParser.One_line_stmtContext):

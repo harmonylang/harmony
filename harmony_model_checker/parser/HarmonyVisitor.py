@@ -304,11 +304,6 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by HarmonyParser#simple_stmt_block.
-    def visitSimple_stmt_block(self, ctx:HarmonyParser.Simple_stmt_blockContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by HarmonyParser#normal_block.
     def visitNormal_block(self, ctx:HarmonyParser.Normal_blockContext):
         return self.visitChildren(ctx)
