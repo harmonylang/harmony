@@ -222,11 +222,7 @@ block_stmts: stmt+;
 
 block
     : normal_block // Normal block
-    | simple_stmt_block // Single-line block stmt
-;
-
-simple_stmt_block:
-    ATOMICALLY? simple_stmt SEMI_COLON? NL
+    | one_line_stmt // Single-line block stmt
 ;
 
 normal_block:
@@ -236,7 +232,7 @@ normal_block:
 
 // Statements that do not introduce a new indentation block
 simple_stmt
-    : assign_stmt
+    : ATOMICALLY? (assign_stmt
     | const_assign_stmt
     | await_stmt
     | var_stmt
@@ -252,28 +248,29 @@ simple_stmt
     | possibly_stmt
     | aug_assign_stmt
     | expr_stmt
-    ;
+    );
 
 // Statements that may introduce a new indentation block
 compound_stmt
-    : if_block
+    : ATOMICALLY? (if_block
     | while_block
     | for_block
     | let_when_block
     | atomic_block
     | method_decl
-    ;
+    );
 
 one_line_stmt
     : simple_stmt (SEMI_COLON? NL | SEMI_COLON one_line_stmt);
 
 label: (NAME COLON)+;
-stmt: ((label? ATOMICALLY? (
+stmt: (((label? | COLON) (
           SEMI_COLON* NL
         | one_line_stmt
         | compound_stmt
         | import_stmt
-    )) | (label ATOMICALLY? normal_block));
+    )) | ((label | COLON) normal_block)
+);
 
 COMMENT_START: '#';
 OPEN_MULTI_COMMENT: '(*';
