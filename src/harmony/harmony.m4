@@ -8036,6 +8036,7 @@ def main():
         with open(outputfiles["hvm"], "w") as fd:
             dumpCode("json", code, scope, f=fd)
         print("Phase 2: run the model checker")
+        sys.stdout.flush()
         r = os.system("%s %s -o%s %s"%(outfile, " ".join(charmoptions), outputfiles["hco"], outputfiles["hvm"]))
         if r != 0:
             print("charm model checker failed")
