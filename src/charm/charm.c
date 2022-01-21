@@ -1956,6 +1956,7 @@ int main(int argc, char **argv){
 
     // Look for data races
     // TODO.  Can easily be parallelized
+	// TODO.  Don't need failures/warnings distinction any more
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
         for (int i = 0; i < global->graph.size; i++) {
