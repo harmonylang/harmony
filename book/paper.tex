@@ -8572,111 +8572,53 @@ of the concurrent specification.
 
 \chapter{Installing and Running Harmony}\label{ap:install}
 
-There are currently three options for using Harmony:
+There are two supported options for using Harmony:
 
 \begin{enumerate}
 \item You can download and install a command-line version of Harmony on your
 computer;
 \item You can download and install \emph{HarmonyLang}, a VSCode plug-in for Harmony;
-\item You can run Harmony programs in the cloud using \emph{Harmony IDE}.
 \end{enumerate}
 
-Below you can find more information on each of these options.
+In the following sections, you can find more information on each of these options.
+
+For each option, you will need to have Python version 3.6 or higher and a C compiler such as
+\texttt{gcc}, \texttt{cc}, or \texttt{clang}.
 
 \section{Command-Line}
 
-You can get the latest released developer version of Harmony by
-downloading from \url{harmony.cs.cornell.edu}.  It includes the latest
-bug fixes and features at any time.  Harmony is developed and maintained
-by the author on both MacOSX and Linux, and so these are the preferred
-platforms at this time.  A Windows version is also available, but may not
-be the latest version and is currently not as well supported.
+You can get the latest released version of Harmony using the
+\texttt{pip} package manager, which is bundled with distributions
+of Python3.X.
 
-When you download the \texttt{.zip} file, you will get the following
-files:
+On a command line/terminal, run \texttt{pip install harmony-model-checker}.
+If you are on a Windows system, then you may encounter an error message
+like \texttt{error: Microsoft Visual C++ 14.0 or greater is required...} along with a link.
+If so, follow the link to install "Microsoft C++ Build Tools".
 
-\begin{itemize}
-\item \texttt{README.txt}: installation documentation;
-\item \texttt{archive.xml}: portable compressed archive of the code base;
-\item \texttt{install.py}: Python3 program to install and update the code base.
-\end{itemize}
+After installing Harmony, run the command \texttt{harmony} on the command line to confirm
+that it is installed.
 
-First place this directory (folder) where you would like it---the
-\texttt{Downloads} folder is at best a good temporary place.  You can put
-the directory in your home directory, for example.
+If the \texttt{harmony} command cannot be found, it is possible that the Python
+scripts directory is not included in your environment PATH. This issue may also
+have appeared as a warning message when installing \texttt{harmony-model-checker}.
+After adding the directory to the PATH and restarting the command line, you should
+be able to run \texttt{harmony}.
 
-Installation requires Python3 and a 64-bit C compiler.  The developer uses
-recent versions of \texttt{gcc} and \texttt{clang} for development.
-Run \texttt{python3 install.py} to install the code base.
-It extracts files from archive.xml and installs them in the current
-directory.
-It will try to compile the model checker using \texttt{gcc}.
-If that fails under Windows, it will install an executable that
-is pre-compiled on a Windows 10 machine.  If these options do not work,
-you can compile the file \texttt{charm.c} by hand using a 64-bit C
-compile and place the output in \texttt{charm.exe}.
-
-After installation, there is a \texttt{harmony} file for use under
-MacOSX and Linux, and a \texttt{harmony.bat} file for use under Windows.
-You should be able to run \texttt{harmony --help} in any of these
-environments.
-
-If you would like to run \texttt{harmony} from any directory, you have to
-add the current directory to your search path.  Under MacOSX and Linux,
-you will have to set the \texttt{PATH} environment variable.
-See \url{http://www.linux-migration.org/ch02s06.html} for more information.
-Under Windows, search "Edit environment variables" in the search bar.
-You can add the directory either to the \texttt{Path} associated with
-your account or to the system \texttt{Path}.
-If you do not install \texttt{harmony} in your search path, you may have
-to run \texttt{./harmony} in the installation directory instead of
-just \texttt{harmony}.
-
-The installation directory will have the following subdirectories:
-
-\begin{itemize}
-\item \texttt{code}: contains all the code examples from this book;
-\item \texttt{modules}: contains the Harmony modules;
-\item \texttt{python}: contains the Python examples from the book.
-\end{itemize}
-
-For example, you can try \texttt{harmony code/Diners.hny} to run the
-Dining Philosophers code.
-Harmony currently produces three output files:
-\begin{itemize}
-\item \texttt{code/Diners.hvm}: the bytecode in JSON format;
-\item \texttt{code/Diners.hco}: the output of the model checker in JSON format;
-\item \texttt{code/Diners.htm}: the model checker output converted to HTML format.
-\end{itemize}
-
-You are probably only interested to see the last one, which you should be
-able to view in any web browser of your choice, including Safari, Chrome, Edge, or Firefox.
-
-You can see if you are running the latest version of Harmony at any
-time by running \texttt{Python3 install.py --check}.  If you would like
-to update your installation, run \texttt{Python3 install.puy --update}.
+To update Harmony, run \texttt{pip install --upgrade harmony-model-checker}.
 
 \section{HarmonyLang for VSCode}
 
-The VSCode plug-in, developed by Kevin Sun and Anthony Yang,
-is available from the VSCode market place: \url{https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang}.
-This page comes with installation documentation.  VSCode also sports a
-wonderful animator for Harmony output.
+The VSCode plugin HarmonyLang, developed by Kevin Sun and Anthony Yang, is available
+from the VSCode marketplace: \url{https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang}.
+This page comes with installation documentation. VSCode also sports a wonderful animator for Harmony output.
 
-HarmonyLang is regularly updated to include the latest Harmony distribution.
+The VSCode extension uses Python and pip internally to install and build Harmony automatically. However,
+if some requirements are missing, such as Python or a C compiler, then a error message pop-up will appear
+describing the issue.
 
-\section{Harmony IDE for the cloud}
-
-\texttt{Harmony IDE} is an Integrated Development Environment for Harmony,
-also developed by Kevin Sun and Anthony Yang,
-that runs in the cloud.  An important advantage of using \texttt{Harmony IDE}
-is that you do not have to install anything.  You can even run in on your
-smartphone.  However, since Harmony programs can use significant compute
-resources, \texttt{Harmony IDE} must put a limit on the amount of compute
-resources you can use.  So, while \texttt{Harmony IDE} is currently a great
-way to try out Harmony, if you become a serious user of Harmony you
-will probably want to install either the command-line version or
-\texttt{HarmonyLang}.
+The VSCode automatically updates to the latest version of Harmony when the extension is activated.
+However, the update can also be directly prompted by using the Command Palette and running "Install Harmony".
 
 \cleardoublepage
 \phantomsection
