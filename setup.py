@@ -6,7 +6,7 @@ from setuptools.command.build_ext import build_ext
 
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.22a8"
+PACKAGE_VERSION = "0.0.22a9"
 
 class CompilerArgs(NamedTuple):
     name: str
@@ -53,9 +53,8 @@ class BuildExtCommand(build_ext):
             # Try to build the extension with default OS build tools.
             super().build_extension(ext)
             return
-        except distutils.errors.CompileError as e:
+        except (distutils.errors.DistutilsPlatformError, distutils.errors.CompileError) as e:
             print("Encountered error when building by default configurations")
-            pass
 
         encountered_error = None
         for c in compiler_and_args:
