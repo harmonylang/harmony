@@ -1,6 +1,8 @@
 
 #include "Python.h"
 
+int main(int argc, char** argv);
+
 static PyObject* run_model_checker(PyObject *self, PyObject *args) {
     Py_ssize_t tupleSize = PyTuple_Size(args);
     Py_ssize_t argc = tupleSize + 1;
@@ -14,7 +16,7 @@ static PyObject* run_model_checker(PyObject *self, PyObject *args) {
         }
         argv[i + 1] = s;
     }
-    int r = PyLong_FromLong(main(argc, argv));
+    PyObject *r = PyLong_FromLong(main(argc, argv));
     free(argv);
     return r;
 }
@@ -41,3 +43,5 @@ PyObject* PyInit_charm(void)
 {
     return PyModule_Create(&mod_def);
 };
+// Redefined in the rest of charm.c
+#undef _GNU_SOURCE
