@@ -6,7 +6,7 @@ from setuptools.command.build_ext import build_ext
 
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.22a7"
+PACKAGE_VERSION = "0.0.22a8"
 
 class CompilerArgs(NamedTuple):
     name: str
@@ -31,21 +31,21 @@ compiler_and_args = [
     )
 ]
 
-try:
-    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
-    class bdist_wheel(_bdist_wheel):
-        def finalize_options(self):
-            _bdist_wheel.finalize_options(self)
-            # Mark us as not a pure python package
-            self.root_is_pure = False
-        def get_tag(self):
-            python, abi, plat = _bdist_wheel.get_tag(self)
-            print("Getting tags", python, abi, plat)
-            # We don't contain any python source
-            python, abi = 'py2.py3', 'none'
-            return python, abi, plat
-except ImportError:
-    bdist_wheel = None
+# try:
+#     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+#     class bdist_wheel(_bdist_wheel):
+#         def finalize_options(self):
+#             _bdist_wheel.finalize_options(self)
+#             # Mark us as not a pure python package
+#             self.root_is_pure = False
+#         def get_tag(self):
+#             python, abi, plat = _bdist_wheel.get_tag(self)
+#             print("Getting tags", python, abi, plat)
+#             # We don't contain any python source
+#             python, abi = 'py2.py3', 'none'
+#             return python, abi, plat
+# except ImportError:
+#     bdist_wheel = None
 
 class BuildExtCommand(build_ext):
     def build_extension(self, ext) -> None:
@@ -55,7 +55,6 @@ class BuildExtCommand(build_ext):
             return
         except distutils.errors.CompileError as e:
             print("Encountered error when building by default configurations")
-            print(e)
             pass
 
         encountered_error = None
@@ -70,7 +69,6 @@ class BuildExtCommand(build_ext):
                 super().build_extension(ext)
                 return
             except distutils.errors.CompileError as e:
-                print(f"Error with {name}")
                 encountered_error = e
                 pass
         if encountered_error is not None:
@@ -105,9 +103,8 @@ setuptools.setup(
     },
     python_requires=">=3.6",
     ext_modules=[module],
-    platforms=["manylinux_2_24"],
     cmdclass={
         "build_ext": BuildExtCommand,
-        "bdist_wheel": bdist_wheel,
+        # "bdist_wheel": bdist_wheel,
     }
 )

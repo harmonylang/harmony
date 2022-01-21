@@ -216,7 +216,7 @@ args.add_argument("-v", "--version", action="store_true", help="print version nu
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
 args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
 args.add_argument("-j", action="store_true", help="list machine code in JSON format")
-args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker")
+# args.add_argument("--build-model-checker", action='store_true', help="Builds and compiles the model checker")
 args.add_argument("--noweb", action="store_true", default=False, help="do not automatically open web browser")
 args.add_argument("--suppress", action="store_true", help="generate less terminal output")
 
