@@ -1,7 +1,7 @@
 # Compiler Integration Test Results
 
 ---
-##  harmony_model_checker/modules/bag.hny
+## --noweb harmony_model_checker/modules/bag.hny
 
 ### Summary
 
@@ -10,7 +10,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/synchBusy.hny
+## --noweb harmony_model_checker/modules/synchBusy.hny
 
 ### Summary
 
@@ -19,7 +19,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/synchImprecise.hny
+## --noweb harmony_model_checker/modules/synchImprecise.hny
 
 ### Summary
 
@@ -28,7 +28,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/synch.hny
+## --noweb harmony_model_checker/modules/synch.hny
 
 ### Summary
 
@@ -37,7 +37,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/alloc.hny
+## --noweb harmony_model_checker/modules/alloc.hny
 
 ### Summary
 
@@ -46,7 +46,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/hoare.hny
+## --noweb harmony_model_checker/modules/hoare.hny
 
 ### Summary
 
@@ -55,7 +55,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/synchS.hny
+## --noweb harmony_model_checker/modules/synchS.hny
 
 ### Summary
 
@@ -64,7 +64,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/set.hny
+## --noweb harmony_model_checker/modules/set.hny
 
 ### Summary
 
@@ -73,7 +73,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  harmony_model_checker/modules/list.hny
+## --noweb harmony_model_checker/modules/list.hny
 
 ### Summary
 
@@ -82,7 +82,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/prog1.hny
+## --noweb code/prog1.hny
 
 ### Summary
 
@@ -91,7 +91,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/prog2.hny
+## --noweb code/prog2.hny
 
 ### Summary
 
@@ -100,7 +100,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/Up.hny
+## --noweb code/Up.hny
 
 ### Summary
 
@@ -109,7 +109,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/UpEnter.hny
+## --noweb code/UpEnter.hny
 
 ### Summary
 
@@ -118,7 +118,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/csbarebones.hny
+## --noweb code/csbarebones.hny
 
 ### Summary
 
@@ -127,7 +127,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/cs.hny
+## --noweb code/cs.hny
 
 ### Summary
 
@@ -136,7 +136,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/naiveLock.hny
+## --noweb code/naiveLock.hny
 
 ### Summary
 
@@ -145,7 +145,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/naiveFlags.hny
+## --noweb code/naiveFlags.hny
 
 ### Summary
 
@@ -154,7 +154,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/naiveTurn.hny
+## --noweb code/naiveTurn.hny
 
 ### Summary
 
@@ -163,7 +163,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/Peterson.hny
+## --noweb code/Peterson.hny
 
 ### Summary
 
@@ -172,7 +172,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/PetersonInductive.hny
+## --noweb code/PetersonInductive.hny
 
 ### Summary
 
@@ -181,7 +181,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/csonebit.hny
+## --noweb code/csonebit.hny
 
 ### Summary
 
@@ -190,7 +190,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/PetersonMethod.hny
+## --noweb code/PetersonMethod.hny
 
 ### Summary
 
@@ -199,7 +199,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/clock.hny
+## --noweb code/clock.hny
 
 ### Summary
 
@@ -208,7 +208,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/spinlock.hny
+## --noweb code/spinlock.hny
 
 ### Summary
 
@@ -217,7 +217,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/UpLock.hny
+## --noweb code/UpLock.hny
 
 ### Summary
 
@@ -226,7 +226,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/UpLock.hny
+## --noweb -msynch=synchS code/UpLock.hny
 
 ### Summary
 
@@ -235,7 +235,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/xy.hny
+## --noweb code/xy.hny
 
 ### Summary
 
@@ -244,7 +244,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/atm.hny
+## --noweb code/atm.hny
 
 ### Summary
 
@@ -253,7 +253,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queuedemo.hny
+## --noweb code/queuedemo.hny
 
 ### Summary
 
@@ -262,7 +262,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/queuedemo.hny
+## --noweb -msynch=synchS code/queuedemo.hny
 
 ### Summary
 
@@ -271,7 +271,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtestseq.hny
+## --noweb code/qtestseq.hny
 
 ### Summary
 
@@ -280,7 +280,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtest1.hny
+## --noweb code/qtest1.hny
 
 ### Summary
 
@@ -289,7 +289,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qtest1.hny
+## --noweb -msynch=synchS code/qtest1.hny
 
 ### Summary
 
@@ -298,7 +298,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtest2.hny
+## --noweb code/qtest2.hny
 
 ### Summary
 
@@ -307,7 +307,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qtest2.hny
+## --noweb -msynch=synchS code/qtest2.hny
 
 ### Summary
 
@@ -316,7 +316,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtest3.hny
+## --noweb code/qtest3.hny
 
 ### Summary
 
@@ -325,7 +325,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qtest3.hny
+## --noweb -msynch=synchS code/qtest3.hny
 
 ### Summary
 
@@ -334,7 +334,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtest4.hny
+## --noweb code/qtest4.hny
 
 ### Summary
 
@@ -343,7 +343,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qtest4.hny
+## --noweb -msynch=synchS code/qtest4.hny
 
 ### Summary
 
@@ -352,7 +352,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtestconc.hny
+## --noweb code/qtestconc.hny
 
 ### Summary
 
@@ -361,7 +361,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qtestconc.hny
+## --noweb -msynch=synchS code/qtestconc.hny
 
 ### Summary
 
@@ -370,7 +370,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mqueue=queueMS code/queuedemo.hny
+## --noweb -mqueue=queueMS code/queuedemo.hny
 
 ### Summary
 
@@ -379,7 +379,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mqueue=queueMS -msynch=synchS code/queuedemo.hny
+## --noweb -mqueue=queueMS -msynch=synchS code/queuedemo.hny
 
 ### Summary
 
@@ -388,7 +388,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWtest.hny
+## --noweb code/RWtest.hny
 
 ### Summary
 
@@ -397,7 +397,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/RWtest.hny
+## --noweb -msynch=synchS code/RWtest.hny
 
 ### Summary
 
@@ -406,7 +406,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWsbs code/RWtest.hny
+## --noweb -mRW=RWsbs code/RWtest.hny
 
 ### Summary
 
@@ -415,7 +415,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWsbs -msynch=synchS code/RWtest.hny
+## --noweb -mRW=RWsbs -msynch=synchS code/RWtest.hny
 
 ### Summary
 
@@ -424,7 +424,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWfair code/RWtest.hny
+## --noweb -mRW=RWfair code/RWtest.hny
 
 ### Summary
 
@@ -433,7 +433,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWfair -msynch=synchS code/RWtest.hny
+## --noweb -mRW=RWfair -msynch=synchS code/RWtest.hny
 
 ### Summary
 
@@ -442,7 +442,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mboundedbuffer=BBhoare code/BBtest.hny
+## --noweb -mboundedbuffer=BBhoare code/BBtest.hny
 
 ### Summary
 
@@ -451,7 +451,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
+## --noweb -mboundedbuffer=BBhoare -msynch=synchS code/BBtest.hny
 
 ### Summary
 
@@ -460,7 +460,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWcv code/RWtest.hny
+## --noweb -mRW=RWcv code/RWtest.hny
 
 ### Summary
 
@@ -469,7 +469,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mRW=RWcv -msynch=synchS code/RWtest.hny
+## --noweb -mRW=RWcv -msynch=synchS code/RWtest.hny
 
 ### Summary
 
@@ -478,7 +478,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qsorttest.hny
+## --noweb code/qsorttest.hny
 
 ### Summary
 
@@ -487,7 +487,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/Diners.hny
+## --noweb code/Diners.hny
 
 ### Summary
 
@@ -496,7 +496,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/Diners.hny
+## --noweb -msynch=synchS code/Diners.hny
 
 ### Summary
 
@@ -505,7 +505,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/DinersCV.hny
+## --noweb code/DinersCV.hny
 
 ### Summary
 
@@ -514,7 +514,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/DinersCV.hny
+## --noweb -msynch=synchS code/DinersCV.hny
 
 ### Summary
 
@@ -523,7 +523,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/DinersAvoid.hny
+## --noweb code/DinersAvoid.hny
 
 ### Summary
 
@@ -532,7 +532,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/DinersAvoid.hny
+## --noweb -msynch=synchS code/DinersAvoid.hny
 
 ### Summary
 
@@ -541,7 +541,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/bank.hny
+## --noweb code/bank.hny
 
 ### Summary
 
@@ -550,7 +550,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/counter.hny
+## --noweb code/counter.hny
 
 ### Summary
 
@@ -559,7 +559,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qbarrier.hny
+## --noweb code/qbarrier.hny
 
 ### Summary
 
@@ -568,7 +568,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/qbarrier.hny
+## --noweb -msynch=synchS code/qbarrier.hny
 
 ### Summary
 
@@ -577,7 +577,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/barriertest.hny
+## --noweb code/barriertest.hny
 
 ### Summary
 
@@ -586,7 +586,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/barriertest.hny
+## --noweb -msynch=synchS code/barriertest.hny
 
 ### Summary
 
@@ -595,7 +595,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap.hny
+## --noweb code/trap.hny
 
 ### Summary
 
@@ -604,7 +604,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap2.hny
+## --noweb code/trap2.hny
 
 ### Summary
 
@@ -613,7 +613,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap3.hny
+## --noweb code/trap3.hny
 
 ### Summary
 
@@ -622,7 +622,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap4.hny
+## --noweb code/trap4.hny
 
 ### Summary
 
@@ -631,7 +631,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap5.hny
+## --noweb code/trap5.hny
 
 ### Summary
 
@@ -640,7 +640,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/trap6.hny
+## --noweb code/trap6.hny
 
 ### Summary
 
@@ -649,7 +649,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -msynch=synchS code/trap6.hny
+## --noweb -msynch=synchS code/trap6.hny
 
 ### Summary
 
@@ -658,7 +658,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hw.hny
+## --noweb code/hw.hny
 
 ### Summary
 
@@ -667,7 +667,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/abptest.hny
+## --noweb code/abptest.hny
 
 ### Summary
 
@@ -676,7 +676,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mstack=stack1 code/stacktest.hny
+## --noweb -mstack=stack1 code/stacktest.hny
 
 ### Summary
 
@@ -685,7 +685,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mstack=stack2 code/stacktest.hny
+## --noweb -mstack=stack2 code/stacktest.hny
 
 ### Summary
 
@@ -694,7 +694,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mstack=stack3 code/stacktest.hny
+## --noweb -mstack=stack3 code/stacktest.hny
 
 ### Summary
 
@@ -703,7 +703,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-## -mstack=stack4 code/stacktest.hny
+## --noweb -mstack=stack4 code/stacktest.hny
 
 ### Summary
 
@@ -712,7 +712,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/byzbosco.hny
+## --noweb code/byzbosco.hny
 
 ### Summary
 
@@ -721,7 +721,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/BBsematest.hny
+## --noweb code/BBsematest.hny
 
 ### Summary
 
@@ -730,7 +730,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/ky.hny
+## --noweb code/ky.hny
 
 ### Summary
 
@@ -739,7 +739,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/bosco.hny
+## --noweb code/bosco.hny
 
 ### Summary
 
@@ -748,7 +748,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWsbs.hny
+## --noweb code/RWsbs.hny
 
 ### Summary
 
@@ -757,7 +757,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queuebroken.hny
+## --noweb code/queuebroken.hny
 
 ### Summary
 
@@ -766,7 +766,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello7.hny
+## --noweb code/hello7.hny
 
 ### Summary
 
@@ -775,7 +775,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/multitest.hny
+## --noweb code/multitest.hny
 
 ### Summary
 
@@ -784,7 +784,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qsort.hny
+## --noweb code/qsort.hny
 
 ### Summary
 
@@ -793,7 +793,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/setobj.hny
+## --noweb code/setobj.hny
 
 ### Summary
 
@@ -802,7 +802,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/baddblwait.hny
+## --noweb code/baddblwait.hny
 
 ### Summary
 
@@ -811,7 +811,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/nbqueuetest.hny
+## --noweb code/nbqueuetest.hny
 
 ### Summary
 
@@ -820,7 +820,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/cssynch.hny
+## --noweb code/cssynch.hny
 
 ### Summary
 
@@ -829,7 +829,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stack3.hny
+## --noweb code/stack3.hny
 
 ### Summary
 
@@ -838,7 +838,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWqueue.hny
+## --noweb code/RWqueue.hny
 
 ### Summary
 
@@ -847,7 +847,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWcv.hny
+## --noweb code/RWcv.hny
 
 ### Summary
 
@@ -856,7 +856,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/2pc.hny
+## --noweb code/2pc.hny
 
 ### Summary
 
@@ -865,7 +865,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queueconc.hny
+## --noweb code/queueconc.hny
 
 ### Summary
 
@@ -874,7 +874,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queuelin.hny
+## --noweb code/queuelin.hny
 
 ### Summary
 
@@ -883,7 +883,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/lockspec.hny
+## --noweb code/lockspec.hny
 
 ### Summary
 
@@ -892,7 +892,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/ky2.hny
+## --noweb code/ky2.hny
 
 ### Summary
 
@@ -901,7 +901,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/cslock.hny
+## --noweb code/cslock.hny
 
 ### Summary
 
@@ -910,7 +910,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/abp.hny
+## --noweb code/abp.hny
 
 ### Summary
 
@@ -919,7 +919,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello9.hny
+## --noweb code/hello9.hny
 
 ### Summary
 
@@ -928,7 +928,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello2.hny
+## --noweb code/hello2.hny
 
 ### Summary
 
@@ -937,7 +937,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/actortest.hny
+## --noweb code/actortest.hny
 
 ### Summary
 
@@ -946,7 +946,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello4.hny
+## --noweb code/hello4.hny
 
 ### Summary
 
@@ -955,7 +955,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/actor.hny
+## --noweb code/actor.hny
 
 ### Summary
 
@@ -964,7 +964,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/chain.hny
+## --noweb code/chain.hny
 
 ### Summary
 
@@ -973,7 +973,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/boundedbuffer.hny
+## --noweb code/boundedbuffer.hny
 
 ### Summary
 
@@ -982,7 +982,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/taslock.hny
+## --noweb code/taslock.hny
 
 ### Summary
 
@@ -991,7 +991,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RW.hny
+## --noweb code/RW.hny
 
 ### Summary
 
@@ -1000,7 +1000,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/DinersCV2.hny
+## --noweb code/DinersCV2.hny
 
 ### Summary
 
@@ -1009,7 +1009,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/2pc2.hny
+## --noweb code/2pc2.hny
 
 ### Summary
 
@@ -1018,7 +1018,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/rsmspec.hny
+## --noweb code/rsmspec.hny
 
 ### Summary
 
@@ -1027,7 +1027,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stack.hny
+## --noweb code/stack.hny
 
 ### Summary
 
@@ -1036,7 +1036,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/paxos1.hny
+## --noweb code/paxos1.hny
 
 ### Summary
 
@@ -1045,7 +1045,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queuespec.hny
+## --noweb code/queuespec.hny
 
 ### Summary
 
@@ -1054,7 +1054,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWbtest.hny
+## --noweb code/RWbtest.hny
 
 ### Summary
 
@@ -1063,7 +1063,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWhoare.hny
+## --noweb code/RWhoare.hny
 
 ### Summary
 
@@ -1072,7 +1072,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWbusy.hny
+## --noweb code/RWbusy.hny
 
 ### Summary
 
@@ -1081,7 +1081,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/setobjtest.hny
+## --noweb code/setobjtest.hny
 
 ### Summary
 
@@ -1090,7 +1090,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/qtestpar.hny
+## --noweb code/qtestpar.hny
 
 ### Summary
 
@@ -1099,7 +1099,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hanoi.hny
+## --noweb code/hanoi.hny
 
 ### Summary
 
@@ -1108,7 +1108,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/leader.hny
+## --noweb code/leader.hny
 
 ### Summary
 
@@ -1117,7 +1117,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hoare.hny
+## --noweb code/hoare.hny
 
 ### Summary
 
@@ -1126,7 +1126,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWfair.hny
+## --noweb code/RWfair.hny
 
 ### Summary
 
@@ -1135,7 +1135,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/register.hny
+## --noweb code/register.hny
 
 ### Summary
 
@@ -1144,7 +1144,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/paxos.hny
+## --noweb code/paxos.hny
 
 ### Summary
 
@@ -1153,7 +1153,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/mesa.hny
+## --noweb code/mesa.hny
 
 ### Summary
 
@@ -1162,7 +1162,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWqtest.hny
+## --noweb code/RWqtest.hny
 
 ### Summary
 
@@ -1171,7 +1171,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/BBsema.hny
+## --noweb code/BBsema.hny
 
 ### Summary
 
@@ -1180,7 +1180,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queue.hny
+## --noweb code/queue.hny
 
 ### Summary
 
@@ -1189,7 +1189,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/barrier.hny
+## --noweb code/barrier.hny
 
 ### Summary
 
@@ -1198,7 +1198,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/ticket.hny
+## --noweb code/ticket.hny
 
 ### Summary
 
@@ -1207,7 +1207,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/atomicinc.hny
+## --noweb code/atomicinc.hny
 
 ### Summary
 
@@ -1216,7 +1216,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/nbqueue.hny
+## --noweb code/nbqueue.hny
 
 ### Summary
 
@@ -1225,7 +1225,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stack2.hny
+## --noweb code/stack2.hny
 
 ### Summary
 
@@ -1234,7 +1234,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/gpu.hny
+## --noweb code/gpu.hny
 
 ### Summary
 
@@ -1243,7 +1243,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/triangle.hny
+## --noweb code/triangle.hny
 
 ### Summary
 
@@ -1252,7 +1252,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/barrier1.hny
+## --noweb code/barrier1.hny
 
 ### Summary
 
@@ -1261,7 +1261,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/bosco2.hny
+## --noweb code/bosco2.hny
 
 ### Summary
 
@@ -1270,7 +1270,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/paxos2.hny
+## --noweb code/paxos2.hny
 
 ### Summary
 
@@ -1279,7 +1279,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/bqueue.hny
+## --noweb code/bqueue.hny
 
 ### Summary
 
@@ -1288,7 +1288,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello6.hny
+## --noweb code/hello6.hny
 
 ### Summary
 
@@ -1297,7 +1297,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stack1.hny
+## --noweb code/stack1.hny
 
 ### Summary
 
@@ -1306,7 +1306,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello5.hny
+## --noweb code/hello5.hny
 
 ### Summary
 
@@ -1315,7 +1315,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/abd.hny
+## --noweb code/abd.hny
 
 ### Summary
 
@@ -1324,7 +1324,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello8.hny
+## --noweb code/hello8.hny
 
 ### Summary
 
@@ -1333,7 +1333,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/stack4.hny
+## --noweb code/stack4.hny
 
 ### Summary
 
@@ -1342,7 +1342,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/BBhoare.hny
+## --noweb code/BBhoare.hny
 
 ### Summary
 
@@ -1351,7 +1351,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/RWcheat.hny
+## --noweb code/RWcheat.hny
 
 ### Summary
 
@@ -1360,7 +1360,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queueMS.hny
+## --noweb code/queueMS.hny
 
 ### Summary
 
@@ -1369,7 +1369,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/abdtest.hny
+## --noweb code/abdtest.hny
 
 ### Summary
 
@@ -1378,7 +1378,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/locksusp.hny
+## --noweb code/locksusp.hny
 
 ### Summary
 
@@ -1387,7 +1387,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/2pc1.hny
+## --noweb code/2pc1.hny
 
 ### Summary
 
@@ -1396,7 +1396,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/needhamschroeder.hny
+## --noweb code/needhamschroeder.hny
 
 ### Summary
 
@@ -1405,7 +1405,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/linkedlist.hny
+## --noweb code/linkedlist.hny
 
 ### Summary
 
@@ -1414,7 +1414,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/barriertest2.hny
+## --noweb code/barriertest2.hny
 
 ### Summary
 
@@ -1423,7 +1423,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queuefix.hny
+## --noweb code/queuefix.hny
 
 ### Summary
 
@@ -1432,7 +1432,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello3.hny
+## --noweb code/hello3.hny
 
 ### Summary
 
@@ -1441,7 +1441,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/queueseq.hny
+## --noweb code/queueseq.hny
 
 ### Summary
 
@@ -1450,7 +1450,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/hello1.hny
+## --noweb code/hello1.hny
 
 ### Summary
 
@@ -1459,7 +1459,7 @@ Duration is good: ✅
 Output is good: ✅
 
 ---
-##  code/consensus.hny
+## --noweb code/consensus.hny
 
 ### Summary
 

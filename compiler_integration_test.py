@@ -43,7 +43,7 @@ def load_test_cases() -> List[TestCase]:
     tested_files: Set[str] = set()
     for f in modules_dir.glob("*.hny"):
         tested_files.add(str(f.resolve()))
-        test_cases.append(TestCase(filename=str(f)))
+        test_cases.append(TestCase(filename=str(f), harmony_args=['--noweb']))
 
     with runall_script.open("r") as f:
         # Exclude the first arg, i.e. the harmony script filename
@@ -60,7 +60,7 @@ def load_test_cases() -> List[TestCase]:
     for f in code_dir.glob("*.hny"):
         if str(f.resolve()) not in tested_files and f.exists():
             tested_files.add(str(f.resolve()))
-            test_cases.append(TestCase(filename=str(f)))
+            test_cases.append(TestCase(filename=str(f), harmony_args=['--noweb']))
     
     return test_cases
 
