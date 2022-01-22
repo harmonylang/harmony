@@ -29,7 +29,6 @@ iface: iface.py iface.json
 	open x.pdf
 
 dist: gen
-	rm -rf dist/
 	PACKAGE_DIR=harmony_model_checker
 	rm -rf build/
 	rm -rf harmony_model_checker.egg-info/
