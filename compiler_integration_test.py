@@ -9,7 +9,7 @@ import time
 _results_dir = pathlib.Path("compiler_integration_results")
 if not _results_dir.exists():
     _results_dir.mkdir()
-results_dir = _results_dir / str(time.time_ns())
+results_dir = _results_dir / str(time.time())
 results_dir.mkdir()
 
 class TestCase(NamedTuple):
