@@ -1,7 +1,7 @@
 from typing import List
 from antlr4.error.ErrorListener import ErrorListener
 
-from harmony_model_checker.exception import ErrorToken, HarmonyCompilerError
+from harmony_model_checker.exception import ErrorToken
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 
 class HarmonyLexerErrorListener(ErrorListener):

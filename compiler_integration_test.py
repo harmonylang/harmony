@@ -3,8 +3,7 @@ import subprocess
 import sys
 import time
 import pathlib
-import dataclasses
-from typing import List, Set, TextIO, Union
+from typing import List, Set, TextIO, Union, NamedTuple
 import time
 
 _results_dir = pathlib.Path("compiler_integration_results")
@@ -13,26 +12,22 @@ if not _results_dir.exists():
 results_dir = _results_dir / str(time.time_ns())
 results_dir.mkdir()
 
-@dataclasses.dataclass
-class TestCase:
+class TestCase(NamedTuple):
     filename: str
     harmony_args: List[str] = None
     lines_to_check: Union[List[int], str] = 'all'
     is_ephemeral: bool = False
 
-@dataclasses.dataclass
-class ExecutionResult:
+class ExecutionResult(NamedTuple):
     output: str
     average_duration: float
 
-@dataclasses.dataclass
-class TestResult:
+class TestResult(NamedTuple):
     test_case: TestCase
     current: ExecutionResult
     baseline: ExecutionResult
 
-@dataclasses.dataclass
-class ComparisonResult:
+class ComparisonResult(NamedTuple):
     test_result: TestResult
     output_expected: bool
     duration_expected: bool

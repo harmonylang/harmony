@@ -51,10 +51,8 @@ import functools
 import json
 import subprocess
 import webbrowser
-from typing import Any
-from typing import Any, List
-import dataclasses
-from dataclasses import dataclass
+from typing import Any, List, NamedTuple
+
 
 try:
     import pydot
@@ -87,8 +85,8 @@ m4_include(brief.py)
 m4_include(genhtml.py)
 m4_include(behavior.py)
 
-@dataclass
-class ErrorToken:
+
+class ErrorToken(NamedTuple):
     line: int
     message: int
     column: int
@@ -8031,7 +8029,7 @@ def main():
         if parse_code_only:
             with open(outputfiles["hvm"], "w") as f:
                 data = {
-                    "errors": [dataclasses.asdict(e.token)],
+                    "errors": [e.token._as_dict()],
                     "status": "error"
                 }
                 f.write(json.dumps(data))

@@ -1,4 +1,3 @@
-import dataclasses
 import json
 import os
 import pathlib
@@ -315,8 +314,8 @@ def main():
             errors = [e.token]
 
         if parse_code_only:
+            data = dict(errors=[e._asdict() for e in errors], status="error")
             with open(output_files["hvm"], "w") as fp:
-                data = dict(errors=[dataclasses.asdict(e) for e in errors], status="error")
                 json.dump(data, fp)
         else:
             for e in errors:

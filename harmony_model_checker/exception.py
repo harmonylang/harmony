@@ -1,8 +1,6 @@
-from typing import Any, List
-from dataclasses import dataclass
+from typing import Any, List, NamedTuple
 
-@dataclass
-class ErrorToken:
+class ErrorToken(NamedTuple):
     line: int
     message: int
     column: int
