@@ -64,6 +64,9 @@ char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
 char *value_json(hvalue_t v);
 
+void strbuf_value_string(struct strbuf *sb, hvalue_t v);
+void strbuf_value_json(struct strbuf *sb, hvalue_t v);
+
 #define VALUE_BITS      3
 #define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))
 

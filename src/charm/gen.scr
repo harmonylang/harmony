@@ -9,6 +9,7 @@ cat json.h
 cat minheap.h
 cat queue.h
 cat dot.h
+cat strbuf.h
 cat global.h
 cat value.h
 cat code.h
@@ -16,7 +17,6 @@ cat graph.h
 cat charm.h
 cat dfa.h
 cat ops.h
-cat strbuf.h
 cat iface/iface.h
 cat iface/iface_graph.h
 cat iface/iface_graph.c
