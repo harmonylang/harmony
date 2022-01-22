@@ -110,7 +110,8 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         start_time = time.process_time()
         result = subprocess.run(
             f'./harmony -A {harmony_args} {filename}'.split(),
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             encoding='utf8'
         )
         durations.append(time.process_time() - start_time)
@@ -118,7 +119,8 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         start_time = time.process_time()
         baseline_result = subprocess.run(
             f'python harmony_model_checker/harmony.py -A {harmony_args or ""} {filename}'.split(),
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             encoding='utf8'
         )
         baseline_durations.append(time.process_time() - start_time)
