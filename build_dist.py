@@ -8,8 +8,11 @@ def general_build(py_cmds):
         os.system(f"{p} -m pip install wheel")
         os.system(f"{p} setup.py bdist_wheel")
 
+def build_darwin():
+    py_cmds = ["python3.6", "python3.7", "python3.8", "python3.9", "python3.10"]
+    general_build(py_cmds)
 
-def build_linux(): 
+def build_linux():
     py_cmds = ["python3.6", "python3.7", "python3.8", "python3.9", "python3.10"]
     general_build(py_cmds)
 
@@ -25,8 +28,8 @@ def main():
         build_windows()
     elif system == "Linux":
         build_linux()
-    elif system == "MacOS":
-        build_macos()
+    elif system == "Darwin":
+        build_darwin()
     else:
         print(f"Non-supported system {system}")
 
