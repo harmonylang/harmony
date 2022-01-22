@@ -3,10 +3,15 @@ from typing import List, NamedTuple
 import setuptools
 from setuptools import Extension
 from setuptools.command.build_ext import build_ext
+from pathlib import Path
 
 
 PACKAGE_NAME = 'harmony_model_checker'
 PACKAGE_VERSION = "0.0.23"
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 
 class CompilerArgs(NamedTuple):
     name: str
@@ -79,6 +84,8 @@ setuptools.setup(
     author="Robbert van Renesse",
     author_email="rvr@cs.cornell.edu",
     description="Harmony Programming Language",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     packages=setuptools.find_packages(),
     install_requires=[
         'antlr-denter; python_version >= "1.3.1"',
