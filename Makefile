@@ -33,7 +33,7 @@ dist: gen
 	PACKAGE_DIR=harmony_model_checker
 	rm -rf build/
 	rm -rf harmony_model_checker.egg-info/
-	python setup.py sdist
+	python setup.py sdist bdist_wheel
 
 upload-test: dist
 	twine upload -r testpypi dist/*
