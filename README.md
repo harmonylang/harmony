@@ -3,135 +3,81 @@
 Harmony is a programming language designed for testing and experimenting with concurrent code.
 
 - [Harmony](#harmony)
-  - [Preliminary Requirements](#preliminary-requirements)
-    - [Installing Python3](#installing-python3)
-    - [Installing GCC](#installing-gcc)
+  - [Installing Python3](#installing-python3)
+  - [Install Harmony via Pip](#install-harmony-via-pip)
+  - [For Windows Users](#for-windows-users)
+  - [Adding Scripts to PATH](#adding-scripts-to-path)
+  - [Command-Line Harmony](#command-line-harmony)
   - [Harmony on VSCode](#harmony-on-vscode)
-  - [Command-Line Harmony Installation Guide](#command-line-harmony-installation-guide)
-    - [Install using pip](#install-using-pip)
-    - [Install from Source](#install-from-source)
-  - [Checking for Updates on Harmony](#checking-for-updates-on-harmony)
-    - [VSCode Extension](#vscode-extension)
-    - [Command Line Harmony](#command-line-harmony)
+  - [Updating Harmony](#updating-harmony)
   - [Modifying your PATH variable](#modifying-your-path-variable)
 
-For more information, please visit the official page https://harmony.cs.cornell.edu
+For more information, please visit the official page https://harmony.cs.cornell.edu.
 
-## Preliminary Requirements
+Harmony requires the following to be installed:
 
 1. Python (version 3.6 or higher)
-2. GCC compiler
+2. C compiler (potentially optional)
 
-### Installing Python3
+Note that in the following instructions, Windows users using WSL should follows instructions for Linux.
 
-If you do not have Python3 already installed, download and install Python depending on your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/). Be sure to install version `3.6` or higher.
+## Installing Python3
 
-For WSL(2) users, you can run the following command instead:
-```sh
-sudo apt update
-sudo apt install python3
-```
+If you do not have Python3 already installed, download and install Python depending on
+your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/).
+Be sure to install Python version `3.6` or higher.
 
-On the command line, you can check if Python has been successfully installed by running `python3 --version`.
+On the command line, you can check if Python has been successfully installed by running `python --version`.
 
-### Installing GCC
+## Install Harmony via Pip
 
-`gcc` is a compiler for the C programming language and is needed for the model checker component of Harmony. Here are the steps to installing `gcc` depending on your OS.
+After installing `python`, you should also be able to use the command `pip`. Run the command
+`pip install harmony-model-checker` to get the latest version of Harmony.
 
-**Windows**:
+## For Windows Users
 
-Installing **64-bit** `gcc` under Windows:
-  - Follow the instructions at https://www.mingw-w64.org/downloads/#mingw-builds to download the `mingw-w64` installer. Run the installer once it is downloaded.
-  - At the Settings window, make sure you **select the x86-64
-    architecture** (instead of the default i686) during installation!
-  - At the next window, make sure you copy name of the Destination folder; you'll need it later.
-  - After installation is complete, add the name of the Destination folder you copied in the previous step extended with `\mingw64\bin` to your `Path` environment variable
-    (search for **Edit environment variables** in the search bar. You can add it either to the `Path` associated with your account or the system `Path`).
-  - Make sure you can run gcc from a cmd prompt (you can start
-    `cmd` from the search bar and run the command `gcc`)
-
-**MacOS**:
-
-You will need to install a package manager to use `gcc`, either [Homebrew](https://brew.sh/) or [MacPorts](https://www.macports.org/install.php). You can check if you have one or the other by running `brew` (for Homebrew) and `port` (for MacPorts). Otherwise, install one of the two package managers. Be sure **not to install both** as they don't behave well together.
-
-Open the Terminal application.
-
-If you are using Homebrew, run the following commands:
+For **Windows** users: you may encounter the error message along the lines of the following when installing `harmony-model-checker`:
 
 ```sh
-brew update
-brew install gcc
+error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": <link to visual studio - cpp build tools>
 ```
 
-If you are using MacPorts, run this command:
+This is to be expected if you had not installed the "Microsoft C++ Build Tools" before. Navigate to the outputted link and press `Download Build Tools` to download the installer. When you run the installer, you will encounter a selection screen such as the following:
+
+![Workload installation selection screen](doc-images/find-c++-build-tools.png "Worload installation selection screen")
+
+Select `Desktop development with C++` in the `Desktop & Mobile` section and then install.
+
+![Select the workload and install](doc-images/press-install-c++-build-tools.png "Select the workload and install")
+
+Note that this will likely take a while. When it finishes installing, run `pip install harmony-model-checker` again.
+
+## Adding Scripts to PATH
+
+When running `pip install harmony-model-checker`, you may see a message on the command line something like the following:
 
 ```sh
-sudo port install gcc
+WARNING: The script harmony is installed in '</path/with/harmony/>' which is not on PATH.
+  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
 ```
 
-**Linux**:
+If you do not see this warning, then you can continue.
 
-Follow the instructions for installing packages based on your distribution. [This article](https://www.ubuntupit.com/how-to-install-and-use-gcc-compiler-on-linux-system/) has a good list of installation steps for common Linux distribution.
+Otherwise, add that path displayed in the message to your `PATH` variable. See [here](#modifying-your-path-variable) for extra information on editing the `PATH` variable.
+
+## Command-Line Harmony
+
+Once you have installed `harmony-model-checker`, you should be able to use the `harmony` command on your command line.
 
 ## Harmony on VSCode
 
-We have Harmony as an extension you can use on VSCode! By installing this extension, you are equipped with the Harmony compiler and the model checker out of the box without extra configurations. If you would like to use Harmony via this, then you are done!
+Harmony is available as an extension on VSCode, which includes syntax highlighting and basic parser checks.
 
-Please see [here](#) for a quick guide on the basic usage of the VSCode extension.
+Please see [here](https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang) for a guide on the basic usage of the VSCode extension.
 
-## Command-Line Harmony Installation Guide
+## Updating Harmony
 
-The other way of using Harmony is via the command line, e.g. PowerShell, Bash, ZSH, etc. There are two options for installing Harmony for the command line: 1) install via `pip` and 2) building Harmony directly from source.
-
-- [Install using pip](#install-using-pip)
-- [Install from Source](#install-from-source)
-
-### Install using pip
-
-The Harmony CLI can be installed using the `pip` via the command below.
-
-```sh
-# install the latest version of Harmony.
-pip install harmony-model-checker
-```
----
-
-When installing via pip, you may see a message on the terminal something like the following:
-
-```sh
-WARNING: The script harmony is installed in '/path/with/harmony/' which is not on PATH.
-  Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
-```
-If you do, add that path displayed in the message to your `PATH` variable. Otherwise, you continue.
-
----
-
-Run the following command, and you are ready.
-
-```sh
-harmony --build-model-checker
-```
-
-### Install from Source
-
-Download the source code from the [GitHub repository](https://www.github.com) via **Download as ZIP**.
-
-On a command line, navigate to the directory using `cd`. Once there, run the command `make setup` to build Harmony.
-
-After successfully building Harmony, run `pwd` to out the path name of the directory with Harmony. Edit your PATH variable to include this path.
-
-## Checking for Updates on Harmony
-
-### VSCode Extension
-
-Updates are handled and notified by VSCode. When opening VSCode, you may receive a popup notification that an update for the extension is available.
-
-### Command Line Harmony
-
-Running `harmony --update` checks if an update is available.
-
-Running `harmony --upgrade` upgrades Harmony to the latest version.
-
+Harmony can be updated by running `pip install --upgrade harmony-model-checker` on the command line.
 
 ## Modifying your PATH variable
 
@@ -139,15 +85,15 @@ Running `harmony --upgrade` upgrades Harmony to the latest version.
 
 Search for **Edit environment variables** in the search bar. You can add it either to the `Path` associated with your account or the system `Path`.
 
-![A pane with sections](doc-images/first-pane.png "First pane").
+![A pane with sections](doc-images/first-pane.png "First pane")
 
 Select the variable `Path` in the user variables section and then click "Edit", which opens a new pane.
 
-![A pane with sections](doc-images/hover-new.png "First pane").
+![Hover over the new button](doc-images/hover-new.png "Hovering over the new button")
 
 Click "New" to add a new path, for example, the path to `gcc`.
 
-![A pane with sections](doc-images/adding-new-path.png "First pane").
+![Add new path](doc-images/adding-new-path.png "Adding new path")
 
 
 **MacOS / Linux**:
