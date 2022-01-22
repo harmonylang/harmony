@@ -27,19 +27,27 @@ If you do not have Python3 already installed, download and install Python depend
 your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/).
 Be sure to install Python version `3.6` or higher.
 
-On the command line, you can check if Python has been successfully installed by running `python --version`.
+On the command line, you can check if Python has been successfully installed by running the following:
+
+```sh
+python --version
+```
 
 ## Install Harmony via Pip
 
-After installing `python`, you should also be able to use the command `pip`. Run the command
-`pip install harmony-model-checker` to get the latest version of Harmony.
+After installing `python`, you should also be able to use the command `pip`. Run the following command to get the latest version of Harmony:
+
+```sh
+pip install harmony-model-checker
+```
 
 ## For Windows Users
 
 For **Windows** users: you may encounter the error message along the lines of the following when installing `harmony-model-checker`:
 
 ```sh
-error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": <link to visual studio - cpp build tools>
+error: Microsoft Visual C++ 14.0 or greater is required. Get it with
+"Microsoft C++ Build Tools": <link to visual studio - cpp build tools>
 ```
 
 This is to be expected if you had not installed the "Microsoft C++ Build Tools" before. Navigate to the outputted link and press `Download Build Tools` to download the installer. When you run the installer, you will encounter a selection screen such as the following:
@@ -54,7 +62,7 @@ Note that this will likely take a while. When it finishes installing, run `pip i
 
 ## Adding Scripts to PATH
 
-When running `pip install harmony-model-checker`, you may see a message on the command line something like the following:
+When installing Harmony, you may encounter a warning on the command line of something like the following:
 
 ```sh
 WARNING: The script harmony is installed in '</path/with/harmony/>' which is not on PATH.
@@ -77,7 +85,11 @@ Please see [here](https://marketplace.visualstudio.com/items?itemName=kevinsun-d
 
 ## Updating Harmony
 
-Harmony can be updated by running `pip install --upgrade harmony-model-checker` on the command line.
+Harmony can be updated by running the following `pip` command on the command line:
+
+```sh
+pip install --upgrade harmony-model-checker
+```
 
 ## Modifying your PATH variable
 
