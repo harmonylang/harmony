@@ -215,114 +215,86 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     }
 }
 
-static char *value_string_bool(hvalue_t v) {
+static void value_string_bool(struct strbuf *sb, hvalue_t v) {
     if (v != 0 && v != (1 << VALUE_BITS)) {
         fprintf(stderr, "value_string_bool %"PRI_HVAL"\n", v);
         panic("value_string_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
 
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, v == 0 ? "False" : "True");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, v == 0 ? "False" : "True");
 }
 
-static char *value_json_bool(hvalue_t v) {
+static void value_json_bool(struct strbuf *sb, hvalue_t v) {
     if (v != 0 && v != (1 << VALUE_BITS)) {
         fprintf(stderr, "value_json_bool %"PRI_HVAL"\n", v);
         panic("value_json_bool: bad value");
     }
     assert(v == 0 || v == (1 << VALUE_BITS));
 
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
 }
 
-static char *value_string_int(hvalue_t v) {
+static void value_string_int(struct strbuf *sb, hvalue_t v) {
     int64_t w = ((int64_t) v) >> VALUE_BITS;
-
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "%"PRId64"", (int64_t) w);
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, "%"PRId64"", (int64_t) w);
 }
 
-static char *value_json_int(hvalue_t v) {
+static void value_json_int(struct strbuf *sb, hvalue_t v) {
     int64_t w = ((int64_t) v) >> VALUE_BITS;
-
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", (int64_t) w);
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", (int64_t) w);
 }
 
-static char *value_string_atom(hvalue_t v) {
+static void value_string_atom(struct strbuf *sb, hvalue_t v) {
     int size;
     char *s = value_get(v, &size), *r;
-	struct strbuf sb;
 
-	strbuf_init(&sb);
-    strbuf_append(&sb, "\"", 1);
+    strbuf_append(sb, "\"", 1);
 	while (size > 0) {
 		switch (*s) {
 		case '"':
-			strbuf_append(&sb, "\\\"", 2);
+			strbuf_append(sb, "\\\"", 2);
 			break;
 		case '\\':
-			strbuf_append(&sb, "\\\\", 2);
+			strbuf_append(sb, "\\\\", 2);
 			break;
 		case '\n':
-			strbuf_append(&sb, "\\n", 2);
+			strbuf_append(sb, "\\n", 2);
 			break;
 		case '\r':
-			strbuf_append(&sb, "\\r", 2);
+			strbuf_append(sb, "\\r", 2);
 			break;
 		default:
-			strbuf_append(&sb, s, 1);
+			strbuf_append(sb, s, 1);
 		}
 		s++;
 		size--;
 	}
-    strbuf_append(&sb, "\"", 1);
-	return strbuf_getstr(&sb);
+    strbuf_append(sb, "\"", 1);
 }
 
-static char *value_json_atom(hvalue_t v) {
+static void value_json_atom(struct strbuf *sb, hvalue_t v) {
     int size;
     char *s = value_get(v, &size);
     char *esc = json_escape(s, size);
 
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
+    strbuf_printf(sb, "{ \"type\": \"atom\", \"value\": \"%s\" }", esc);
     free(esc);
-    return strbuf_convert(&sb);
 }
 
-static char *value_string_pc(hvalue_t v) {
+static void value_string_pc(struct strbuf *sb, hvalue_t v) {
     assert((v >> VALUE_BITS) < 10000);      // debug
-
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "PC(%u)", (unsigned int) (v >> VALUE_BITS));
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, "PC(%u)", (unsigned int) (v >> VALUE_BITS));
 }
 
-static char *value_json_pc(hvalue_t v) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) (v >> VALUE_BITS));
-    return strbuf_convert(&sb);
+static void value_json_pc(struct strbuf *sb, hvalue_t v) {
+    strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) (v >> VALUE_BITS));
 }
 
-static char *value_string_dict(hvalue_t v) {
+static void value_string_dict(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        char *r = malloc(3);
-        strcpy(r, "()");
-        return r;
+        strbuf_printf(sb, "()");
+        return;
     }
 
     void *p = (void *) v;
@@ -338,45 +310,34 @@ static char *value_string_dict(hvalue_t v) {
         }
     }
 
-    struct strbuf sb;
-    strbuf_init(&sb);
-
     if (islist) {
-        strbuf_printf(&sb, "(");
+        strbuf_printf(sb, "(");
         for (int i = 0; i < size; i++) {
             if (i != 0) {
-                strbuf_printf(&sb, ", ");
+                strbuf_printf(sb, ", ");
             }
-            char *val = value_string(vals[2*i+1]);
-            strbuf_printf(&sb, "%s", val);
-            free(val);
+            strbuf_value_string(sb, vals[2*i+1]);
         }
-        strbuf_printf(&sb, ")");
+        strbuf_printf(sb, ")");
     }
     else {
-        strbuf_printf(&sb, "{ ");
+        strbuf_printf(sb, "{ ");
         for (int i = 0; i < size; i++) {
             if (i != 0) {
-                strbuf_printf(&sb, ", ");
+                strbuf_printf(sb, ", ");
             }
-            char *key = value_string(vals[2*i]);
-            char *val = value_string(vals[2*i+1]);
-            strbuf_printf(&sb, "%s: %s", key, val);
-            free(key);
-            free(val);
+            strbuf_value_string(sb, vals[2*i]);
+            strbuf_printf(sb, ": ");
+            strbuf_value_string(sb, vals[2*i+1]);
         }
-        strbuf_printf(&sb, " }");
+        strbuf_printf(sb, " }");
     }
-    return strbuf_convert(&sb);
 }
 
-static char *value_json_dict(hvalue_t v) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-
+static void value_json_dict(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        strbuf_printf(&sb, "{ \"type\": \"dict\", \"value\": [] }");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [] }");
+        return;
     }
 
     void *p = (void *) v;
@@ -384,28 +345,24 @@ static char *value_json_dict(hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= 2 * sizeof(hvalue_t);
 
-    strbuf_printf(&sb, "{ \"type\": \"dict\", \"value\": [");
+    strbuf_printf(sb, "{ \"type\": \"dict\", \"value\": [");
     for (int i = 0; i < size; i++) {
         if (i != 0) {
-            strbuf_printf(&sb, ", ");
+            strbuf_printf(sb, ", ");
         }
-        char *key = value_json(vals[2*i]);
-        char *val = value_json(vals[2*i+1]);
-        strbuf_printf(&sb, "{ \"key\": %s, \"value\": %s }", key, val);
-        free(key);
-        free(val);
+        strbuf_printf(sb, "{ \"key\": ");
+        strbuf_value_json(sb, vals[2*i]);
+        strbuf_printf(sb, ", \"value\": ");
+        strbuf_value_json(sb, vals[2*i+1]);
+        strbuf_printf(sb, " }");
     }
-    strbuf_printf(&sb, " ] }");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, " ] }");
 }
 
-static char *value_string_set(hvalue_t v) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-
+static void value_string_set(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        strbuf_printf(&sb, "{}");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "{}");
+        return;
     }
 
     void *p = (void *) v;
@@ -413,28 +370,20 @@ static char *value_string_set(hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
-    strbuf_printf(&sb, "{ ");
+    strbuf_printf(sb, "{ ");
     for (int i = 0; i < size; i++) {
-        char *val = value_string(vals[i]);
-        if (i == 0) {
-            strbuf_printf(&sb, "%s", val);
+        if (i != 0) {
+            strbuf_printf(sb, ", ");
         }
-        else {
-            strbuf_printf(&sb, ", %s", val);
-        }
-        free(val);
+        strbuf_value_string(sb, vals[i]);
     }
-    strbuf_printf(&sb, " }");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, " }");
 }
 
-static char *value_json_set(hvalue_t v) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-
+static void value_json_set(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        strbuf_printf(&sb, "{ \"type\": \"set\", \"value\": [] }");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [] }");
+        return;
     }
 
     void *p = (void *) v;
@@ -442,49 +391,46 @@ static char *value_json_set(hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
 
-    strbuf_printf(&sb, "{ \"type\": \"set\", \"value\": [");
+    strbuf_printf(sb, "{ \"type\": \"set\", \"value\": [");
     for (int i = 0; i < size; i++) {
-        char *val = value_json(vals[i]);
-        if (i == 0) {
-            strbuf_printf(&sb, "%s", val);
+        if (i != 0) {
+            strbuf_printf(sb, ", ");
         }
-        else {
-            strbuf_printf(&sb, ", %s", val);
-        }
-        free(val);
+        strbuf_value_json(sb, vals[i]);
     }
-    strbuf_printf(&sb, " ] }");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, " ] }");
 }
 
-char *indices_string(const hvalue_t *vec, int size) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-
+static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int size) {
     if (size == 0) {
-        strbuf_printf(&sb, "None");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "None");
+        return;
     }
     char *s = value_string(vec[0]);
     assert(s[0] == '"');
 	int len = strlen(s);
-    strbuf_printf(&sb, "?%.*s", len - 2, s + 1);
+    strbuf_printf(sb, "?%.*s", len - 2, s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {
-        s = value_string(vec[i]);
-        strbuf_printf(&sb, "[%s]", s);
+        strbuf_printf(sb, "[");
+        strbuf_value_string(sb, vec[i]);
+        strbuf_printf(sb, "]");
     }
+}
 
+char *indices_string(const hvalue_t *vec, int size) {
+    struct strbuf sb;
+
+    strbuf_init(&sb);
+    strbuf_indices_string(&sb, vec, size);
     return strbuf_convert(&sb);
 }
 
-static char *value_string_address(hvalue_t v) {
+static void value_string_address(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        struct strbuf sb;
-        strbuf_init(&sb);
-        strbuf_printf(&sb, "None");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "None");
+        return;
     }
 
     void *p = (void *) v;
@@ -492,16 +438,13 @@ static char *value_string_address(hvalue_t v) {
     hvalue_t *indices = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
-    return indices_string(indices, size);
+    strbuf_indices_string(sb, indices, size);
 }
 
-static char *value_json_address(hvalue_t v) {
-    struct strbuf sb;
-    strbuf_init(&sb);
-
+static void value_json_address(struct strbuf *sb, hvalue_t v) {
     if (v == 0) {
-        strbuf_printf(&sb, "{ \"type\": \"address\", \"value\": [] }");
-        return strbuf_convert(&sb);
+        strbuf_printf(sb, "{ \"type\": \"address\", \"value\": [] }");
+        return;
     }
 
     void *p = (void *) v;
@@ -509,167 +452,155 @@ static char *value_json_address(hvalue_t v) {
     hvalue_t *vals = dict_retrieve(p, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
-    strbuf_printf(&sb, "{ \"type\": \"address\", \"value\": [");
+    strbuf_printf(sb, "{ \"type\": \"address\", \"value\": [");
     for (int i = 0; i < size; i++) {
-        char *val = value_json(vals[i]);
-        if (i == 0) {
-            strbuf_printf(&sb, "%s", val);
+        if (i != 0) {
+            strbuf_printf(sb, ", ");
         }
-        else {
-            strbuf_printf(&sb, ", %s", val);
-        }
-        free(val);
+        strbuf_value_json(sb, vals[i]);
     }
 
-    strbuf_printf(&sb, " ] }");
-    return strbuf_convert(&sb);
+    strbuf_printf(sb, " ] }");
 }
 
-static char *value_string_context(hvalue_t v) {
+static void value_string_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
-    struct strbuf sb;
-    strbuf_init(&sb);
+    strbuf_printf(sb, "CONTEXT(");
 #ifdef SHORT
-    char *name = value_string(ctx->name);
-    strbuf_printf(&sb, "CONTEXT(%s, %d)", name, ctx->pc);
+    strbuf_value_string(sb, ctx->name);
+    strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
     char *s;
-    strbuf_printf(&sb, "CONTEXT(");
 
-    s = value_string(ctx->name);
-    strbuf_printf(&sb, "name=%s", s);
-    free(s);
+    strbuf_printf(sb, "name=");
+    strbuf_value_string(sb, ctx->name);
+    strbuf_printf(sb, ",entry=");
+    strbuf_value_string(sb, ctx->entry);
+    strbuf_printf(sb, ",arg=");
+    strbuf_value_string(sb, ctx->arg);
+    strbuf_printf(sb, ",this=");
+    strbuf_value_string(sb, ctx->this);
+    strbuf_printf(sb, ",vars=");
+    strbuf_value_string(sb, ctx->vars);
+    strbuf_printf(sb, ",trap_pc=");
+    strbuf_value_string(sb, ctx->trap_pc);
+    strbuf_printf(sb, ",trap_arg=");
+    strbuf_value_string(sb, ctx->trap_arg);
+    strbuf_printf(sb, ",failure=");
+    strbuf_value_string(sb, ctx->failure);
 
-    s = value_string(ctx->entry);
-    strbuf_printf(&sb, ",entry=%s", s);
-    free(s);
+    strbuf_printf(sb, ",pc=%d", ctx->pc);
+    strbuf_printf(sb, ",fp=%d", ctx->fp);
+    strbuf_printf(sb, ",readonly=%d", ctx->readonly);
+    strbuf_printf(sb, ",atomic=%d", ctx->atomic);
+    strbuf_printf(sb, ",aflag=%d", ctx->atomicFlag);
+    strbuf_printf(sb, ",il=%d", ctx->interruptlevel);
+    strbuf_printf(sb, ",stopped=%d", ctx->stopped);
+    strbuf_printf(sb, ",terminated=%d", ctx->terminated);
+    strbuf_printf(sb, ",eternal=%d", ctx->eternal);
 
-    s = value_string(ctx->arg);
-    strbuf_printf(&sb, ",arg=%s", s);
-    free(s);
-
-    s = value_string(ctx->this);
-    strbuf_printf(&sb, ",this=%s", s);
-    free(s);
-
-    s = value_string(ctx->vars);
-    strbuf_printf(&sb, ",vars=%s", s);
-    free(s);
-
-    s = value_string(ctx->trap_pc);
-    strbuf_printf(&sb, ",trap_pc=%s", s);
-    free(s);
-
-    s = value_string(ctx->trap_arg);
-    strbuf_printf(&sb, ",trap_arg=%s", s);
-    free(s);
-
-    s = value_string(ctx->failure);
-    strbuf_printf(&sb, ",failure=%s", s);
-    free(s);
-
-    strbuf_printf(&sb, ",pc=%d", ctx->pc);
-
-    strbuf_printf(&sb, ",fp=%d", ctx->fp);
-
-    strbuf_printf(&sb, ",readonly=%d", ctx->readonly);
-
-    strbuf_printf(&sb, ",atomic=%d", ctx->atomic);
-
-    strbuf_printf(&sb, ",aflag=%d", ctx->atomicFlag);
-
-    strbuf_printf(&sb, ",il=%d", ctx->interruptlevel);
-
-    strbuf_printf(&sb, ",stopped=%d", ctx->stopped);
-
-    strbuf_printf(&sb, ",terminated=%d", ctx->terminated);
-
-    strbuf_printf(&sb, ",eternal=%d", ctx->eternal);
-
-    strbuf_printf(&sb, ",sp=%d,STACK[", ctx->sp);
+    strbuf_printf(sb, ",sp=%d,STACK[", ctx->sp);
 
     for (int i = 0; i < ctx->sp; i++) {
-        s = value_string(ctx->stack[i]);
-        strbuf_printf(&sb, ",%s", s);
-        free(s);
+        if (i != 0) {
+            strbuf_printf(sb, ",");
+        }
+        strbuf_value_string(sb, ctx->stack[i]);
     }
 
-    strbuf_printf(&sb, "]");
-
-    strbuf_printf(&sb, ")");
+    strbuf_printf(sb, "])");
 #endif
-    return strbuf_convert(&sb);
 }
 
-static char *value_json_context(hvalue_t v) {
+static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
     char *val;
-    struct strbuf sb;
     
-    strbuf_init(&sb);
-    strbuf_printf(&sb, "{ \"type\": \"context\", \"value\": {");
+    strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
+    strbuf_printf(sb, "\"name\": ");
+    strbuf_value_json(sb, ctx->name);
+    strbuf_printf(sb, ", \"arg\": ");
+    strbuf_value_json(sb, ctx->arg);
+    strbuf_printf(sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
 
-    val = value_json(ctx->name);
-    strbuf_printf(&sb, "\"name\": %s", val);
-    free(val);
+    strbuf_printf(sb, " } }");
+}
 
-    val = value_json(ctx->arg);
-    strbuf_printf(&sb, ", \"arg\": %s", val);
-    free(val);
-
-    strbuf_printf(&sb, ", \"pc\": { \"type\": \"pc\", \"value\": \"%d\" }", ctx->pc);
-
-    strbuf_printf(&sb, " } }");
-    return strbuf_convert(&sb);
+void strbuf_value_string(struct strbuf *sb, hvalue_t v){
+    switch (v & VALUE_MASK) {
+    case VALUE_BOOL:
+        value_string_bool(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_INT:
+        value_string_int(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_ATOM:
+        value_string_atom(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_PC:
+        value_string_pc(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_DICT:
+        value_string_dict(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_SET:
+        value_string_set(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_ADDRESS:
+        value_string_address(sb, v & ~VALUE_MASK);
+        break;
+    case VALUE_CONTEXT:
+        value_string_context(sb, v & ~VALUE_MASK);
+        break;
+    default:
+        panic("strbuf_value_string: bad value type");
+    }
 }
 
 char *value_string(hvalue_t v){
+    struct strbuf sb;
+    strbuf_init(&sb);
+    strbuf_value_string(&sb, v);
+    return strbuf_convert(&sb);
+}
+
+void strbuf_value_json(struct strbuf *sb, hvalue_t v){
     switch (v & VALUE_MASK) {
     case VALUE_BOOL:
-        return value_string_bool(v & ~VALUE_MASK);
+        value_json_bool(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_INT:
-        return value_string_int(v & ~VALUE_MASK);
+        value_json_int(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_ATOM:
-        return value_string_atom(v & ~VALUE_MASK);
+        value_json_atom(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_PC:
-        return value_string_pc(v & ~VALUE_MASK);
+        value_json_pc(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_DICT:
-        return value_string_dict(v & ~VALUE_MASK);
+        value_json_dict(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_SET:
-        return value_string_set(v & ~VALUE_MASK);
+        value_json_set(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_ADDRESS:
-        return value_string_address(v & ~VALUE_MASK);
+        value_json_address(sb, v & ~VALUE_MASK);
+        break;
     case VALUE_CONTEXT:
-        return value_string_context(v & ~VALUE_MASK);
+        value_json_context(sb, v & ~VALUE_MASK);
+        break;
     default:
-        panic("value_string: bad value type");
-        return NULL;
+        panic("strbuf_value_json: bad value type");
     }
 }
 
 char *value_json(hvalue_t v){
-    switch (v & VALUE_MASK) {
-    case VALUE_BOOL:
-        return value_json_bool(v & ~VALUE_MASK);
-    case VALUE_INT:
-        return value_json_int(v & ~VALUE_MASK);
-    case VALUE_ATOM:
-        return value_json_atom(v & ~VALUE_MASK);
-    case VALUE_PC:
-        return value_json_pc(v & ~VALUE_MASK);
-    case VALUE_DICT:
-        return value_json_dict(v & ~VALUE_MASK);
-    case VALUE_SET:
-        return value_json_set(v & ~VALUE_MASK);
-    case VALUE_ADDRESS:
-        return value_json_address(v & ~VALUE_MASK);
-    case VALUE_CONTEXT:
-        return value_json_context(v & ~VALUE_MASK);
-    default:
-        panic("value_json: bad value type");
-        return NULL;
-    }
+    struct strbuf sb;
+    strbuf_init(&sb);
+    strbuf_value_json(&sb, v);
+    return strbuf_convert(&sb);
 }
 
 bool atom_cmp(json_buf_t buf, char *s){
