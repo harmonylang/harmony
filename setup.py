@@ -6,7 +6,7 @@ from setuptools.command.build_ext import build_ext
 
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.0.22"
+PACKAGE_VERSION = "0.0.23"
 
 class CompilerArgs(NamedTuple):
     name: str
