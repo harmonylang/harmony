@@ -31,9 +31,9 @@ iface: iface.py iface.json
 dist: gen
 	PACKAGE_DIR=harmony_model_checker
 	rm -rf build/
+	rm -rf dist/
 	rm -rf harmony_model_checker.egg-info/
 	python setup.py sdist
-	python build_bdist.py
 
 upload-test: dist
 	twine upload -r testpypi dist/*
