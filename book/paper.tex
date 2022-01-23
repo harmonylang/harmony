@@ -606,9 +606,7 @@ reading \autoref{ch:harmonyintro}, \autoref{ch:harmonymachine},
 \autoref{ch:method}, \autoref{ch:specification}, and \autoref{ch:cds}.
 The appendices contain various details about Harmony itself, including
 an appendix on convenient Harmony modules (\autoref{ap:module}),
-an appendix that explains how Harmony works (\autoref{ap:howitworks}),
-and
-an appendix on installing and running Harmony (\autoref{ap:install}).
+and an appendix that explains how Harmony works (\autoref{ap:howitworks}),
 
 <{:const:tas}>
 <{:const:cas}>
@@ -644,7 +642,8 @@ pretty much any programming language start with that example.
 
 Harmony, too, has a Hello World program.
 \autoref{fig:helloworld} shows the program and the corresponding output.
-From the command line, you can run it as follows:
+After installation (see \url{https://harmony.cs.cornell.edu}), you
+can run it as follows from the command line:
 \begin{code}
 \begin{verbatim}
 $ harmony -o hello1.png code/hello1.hny
@@ -8570,6 +8569,7 @@ This results in the operations being executed sequentially against the
 sequential specification in the same order of the linearization points
 of the concurrent specification.
 
+\begin{comment}
 \chapter{Installing and Running Harmony}\label{ap:install}
 
 There are two supported options for using Harmony:
@@ -8617,8 +8617,26 @@ The VSCode extension uses Python and pip internally to install and build Harmony
 if some requirements are missing, such as Python or a C compiler, then a error message pop-up will appear
 describing the issue.
 
-The VSCode automatically updates to the latest version of Harmony when the extension is activated.
-However, the update can also be directly prompted by using the Command Palette and running "Install Harmony".
+The VSCode plug-in, developed by Kevin Sun and Anthony Yang,
+is available from the VSCode market place: \url{https://marketplace.visualstudio.com/items?itemName=kevinsun-dev-cornell.harmonylang}.
+This page comes with installation documentation.  VSCode also sports a
+wonderful animator for Harmony output.
+
+HarmonyLang is regularly updated to include the latest Harmony distribution.
+
+\section{Harmony IDE for the cloud}
+
+\texttt{Harmony IDE} is an Integrated Development Environment for Harmony,
+also developed by Kevin Sun and Anthony Yang,
+that runs in the cloud.  An important advantage of using \texttt{Harmony IDE}
+is that you do not have to install anything.  You can even run in on your
+smartphone.  However, since Harmony programs can use significant compute
+resources, \texttt{Harmony IDE} must put a limit on the amount of compute
+resources you can use.  So, while \texttt{Harmony IDE} is currently a great
+way to try out Harmony, if you become a serious user of Harmony you
+will probably want to install either the command-line version or
+\texttt{HarmonyLang}.
+\end{comment}
 
 \cleardoublepage
 \phantomsection
