@@ -42,7 +42,7 @@ For **Windows** users: you may encounter the error message along the lines of th
 
 ```sh
 error: Microsoft Visual C++ 14.0 or greater is required. Get it with
-"Microsoft C++ Build Tools": <link to visual studio - cpp build tools>
+"Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
 ```
 
 This is to be expected if you had not installed the "Microsoft C++ Build Tools" before. Navigate to the outputted link and press `Download Build Tools` to download the installer. When you run the installer, you will encounter a selection screen such as the following:
