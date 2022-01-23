@@ -60,6 +60,8 @@ class HarmonyParserErrorListener(ErrorListener):
                 msg = f"Unexpected token {lexeme}"
             elif msg.startswith("extraneous input"):
                 msg = f"Extraneous input {lexeme}. May be caused by another error."
+            elif msg.startswith("mismatched input"):
+                msg = f"Unexpected token {lexeme}"
 
         self.errors.append(ErrorToken(
             filename=self.filename,
