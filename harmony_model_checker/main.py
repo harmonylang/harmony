@@ -232,6 +232,8 @@ def main():
     ns = args.parse_args()
 
     if ns.f:
+        # remove the first instance of "-f"
+        sys.argv.remove("-f")
         internal_model_checker_main()
         return
 
