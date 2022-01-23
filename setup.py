@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.1.0"
+PACKAGE_VERSION = "0.1.1"
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
