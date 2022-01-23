@@ -42,16 +42,16 @@ For **Windows** users: you may encounter the error message along the lines of th
 
 ```sh
 error: Microsoft Visual C++ 14.0 or greater is required. Get it with
-"Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
+"Microsoft C++ Build Tools": <link to visual studio - cpp build tools>
 ```
 
 This is to be expected if you had not installed the "Microsoft C++ Build Tools" before. Navigate to the outputted link and press `Download Build Tools` to download the installer. When you run the installer, you will encounter a selection screen such as the following:
 
-![Workload installation selection screen](doc-images/find-c++-build-tools.png "Worload installation selection screen")
+![Workload installation selection screen](https://harmony.cs.cornell.edu/docs/textbook/figures/find-c%2B%2B-build-tools.png "Worload installation selection screen")
 
 Select `Desktop development with C++` in the `Desktop & Mobile` section and then install.
 
-![Select the workload and install](doc-images/press-install-c++-build-tools.png "Select the workload and install")
+![Select the workload and install](https://harmony.cs.cornell.edu/docs/textbook/figures/press-install-c%2B%2B-build-tools.png "Select the workload and install")
 
 Note that this will likely take a while. When it finishes installing, run `pip install harmony-model-checker` again.
 
@@ -92,15 +92,15 @@ pip install --upgrade harmony-model-checker
 
 Search for **Edit environment variables** in the search bar. You can add it either to the `Path` associated with your account or the system `Path`.
 
-![A pane with sections](doc-images/first-pane.png "First pane")
+![A pane with sections](https://harmony.cs.cornell.edu/docs/textbook/figures/first-pane.png "First pane")
 
 Select the variable `Path` in the user variables section and then click "Edit", which opens a new pane.
 
-![Hover over the new button](doc-images/hover-new.png "Hovering over the new button")
+![Hover over the new button](https://harmony.cs.cornell.edu/docs/textbook/figures/hover-new.png "Hovering over the new button")
 
 Click "New" to add a new path, for example, the path to `gcc`.
 
-![Add new path](doc-images/adding-new-path.png "Adding new path")
+![Add new path](https://harmony.cs.cornell.edu/docs/textbook/figures/adding-new-path.png "Adding new path")
 
 
 **MacOS / Linux**:
