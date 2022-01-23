@@ -150,7 +150,6 @@ static bool onestep(
                 step->ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
             }
             (*oi->op)(instrs[pc].env, sc, step, global);
-            step->ai = NULL;
         }
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
@@ -1959,6 +1958,7 @@ int main(int argc, char **argv){
 	// TODO.  Don't need failures/warnings distinction any more
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
+        printf("Check for data races\n");
         for (int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             graph_check_for_data_race(node, warnings, &global->values);
