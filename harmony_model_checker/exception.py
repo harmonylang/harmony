@@ -2,7 +2,7 @@ from typing import Any, List, NamedTuple
 
 class ErrorToken(NamedTuple):
     line: int
-    message: int
+    message: str
     column: int
     lexeme: str
     filename: str

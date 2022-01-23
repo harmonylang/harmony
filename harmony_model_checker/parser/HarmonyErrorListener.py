@@ -1,3 +1,4 @@
+import re
 from typing import List
 from antlr4.error.ErrorListener import ErrorListener
 
@@ -15,9 +16,9 @@ class HarmonyLexerErrorListener(ErrorListener):
         self.errors.append(ErrorToken(
             filename=self.filename,
             lexeme=lexeme,
-            message=msg,
+            message=str(msg) + " syntax error",
             line=line,
-            column=column,
+            column=column + 1,
             is_eof_error=False
         ))
 
@@ -29,8 +30,8 @@ class HarmonyParserErrorListener(ErrorListener):
 
     def syntaxError(self, recognizer, offending_symbol, line, column, msg, e):
         lexeme = offending_symbol.text
-        line = offending_symbol.line
-        column = offending_symbol.column
+        line = line
+        column = column + 1
 
         if offending_symbol.type == HarmonyParser.INDENT:
             self.errors.append(ErrorToken(
@@ -42,11 +43,28 @@ class HarmonyParserErrorListener(ErrorListener):
                 is_eof_error=False
             ))
             return
+        
+        if offending_symbol.type == HarmonyParser.DEDENT:
+            self.errors.append(ErrorToken(
+                filename=self.filename,
+                lexeme=lexeme,
+                message="Unexpected dedent. May be caused by indentation error.",
+                line=line,
+                column=column,
+                is_eof_error=False
+            ))
+            return
+
+        if isinstance(msg, str):
+            if msg.startswith("no viable alternative at input"):
+                msg = f"Unexpected token {lexeme}"
+            elif msg.startswith("extraneous input"):
+                msg = f"Extraneous input {lexeme}. May be caused by another error."
 
         self.errors.append(ErrorToken(
             filename=self.filename,
             lexeme=lexeme,
-            message=msg,
+            message=str(msg),
             line=line,
             column=column,
             is_eof_error=False
