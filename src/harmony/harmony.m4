@@ -8033,7 +8033,7 @@ def main():
                     "status": "error"
                 }
                 f.write(json.dumps(data))
-        print(e.message, e.token)
+        print(e.message)
         sys.exit(1)
 
     if parse_code_only:

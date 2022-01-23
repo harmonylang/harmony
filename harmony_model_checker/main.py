@@ -12,6 +12,7 @@ import argparse
 from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
+from harmony_model_checker.harmony import main as internal_model_checker_main, tla_translate, silent
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
@@ -213,7 +214,7 @@ args.add_argument("-i", "--intf", type=str, metavar="expr", help="specify in int
 args.add_argument("-s", action="store_true", help="silent (do not print periodic status updates)")
 args.add_argument("-v", "--version", action="store_true", help="print version number")
 args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
-args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .png, .gv)")
+args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
 args.add_argument("-j", action="store_true", help="list machine code in JSON format")
 args.add_argument("--noweb", action="store_true", default=False, help="do not automatically open web browser")
 args.add_argument("--suppress", action="store_true", help="generate less terminal output")
@@ -226,7 +227,13 @@ args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*',
 
 
 def main():
+    global silent
+
     ns = args.parse_args()
+
+    if ns.f:
+        internal_model_checker_main()
+        return
 
     if ns.version:
         print("Version", ".".join([str(v) for v in version]))
@@ -253,7 +260,7 @@ def main():
 
     block_flag: bool = ns.b
     fulldump: bool = ns.d
-    silent: bool = ns.s
+    silent = ns.s
 
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
@@ -261,6 +268,7 @@ def main():
         "hco": None,
         "hvm": None,
         "png": None,
+        "tla": None,
         "gv":  None
     }
     for p in (ns.o or []):
@@ -322,6 +330,15 @@ def main():
                 print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
                 print()
         return 1
+
+    if parse_code_only:
+        with open(output_files["hvm"], "w") as f:
+            f.write(json.dumps({"status": "ok"}))
+        return
+
+    if output_files["tla"] is not None:
+        with open(output_files["tla"], "w") as f:
+            tla_translate(f, code, scope)
 
     # Analyze liveness of variables
     if charm_flag:
