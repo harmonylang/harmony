@@ -14,18 +14,13 @@ Harmony is a programming language designed for testing and experimenting with co
 
 For more information, please visit the official page https://harmony.cs.cornell.edu.
 
-Harmony requires the following to be installed:
-
-1. Python (version 3.6 or higher)
-2. C compiler (potentially optional)
-
-Note that in the following instructions, Windows users using WSL should follows instructions for Linux.
+In the following instructions, Windows users using WSL should follows instructions for Linux.
 
 ## Installing Python3
 
-If you do not have Python3 already installed, download and install Python depending on
-your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/).
-Be sure to install Python version `3.6` or higher.
+Harmony requires Python (version 3.6 or higher) to be installed. If you do not have Python3 already installed, download and install Python depending on your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/). Be sure to download the installer for Python version `3.6` or higher.
+
+In the installer, the default installation settings will also add `pip`. If you choose to run the installer with custom settings, be sure that `pip` gets installed.
 
 On the command line, you can check if Python has been successfully installed by running the following:
 
