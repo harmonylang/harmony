@@ -1,5 +1,5 @@
 
-from typing import Any
+from typing import Any, Union
 from antlr4.Token import CommonToken
 
 from harmony_model_checker.parser.HarmonyVisitor import HarmonyVisitor
@@ -7,15 +7,24 @@ from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.harmony import *
 import math
 
-
 class HarmonyVisitorImpl(HarmonyVisitor):
 
     def __init__(self, file: str):
         assert isinstance(file, str)
         self.file = file
 
-    def get_token(self, tkn: CommonToken, value: Any) -> tuple:
-        return value, self.file, tkn.line, tkn.column + 1
+    def get_token(self, tkn: Union[CommonToken, tuple], value: Any) -> tuple:
+        if isinstance(tkn, CommonToken):
+            line = tkn.line
+            col = tkn.column + 1
+        else:
+            line = tkn[2]
+            col = tkn[3]
+
+        assert isinstance(col, int)
+        assert isinstance(line, int)
+
+        return value, self.file, line, col
 
     # Visit a parse tree produced by HarmonyParser#import_stmt.
     def visitImport_stmt(self, ctx: HarmonyParser.Import_stmtContext):
@@ -211,7 +220,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
         if not isinstance(func, ApplyAST):
-            tkn = self.get_token(ctx.start, ctx.start.text)
+            tkn = self.get_token(func.ast_token, func.ast_token[0])
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
@@ -260,7 +269,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         is_eternal = ctx.ETERNAL() is not None
         target = self.visit(ctx.expr())
         if not isinstance(target, ApplyAST):
-            tkn = self.get_token(ctx.start, ctx.start.text)
+            tkn = self.get_token(target.ast_token, target.ast_token[0])
             raise HarmonyCompilerError(
                 message="Expected a method call but found something else.",
                 filename=self.file,
@@ -481,9 +490,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     # Visit a parse tree produced by HarmonyParser#one_line_stmt.
     def visitOne_line_stmt(self, ctx: HarmonyParser.One_line_stmtContext):
         stmts = [self.visit(ctx.simple_stmt())]
-        # if ctx.SEMI_COLON():
-        #     tkn = self.get_token(ctx.SEMI_COLON().symbol, ";")
-        #     stmts.append(PassAST(tkn, False))
         if ctx.one_line_stmt():
             stmts.extend(self.visit(ctx.one_line_stmt()))
         return stmts
@@ -572,17 +578,17 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return CmpAST(comps[0], comps, expressions)
         if ctx.arith_op():
             ops = [self.visit(o) for o in ctx.arith_op()]
-            num_of_unique_ops = len({c[0] for c in ops})
-            if num_of_unique_ops > 1:
-                op = ops[0]
-                raise HarmonyCompilerError(
-                    message="Cannot have multiple types of operators in one expression",
-                    filename=self.file,
-                    line=op[2],
-                    column=op[3],
-                    lexeme=op[0]
-                )
-            binop = ops.pop()
+            expected = ops[0]
+            for actual in ops[1:]:
+                if actual[0] != expected[0]:
+                    raise HarmonyCompilerError(
+                        message=f"Cannot have multiple types of operators in one expression. Expected {expected[0]} but got {actual[0]}",
+                        filename=self.file,
+                        line=actual[2],
+                        column=actual[3],
+                        lexeme=actual[0]
+                    )
+            binop = ops[0]
             return NaryAST(binop, expressions)
         if ctx.IF():
             condition = self.visit(ctx.nary_expr())
