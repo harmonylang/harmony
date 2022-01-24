@@ -15,6 +15,12 @@ Harmony is a programming language designed for testing and experimenting with co
 
 For more information, please visit the official page https://harmony.cs.cornell.edu.
 
+Harmony requires the following to be installed:
+
+1. Python (version 3.6 or higher)
+2. Graphviz
+3. C Compiler (potentially potential)
+
 In the following instructions, Windows users using WSL should follows instructions for Linux.
 
 ## Installing Python3
