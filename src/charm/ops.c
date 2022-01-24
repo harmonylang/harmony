@@ -1226,7 +1226,6 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
-            printf("Store access 1\n");
             step->ai->indices = indices;
             step->ai->n = size;
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
@@ -1241,7 +1240,6 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
     }
     else {
         if (step->ai != NULL) {
-            printf("Store access 2\n");
             step->ai->indices = es->indices;
             step->ai->n = es->n;
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
