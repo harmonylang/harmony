@@ -1,3 +1,3 @@
 
 __package__ = "harmony_model_checker"
-__version__ = "1.2.2336"
+__version__ = "1.2.1"
