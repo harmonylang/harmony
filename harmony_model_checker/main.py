@@ -9,10 +9,13 @@ from antlr4 import *
 import sys
 import argparse
 
+import harmony_model_checker
+
 from harmony_model_checker import charm
+import harmony_model_checker.util.self_check_is_outdated as check_version
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
-from harmony_model_checker.harmony import main as internal_model_checker_main, tla_translate, silent
+from harmony_model_checker.harmony import main as legacy_model_checker_main, tla_translate, silent
 from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
     StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
@@ -228,17 +231,17 @@ args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*',
 
 def main():
     global silent
-
     ns = args.parse_args()
 
     if ns.f:
-        # remove the first instance of "-f"
+        # remove the first instance of "-f" from the legacy model checker
         sys.argv.remove("-f")
-        internal_model_checker_main()
-        return
+        legacy_model_checker_main()
+        return 0
 
+    check_version.check_outdated(harmony_model_checker.__package__, harmony_model_checker.__version__)
     if ns.version:
-        print("Version", ".".join([str(v) for v in version]))
+        print("Version:", harmony_model_checker.__package__, harmony_model_checker.__version__)
         return 0
 
     consts: List[str] = ns.const or []

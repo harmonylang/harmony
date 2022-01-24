@@ -1,13 +1,30 @@
-import distutils.errors
+import os.path
+from pathlib import Path
 from typing import List, NamedTuple
+
 import setuptools
+import distutils.errors
 from setuptools import Extension
 from setuptools.command.build_ext import build_ext
-from pathlib import Path
 
+
+# Checks the version number of package in the same way as pip.
+def read(rel_path: str) -> str:
+    here = os.path.abspath(os.path.dirname(__file__))
+    # intentionally *not* adding an encoding option to open, See:
+    #   https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
+    with open(os.path.join(here, rel_path)) as fp:
+        return fp.read()
+
+def get_version(rel_path: str) -> str:
+    for line in read(rel_path).splitlines():
+        if line.startswith("__version__"):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    raise RuntimeError("Unable to find version string.")
 
 PACKAGE_NAME = 'harmony_model_checker'
-PACKAGE_VERSION = "0.1.1"
+PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
@@ -19,7 +36,7 @@ class CompilerArgs(NamedTuple):
     linker_args: List[str]
 
 
-EXTRA_COMPILE_ARGS = ["-pthread", "-m64", "-O3", "-DNDEBUG", "-fPIC"]
+EXTRA_COMPILE_ARGS = ["-pthread", "-m64", "-O3", "-DNDEBUG", "-fPIC"] # the -fPIC flag is required to create a shared object file.
 
 # Extra link args used by gcc in Linux.
 # Tested flags with cc and clang
@@ -91,7 +108,8 @@ setuptools.setup(
         'antlr-denter; python_version >= "1.3.1"',
         'antlr4-python3-runtime; python_version == "4.9.3"',
         'automata-lib; python_version >= "5.0"',
-        'pydot; python_version == "1.4.2"'
+        'pydot; python_version == "1.4.2"',
+        'requests; python_version == "2.26.0"'
     ],
     license="BSD",
     url="https://harmony.cs.cornell.edu",
