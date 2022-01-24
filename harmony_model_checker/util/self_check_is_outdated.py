@@ -45,7 +45,7 @@ def _wrapper(package: str, version: str):
         parsed_latest = pkg_resources.parse_version(latest)
 
         if parsed_version > parsed_latest:
-            latest = _get_latest_version()
+            latest = _get_latest_version(package)
             parsed_latest = pkg_resources.parse_version(latest)
             
             if parsed_version > parsed_latest:

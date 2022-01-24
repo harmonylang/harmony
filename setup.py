@@ -107,9 +107,9 @@ setuptools.setup(
     install_requires=[
         'antlr-denter; python_version >= "1.3.1"',
         'antlr4-python3-runtime; python_version == "4.9.3"',
-        'automata-lib; python_version >= "5.0"',
-        'pydot; python_version == "1.4.2"',
-        'requests; python_version == "2.26.0"'
+        'automata-lib',
+        'pydot',
+        'requests',
     ],
     license="BSD",
     url="https://harmony.cs.cornell.edu",
