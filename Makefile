@@ -29,11 +29,8 @@ iface: iface.py iface.json
 	open x.pdf
 
 dist: gen
-	PACKAGE_DIR=harmony_model_checker
-	rm -rf build/
-	rm -rf dist/
-	rm -rf harmony_model_checker.egg-info/
-	python setup.py sdist
+	rm -rf build/ dist/ harmony_model_checker.egg-info/
+	python3 setup.py sdist
 
 upload-test: dist
 	twine upload -r testpypi dist/*
@@ -43,5 +40,6 @@ upload: dist
 
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
-	rm -f harmony_model_checker/modules/*.htm harmony_model_checker/modules/*.hvm harmony_model_checker/modules/*.hco
-	rm -rf compiler_integration_results/
+	(cd harmony_model_checker/modules; rm *.htm *.hvm *.hco *.png *.hfa *.tla *.gv *.html)
+	rm -rf compiler_integration_results.md compiler_integration_results/
+	rm -rf build/ dist/ harmony_model_checker.egg-info/

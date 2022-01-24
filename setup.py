@@ -102,6 +102,12 @@ setuptools.setup(
             "modules/*.hny"
         ]
     },
+    entry_points={
+        'console_scripts': [
+            'harmony=harmony_model_checker.main:main',
+            'iface=harmony_model_checker.iface:main'
+        ]
+    },
     python_requires=">=3.6",
     ext_modules=[module],
     cmdclass={
