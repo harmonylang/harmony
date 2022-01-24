@@ -303,8 +303,11 @@ def behavior_parse(js, minify, outputfiles, behavior):
             behavior_show_diagram(dfa, path=outputfiles["png"])
         else:
             assert outputfiles["gv"] != None
-            subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
+            try:
+                subprocess.run(["dot", "-Tpng", "-o", outputfiles["png"],
                                 outputfiles["gv"] ])
+            except FileNotFoundError:
+                print("install graphviz (www.graphviz.org) to see output DFAs")
 
     if behavior != None:
         if got_automata:
