@@ -1,5 +1,6 @@
 import json
 import atexit
+import logging
 import time
 import pkg_resources
 import tempfile
@@ -27,7 +28,13 @@ def _cache_is_valid(expiration: int):
 def _get_cache_file(package: str):
     return pathlib.Path(tempfile.gettempdir()) / f"{package}_version_cache"
 
-def _wrapper(package: str, version: str):
+def _log_messages(messages: list):
+    for args in messages:
+        _logger.log(*args)
+
+
+def check_outdated(package: str, version: str) -> None:
+    messages_to_log = []
     try:
         parsed_version = pkg_resources.parse_version(version)
         latest = None
@@ -54,22 +61,23 @@ def _wrapper(package: str, version: str):
 
         is_latest = parsed_version == parsed_latest
         if not is_latest:
-            _logger.warning(
+            messages_to_log.append([
+                logging.WARNING,
                 "Version %s of %s is currently installed, but a new version %s is available.\n"
                 "You should consider upgrading to the newer version by running the following command:\n"
                 "pip install --upgrade %s",
                 version, package, latest, package
-            )
+            ])
             return
-
         cache_file.write_text(
             json.dumps([
                 latest,
                 time.time() + 86400 # number of seconds in a day
             ]))
     except Exception:
-        _logger.debug('Error occurred while checking if the current version of Harmony is the latest.')
-
-
-def check_outdated(package: str, version: str) -> None:
-    atexit.register(_wrapper, package, version)
+        messages_to_log.append([
+            logging.ERROR,
+            'Error occurred while checking if the current version of Harmony is the latest.'
+        ])
+    finally:
+        atexit.register(_log_messages, messages_to_log)

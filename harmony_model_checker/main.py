@@ -239,10 +239,11 @@ def main():
         legacy_model_checker_main()
         return 0
 
-    check_version.check_outdated(harmony_model_checker.__package__, harmony_model_checker.__version__)
     if ns.version:
         print("Version:", harmony_model_checker.__package__, harmony_model_checker.__version__)
         return 0
+
+    check_version.check_outdated(harmony_model_checker.__package__, harmony_model_checker.__version__)
 
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
