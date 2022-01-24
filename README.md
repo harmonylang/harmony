@@ -4,6 +4,7 @@ Harmony is a programming language designed for testing and experimenting with co
 
 - [Harmony](#harmony)
   - [Installing Python3](#installing-python3)
+  - [Installing Graphviz](#installing-graphviz)
   - [Install Harmony via Pip](#install-harmony-via-pip)
   - [For Windows Users](#for-windows-users)
   - [Adding Scripts to PATH](#adding-scripts-to-path)
@@ -27,6 +28,30 @@ On the command line, you can check if Python has been successfully installed by 
 ```sh
 python --version
 ```
+
+## Installing Graphviz
+
+Harmony uses [Graphviz](https://graphviz.org/) to visualize the state changes in a program. For example, the following Harmony program can produce the subsequent graph.
+
+```py
+# Filename: example.hny
+def a():
+    print "A"
+
+def b():
+    print "B"
+
+spawn a()
+spwan b()
+
+# Run with [harmony -o example.hny]
+```
+
+![Dot output using example.hny](./doc-images/simple-graph-example.png)
+
+Instructions for installing the latest version of Graphviz can be found [here](https://graphviz.org/download/).
+
+For **Windows** users, when running the installer, make sure to select the option **Add Graphviz to the system PATH for current user** so that the command `dot` is available to produce the graphs.
 
 ## Install Harmony via Pip
 
