@@ -50,7 +50,7 @@ def b():
 spawn a()
 spwan b()
 
-# Run with [harmony -o example.hny]
+# Run with [harmony -o example.png example.hny]
 ```
 
 ![Dot output using example.hny](https://harmony.cs.cornell.edu/docs/textbook/figures/simple-graph-example.png "Dot output")
