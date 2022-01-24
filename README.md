@@ -53,7 +53,7 @@ spwan b()
 # Run with [harmony -o example.hny]
 ```
 
-![Dot output using example.hny](./doc-images/simple-graph-example.png)
+![Dot output using example.hny](https://harmony.cs.cornell.edu/docs/textbook/figures/simple-graph-example.png "Dot output")
 
 Instructions for installing the latest version of Graphviz can be found [here](https://graphviz.org/download/).
 
