@@ -1,10 +1,7 @@
-all: parser
+all: gen parser
 	python3 setup.py build_ext -i
 
-setup: gen
-	python3 setup.py install
-
-parser: gen
+parser:
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
 
 gen:
@@ -28,7 +25,7 @@ iface: iface.py iface.json
 	dot -Tpdf x.gv > x.pdf
 	open x.pdf
 
-dist: gen
+dist: gen parser
 	rm -rf build/ dist/ harmony_model_checker.egg-info/
 	python3 setup.py sdist
 
@@ -40,6 +37,6 @@ upload: dist
 
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
-	(cd harmony_model_checker/modules; rm *.htm *.hvm *.hco *.png *.hfa *.tla *.gv *.html)
+	(cd harmony_model_checker/modules; rm -f *.htm *.hvm *.hco *.png *.hfa *.tla *.gv *.html)
 	rm -rf compiler_integration_results.md compiler_integration_results/
 	rm -rf build/ dist/ harmony_model_checker.egg-info/
