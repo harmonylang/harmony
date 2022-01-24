@@ -49,7 +49,7 @@ def _wrapper(package: str, version: str):
             parsed_latest = pkg_resources.parse_version(latest)
             
             if parsed_version > parsed_latest:
-                _logger.warning('Version %s is higher than the latest version available on PyPi: %s', version, latest)
+                # no message to avoid issues in development
                 return
 
         is_latest = parsed_version == parsed_latest
