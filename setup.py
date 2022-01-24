@@ -93,11 +93,12 @@ setuptools.setup(
         'automata-lib; python_version >= "5.0"',
         'pydot; python_version == "1.4.2"'
     ],
+    license="BSD",
+    url="https://harmony.cs.cornell.edu",
     include_package_data=True,
     package_data={
         PACKAGE_NAME: [
             "charm.c",
-            "charm.Windows.exe",
             "modules/*.hny"
         ]
     },
