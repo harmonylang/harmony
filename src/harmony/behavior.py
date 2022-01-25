@@ -98,7 +98,10 @@ def behavior_show_diagram(dfa, path=None):
                     label=to_label
                 ))
     if path:
-        graph.write_png(path)
+        try:
+            graph.write_png(path)
+        except FileNotFoundError:
+            print("install graphviz (www.graphviz.org) to see output DFAs")
     return graph
 
 def eps_closure_rec(states, transitions, current, output):
