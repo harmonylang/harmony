@@ -373,7 +373,7 @@ def main():
             url = "file://" + str(p)
             print("open " + url + " for more information", file=sys.stderr)
             if open_browser:
-                webbrowser.open(os.path.relpath(p, os.getcwd()))
+                webbrowser.open(url)
         return 0
 
     if print_code is None:
