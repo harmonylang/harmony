@@ -1,23 +1,22 @@
+from typing import Dict, List, Optional
 import json
 import os
 import pathlib
-from typing import Dict, List, Optional
 import webbrowser
-
-from antlr4 import *
-
 import sys
 import argparse
 
-import harmony_model_checker
+from antlr4 import *
 
-from harmony_model_checker import charm
+import harmony_model_checker
 import harmony_model_checker.util.self_check_is_outdated as check_version
+from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
-from harmony_model_checker.harmony import main as legacy_model_checker_main, tla_translate, silent
-from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, optimize, dumpCode, Brief, GenHTML, namestack, PushOp, \
-    StoreOp, novalue, imported, files, HarmonyCompilerError, State, ContextValue, constants, modules, run, htmldump, version
+import harmony_model_checker.harmony as legacy_harmony
+from harmony_model_checker.harmony import tla_translate, optimize, dumpCode, run, htmldump
+from harmony_model_checker.harmony import AST, BlockAST, Code, Scope, FrameOp, ReturnOp, Brief, GenHTML, PushOp, \
+    StoreOp, HarmonyCompilerError, State, ContextValue
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
@@ -40,7 +39,7 @@ def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_er
 
 
 def load_string(string, scope: Scope, code: Code, filename="<string-code>"):
-    namestack.append(filename)
+    legacy_harmony.namestack.append(filename)
     ast = parse_string(string, filename)
     for mod in ast.getImports():
         do_import(scope, code, mod)
@@ -51,15 +50,15 @@ def load_string(string, scope: Scope, code: Code, filename="<string-code>"):
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
     ast.compile(scope, code)
-    namestack.pop()
+    legacy_harmony.namestack.pop()
 
 
 def load_file(filename: str, scope: Scope, code: Code):
-    if filename in files:
+    if filename in legacy_harmony.files:
         return
-    namestack.append(filename)
+    legacy_harmony.namestack.append(filename)
     with open(filename, "r") as f:
-        files[filename] = f.read().split("\n")
+        legacy_harmony.files[filename] = f.read().split("\n")
 
     ast = parse(filename)
     if ast is None:
@@ -78,19 +77,19 @@ def load_file(filename: str, scope: Scope, code: Code):
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
     ast.compile(scope, code)
-    namestack.pop()
+    legacy_harmony.namestack.pop()
 
 
 def do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO
-    if lexeme not in imported:
+    if lexeme not in legacy_harmony.imported:
         # TODO.  Only do the following if the modules have variables?
-        code.append(PushOp((novalue, file, line, column)))
+        code.append(PushOp((legacy_harmony.novalue, file, line, column)))
         code.append(StoreOp(module, module, []))
 
         # module name replacement with -m flag
-        modname = modules[lexeme] if lexeme in modules else lexeme
+        modname = legacy_harmony.modules.get(lexeme, lexeme)
 
         # create a new scope
         scope2 = Scope(None)
@@ -99,7 +98,7 @@ def do_import(scope: Scope, code: Code, module):
 
         found = False
         install_path = os.path.dirname(os.path.realpath(__file__))
-        for directory in [os.path.dirname(namestack[-1]), os.path.join(install_path, "modules"), "."]:
+        for directory in [os.path.dirname(legacy_harmony.namestack[-1]), os.path.join(install_path, "modules"), "."]:
             filename = os.path.join(directory, modname + ".hny")
             if os.path.exists(filename):
                 load_file(filename, scope2, code)
@@ -109,13 +108,14 @@ def do_import(scope: Scope, code: Code, module):
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=modname,
-                message="Can't import module %s from %s" % (modname, namestack),
+                message="Can't import module %s from %s" % (
+                    modname, legacy_harmony.namestack),
                 line=line,
                 column=column
             )
-        imported[lexeme] = scope2
+        legacy_harmony.imported[lexeme] = scope2
 
-    scope.names[lexeme] = ("module", imported[lexeme])
+    scope.names[lexeme] = ("module", legacy_harmony.imported[lexeme])
 
 
 def parse_constant(name: str, value: str):
@@ -131,14 +131,15 @@ def parse_constant(name: str, value: str):
     code = Code()
     ast.compile(scope, code)
     state = State(code, scope.labels)
-    ctx = ContextValue(("__arg__", None, None, None), 0, novalue, novalue)
+    ctx = ContextValue(("__arg__", None, None, None), 0,
+                       legacy_harmony.novalue, legacy_harmony.novalue)
     ctx.atomic = 1
     while ctx.pc != len(code.labeled_ops):
         code.labeled_ops[ctx.pc].op.eval(state, ctx)
-    constants[name] = ctx.pop()
+    legacy_harmony.constants[name] = ctx.pop()
 
 
-def parse_string(string: str, filename: str="<string-code>"):
+def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
     _input = InputStream(string)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
@@ -151,7 +152,8 @@ def parse(filename: str) -> BlockAST:
     _input = FileStream(filename)
     error_listener = HarmonyParserErrorListener(filename)
     lexer_error_listener = HarmonyLexerErrorListener(filename)
-    parser = build_parser(_input,
+    parser = build_parser(
+        _input,
         lexer_error_listener=lexer_error_listener,
         parser_error_listener=error_listener
     )
@@ -168,6 +170,7 @@ def parse(filename: str) -> BlockAST:
     except HarmonyCompilerError as e:
         raise HarmonyCompilerErrorCollection([e.token])
 
+
 def do_compile(filenames: List[str], consts: List[str], mods: List[str], interface: List[str]):
     for c in consts:
         try:
@@ -181,7 +184,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     for m in mods:
         try:
             i = m.index("=")
-            modules[m[0:i]] = m[i + 1:]
+            legacy_harmony.modules[m[0:i]] = m[i + 1:]
         except (IndexError, ValueError):
             raise HarmonyCompilerError(
                 message="Usage: -m module=version to specify a module version"
@@ -193,7 +196,8 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     for fname in filenames:
         load_file(str(fname), scope, code)
     if interface is not None:
-        load_string("def __iface__(): result = (%s)" % interface, scope, code, "interface")
+        load_string("def __iface__(): result = (%s)" %
+                    interface, scope, code, "interface")
 
     code.append(ReturnOp())  # to terminate "__init__" process
 
@@ -206,44 +210,61 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
 
 
 args = argparse.ArgumentParser("harmony")
-args.add_argument("-a", action="store_true", help="list machine code (with labels)")
-args.add_argument("-A", action="store_true", help="list machine code (without labels)")
-args.add_argument("-B", type=str, nargs=1, help="check against the given behavior")
-args.add_argument("-p", "--parse", action="store_true", help="parse code without running")
-args.add_argument("-c", "--const", action='append', type=str, metavar="name=value", help="define a constant")
-args.add_argument("-d", action='store_true', help="htmldump full state into html file")
-args.add_argument("--module", "-m", action="append", type=str, metavar="module=version", help="select a module version")
-args.add_argument("-i", "--intf", type=str, metavar="expr", help="specify in interface function")
-args.add_argument("-s", action="store_true", help="silent (do not print periodic status updates)")
-args.add_argument("-v", "--version", action="store_true", help="print version number")
-args.add_argument("-f", action="store_true", help="run with internal model checker (not supported)")
-args.add_argument("-o", action='append', type=pathlib.Path, help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
-args.add_argument("-j", action="store_true", help="list machine code in JSON format")
-args.add_argument("--noweb", action="store_true", default=False, help="do not automatically open web browser")
-args.add_argument("--suppress", action="store_true", help="generate less terminal output")
+args.add_argument("-a", action="store_true",
+                  help="list machine code (with labels)")
+args.add_argument("-A", action="store_true",
+                  help="list machine code (without labels)")
+args.add_argument("-B", type=str, nargs=1,
+                  help="check against the given behavior")
+args.add_argument("-p", "--parse", action="store_true",
+                  help="parse code without running")
+args.add_argument("-c", "--const", action='append', type=str,
+                  metavar="name=value", help="define a constant")
+args.add_argument("-d", action='store_true',
+                  help="htmldump full state into html file")
+args.add_argument("--module", "-m", action="append", type=str,
+                  metavar="module=version", help="select a module version")
+args.add_argument("-i", "--intf", type=str, metavar="expr",
+                  help="specify in interface function")
+args.add_argument("-s", action="store_true",
+                  help="silent (do not print periodic status updates)")
+args.add_argument("-v", "--version", action="store_true",
+                  help="print version number")
+args.add_argument("-f", action="store_true",
+                  help="run with internal model checker (not supported)")
+args.add_argument("-o", action='append', type=pathlib.Path,
+                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
+args.add_argument("-j", action="store_true",
+                  help="list machine code in JSON format")
+args.add_argument("--noweb", action="store_true", default=False,
+                  help="do not automatically open web browser")
+args.add_argument("--suppress", action="store_true",
+                  help="generate less terminal output")
 
 # Internal flags
 args.add_argument("-b", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 
-args.add_argument("files", metavar="harmony-file", type=pathlib.Path, nargs='*', help="files to compile")
+args.add_argument("files", metavar="harmony-file",
+                  type=pathlib.Path, nargs='*', help="files to compile")
 
 
 def main():
-    global silent
     ns = args.parse_args()
 
     if ns.f:
         # remove the first instance of "-f" from the legacy model checker
         sys.argv.remove("-f")
-        legacy_model_checker_main()
+        legacy_harmony.main()
         return 0
 
     if ns.version:
-        print("Version:", harmony_model_checker.__package__, harmony_model_checker.__version__)
+        print("Version:", harmony_model_checker.__package__,
+              harmony_model_checker.__version__)
         return 0
 
-    check_version.check_outdated(harmony_model_checker.__package__, harmony_model_checker.__version__)
+    check_version.check_outdated(
+        harmony_model_checker.__package__, harmony_model_checker.__version__)
 
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
@@ -266,7 +287,7 @@ def main():
 
     block_flag: bool = ns.b
     fulldump: bool = ns.d
-    silent = ns.s
+    legacy_harmony.silent = ns.s
 
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
@@ -296,7 +317,7 @@ def main():
     if ns.B:
         charm_options.append("-B" + ns.B)
         behavior = ns.B
-    
+
     open_browser = not ns.noweb
 
     filenames: List[pathlib.Path] = ns.files
@@ -379,7 +400,7 @@ def main():
     if print_code is None:
         nodes, bad_node = run(code, scope.labels, block_flag)
         if bad_node is not None:
-            if not silent:
+            if not legacy_harmony.silent:
                 htmldump(nodes, code, scope, bad_node, fulldump, False)
             return 1
     else:

@@ -12,9 +12,11 @@ from harmony_model_checker.util import logger
 
 _logger = logger.get_logger(__name__)
 
+
 def _get_latest_version(package: str):
     try:
-        resp = requests.get(f'https://pypi.python.org/pypi/{package}/json', timeout=2)
+        resp = requests.get(
+            f'https://pypi.python.org/pypi/{package}/json', timeout=2)
         if resp.status_code == 200:
             data = resp.json()
             return data['info']['version']
@@ -22,11 +24,14 @@ def _get_latest_version(package: str):
     except requests.exceptions.Timeout:
         return '???'
 
+
 def _cache_is_valid(expiration: int):
     return time.time() < expiration
 
+
 def _get_cache_file(package: str):
     return pathlib.Path(tempfile.gettempdir()) / f"{package}_version_cache"
+
 
 def _log_messages(messages: list):
     for args in messages:
@@ -34,6 +39,15 @@ def _log_messages(messages: list):
 
 
 def check_outdated(package: str, version: str) -> None:
+    """[check_outdated] checks if the version of a package is the
+    latest version by calling the PyPi registry. To avoid excessive
+    online checks, the latest version string is cached as a file. The
+    cache is used for a day.
+
+    Args:
+        package (str): [name of the package]
+        version (str): [current version to compare against]
+    """
     messages_to_log = []
     try:
         parsed_version = pkg_resources.parse_version(version)
@@ -54,7 +68,7 @@ def check_outdated(package: str, version: str) -> None:
         if parsed_version > parsed_latest:
             latest = _get_latest_version(package)
             parsed_latest = pkg_resources.parse_version(latest)
-            
+
             if parsed_version > parsed_latest:
                 # no message to avoid issues in development
                 return
@@ -72,7 +86,7 @@ def check_outdated(package: str, version: str) -> None:
         cache_file.write_text(
             json.dumps([
                 latest,
-                time.time() + 86400 # number of seconds in a day
+                time.time() + 86400  # number of seconds in a day
             ]))
     except Exception:
         messages_to_log.append([
