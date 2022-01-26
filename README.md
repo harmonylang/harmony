@@ -103,8 +103,6 @@ Otherwise, add that path displayed in the message to your `PATH` variable. See [
 
 Once you have installed `harmony-model-checker`, you should be able to use the `harmony` command on your command line.
 
-You check which version you have by running `harmony --version`.
-
 ## Harmony on VSCode
 
 Harmony is available as an extension on VSCode, which includes syntax highlighting and basic parser checks.
@@ -118,8 +116,6 @@ Harmony can be updated by running the following `pip` command on the command lin
 ```sh
 pip install --upgrade harmony-model-checker
 ```
-
-In Harmony versions `1.2.0` and higher, the compiler will output a warning if the currently installed version of Harmony is outdated and an updated one can be installed.
 
 ## Modifying your PATH variable
 
