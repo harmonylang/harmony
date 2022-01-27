@@ -7,7 +7,7 @@ def parse(file):
         js = json.load(f)
 
         states = { "__error__": {} }
-        initial_state = None;
+        initial_state = None
         final_states = set()
         input_symbols = set()
         transitions = { "__error__": {} }

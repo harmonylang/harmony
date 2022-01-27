@@ -3,7 +3,8 @@ network = {}
 def send(m):
     atomically network |= { m }
 
-def bank(self, balance):
+def bank(self, _balance):
+    var balance = _balance
     var status, received = (), {}
     while True:
         atomically when exists req in network - received when req.dst == self:

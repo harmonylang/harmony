@@ -1,0 +1,18 @@
+pool = []
+next = 0
+
+def malloc(v):
+    atomically:
+        pool[next] = v
+        result = ?pool[next]
+        next += 1
+
+# Commented out code tests for bad frees, but can lead to data races
+def free(r):
+    atomically:
+       # let poolcopy = pool:
+            del !r
+       #    assert poolcopy != pool, .bad_free
+
+def leak_check():
+    assert pool == [], .alloc_leak

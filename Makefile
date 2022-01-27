@@ -1,7 +1,12 @@
-all:
-	(cd src/harmony; sh gen.scr) > harmony.py
-	(cd src/charm; sh gen.scr) > charm.c
-	gcc -O3 -std=c99 charm.c -m64 -o charm.exe -lpthread
+all: gen parser
+	python3 setup.py build_ext -i
+
+parser:
+	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
+
+gen:
+	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
+	(cd src/charm; sh gen.scr) > harmony_model_checker/charm.c
 	chmod +x harmony
 
 behavior: x.hny
@@ -20,5 +25,18 @@ iface: iface.py iface.json
 	dot -Tpdf x.gv > x.pdf
 	open x.pdf
 
+dist: gen parser
+	rm -rf build/ dist/ harmony_model_checker.egg-info/
+	python3 setup.py sdist
+
+upload-test: dist
+	twine upload -r testpypi dist/*
+
+upload: dist
+	twine upload dist/*
+
 clean:
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
+	(cd harmony_model_checker/modules; rm -f *.htm *.hvm *.hco *.png *.hfa *.tla *.gv *.html)
+	rm -rf compiler_integration_results.md compiler_integration_results/
+	rm -rf build/ dist/ harmony_model_checker.egg-info/

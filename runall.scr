@@ -342,3 +342,12 @@ echo ==============
 echo abptest
 echo ==============
 ./harmony --noweb code/abptest.hny
+
+echo ==============
+echo stacktest
+echo ==============
+./harmony --noweb -mstack=stack1 code/stacktest.hny
+./harmony --noweb -mstack=stack2 code/stacktest.hny
+./harmony --noweb -mstack=stack3 code/stacktest.hny
+./harmony --noweb -mstack=stack4 code/stacktest.hny
+

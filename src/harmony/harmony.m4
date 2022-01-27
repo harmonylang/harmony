@@ -51,7 +51,8 @@ import functools
 import json
 import subprocess
 import webbrowser
-from typing import Any
+from typing import Any, List, NamedTuple
+
 
 try:
     import pydot
@@ -84,22 +85,36 @@ m4_include(brief.py)
 m4_include(genhtml.py)
 m4_include(behavior.py)
 
+
+class ErrorToken(NamedTuple):
+    line: int
+    message: int
+    column: int
+    lexeme: str
+    filename: str
+    is_eof_error: bool
+
+class HarmonyCompilerErrorCollection(Exception):
+    def __init__(self, errors: List[ErrorToken]) -> None:
+        super().__init__()
+        self.errors = errors
+
 class HarmonyCompilerError(Exception):
     """
     Error encountered during the compilation of a Harmony program.
     """
     def __init__(self, message: str, filename: str = None, line: int = None,
-                 column: int = None, lexeme: Any = None, is_eof_error = False):
+                 column: int = None, lexeme: Any = None, is_eof_error=False):
+        super().__init__()
         self.message = message
-        self.token = {
-            "line": line,
-            "message": message,
-            "column": column,
-            "lexeme": str(lexeme),
-            "filename": filename,
-            "is_eof_error": is_eof_error
-        }
-
+        self.token = ErrorToken(
+            line=line,
+            message=message,
+            column=column,
+            lexeme=str(lexeme),
+            filename=filename,
+            is_eof_error=is_eof_error
+        )
 
 def bag_add(bag, item):
     cnt = bag.get(item)
@@ -8013,9 +8028,12 @@ def main():
     except HarmonyCompilerError as e:
         if parse_code_only:
             with open(outputfiles["hvm"], "w") as f:
-                data = dict(e.token, status="error")
+                data = {
+                    "errors": [e.token._as_dict()],
+                    "status": "error"
+                }
                 f.write(json.dumps(data))
-        print(e.message, e.token)
+        print(e.message)
         sys.exit(1)
 
     if parse_code_only:
