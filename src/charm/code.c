@@ -43,7 +43,7 @@ struct code_t code_init_parse(struct values_t *values, struct json_value *json_c
     code.len = json_code->u.list.nvals;
     code.instrs = malloc(code.len * sizeof(struct instr_t));
 
-    for (int i = 0; i < json_code->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < json_code->u.list.nvals; i++) {
         code.instrs[i] = code_instr_parse(values, json_code->u.list.vals[i]);
     }
 

@@ -247,7 +247,7 @@ static void value_json_int(struct strbuf *sb, hvalue_t v) {
 
 static void value_string_atom(struct strbuf *sb, hvalue_t v) {
     int size;
-    char *s = value_get(v, &size), *r;
+    char *s = value_get(v, &size);
 
     strbuf_append(sb, "\"", 1);
 	while (size > 0) {
@@ -303,8 +303,8 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
     size /= 2 * sizeof(hvalue_t);
 
     bool islist = true;
-    for (hvalue_t i = 0; i < size; i++) {
-        if (vals[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
+    for (int i = 0; i < size; i++) {
+        if (vals[2*i] != (((hvalue_t) i << VALUE_BITS) | VALUE_INT)) {
             islist = false;
             break;
         }
@@ -471,8 +471,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
     strbuf_printf(sb, ", %d)", ctx->pc);
     free(name);
 #else
-    char *s;
-
     strbuf_printf(sb, "name=");
     strbuf_value_string(sb, ctx->name);
     strbuf_printf(sb, ",entry=");
@@ -515,7 +513,6 @@ static void value_string_context(struct strbuf *sb, hvalue_t v) {
 
 static void value_json_context(struct strbuf *sb, hvalue_t v) {
     struct context *ctx = value_get(v, NULL);
-    char *val;
     
     strbuf_printf(sb, "{ \"type\": \"context\", \"value\": {");
     strbuf_printf(sb, "\"name\": ");
@@ -672,7 +669,7 @@ hvalue_t value_dict(struct values_t *values, struct dict *map){
         return VALUE_DICT;
     }
     hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t) * 2);
-    for (int i = 0; i < value->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
         struct json_value *k = dict_lookup(jv->u.map, "key", 3);
@@ -697,7 +694,7 @@ hvalue_t value_set(struct values_t *values, struct dict *map){
         return (hvalue_t) VALUE_SET;
     }
     hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t));
-    for (int i = 0; i < value->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(values, jv->u.map);
@@ -716,7 +713,7 @@ hvalue_t value_address(struct values_t *values, struct dict *map){
         return (hvalue_t) VALUE_ADDRESS;
     }
     hvalue_t *vals = malloc(value->u.list.nvals * sizeof(hvalue_t));
-    for (int i = 0; i < value->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < value->u.list.nvals; i++) {
         struct json_value *jv = value->u.list.vals[i];
         assert(jv->type == JV_MAP);
         vals[i] = value_from_json(values, jv->u.map);
@@ -777,16 +774,6 @@ void value_set_concurrent(struct values_t *values, int concurrent){
 // Store key:value in the given dictionary and returns its value code
 hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
     assert((dict & VALUE_MASK) == VALUE_DICT);
-
-    if (false) {
-        char *p = value_string(value);
-        char *q = value_string(dict);
-        char *r = value_string(key);
-        printf("DICT_STORE %s %s %s\n", p, q, r);
-        free(p);
-        free(q);
-        free(r);
-    }
 
     hvalue_t *vals;
     int size;
@@ -913,7 +900,7 @@ bool value_dict_tryload(
         key >>= VALUE_BITS;
         int size;
         char *chars = value_get(dict, &size);
-        if (key >= size) {
+        if ((int) key >= size) {
             return false;
         }
         *result = value_put_atom(values, chars + key, 1);
@@ -981,7 +968,6 @@ hvalue_t value_ctx_pop(struct context **pctx){
 }
 
 hvalue_t value_ctx_failure(struct context *ctx, struct values_t *values, char *fmt, ...){
-    char *r;
     va_list args;
 
     assert(ctx->failure == 0);

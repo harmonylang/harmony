@@ -1,6 +1,6 @@
 struct strbuf {
     char *buf;
-    int len, allocated;
+    unsigned int len, allocated;
 };
 
 void strbuf_init(struct strbuf *sb);

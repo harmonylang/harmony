@@ -1263,9 +1263,6 @@ static void do_work(struct worker *w){
 
 		if (state->choosing != 0) {
 			assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
-			if (false) {
-				printf("CHOOSING %"PRI_HVAL"\n", state->choosing);
-			}
 
 			struct context *cc = value_get(state->choosing, NULL);
 			assert(cc != NULL);
@@ -1559,11 +1556,13 @@ static void print_transitions(FILE *out, struct dict *symbols, struct edge *edge
     dict_delete(d);
 }
 
+#ifdef OBSOLETE
 static void pr_state(struct global_t *global, FILE *fp, struct state *state, int index){
     char *v = state_string(state);
     fprintf(fp, "%s\n", v);
     free(v);
 }
+#endif
 
 static void usage(char *prog){
     fprintf(stderr, "Usage: %s [-c] [-t<maxtime>] [-B<dfafile>] -o<outfile> file.json\n", prog);
@@ -1893,6 +1892,7 @@ int main(int argc, char **argv){
         }
     }
 
+#ifdef OBSOLETE
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
@@ -1952,6 +1952,7 @@ int main(int argc, char **argv){
         }
         fclose(df);
     }
+#endif // OBSOLETE
 
     // Look for data races
     // TODO.  Can easily be parallelized

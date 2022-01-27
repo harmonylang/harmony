@@ -2670,7 +2670,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         unsigned int cnt = size / (2 * sizeof(hvalue_t));
         int index = 0;
         for (int i = 0; i < result; i++) {
-            for (int j = 0; j < cnt; j++) {
+            for (unsigned int j = 0; j < cnt; j++) {
                 r[2*index] = (index << VALUE_BITS) | VALUE_INT;
                 r[2*index+1] = vals[2*j+1];
                 index++;
