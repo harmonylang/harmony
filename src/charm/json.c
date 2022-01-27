@@ -29,9 +29,7 @@ void json_value_free(struct json_value *jv){
 		break;
 	case JV_LIST:
 		{
-			int i;
-
-			for (i = 0; i < jv->u.list.nvals; i++) {
+			for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
 				json_value_free(jv->u.list.vals[i]);
 			}
 			free(jv->u.list.vals);
@@ -270,7 +268,7 @@ static void json_dump_map(void *env, const void *key, unsigned int keylen, void 
 }
 
 static void json_dump_string(json_buf_t buf){
-	int i;
+	unsigned int i;
 
 	/* See if we should quote it.
 	 */
@@ -312,8 +310,7 @@ static void json_dump_ind(struct json_value *jv, unsigned int ind){
 		break;
 	case JV_LIST:
 		printf("[\n");
-		int i;
-		for (i = 0; i < jv->u.list.nvals; i++) {
+		for (unsigned int i = 0; i < jv->u.list.nvals; i++) {
 			json_indent(ind + 2);
 			json_dump_ind(jv->u.list.vals[i], ind + 4);
 		}

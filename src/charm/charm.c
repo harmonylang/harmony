@@ -81,7 +81,6 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
             b = false;
         }
         if (!b) {
-            struct failure *f = new_alloc(struct failure);
             node->ftype = FAIL_INVARIANT;
             break;
         }
@@ -194,10 +193,12 @@ static bool onestep(
         oi = global->code.instrs[step->ctx->pc].oi;
         if (global->code.instrs[step->ctx->pc].choose) {
             assert(step->ctx->sp > 0);
+#ifdef TODO
             if (0 && step->ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step->ctx, &global->values, "can't choose in assertion or invariant");
                 break;
             }
+#endif
             hvalue_t s = step->ctx->stack[step->ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &global->values, "choose operation requires a set");
@@ -309,8 +310,6 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    int nctxs;
-    hvalue_t *ctxs = value_get(sc->ctxbag, &nctxs);
     minheap_insert(w->results[weight], next);
     return true;
 }
@@ -897,11 +896,13 @@ hvalue_t twostep(
         oi = global->code.instrs[step.ctx->pc].oi;
         if (global->code.instrs[step.ctx->pc].choose) {
             assert(step.ctx->sp > 0);
+#ifdef TODO
             if (0 && step.ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step.ctx, &global->values, "can't choose in assertion or invariant");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
+#endif
             hvalue_t s = step.ctx->stack[step.ctx->sp - 1];
             if ((s & VALUE_MASK) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
@@ -2135,7 +2136,7 @@ int main(int argc, char **argv){
     fprintf(out, "  \"code\": [\n");
     jc = dict_lookup(jv->u.map, "pretty", 6);
     assert(jc->type == JV_LIST);
-    for (int i = 0; i < jc->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < jc->u.list.nvals; i++) {
         struct json_value *next = jc->u.list.vals[i];
         assert(next->type == JV_LIST);
         assert(next->u.list.nvals == 2);
@@ -2152,7 +2153,7 @@ int main(int argc, char **argv){
     fprintf(out, "  ],\n");
 
     fprintf(out, "  \"explain\": [\n");
-    for (int i = 0; i < jc->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < jc->u.list.nvals; i++) {
         struct json_value *next = jc->u.list.vals[i];
         assert(next->type == JV_LIST);
         assert(next->u.list.nvals == 2);

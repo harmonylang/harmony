@@ -601,7 +601,7 @@ char *value_json(hvalue_t v){
 }
 
 bool atom_cmp(json_buf_t buf, char *s){
-    int n = strlen(s);
+    unsigned int n = strlen(s);
     if (n != buf.len) {
         return false;
     }

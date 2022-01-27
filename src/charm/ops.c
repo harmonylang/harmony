@@ -92,7 +92,7 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
             return value_ctx_failure(ctx, values, "match: tuple size mismatch");
         }
         for (int i = 0; i < size; i++) {
-            if (vals[2*i] != ((i << VALUE_BITS) | VALUE_INT)) {
+            if (vals[2*i] != (((hvalue_t) i << VALUE_BITS) | VALUE_INT)) {
                 return value_ctx_failure(ctx, values, "match: not a tuple");
             }
             vars = var_match_rec(ctx, vt->u.tuple.elements[i], values, vals[2*i+1], vars);
@@ -312,9 +312,6 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
         value_ctx_failure(step->ctx, &global->values, "None unexpected");
         return;
     }
-    if (false) {
-        printf("ADDRESS %"PRIx64"\n", index);
-    }
 
     int size;
     hvalue_t *indices = value_copy(av, &size);
@@ -355,7 +352,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             e >>= VALUE_BITS;
             int size;
             char *chars = value_get(method, &size);
-            if (e >= size) {
+            if ((int) e >= size) {
                 value_ctx_failure(step->ctx, &global->values, "Index out of range");
                 return;
             }
@@ -728,19 +725,12 @@ int invariant_cnt(const void *env){
 
 void op_Jump(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Jump *ej = env;
-
-    if (false) {
-        printf("JUMP %d\n", ej->pc);
-    }
     step->ctx->pc = ej->pc;
 }
 
 void op_JumpCond(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_JumpCond *ej = env;
 
-    if (false) {
-        printf("JUMPCOND %d\n", ej->pc);
-    }
     hvalue_t v = value_ctx_pop(&step->ctx);
     if ((ej->cond == VALUE_FALSE || ej->cond == VALUE_TRUE) &&
                             !(v == VALUE_FALSE || v == VALUE_TRUE)) {
@@ -893,12 +883,6 @@ void op_Pop(const void *env, struct state *state, struct step *step, struct glob
 void op_Push(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Push *ep = env;
 
-    if (false) {
-        char *p = value_string(ep->value);
-        printf("PUSH %s\n", p);
-        free(p);
-    }
-
     value_ctx_push(&step->ctx, ep->value);
     step->ctx->pc++;
 }
@@ -941,9 +925,6 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
     (void) value_ctx_pop(&step->ctx);   // argument saved for stack trace
     if (step->ctx->sp == 0) {     // __init__
         step->ctx->terminated = true;
-        if (false) {
-            printf("RETURN INIT\n");
-        }
         return;
     }
     hvalue_t calltype = value_ctx_pop(&step->ctx);
@@ -1086,15 +1067,7 @@ void op_Spawn(
     value_ctx_push(&ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
     value_ctx_push(&ctx, arg);
     hvalue_t v = value_put_context(&global->values, ctx);
-
     state->ctxbag = value_bag_add(&global->values, state->ctxbag, v, 1);
-
-    if (false) {
-        char *p = value_string(state->ctxbag);
-        printf("SPAWN --> %s\n", p);
-        free(p);
-    }
-
     step->ctx->pc++;
 }
 
@@ -1734,7 +1707,7 @@ hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
-        if (ctx->pc == e) {
+        if ((hvalue_t) ctx->pc == e) {
             bag = value_bag_add(values, bag, nametag(ctx, values),
                 (int) (vals[i+1] >> VALUE_BITS));
         }
@@ -1763,7 +1736,7 @@ hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, 
         assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
         assert((vals[i+1] & VALUE_MASK) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
-        if (ctx->pc == e) {
+        if ((hvalue_t) ctx->pc == e) {
             result += vals[i+1] >> VALUE_BITS;;
         }
     }

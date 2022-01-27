@@ -18,7 +18,7 @@
 #define CHUNK_SIZE	4096
 
 double gettime(){
-#ifdef TIME_UTC
+#if defined(TIME_UTC) && !defined(__APPLE__)
     struct timespec ts;
     timespec_get(&ts, TIME_UTC);
     return ts.tv_sec + (double) ts.tv_nsec / 1000000000;

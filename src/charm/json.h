@@ -3,7 +3,7 @@
 
 typedef struct json_buf {
     char *base;
-    int len;
+    unsigned int len;
 } json_buf_t;
 
 struct json_value { 

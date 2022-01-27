@@ -65,7 +65,7 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
     assert(nodes->type == JV_LIST);
     int max_idx = 0;
     struct dfa_state *states = NULL;
-    for (int i = 0; i < nodes->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < nodes->u.list.nvals; i++) {
         struct json_value *node = nodes->u.list.vals[i];
         assert(node->type == JV_MAP);
 
@@ -102,7 +102,7 @@ struct dfa *dfa_read(struct values_t *values, char *fname){
     // read the list of edges
     struct json_value *edges = dict_lookup(jv->u.map, "edges", 5);
     assert(edges->type == JV_LIST);
-    for (int i = 0; i < edges->u.list.nvals; i++) {
+    for (unsigned int i = 0; i < edges->u.list.nvals; i++) {
         struct json_value *edge = edges->u.list.vals[i];
         assert(edge->type == JV_MAP);
 
