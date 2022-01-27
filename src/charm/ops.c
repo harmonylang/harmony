@@ -1597,7 +1597,7 @@ void *init_StoreVar(struct dict *map, struct values_t *values){
 
 hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
-    int64_t e = args[0];
+    hvalue_t e = args[0];
     if ((e & VALUE_MASK) != VALUE_INT) {
         return value_ctx_failure(ctx, values, "abs() can only be applied to integers");
     }
