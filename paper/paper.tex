@@ -498,7 +498,7 @@ def Lock(held):
 def acquire(lk):
     atomically:
         if lk->held:
-            stop lk->blocked[len lk->blocked]
+            stop ?lk->blocked[len lk->blocked]
         else:
             lk->held = True
 
@@ -519,16 +519,23 @@ def release(lk):
 
 \subsection{Continuations}
 
-The Harmony <{stop x}> expression stops the current thread and saves
-its state in the variable <{x}>.  Another thread can resume the
-thread using the statement <{go x r}>, which causes the original
-thread to resume, with the <{stop x}> expression evaluating to the
-value <{r}>.  \autoref{fig:continuation} shows another implementation
+<{:var:p}>
+The Harmony <{save(e)}> expression returns a tuple containing <{e}>
+and the current context.
+Another thread can instantiate a context <{c}>
+using the statement <{go c r}>, with the context
+returning <{r}> from the <{save(e)}> expression.
+This is similar to the C \texttt{setjmp/longjmp} construct.
+Similar to <{save}>, the <{stop p}> expression saves the current
+context in <{!p}>, where <{p}> is the address value of a shared variable.
+Unlike <{save}>, the context is removed from the current set of
+threads.
+\autoref{fig:continuation} shows another implementation
 of the lock specification of \autoref{fig:synch}(a) using continuations,
 where blocked threads are placed on a FIFO queue and released in
-that order.  Besides synchronization and scheduling, continuations
-also enable the implementation of a primitive such as Posix
-\texttt{fork}.
+that order.  Besides synchronization, scheduling, and exception handling,
+continuations also enable the implementation of a primitive such as Posix
+\texttt{fork} or the implementation of co-routines.
 
 \subsection{Interrupts}
 
