@@ -1352,6 +1352,22 @@ class DelOp(Op):
             state.delete(lv)
             context.pc += 1
 
+class SaveOp(Op):
+    def __repr__(self):
+        return "Save"
+
+    def jdump(self):
+        return '{ "op": "Save" }'
+
+    def tladump(self):
+        return "OpSave(self)"
+
+    def explain(self):
+        return "pop a value and save context"
+
+    def eval(self, state, context):
+        assert False
+
 class StopOp(Op):
     def __init__(self, name):
         self.name = name
@@ -3623,6 +3639,9 @@ class ExpressionRule(Rule):
         if lexeme == "setintlevel":
             (ast, t) = ExpressionRule().parse(t[1:])
             return (SetIntLevelAST(func, ast), t)
+        if lexeme == "save":
+            (ast, t) = ExpressionRule().parse(t[1:])
+            return (SaveAST(func, ast), t)
         if lexeme == "stop":
             (ast, t) = ExpressionRule().parse(t[1:])
             return (StopAST(func, ast), t)
@@ -3801,6 +3820,19 @@ class SetIntLevelAST(AST):
     def compile(self, scope, code):
         self.arg.compile(scope, code)
         code.append(SetIntLevelOp())
+
+class SaveAST(AST):
+    def __init__(self, token, expr):
+        AST.__init__(self, token, False)
+        self.expr = expr
+
+    def __repr__(self):
+        return "Save " + str(self.expr)
+
+    def compile(self, scope, code):
+        self.expr.compile(scope, code)
+        code.append(SaveOp())
+        code.append(ContinueOp())
 
 class StopAST(AST):
     def __init__(self, token, lv):

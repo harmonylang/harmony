@@ -614,6 +614,9 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.SETINTLEVEL():
             expr = self.visit(ctx.expr_rule())
             return SetIntLevelAST(tkn, expr)
+        if ctx.SAVE():
+            expr = self.visit(ctx.expr_rule())
+            return SaveAST(tkn, expr)
         if ctx.STOP():
             expr = self.visit(ctx.expr_rule())
             return StopAST(tkn, expr)

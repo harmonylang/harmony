@@ -1120,6 +1120,28 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
     panic("op_Split: not a set or dict");
 }
 
+void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
+    assert((state->vars & VALUE_MASK) == VALUE_DICT);
+    hvalue_t e = value_ctx_pop(&step->ctx);
+
+    // Save the context
+    step->ctx->stopped = true;
+    step->ctx->pc++;
+    hvalue_t v = value_put_context(&global->values, step->ctx);
+
+    // Restore the stopped mode to false
+    step->ctx->stopped = false;
+
+    // Push a tuple returning e and the context
+    hvalue_t d[4];
+    d[0] = ((hvalue_t) 0 << VALUE_BITS) | VALUE_INT;
+    d[1] = e;
+    d[2] = ((hvalue_t) 1 << VALUE_BITS) | VALUE_INT;
+    d[3] = v;
+    hvalue_t result = value_put_dict(&global->values, d, sizeof(d));
+    value_ctx_push(&step->ctx, result);
+}
+
 void op_Stop(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Stop *es = env;
 
@@ -1299,6 +1321,7 @@ void *init_Pop(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyDec(struct dict *map, struct values_t *values){ return NULL; }
 void *init_ReadonlyInc(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Return(struct dict *map, struct values_t *values){ return NULL; }
+void *init_Save(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Sequential(struct dict *map, struct values_t *values){ return NULL; }
 void *init_SetIntLevel(struct dict *map, struct values_t *values){ return NULL; }
 void *init_Trap(struct dict *map, struct values_t *values){ return NULL; }
@@ -2871,6 +2894,7 @@ struct op_info op_table[] = {
 	{ "ReadonlyDec", init_ReadonlyDec, op_ReadonlyDec },
 	{ "ReadonlyInc", init_ReadonlyInc, op_ReadonlyInc },
 	{ "Return", init_Return, op_Return },
+	{ "Save", init_Save, op_Save },
 	{ "Sequential", init_Sequential, op_Sequential },
 	{ "SetIntLevel", init_SetIntLevel, op_SetIntLevel },
 	{ "Spawn", init_Spawn, op_Spawn },

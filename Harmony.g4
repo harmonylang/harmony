@@ -153,6 +153,7 @@ nary_expr
 expr_rule
     : LAMBDA bound COLON nary_expr 'end'
     | SETINTLEVEL expr_rule
+    | SAVE expr_rule
     | STOP expr_rule
     | POINTER_OF expr_rule
     | unary_op expr_rule
@@ -286,6 +287,7 @@ FROM     : 'from';
 RANGE    : '..';
 SETINTLEVEL : 'setintlevel';
 ARROW    : '->';
+SAVE     : 'save';
 STOP     : 'stop';
 LAMBDA   : 'lambda';
 ADDRESS_OF : '?';
