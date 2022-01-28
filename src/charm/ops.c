@@ -1160,13 +1160,14 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
             free(p);
             return;
         }
-        step->ctx->stopped = true;
         step->ctx->pc++;
 
         if (av == VALUE_ADDRESS) {
+            step->ctx->terminated = true;
             return;
         }
 
+        step->ctx->stopped = true;
         hvalue_t v = value_put_context(&global->values, step->ctx);
         int size;
         hvalue_t *indices = value_get(av, &size);
