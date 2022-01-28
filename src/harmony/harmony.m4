@@ -7783,16 +7783,32 @@ OpLoad(self, v) ==
         /\\ UpdateContext(self, next)
         /\\ UNCHANGED shared
 
-\* Store the context at the pushed address and remove it from the
-\* context bag and active set.  Make all contexts in the context bag
-\* active
+\* Return the context and the given parameter
+OpSave(self) ==
+    LET valu == Head(self.stack)
+        intm == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
+        m1   == InsertMap(EmptyFunc, HInt(0), valu)
+        m2   == InsertMap(m1, HInt(1), intm)
+        next == [intm EXCEPT !.stack = << HDict(m2) >> \\o @]
+    IN
+        /\\ self.atomic > 0
+        /\\ UpdateContext(self, next)
+        /\\ UNCHANGED shared
+
+\* Store the context at the pushed address (unless it is None or ()) and
+\* remove it from the  context bag and active set.  Make all contexts in
+\* the context bag
 OpStopInd(self) ==
     LET addr == Head(self.stack)
         next == [self EXCEPT !.pc = @ + 1, !.stack = Tail(@)]
     IN
         /\\ self.atomic > 0
         /\\ RemoveContext(self)
-        /\\ shared' = UpdateDictAddr(shared, addr, HContext(next))
+        /\\ IF addr = None \\/ addr = EmptyDict
+            THEN
+                UNCHANGED shared
+            ELSE
+                shared' = UpdateDictAddr(shared, addr, HContext(next))
 
 \* What Return should do depends on whether the methods was spawned
 \* or called as an ordinary method.  To indicate this, Spawn pushes the

@@ -7054,7 +7054,7 @@ The <{stop p}> expression stores the context of the thread right after
 the expression in <{!p}> (i.e., <{p}> must be an address value) and
 terminates the thread.  The thread can later be reinstantiated with
 <{go !p r}>, in which case the <{stop}> expression returns <{r}>.
-A thread can be for ever suspended using <{stop None}>.
+A thread can be for ever suspended using <{stop None}> or just <{stop()}>.
 
 \begin{comment}
 Some of these values can be extracted.  In particular, if <{c}>

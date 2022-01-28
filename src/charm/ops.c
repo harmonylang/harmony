@@ -1154,6 +1154,12 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
     if (es == 0) {
         hvalue_t av = value_ctx_pop(&step->ctx);
+        if (av == VALUE_ADDRESS || av == VALUE_DICT) {
+            step->ctx->pc++;
+            step->ctx->terminated = true;
+            return;
+        }
+
         if ((av & VALUE_MASK) != VALUE_ADDRESS) {
             char *p = value_string(av);
             value_ctx_failure(step->ctx, &global->values, "Stop %s: not an address", p);
@@ -1161,11 +1167,6 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
             return;
         }
         step->ctx->pc++;
-
-        if (av == VALUE_ADDRESS) {
-            step->ctx->terminated = true;
-            return;
-        }
 
         step->ctx->stopped = true;
         hvalue_t v = value_put_context(&global->values, step->ctx);
