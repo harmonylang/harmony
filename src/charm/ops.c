@@ -2300,10 +2300,6 @@ hvalue_t f_mod(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     return (result << VALUE_BITS) | VALUE_INT;
 }
 
-hvalue_t f_get_context(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
-    return value_put_context(values, ctx);
-}
-
 hvalue_t f_not(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
@@ -2930,7 +2926,6 @@ struct f_info f_table[] = {
     { "BagAdd", f_value_bag_add },
     { "countLabel", f_countLabel },
     { "DictAdd", f_dict_add },
-    { "get_context", f_get_context },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
     { "keys", f_keys },
