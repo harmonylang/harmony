@@ -1160,34 +1160,29 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
             free(p);
             return;
         }
+        step->ctx->stopped = true;
+        step->ctx->pc++;
+
         if (av == VALUE_ADDRESS) {
-            value_ctx_failure(step->ctx, &global->values, "Stop: address is None");
             return;
         }
 
+        hvalue_t v = value_put_context(&global->values, step->ctx);
         int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
-
-        step->ctx->stopped = true;
-        step->ctx->pc++;
-        hvalue_t v = value_put_context(&global->values, step->ctx);
-
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &global->values, "Stop: bad address: %s", x);
             free(x);
-            return;
         }
     }
     else {
         step->ctx->stopped = true;
         step->ctx->pc++;
         hvalue_t v = value_put_context(&global->values, step->ctx);
-
         if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
             value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
-            return;
         }
     }
 }

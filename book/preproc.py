@@ -80,6 +80,7 @@ reserved = {
     "or",
     "pass",
     "print",
+    "save",
     "select",
     "sequential",
     "setintlevel",

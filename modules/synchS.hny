@@ -20,7 +20,7 @@ def Lock():
 def acquire(binsema):
     atomically:
         if binsema->acquired:
-            stop binsema->suspended[len binsema->suspended]
+            stop ?binsema->suspended[len binsema->suspended]
             assert binsema->acquired
         else:
             binsema->acquired = True
@@ -43,7 +43,7 @@ def Condition():
 def wait(c, lk):
     atomically:
         release(lk)
-        stop (!c)[len !c]
+        stop ?(!c)[len !c]
     acquire(lk)
 
 def notify(c):
@@ -65,7 +65,7 @@ def P(sema):
         if sema->count > 0:
             sema->count -= 1
         else:
-            stop sema->waiters[len sema->waiters]
+            stop ?sema->waiters[len sema->waiters]
         
 def V(sema):
     atomically let cnt, waiters = sema->count, sema->waiters:
@@ -82,7 +82,7 @@ def Queue():
 def get(q):
     atomically:
         if q->list == []:
-            stop q->waiters[len q->waiters]
+            stop ?q->waiters[len q->waiters]
         
         result = list.head(q->list)
         q->list = list.tail(q->list)

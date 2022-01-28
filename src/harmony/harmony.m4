@@ -3835,15 +3835,16 @@ class SaveAST(AST):
         code.append(ContinueOp())
 
 class StopAST(AST):
-    def __init__(self, token, lv):
+    def __init__(self, token, expr):
         AST.__init__(self, token, False)
-        self.lv = lv
+        self.expr = expr
 
     def __repr__(self):
-        return "Stop " + str(self.lv)
+        return "Stop " + str(self.expr)
 
     def compile(self, scope, code):
-        self.lv.ph1(scope, code)
+        # self.expr.ph1(scope, code)
+        self.expr.compile(scope, code)
         code.append(StopOp(None))
         code.append(ContinueOp())
 
