@@ -4587,7 +4587,7 @@ Method <{wait}> adds the context of the thread---used as a unique
 identifier for the thread---to the bag,
 incrementing the number of threads in the bag with the same context.
 The Harmony <{save}> expression (\autoref{ap:context}) returns a tuple
-containing a value (in this case `<{()}>' and the context of the thread.
+containing a value (in this case `<{()}>') and the context of the thread.
 <{wait}> then loops until that count is restored to the
 value that it had upon entry to <{wait}>.
 Method <{notify}> removes an arbitrary context from
