@@ -61,7 +61,6 @@ reserved = {
     "from",
     "False",
     "for",
-    "get_context",
     "go",
     "hash",
     "if",

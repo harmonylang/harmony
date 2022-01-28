@@ -37,7 +37,7 @@ def Condition():
 
 def wait(c, lk):
     var cnt = 0
-    let ctx = get_context():
+    let (), ctx = save():
         atomically:
             cnt = bag.multiplicity(!c, ctx)
             !c = bag.add(!c, ctx)
