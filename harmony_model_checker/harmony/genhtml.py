@@ -1,3 +1,12 @@
+import json
+import os
+import queue
+from pathlib import Path
+
+from harmony_model_checker.harmony.jsonstring import json_string
+
+
+
 class GenHTML:
     def __init__(self):
         self.top = {}
@@ -6,12 +15,9 @@ class GenHTML:
         self.nthreads = 0
         self.vardir = {}
 
-        self.style = """
-m4_include(charm.css)
-        """
-        self.js = """
-m4_include(charm.js)
-        """
+        self_dir = Path(__file__).parent
+        self.style = (self_dir / "charm.css").read_text()
+        self.js = (self_dir / "charm.js").read_text()
 
     def file_include(self, name, f):
         with open(name) as g:
@@ -34,7 +40,7 @@ m4_include(charm.js)
         print("    </canvas>", file=f)
         print("  </td>", file=f)
 
-        print("  <td align='center'>", file=f);
+        print("  <td align='center'>", file=f)
         print("  </td>", file=f)
 
         for i in range(width):
@@ -153,10 +159,10 @@ m4_include(charm.js)
         print("  <div id='table-scroll'>", file=f)
         print("    <table border='1'>", file=f)
         print("      <tbody>", file=f)
-        alter = False;
+        alter = False
         for pc, instr in enumerate(self.top["code"]):
             if str(pc) in self.top["locations"]:
-                alter = not alter;
+                alter = not alter
             print("        <tr id='P%d'>"%pc, file=f)
             print("          <td align='right'>", file=f)
             print("            <a name='P%d'>%d</a>&nbsp;"%(pc, pc), file=f)

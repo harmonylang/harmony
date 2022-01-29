@@ -5,7 +5,6 @@ parser:
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
 
 gen:
-	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
 	(cd src/charm; sh gen.scr) > harmony_model_checker/charm.c
 	chmod +x harmony
 

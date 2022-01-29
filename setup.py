@@ -117,7 +117,9 @@ setuptools.setup(
     package_data={
         PACKAGE_NAME: [
             "charm.c",
-            "modules/*.hny"
+            "modules/*.hny",
+            "harmony/charm.js",
+            "harmony/charm.css"
         ]
     },
     entry_points={

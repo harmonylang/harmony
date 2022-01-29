@@ -118,7 +118,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
         
         start_time = time.process_time()
         baseline_result = subprocess.run(
-            f'python harmony_model_checker/harmony.py -A {harmony_args or ""} {filename}'.split(),
+            f'./harmony -f -A {harmony_args or ""} {filename}'.split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding='utf8'
