@@ -7,6 +7,8 @@ parser:
 gen:
 	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
 	(cd src/charm; sh gen.scr) > harmony_model_checker/charm.c
+	printf "\n__package__ = \"harmony_model_checker\"\n" > harmony_model_checker/__init__.py
+	printf "__version__ = \"1.2.%d\"\n" `git log --pretty=format:'' | wc -l | sed 's/[ \t]//g'` >> harmony_model_checker/__init__.py
 	chmod +x harmony
 
 behavior: x.hny
