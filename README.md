@@ -24,7 +24,7 @@ Harmony requires the following to be installed:
 
 In the following instructions, Windows users using WSL should follows instructions for Linux.
 
-For users of a Cornell CS Department Linux machine, e.g. `<netid>@ugclinux.cs.cornell.edu`, you likely do not need to install `Python3` or `Graphviz` because they may be available already. However, you can verify that they are available by running `python3 --version` and `dot --version` respectively.
+For users of a Cornell CS Department Linux machine, e.g. `<netid>@ugclinux.cs.cornell.edu`, you likely do not need to install `Python3` or `Graphviz` because they may be available already. However, you can verify that they are available by running `python3 --version` and `dot -V` respectively.
 
 ## Installing Python3
 
@@ -35,7 +35,7 @@ In the installer, the default installation settings will also add `pip`. If you 
 On the command line, you can check if Python has been successfully installed by running the following:
 
 ```sh
-python --version
+python3 --version
 ```
 
 ## Installing Graphviz
