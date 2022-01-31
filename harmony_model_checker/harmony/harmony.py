@@ -8025,7 +8025,6 @@ def main():
     try:
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
-        traceback.print_exc()
         if parse_code_only:
             with open(outputfiles["hvm"], "w") as f:
                 data = {
