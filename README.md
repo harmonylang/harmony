@@ -6,7 +6,8 @@ Harmony is a programming language designed for testing and experimenting with co
   - [Installing Python3](#installing-python3)
   - [Installing Graphviz](#installing-graphviz)
   - [Install Harmony via Pip](#install-harmony-via-pip)
-  - [For Windows Users](#for-windows-users)
+    - [For Windows Users](#for-windows-users)
+    - [For CS Deparment Linux Machine Users](#for-cs-deparment-linux-machine-users)
   - [Adding Scripts to PATH](#adding-scripts-to-path)
   - [Command-Line Harmony](#command-line-harmony)
   - [Harmony on VSCode](#harmony-on-vscode)
@@ -23,6 +24,8 @@ Harmony requires the following to be installed:
 
 In the following instructions, Windows users using WSL should follows instructions for Linux.
 
+For users of a Cornell CS Department Linux machine, e.g. `<netid>@ugclinux.cs.cornell.edu`, you likely do not need to install `Python3` or `Graphviz` because they may be available already. However, you can verify that they are available by running `python3 --version` and `dot -V` respectively.
+
 ## Installing Python3
 
 Harmony requires Python (version 3.6 or higher) to be installed. If you do not have Python3 already installed, download and install Python depending on your OS (Windows, Mac, Linux, etc) on the official [Python site](https://www.python.org/downloads/). Be sure to download the installer for Python version `3.6` or higher.
@@ -32,7 +35,7 @@ In the installer, the default installation settings will also add `pip`. If you 
 On the command line, you can check if Python has been successfully installed by running the following:
 
 ```sh
-python --version
+python3 --version
 ```
 
 ## Installing Graphviz
@@ -67,7 +70,7 @@ After installing `python`, you should also be able to use the command `pip`. Run
 pip install harmony-model-checker
 ```
 
-## For Windows Users
+### For Windows Users
 
 For **Windows** users: you may encounter the error message along the lines of the following when installing `harmony-model-checker`:
 
@@ -86,12 +89,28 @@ Select `Desktop development with C++` in the `Desktop & Mobile` section and then
 
 Note that this will likely take a while. When it finishes installing, run `pip install harmony-model-checker` again.
 
+
+### For CS Deparment Linux Machine Users
+
+It may be possible that `pip` is not available on your Linux machine. In that case, you will need to download and build the source code directly. This can be done via the following commands:
+
+```sh
+# Installs version 1.2.2376
+wget https://files.pythonhosted.org/packages/2c/cb/0a1d4dedf7f4dc552da831b28bde842c74bed251d75dd58d9f56fc688b04/harmony_model_checker-1.2.2376.tar.gz
+gzip -d harmony_model_checker-1.2.2376.tar.gz
+tar -xf harmony_model_checker-1.2.2376.tar
+cd harmony_model_checker-1.2.2376
+python3 setup.py install --user
+```
+
+Afterward, you will likely need to add the directory with the `harmony` command to your environment `PATH`. You can get the directory with the script by running `python3 -m site --user-base`, which will output something like `/home/<net-id>/.local`. Add this directory to your `PATH` (See [here](#modifying-your-path-variable) for more information on how to do so).
+
 ## Adding Scripts to PATH
 
 When installing Harmony, you may encounter a warning on the command line of something like the following:
 
 ```sh
-WARNING: The script harmony is installed in '</path/with/harmony/>' which is not on PATH.
+WARNING: The script harmony is installed in '/path/with/harmony/' which is not on PATH.
   Consider adding this directory to PATH or, if you prefer to suppress this warning, use --no-warn-script-location.
 ```
 
@@ -133,21 +152,20 @@ Select the variable `Path` in the user variables section and then click "Edit", 
 
 ![Hover over the new button](https://harmony.cs.cornell.edu/docs/textbook/figures/hover-new.png "Hovering over the new button")
 
-Click "New" to add a new path, for example, the path to `gcc`.
+Click "New" to add a new path, for example, the directory containing `gcc` or the `pip` scripts.
 
 ![Add new path](https://harmony.cs.cornell.edu/docs/textbook/figures/adding-new-path.png "Adding new path")
 
+Complete your changes by pressing "Ok".
 
 **MacOS / Linux**:
 
 Open the Terminal application. Check which shell is running on the Terminal. You check which one you have by running `echo "$SHELL"`.
 
-The following instructions are for `bash` and `zsh`, where `/path/to/add` is to be substituted:
+The following instructions are for `bash` and `zsh`. Open the `~/.bash_profile` file (for bash users) or the `~/.zsh_profile` file (for zsh users) using your favorite text editor, such as `vim`, `nano`, `emacs`, or `TextEdit`. Then, add the following command to the end of the file, where `/path/to/add` is to be substituted:
 
 ```sh
-# for bash
-echo "export PATH=$PATH:/path/to/add" >> ~/.bash_profile
-
-# for zsh
-echo "export PATH=$PATH:/path/to/add" >> ~/.zsh_profile
+export PATH=$PATH:/path/to/add/
 ```
+
+Save the file and restart the Terminal to observe the change.
