@@ -1,8 +1,11 @@
-all: gen parser
+all: dependencies gen parser
 	python3 setup.py build_ext -i
 
 parser:
 	java -jar antlr-4.9.3-complete.jar -Dlanguage=Python3 -visitor Harmony.g4 -o harmony_model_checker/parser -no-listener
+
+dependencies:
+	pip install -r requirements.txt
 
 gen:
 	(cd src/harmony; sh gen.scr) > harmony_model_checker/harmony.py
