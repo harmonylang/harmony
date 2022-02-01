@@ -12,6 +12,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def __init__(self, file: str):
         assert isinstance(file, str)
         self.file = file
+        self.associative_operators = { "+", "*", "|", "&", "^", "and", "or" }
 
     def get_token(self, tkn: Union[CommonToken, tuple], value: Any) -> tuple:
         if isinstance(tkn, CommonToken):
@@ -579,6 +580,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         if ctx.arith_op():
             ops = [self.visit(o) for o in ctx.arith_op()]
             expected = ops[0]
+            if expected[0] not in self.associative_operators and len(ops) > 1:
+                second_op = ops[1]
+                raise HarmonyCompilerError(
+                    message=f"Cannot have expression with multiple non-associative operators.",
+                    filename=self.file,
+                    line=second_op[2],
+                    column=second_op[3],
+                    lexeme=second_op[0]
+                )
             for actual in ops[1:]:
                 if actual[0] != expected[0]:
                     raise HarmonyCompilerError(
