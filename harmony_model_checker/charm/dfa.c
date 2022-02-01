@@ -1,3 +1,7 @@
+#include "value.h"
+#include <stdio.h>
+
+
 struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance
     hvalue_t symbol;             // transition symbol

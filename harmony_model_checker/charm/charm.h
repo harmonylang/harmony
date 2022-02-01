@@ -8,8 +8,6 @@
 #include "graph.h"
 #endif
 
-#define CHUNKSIZE   (1 << 12)
-
 struct global_t {
     struct code_t code;
     struct values_t values;

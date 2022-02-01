@@ -1,6 +1,4 @@
-#ifdef CHARM_COMBINE
 #include "thread.h"
-#endif
 
 #ifdef CHARM_WINDOWS
 

@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"

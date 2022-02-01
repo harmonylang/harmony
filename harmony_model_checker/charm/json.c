@@ -8,6 +8,7 @@
 #ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #include "json.h"
+#include "strbuf.h"
 #endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))

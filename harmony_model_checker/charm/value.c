@@ -10,6 +10,7 @@
 
 #ifndef HARMONY_COMBINE
 #include "global.h"
+#include "strbuf.h"
 #endif
 
 void *value_get(hvalue_t v, int *psize){

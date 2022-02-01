@@ -1,6 +1,7 @@
 #ifndef SRC_VALUE_H
 #define SRC_VALUE_H
 
+#include "global.h"
 #include <stdbool.h>
 
 struct state {

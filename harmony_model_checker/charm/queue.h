@@ -1,3 +1,5 @@
+#include "stdint.h"
+
 struct queue {
 	struct element *first, **last;
 	int nelts;
