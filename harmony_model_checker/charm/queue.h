@@ -1,3 +1,6 @@
+#ifndef SRC_QUEUE_H
+#define SRC_QUEUE_H
+
 #include "stdint.h"
 
 struct queue {
@@ -16,3 +19,5 @@ bool queue_tget(struct queue *q, void **item);
 bool queue_get_uint(struct queue *q, uint64_t *);
 bool queue_empty(struct queue *q);
 void queue_release(struct queue *q);
+
+#endif // SRC_QUEUE_H

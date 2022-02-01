@@ -1,12 +1,10 @@
 #ifndef SRC_CHARM_H
 #define SRC_CHARM_H
 
-#ifndef HARMONY_COMBINE
 #include "minheap.h"
 #include "code.h"
 #include "value.h"
 #include "graph.h"
-#endif
 
 struct global_t {
     struct code_t code;

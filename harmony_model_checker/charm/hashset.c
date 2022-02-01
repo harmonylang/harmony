@@ -1,6 +1,4 @@
-#ifndef HARMONY_COMBINE
 #include "hashset.h"
-#endif
 
 struct hashset_t hashset_new(int initial_size) {
     struct hashset_t set;

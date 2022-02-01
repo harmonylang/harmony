@@ -1,14 +1,8 @@
+#ifndef SRC_GLOBAL_H
+#define SRC_GLOBAL_H
+
 #include <stdint.h>
 #include <stdbool.h>
-
-#ifndef HARMONY_COMBINE
-#include "hashdict.h"
-#include "json.h"
-#include "minheap.h"
-#include "code.h"
-#include "value.h"
-#include "graph.h"
-#endif
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
@@ -28,3 +22,5 @@ unsigned long to_ulong(const char *p, int len);
 double gettime();
 
 #define CHUNKSIZE   (1 << 12)
+
+#endif // SRC_GLOBAL_H

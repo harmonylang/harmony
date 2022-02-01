@@ -3,15 +3,16 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
 
-#ifndef HARMONY_COMBINE
 #include "global.h"
+#include "value.h"
 #include "strbuf.h"
-#endif
+#include "json.h"
 
 void *value_get(hvalue_t v, int *psize){
     v &= ~VALUE_MASK;

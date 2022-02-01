@@ -6,6 +6,8 @@
 #include <stdint.h> /* uint32_t */
 #include <string.h> /* memcpy/memcmp */
 
+#include "thread.h"
+
 #define HASHDICT_VALUE_TYPE void*
 
 typedef void (*enumFunc)(void *env, const void *key, unsigned int key_size,

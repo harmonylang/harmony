@@ -1,6 +1,8 @@
+import os
 import os.path
 from pathlib import Path
 from typing import List, NamedTuple
+from xml.etree.ElementInclude import include
 
 import setuptools
 import distutils.errors
@@ -44,21 +46,21 @@ EXTRA_LINK_ARGS = ['-pthread', '-shared', '-Wl,-O1', '-Wl,-Bsymbolic-functions',
                    '-Wl,-z,relro', '-g', '-fwrapv', '-O2', '-g', '-fstack-protector-strong', '-Wformat', '-Werror=format-security', '-Wdate-time', '-D_FORTIFY_SOURCE=2']
 
 compiler_and_args = [
-    CompilerArgs(
-        "gcc",
-        EXTRA_COMPILE_ARGS,
-        EXTRA_LINK_ARGS
-    ),
-    CompilerArgs(
-        "cc",
-        EXTRA_COMPILE_ARGS,
-        EXTRA_LINK_ARGS
-    ),
-    CompilerArgs(
-        "clang",
-        EXTRA_COMPILE_ARGS,
-        EXTRA_LINK_ARGS
-    )
+    # CompilerArgs(
+    #     "gcc",
+    #     EXTRA_COMPILE_ARGS,
+    #     EXTRA_LINK_ARGS
+    # ),
+    # CompilerArgs(
+    #     "cc",
+    #     EXTRA_COMPILE_ARGS,
+    #     EXTRA_LINK_ARGS
+    # ),
+    # CompilerArgs(
+    #     "clang",
+    #     EXTRA_COMPILE_ARGS,
+    #     EXTRA_LINK_ARGS
+    # )
 ]
 
 
@@ -90,9 +92,22 @@ class BuildExtCommand(build_ext):
             raise encountered_error
 
 
+CHARM_PKG_PATH = os.path.join(PACKAGE_NAME, "charm")
+
 module = Extension(
-    f"{PACKAGE_NAME}.charm",
-    sources=[f"{PACKAGE_NAME}/charm.c"]
+    f"{PACKAGE_NAME}.charm_model_checker",
+    sources=[
+        # Specification states to write source filenames with Unix '/'
+        f"{PACKAGE_NAME}/charm/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm"))
+        if f.endswith(".c")
+    ] + [
+        f"{PACKAGE_NAME}/charm/iface/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm", "iface"))
+        if f.endswith(".c")
+    ] + [
+        f"{PACKAGE_NAME}/charm/python_ext/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm", "python_ext"))
+        if f.endswith(".c")
+    ],
+    include_dirs=[f"{PACKAGE_NAME}/charm", f"{PACKAGE_NAME}/charm/iface", f"{PACKAGE_NAME}/charm/python_ext"]
 )
 
 setuptools.setup(

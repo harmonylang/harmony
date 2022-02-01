@@ -2,11 +2,8 @@
 #define SRC_GRAPH_H
 
 #include <stdint.h>
-
-#ifndef HARMONY_COMBINE
 #include "value.h"
 #include "minheap.h"
-#endif
 
 struct component {
     bool good;              // terminating or out-going edge
