@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "thread.h"
 
 #ifdef CHARM_WINDOWS
