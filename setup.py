@@ -95,7 +95,7 @@ class BuildExtCommand(build_ext):
 CHARM_PKG_PATH = os.path.join(PACKAGE_NAME, "charm")
 
 module = Extension(
-    f"{PACKAGE_NAME}.charm_model_checker",
+    f"{PACKAGE_NAME}.charm",
     sources=[
         # Specification states to write source filenames with Unix '/'
         f"{PACKAGE_NAME}/charm/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm"))

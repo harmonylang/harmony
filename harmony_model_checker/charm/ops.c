@@ -11,6 +11,8 @@
 
 #include "ops.h"
 #include "strbuf.h"
+#include "dfa.h"
+#include "hashdict.h"
 
 #define MAX_ARITY   16
 

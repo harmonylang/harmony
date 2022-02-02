@@ -1,6 +1,8 @@
 #ifndef SRC_STRBUF_H
 #define SRC_STRBUF_H
 
+#include <stdarg.h>
+
 typedef struct strbuf {
     char *buf;
     unsigned int len, allocated;

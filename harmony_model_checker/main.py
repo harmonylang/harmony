@@ -15,7 +15,7 @@ from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
 import harmony_model_checker.harmony as legacy_harmony
 from harmony_model_checker.harmony import tla_translate, optimize, dumpCode, run, htmldump
-from harmony_model_checker.harmony import AST, BlockAST, Code, Scope, FrameOp, ReturnOp, Brief, GenHTML, PushOp, \
+from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, Brief, GenHTML, PushOp, \
     StoreOp, HarmonyCompilerError, State, ContextValue
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener

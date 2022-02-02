@@ -1,6 +1,10 @@
-#include "value.h"
+#include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
+#include "value.h"
+#include "hashdict.h"
+#include "json.h"
 
 struct dfa_transition {
     struct dfa_transition *next; // linked list maintenance

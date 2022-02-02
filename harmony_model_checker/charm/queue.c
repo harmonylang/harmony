@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <stdbool.h>
+#include <assert.h>
 #include "queue.h"
 
 /* An element in a queue.

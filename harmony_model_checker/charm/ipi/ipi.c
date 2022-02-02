@@ -243,7 +243,6 @@ void ipi_div(ipi_t *z, ipi_t *rem, ipi_t *x, ipi_t *y){
 bool ipi_from_string(ipi_t *ipi, char *s, int base){
     assert(base == 10);
 
-    bool neg = false;
     ipi_from_int(ipi, 0);
     if (*s == '-') {
         ipi->sign = -1;

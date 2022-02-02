@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "hashdict.h"
 #include "global.h"
 #include "value.h"
 #include "strbuf.h"
