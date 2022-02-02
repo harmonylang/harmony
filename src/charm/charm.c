@@ -1,4 +1,4 @@
-#ifdef _WIN32
+#ifdef WIN32
 #include <windows.h>
 #else
 #include <sys/param.h>
@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <time.h>
 
+#ifndef HARMONY_COMBINE
 #include "global.h"
 #include "thread.h"
 #include "charm.h"
@@ -20,6 +21,7 @@
 #include "dot.h"
 #include "strbuf.h"
 #include "iface/iface.h"
+#endif
 
 // One of these per worker thread
 struct worker {
