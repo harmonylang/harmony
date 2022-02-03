@@ -1,4 +1,5 @@
 all: dependencies gen parser
+	rm -rf build/  # Remove previous build files
 	python3 setup.py build_ext -i
 
 parser:
