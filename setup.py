@@ -1,6 +1,7 @@
 import os
 import os.path
 from pathlib import Path
+import pathlib
 from typing import List, NamedTuple
 
 import setuptools
@@ -91,22 +92,27 @@ class BuildExtCommand(build_ext):
             raise encountered_error
 
 
-CHARM_PKG_PATH = os.path.join(PACKAGE_NAME, "charm")
+CHARM_PKG_PATH = pathlib.Path(PACKAGE_NAME) / "charm"
+def get_c_extension_src():
+    sources = []
+    base_dir = CHARM_PKG_PATH
+    D = [base_dir, base_dir / "iface", base_dir / "python_ext"]
+    for d in D:
+        sources.extend([str(f) for f in d.glob('*.c')])
+    return sources
+
+def get_c_extension_include_dirs():
+    return [
+        str(CHARM_PKG_PATH),
+        str(CHARM_PKG_PATH / 'iface'),
+        str(CHARM_PKG_PATH / 'python_ext'),
+    ]
+
 
 module = Extension(
     f"{PACKAGE_NAME}.charm",
-    sources=[
-        # Specification states to write source filenames with Unix '/'
-        f"{PACKAGE_NAME}/charm/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm"))
-        if f.endswith(".c")
-    ] + [
-        f"{PACKAGE_NAME}/charm/iface/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm", "iface"))
-        if f.endswith(".c")
-    ] + [
-        f"{PACKAGE_NAME}/charm/python_ext/{f}" for f in os.listdir(os.path.join(PACKAGE_NAME, "charm", "python_ext"))
-        if f.endswith(".c")
-    ],
-    include_dirs=[f"{PACKAGE_NAME}/charm", f"{PACKAGE_NAME}/charm/iface", f"{PACKAGE_NAME}/charm/python_ext"]
+    sources=get_c_extension_src(),
+    include_dirs=get_c_extension_include_dirs()
 )
 
 setuptools.setup(
