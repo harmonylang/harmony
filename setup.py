@@ -2,7 +2,6 @@ import os
 import os.path
 from pathlib import Path
 from typing import List, NamedTuple
-from xml.etree.ElementInclude import include
 
 import setuptools
 import distutils.errors
@@ -46,21 +45,21 @@ EXTRA_LINK_ARGS = ['-pthread', '-shared', '-Wl,-O1', '-Wl,-Bsymbolic-functions',
                    '-Wl,-z,relro', '-g', '-fwrapv', '-O2', '-g', '-fstack-protector-strong', '-Wformat', '-Werror=format-security', '-Wdate-time', '-D_FORTIFY_SOURCE=2']
 
 compiler_and_args = [
-    # CompilerArgs(
-    #     "gcc",
-    #     EXTRA_COMPILE_ARGS,
-    #     EXTRA_LINK_ARGS
-    # ),
-    # CompilerArgs(
-    #     "cc",
-    #     EXTRA_COMPILE_ARGS,
-    #     EXTRA_LINK_ARGS
-    # ),
-    # CompilerArgs(
-    #     "clang",
-    #     EXTRA_COMPILE_ARGS,
-    #     EXTRA_LINK_ARGS
-    # )
+    CompilerArgs(
+        "gcc",
+        EXTRA_COMPILE_ARGS,
+        EXTRA_LINK_ARGS
+    ),
+    CompilerArgs(
+        "cc",
+        EXTRA_COMPILE_ARGS,
+        EXTRA_LINK_ARGS
+    ),
+    CompilerArgs(
+        "clang",
+        EXTRA_COMPILE_ARGS,
+        EXTRA_LINK_ARGS
+    )
 ]
 
 
