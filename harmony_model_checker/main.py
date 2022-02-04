@@ -120,7 +120,7 @@ def do_import(scope: Scope, code: Code, module):
 
 def parse_constant(name: str, value: str):
     filename = "<constant argument>"
-    _input = InputStream(value, 'utf-8')
+    _input = InputStream(value)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
