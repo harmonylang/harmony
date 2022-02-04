@@ -140,7 +140,7 @@ def parse_constant(name: str, value: str):
 
 
 def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
-    _input = InputStream(string, 'utf-8')
+    _input = InputStream(string)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -149,7 +149,7 @@ def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
 
 
 def parse(filename: str) -> BlockAST:
-    _input = FileStream(filename)
+    _input = FileStream(filename, 'utf-8')
     error_listener = HarmonyParserErrorListener(filename)
     lexer_error_listener = HarmonyLexerErrorListener(filename)
     parser = build_parser(
