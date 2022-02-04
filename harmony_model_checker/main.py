@@ -120,7 +120,7 @@ def do_import(scope: Scope, code: Code, module):
 
 def parse_constant(name: str, value: str):
     filename = "<constant argument>"
-    _input = InputStream(value)
+    _input = InputStream(value, 'utf-8')
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -140,7 +140,7 @@ def parse_constant(name: str, value: str):
 
 
 def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
-    _input = InputStream(string)
+    _input = InputStream(string, 'utf-8')
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
