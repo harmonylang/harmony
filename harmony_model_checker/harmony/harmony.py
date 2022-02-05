@@ -244,7 +244,6 @@ def isreserved(s):
         "not",
         "or",
         "pass",
-        "possibly",
         "print",
         "select",
         "sequential",
