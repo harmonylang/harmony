@@ -26,7 +26,7 @@ def jsonValue(v):
     if isinstance(v, int) or isinstance(v, float):
         return '{ "type": "int", "value": %s }'%str(v)
     if isinstance(v, str):
-        return '{ "type": "atom", "value": %s }'%json.dumps(v)
+        return '{ "type": "atom", "value": %s }'%json.dumps(v, ensure_ascii=False)
     assert False, v
 
 def strVars(v):

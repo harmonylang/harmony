@@ -6211,9 +6211,9 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
         print('  "pretty": [', file=f)
         for pc in range(len(code.labeled_ops)):
             if pc < len(code.labeled_ops) - 1:
-                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
+                print('    [%s,%s],'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(code.labeled_ops[pc].op.explain(), ensure_ascii=False)), file=f)
             else:
-                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op)), json.dumps(code.labeled_ops[pc].op.explain())), file=f)
+                print('    [%s,%s]'%(json.dumps(str(code.labeled_ops[pc].op), ensure_ascii=False), json.dumps(code.labeled_ops[pc].op.explain(), ensure_ascii=False)), file=f)
         print("  ],", file=f)
         print("  \"locations\": {", file=f, end="")
         firstTime = True
@@ -6226,7 +6226,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
                     print(file=f)
                 else:
                     print(",", file=f)
-                print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file), line, json.dumps(files[file][line-1])), file=f, end="")
+                print("    \"%d\": { \"file\": %s, \"line\": \"%d\", \"code\": %s }"%(pc, json.dumps(file, ensure_ascii=False), line, json.dumps(files[file][line-1], ensure_ascii=False)), file=f, end="")
         print(file=f)
         print("  }", file=f)
         print("}", file=f)
@@ -7613,7 +7613,7 @@ def main():
                     "errors": [e.token._as_dict()],
                     "status": "error"
                 }
-                f.write(json.dumps(data))
+                f.write(json.dumps(data, ensure_ascii=False))
         print(e.message)
         sys.exit(1)
 
