@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <time.h>
 
-#ifndef TIME_UTC
+#if !defined(TIME_UTC) || defined(__APPLE__)
 #include <sys/time.h>
 #endif
 
