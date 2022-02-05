@@ -1,10 +1,8 @@
 #include <assert.h>
 
-#ifndef HARMONY_COMBINE
 #include <stdio.h>
 #include <stdlib.h>
 #include "minheap.h"
-#endif
 
 #define parent(k)   (int) (((k) - 1) / 2)
 #define leftc(k)    (2 * (k) + 1)

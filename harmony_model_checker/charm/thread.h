@@ -1,3 +1,6 @@
+#ifndef SRC_THREAD_H
+#define SRC_THREAD_H
+
 #ifdef _WIN32
 #ifndef __MINGW32__
 #define CHARM_WINDOWS
@@ -52,3 +55,5 @@ void barrier_init(barrier_t *barrier, unsigned int count);
 void barrier_wait(barrier_t *barrier);
 void barrier_destroy(barrier_t *barrier);
 int getNumCores();
+
+#endif // SRC_THREAD_H

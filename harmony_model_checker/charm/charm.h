@@ -1,14 +1,10 @@
 #ifndef SRC_CHARM_H
 #define SRC_CHARM_H
 
-#ifndef HARMONY_COMBINE
 #include "minheap.h"
 #include "code.h"
 #include "value.h"
 #include "graph.h"
-#endif
-
-#define CHUNKSIZE   (1 << 12)
 
 struct global_t {
     struct code_t code;

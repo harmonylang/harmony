@@ -9,9 +9,10 @@
 #include <ctype.h>
 #include <assert.h>
 
-#ifndef HARMONY_COMBINE
 #include "ops.h"
-#endif
+#include "strbuf.h"
+#include "dfa.h"
+#include "hashdict.h"
 
 #define MAX_ARITY   16
 

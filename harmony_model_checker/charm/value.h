@@ -1,9 +1,11 @@
 #ifndef SRC_VALUE_H
 #define SRC_VALUE_H
 
+#include "global.h"
+#include "strbuf.h"
 #include <stdbool.h>
 
-struct state {
+typedef struct state {
     hvalue_t vars;        // shared variables
     hvalue_t seqs;        // sequential variables
     hvalue_t choosing;    // context that is choosing if non-zero
@@ -12,9 +14,9 @@ struct state {
     hvalue_t termbag;     // bag of terminated contexts
     hvalue_t invariants;  // set of invariants that must hold
     hvalue_t dfa_state;
-};
+} state;
 
-struct context {          // context value
+typedef struct context {          // context value
     hvalue_t name;        // name of method
     hvalue_t entry;       // entry point of main method
     hvalue_t arg;         // argument provided to spawn
@@ -34,20 +36,20 @@ struct context {          // context value
     bool eternal;         // context runs indefinitely
     int sp;               // stack size
     hvalue_t stack[0];    // growing stack
-};
+} context;
 
-struct combined {           // combination of current state and current context
+typedef struct combined {           // combination of current state and current context
     struct state state;
     struct context context;
-};
+} combined;
 
-struct values_t {
+typedef struct values_t {
     struct dict *atoms;
     struct dict *dicts;
     struct dict *sets;
     struct dict *addresses;
     struct dict *contexts;
-};
+} values_t;
 
 void value_init(struct values_t *values);
 void value_set_concurrent(struct values_t *values, int concurrent);
@@ -64,8 +66,8 @@ char *value_string(hvalue_t v);
 char *indices_string(const hvalue_t *vec, int size);
 char *value_json(hvalue_t v);
 
-void strbuf_value_string(struct strbuf *sb, hvalue_t v);
-void strbuf_value_json(struct strbuf *sb, hvalue_t v);
+void strbuf_value_string(strbuf *sb, hvalue_t v);
+void strbuf_value_json(strbuf *sb, hvalue_t v);
 
 #define VALUE_BITS      3
 #define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))

@@ -3,11 +3,9 @@
 
 #include <inttypes.h>
 
-#ifndef HARMONY_COMBINE
 #include "charm.h"
 #include "value.h"
 #include "global.h"
-#endif
 
 void ops_init(struct global_t* global);
 struct op_info *ops_get(char *opname, int size);

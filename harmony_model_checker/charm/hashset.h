@@ -3,10 +3,7 @@
 
 #include <stdbool.h>
 #include <assert.h>
-
-#ifndef HARMONY_COMBINE
 #include "hashdict.h"
-#endif
 
 struct hashset_t {
     struct dict *dict;  // a dict from values to DUMMY

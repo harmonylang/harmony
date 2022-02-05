@@ -1,9 +1,9 @@
 #include <assert.h>
+#include <stdio.h>
+#include <stdbool.h>
 
-#ifndef HARMONY_COMBINE
 #include "hashdict.h"
 #include "thread.h"
-#endif
 
 #define hash_func meiyan
 

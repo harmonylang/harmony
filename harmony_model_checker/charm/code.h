@@ -1,10 +1,8 @@
 #ifndef SRC_CODE_H
 #define SRC_CODE_H
 
-#ifndef HARMONY_COMBINE
 #include "json.h"
 #include "value.h"
-#endif
 
 struct instr_t {
     struct op_info *oi;

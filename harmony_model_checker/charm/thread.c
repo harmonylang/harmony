@@ -1,6 +1,5 @@
-#ifdef CHARM_COMBINE
+#include <assert.h>
 #include "thread.h"
-#endif
 
 #ifdef CHARM_WINDOWS
 

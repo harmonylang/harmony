@@ -1,18 +1,10 @@
 //
 // Created by William Ma on 10/12/21.
 //
-
-#ifndef SRC_STACK_H
-#define SRC_STACK_H
-
 #include <assert.h>
 #include <stdlib.h>
 
-struct stack_t {
-    void **arr;
-    int len;
-    int alloc_len;
-};
+#include "stack.h"
 
 struct stack_t *stack_init(int alloc_len) {
     assert(alloc_len > 0);
@@ -48,5 +40,3 @@ void *stack_pop(struct stack_t *stack) {
 int stack_len(struct stack_t *stack) {
     return stack->len;
 }
-
-#endif //SRC_STACK_H
