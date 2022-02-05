@@ -3943,26 +3943,12 @@ class PrintAST(AST):
         return "Print(" + str(self.token) + ", " + str(self.expr) + ")"
 
     def compile(self, scope, code):
+        if self.atomically:
+            code.append(AtomicIncOp(True))
         self.expr.compile(scope, code)
         code.append(PrintOp(self.token))
-
-class PossiblyAST(AST):
-    def __init__(self, token, atomically, condlist):
-        AST.__init__(self, token, atomically)
-        self.token = token
-        self.condlist = condlist
-
-    def __repr__(self):
-        return "Possibly()"
-
-    def compile(self, scope, code):
-        code.append(ReadonlyIncOp())
-        code.append(AtomicIncOp(True))
-        for i, cond in enumerate(self.condlist):
-            cond.compile(scope, code)
-            code.append(PossiblyOp(self.token, i))
-        code.append(AtomicDecOp())
-        code.append(ReadonlyDecOp())
+        if self.atomically:
+            code.append(AtomicDecOp())
 
 class MethodAST(AST):
     def __init__(self, token, atomically, name, args, stat):
@@ -4798,23 +4784,6 @@ class StatementRule(Rule):
                     message="print: unexpected token: %s" % str(tokens[0]),
                 )
             return (PrintAST(token, atomically, cond), t)
-        if lexeme == "possibly":
-            (tokens, t) = self.slice(t[1:], column)
-            (cond, tokens) = NaryRule({","}).parse(tokens)
-            condlist = [ cond ]
-            while tokens != []:
-                (lexeme, file, line, column) = tokens[0]
-                if lexeme != ",":
-                    raise HarmonyCompilerError(
-                        filename=file,
-                        lexeme=lexeme,
-                        line=line,
-                        column=column,
-                        message="possibly: unexpected token: %s" % str(tokens[0]),
-                    )
-                (cond, tokens) = NaryRule({","}).parse(tokens[1:])
-                condlist.append(cond)
-            return (PossiblyAST(token, atomically, condlist), t)
         
         # If we get here, the next statement is either an expression
         # or an assignment.  The assignment grammar is either
