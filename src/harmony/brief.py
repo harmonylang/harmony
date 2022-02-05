@@ -10,7 +10,7 @@ def brief_string(js):
     if type in { "bool", "int" }:
         return v
     if type == "atom":
-        return json.dumps(v)
+        return json.dumps(v, ensure_ascii=False)
     if type == "set":
         if v == []:
             return "{}"

@@ -267,7 +267,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
                         print("    {", file=fd)
                         print("      \"src\": \"%s\","%names[src], file=fd)
                         print("      \"dst\": \"%s\","%names[dst], file=fd)
-                        print("      \"symbol\": %s"%json.dumps(labels[input]), file=fd)
+                        print("      \"symbol\": %s"%json.dumps(labels[input], ensure_ascii=False), file=fd)
                         print("    }", end="", file=fd)
             print(file=fd)
             print("  ]", file=fd)
@@ -298,7 +298,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             for (src, edges) in dfa_transitions.items():
                 for (input, dst) in edges.items():
                     if dst not in dfa_error_states:
-                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input)), file=fd)
+                        print("  s%s -> s%s [label=%s]"%(names[src], names[dst], json.dumps(input, ensure_ascii=False)), file=fd)
             print("}", file=fd)
 
     if outputfiles["png"] != None:
