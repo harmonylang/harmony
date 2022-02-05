@@ -1,6 +1,0 @@
-import queue
-
-testq = queue.Queue()
-queue.put(?testq, 3)
-queue.contains(?testq, 2)
-queue.contains(?testq, 3)

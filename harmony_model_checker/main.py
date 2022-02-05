@@ -13,14 +13,34 @@ import harmony_model_checker.util.self_check_is_outdated as check_version
 from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerErrorCollection
 
-import harmony_model_checker.harmony as legacy_harmony
-from harmony_model_checker.harmony import tla_translate, optimize, dumpCode, run, htmldump
-from harmony_model_checker.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, Brief, GenHTML, PushOp, \
+import harmony_model_checker.harmony.harmony as legacy_harmony
+from harmony_model_checker.harmony.genhtml import GenHTML
+from harmony_model_checker.harmony.brief import Brief
+from harmony_model_checker.harmony.harmony import BlockAST, Code, Scope, FrameOp, ReturnOp, PushOp, \
     StoreOp, HarmonyCompilerError, State, ContextValue
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
 from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
+
+
+def build_input_stream(**kwargs) -> InputStream:
+    try:
+        filename = kwargs.get('filename', None)
+        str_value = kwargs.get('str_value', None)
+        if filename is not None:
+            return FileStream(filename, 'utf-8')
+        elif str_value is not None:
+            return InputStream(str_value)
+    except UnicodeDecodeError as e:
+        raise HarmonyCompilerError(
+            message=e.reason,
+            filename=filename,
+            line=1,
+            column=1,
+            lexeme=chr(input[e.start])
+        )
+    raise ValueError("Cannot build input stream without a source")
 
 
 def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_error_listener=None):
@@ -120,7 +140,7 @@ def do_import(scope: Scope, code: Code, module):
 
 def parse_constant(name: str, value: str):
     filename = "<constant argument>"
-    _input = InputStream(value)
+    _input = build_input_stream(str_value=value)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -140,7 +160,7 @@ def parse_constant(name: str, value: str):
 
 
 def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
-    _input = InputStream(string)
+    _input = build_input_stream(str_value=string)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -149,7 +169,7 @@ def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
 
 
 def parse(filename: str) -> BlockAST:
-    _input = FileStream(filename)
+    _input = build_input_stream(filename=filename)
     error_listener = HarmonyParserErrorListener(filename)
     lexer_error_listener = HarmonyLexerErrorListener(filename)
     parser = build_parser(
@@ -205,7 +225,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     newcode = code.liveness()
 
     newcode.link()
-    optimize(newcode)
+    legacy_harmony.optimize(newcode)
     return newcode, scope
 
 
@@ -220,8 +240,6 @@ args.add_argument("-p", "--parse", action="store_true",
                   help="parse code without running")
 args.add_argument("-c", "--const", action='append', type=str,
                   metavar="name=value", help="define a constant")
-args.add_argument("-d", action='store_true',
-                  help="htmldump full state into html file")
 args.add_argument("--module", "-m", action="append", type=str,
                   metavar="module=version", help="select a module version")
 args.add_argument("-i", "--intf", type=str, metavar="expr",
@@ -242,7 +260,6 @@ args.add_argument("--suppress", action="store_true",
                   help="generate less terminal output")
 
 # Internal flags
-args.add_argument("-b", action="store_true", help=argparse.SUPPRESS)
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 
 args.add_argument("files", metavar="harmony-file",
@@ -282,11 +299,7 @@ def main():
     if ns.j:
         print_code = "json"
         charm_flag = False
-    if ns.f:
-        charm_flag = False
 
-    block_flag: bool = ns.b
-    fulldump: bool = ns.d
     legacy_harmony.silent = ns.s
 
     output_files: Dict[str, Optional[str]] = {
@@ -365,13 +378,13 @@ def main():
 
     if output_files["tla"] is not None:
         with open(output_files["tla"], "w") as f:
-            tla_translate(f, code, scope)
+            legacy_harmony.tla_translate(f, code, scope)
 
     # Analyze liveness of variables
     if charm_flag:
         # see if there is a configuration file
         with open(output_files["hvm"], "w") as fd:
-            dumpCode("json", code, scope, f=fd)
+            legacy_harmony.dumpCode("json", code, scope, f=fd)
 
         if parse_code_only:
             return 0
@@ -395,13 +408,5 @@ def main():
             print("open " + url + " for more information", file=sys.stderr)
             if open_browser:
                 webbrowser.open(url)
-        return 0
-
-    if print_code is None:
-        nodes, bad_node = run(code, scope.labels, block_flag)
-        if bad_node is not None:
-            if not legacy_harmony.silent:
-                htmldump(nodes, code, scope, bad_node, fulldump, False)
-            return 1
     else:
-        dumpCode(print_code, code, scope)
+        legacy_harmony.dumpCode(print_code, code, scope)

@@ -32,40 +32,27 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
-version = [
-m4_include(buildversion)
-]
-
+import collections
+import getopt
+import html
+import pathlib
 import sys
 import os
-import pathlib
-import tempfile
-import getopt
-import traceback
-import collections
-import time
 import math
-import html
-import queue
 import functools
 import json
-import subprocess
+import time
+import traceback
 import webbrowser
-from typing import Any, List, NamedTuple
 
+from harmony_model_checker.harmony.jsonstring import *
+from harmony_model_checker.harmony.brief import *
+from harmony_model_checker.harmony.genhtml import *
+from harmony_model_checker.harmony.behavior import *
+from harmony_model_checker.harmony.value import *
+from harmony_model_checker.exception import HarmonyCompilerError
+from harmony_model_checker import __version__
 
-try:
-    import pydot
-    got_pydot = True
-except Exception as e:
-    got_pydot = False
-
-try:
-    from automata.fa.nfa import NFA
-    from automata.fa.dfa import DFA
-    got_automata = True
-except Exception as e:
-    got_automata = False
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -77,44 +64,7 @@ silent = False          # not printing periodic status updates
 lasttime = 0            # last time status update was printed
 imported = {}           # imported modules
 labelcnt = 0            # counts labels L1, L2, ...
-labelid = 0
-tlavarcnt = 0           # to generate unique TLA+ variables
 
-m4_include(jsonstring.py)
-m4_include(brief.py)
-m4_include(genhtml.py)
-m4_include(behavior.py)
-
-
-class ErrorToken(NamedTuple):
-    line: int
-    message: int
-    column: int
-    lexeme: str
-    filename: str
-    is_eof_error: bool
-
-class HarmonyCompilerErrorCollection(Exception):
-    def __init__(self, errors: List[ErrorToken]) -> None:
-        super().__init__()
-        self.errors = errors
-
-class HarmonyCompilerError(Exception):
-    """
-    Error encountered during the compilation of a Harmony program.
-    """
-    def __init__(self, message: str, filename: str = None, line: int = None,
-                 column: int = None, lexeme: Any = None, is_eof_error=False):
-        super().__init__()
-        self.message = message
-        self.token = ErrorToken(
-            line=line,
-            message=message,
-            column=column,
-            lexeme=str(lexeme),
-            filename=filename,
-            is_eof_error=is_eof_error
-        )
 
 def bag_add(bag, item):
     cnt = bag.get(item)
@@ -149,7 +99,7 @@ def doImport(scope, code, module):
         scope2.labels = scope.labels
 
         found = False
-        install_path = os.path.dirname(os.path.realpath(__file__))
+        install_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
             filename = dir + "/" + modname + ".hny"
             if os.path.exists(filename):
@@ -520,289 +470,6 @@ def lexer(s, file):
         print("It is likely to lead to incorrect parsing and code generation")
 
     return result
-
-def tlaValue(lexeme):
-    if isinstance(lexeme, bool):
-        return 'HBool(%s)'%("TRUE" if lexeme else "FALSE")
-    if isinstance(lexeme, int):
-        return 'HInt(%d)'%lexeme
-    if isinstance(lexeme, str):
-        return 'HStr("%s")'%lexeme
-    return lexeme.tlaval()
-
-def strValue(v):
-    if isinstance(v, Value) or isinstance(v, bool) or isinstance(v, int) or isinstance(v, float):
-        return str(v)
-    if isinstance(v, str):
-        return '"%s"'%v
-    assert False, v
-
-def jsonValue(v):
-    if isinstance(v, Value):
-        return v.jdump()
-    if isinstance(v, bool):
-        return '{ "type": "bool", "value": "%s" }'%str(v)
-    if isinstance(v, int) or isinstance(v, float):
-        return '{ "type": "int", "value": %s }'%str(v)
-    if isinstance(v, str):
-        return '{ "type": "atom", "value": %s }'%json.dumps(v)
-    assert False, v
-
-def strVars(v):
-    assert isinstance(v, DictValue)
-    result = ""
-    for (var, val) in v.d.items():
-        if result != "":
-            result += ", "
-        result += strValue(var)[1:] + "=" + strValue(val)
-    return "{" + result + "}"
-
-def keyValue(v):
-    if isinstance(v, bool):
-        return (0, v)
-    if isinstance(v, int) or isinstance(v, float):
-        return (1, v)
-    if isinstance(v, str):
-        return (2, v)
-    assert isinstance(v, Value), v
-    return v.key()
-
-def substValue(v, map):
-    return v.substitute(map) if isinstance(v, Value) else v
-
-class Value:
-    def __str__(self):
-        return self.__repr__()
-
-    def jdump(self):
-        assert False
-
-    def substitute(self, map):
-        assert False, self
-
-class PcValue(Value):
-    def __init__(self, pc):
-        self.pc = pc
-
-    def __repr__(self):
-        return "PC(" + str(self.pc) + ")"
-
-    def tlaval(self):
-        return 'HPc(%d)'%self.pc
-
-    def __hash__(self):
-        return self.pc.__hash__()
-
-    def __eq__(self, other):
-        return isinstance(other, PcValue) and other.pc == self.pc
-
-    def key(self):
-        return (3, self.pc)
-
-    def jdump(self):
-        return '{ "type": "pc", "value": "%d" }'%self.pc
-
-# This is a substitute for PCValues used before values are assigned to labels
-# TODO.  Get rid of all but id
-class LabelValue(Value):
-    def __init__(self, module, label):
-        global labelid
-        self.id = labelid
-        labelid += 1
-        self.module = module
-        self.label = label
-
-    def __repr__(self):
-        if self.module == None:
-            return "LABEL(" + str(self.id) + ", " + self.label + ")"
-        else:
-            return "LABEL(" + self.module + ":" + self.label + ")"
-
-    def __hash__(self):
-        return self.id
-
-    def __eq__(self, other):
-        return isinstance(other, LabelValue) and other.id == self.id
-
-    def key(self):
-        return (100, self.id)
-
-    def jdump(self):
-        assert False
-
-    def substitute(self, map):
-        return map[self]
-
-class DictValue(Value):
-    def __init__(self, d):
-        self.d = d
-
-    def __repr__(self):
-        if len(self.d) == 0:
-            return "()"
-        result = ""
-        if set(self.d.keys()) == set(range(len(self.d))):
-            for k in range(len(self.d)):
-                if result != "":
-                    result += ", ";
-                result += strValue(self.d[k])
-            return "[" + result + "]"
-        keys = sorted(self.d.keys(), key=keyValue)
-        for k in keys:
-            if result != "":
-                result += ", ";
-            result += strValue(k) + ":" + strValue(self.d[k])
-        return "{ " + result + " }"
-
-    def tlaval(self):
-        global tlavarcnt
-
-        tlavar = "x%d"%tlavarcnt
-        tlavarcnt += 1
-        if len(self.d) == 0:
-            return 'EmptyDict'
-        s = "[ %s \\in {"%tlavar + ",".join({ tlaValue(k) for k in self.d.keys() }) + "} |-> "
-        # special case: all values are the same
-        vals = list(self.d.values())
-        if vals.count(vals[0]) == len(vals):
-            s += tlaValue(vals[0]) + " ]"
-            return 'HDict(%s)'%s
-
-        # not all values are the same
-        first = True
-        for k,v in self.d.items():
-            if first:
-                s += "CASE "
-                first = False
-            else:
-                s += " [] "
-            s += "%s = "%tlavar + tlaValue(k) + " -> " + tlaValue(v)
-        s += " [] OTHER -> FALSE ]"
-        return 'HDict(%s)'%s
-
-    def jdump(self):
-        result = ""
-        keys = sorted(self.d.keys(), key=keyValue)
-        for k in keys:
-            if result != "":
-                result += ", ";
-            result += '{ "key": %s, "value": %s }'%(jsonValue(k), jsonValue(self.d[k]))
-        return '{ "type": "dict", "value": [%s] }'%result
-
-    def __hash__(self):
-        hash = 0
-        for x in self.d.items():
-            hash ^= x.__hash__()
-        return hash
-
-    def __eq__(self, other):
-        if not isinstance(other, DictValue):
-            return False
-        if len(self.d.keys()) != len(other.d.keys()):   # for efficiency
-            return False
-        return self.d == other.d
-
-    def __len__(self):
-        return len(self.d.keys())
-
-    # Dictionary ordering generalizes lexicographical ordering when the dictionary
-    # represents a list or tuple
-    def key(self):
-        return (5, [ (keyValue(v), keyValue(self.d[v]))
-                        for v in sorted(self.d.keys(), key=keyValue)])
-
-    def substitute(self, map):
-        return DictValue({ substValue(k, map): substValue(v, map)
-                            for (k, v) in self.d.items() })
-
-# TODO.  Is there a better way than making this global?
-novalue = DictValue({})
-
-class SetValue(Value):
-    def __init__(self, s):
-        self.s = s
-
-    def __repr__(self):
-        if len(self.s) == 0:
-            return "{}"
-        result = ""
-        vals = sorted(self.s, key=keyValue)
-        for v in vals:
-            if result != "":
-                result += ", ";
-            result += strValue(v)
-        return "{ " + result + " }"
-
-    def tlaval(self):
-        s = "{" + ",".join(tlaValue(x) for x in self.s) + "}"
-        return 'HSet(%s)'%s
-
-    def jdump(self):
-        result = ""
-        vals = sorted(self.s, key=keyValue)
-        for v in vals:
-            if result != "":
-                result += ", ";
-            result += jsonValue(v)
-        return '{ "type": "set", "value": [%s] }'%result
-
-    def __hash__(self):
-        return frozenset(self.s).__hash__()
-
-    def __eq__(self, other):
-        if not isinstance(other, SetValue):
-            return False
-        return self.s == other.s
-
-    def key(self):
-        return (6, [keyValue(v) for v in sorted(self.s, key=keyValue)])
-
-    def substitute(self, map):
-        return SetValue({ substValue(v, map) for v in self.s })
-
-class AddressValue(Value):
-    def __init__(self, indexes):
-        self.indexes = indexes
-
-    def __repr__(self):
-        if len(self.indexes) == 0:
-            return "None"
-        result = "?" + self.indexes[0]
-        for index in self.indexes[1:]:
-            if isinstance(index, str):
-                result = result + strValue(index)
-            else:
-                result += "[" + strValue(index) + "]"
-        return result
-
-    def tlaval(self):
-        s = "<<" + ",".join(tlaValue(x) for x in self.indexes) + ">>"
-        return 'HAddress(%s)'%s
-
-    def jdump(self):
-        result = ""
-        for index in self.indexes:
-            if result != "":
-                result += ", "
-            result = result + jsonValue(index)
-        return '{ "type": "address", "value": [%s] }'%result
-
-    def __hash__(self):
-        hash = 0
-        for x in self.indexes:
-            hash ^= x.__hash__()
-        return hash
-
-    def __eq__(self, other):
-        if not isinstance(other, AddressValue):
-            return False
-        return self.indexes == other.indexes
-
-    def key(self):
-        return (7, self.indexes)
-
-    def substitute(self, map):
-        return AddressValue([ substValue(v, map) for v in self.indexes ])
 
 class Op:
     def define(self):   # set of local variables updated by this op
@@ -5178,140 +4845,6 @@ class StatementRule(Rule):
         else:
             return (AssignmentAST(exprs[:-1], exprs[-1], assignop, atomically), t)
 
-class ContextValue(Value):
-    def __init__(self, name, entry, arg, this):
-        self.name = name
-        self.entry = entry
-        self.arg = arg
-        self.pc = entry
-        self.this = this
-        self.atomic = 0
-        self.readonly = 0
-        self.interruptLevel = False
-        self.stack = []     # collections.deque() seems slightly slower
-        self.fp = 0         # frame pointer
-        self.vars = novalue
-        self.trap = None
-        self.phase = "start"        # start, middle, or end
-        self.stopped = False
-        self.failure = None
-
-    def __repr__(self):
-        return "ContextValue(" + str(self.name) + ", " + str(self.arg) + ", " + str(self.this) + ")"
-
-    def __str__(self):
-        return self.__repr__()
-
-    def nametag(self):
-        if self.arg == novalue:
-            return self.name[0] + "()"
-        return self.name[0] + "(" + str(self.arg) + ")"
-
-    def __hash__(self):
-        h = (self.name, self.entry, self.arg, self.pc, self.this, self.atomic, self.readonly, self.interruptLevel, self.vars,
-            self.trap, self.phase, self.stopped, self.failure).__hash__()
-        for v in self.stack:
-            h ^= v.__hash__()
-        return h
-
-    def __eq__(self, other):
-        if not isinstance(other, ContextValue):
-            return False
-        if self.name != other.name:
-            return False
-        if self.entry != other.entry:
-            return False
-        if self.arg != other.arg:
-            return False
-        if self.pc != other.pc:
-            return False
-        if self.this != other.this:
-            return False
-        if self.atomic != other.atomic:
-            return False
-        if self.readonly != other.readonly:
-            return False
-        if self.interruptLevel != other.interruptLevel:
-            return False
-        if self.phase != other.phase:
-            return False
-        if self.stopped != other.stopped:
-            return False
-        if self.fp != other.fp:
-            return False
-        if self.trap != other.trap:
-            return False
-        if self.failure != other.failure:
-            return False
-        return self.stack == other.stack and self.vars == other.vars
-
-    def copy(self):
-        c = ContextValue(self.name, self.entry, self.arg, self.this)
-        c.pc = self.pc
-        c.atomic = self.atomic
-        c.readonly = self.readonly
-        c.interruptLevel = self.interruptLevel
-        c.stack = self.stack.copy()
-        c.fp = self.fp
-        c.trap = self.trap
-        c.vars = self.vars
-        c.phase = self.phase
-        c.stopped = self.stopped
-        c.failure = self.failure
-        return c
-
-    def get(self, var):
-        return self.this if var == "this" else self.vars.d[var]
-
-    def iget(self, indexes):
-        assert indexes[0] != "this"
-        v = self.vars
-        while indexes != []:
-            v = v.d[indexes[0]]
-            indexes = indexes[1:]
-        return v
-
-    def update(self, record, indexes, val):
-        if len(indexes) > 1:
-            v = self.update(record.d[indexes[0]], indexes[1:], val)
-        else:
-            v = val
-        d = record.d.copy()
-        d[indexes[0]] = v
-        return DictValue(d)
-
-    def doDelete(self, record, indexes):
-        if len(indexes) > 1:
-            d = record.d.copy()
-            d[indexes[0]] = self.doDelete(record.d[indexes[0]], indexes[1:])
-        else:
-            d = record.d.copy()
-            if indexes[0] in d:
-                del d[indexes[0]]
-        return DictValue(d)
-
-    def set(self, indexes, val):
-        if indexes[0] == "this":
-            if len(indexes) == 1:
-                self.this = val
-            else:
-                self.this = self.update(self.this, indexes[1:], val)
-        else:
-            self.vars = self.update(self.vars, indexes, val)
-
-    def delete(self, indexes):
-        self.vars = self.doDelete(self.vars, indexes)
-
-    def push(self, val):
-        assert val != None
-        self.stack.append(val)
-
-    def pop(self):
-        return self.stack.pop()
-
-    def key(self):
-        return (100, (self.pc, self.__hash__()))
-
 class State:
     def __init__(self, code, labels):
         self.code = code
@@ -8045,8 +7578,7 @@ def main():
         elif o == "--suppress":
             suppressOutput = True
         elif o in { "-v", "--version" }:
-            print("Version", ".".join([str(v) for v in version]))
-            sys.exit(0)
+            print(__version__)
         elif o in { "-p", "--parse" }:
             parse_code_only = True
         elif o == "--noweb":
