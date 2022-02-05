@@ -1,3 +1,8 @@
+import json
+
+from harmony_model_checker.harmony.behavior import behavior_parse
+
+
 def brief_kv(js):
     return (brief_string(js["key"]), brief_string(js["value"]))
 
@@ -69,8 +74,8 @@ class Brief:
             if self.steps != "":
                 self.steps += ","
             self.steps += brief_print_range(self.start, int(self.lastmis["pc"]))
-            print(self.steps + "] ", end="");
-            brief_print_vars(self.shared);
+            print(self.steps + "] ", end="")
+            brief_print_vars(self.shared)
 
     def print_macrostep(self, mas):
         mis = mas["microsteps"]
@@ -125,7 +130,7 @@ class Brief:
             top = json.load(f)
             assert isinstance(top, dict)
             if top["issue"] == "No issues":
-                behavior_parse(top, True, outputfiles, behavior);
+                behavior_parse(top, True, outputfiles, behavior)
                 return True
 
             # print("Issue:", top["issue"])
@@ -134,4 +139,4 @@ class Brief:
                 self.print_macrostep(mes)
             self.flush()
             print(self.failure)
-            return False;
+            return False

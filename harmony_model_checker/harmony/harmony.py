@@ -32,40 +32,26 @@
     POSSIBILITY OF SUCH DAMAGE.
 """
 
-version = [
-m4_include(buildversion)
-]
-
+import collections
+import getopt
+import html
+import pathlib
 import sys
 import os
-import pathlib
-import tempfile
-import getopt
-import traceback
-import collections
-import time
 import math
-import html
-import queue
 import functools
 import json
-import subprocess
+import time
+import traceback
 import webbrowser
-from typing import Any, List, NamedTuple
 
+from harmony_model_checker.harmony.jsonstring import *
+from harmony_model_checker.harmony.brief import *
+from harmony_model_checker.harmony.genhtml import *
+from harmony_model_checker.harmony.behavior import *
+from harmony_model_checker.exception import HarmonyCompilerError
+from harmony_model_checker import __version__
 
-try:
-    import pydot
-    got_pydot = True
-except Exception as e:
-    got_pydot = False
-
-try:
-    from automata.fa.nfa import NFA
-    from automata.fa.dfa import DFA
-    got_automata = True
-except Exception as e:
-    got_automata = False
 
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
@@ -80,41 +66,6 @@ labelcnt = 0            # counts labels L1, L2, ...
 labelid = 0
 tlavarcnt = 0           # to generate unique TLA+ variables
 
-m4_include(jsonstring.py)
-m4_include(brief.py)
-m4_include(genhtml.py)
-m4_include(behavior.py)
-
-
-class ErrorToken(NamedTuple):
-    line: int
-    message: int
-    column: int
-    lexeme: str
-    filename: str
-    is_eof_error: bool
-
-class HarmonyCompilerErrorCollection(Exception):
-    def __init__(self, errors: List[ErrorToken]) -> None:
-        super().__init__()
-        self.errors = errors
-
-class HarmonyCompilerError(Exception):
-    """
-    Error encountered during the compilation of a Harmony program.
-    """
-    def __init__(self, message: str, filename: str = None, line: int = None,
-                 column: int = None, lexeme: Any = None, is_eof_error=False):
-        super().__init__()
-        self.message = message
-        self.token = ErrorToken(
-            line=line,
-            message=message,
-            column=column,
-            lexeme=str(lexeme),
-            filename=filename,
-            is_eof_error=is_eof_error
-        )
 
 def bag_add(bag, item):
     cnt = bag.get(item)
@@ -149,7 +100,7 @@ def doImport(scope, code, module):
         scope2.labels = scope.labels
 
         found = False
-        install_path = os.path.dirname(os.path.realpath(__file__))
+        install_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
             filename = dir + "/" + modname + ".hny"
             if os.path.exists(filename):
@@ -8045,8 +7996,7 @@ def main():
         elif o == "--suppress":
             suppressOutput = True
         elif o in { "-v", "--version" }:
-            print("Version", ".".join([str(v) for v in version]))
-            sys.exit(0)
+            print(__version__)
         elif o in { "-p", "--parse" }:
             parse_code_only = True
         elif o == "--noweb":

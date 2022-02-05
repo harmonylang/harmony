@@ -1,2 +1,4 @@
 include harmony_model_checker/charm.c
 include harmony_model_checker/modules/*.hny
+include harmony_model_checker/harmony/charm.js
+include harmony_model_checker/harmony/charm.css

@@ -1,3 +1,23 @@
+import subprocess
+import sys
+import json
+
+from harmony_model_checker.harmony.jsonstring import json_string
+
+try:
+    import pydot
+    got_pydot = True
+except Exception as e:
+    got_pydot = False
+
+try:
+    from automata.fa.nfa import NFA
+    from automata.fa.dfa import DFA
+    got_automata = True
+except Exception as e:
+    got_automata = False
+
+
 # an error state is a non-final state all of whose outgoing transitions
 # point only to itself
 def find_error_states(transitions, final_states):
