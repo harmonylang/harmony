@@ -23,6 +23,25 @@ from harmony_model_checker.parser.HarmonyLexer import HarmonyLexer
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 
 
+def build_input_stream(**kwargs) -> InputStream:
+    try:
+        filename = kwargs.get('filename', None)
+        str_value = kwargs.get('str_value', None)
+        if filename is not None:
+            return FileStream(filename, 'utf-8')
+        elif str_value is not None:
+            return InputStream(str_value)
+    except UnicodeDecodeError as e:
+        raise HarmonyCompilerError(
+            message=e.reason,
+            filename=filename,
+            line=1,
+            column=1,
+            lexeme=chr(input[e.start])
+        )
+    raise ValueError("Cannot build input stream without a source")
+
+
 def build_parser(progam_input: InputStream, lexer_error_listener=None, parser_error_listener=None):
     lexer = HarmonyLexer(progam_input)
     stream = CommonTokenStream(lexer)
@@ -120,7 +139,7 @@ def do_import(scope: Scope, code: Code, module):
 
 def parse_constant(name: str, value: str):
     filename = "<constant argument>"
-    _input = InputStream(value)
+    _input = build_input_stream(str_value=value)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -140,7 +159,7 @@ def parse_constant(name: str, value: str):
 
 
 def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
-    _input = InputStream(string)
+    _input = build_input_stream(str_value=string)
     parser = build_parser(_input)
     visitor = HarmonyVisitorImpl(filename)
 
@@ -149,7 +168,7 @@ def parse_string(string: str, filename: str = "<string-code>") -> BlockAST:
 
 
 def parse(filename: str) -> BlockAST:
-    _input = FileStream(filename, 'utf-8')
+    _input = build_input_stream(filename=filename)
     error_listener = HarmonyParserErrorListener(filename)
     lexer_error_listener = HarmonyLexerErrorListener(filename)
     parser = build_parser(
