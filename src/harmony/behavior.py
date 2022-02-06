@@ -99,7 +99,7 @@ def behavior_show_diagram(dfa, path=None):
                 ))
     if path:
         try:
-            graph.write_png(path)
+            graph.write_png(path, encoding='utf-8')
         except FileNotFoundError:
             print("install graphviz (www.graphviz.org) to see output DFAs")
     return graph
