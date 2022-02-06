@@ -109,7 +109,7 @@ def evaluate_test_case(test_case: TestCase, n: int) -> TestResult:
     for _ in range(n):
         start_time = time.process_time()
         result = subprocess.run(
-            f'./harmony -A {harmony_args} {filename}'.split(),
+            f'python harmony -A {harmony_args} {filename}'.split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding='utf8'
