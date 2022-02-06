@@ -3,7 +3,7 @@ import json
 from automata.fa.dfa import DFA
 
 def parse(file):
-    with open(file) as f:
+    with open(file, encoding='utf-8') as f:
         js = json.load(f)
 
         states = { "__error__": {} }

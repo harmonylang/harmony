@@ -20,7 +20,7 @@ class GenHTML:
         self.js = (self_dir / "charm.js").read_text()
 
     def file_include(self, name, f):
-        with open(name) as g:
+        with open(name, encoding='utf-8') as g:
             print(g.read(), file=f)
 
     def html_megastep(self, step, tid, name, nmicrosteps, width, f):
@@ -335,7 +335,7 @@ class GenHTML:
     def run(self, outputfiles):
         # First figure out how many megasteps there are and how many threads
         lasttid = -1
-        with open(outputfiles["hco"]) as f:
+        with open(outputfiles["hco"], encoding='utf-8') as f:
             self.top = json.load(f)
             assert isinstance(self.top, dict)
             if "macrosteps" in self.top:
@@ -356,5 +356,5 @@ class GenHTML:
                         if tid >= self.nthreads:
                             self.nthreads = tid + 1
 
-        with open(outputfiles["htm"], "w") as out:
+        with open(outputfiles["htm"], "w", encoding='utf-8') as out:
             self.html(out, outputfiles)

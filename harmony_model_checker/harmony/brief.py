@@ -125,7 +125,7 @@ class Brief:
             self.interrupted = "interrupt" in self.lastmis and self.lastmis["interrupt"] == "True"
 
     def run(self, outputfiles, behavior):
-        with open(outputfiles["hco"]) as f:
+        with open(outputfiles["hco"], encoding='utf-8') as f:
             print("Phase 5: loading", outputfiles["hco"])
             top = json.load(f)
             assert isinstance(top, dict)

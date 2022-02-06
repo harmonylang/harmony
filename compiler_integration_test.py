@@ -267,7 +267,7 @@ def main():
         final_results = evaluate_and_compare_test_cases(TEST_CASES, n=1)
     print()
 
-    with open('compiler_integration_results.md', 'w') as f:
+    with open('compiler_integration_results.md', 'w', encoding='utf-8') as f:
         dump_results(final_results, f)
 
 

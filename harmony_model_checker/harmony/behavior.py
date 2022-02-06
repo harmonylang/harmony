@@ -28,7 +28,7 @@ def find_error_states(transitions, final_states):
     return error_states
 
 def read_hfa(file, dfa, nfa):
-    with open(file) as fd:
+    with open(file, encoding='utf-8') as fd:
         js = json.load(fd)
         initial = js["initial"]
         states = { "{}" }
@@ -249,7 +249,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
     dfa_error_states = find_error_states(dfa_transitions, dfa_final_states)
 
     if outputfiles["hfa"] != None:
-        with open(outputfiles["hfa"], "w") as fd:
+        with open(outputfiles["hfa"], "w", encoding='utf-8') as fd:
             names = {}
             for (idx, s) in enumerate(dfa_states):
                 names[s] = idx
@@ -295,7 +295,7 @@ def behavior_parse(js, minify, outputfiles, behavior):
             print("}", file=fd)
 
     if outputfiles["gv"] != None:
-        with open(outputfiles["gv"], "w") as fd:
+        with open(outputfiles["gv"], "w", encoding='utf-8') as fd:
             names = {}
             for (idx, s) in enumerate(dfa_states):
                 names[s] = idx
