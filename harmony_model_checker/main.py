@@ -76,7 +76,7 @@ def load_file(filename: str, scope: Scope, code: Code):
     if filename in legacy_harmony.files:
         return
     legacy_harmony.namestack.append(filename)
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding='utf-8') as f:
         legacy_harmony.files[filename] = f.read().split("\n")
 
     ast = parse(filename)
@@ -362,7 +362,7 @@ def main():
 
         if parse_code_only:
             data = dict(errors=[e._asdict() for e in errors], status="error")
-            with open(output_files["hvm"], "w") as fp:
+            with open(output_files["hvm"], "w", encoding='utf-8') as fp:
                 json.dump(data, fp)
         else:
             for e in errors:
@@ -371,18 +371,18 @@ def main():
         return 1
 
     if parse_code_only:
-        with open(output_files["hvm"], "w") as f:
+        with open(output_files["hvm"], "w", encoding='utf-8') as f:
             f.write(json.dumps({"status": "ok"}))
         return
 
     if output_files["tla"] is not None:
-        with open(output_files["tla"], "w") as f:
+        with open(output_files["tla"], "w", encoding='utf-8') as f:
             legacy_harmony.tla_translate(f, code, scope)
 
     # Analyze liveness of variables
     if charm_flag:
         # see if there is a configuration file
-        with open(output_files["hvm"], "w") as fd:
+        with open(output_files["hvm"], "w", encoding='utf-8') as fd:
             legacy_harmony.dumpCode("json", code, scope, f=fd)
 
         if parse_code_only:

@@ -153,7 +153,7 @@ def doImport(scope, code, module):
         for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
             filename = dir + "/" + modname + ".hny"
             if os.path.exists(filename):
-                with open(filename) as f:
+                with open(filename, encoding='utf-8') as f:
                     load(f, filename, scope2, code)
                 found = True
                 break
@@ -2857,7 +2857,7 @@ class AST:
             for dir in [ os.path.dirname(namestack[-1]), install_path + "/modules", "." ]:
                 filename = dir + "/" + modname + ".hny"
                 if os.path.exists(filename):
-                    with open(filename) as f:
+                    with open(filename, encoding='utf-8') as f:
                         load(f, filename, scope2, code)
                     found = True
                     break
@@ -5879,7 +5879,7 @@ def doCompile(filenames, consts, mods, interface):
     code.append(FrameOp(("__init__", None, None, None), []))
     for fname in filenames:
         try:
-            with open(fname) as fd:
+            with open(fname, encoding='utf-8') as fd:
                 load(fd, fname, scope, code)
         except IOError:
             print("harmony: can't open", fname, file=sys.stderr)
@@ -6495,7 +6495,7 @@ def htmlcode(code, scope, f):
     print("</div>", file=f)
 
 def htmldump(nodes, code, scope, node, fulldump, verbose):
-    with open("harmony.html", "w") as f:
+    with open("harmony.html", "w", encoding='utf-8') as f:
         print("""
 <html>
   <head>
@@ -8076,7 +8076,7 @@ def main():
         code, scope = doCompile(args, consts, mods, interface)
     except HarmonyCompilerError as e:
         if parse_code_only:
-            with open(outputfiles["hvm"], "w") as f:
+            with open(outputfiles["hvm"], "w", encoding='utf-8') as f:
                 data = {
                     "errors": [e.token._as_dict()],
                     "status": "error"
@@ -8086,12 +8086,12 @@ def main():
         sys.exit(1)
 
     if parse_code_only:
-        with open(outputfiles["hvm"], "w") as f:
+        with open(outputfiles["hvm"], "w", encoding='utf-8') as f:
             f.write(json.dumps({"status": "ok"}))
         return
 
     if outputfiles["tla"] != None:
-        with open(outputfiles["tla"], "w") as fd:
+        with open(outputfiles["tla"], "w", encoding='utf-8') as fd:
             tla_translate(fd, code, scope)
 
     install_path = os.path.dirname(os.path.realpath(__file__))
@@ -8100,7 +8100,7 @@ def main():
         # see if there is a configuration file
         infile = "%s/charm.c"%install_path
         outfile = "%s/charm.exe"%install_path
-        with open(outputfiles["hvm"], "w") as fd:
+        with open(outputfiles["hvm"], "w", encoding='utf-8') as fd:
             dumpCode("json", code, scope, f=fd)
         print("Phase 2: run the model checker")
         sys.stdout.flush()
