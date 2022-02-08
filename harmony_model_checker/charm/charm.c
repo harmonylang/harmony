@@ -237,6 +237,7 @@ static bool onestep(
     int as_instrcnt = 0;
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
+    int choice_size = 1;                // Number of choices to make. It is 1
     for (;;) {
         int pc = step->ctx->pc;
 
@@ -376,6 +377,7 @@ static bool onestep(
             }
             else {
                 choosing = true;
+                choice_size = size;
                 break;
             }
         }
@@ -475,6 +477,10 @@ static bool onestep(
     edge->ai = step->ai;
     edge->log = step->log;
     edge->nlog = step->nlog;
+    // Assume uniform distribution for now
+    edge->probability_numerator = 1;
+    // TODO: Is this right?
+    edge->probability_denominator = choice_size;
 
     // See if this state has been computed before
     struct keynode *k = dict_find_lock(w->visited, &w->allocator,
@@ -490,6 +496,7 @@ static bool onestep(
             next->before = ctx;
             next->after = after;
             next->choice = choice_copy;
+            next->choice_size = choice_size;
             next->interrupt = interrupt;
         }
     }
@@ -503,6 +510,7 @@ static bool onestep(
         next->after = after;
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
+        next->choice_size = choice_size;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -1776,6 +1784,7 @@ static void usage(char *prog){
 
 int main(int argc, char **argv){
     bool cflag = false;
+    bool probabilistic = false;
     int i, maxtime = 300000000 /* about 10 years */;
     char *outfile = NULL, *dfafile = NULL;
     for (i = 1; i < argc; i++) {
@@ -1802,6 +1811,9 @@ int main(int argc, char **argv){
         case 'x':
             printf("Charm model checker working\n");
             return 0;
+        case 'p':
+            probabilistic = true;
+            break;
         default:
             usage(argv[0]);
         }
@@ -1925,6 +1937,7 @@ int main(int argc, char **argv){
     struct node *node = node_alloc(NULL);
     node->state = *state;
     node->after = ictx;
+    node->choice_size = 1;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, NULL, state, sizeof(*state));
     assert(*p == NULL);
@@ -2216,6 +2229,38 @@ int main(int argc, char **argv){
     if (no_issues) {
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
+        if (probabilistic) {
+            fprintf(out, "  \"probabilities\": [\n");
+
+            bool first = true;
+            for (int i = 0; i < global->graph.size; i++) {
+                struct node *node = global->graph.nodes[i];
+                assert(node->id == i);
+
+                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        fprintf(out, ",\n");
+                    }
+
+                    fprintf(
+                        out, 
+                        "    {\"from\": %d, \"to\": %d, \"probability\": {\"numerator\": %d, \"denominator\": %d}}",
+                        i,
+                        edge->dst->id,
+                        edge->probability_numerator,
+                        edge->probability_denominator
+                    );
+                }
+            }
+
+            fprintf(out, "\n");
+            fprintf(out, "  ],\n");
+        }
+
+
+        // We delay destutter since we need the full graph for probabilities
         destutter1(&global->graph);
 
         // Output the symbols;
@@ -2225,6 +2270,7 @@ int main(int argc, char **argv){
         dict_iter(symbols, print_symbol, &se);
         fprintf(out, "\n");
         fprintf(out, "  },\n");
+
 
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;
