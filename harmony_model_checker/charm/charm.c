@@ -2257,6 +2257,7 @@ int main(int argc, char **argv){
 
             fprintf(out, "\n");
             fprintf(out, "  ],\n");
+            fprintf(out, "  \"total_states\": %d,\n", global->graph.size);
         }
 
 

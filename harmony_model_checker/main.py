@@ -40,7 +40,7 @@ args.add_argument("-s", action="store_true",
 args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
 args.add_argument("-o", action='append', type=pathlib.Path,
-                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
+                  help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv, .hpo)")
 args.add_argument("-j", action="store_true",
                   help="list machine code in JSON format")
 args.add_argument("--noweb", action="store_true", default=False,
@@ -51,6 +51,8 @@ args.add_argument("--config", action="store_true",
                   help="get or set configuration value. "
                        "Use --config <key> to get the value of a setting. "
                        "Use --config <key> <value> to set the value of a setting")
+args.add_argument("--probabilistic", type=str,
+                  help="use probabilistic model checking")
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
@@ -96,6 +98,8 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
     charm_options = ns.cf or []
     if ns.B:
         charm_options.append("-B" + ns.B)
+    if ns.probabilistic:
+        charm_options.append("-p")
 
     # see if there is a configuration file
     if code is not None:
@@ -129,13 +133,17 @@ def handle_hco(ns, output_files):
     suppress_output = ns.suppress
 
     behavior = None
+    # TODO: These probably should be refactored somewhere else
+    probability_states = None
     if ns.B:
         behavior = ns.B
+    if ns.probabilistic:
+        probability_states = ns.probabilistic
 
     disable_browser = settings.values.disable_web or ns.noweb
     
     b = Brief()
-    b.run(output_files, behavior)
+    b.run(output_files, behavior, probabilistic)
     gh = GenHTML()
     gh.run(output_files)
     if not suppress_output:
@@ -198,7 +206,8 @@ def main():
         "hvm": None,
         "png": None,
         "tla": None,
-        "gv":  None
+        "gv":  None,
+        "hpo": None,
     }
     for p in (ns.o or []):
         # The suffix includes the dot if it exists.

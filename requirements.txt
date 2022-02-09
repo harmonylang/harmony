@@ -4,3 +4,4 @@ automata-lib==5.0.0
 pydot==1.4.2
 requests==2.27.1
 twine==3.7.1
+numpy==1.22.0
