@@ -37,8 +37,6 @@ args.add_argument("-s", action="store_true",
                   help="silent (do not print periodic status updates)")
 args.add_argument("-v", "--version", action="store_true",
                   help="print version number")
-args.add_argument("-f", action="store_true",
-                  help="run with internal model checker (not supported)")
 args.add_argument("-o", action='append', type=pathlib.Path,
                   help="specify output file (.hvm, .hco, .hfa, .htm. .tla, .png, .gv)")
 args.add_argument("-j", action="store_true",
@@ -57,12 +55,6 @@ args.add_argument("files", metavar="harmony-file",
 
 def main():
     ns = args.parse_args()
-
-    if ns.f:
-        # remove the first instance of "-f" from the legacy model checker
-        sys.argv.remove("-f")
-        legacy_harmony.main()
-        return 0
 
     if ns.version:
         print("Version:", harmony_model_checker.__package__,
