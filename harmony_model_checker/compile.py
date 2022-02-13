@@ -28,7 +28,7 @@ def _build_input_stream(**kwargs) -> InputStream:
             filename=filename,
             line=1,
             column=1,
-            lexeme=chr(input[e.start])
+            lexeme=chr(e.start)
         )
     raise ValueError("Cannot build input stream without a source")
 
@@ -181,7 +181,7 @@ def _parse(filename: str) -> BlockAST:
         raise HarmonyCompilerErrorCollection([e.token])
 
 
-def do_compile(filenames: List[str], consts: List[str], mods: List[str], interface: List[str]):
+def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[str]):
     for c in consts:
         try:
             i = c.index("=")
@@ -203,8 +203,7 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
     scope = Scope(None)
     code = Code()
     code.append(FrameOp(("__init__", None, None, None), []))
-    for fname in filenames:
-        _load_file(str(fname), scope, code)
+    _load_file(str(fname), scope, code)
     if interface is not None:
         _load_string("def __iface__(): result = (%s)" %
                     interface, scope, code, "interface")
