@@ -32,12 +32,13 @@ def build_input_stream(**kwargs) -> InputStream:
         elif str_value is not None:
             return InputStream(str_value)
     except UnicodeDecodeError as e:
+        lexeme = str(e.args[1][e.start:e.end])  # args[0] is the encoding name, args[1] contains the actual bytes being parsed.
         raise HarmonyCompilerError(
             message=e.reason,
             filename=filename,
             line=1,
             column=1,
-            lexeme=chr(input[e.start])
+            lexeme=lexeme
         )
     raise ValueError("Cannot build input stream without a source")
 

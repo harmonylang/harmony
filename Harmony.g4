@@ -27,11 +27,11 @@ def nextToken(self):
     return token
 }
 
-NL: '\r'? '\n' (' '* | '\t') {
+NL: '\r'? '\n' (' '* | '\t'*) {
 if self.opened or self.opened_for:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
-WS : (' '+ | '\t' | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
+WS : (' '+ | '\t'+ | '\\' NL | COMMENT ) -> skip ; // skip just white space and '\' for multiline statements
 
 fragment COMMENT
     : OPEN_MULTI_COMMENT .*? CLOSE_MULTI_COMMENT
