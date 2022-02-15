@@ -152,7 +152,7 @@ def main():
 
     if len(ns.args) != 1:
         print(f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
-        args.print_usage()
+        args.print_help()
         return 1
 
     filename = pathlib.Path(ns.args[0])
