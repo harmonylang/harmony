@@ -54,8 +54,7 @@ args.add_argument("--config", action="store_true",
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 
-args.add_argument("args", metavar="args", type=str,
-                  nargs='*', help="arguments")
+args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
 
 def handle_version(_: argparse.Namespace):
@@ -154,6 +153,7 @@ def main():
     if len(ns.args) != 1:
         print(
             f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
+        args.print_usage()
         return 1
 
     filename = pathlib.Path(ns.args[0])
