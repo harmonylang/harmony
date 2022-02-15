@@ -94,12 +94,12 @@ def main():
     if ns.version:
         return handle_version(ns)
 
+    if ns.config:
+        return handle_config(ns)
+
     if not settings.values.disable_update_check:
         check_version.check_outdated(
             harmony_model_checker.__package__, harmony_model_checker.__version__)
-
-    if ns.config:
-        return handle_config(ns)
 
     disable_browser = settings.values.disable_web or ns.noweb
     consts: List[str] = ns.const or []
