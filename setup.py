@@ -32,6 +32,7 @@ python_version = sys.version_info[:2]
 if python_version < (3, 6):
     print("{} requires Python version 3.6 or later".format(PACKAGE_NAME))
     print("(Version {}.{} detected)".format(*python_version))
+    sys.exit(1)
 
 PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
 
