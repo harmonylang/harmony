@@ -27,7 +27,7 @@ def nextToken(self):
     return token
 }
 
-NL: '\r'? '\n' (' '* | '\t'*) {
+NL: '\r'? '\n' (' ' | '\t')* {
 if self.opened or self.opened_for:
     self.skip()
 }; // For tabs just switch out ' '* with '\t'*
