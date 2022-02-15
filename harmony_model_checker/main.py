@@ -8,7 +8,7 @@ import argparse
 from antlr4 import *
 
 import harmony_model_checker
-from harmony_model_checker.config import setting
+from harmony_model_checker.config import settings
 import harmony_model_checker.util.self_check_is_outdated as check_version
 from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
@@ -64,30 +64,30 @@ def main():
               harmony_model_checker.__version__)
         return 0
 
-    if not setting.settings.settings.disable_update_check:
+    if not settings.values.disable_update_check:
         check_version.check_outdated(
             harmony_model_checker.__package__, harmony_model_checker.__version__)
 
     if ns.config:
         if len(ns.args) == 0:
             print("Configuration settings:")
-            for k, v in setting.settings.settings._asdict().items():
+            for k, v in settings.values._asdict().items():
                 print(f"    {k}: {v}")
             return
         key = ns.args[0]
         try:
             if len(ns.args) > 1:
                 value = ns.args[1]
-                setting.settings.update_settings_file(key, value)
+                settings.update_settings_file(key, value)
             else:
-                print(setting.settings.get_settings_value(key))
+                print(settings.get_settings_value(key))
         except AttributeError:
             print(f"'{key}' is not a valid configuration setting")
         except ValueError as e:
             print(f"Value '{e.args[0]}' is not a valid value for configuration setting '{key}'")
         return
 
-    disable_browser = setting.settings.settings.disable_web or ns.noweb
+    disable_browser = settings.values.disable_web or ns.noweb
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
     mods: List[str] = ns.module or []
