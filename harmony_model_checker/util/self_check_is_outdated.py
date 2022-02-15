@@ -1,6 +1,7 @@
 import json
 import atexit
 import logging
+import sys
 import time
 import pkg_resources
 import tempfile
@@ -78,9 +79,10 @@ def check_outdated(package: str, version: str) -> None:
             messages_to_log.append([
                 logging.WARNING,
                 "Version %s of %s is currently installed, but a new version %s is available.\n"
-                "You should consider upgrading to the newer version by running the following command:\n"
-                "pip install --upgrade %s",
-                version, package, latest, package
+                "You should consider upgrading to the newer version by running the following command:\n\n"
+                "%s -m pip install --upgrade %s\n\n"
+                "If harmony-model-checker was manually installed (i.e. not via pip), then visit https://pypi.org/project/%s/ to obtain the latest version",
+                version, package, latest, sys.executable, package, package
             ])
             return
         cache_file.write_text(
