@@ -1,4 +1,4 @@
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, Optional
 import json
 import pathlib
 import webbrowser
@@ -151,8 +151,7 @@ def main():
         behavior = ns.B
 
     if len(ns.args) != 1:
-        print(
-            f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
+        print(f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
         args.print_usage()
         return 1
 
