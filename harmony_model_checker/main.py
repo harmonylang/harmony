@@ -234,8 +234,7 @@ args.add_argument("-a", action="store_true",
                   help="list machine code (with labels)")
 args.add_argument("-A", action="store_true",
                   help="list machine code (without labels)")
-args.add_argument("-B", type=str, nargs=1,
-                  help="check against the given behavior")
+args.add_argument("-B", type=str, help="check against the given behavior")
 args.add_argument("-p", "--parse", action="store_true",
                   help="parse code without running")
 args.add_argument("-c", "--const", action='append', type=str,
