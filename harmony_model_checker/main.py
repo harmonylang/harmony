@@ -122,6 +122,7 @@ def main():
             print(f"harmony: error: file named '{f}' does not exist.")
             return 1
     stem = str(filenames[0].parent / filenames[0].stem)
+    input_file_type = filenames[0].suffix
 
     if output_files["hvm"] is None:
         output_files["hvm"] = stem + ".hvm"
@@ -132,43 +133,50 @@ def main():
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
 
-    print("Phase 1: compile Harmony program to bytecode")
-    try:
-        code, scope = do_compile(filenames, consts, mods, interface)
-    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
-        if isinstance(e, HarmonyCompilerErrorCollection):
-            errors = e.errors
-        else:
-            errors = [e.token]
+    continue_compile = False
+    if (input_file_type == ".hny"):
+        continue_compile = True
+        print("Phase 1: compile Harmony program to bytecode")
+        try:
+            code, scope = do_compile(filenames, consts, mods, interface)
+        except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
+            if isinstance(e, HarmonyCompilerErrorCollection):
+                errors = e.errors
+            else:
+                errors = [e.token]
+
+            if parse_code_only:
+                data = dict(errors=[e._asdict() for e in errors], status="error")
+                with open(output_files["hvm"], "w", encoding='utf-8') as fp:
+                    json.dump(data, fp)
+            else:
+                for e in errors:
+                    print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
+                    print()
+            return 1
 
         if parse_code_only:
-            data = dict(errors=[e._asdict() for e in errors], status="error")
-            with open(output_files["hvm"], "w", encoding='utf-8') as fp:
-                json.dump(data, fp)
-        else:
-            for e in errors:
-                print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
-                print()
-        return 1
+            with open(output_files["hvm"], "w", encoding='utf-8') as f:
+                f.write(json.dumps({"status": "ok"}))
+            return
 
-    if parse_code_only:
-        with open(output_files["hvm"], "w", encoding='utf-8') as f:
-            f.write(json.dumps({"status": "ok"}))
-        return
+        if output_files["tla"] is not None:
+            with open(output_files["tla"], "w", encoding='utf-8') as f:
+                legacy_harmony.tla_translate(f, code, scope)
+    else:
+        print("Skipping Phase 1...")
 
-    if output_files["tla"] is not None:
-        with open(output_files["tla"], "w", encoding='utf-8') as f:
-            legacy_harmony.tla_translate(f, code, scope)
-
-    # Analyze liveness of variables
-    if charm_flag:
+    # Analyze liveness of variables and check compilation stage
+    if ((input_file_type == ".hvm") or continue_compile) and charm_flag:
         # see if there is a configuration file
-        with open(output_files["hvm"], "w", encoding='utf-8') as fd:
-            legacy_harmony.dumpCode("json", code, scope, f=fd)
+        if continue_compile == 1:
+            with open(output_files["hvm"], "w", encoding='utf-8') as fd:
+                legacy_harmony.dumpCode("json", code, scope, f=fd)
 
         if parse_code_only:
             return 0
 
+        continue_compile = True
         print("Phase 2: run the model checker")
         r = charm.run_model_checker(
             *charm_options,
@@ -178,6 +186,13 @@ def main():
         if r != 0:
             print("charm model checker failed")
             return r
+
+    else:
+        print("Skipping Phase 2-4...")
+        if continue_compile:
+            legacy_harmony.dumpCode(print_code, code, scope)
+    
+    if (input_file_type == ".hco") or continue_compile:
         b = Brief()
         b.run(output_files, behavior)
         gh = GenHTML()
@@ -188,5 +203,3 @@ def main():
             print("open " + url + " for more information", file=sys.stderr)
             if open_browser:
                 webbrowser.open(url)
-    else:
-        legacy_harmony.dumpCode(print_code, code, scope)
