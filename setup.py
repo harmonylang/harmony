@@ -2,6 +2,7 @@ import os
 import os.path
 from pathlib import Path
 import pathlib
+import sys
 from typing import List, NamedTuple
 
 import setuptools
@@ -26,6 +27,13 @@ def get_version(rel_path: str) -> str:
     raise RuntimeError("Unable to find version string.")
 
 PACKAGE_NAME = 'harmony_model_checker'
+
+python_version = sys.version_info[:2]
+if python_version < (3, 6):
+    print("{} requires Python version 3.6 or later".format(PACKAGE_NAME))
+    print("(Version {}.{} detected)".format(*python_version))
+    sys.exit(1)
+
 PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
 
 this_directory = Path(__file__).parent
@@ -71,8 +79,9 @@ class BuildExtCommand(build_ext):
             super().build_extension(ext)
             return
         except (distutils.errors.DistutilsPlatformError, distutils.errors.CompileError) as e:
+            print(e)
             print("Encountered error when building by default configurations")
-            print("Buidling with backup configurations")
+            print("Building with backup configurations")
 
         encountered_error = None
         for c in compiler_and_args:

@@ -12,7 +12,8 @@ Harmony is a programming language designed for testing and experimenting with co
   - [Command-Line Harmony](#command-line-harmony)
   - [Harmony on VSCode](#harmony-on-vscode)
   - [Updating Harmony](#updating-harmony)
-  - [Modifying your PATH variable](#modifying-your-path-variable)
+  - [Troubleshooting](#troubleshooting)
+    - [Modifying your PATH variable](#modifying-your-path-variable)
 
 For more information, please visit the official page https://harmony.cs.cornell.edu.
 
@@ -35,6 +36,9 @@ In the installer, the default installation settings will also add `pip`. If you 
 On the command line, you can check if Python has been successfully installed by running the following:
 
 ```sh
+python --version
+
+## If python does not work or if python gives version 2.X
 python3 --version
 ```
 
@@ -67,7 +71,10 @@ For **Windows** users, when running the installer, make sure to select the optio
 After installing `python`, you should also be able to use the command `pip`. Run the following command to get the latest version of Harmony:
 
 ```sh
-pip install harmony-model-checker
+pip install --user harmony-model-checker
+
+## If pip fails try pip3
+pip3 install --user harmony-model-checker
 ```
 
 ### For Windows Users
@@ -95,13 +102,16 @@ Note that this will likely take a while. When it finishes installing, run `pip i
 It may be possible that `pip` is not available on your Linux machine. In that case, you will need to download and build the source code directly. This can be done via the following commands:
 
 ```sh
-# Installs version 1.2.2376
-wget https://files.pythonhosted.org/packages/2c/cb/0a1d4dedf7f4dc552da831b28bde842c74bed251d75dd58d9f56fc688b04/harmony_model_checker-1.2.2376.tar.gz
-gzip -d harmony_model_checker-1.2.2376.tar.gz
-tar -xf harmony_model_checker-1.2.2376.tar
-cd harmony_model_checker-1.2.2376
+# Installs version 1.2.2386
+wget https://files.pythonhosted.org/packages/71/8b/49cad4c1c9b519fb1a479991fe23fb04892b77f17e045f11309bef424597/harmony_model_checker-1.2.2386.tar.gz
+gzip -d harmony_model_checker-1.2.2386.tar.gz
+tar -xf harmony_model_checker-1.2.2386.tar
+cd harmony_model_checker-1.2.2386
 python3 setup.py install --user
 ```
+
+You can find the latest releases [here](https://pypi.org/project/harmony-model-checker/#files).
+
 
 Afterward, you will likely need to add the directory with the `harmony` command to your environment `PATH`. You can get the directory with the script by running `python3 -m site --user-base`, which will output something like `/home/<net-id>/.local`. Add this directory to your `PATH` (See [here](#modifying-your-path-variable) for more information on how to do so).
 
@@ -140,7 +150,11 @@ pip install --upgrade harmony-model-checker
 
 In Harmony versions `1.2.0` and higher, the compiler will output a warning if the currently installed version of Harmony is outdated and an updated one can be installed.
 
-## Modifying your PATH variable
+## Troubleshooting
+
+The following section provides some guide for how to resolve common issues.
+
+### Modifying your PATH variable
 
 **Windows**:
 
@@ -158,6 +172,8 @@ Click "New" to add a new path, for example, the directory containing `gcc` or th
 
 Complete your changes by pressing "Ok".
 
+You will have to restart your command line (and VSCode if you are using the extension) to have the changes take effect.
+
 **MacOS / Linux**:
 
 Open the Terminal application. Check which shell is running on the Terminal. You check which one you have by running `echo "$SHELL"`.
@@ -168,4 +184,6 @@ The following instructions are for `bash` and `zsh`. Open the `~/.bash_profile` 
 export PATH=$PATH:/path/to/add/
 ```
 
-Save the file and restart the Terminal to observe the change.
+Save the file.
+
+You will have to restart Terminal (and VSCode if you are using the extension) to have the changes take effect.

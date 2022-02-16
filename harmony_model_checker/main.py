@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional
 import json
-import os
 import pathlib
 import webbrowser
 import sys
@@ -9,6 +8,7 @@ import argparse
 from antlr4 import *
 
 import harmony_model_checker
+from harmony_model_checker.config import settings
 import harmony_model_checker.util.self_check_is_outdated as check_version
 from harmony_model_checker import charm
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
@@ -18,7 +18,8 @@ from harmony_model_checker.harmony.brief import Brief
 from harmony_model_checker.compile import do_compile
 
 
-args = argparse.ArgumentParser("harmony")
+args = argparse.ArgumentParser(
+    "harmony", description="Harmony programming language compiler and model checker")
 args.add_argument("-a", action="store_true",
                   help="list machine code (with labels)")
 args.add_argument("-A", action="store_true",
@@ -44,25 +45,61 @@ args.add_argument("--noweb", action="store_true", default=False,
                   help="do not automatically open web browser")
 args.add_argument("--suppress", action="store_true",
                   help="generate less terminal output")
+args.add_argument("--config", action="store_true",
+                  help="get or set configuration value. "
+                       "Use --config <key> to get the value of a setting. "
+                       "Use --config <key> <value> to set the value of a setting")
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
 
-args.add_argument("files", metavar="harmony-file",
-                  type=pathlib.Path, nargs='*', help="files to compile")
+args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
+
+
+def handle_version(_: argparse.Namespace):
+    print("Version:", harmony_model_checker.__package__,
+          harmony_model_checker.__version__)
+    return 0
+
+
+def handle_config(ns: argparse.Namespace):
+    if len(ns.args) == 0:
+        print("Configuration settings:")
+        for k, v in settings.values._asdict().items():
+            print(f"    {k}: {v}")
+        print("Use --config <key> to get the value of a setting.\nUse --config <key> <value> to set the value of a setting")
+        return 0
+    key = ns.args[0]
+    try:
+        if len(ns.args) > 1:
+            value = ns.args[1]
+            settings.update_settings_file(key, value)
+        else:
+            print(settings.get_settings_value(key))
+    except AttributeError:
+        print(f"'{key}' is not a valid configuration setting")
+        return 1
+    except ValueError as e:
+        print(
+            f"Value '{e.args[0]}' is not a valid value for configuration setting '{key}'")
+        return 1
+    return 0
 
 
 def main():
     ns = args.parse_args()
 
     if ns.version:
-        print("Version:", harmony_model_checker.__package__,
-              harmony_model_checker.__version__)
-        return 0
+        return handle_version(ns)
 
-    check_version.check_outdated(
-        harmony_model_checker.__package__, harmony_model_checker.__version__)
+    if ns.config:
+        return handle_config(ns)
 
+    if not settings.values.disable_update_check:
+        check_version.check_outdated(
+            harmony_model_checker.__package__, harmony_model_checker.__version__)
+
+    disable_browser = settings.values.disable_web or ns.noweb
     consts: List[str] = ns.const or []
     interface: Optional[str] = ns.intf
     mods: List[str] = ns.module or []
@@ -91,6 +128,7 @@ def main():
         "tla": None,
         "gv":  None
     }
+
     for p in (ns.o or []):
         # The suffix includes the dot if it exists.
         # Otherwise, it is an empty string.
@@ -111,17 +149,17 @@ def main():
         charm_options.append("-B" + ns.B)
         behavior = ns.B
 
-    open_browser = not ns.noweb
-
-    filenames: List[pathlib.Path] = ns.files
-    if not filenames:
+    if len(ns.args) != 1:
+        print(f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
         args.print_help()
         return 1
-    for f in filenames:
-        if not f.exists():
-            print(f"harmony: error: file named '{f}' does not exist.")
-            return 1
-    stem = str(filenames[0].parent / filenames[0].stem)
+
+    filename = pathlib.Path(ns.args[0])
+    if not filename.exists():
+        print(f"harmony: error: file named '{filename}' does not exist.")
+        return 1
+
+    stem = str(filename.parent / filename.stem)
 
     if output_files["hvm"] is None:
         output_files["hvm"] = stem + ".hvm"
@@ -134,7 +172,7 @@ def main():
 
     print("Phase 1: compile Harmony program to bytecode")
     try:
-        code, scope = do_compile(filenames, consts, mods, interface)
+        code, scope = do_compile(str(filename), consts, mods, interface)
     except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
         if isinstance(e, HarmonyCompilerErrorCollection):
             errors = e.errors
@@ -186,7 +224,7 @@ def main():
             p = pathlib.Path(output_files["htm"]).resolve()
             url = "file://" + str(p)
             print("open " + url + " for more information", file=sys.stderr)
-            if open_browser:
+            if not disable_browser:
                 webbrowser.open(url)
     else:
         legacy_harmony.dumpCode(print_code, code, scope)
