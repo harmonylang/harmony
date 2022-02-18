@@ -296,7 +296,6 @@ AWAIT    : 'await';
 ASSERT   : 'assert';
 VAR     : 'var';
 TRAP   : 'trap';
-POSSIBLY: 'possibly';
 PASS     : 'pass';
 DEL      : 'del';
 SPAWN    : 'spawn';
