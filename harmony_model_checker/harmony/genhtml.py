@@ -169,7 +169,7 @@ class GenHTML:
             print("          </td>", file=f)
             print("          <td style='background-color: %s;'>"%("#E6E6E6" if alter else "white"), file=f)
             print("            <span title='%s' id='C%d'>"%(self.top["explain"][pc], pc), file=f)
-            print("              %s"%instr, file=f);
+            print("              %s"%instr, file=f)
             print("            </span>", file=f)
             print("          </td>", file=f)
             print("        </tr>", file=f)

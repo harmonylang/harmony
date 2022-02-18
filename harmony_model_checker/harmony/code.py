@@ -34,13 +34,6 @@ class Code:
 
     def delete(self, var):
         assert False        # TODO: I think this code is obsolete
-        if isinstance(var, tuple):
-            self.append(DelVarOp(var))  # remove variable
-        else:
-            assert isinstance(var, list)
-            assert len(var) > 0
-            for v in var:
-                self.delete(v)
 
     # This method inserts DelVar operations as soon as a variable is no
     # longer live

@@ -19,13 +19,12 @@ class AST:
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
         assert len(token) == 4, len(token)
-        lexeme, file, line, column = token
         # No check b/c lexeme could be one of many types, e.g. int, str, bool, etc
-        # assert isinstance(lexeme, str), lexeme
+        _, file, line, column = token
         assert isinstance(file, str), file
         assert isinstance(line, int), line
         assert isinstance(column, int), line
-        self.ast_token = token
+        self.token = token
         self.atomically = atomically
 
     # a new local constant or tree of constants
@@ -52,15 +51,6 @@ class AST:
 
     def delete(self, scope, code, var):
         assert False  # TODO: I think this is obsolete
-        if isinstance(var, tuple):
-            code.append(DelVarOp(var))  # remove variable
-            (lexeme, file, line, column) = var
-            del scope.names[lexeme]
-        else:
-            assert isinstance(var, list)
-            assert len(var) > 0
-            for v in var:
-                self.delete(scope, code, v)
 
     def isConstant(self, scope):
         return False
@@ -72,7 +62,7 @@ class AST:
         while ctx.pc != len(code.labeled_ops) and ctx.failure == None:
             code.labeled_ops[ctx.pc].op.eval(state, ctx)
         if ctx.failure != None:
-            lexeme, file, line, column = self.ast_token
+            lexeme, file, line, column = self.token
             raise HarmonyCompilerError(
                 message='constant evaluation failed: %s %s' % (self, ctx.failure),
                 lexeme=lexeme,
@@ -97,7 +87,7 @@ class AST:
 
     # This is supposed to push the address of an lvalue
     def ph1(self, scope, code):
-        lexeme, file, line, column = self.ast_token
+        lexeme, file, line, column = self.token
         raise HarmonyCompilerError(
             lexeme=lexeme,
             filename=file,
@@ -106,9 +96,32 @@ class AST:
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
+    def gencode(self, scope: Scope, code: Code) -> None:
+        return None
+
+    def doImport(self, scope, code, module):
+        (lexeme, file, line, column) = module
+        # assert lexeme not in scope.names        # TODO
+        assert lexeme in imported, "Attempted to import " + str(lexeme) + ", but it is not found in imports: " + str(imported)
+
+        scope.names[lexeme] = ("module", imported[lexeme])
+
+    def getLabels(self):
+        return set()
+
+    def getImports(self):
+        return []
+
+
+class ComprehensionAST(AST):
+    def __init__(self, token, atomically, iter, value):
+        super().__init__(token, atomically)
+        self.iter = iter
+        self.value = value
+    
     def rec_comprehension(self, scope, code, iter, pc, N, ctype):
         if iter == []:
-            (lexeme, file, line, column) = self.token
+            (_, file, line, column) = self.token
             if ctype == "list":
                 code.append(LoadVarOp(N))
             elif ctype == "dict":
@@ -143,11 +156,6 @@ class AST:
             S = ("$s" + str(uid), file, line, column)
             code.append(StoreVarOp(S))
 
-            # Now generate the code:
-            #   while X != {}:
-            #       var := oneof X
-            #       X := X - var
-            #       push value
             global labelcnt
             startlabel = LabelValue(None, "$%d_start" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
@@ -183,52 +191,6 @@ class AST:
             code.append(StoreVarOp(N))
             code.append(PushOp((novalue, file, line, column)))
         self.rec_comprehension(scope, code, self.iter, None, N, ctype)
-        # if ctype == { "bag", "list" }:
-        #     code.append(DelVarOp(N))
-
-    def doImport(self, scope, code, module):
-        (lexeme, file, line, column) = module
-        # assert lexeme not in scope.names        # TODO
-        if lexeme not in imported:
-            assert False
-            code.append(PushOp((novalue, file, line, column)))
-            code.append(StoreOp(module, module, []))
-
-            # module name replacement with -m flag
-            modname = modules[lexeme] if lexeme in modules \
-                else lexeme
-
-            # create a new scope
-            scope2 = Scope(None)
-            scope2.prefix = [lexeme]
-            scope2.labels = scope.labels
-
-            found = False
-            install_path = os.path.dirname(os.path.realpath(__file__))
-            for dir in [os.path.dirname(namestack[-1]), install_path + "/modules", "."]:
-                filename = dir + "/" + modname + ".hny"
-                if os.path.exists(filename):
-                    with open(filename, encoding='utf-8') as f:
-                        load(f, filename, scope2, code)
-                    found = True
-                    break
-            if not found:
-                raise HarmonyCompilerError(
-                    lexeme=modname,
-                    filename=str(namestack),
-                    line=line, column=column,
-                    message="Can't find module %s imported from %s" % (modname, namestack),
-                )
-            imported[lexeme] = scope2
-
-        scope.names[lexeme] = ("module", imported[lexeme])
-
-    def getLabels(self):
-        return set()
-
-    def getImports(self):
-        return []
-
 
 class ConstantAST(AST):
     def __init__(self, const):
@@ -337,7 +299,6 @@ class RangeAST(AST):
         AST.__init__(self, token, False)
         self.lhs = lhs
         self.rhs = rhs
-        self.token = token
 
     def __repr__(self):
         return "Range(%s,%s)" % (self.lhs, self.rhs)
@@ -356,7 +317,6 @@ class TupleAST(AST):
     def __init__(self, list, token):
         AST.__init__(self, token, False)
         self.list = list
-        self.token = token
 
     def __repr__(self):
         return "TupleAST" + str(self.list)
@@ -414,27 +374,21 @@ class DictAST(AST):
             code.append(NaryOp(("DictAdd", None, None, None), 3))
 
 
-class SetComprehensionAST(AST):
+class SetComprehensionAST(ComprehensionAST):
     def __init__(self, value, iter, token):
-        AST.__init__(self, token, False)
-        self.value = value
-        self.iter = iter
-        self.token = token
+        super().__init__(token, False, iter, value)
 
     def __repr__(self):
-        return "SetComprehension(" + str(self.var) + ")"
+        return "SetComprehension(" + str(self.iter) + "," + str(self.value) + ")"
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "set")
 
 
-class DictComprehensionAST(AST):
+class DictComprehensionAST(ComprehensionAST):
     def __init__(self, key, value, iter, token):
-        AST.__init__(self, token, False)
+        super().__init__(token, False, iter, value)
         self.key = key
-        self.value = value
-        self.iter = iter
-        self.token = token
 
     def __repr__(self):
         return "DictComprehension(" + str(self.key) + ")"
@@ -443,12 +397,9 @@ class DictComprehensionAST(AST):
         self.comprehension(scope, code, "dict")
 
 
-class ListComprehensionAST(AST):
+class ListComprehensionAST(ComprehensionAST):
     def __init__(self, value, iter, token):
-        AST.__init__(self, token, False)
-        self.value = value
-        self.iter = iter
-        self.token = token
+        super().__init__(token, False, iter, value)
 
     def __repr__(self):
         return "ListComprehension(" + str(self.value) + ")"
@@ -567,7 +518,6 @@ class ApplyAST(AST):
         AST.__init__(self, token, False)
         self.method = method
         self.arg = arg
-        self.token = token
 
     def __repr__(self):
         return "ApplyAST(" + str(self.method) + ", " + str(self.arg) + ")"
@@ -635,7 +585,7 @@ class ApplyAST(AST):
             if t == "module" and isinstance(self.arg, ConstantAST) and isinstance(self.arg.const[0], str):
                 (t2, v2) = v.lookup(self.arg.const)
                 if t2 == "constant":
-                    lexeme, file, line, column = self.ast_token
+                    lexeme, file, line, column = self.token
                     raise HarmonyCompilerError(
                         message="Cannot assign to constant %s %s" % (self.method.name, self.arg.const),
                         lexeme=lexeme,
@@ -660,7 +610,6 @@ class PointerAST(AST):
     def __init__(self, expr, token):
         AST.__init__(self, token, False)
         self.expr = expr
-        self.token = token
 
     def __repr__(self):
         return "PointerAST(" + str(self.expr) + ")"
@@ -701,7 +650,7 @@ class AssignmentAST(AST):
         if isinstance(lv, NameAST):
             # handled separately for assembly code readability
             (t, v) = scope.lookup(lv.name)
-            lexeme, file, line, column = self.ast_token
+            lexeme, file, line, column = self.token
             if t == "module":
                 raise HarmonyCompilerError(
                     filename=file,
@@ -903,7 +852,7 @@ class AddressAST(AST):
         elif isinstance(lv, PointerAST):
             pass
         else:
-            lexeme, file, line, column = lv.ast_token if isinstance(lv, AST) else (None, None, None, None)
+            lexeme, file, line, column = lv.token if isinstance(lv, AST) else (None, None, None, None)
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
@@ -1046,7 +995,6 @@ class InvariantAST(AST):
     def __init__(self, cond, token, atomically):
         AST.__init__(self, token, atomically)
         self.cond = cond
-        self.token = token
 
     def __repr__(self):
         return "Invariant(" + str(self.cond) + ")"
@@ -1112,15 +1060,12 @@ class VarAST(AST):
             code.append(AtomicDecOp())
 
 
-class ForAST(AST):
+class ForAST(ComprehensionAST):
     def __init__(self, iter, stat, token, atomically):
-        AST.__init__(self, token, atomically)
-        self.value = stat
-        self.iter = iter
-        self.token = token
+        super().__init__(token, atomically, iter, stat)
 
     def __repr__(self):
-        return "For(" + str(self.iter) + ", " + str(self.stat) + ")"
+        return "For(" + str(self.iter) + ", " + str(self.value) + ")"
 
     def compile(self, scope, code):
         if self.atomically:
@@ -1144,7 +1089,6 @@ class LetWhenAST(AST):
     #   - ('exists', bv, expr)    // when exists bv in expr
     def __init__(self, token, atomically, vars_and_conds, stat):
         AST.__init__(self, token, atomically)
-        self.token = token
         self.vars_and_conds = vars_and_conds
         self.stat = stat
 
@@ -1271,7 +1215,6 @@ class AtomicAST(AST):
 class AssertAST(AST):
     def __init__(self, token, atomically, cond, expr):
         AST.__init__(self, token, atomically)
-        self.token = token
         self.cond = cond
         self.expr = expr
 
@@ -1292,7 +1235,6 @@ class AssertAST(AST):
 class PrintAST(AST):
     def __init__(self, token, atomically, expr):
         AST.__init__(self, token, atomically)
-        self.token = token
         self.expr = expr
 
     def __repr__(self):
@@ -1359,7 +1301,6 @@ class LambdaAST(AST):
         AST.__init__(self, token, atomically)
         self.args = args
         self.stat = stat
-        self.token = token
 
     def __repr__(self):
         return "Lambda " + str(self.args) + ", " + str(self.stat) + ")"
@@ -1458,7 +1399,7 @@ class GoAST(AST):
         self.result = result
 
     def __repr__(self):
-        return "Go(" + str(self.tag) + ", " + str(self.ctx) + ", " + str(self.result) + ")"
+        return "Go(" + str(self.ctx) + ", " + str(self.result) + ")"
 
     # TODO.  Seems like context and argument are not evaluated in left to
     #        right order
@@ -1611,7 +1552,7 @@ class ConstAST(AST):
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
-            lexeme, file, line, column = self.expr.ast_token if isinstance(self.expr, AST) else self.ast_token
+            lexeme, file, line, column = self.expr.token if isinstance(self.expr, AST) else self.token
             raise HarmonyCompilerError(
                 filename=file,
                 lexeme=lexeme,
