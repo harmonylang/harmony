@@ -211,12 +211,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         tkn = self.get_token(ctx.start, ctx.start.text)
         return LetWhenAST(tkn, False, [('cond', cond)], PassAST(tkn, False))
 
-    # Visit a parse tree produced by HarmonyParser#possibly_stmt.
-    def visitPossibly_stmt(self, ctx: HarmonyParser.Possibly_stmtContext):
-        possibilities = [self.visit(e) for e in ctx.expr()]
-        tkn = self.get_token(ctx.start, ctx.start.text)
-        return PossiblyAST(tkn, False, possibilities)
-
     # Visit a parse tree produced by HarmonyParser#trap_stmt.
     def visitTrap_stmt(self, ctx: HarmonyParser.Trap_stmtContext):
         func = self.visit(ctx.expr())
@@ -401,21 +395,6 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         lv = self.visit(ctx.bound())
         e = self.visit(ctx.tuple_rule())
         return VarAST(tkn, False, [(lv, e)])
-
-    # Visit a parse tree produced by HarmonyParser#block.
-    def visitBlock(self, ctx: HarmonyParser.BlockContext):
-        if ctx.normal_block() is not None:
-            return self.visit(ctx.normal_block())
-        elif ctx.simple_stmt_block() is not None:
-            return self.visit(ctx.simple_stmt_block())
-        tkn = self.get_token(ctx.start, ctx.start.text)
-        raise HarmonyCompilerError(
-            message="Unexpected block structure.",
-            filename=self.file,
-            line=tkn[2],
-            column=tkn[3],
-            lexeme=tkn[0]
-        )
 
     # Visit a parse tree produced by HarmonyParser#normal_block.
     def visitNormal_block(self, ctx: HarmonyParser.Normal_blockContext):
