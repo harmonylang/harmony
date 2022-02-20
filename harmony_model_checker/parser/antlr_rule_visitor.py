@@ -341,7 +341,7 @@ class HarmonyVisitorImpl(HarmonyVisitor):
     def visitLet_when_block(self, ctx:HarmonyParser.Let_when_blockContext):
         vars_and_conds = self.visit(ctx.let_when_decl())
         stmts = self.visit(ctx.block())
-        tkn = self.get_token(ctx.start, ctx.stop)
+        tkn = self.get_token(ctx.start, ctx.start.text)
         if all(vac[0] == 'var' for vac in vars_and_conds):
             vars = [vac[1:] for vac in vars_and_conds if vac[0] == 'var']
             return LetAST(tkn, False, vars, stmts)
