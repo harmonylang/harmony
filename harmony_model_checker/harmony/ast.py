@@ -1,5 +1,4 @@
 import functools
-import os
 
 from harmony_model_checker.harmony.code import Code
 from harmony_model_checker.harmony.scope import Scope
@@ -96,8 +95,8 @@ class AST:
             message='Cannot use in left-hand side expression: %s' % str(self)
         )
 
-    def gencode(self, scope: Scope, code: Code) -> None:
-        return None
+    def gencode(self, scope: Scope, code: Code):
+        assert False, self
 
     def doImport(self, scope, code, module):
         (lexeme, file, line, column) = module
@@ -111,6 +110,9 @@ class AST:
 
     def getImports(self):
         return []
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        assert False, self
 
 
 class ComprehensionAST(AST):
@@ -192,6 +194,7 @@ class ComprehensionAST(AST):
             code.append(PushOp((novalue, file, line, column)))
         self.rec_comprehension(scope, code, self.iter, None, N, ctype)
 
+
 class ConstantAST(AST):
     def __init__(self, const):
         AST.__init__(self, const, False)
@@ -205,6 +208,9 @@ class ConstantAST(AST):
 
     def isConstant(self, scope):
         return True
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_constant(self, *args, **kwargs)
 
 
 class NameAST(AST):
@@ -275,6 +281,9 @@ class NameAST(AST):
         else:
             assert False, (t, v, self.name)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_name(self, *args, **kwargs)
+
 
 class SetAST(AST):
     def __init__(self, token, collection):
@@ -292,6 +301,9 @@ class SetAST(AST):
         for e in self.collection:
             e.compile(scope, code)
             code.append(NaryOp(("SetAdd", None, None, None), 2))
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_set(self, *args, **kwargs)
 
 
 class RangeAST(AST):
@@ -311,6 +323,9 @@ class RangeAST(AST):
         self.rhs.compile(scope, code)
         (lexeme, file, line, column) = self.token
         code.append(NaryOp(("..", file, line, column), 2))
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_range(self, *args, **kwargs)
 
 
 class TupleAST(AST):
@@ -353,6 +368,9 @@ class TupleAST(AST):
             n -= 1
             lv.ph2(scope, code, skip + n)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_tuple(self, *args, **kwargs)
+
 
 class DictAST(AST):
     def __init__(self, token, record):
@@ -373,6 +391,9 @@ class DictAST(AST):
             v.compile(scope, code)
             code.append(NaryOp(("DictAdd", None, None, None), 3))
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_dict(self, *args, **kwargs)
+
 
 class SetComprehensionAST(ComprehensionAST):
     def __init__(self, value, iter, token):
@@ -383,6 +404,9 @@ class SetComprehensionAST(ComprehensionAST):
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "set")
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_set_comprehension(self, *args, **kwargs)
 
 
 class DictComprehensionAST(ComprehensionAST):
@@ -396,6 +420,9 @@ class DictComprehensionAST(ComprehensionAST):
     def compile(self, scope, code):
         self.comprehension(scope, code, "dict")
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_dict_comprehension(self, *args, **kwargs)
+
 
 class ListComprehensionAST(ComprehensionAST):
     def __init__(self, value, iter, token):
@@ -406,6 +433,9 @@ class ListComprehensionAST(ComprehensionAST):
 
     def compile(self, scope, code):
         self.comprehension(scope, code, "list")
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_list_comprehension(self, *args, **kwargs)
 
 
 # N-ary operator
@@ -476,6 +506,9 @@ class NaryAST(AST):
                 self.args[i].compile(scope, code)
             code.append(NaryOp(self.op, n))
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_nary(self, *args, **kwargs)
+
 
 class CmpAST(AST):
     def __init__(self, token, ops, args):
@@ -511,6 +544,9 @@ class CmpAST(AST):
         code.nextLabel(endlabel)
         if n > 2:
             code.append(DelVarOp(T))
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_cmp(self, *args, **kwargs)
 
 
 class ApplyAST(AST):
@@ -605,6 +641,9 @@ class ApplyAST(AST):
         st = StoreOp(None, self.token, None) if lvar == None else StoreVarOp(None, lvar)
         code.append(st)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_apply(self, *args, **kwargs)
+
 
 class PointerAST(AST):
     def __init__(self, expr, token):
@@ -629,6 +668,9 @@ class PointerAST(AST):
             code.append(MoveOp(skip + 2))
             code.append(MoveOp(2))
         code.append(StoreOp(None, self.token, None))
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_pointer(self, *args, **kwargs)
 
 
 class AssignmentAST(AST):
@@ -743,6 +785,9 @@ class AssignmentAST(AST):
         if self.atomically:
             code.append(AtomicDecOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_assignment(self, *args, **kwargs)
+
 
 class DelAST(AST):
     def __init__(self, token, atomically, lv):
@@ -765,6 +810,9 @@ class DelAST(AST):
         if self.atomically:
             code.append(AtomicDecOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_del(self, *args, **kwargs)
+
 
 class SetIntLevelAST(AST):
     def __init__(self, token, arg):
@@ -777,6 +825,9 @@ class SetIntLevelAST(AST):
     def compile(self, scope, code):
         self.arg.compile(scope, code)
         code.append(SetIntLevelOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_set_int_level(self, *args, **kwargs)
 
 
 class SaveAST(AST):
@@ -792,6 +843,9 @@ class SaveAST(AST):
         code.append(SaveOp())
         code.append(ContinueOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_save(self, *args, **kwargs)
+
 
 class StopAST(AST):
     def __init__(self, token, expr):
@@ -806,6 +860,9 @@ class StopAST(AST):
         self.expr.compile(scope, code)
         code.append(StopOp(None))
         code.append(ContinueOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_stop(self, *args, **kwargs)
 
 
 class AddressAST(AST):
@@ -865,6 +922,9 @@ class AddressAST(AST):
         self.check(self.lv, scope)
         self.lv.ph1(scope, code)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_address(self, *args, **kwargs)
+
 
 class PassAST(AST):
     def __init__(self, token, atomically):
@@ -875,6 +935,9 @@ class PassAST(AST):
 
     def compile(self, scope, code):
         pass
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_pass(self, *args, **kwargs)
 
 
 class BlockAST(AST):
@@ -905,6 +968,9 @@ class BlockAST(AST):
     def getImports(self):
         imports = [x.getImports() for x in self.b]
         return functools.reduce(lambda x, y: x + y, imports)
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_block(self, *args, **kwargs)
 
 
 class IfAST(AST):
@@ -956,6 +1022,9 @@ class IfAST(AST):
             imports += [self.stat.getImports()]
         return functools.reduce(lambda x, y: x + y, imports)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_if(self, *args, **kwargs)
+
 
 class WhileAST(AST):
     def __init__(self, token, atomically, cond, stat):
@@ -990,6 +1059,9 @@ class WhileAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_while(self, *args, **kwargs)
+
 
 class InvariantAST(AST):
     def __init__(self, cond, token, atomically):
@@ -1014,6 +1086,9 @@ class InvariantAST(AST):
 
         code.nextLabel(label)
         code.append(ReturnOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_invariant(self, *args, **kwargs)
 
 
 class LetAST(AST):
@@ -1040,6 +1115,9 @@ class LetAST(AST):
         if self.atomically:
             code.append(AtomicDecOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_let(self, *args, **kwargs)
+
 
 class VarAST(AST):
     def __init__(self, token, atomically, vars):
@@ -1058,6 +1136,9 @@ class VarAST(AST):
             self.assign(scope, var)
         if self.atomically:
             code.append(AtomicDecOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_var(self, *args, **kwargs)
 
 
 class ForAST(ComprehensionAST):
@@ -1080,6 +1161,9 @@ class ForAST(ComprehensionAST):
 
     def getImports(self):
         return self.value.getImports()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_for(self, *args, **kwargs)
 
 
 class LetWhenAST(AST):
@@ -1190,6 +1274,9 @@ class LetWhenAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_let_when(self, *args, **kwargs)
+
 
 class AtomicAST(AST):
     def __init__(self, token, atomically, stat):
@@ -1211,6 +1298,9 @@ class AtomicAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_atomic(self, *args, **kwargs)
+
 
 class AssertAST(AST):
     def __init__(self, token, atomically, cond, expr):
@@ -1231,6 +1321,9 @@ class AssertAST(AST):
         code.append(AtomicDecOp())
         code.append(ReadonlyDecOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_assert(self, *args, **kwargs)
+
 
 class PrintAST(AST):
     def __init__(self, token, atomically, expr):
@@ -1247,6 +1340,9 @@ class PrintAST(AST):
         code.append(PrintOp(self.token))
         if self.atomically:
             code.append(AtomicDecOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_print(self, *args, **kwargs)
 
 
 class MethodAST(AST):
@@ -1295,6 +1391,9 @@ class MethodAST(AST):
     def getImports(self):
         return self.stat.getImports()
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_method(self, *args, **kwargs)
+
 
 class LambdaAST(AST):
     def __init__(self, args, stat, token, atomically):
@@ -1335,6 +1434,9 @@ class LambdaAST(AST):
         (lexeme, file, line, column) = self.token
         code.append(PushOp((startlabel, file, line, column)))
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_lambda(self, *args, **kwargs)
+
 
 class CallAST(AST):
     def __init__(self, token, atomically, expr):
@@ -1352,6 +1454,9 @@ class CallAST(AST):
             if self.atomically:
                 code.append(AtomicDecOp())
             code.append(PopOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_call(self, *args, **kwargs)
 
 
 class SpawnAST(AST):
@@ -1375,6 +1480,9 @@ class SpawnAST(AST):
             self.this.compile(scope, code)
         code.append(SpawnOp(self.eternal))
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_spawn(self, *args, **kwargs)
+
 
 class TrapAST(AST):
     def __init__(self, token, atomically, method, arg):
@@ -1390,6 +1498,9 @@ class TrapAST(AST):
         self.arg.compile(scope, code)
         self.method.compile(scope, code)
         code.append(TrapOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_trap(self, *args, **kwargs)
 
 
 class GoAST(AST):
@@ -1412,6 +1523,9 @@ class GoAST(AST):
             code.append(AtomicDecOp())
         code.append(GoOp())
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_go(self, *args, **kwargs)
+
 
 class ImportAST(AST):
     def __init__(self, token, atomically, modlist):
@@ -1427,6 +1541,9 @@ class ImportAST(AST):
 
     def getImports(self):
         return self.modlist
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_import(self, *args, **kwargs)
 
 
 class FromAST(AST):
@@ -1462,6 +1579,9 @@ class FromAST(AST):
     def getImports(self):
         return [self.module]
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_from(self, *args, **kwargs)
+
 
 class LocationAST(AST):
     def __init__(self, token, ast, file, line):
@@ -1482,6 +1602,9 @@ class LocationAST(AST):
 
     def getImports(self):
         return self.ast.getImports()
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_location(self, *args, **kwargs)
 
 
 class LabelStatAST(AST):
@@ -1511,6 +1634,9 @@ class LabelStatAST(AST):
     def getImports(self):
         return self.ast.getImports()
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_label_stat(self, *args, **kwargs)
+
 
 class SequentialAST(AST):
     def __init__(self, token, atomically, vars):
@@ -1524,6 +1650,9 @@ class SequentialAST(AST):
         for lv in self.vars:
             lv.ph1(scope, code)
             code.append(SequentialOp())
+
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_sequential(self, *args, **kwargs)
 
 
 class ConstAST(AST):
@@ -1574,4 +1703,6 @@ class ConstAST(AST):
             v = ctx.pop()
             self.set(scope, self.const, v)
 
+    def accept_visitor(self, visitor, *args, **kwargs):
+        return visitor.visit_const(self, *args, **kwargs)
 
