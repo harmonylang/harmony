@@ -12,6 +12,7 @@ def find_probabilities(top, states, outputfiles):
         assert p['probability']['numerator'] != 0
         matrix[p['from']][p['to']] = p['probability']['numerator'] / p['probability']['denominator']
         transitions[p['from']].append(p['to'])
+    print(transitions)
 
     states = set(int(s.strip()) for s in states.split(","))
 
@@ -41,10 +42,12 @@ def is_reachable(state, transitions, goals):
     visited = set()
 
     def search(s):
+        print(s)
         if s in goals:
             return True
         if s in visited:
             return False
+        visited.add(s)
         for i in transitions[s]:
             if (search(i)):
                 return True
