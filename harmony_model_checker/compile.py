@@ -3,7 +3,7 @@ from antlr4 import *
 from harmony_model_checker.exception import HarmonyCompilerError, HarmonyCompilerErrorCollection
 
 import harmony_model_checker.harmony.harmony as legacy_harmony
-from harmony_model_checker.harmony.harmony import Scope, Code, State, BlockAST
+from harmony_model_checker.harmony.harmony import Scope, Code, State, BlockAST, AST
 from harmony_model_checker.parser.antlr_rule_visitor import HarmonyVisitorImpl
 from harmony_model_checker.parser.HarmonyParser import HarmonyParser
 from harmony_model_checker.parser.HarmonyErrorListener import HarmonyLexerErrorListener, HarmonyParserErrorListener
@@ -180,6 +180,10 @@ def _parse(filename: str) -> BlockAST:
         return visitor.visit(tree)
     except HarmonyCompilerError as e:
         raise HarmonyCompilerErrorCollection([e.token])
+
+
+def parse(filename: str) -> AST:
+    return _parse(filename)
 
 
 def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[str]):

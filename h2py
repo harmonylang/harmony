@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+import sys
+from harmony_model_checker.harmony2python import main
+
+if __name__ == '__main__':
+	sys.exit(main())
