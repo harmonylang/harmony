@@ -190,8 +190,8 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
     if (v1 == v2) {
         return 0;
     }
-    int t1 = v1 & VALUE_MASK;
-    int t2 = v2 & VALUE_MASK;
+    int t1 = VALUE_TYPE(v1);
+    int t2 = VALUE_TYPE(v2);
     if (t1 != t2) {
         return t1 < t2 ? -1 : 1;
     }
@@ -219,32 +219,30 @@ int value_cmp(hvalue_t v1, hvalue_t v2){
 }
 
 static void value_string_bool(struct strbuf *sb, hvalue_t v) {
-    if (v != 0 && v != (1 << VALUE_BITS)) {
+    if (v != VALUE_FALSE && v != VALUE_TRUE) {
         fprintf(stderr, "value_string_bool %"PRI_HVAL"\n", v);
         panic("value_string_bool: bad value");
     }
-    assert(v == 0 || v == (1 << VALUE_BITS));
-
+    assert(v == VALUE_FALSE || v == VALUE_TRUE);
     strbuf_printf(sb, v == 0 ? "False" : "True");
 }
 
 static void value_json_bool(struct strbuf *sb, hvalue_t v) {
-    if (v != 0 && v != (1 << VALUE_BITS)) {
+    if (v != VALUE_FALSE && v != VALUE_TRUE) {
         fprintf(stderr, "value_json_bool %"PRI_HVAL"\n", v);
         panic("value_json_bool: bad value");
     }
-    assert(v == 0 || v == (1 << VALUE_BITS));
-
+    assert(v == VALUE_FALSE || v == VALUE_TRUE);
     strbuf_printf(sb, "{ \"type\": \"bool\", \"value\": \"%s\" }", v == 0 ? "False" : "True");
 }
 
 static void value_string_int(struct strbuf *sb, hvalue_t v) {
-    int64_t w = ((int64_t) v) >> VALUE_BITS;
+    int64_t w = (int64_t) VALUE_FROM_INT(v);
     strbuf_printf(sb, "%"PRId64"", (int64_t) w);
 }
 
 static void value_json_int(struct strbuf *sb, hvalue_t v) {
-    int64_t w = ((int64_t) v) >> VALUE_BITS;
+    int64_t w = (int64_t) VALUE_FROM_INT(v);
     strbuf_printf(sb, "{ \"type\": \"int\", \"value\": \"%"PRId64"\" }", (int64_t) w);
 }
 
@@ -286,12 +284,12 @@ static void value_json_atom(struct strbuf *sb, hvalue_t v) {
 }
 
 static void value_string_pc(struct strbuf *sb, hvalue_t v) {
-    assert((v >> VALUE_BITS) < 10000);      // debug
-    strbuf_printf(sb, "PC(%u)", (unsigned int) (v >> VALUE_BITS));
+    assert(VALUE_FROM_PC(v) < 10000);      // debug
+    strbuf_printf(sb, "PC(%u)", (unsigned int) VALUE_FROM_PC(v));
 }
 
 static void value_json_pc(struct strbuf *sb, hvalue_t v) {
-    strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) (v >> VALUE_BITS));
+    strbuf_printf(sb, "{ \"type\": \"pc\", \"value\": \"%u\" }", (unsigned int) VALUE_FROM_PC(v));
 }
 
 static void value_string_dict(struct strbuf *sb, hvalue_t v) {
@@ -307,7 +305,7 @@ static void value_string_dict(struct strbuf *sb, hvalue_t v) {
 
     bool islist = true;
     for (int i = 0; i < size; i++) {
-        if (vals[2*i] != (((hvalue_t) i << VALUE_BITS) | VALUE_INT)) {
+        if (vals[2*i] != VALUE_TO_INT(i)) {
             islist = false;
             break;
         }
@@ -528,7 +526,7 @@ static void value_json_context(struct strbuf *sb, hvalue_t v) {
 }
 
 void strbuf_value_string(struct strbuf *sb, hvalue_t v){
-    switch (v & VALUE_MASK) {
+    switch VALUE_TYPE(v) {
     case VALUE_BOOL:
         value_string_bool(sb, v & ~VALUE_MASK);
         break;
@@ -566,7 +564,7 @@ char *value_string(hvalue_t v){
 }
 
 void strbuf_value_json(struct strbuf *sb, hvalue_t v){
-    switch (v & VALUE_MASK) {
+    switch VALUE_TYPE(v) {
     case VALUE_BOOL:
         value_json_bool(sb, v & ~VALUE_MASK);
         break;
@@ -615,10 +613,10 @@ hvalue_t value_bool(struct dict *map){
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     if (atom_cmp(value->u.atom, "False")) {
-        return VALUE_BOOL;
+        return VALUE_FALSE;
     }
     if (atom_cmp(value->u.atom, "True")) {
-        return (1 << VALUE_BITS) | VALUE_BOOL;
+        return VALUE_TRUE;
     }
     panic("value_bool: bad value");
     return 0;
@@ -641,7 +639,7 @@ hvalue_t value_int(struct dict *map){
         v = atol(copy);
         free(copy);
     }
-    return (v << VALUE_BITS) | VALUE_INT;
+    return VALUE_TO_INT(v);
 }
 
 hvalue_t value_pc(struct dict *map){
@@ -652,7 +650,7 @@ hvalue_t value_pc(struct dict *map){
     copy[value->u.atom.len] = 0;
     long v = atol(copy);
     free(copy);
-    return (v << VALUE_BITS) | VALUE_PC;
+    return VALUE_TO_PC(v);
 }
 
 hvalue_t value_atom(struct values_t *values, struct dict *map){
@@ -776,7 +774,7 @@ void value_set_concurrent(struct values_t *values, int concurrent){
 
 // Store key:value in the given dictionary and returns its value code
 hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
+    assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
     int size;
@@ -785,7 +783,7 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
         size = 0;
     }
     else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
+        vals = value_get(dict, &size);
         size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
@@ -821,7 +819,7 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
 }
 
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
+    assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
     int size;
@@ -830,7 +828,7 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
         size = 0;
     }
     else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
+        vals = value_get(dict, &size);
         size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
@@ -853,14 +851,14 @@ hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
 }
 
 hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key){
-    assert((dict & VALUE_MASK) == VALUE_DICT);
+    assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
     int size;
     if (dict == VALUE_DICT) {
         return VALUE_DICT;
     }
-    vals = value_get(dict & ~VALUE_MASK, &size);
+    vals = value_get(dict, &size);
     size /= sizeof(hvalue_t);
     assert(size % 2 == 0);
 
@@ -896,11 +894,11 @@ bool value_dict_tryload(
     hvalue_t key,
     hvalue_t *result
 ){
-    if ((dict & VALUE_MASK) == VALUE_ATOM) {
-        if ((key & VALUE_MASK) != VALUE_INT) {
+    if (VALUE_TYPE(dict) == VALUE_ATOM) {
+        if (VALUE_TYPE(key) != VALUE_INT) {
             return false;
         }
-        key >>= VALUE_BITS;
+        key = VALUE_FROM_INT(key);
         int size;
         char *chars = value_get(dict, &size);
         if ((int) key >= size) {
@@ -910,7 +908,7 @@ bool value_dict_tryload(
         return true;
     }
 
-    if ((dict & VALUE_MASK) != VALUE_DICT) {
+    if (VALUE_TYPE(dict) != VALUE_DICT) {
         return false;
     }
 
@@ -921,7 +919,7 @@ bool value_dict_tryload(
         size = 0;
     }
     else {
-        vals = value_get(dict & ~VALUE_MASK, &size);
+        vals = value_get(dict, &size);
         size /= sizeof(hvalue_t);
         assert(size % 2 == 0);
     }
@@ -944,13 +942,13 @@ bool value_dict_tryload(
 hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
     if (value_dict_tryload(values, bag, v, &count)) {
-        assert((count & VALUE_MASK) == VALUE_INT);
+        assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;
         return value_dict_store(values, bag, v, count);
     }
     else {
-        return value_dict_store(values, bag, v, (1 << VALUE_BITS) | VALUE_INT);
+        return value_dict_store(values, bag, v, VALUE_TO_INT(1));
     }
 }
 
@@ -995,8 +993,8 @@ bool value_ctx_all_eternal(hvalue_t ctxbag) {
     size /= sizeof(hvalue_t);
     bool all = true;
     for (int i = 0; i < size; i += 2) {
-        assert((vals[i] & VALUE_MASK) == VALUE_CONTEXT);
-        assert((vals[i + 1] & VALUE_MASK) == VALUE_INT);
+        assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(vals[i + 1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
         assert(ctx != NULL);
         if (!ctx->eternal) {

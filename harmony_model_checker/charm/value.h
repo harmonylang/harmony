@@ -87,6 +87,16 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_MAX   ((int64_t) ((~(hvalue_t)0) >> (VALUE_BITS + 1)))
 #define VALUE_MIN   ((int64_t) ((~(hvalue_t)0) << (64 - (VALUE_BITS + 1))))
 
+#define VALUE_TYPE(v)      ((v) & VALUE_MASK)
+#define VALUE_POINTER(v)   ((void *) ((v) & ~VALUE_MASK))
+
+#define VALUE_TO_INT(i)    (((hvalue_t) (i) << VALUE_BITS) | VALUE_INT)
+#define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)
+#define VALUE_TO_PC(i)     (((hvalue_t) (i) << VALUE_BITS) | VALUE_PC)
+#define VALUE_FROM_INT(i)  ((i) >> VALUE_BITS)
+#define VALUE_FROM_BOOL(i) ((i) >> VALUE_BITS)
+#define VALUE_FROM_PC(i)   ((i) >> VALUE_BITS)
+
 hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
 bool value_dict_tryload(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t *result);

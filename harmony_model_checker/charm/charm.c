@@ -56,8 +56,8 @@ bool invariant_check(struct global_t *global, struct state *state, struct step *
     step->ctx->sp = 0;
     assert(step->ctx->fp == 0);
     hvalue_t b = step->ctx->stack[0];
-    assert((b & VALUE_MASK) == VALUE_BOOL);
-    return b >> VALUE_BITS;
+    assert(VALUE_TYPE(b) == VALUE_BOOL);
+    return VALUE_FROM_BOOL(b);
 }
 
 void check_invariants(struct worker *w, struct node *node, struct step *step){
@@ -65,14 +65,14 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
     struct state *state = node->state;
     extern int invariant_cnt(const void *env);
 
-    assert((state->invariants & VALUE_MASK) == VALUE_SET);
+    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
     int size;
     hvalue_t *vals = value_get(state->invariants, &size);
     size /= sizeof(hvalue_t);
     for (int i = 0; i < size; i++) {
-        assert((vals[i] & VALUE_MASK) == VALUE_PC);
-        step->ctx->pc = vals[i] >> VALUE_BITS;
+        assert(VALUE_TYPE(vals[i]) == VALUE_PC);
+        step->ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[step->ctx->pc].env);
         bool b = invariant_check(global, state, step, end);
@@ -200,7 +200,7 @@ static bool onestep(
             }
 #endif
             hvalue_t s = step->ctx->stack[step->ctx->sp - 1];
-            if ((s & VALUE_MASK) != VALUE_SET) {
+            if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &global->values, "choose operation requires a set");
                 break;
             }
@@ -236,8 +236,8 @@ static bool onestep(
             if (next_instr->retop && step->ctx->trap_pc != 0 &&
                                             !step->ctx->interruptlevel) {
                 hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
-                assert((ct & VALUE_MASK) == VALUE_INT);
-                if ((ct >> VALUE_BITS) == CALLTYPE_PROCESS) {
+                assert(VALUE_TYPE(ct) == VALUE_INT);
+                if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
                     breakable = true;
                 }
             }
@@ -256,7 +256,7 @@ static bool onestep(
 
     // Remove old context from the bag
     hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert((count & VALUE_MASK) == VALUE_INT);
+    assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
         sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
@@ -355,7 +355,7 @@ static void make_step(
 }
 
 void print_vars(FILE *file, hvalue_t v){
-    assert((v & VALUE_MASK) == VALUE_DICT);
+    assert(VALUE_TYPE(v) == VALUE_DICT);
     int size;
     hvalue_t *vars = value_get(v, &size);
     size /= sizeof(hvalue_t);
@@ -397,8 +397,8 @@ bool print_trace(
 	int level = 0, orig_pc = pc;
     if (strcmp(global->code.instrs[pc].oi->name, "Frame") == 0) {
         hvalue_t ct = ctx->stack[ctx->sp - 2];
-        assert((ct & VALUE_MASK) == VALUE_INT);
-        switch (ct >> VALUE_BITS) {
+        assert(VALUE_TYPE(ct) == VALUE_INT);
+        switch (VALUE_FROM_INT(ct)) {
         case CALLTYPE_PROCESS:
             pc++;
             break;
@@ -406,8 +406,8 @@ bool print_trace(
         case CALLTYPE_NORMAL:
             {
                 hvalue_t retaddr = ctx->stack[ctx->sp - 3];
-                assert((retaddr & VALUE_MASK) == VALUE_PC);
-                pc = retaddr >> VALUE_BITS;
+                assert(VALUE_TYPE(retaddr) == VALUE_PC);
+                pc = VALUE_FROM_PC(retaddr);
             }
             break;
         default:
@@ -424,8 +424,8 @@ bool print_trace(
         else if (strcmp(name, "Frame") == 0) {
 			if (level == 0) {
 				if (fp >= 5) {
-                    assert((ctx->stack[fp - 5] & VALUE_MASK) == VALUE_PC);
-					int npc = ctx->stack[fp - 5] >> VALUE_BITS;
+                    assert(VALUE_TYPE(ctx->stack[fp - 5]) == VALUE_PC);
+					int npc = VALUE_FROM_PC(ctx->stack[fp - 5]);
 					hvalue_t nvars = ctx->stack[fp - 2];
 					int nfp = ctx->stack[fp - 1] >> VALUE_BITS;
 					if (print_trace(global, file, ctx, npc, nfp, nvars)) {
@@ -448,8 +448,8 @@ bool print_trace(
 				}
 
                 hvalue_t ct = ctx->stack[fp - 4];
-                assert((ct & VALUE_MASK) == VALUE_INT);
-                switch (ct >> VALUE_BITS) {
+                assert(VALUE_TYPE(ct) == VALUE_INT);
+                switch (VALUE_FROM_INT(ct)) {
                 case CALLTYPE_PROCESS:
                     fprintf(file, "              \"calltype\": \"process\",\n");
                     break;
@@ -526,7 +526,7 @@ void print_context(
     free(s);
     free(a);
 
-    // assert((c->entry & VALUE_MASK) == VALUE_PC);   TODO
+    // assert(VALUE_TYPE(c->entry) == VALUE_PC);   TODO
     fprintf(file, "          \"entry\": \"%d\",\n", (int) (c->entry >> VALUE_BITS));
 
     fprintf(file, "          \"pc\": \"%d\",\n", c->pc);
@@ -638,14 +638,14 @@ void print_state(
     inv_step.ctx->interruptlevel = false;
 
     fprintf(file, "      \"invfails\": [");
-    assert((state->invariants & VALUE_MASK) == VALUE_SET);
+    assert(VALUE_TYPE(state->invariants) == VALUE_SET);
     int size;
     hvalue_t *vals = value_get(state->invariants, &size);
     size /= sizeof(hvalue_t);
     int nfailures = 0;
     for (int i = 0; i < size; i++) {
-        assert((vals[i] & VALUE_MASK) == VALUE_PC);
-        inv_step.ctx->pc = vals[i] >> VALUE_BITS;
+        assert(VALUE_TYPE(vals[i]) == VALUE_PC);
+        inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
         int end = invariant_cnt(global->code.instrs[inv_step.ctx->pc].env);
         bool b = invariant_check(global, state, &inv_step, end);
@@ -657,7 +657,7 @@ void print_state(
                 fprintf(file, ",");
             }
             fprintf(file, "\n        {\n");
-            fprintf(file, "          \"pc\": \"%u\",\n", (unsigned int) (vals[i] >> VALUE_BITS));
+            fprintf(file, "          \"pc\": \"%u\",\n", (unsigned int) VALUE_FROM_PC(vals[i]));
             if (inv_step.ctx->failure == 0) {
                 fprintf(file, "          \"reason\": \"invariant violated\"\n");
             }
@@ -904,7 +904,7 @@ hvalue_t twostep(
             }
 #endif
             hvalue_t s = step.ctx->stack[step.ctx->sp - 1];
-            if ((s & VALUE_MASK) != VALUE_SET) {
+            if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step.ctx, &global->values, "choose operation requires a set");
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
@@ -931,8 +931,8 @@ hvalue_t twostep(
             if (next_instr->retop && step.ctx->trap_pc != 0 &&
                                             !step.ctx->interruptlevel) {
                 hvalue_t ct = step.ctx->stack[step.ctx->sp - 4];
-                assert((ct & VALUE_MASK) == VALUE_INT);
-                if ((ct >> VALUE_BITS) == CALLTYPE_PROCESS) {
+                assert(VALUE_TYPE(ct) == VALUE_INT);
+                if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
                     breakable = true;
                 }
             }
@@ -947,7 +947,7 @@ hvalue_t twostep(
 
     // Remove old context from the bag
     hvalue_t count = value_dict_load(sc->ctxbag, ctx);
-    assert((count & VALUE_MASK) == VALUE_INT);
+    assert(VALUE_TYPE(count) == VALUE_INT);
     count -= 1 << VALUE_BITS;
     if (count == VALUE_INT) {
         sc->ctxbag = value_dict_remove(&global->values, sc->ctxbag, ctx);
@@ -1056,9 +1056,9 @@ void path_dump(
     hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
     nctxs /= sizeof(hvalue_t);
     for (int i = 0; i < nctxs; i += 2) {
-        assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-        assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
-        int cnt = ctxs[i+1] >> VALUE_BITS;
+        assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
+        assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
+        int cnt = VALUE_FROM_INT(ctxs[i+1]);
         for (int j = 0; j < cnt; j++) {
             int k;
             for (k = 0; k < global->nprocesses; k++) {
@@ -1264,13 +1264,13 @@ static void do_work(struct worker *w){
 		w->global->dequeued++; // TODO race condition
 
 		if (state->choosing != 0) {
-			assert((state->choosing & VALUE_MASK) == VALUE_CONTEXT);
+			assert(VALUE_TYPE(state->choosing) == VALUE_CONTEXT);
 
 			struct context *cc = value_get(state->choosing, NULL);
 			assert(cc != NULL);
 			assert(cc->sp > 0);
 			hvalue_t s = cc->stack[cc->sp - 1];
-			assert((s & VALUE_MASK) == VALUE_SET);
+			assert(VALUE_TYPE(s) == VALUE_SET);
 			int size;
 			hvalue_t *vals = value_get(s, &size);
 			size /= sizeof(hvalue_t);
@@ -1291,14 +1291,14 @@ static void do_work(struct worker *w){
 			size /= sizeof(hvalue_t);
 			assert(size >= 0);
 			for (int i = 0; i < size; i += 2) {
-				assert((ctxs[i] & VALUE_MASK) == VALUE_CONTEXT);
-				assert((ctxs[i+1] & VALUE_MASK) == VALUE_INT);
+				assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
+				assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
 				make_step(
 					w,
 					node,
 					ctxs[i],
 					0,
-					ctxs[i+1] >> VALUE_BITS
+					VALUE_FROM_INT(ctxs[i+1])
 				);
 			}
 		}
@@ -1665,13 +1665,13 @@ int main(int argc, char **argv){
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
-    value_ctx_push(&init_ctx, (CALLTYPE_PROCESS << VALUE_BITS) | VALUE_INT);
+    value_ctx_push(&init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(&init_ctx, VALUE_DICT);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
     hvalue_t ictx = value_put_context(&global->values, init_ctx);
-    state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, (1 << VALUE_BITS) | VALUE_INT);
+    state->ctxbag = value_dict_store(&global->values, VALUE_DICT, ictx, VALUE_TO_INT(1));
     state->stopbag = VALUE_DICT;
     state->invariants = VALUE_SET;
     state->dfa_state = global->dfa == NULL ? 0 : dfa_initial(global->dfa);
