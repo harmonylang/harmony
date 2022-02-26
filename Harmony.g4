@@ -193,7 +193,6 @@ const_assign_stmt: CONST bound EQ expr;
 assert_stmt: ASSERT expr (COMMA expr)?;
 await_stmt: AWAIT expr;
 var_stmt: VAR bound EQ tuple_rule;
-possibly_stmt: POSSIBLY expr (COMMA expr)*;
 trap_stmt: TRAP expr;
 pass_stmt: PASS;
 invariant_stmt: INVARIANT expr;  // Asserts an invariant that must hold
@@ -246,7 +245,6 @@ simple_stmt
     | pass_stmt
     | sequential_stmt
     | assert_stmt
-    | possibly_stmt
     | aug_assign_stmt
     | expr_stmt
     );
@@ -298,7 +296,6 @@ AWAIT    : 'await';
 ASSERT   : 'assert';
 VAR     : 'var';
 TRAP   : 'trap';
-POSSIBLY: 'possibly';
 PASS     : 'pass';
 DEL      : 'del';
 SPAWN    : 'spawn';

@@ -98,7 +98,6 @@ class _LabelIdGenerator:
 class LabelValue(Value):
 
     def __init__(self, module, label):
-        global labelid
         self.id = _LabelIdGenerator.new_id()
         self.module = module
         self.label = label
@@ -136,13 +135,13 @@ class DictValue(Value):
         if set(self.d.keys()) == set(range(len(self.d))):
             for k in range(len(self.d)):
                 if result != "":
-                    result += ", ";
+                    result += ", "
                 result += strValue(self.d[k])
             return "[" + result + "]"
         keys = sorted(self.d.keys(), key=keyValue)
         for k in keys:
             if result != "":
-                result += ", ";
+                result += ", "
             result += strValue(k) + ":" + strValue(self.d[k])
         return "{ " + result + " }"
 
@@ -177,7 +176,7 @@ class DictValue(Value):
         keys = sorted(self.d.keys(), key=keyValue)
         for k in keys:
             if result != "":
-                result += ", ";
+                result += ", "
             result += '{ "key": %s, "value": %s }'%(jsonValue(k), jsonValue(self.d[k]))
         return '{ "type": "dict", "value": [%s] }'%result
 
@@ -220,7 +219,7 @@ class SetValue(Value):
         vals = sorted(self.s, key=keyValue)
         for v in vals:
             if result != "":
-                result += ", ";
+                result += ", "
             result += strValue(v)
         return "{ " + result + " }"
 
@@ -233,7 +232,7 @@ class SetValue(Value):
         vals = sorted(self.s, key=keyValue)
         for v in vals:
             if result != "":
-                result += ", ";
+                result += ", "
             result += jsonValue(v)
         return '{ "type": "set", "value": [%s] }'%result
 
