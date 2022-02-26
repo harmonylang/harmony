@@ -999,6 +999,7 @@ void path_dump(
 
     fprintf(file, "    {\n");
     fprintf(file, "      \"id\": \"%d\",\n", node->id);
+    fprintf(file, "      \"len\": \"%d\",\n", node->len);
 
     /* Find the starting context in the list of processes.
      */
