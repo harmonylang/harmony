@@ -52,10 +52,87 @@ args.add_argument("--config", action="store_true",
 
 # Internal flags
 args.add_argument("--cf", action="append", type=str, help=argparse.SUPPRESS)
-
 args.add_argument("args", metavar="args", type=str, nargs='*', help="arguments")
 
+def handle_hny(ns, output_files, parse_code_only, filenames):
+    print("Phase 1: compile Harmony program to bytecode")
 
+    consts: List[str] = ns.const or []
+    interface: Optional[str] = ns.intf
+    mods: List[str] = ns.module or []
+
+    try:
+        code, scope = do_compile(filenames, consts, mods, interface)
+    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
+        if isinstance(e, HarmonyCompilerErrorCollection):
+            errors = e.errors
+        else:
+            errors = [e.token]
+
+        if parse_code_only:
+            data = dict(errors=[e._asdict() for e in errors], status="error")
+            with open(output_files["hvm"], "w", encoding='utf-8') as fp:
+                json.dump(data, fp)
+        else:
+            for e in errors:
+                print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
+                print()
+        exit(1)
+
+    if parse_code_only:
+        with open(output_files["hvm"], "w", encoding='utf-8') as f:
+            f.write(json.dumps({"status": "ok"}))
+        exit()
+
+    if output_files["tla"] is not None:
+        with open(output_files["tla"], "w", encoding='utf-8') as f:
+            legacy_harmony.tla_translate(f, code, scope)
+    
+    return code, scope
+
+def handle_hvm(ns, output_files, parse_code_only, code, scope):
+    charm_options = ns.cf or []
+    if ns.B:
+        charm_options.append("-B" + ns.B)
+
+    # see if there is a configuration file
+    if code is not None:
+        with open(output_files["hvm"], "w", encoding='utf-8') as fd:
+            legacy_harmony.dumpCode("json", code, scope, f=fd)
+
+    if parse_code_only:
+        exit()
+
+    print("Phase 2: run the model checker")
+    r = charm.run_model_checker(
+        *charm_options,
+        "-o" + output_files["hco"],
+        output_files["hvm"]
+    )
+    if r != 0:
+        print("charm model checker failed")
+        exit(r)
+
+def handle_hco(ns, output_files):
+    suppress_output = ns.suppress
+
+    behavior = None
+    if ns.B:
+        behavior = ns.B
+
+    disable_browser = settings.values.disable_web or ns.noweb
+    
+    b = Brief()
+    b.run(output_files, behavior)
+    gh = GenHTML()
+    gh.run(output_files)
+    if not suppress_output:
+        p = pathlib.Path(output_files["htm"]).resolve()
+        url = "file://" + str(p)
+        print("open " + url + " for more information", file=sys.stderr)
+        if not disable_browser:
+            webbrowser.open(url)
+    
 def handle_version(_: argparse.Namespace):
     print("Version:", harmony_model_checker.__package__,
           harmony_model_checker.__version__)
@@ -99,26 +176,9 @@ def main():
         check_version.check_outdated(
             harmony_model_checker.__package__, harmony_model_checker.__version__)
 
-    disable_browser = settings.values.disable_web or ns.noweb
-    consts: List[str] = ns.const or []
-    interface: Optional[str] = ns.intf
-    mods: List[str] = ns.module or []
     parse_code_only: bool = ns.parse
-    charm_flag = True
-
-    print_code: Optional[str] = None
-    if ns.a:
-        print_code = "verbose"
-        charm_flag = False
-    if ns.A:
-        print_code = "terse"
-        charm_flag = False
-    if ns.j:
-        print_code = "json"
-        charm_flag = False
-
     legacy_harmony.silent = ns.s
-
+    
     output_files: Dict[str, Optional[str]] = {
         "hfa": None,
         "htm": None,
@@ -128,7 +188,6 @@ def main():
         "tla": None,
         "gv":  None
     }
-
     for p in (ns.o or []):
         # The suffix includes the dot if it exists.
         # Otherwise, it is an empty string.
@@ -141,14 +200,6 @@ def main():
             return 1
         output_files[suffix] = str(p)
 
-    suppress_output = ns.suppress
-
-    behavior = None
-    charm_options = ns.cf or []
-    if ns.B:
-        charm_options.append("-B" + ns.B)
-        behavior = ns.B
-
     if len(ns.args) != 1:
         print(f"harmony: error: invalid number of arguments ({len(ns.args)}). Provide 1 argument.")
         args.print_help()
@@ -160,6 +211,7 @@ def main():
         return 1
 
     stem = str(filename.parent / filename.stem)
+    input_file_type = filename.suffix
 
     if output_files["hvm"] is None:
         output_files["hvm"] = stem + ".hvm"
@@ -170,61 +222,33 @@ def main():
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
 
-    print("Phase 1: compile Harmony program to bytecode")
-    try:
-        code, scope = do_compile(str(filename), consts, mods, interface)
-    except (HarmonyCompilerErrorCollection, HarmonyCompilerError) as e:
-        if isinstance(e, HarmonyCompilerErrorCollection):
-            errors = e.errors
+    charm_flag = True
+    print_code: Optional[str] = None
+    if ns.a:
+        print_code = "verbose"
+        charm_flag = False
+    if ns.A:
+        print_code = "terse"
+        charm_flag = False
+    if ns.j:
+        print_code = "json"
+        charm_flag = False
+
+    # Handle different Harmony compilation stages
+    if input_file_type == ".hny":
+        code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
+        if charm_flag:
+            handle_hvm(ns, output_files, parse_code_only, code, scope)
+            handle_hco(ns, output_files)
         else:
-            errors = [e.token]
+            print("Skipping Phases 2-5...")
+            legacy_harmony.dumpCode(print_code, code, scope)
 
-        if parse_code_only:
-            data = dict(errors=[e._asdict() for e in errors], status="error")
-            with open(output_files["hvm"], "w", encoding='utf-8') as fp:
-                json.dump(data, fp)
-        else:
-            for e in errors:
-                print(f"Line {e.line}:{e.column} at {e.filename}, {e.message}")
-                print()
-        return 1
-
-    if parse_code_only:
-        with open(output_files["hvm"], "w", encoding='utf-8') as f:
-            f.write(json.dumps({"status": "ok"}))
-        return
-
-    if output_files["tla"] is not None:
-        with open(output_files["tla"], "w", encoding='utf-8') as f:
-            legacy_harmony.tla_translate(f, code, scope)
-
-    # Analyze liveness of variables
-    if charm_flag:
-        # see if there is a configuration file
-        with open(output_files["hvm"], "w", encoding='utf-8') as fd:
-            legacy_harmony.dumpCode("json", code, scope, f=fd)
-
-        if parse_code_only:
-            return 0
-
-        print("Phase 2: run the model checker")
-        r = charm.run_model_checker(
-            *charm_options,
-            "-o" + output_files["hco"],
-            output_files["hvm"]
-        )
-        if r != 0:
-            print("charm model checker failed")
-            return r
-        b = Brief()
-        b.run(output_files, behavior)
-        gh = GenHTML()
-        gh.run(output_files)
-        if not suppress_output:
-            p = pathlib.Path(output_files["htm"]).resolve()
-            url = "file://" + str(p)
-            print("open " + url + " for more information", file=sys.stderr)
-            if not disable_browser:
-                webbrowser.open(url)
-    else:
-        legacy_harmony.dumpCode(print_code, code, scope)
+    if input_file_type == ".hvm":
+        print("Skipping Phase 1...")
+        handle_hvm(ns, output_files, parse_code_only, None, None)
+        handle_hco(ns, output_files)
+        
+    if input_file_type == ".hco":
+        print("Skipping Phases 1-4...")
+        handle_hco(ns, output_files)

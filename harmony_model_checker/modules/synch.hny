@@ -1,6 +1,12 @@
 import list
 import bag
 
+def atomic_load(p):
+    atomically result = !p
+
+def atomic_store(p, v):
+    atomically !p = v
+
 def tas(lk):
     atomically:
         result = !lk
