@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 
 import sys
-from harmony_model_checker.harmony2python import main
+
+from harmony_model_checker.H2PyASTVisitor import H2PyASTVisitor
+from harmony_model_checker.compile import parse
+
+import ast as past
+
 
 if __name__ == '__main__':
-	sys.exit(main())
+    h2py = H2PyASTVisitor()
+    harmony_ast = parse(sys.argv[1])
+    python_ast = h2py(harmony_ast)
+    print(past.unparse(python_ast))

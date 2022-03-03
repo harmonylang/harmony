@@ -186,6 +186,10 @@ def parse(filename: str) -> AST:
     return _parse(filename)
 
 
+def parse_string(string: str) -> AST:
+    return _parse_string(string)
+
+
 def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[str]):
     for c in consts:
         try:

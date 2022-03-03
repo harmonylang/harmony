@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 from harmony_model_checker.harmony.ast import *
 
@@ -11,11 +11,16 @@ class DumpASTVisitor(AbstractASTVisitor):
         else:
             self.indent_unit = indent_unit
 
-    def __call__(self, ast: AST, depth=0):
-        ast.accept_visitor(self, depth=depth)
-
+    def __call__(self, ast: AST, depth: Optional[int] = None):
+        if depth is None:
+            self.buffer = ""
+            ast.accept_visitor(self, depth=0)
+            return self.buffer
+        else:
+            ast.accept_visitor(self, depth=depth)
+        
     def p(self, x, indent=0):
-        print(self.indent_unit * indent + str(x))
+        self.buffer += self.indent_unit * indent + str(x) + "\n"
 
     def _visit_comprehension_iter(self, iter, value, depth):
         for type, rest in iter:

@@ -1,11 +1,7 @@
-import sys
-
-from harmony_model_checker.compile import parse
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
-from harmony_model_checker.harmony.DumpASTVisitor import DumpASTVisitor
 
-import harmony_model_checker.harmony.ast as hast # hast = Harmony AST
-import ast as past # past = Python AST
+import harmony_model_checker.harmony.ast as hast  # hast = Harmony AST
+import ast as past  # past = Python AST
 
 
 class H2PyASTVisitor(AbstractASTVisitor):
@@ -97,9 +93,9 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_method(self, node: hast.MethodAST, **kwargs):
         def convert_parameters(parameters):
             if isinstance(parameters, tuple):
-                return past.arg(arg=parameters[0])
+                return [past.arg(arg=parameters[0])]
             elif isinstance(parameters, list):
-                return [convert_parameters(arg) for arg in parameters]
+                return [past.arg(arg=arg[0]) for arg in parameters]
 
         return past.FunctionDef(
             name=node.name[0],
@@ -132,13 +128,16 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_apply(self, node: hast.ApplyAST, **kwargs):
         def convert_arg(arg):
             if isinstance(arg, list):
-                return [convert_arg(subarg) for subarg in arg]
+                result = []
+                for subarg in arg:
+                    result += convert_arg(subarg)
+                return result
 
             elif isinstance(arg, hast.TupleAST):
-                return [convert_arg(subarg) for subarg in arg.list]
+                return convert_arg(arg.list)
 
             elif isinstance(arg, hast.ConstantAST):
-                return past.Constant(value=arg.const[0])
+                return [past.Constant(value=arg.const[0])]
 
             else:
                 assert False, arg
@@ -176,27 +175,3 @@ class H2PyASTVisitor(AbstractASTVisitor):
 
         else:
             raise NotImplementedError()
-
-
-h2py = H2PyASTVisitor()
-dump_ast = DumpASTVisitor()
-
-
-def main():
-    ast = parse(sys.argv[1])
-    dump_ast(ast)
-
-    p = past.parse("""
-def f(x, y):
-    z = x + y
-    print(z)
-
-f(2, 3)
-""")
-
-    print(past.dump(p, indent=2))
-    print(past.unparse(p))
-
-    h2py_ast = h2py(ast)
-    print(past.dump(h2py_ast, indent=2))
-    print(past.unparse(h2py_ast))
