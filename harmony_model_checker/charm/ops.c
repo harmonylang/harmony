@@ -189,7 +189,7 @@ bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int 
     return true;
 }
 
-bool ind_trystore(hvalue_t dict, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
+static bool ind_trystore(hvalue_t dict, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
     assert(n > 0);
 
@@ -234,7 +234,7 @@ bool ind_trystore(hvalue_t dict, hvalue_t *indices, int n, hvalue_t value, struc
                 *result = v;
                 return true;
             }
-            /* 
+            /* TODO. Why is this comment here???
                 if (value_cmp(vals[i], key) > 0) {
                     assert(false);
                 }
@@ -1224,7 +1224,17 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
 
-        if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
+        if (size == 1 && step->ctx->name != global->init_name) {
+            hvalue_t newvars;
+            if (!value_dict_trystore(&global->values, state->vars, indices[0], v, step->ctx->name == global->init_name, &newvars)){
+                char *x = indices_string(indices, size);
+                value_ctx_failure(step->ctx, &global->values, "Store: declare a local variable %s (or set during initialization)", x);
+                free(x);
+                return;
+            }
+            state->vars = newvars;
+        }
+        else if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
             char *x = indices_string(indices, size);
             value_ctx_failure(step->ctx, &global->values, "Store: bad address: %s", x);
             free(x);
@@ -1237,8 +1247,20 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             step->ai->n = es->n;
             step->ai->load = is_sequential(state->seqs, step->ai->indices, step->ai->n);
         }
-        if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
-            value_ctx_failure(step->ctx, &global->values, "Store: bad variable");
+        if (es->n == 1 && step->ctx->name != global->init_name) {
+            hvalue_t newvars;
+            if (!value_dict_trystore(&global->values, state->vars, es->indices[0], v, step->ctx->name == global->init_name, &newvars)){
+                char *x = indices_string(es->indices, es->n);
+                value_ctx_failure(step->ctx, &global->values, "Store: declare a local variable %s (or set during initialization)", x);
+                free(x);
+                return;
+            }
+            state->vars = newvars;
+        }
+        else if (!ind_trystore(state->vars, es->indices, es->n, v, &global->values, &state->vars)) {
+            char *x = indices_string(es->indices, es->n);
+            value_ctx_failure(step->ctx, &global->values, "Store: bad variable %s", x);
+            free(x);
             return;
         }
     }

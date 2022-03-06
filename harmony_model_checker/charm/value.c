@@ -410,7 +410,7 @@ static void strbuf_indices_string(struct strbuf *sb, const hvalue_t *vec, int si
     char *s = value_string(vec[0]);
     assert(s[0] == '"');
 	int len = strlen(s);
-    strbuf_printf(sb, "?%.*s", len - 2, s + 1);
+    strbuf_printf(sb, "%.*s", len - 2, s + 1);
     free(s);
 
     for (int i = 1; i < size; i++) {
@@ -773,7 +773,8 @@ void value_set_concurrent(struct values_t *values, int concurrent){
 }
 
 // Store key:value in the given dictionary and returns its value code
-hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
+// in *result.  May fail if allow_inserts is false and key does not exist
+bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
 
     hvalue_t *vals;
@@ -792,7 +793,8 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
     for (i = 0; i < size; i += 2) {
         if (vals[i] == key) {
             if (vals[i + 1] == value) {
-                return dict;
+                *result = dict;
+                return true;
             }
             int n = size * sizeof(hvalue_t);
             hvalue_t *copy = malloc(n);
@@ -800,11 +802,16 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
             copy[i + 1] = value;
             hvalue_t v = value_put_dict(values, copy, n);
             free(copy);
-            return v;
+            *result = v;
+            return true;
         }
         if (value_cmp(vals[i], key) > 0) {
             break;
         }
+    }
+
+    if (!allow_inserts) {
+        return false;
     }
 
     int n = (size + 2) * sizeof(hvalue_t);
@@ -815,7 +822,18 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
     memcpy(&nvals[i+2], &vals[i], (size - i) * sizeof(hvalue_t));
     hvalue_t v = value_put_dict(values, nvals, n);
     free(nvals);
-    return v;
+    *result = v;
+    return true;
+}
+
+hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value){
+    hvalue_t result;
+    bool r = value_dict_trystore(values, dict, key, value, true, &result);
+    if (!r) {
+        fprintf(stderr, "value_dict_store: failed\n");
+        exit(1);
+    }
+    return result;
 }
 
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
