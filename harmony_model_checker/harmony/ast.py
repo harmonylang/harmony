@@ -75,6 +75,8 @@ class AST:
         if self.isConstant(scope):
             code2 = Code()
             self.gencode(scope, code2)
+            code2.append(ContinueOp())      # Hack: get endlabels evaluated
+            code2.link()
             v = self.eval(scope, code2)
             code.append(PushOp((v, None, None, None)))
         else:
