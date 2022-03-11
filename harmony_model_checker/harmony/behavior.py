@@ -27,6 +27,77 @@ def find_error_states(transitions, final_states):
             error_states.add(s)
     return error_states
 
+def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
+    stack = []
+
+    # Create states, where each state is renamed to an index.
+    dfa_states = [(k, v) for k, v in enumerate(list(dfa.states))]
+    hfa_states = [(len(dfa_states) + k, v) for k, v in enumerate(list(hfa.states))]
+    states = dfa_states + hfa_states
+    n = len(states)
+
+    # For convenience for mapping between states and indices
+    idx_to_states = {k: v for k, v in states}
+    dfa_state_to_idx = {v: k for k, v in dfa_states}
+    hfa_state_to_idx = {v: k for k, v in hfa_states}
+
+    dfa_final_states = {k: v for k, v in dfa_states if v in dfa.final_states}
+    hfa_final_states = {k: v for k, v in hfa_states if v in hfa.final_states}
+    # Collection of final states, indexed by state idx
+    final_states = {**dfa_final_states, **hfa_final_states}
+
+    parents = [None] * n
+    rank = [None] * n
+    def make_set(q: int):
+        parents[q] = q
+        rank[q] = 0
+    def find_set(x):
+        if x != parents[x]:
+            parents[x] = find_set(parents[x])
+        return parents[x]
+    def link(x, y):
+        if rank[x] > rank[y]:
+            parents[y] = x
+        else:
+            parents[x] = y
+            if rank[x] == rank[y]:
+                rank[y] += 1
+    def union(p: int, q: int):
+        link(find_set(p), find_set(q))
+
+    for k, _ in states:
+        make_set(k)
+
+    dfa_init_idx = dfa_state_to_idx[dfa.initial_state]
+    hfa_init_idx = hfa_state_to_idx[hfa.initial_state]
+    union(dfa_init_idx, hfa_init_idx)
+    stack.append((dfa_init_idx, hfa_init_idx))
+
+    while stack:
+        k1, k2 = stack.pop()
+        q1, q2 = idx_to_states[k1], idx_to_states[k2]
+        dfa_t = dfa.transitions[q1]
+        hfa_t = hfa.transitions[q2]
+        symbols = set(dfa_t.keys()).intersection(hfa_t.keys())
+        for s in symbols:
+            p1 = dfa_state_to_idx[dfa_t[s]]
+            p2 = hfa_state_to_idx[hfa_t[s]]
+
+            r1 = find_set(p1)
+            r2 = find_set(p2)
+            if r1 != r2:
+                union(p1, p2)
+                stack.append((p1, p2))
+
+    sets = dict()
+    for k, p in enumerate(parents):
+        if p in sets:
+            sets[p].add(k)
+        else:
+            sets[p] = {k}
+    return all(all(q in final_states for q in s) or all(q not in final_states for q in s) for _, s in sets.items())
+
+
 def read_hfa(file, dfa, nfa):
     with open(file, encoding='utf-8') as fd:
         js = json.load(fd)
@@ -65,13 +136,15 @@ def read_hfa(file, dfa, nfa):
         print("behavior warning: symbols missing from behavior:",
             hfa.input_symbols - dfa.input_symbols)
         return
-    
+
+    if is_dfa_equivalent(dfa, hfa):
+        return
+
     if dfa < hfa:
         print("behavior warning: strict subset of specified behavior")
         diff = hfa - dfa
         behavior_show_diagram(diff, "diff.png")
         return
-    assert dfa == hfa
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
