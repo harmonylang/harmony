@@ -40,31 +40,49 @@ Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
         self.assertEqual(python_code.strip(), unparsed.strip())
 
     def test_1(self):
-        self.assert_h2py((
-            "print(5)\n"
-        ), (
-            "print(5)\n"
-        ))
+        self.assert_h2py("""
+print(5)
+""", """
+print(5)
+""")
 
     def test_2(self):
-        self.assert_h2py((
-            "def f(x):\n"
-            "    print(x)\n"
-            "f(5)\n"
-        ), (
-            "def f(x):\n"
-            "    print(x)\n"
-            "f(5)\n"
-        ))
+        self.assert_h2py("""
+def f(x):
+    print(x)
+f(5)
+""", """
+def f(x):
+    result = None
+    print(x)
+    return result
+f(5)
+""")
 
     def test_3(self):
-        self.assert_h2py((
-            "x, y = 3, 4\n"
-            "print(x + y)\n"
-        ), (
-            "(x, y) = (3, 4)\n"
-            "print(x + y)\n"
-        ))
+        self.assert_h2py("""
+x, y = 3, 4
+print(x + y)
+""", """
+(x, y) = (3, 4)
+print(x + y)
+""")
+
+    def test_4(self):
+        self.assert_h2py("""
+def f(x, y):
+    let z = x + y:
+        print(z)
+f(3, 4)
+""", """
+def f(x, y):
+    result = None
+    z = x + y
+    print(z)
+    z = None
+    return result
+f(3, 4)
+""")
 
 
 if __name__ == '__main__':
