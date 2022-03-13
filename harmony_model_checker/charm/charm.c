@@ -146,7 +146,9 @@ static bool onestep(
         }
         else {
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
-                step->ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
+                struct access_info *ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
+                ai->next = step->ai;
+                step->ai = ai;
             }
             (*oi->op)(instrs[pc].env, sc, step, global);
         }
