@@ -24,9 +24,11 @@
 #include "strbuf.h"
 #include "iface/iface.h"
 #include "hashdict.h"
+#include "hashset.h"
 #include "dfa.h"
 #include "thread.h"
 #include "spawn.h"
+#include "filter.h"
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
@@ -67,6 +69,8 @@ struct worker {
     // These need to be next to one another
     struct context ctx;
     hvalue_t stack[MAX_CONTEXT_STACK];
+
+    struct filter_t filters;     // filters states for probability checking
 };
 
 // Per thread one-time memory allocator (no free)
@@ -213,7 +217,8 @@ static bool onestep(
     hvalue_t choice,        // if about to make a choice, which choice?
     bool interrupt,         // start with invoking interrupt handler
     bool infloop_detect,    // try to detect infloop from the start
-    int multiplicity        // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct filter_t filter
 ) {
     assert(!step->ctx->terminated);
     assert(step->ctx->failure == 0);
@@ -238,10 +243,19 @@ static bool onestep(
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
     int choice_size = 1;                // Number of choices to make. It is 1
+    int filterstates[20];
+    int filter_len = 0;
     for (;;) {
         int pc = step->ctx->pc;
 
-        // If I'm pthread 0 and it's time, print some stats
+        for (int i = 0; i < filter.len; ++i) {
+            // if (filter.conditions[i].pc == pc) {
+            //     filterstates[filter_len] = i;
+            //     ++filter_len;
+            // }
+        }
+
+        // If I'm phread 0 and it's time, print some stats
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -468,6 +482,7 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
+<<<<<<< HEAD
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge), false);
     edge->ctx = ctx;
@@ -498,6 +513,7 @@ static bool onestep(
             next->choice = choice_copy;
             next->choice_size = choice_size;
             next->interrupt = interrupt;
+            next->filter_len = 0;
         }
     }
     else {
@@ -511,6 +527,7 @@ static bool onestep(
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->choice_size = choice_size;
+        next->filter_len = 0;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -559,7 +576,8 @@ static void make_step(
     struct node *node,
     hvalue_t ctx,
     hvalue_t choice,       // if about to make a choice, which choice?
-    int multiplicity       // #contexts that are in the current state
+    int multiplicity,       // #contexts that are in the current state
+    struct filter_t filter
 ) {
     struct step step;
     memset(&step, 0, sizeof(step));
@@ -577,9 +595,9 @@ static void make_step(
 
     // See if we need to interrupt
     if (sc.choosing == 0 && cc->trap_pc != 0 && !cc->interruptlevel) {
-        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity);
+        bool succ = onestep(w, node, &sc, ctx, &step, choice, true, false, multiplicity, filter);
         if (!succ) {        // ran into an infinite loop
-            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity);
+            (void) onestep(w, node, &sc, ctx, &step, choice, true, true, multiplicity, filter);
         }
 
         sc = node->state;
@@ -587,9 +605,9 @@ static void make_step(
     }
 
     sc.choosing = 0;
-    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity);
+    bool succ = onestep(w, node, &sc, ctx, &step, choice, false, false, multiplicity, filter);
     if (!succ) {        // ran into an infinite loop
-        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity);
+        (void) onestep(w, node, &sc, ctx, &step, choice, false, true, multiplicity, filter);
     }
 }
 
@@ -1533,7 +1551,8 @@ static void do_work(struct worker *w){
 					node,
 					state->choosing,
 					vals[i],
-					1
+					1,
+                    w->filter
 				);
 			}
 		}
@@ -1550,7 +1569,8 @@ static void do_work(struct worker *w){
 					node,
 					ctxs[i],
 					0,
-					VALUE_FROM_INT(ctxs[i+1])
+					VALUE_FROM_INT(ctxs[i+1]),
+                    w->filter
 				);
 			}
 		}
@@ -1888,6 +1908,12 @@ int main(int argc, char **argv){
     assert(jc->type == JV_LIST);
     global->code = code_init_parse(&engine, jc);
 
+    struct json_value *filt = dict_lookup(jv->u.map, "filter", 6);
+
+    // Create filters
+    // TODO: Do I want to heap allocate this?
+    struct filter_t filters = create_filter(filt);
+
     // Create an initial state
     struct context *init_ctx = calloc(1, sizeof(struct context) + MAX_CONTEXT_STACK * sizeof(hvalue_t));
     init_ctx->name = global->init_name;
@@ -1956,6 +1982,7 @@ int main(int argc, char **argv){
         w->nworkers = nworkers;
         w->visited = visited;
         w->last = &w->results;
+        w->filter = filters;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +
@@ -2232,32 +2259,59 @@ int main(int argc, char **argv){
         if (probabilistic) {
             fprintf(out, "  \"probabilities\": [\n");
 
-            bool first = true;
-            for (int i = 0; i < global->graph.size; i++) {
-                struct node *node = global->graph.nodes[i];
-                assert(node->id == i);
+            {
+                bool first = true;
+                for (int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
+                    assert(node->id == i);
 
-                for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        fprintf(out, ",\n");
+                    for (struct edge *edge = node->fwd; edge != NULL; edge = edge->fwdnext) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            fprintf(out, ",\n");
+                        }
+
+                        fprintf(
+                            out, 
+                            "    {\"from\": %d, \"to\": %d, \"probability\": {\"numerator\": %d, \"denominator\": %d}}",
+                            i,
+                            edge->dst->id,
+                            edge->probability_numerator,
+                            edge->probability_denominator
+                        );
                     }
-
-                    fprintf(
-                        out, 
-                        "    {\"from\": %d, \"to\": %d, \"probability\": {\"numerator\": %d, \"denominator\": %d}}",
-                        i,
-                        edge->dst->id,
-                        edge->probability_numerator,
-                        edge->probability_denominator
-                    );
                 }
-            }
 
-            fprintf(out, "\n");
-            fprintf(out, "  ],\n");
+                fprintf(out, "\n");
+                fprintf(out, "  ],\n");
+            }
             fprintf(out, "  \"total_states\": %d,\n", global->graph.size);
+
+            fprintf(out, "  \"filter_states\": [\n");
+
+            // {
+            //     bool first = true;
+            //     for (int i = 0; i < global->graph.size; i++) {
+            //         struct node *node = global->graph.nodes[i];
+            //         assert(node->id == i);
+
+            //         for (int j = 0; j < node->filter_len; j++) {
+            //             if (first) {
+            //                 first = false;
+            //             } else {
+            //                 fprintf(out, ",\n");
+            //             }
+
+            //             fprintf(
+            //                 out, 
+            //                 "    {\"state\": %d, \"query\": %d}",
+            //                 i,
+            //                 node->filter_states[i]
+            //             );
+            //         }
+            //     }
+            // }
         }
 
 

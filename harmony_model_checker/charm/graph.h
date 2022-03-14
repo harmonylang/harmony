@@ -5,6 +5,7 @@
 #include "value.h"
 #include "minheap.h"
 #include "thread.h"
+#include "hashset.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -75,6 +76,12 @@ struct node {
 
     // NFA compression
     bool reachable;
+
+    // Whether this is a state that we are interested in (for probabiliy
+    // checking)
+    // TODO: Don't know if this is a good idea
+    int filter_states[20];
+    int filter_len;
 };
 
 struct failure {
