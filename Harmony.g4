@@ -220,6 +220,10 @@ else_block: ELSE COLON block;
 
 if_block: IF expr COLON block elif_block* else_block?;
 
+// TODO: atLabel is duplicated. Is this a problem?
+hyper_condition: 'atLabel' NAME;
+hyperassert_stmt: HYPER OPEN_PAREN hyper_condition CLOSE_PAREN comp_op expr;
+
 block_stmts: stmt+;
 
 block
@@ -270,6 +274,7 @@ stmt: (((label? | COLON) (
         | one_line_stmt
         | compound_stmt
         | import_stmt
+        | hyperassert_stmt
     )) | ((label | COLON) normal_block)
 );
 
@@ -325,6 +330,7 @@ NONE    : 'None';
 ATOMICALLY: 'atomically';
 BOOL    : 'False' | 'True';
 ETERNAL: 'eternal';
+HYPER : 'hyper_assert';
 
 // STRING  : '"' .*? '"' | '\'' .*? '\'';
 INT     : [0-9]+ | 'inf';

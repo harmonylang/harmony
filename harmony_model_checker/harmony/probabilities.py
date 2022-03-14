@@ -4,6 +4,9 @@ import numpy as np
 # TODO: This is just a simple port of charmpp. We probably want extended
 # functionality here.
 def find_probabilities(top, states, outputfiles):
+    if outputfiles['hpo'] is None:
+        return
+
     transitions = defaultdict(list)
     total_states = top['total_states']
     matrix = np.zeros((total_states, total_states))
@@ -29,8 +32,7 @@ def find_probabilities(top, states, outputfiles):
     matrix_a = np.identity(len(reachable_states)) - matrix[np.ix_(reachable_states, reachable_states)]
     probabilities = np.linalg.solve(matrix_a, list_b)
 
-    if outputfiles['hpo'] is not None:
-        np.savetxt(outputfiles['hpo'], np.stack((reachable_states, probabilities), axis=1), delimiter=",")
+    np.savetxt(outputfiles['hpo'], np.stack((reachable_states, probabilities), axis=1), delimiter=",")
 
 
 """

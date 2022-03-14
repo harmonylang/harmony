@@ -435,6 +435,8 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             stmt = self.visit(ctx.compound_stmt())
         elif ctx.import_stmt() is not None:
             stmt = self.visit(ctx.import_stmt())
+        elif ctx.hyperassert_stmt() is not None:
+            stmt = self.visit(ctx.hyperassert_stmt())
         elif ctx.normal_block() is not None:
             stmt = self.visit(ctx.normal_block())
         else:
@@ -629,6 +631,15 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             column=tkn[3],
             lexeme=tkn[0]
         )
+
+    def visitHyperassert_stmt(self, ctx):
+        # Does nothing for now
+        return []
+    
+    def visitHyper_condition(self, ctx):
+        # Does nothing for now
+        return []
+
 
     # Visit a parse tree produced by HarmonyParser#application.
     def visitApplication(self, ctx:HarmonyParser.ApplicationContext):
