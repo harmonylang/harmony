@@ -143,7 +143,7 @@ def handle_hco(ns, output_files):
     disable_browser = settings.values.disable_web or ns.noweb
     
     b = Brief()
-    b.run(output_files, behavior, probabilistic)
+    b.run(output_files, behavior, probability_states)
     gh = GenHTML()
     gh.run(output_files)
     if not suppress_output:
