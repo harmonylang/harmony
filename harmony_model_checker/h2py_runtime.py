@@ -9,6 +9,9 @@ class HDict:
     def __getitem__(self, item):
         return self._dict.__getitem__(item)
 
+    def __setitem__(self, key, value):
+        self._dict.__setitem__(key, value)
+
     def __iter__(self):
         return self._dict.__iter__()
 
