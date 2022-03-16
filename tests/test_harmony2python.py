@@ -84,6 +84,24 @@ def f(x, y):
 f(3, 4)
 """)
 
+    def test_5(self):
+        self.assert_h2py("""
+def f(x, y):
+    let z = x + y:
+        print(x + y)
+        assert z == 5
+f(2, 3)
+""", """
+def f(x, y):
+    result = None
+    z = x + y
+    print(x + y)
+    assert z == 5
+    z = None
+    return result
+f(2, 3)
+""")
+
 
 if __name__ == '__main__':
     unittest.main()
