@@ -1,5 +1,3 @@
-from re import I
-from typing import Optional, Union
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 
 import harmony_model_checker.harmony.ast as hast  # hast = Harmony AST
@@ -149,7 +147,7 @@ class H2PyASTVisitor(AbstractASTVisitor):
         return self(node.expr, env)
 
     # TODO: what if apply is on a dictionary?
-    def visit_apply(self, node: hast.ApplyAST, env):
+    def visit_apply(self, node: hast.ApplyAST, env: H2PyEnv):
         def convert_arg(arg):
             if isinstance(arg, list):
                 result = []
@@ -219,3 +217,19 @@ class H2PyASTVisitor(AbstractASTVisitor):
             ))
 
         return stmts
+
+    def visit_dict(self, node: hast.DictAST, env: H2PyEnv):
+        return past.Call(
+            func=past.Attribute(
+                value=past.Name(id='h2py_runtime', ctx=past.Load()),
+                attr='HDict',
+                ctx=past.Load()
+            ),
+            args=[
+                past.Dict(
+                    keys=[self(key, env) for key, _ in node.record],
+                    values=[self(value, env) for _, value in node.record]
+                )
+            ],
+            keywords=[]
+        )

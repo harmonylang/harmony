@@ -37,7 +37,13 @@ Dumped Parsed Python AST: {past.dump(python_ast, indent=2)}
 Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
 """)
 
-        self.assertEqual(python_code.strip(), unparsed.strip())
+        self.assertEqual(python_code.strip(), unparsed.strip(), f"""
+Dump Harmony AST: {dump_ast(harmony_ast)}
+
+Dumped Parsed Python AST: {past.dump(python_ast, indent=2)}
+
+Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
+""")
 
     def test_1(self):
         self.assert_h2py("""
@@ -100,6 +106,17 @@ def f(x, y):
     z = None
     return result
 f(2, 3)
+""")
+
+    def test_6(self):
+        self.assert_h2py("""
+x = { .y: 5, .z: 10 }
+print(x.y + x.z)
+""", """
+x = h2py_runtime.HDict({'y': 5, 'z': 10})
+print(
+x('y') + 
+x('z'))
 """)
 
 
