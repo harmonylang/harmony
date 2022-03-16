@@ -19,7 +19,7 @@ class ModifiedDenterHelper(DenterHelper):
             'and', 'or', '=>', '&', '|', '^',
             '-', '+', '*', '//', '/', '%', 'mod',
             '**', '<<', '>>', 'in', 'when', 'let',
-            'not'
+            'not', ','
         }
 
     def handle_newline_token(self, t: Token):

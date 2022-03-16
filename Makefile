@@ -13,6 +13,9 @@ gen:
 	printf "__version__ = \"1.2.%d\"\n" `git log --pretty=format:'' | wc -l | sed 's/[ \t]//g'` >> harmony_model_checker/__init__.py
 	chmod +x harmony
 
+charm:
+	gcc -Iharmony_model_checker/charm -Iharmony_model_checker/charm/iface -o charm.exe -pthread harmony_model_checker/charm/*.c harmony_model_checker/charm/iface/*.c
+
 behavior: x.hny
 	./harmony -o x.hny
 	: ./harmony -mqueue=queueconc code/qtestconc4.hny

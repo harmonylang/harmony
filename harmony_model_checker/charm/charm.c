@@ -1621,6 +1621,7 @@ int main(int argc, char **argv){
     global->enqueued = 0;
     global->dequeued = 0;
     global->dumpfirst = false;
+    global->init_name = value_put_atom(&global->values, "__init__", 8);
 
     // First read and parse the DFA if any
     if (dfafile != NULL) {
@@ -1659,7 +1660,7 @@ int main(int argc, char **argv){
 
     // Create an initial state
     struct context *init_ctx = new_alloc(struct context);
-    init_ctx->name = value_put_atom(&global->values, "__init__", 8);
+    init_ctx->name = global->init_name;
     init_ctx->arg = VALUE_DICT;
     init_ctx->this = VALUE_DICT;
     init_ctx->vars = VALUE_DICT;
