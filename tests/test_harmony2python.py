@@ -119,6 +119,19 @@ x('y') +
 x('z'))
 """)
 
+    def test_7(self):
+        self.assert_h2py("""
+x = { .y: 5, .z: 10 }
+x.y = 7
+print(x.y + x.z)
+""", """
+x = h2py_runtime.HDict({'y': 5, 'z': 10})
+x['y'] = 7
+print(
+x('y') + 
+x('z'))
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

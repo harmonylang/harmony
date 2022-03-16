@@ -61,6 +61,12 @@ class H2PyASTVisitor(AbstractASTVisitor):
                     id=targets.name[0],
                     ctx=past.Store()
                 )
+            elif isinstance(targets, hast.ApplyAST):
+                return past.Subscript(
+                    value=self(targets.method, env),
+                    slice=self(targets.arg, env),
+                    ctx=past.Store()
+                )
             else:
                 assert False, targets
 
@@ -146,7 +152,6 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_call(self, node: hast.CallAST, env: H2PyEnv):
         return self(node.expr, env)
 
-    # TODO: what if apply is on a dictionary?
     def visit_apply(self, node: hast.ApplyAST, env: H2PyEnv):
         def convert_arg(arg):
             if isinstance(arg, list):
