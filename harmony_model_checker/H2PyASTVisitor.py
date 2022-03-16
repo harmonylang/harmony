@@ -4,22 +4,23 @@ import harmony_model_checker.harmony.ast as hast  # hast = Harmony AST
 import ast as past  # past = Python AST
 
 
+# Symbolic constants for indexing into a token.
+T_TOKEN = 0
+T_FILE = 1
+T_LINENO = 2
+T_COLNO = 3
+
+
 class H2PyASTVisitor(AbstractASTVisitor):
 
     def __call__(self, node: hast.AST, **kwargs) -> past.AST:
         return node.accept_visitor(self, **kwargs)
 
     def visit_block(self, node: hast.BlockAST, wrap_in_module: bool = True, **kwargs):
-        body = [self(child, **kwargs) for child in node.b]
-
-        if wrap_in_module:
-            return past.Module(
-                body=body,
-                type_ignores=[]
-            )
-
-        else:
-            return body
+        return past.Module(
+            body=[self(child, **kwargs) for child in node.b],
+            type_ignores=[]
+        )
 
     def visit_location(self, node: hast.LocationAST, **kwargs):
         return self(node.ast, **kwargs)
@@ -45,14 +46,14 @@ class H2PyASTVisitor(AbstractASTVisitor):
         return past.Assign(
             targets=convert_targets(node.lhslist),
             value=self(node.rv, ctx=past.Load(), **kwargs),
-            lineno=node.token[2]
+            lineno=node.token[T_LINENO]
         )
 
     def visit_name(self, node: hast.NameAST, ctx, **kwargs):
-        return past.Name(id=node.name[0], ctx=ctx)
+        return past.Name(id=node.name[T_TOKEN], ctx=ctx)
 
     def visit_nary(self, node: hast.NaryAST, **kwargs):
-        op = node.op[0]
+        op = node.op[T_TOKEN]
         if op == '+':
             return past.BinOp(
                 left=self(node.args[0], **kwargs),
@@ -78,7 +79,7 @@ class H2PyASTVisitor(AbstractASTVisitor):
             raise NotImplementedError(op)
 
     def visit_constant(self, node: hast.ConstantAST, **kwargs):
-        return past.Constant(value=node.const[0])
+        return past.Constant(value=node.const[T_TOKEN])
 
     def visit_print(self, node: hast.PrintAST, **kwargs):
         return past.Expr(
@@ -93,12 +94,12 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_method(self, node: hast.MethodAST, **kwargs):
         def convert_parameters(parameters):
             if isinstance(parameters, tuple):
-                return [past.arg(arg=parameters[0])]
+                return [past.arg(arg=parameters[T_TOKEN])]
             elif isinstance(parameters, list):
-                return [past.arg(arg=arg[0]) for arg in parameters]
+                return [past.arg(arg=arg[T_TOKEN]) for arg in parameters]
 
         return past.FunctionDef(
-            name=node.name[0],
+            name=node.name[T_TOKEN],
             args=past.arguments(
                 posonlyargs=[],
                 args=convert_parameters(node.args),
@@ -110,15 +111,15 @@ class H2PyASTVisitor(AbstractASTVisitor):
                 past.Assign(
                     targets=[past.Name(id="result", ctx=past.Store())],
                     value=past.Constant(value=None),
-                    lineno=node.token[2]
+                    lineno=node.token[T_LINENO]
                 ),
-                *self(node.stat, wrap_in_module=False, **kwargs),
+                self(node.stat, **kwargs),
                 past.Return(
                     value=past.Name(id="result", ctx=past.Load())
                 )
             ],
             decorator_list=[],
-            lineno=node.token[2]
+            lineno=node.token[T_LINENO]
         )
 
     def visit_call(self, node: hast.CallAST, **kwargs):
@@ -145,7 +146,7 @@ class H2PyASTVisitor(AbstractASTVisitor):
         if isinstance(node.method, hast.NameAST):
             return past.Expr(
                 value=past.Call(
-                    func=past.Name(id=node.method.name[0], ctx=past.Load()),
+                    func=past.Name(id=node.method.name[T_TOKEN], ctx=past.Load()),
                     args=convert_arg(node.arg),
                     keywords=[]
                 )
@@ -165,7 +166,7 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_cmp(self, node: hast.CmpAST, **kwargs):
         assert len(node.ops) == 1
 
-        op = node.ops[0][0]
+        op = node.ops[0][T_TOKEN]
         if op == "==":
             return past.Compare(
                 left=self(node.args[0], **kwargs),
@@ -175,3 +176,23 @@ class H2PyASTVisitor(AbstractASTVisitor):
 
         else:
             raise NotImplementedError()
+
+    def visit_let(self, node: hast.LetAST, **kwargs):
+        stmts = []
+        for var, expr in node.vars:
+            stmts.append(past.Assign(
+                targets=[past.Name(id=var[T_TOKEN], ctx=past.Store())],
+                value=self(expr, ctx=past.Load(), **kwargs),
+                lineno=node.token[T_LINENO]
+            ))
+
+        stmts.append(self(node.stat, **kwargs))
+
+        for var, _ in node.vars:
+            stmts.append(past.Assign(
+                targets=[past.Name(id=var[T_TOKEN], ctx=past.Store())],
+                value=past.Constant(value=None),
+                lineno=node.token[T_LINENO]
+            ))
+
+        return stmts
