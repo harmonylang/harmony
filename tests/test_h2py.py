@@ -150,6 +150,12 @@ z = x mod y
 z = x ** y
 z = x << y
 z = x >> y
+z = x == y
+z = x != y
+z = x < y
+z = x <= y
+z = x > y
+z = x >= y
 """, """
 z = x and y
 z = x or y
@@ -167,6 +173,12 @@ z = x % y
 z = x ** y
 z = x << y
 z = x >> y
+z = x == y
+z = x != y
+z = x < y
+z = x <= y
+z = x > y
+z = x >= y
 """)
 
 

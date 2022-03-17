@@ -81,6 +81,7 @@ class H2PyASTVisitor(AbstractASTVisitor):
 
     def visit_nary(self, node: hast.NaryAST, env: H2PyEnv):
         op = node.op[T_TOKEN]
+
         if op == '+':
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
@@ -191,6 +192,67 @@ class H2PyASTVisitor(AbstractASTVisitor):
         else:
             raise NotImplementedError(op)
 
+    def visit_cmp(self, node: hast.CmpAST, env: H2PyEnv):
+        assert(len(node.ops) == 1)
+
+        op = node.ops[0][T_TOKEN]
+        if op == "==":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Eq()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == "!=":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.NotEq()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == "<":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Lt()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == "<=":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.LtE()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == ">":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Gt()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == ">=":
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.GtE()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        else:
+            raise NotImplementedError(op)
+
     def visit_constant(self, node: hast.ConstantAST, env: H2PyEnv):
         return past.Constant(value=node.const[T_TOKEN])
 
@@ -274,20 +336,6 @@ class H2PyASTVisitor(AbstractASTVisitor):
         return past.Assert(
             test=self(node.cond, env)
         )
-
-    def visit_cmp(self, node: hast.CmpAST, env: H2PyEnv):
-        assert len(node.ops) == 1
-
-        op = node.ops[0][T_TOKEN]
-        if op == "==":
-            return past.Compare(
-                left=self(node.args[0], env.rep(ctx=past.Load())),
-                ops=[past.Eq()],
-                comparators=[self(node.args[1], env.rep(ctx=past.Load()))]
-            )
-
-        else:
-            raise NotImplementedError()
 
     def visit_let(self, node: hast.LetAST, env: H2PyEnv):
         stmts = []
