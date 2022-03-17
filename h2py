@@ -2,7 +2,7 @@
 
 import sys
 
-from harmony_model_checker.H2PyASTVisitor import H2PyASTVisitor
+from harmony_model_checker.h2py.H2PyASTVisitor import H2PyASTVisitor
 from harmony_model_checker.compile import parse
 
 import ast as past
