@@ -102,6 +102,92 @@ class H2PyASTVisitor(AbstractASTVisitor):
                 right=self(node.args[1], env.rep(ctx=past.Load()))
             )
 
+        elif op == "and":
+            return past.BoolOp(
+                op=past.And(),
+                values=[
+                    self(node.args[0], env.rep(ctx=past.Load())),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == "or":
+            return past.BoolOp(
+                op=past.Or(),
+                values=[
+                    self(node.args[0], env.rep(ctx=past.Load())),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == "=>":
+            return past.BoolOp(
+                op=past.Or(),
+                values=[
+                    past.UnaryOp(
+                        op=past.Not(),
+                        operand=self(node.args[0], env.rep(ctx=past.Load()))
+                    ),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == "&":
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitAnd(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == "|":
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitOr(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == "^":
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitXor(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {"//", "/"}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.FloorDiv(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {"%", "mod"}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Mod(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {"**"}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Pow(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == "<<":
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.LShift(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == ">>":
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.RShift(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
         else:
             raise NotImplementedError(op)
 

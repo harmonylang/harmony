@@ -1,7 +1,7 @@
 import unittest
 
 from harmony_model_checker.harmony.DumpASTVisitor import DumpASTVisitor
-from harmony_model_checker.H2PyASTVisitor import H2PyASTVisitor
+from harmony_model_checker.h2py.H2PyASTVisitor import H2PyASTVisitor
 from harmony_model_checker.compile import parse_string
 import ast as past
 
@@ -130,6 +130,43 @@ x['y'] = 7
 print(
 x('y') + 
 x('z'))
+""")
+
+    def test_8(self):
+        self.assert_h2py("""
+z = x and y
+z = x or y
+z = x => y
+z = x & y
+z = x | y
+z = x ^ y
+z = x - y
+z = x + y
+z = x * y
+z = x // y
+z = x / y
+z = x % y
+z = x mod y
+z = x ** y
+z = x << y
+z = x >> y
+""", """
+z = x and y
+z = x or y
+z = not x or y
+z = x & y
+z = x | y
+z = x ^ y
+z = x - y
+z = x + y
+z = x * y
+z = x // y
+z = x // y
+z = x % y
+z = x % y
+z = x ** y
+z = x << y
+z = x >> y
 """)
 
 
