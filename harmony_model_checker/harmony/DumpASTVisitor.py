@@ -99,8 +99,13 @@ class DumpASTVisitor(AbstractASTVisitor):
     def visit_pointer(self, node: PointerAST, depth):
         self.p(f"Pointer {node.token}", indent=depth)
 
+        self(node.expr, depth + 1)
+
     def visit_assignment(self, node: AssignmentAST, depth):
         self.p(f"Assignment {node.token}", indent=depth)
+
+        for lhs in node.lhslist:
+            self(lhs, depth + 1)
 
         self(node.rv, depth + 1)
 

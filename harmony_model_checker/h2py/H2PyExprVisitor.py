@@ -1,0 +1,268 @@
+from harmony_model_checker.h2py.H2PyEnv import H2PyEnv
+from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
+from harmony_model_checker.h2py.token import *
+import harmony_model_checker.harmony.ast as hast
+
+import ast as past
+
+class H2PyExprVisitor(AbstractASTVisitor):
+
+    def __init__(self):
+        self.prologue = []
+        self.epilogue = []
+
+    def __call__(self, node: hast.AST, env: H2PyEnv = H2PyEnv()) -> past.AST:
+        return node.accept_visitor(self, env)
+
+    def visit_name(self, node: hast.NameAST, env: H2PyEnv):
+        return past.Name(id=node.name[T_TOKEN], ctx=env.get('ctx'))
+
+    def visit_nary(self, node: hast.NaryAST, env: H2PyEnv):
+        op = node.op[T_TOKEN]
+
+        if op == '+':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Add(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '*':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Mult(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '-':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Sub(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == 'and':
+            return past.BoolOp(
+                op=past.And(),
+                values=[
+                    self(node.args[0], env.rep(ctx=past.Load())),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == 'or':
+            return past.BoolOp(
+                op=past.Or(),
+                values=[
+                    self(node.args[0], env.rep(ctx=past.Load())),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == '=>':
+            return past.BoolOp(
+                op=past.Or(),
+                values=[
+                    past.UnaryOp(
+                        op=past.Not(),
+                        operand=self(node.args[0], env.rep(ctx=past.Load()))
+                    ),
+                    self(node.args[1], env.rep(ctx=past.Load()))
+                ]
+            )
+
+        elif op == '&':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitAnd(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '|':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitOr(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '^':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.BitXor(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {'//', '/'}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.FloorDiv(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {'%', 'mod'}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Mod(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op in {'**'}:
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.Pow(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '<<':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.LShift(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        elif op == '>>':
+            return past.BinOp(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                op=past.RShift(),
+                right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+
+        else:
+            raise NotImplementedError(op)
+
+    def visit_cmp(self, node: hast.CmpAST, env: H2PyEnv):
+        assert(len(node.ops) == 1)
+
+        op = node.ops[0][T_TOKEN]
+        if op == '==':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Eq()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == '!=':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.NotEq()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == '<':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Lt()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == '<=':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.LtE()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == '>':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.Gt()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        elif op == '>=':
+            return past.Compare(
+                left=self(node.args[0], env.rep(ctx=past.Load())),
+                ops=[past.GtE()],
+                comparators=[
+                    self(node.args[1], env.rep(ctx=past.Load())),
+                ]
+            )
+
+        else:
+            raise NotImplementedError(op)
+
+    def visit_constant(self, node: hast.ConstantAST, env: H2PyEnv):
+        return past.Constant(value=node.const[T_TOKEN])
+
+    def visit_tuple(self, node: hast.TupleAST, env: H2PyEnv):
+        return past.Tuple(
+            elts=[self(subnode, env) for subnode in node.list],
+            ctx=env.get('ctx')
+        )
+
+    def visit_dict(self, node: hast.DictAST, env: H2PyEnv):
+        return past.Call(
+            func=past.Attribute(
+                value=past.Name(id='h2py_runtime', ctx=past.Load()),
+                attr='HDict',
+                ctx=past.Load()
+            ),
+            args=[
+                past.Dict(
+                    keys=[self(key, env) for key, _ in node.record],
+                    values=[self(value, env) for _, value in node.record]
+                )
+            ],
+            keywords=[]
+        )
+
+    def visit_apply(self, node: hast.ApplyAST, env: H2PyEnv):
+        def convert_arg(arg):
+            if isinstance(arg, list):
+                result = []
+                for subarg in arg:
+                    result += convert_arg(subarg)
+                return result
+
+            elif isinstance(arg, hast.TupleAST):
+                return convert_arg(arg.list)
+
+            elif isinstance(arg, hast.ConstantAST):
+                return [past.Constant(value=arg.const[0])]
+
+            elif isinstance(arg, hast.AddressAST) and isinstance(arg.lv, hast.NameAST):
+                name = arg.lv.name[T_TOKEN]
+                self.prologue.append(past.Assign(
+                    targets=[past.Name(id=f'{name}_ptr', ctx=past.Store())],
+                    value=past.Call(
+                        func=past.Name(id='Ref', ctx=past.Load()),
+                        args=[past.Name(id=arg.lv.name[T_TOKEN], ctx=past.Load())],
+                        keywords=[]
+                    ),
+                    lineno=arg.token[T_LINENO]
+                ))
+                self.epilogue.append(past.Assign(
+                    targets=[past.Name(id=name, ctx=past.Store())],
+                    value=past.Attribute(
+                        value=past.Name(id=f'{name}_ptr', ctx=past.Load()),
+                        attr='pointee'
+                    ),
+                    lineno=arg.token[T_LINENO]
+                ))
+                return [past.Name(id=f'{name}_ptr', ctx=past.Load())]
+
+            else:
+                assert False, f'Unable to convert arg {arg}'
+
+        if isinstance(node.method, hast.NameAST):
+            return past.Call(
+                func=past.Name(id=node.method.name[T_TOKEN], ctx=past.Load()),
+                args=convert_arg(node.arg),
+                keywords=[]
+            )
+
+    def visit_pointer(self, node: hast.PointerAST, env: H2PyEnv):
+        return past.Attribute(
+            value=self(node.expr, env.rep(ctx=past.Load())),
+            attr='pointee'
+        )

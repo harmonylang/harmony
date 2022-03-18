@@ -20,3 +20,8 @@ class HDict:
 
     def __call__(self, item):
         return self._dict.__getitem__(item)
+
+class Ref:
+
+    def __init__(self, pointee):
+        self.pointee = pointee

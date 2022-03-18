@@ -1,7 +1,7 @@
 import unittest
 
 from harmony_model_checker.harmony.DumpASTVisitor import DumpASTVisitor
-from harmony_model_checker.h2py.H2PyASTVisitor import H2PyASTVisitor
+from harmony_model_checker.h2py.H2PyASTVisitor import h2py
 from harmony_model_checker.compile import parse_string
 import ast as past
 
@@ -9,7 +9,6 @@ import ast as past
 class TestHarmony2Python(unittest.TestCase):
 
     def assert_h2py(self, harmony_code: str, python_code: str):
-        h2py = H2PyASTVisitor()
         dump_ast = DumpASTVisitor()
         harmony_ast = parse_string(harmony_code)
 
@@ -114,9 +113,7 @@ x = { .y: 5, .z: 10 }
 print(x.y + x.z)
 """, """
 x = h2py_runtime.HDict({'y': 5, 'z': 10})
-print(
-x('y') + 
-x('z'))
+print(x('y') + x('z'))
 """)
 
     def test_7(self):
@@ -127,9 +124,7 @@ print(x.y + x.z)
 """, """
 x = h2py_runtime.HDict({'y': 5, 'z': 10})
 x['y'] = 7
-print(
-x('y') + 
-x('z'))
+print(x('y') + x('z'))
 """)
 
     def test_8(self):
@@ -192,6 +187,25 @@ import synch
 import a, b
 from synch import Lock, acquire, release
 from synch import *
+""")
+
+    def test_10(self):
+        self.assert_h2py("""
+def f(x_ptr):
+    !x_ptr = 5
+x = 3
+f(?x)
+print(x)
+""", """
+def f(x_ptr):
+    result = None
+    x_ptr.pointee = 5
+    return result
+x = 3
+x_ptr = Ref(x)
+f(x_ptr)
+x = x_ptr.pointee
+print(x)
 """)
 
 
