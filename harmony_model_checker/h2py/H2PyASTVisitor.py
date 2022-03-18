@@ -46,7 +46,6 @@ class H2PyASTVisitor(AbstractASTVisitor):
     def visit_location(self, node: hast.LocationAST, env: H2PyEnv):
         return self(node.ast, env)
 
-    # TODO: handle hast.AssignmentAST.op
     def visit_assignment(self, node: hast.AssignmentAST, env: H2PyEnv):
         def convert_targets(targets):
             if isinstance(targets, list):
@@ -371,4 +370,21 @@ class H2PyASTVisitor(AbstractASTVisitor):
                 )
             ],
             keywords=[]
+        )
+
+    def visit_from(self, node: hast.FromAST, env: H2PyEnv):
+        if node.items:
+            names = [past.alias(name=name[T_TOKEN]) for name in node.items]
+        else:
+            names = [past.alias(name='*')]
+
+        return past.ImportFrom(
+            module=node.module[T_TOKEN],
+            names=names,
+            level=0
+        )
+
+    def visit_import(self, node: hast.ImportAST, env: H2PyEnv):
+        return past.Import(
+            names=[past.alias(name=name[T_TOKEN]) for name in node.modlist]
         )

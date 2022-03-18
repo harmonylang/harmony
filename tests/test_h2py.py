@@ -181,6 +181,19 @@ z = x > y
 z = x >= y
 """)
 
+    def test_9(self):
+        self.assert_h2py("""
+import synch
+import a, b
+from synch import Lock, acquire, release
+from synch import *
+""", """
+import synch
+import a, b
+from synch import Lock, acquire, release
+from synch import *
+""")
+
 
 if __name__ == '__main__':
     unittest.main()
