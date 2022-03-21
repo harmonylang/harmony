@@ -2,14 +2,13 @@
 
 import sys
 
-from harmony_model_checker.h2py.H2PyASTVisitor import H2PyASTVisitor
+from harmony_model_checker.h2py.H2PyASTVisitor import h2py
 from harmony_model_checker.compile import parse
 
 import ast as past
 
 
 if __name__ == '__main__':
-    h2py = H2PyASTVisitor()
     harmony_ast = parse(sys.argv[1])
     python_ast = h2py(harmony_ast)
     print(past.unparse(python_ast))
