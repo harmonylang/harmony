@@ -2,6 +2,12 @@ import math
 from harmony_model_checker.harmony.value import *
 from harmony_model_checker.harmony.bag_util import *
 
+def _prefix_name(prefix, name):
+    if prefix == None:
+        return name
+    else:
+        return prefix + '$' + name
+
 class Op:
     def define(self):   # set of local variables updated by this op
         return set()
@@ -375,27 +381,21 @@ class LoadOp(Op):
             return "Load"
         else:
             (lexeme, file, line, column) = self.name
-            return "Load " + ".".join(self.prefix + [lexeme])
+            return "Load " + _prefix_name(self.prefix, lexeme)
 
     def jdump(self):
         if self.name == None:
             return '{ "op": "Load" }'
         else:
             (lexeme, file, line, column) = self.name
-            result = ""
-            for n in self.prefix + [lexeme]:
-                if result != "":
-                    result += ", "
-                result += jsonValue(n)
-            return '{ "op": "Load", "value": [%s] }'%result
+            return '{ "op": "Load", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
         if self.name == None:
             return "OpLoadInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
-            return 'OpLoad(self, <<%s>>)'%result
+            return 'OpLoad(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
         if self.name == None:
@@ -417,7 +417,7 @@ class LoadOp(Op):
             if False and lexeme not in state.vars.d:
                 context.failure = "Error: no variable " + str(self.token)
                 return
-            context.push(state.iget(self.prefix + [lexeme]))
+            context.push(state.iget([_prefix_name(self.prefix, lexeme)]))
         context.pc += 1
 
 class StoreOp(Op):
@@ -425,33 +425,28 @@ class StoreOp(Op):
         self.name = name
         self.token = token  # for error reporting
         self.prefix = prefix
+        assert not isinstance(prefix, list)
 
     def __repr__(self):
         if self.name == None:
             return "Store"
         else:
             (lexeme, file, line, column) = self.name
-            return "Store " + ".".join(self.prefix + [lexeme])
+            return "Store " + _prefix_name(self.prefix, lexeme)
 
     def jdump(self):
         if self.name == None:
             return '{ "op": "Store" }'
         else:
             (lexeme, file, line, column) = self.name
-            result = ""
-            for n in self.prefix + [lexeme]:
-                if result != "":
-                    result += ", "
-                result += jsonValue(n)
-            return '{ "op": "Store", "value": [%s] }'%result
+            return '{ "op": "Store", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
         if self.name == None:
             return "OpStoreInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
-            return 'OpStore(self, <<%s>>)'%result
+            return 'OpStore(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
         if self.name == None:
@@ -477,7 +472,7 @@ class StoreOp(Op):
             name = lv[0]
         else:
             (lexeme, file, line, column) = self.name
-            lv = self.prefix + [lexeme]
+            lv = [_prefix_name(self.prefix, lexeme)]
             name = lexeme
 
         # TODO
@@ -499,7 +494,7 @@ class DelOp(Op):
     def __repr__(self):
         if self.name != None:
             (lexeme, file, line, column) = self.name
-            return "Del " + ".".join(self.prefix + [lexeme])
+            return "Del " + _prefix_name(self.prefix, lexeme)
         else:
             return "Del"
 
@@ -508,20 +503,14 @@ class DelOp(Op):
             return '{ "op": "Del" }'
         else:
             (lexeme, file, line, column) = self.name
-            result = ""
-            for n in self.prefix + [lexeme]:
-                if result != "":
-                    result += ", "
-                result += jsonValue(n)
-            return '{ "op": "Del", "value": [%s] }'%result
+            return '{ "op": "Del", "value": [{ "type": "atom", "value": "%s"}] }'%_prefix_name(self.prefix, lexeme)
 
     def tladump(self):
         if self.name == None:
             return "OpDelInd(self)"
         else:
             (lexeme, file, line, column) = self.name
-            result = ",".join([tlaValue(x) for x in self.prefix + [lexeme]])
-            return 'OpDel(self, <<%s>>)'%result
+            return 'OpDel(self, <<"%s">>)'%_prefix_name(self.prefix, lexeme)
 
     def explain(self):
         if self.name == None:
