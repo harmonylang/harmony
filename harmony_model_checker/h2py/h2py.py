@@ -7,6 +7,12 @@ import ast as past
 def h2py(hast: hast.AST) -> past.AST:
     stmt_visitor = H2PyStmtVisitor()
     return past.Module(
-        body=stmt_visitor(hast),
+        body=[
+            past.ImportFrom(
+                module='h2py_runtime', 
+                names=[past.alias(name='*')], 
+                level=0
+            )
+        ] + stmt_visitor(hast),
         type_ignores=[]
     )

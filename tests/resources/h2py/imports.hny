@@ -1,0 +1,4 @@
+import synch
+import a, b
+from synch import Lock, acquire, release
+from synch import *
