@@ -202,11 +202,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
 
     def visit_dict(self, node: hast.DictAST, env: H2PyEnv):
         return past.Call(
-            func=past.Attribute(
-                value=past.Name(id='h2py_runtime', ctx=past.Load()),
-                attr='HDict',
-                ctx=past.Load()
-            ),
+            func=past.Name(id='H', ctx=past.Load()),
             args=[
                 past.Dict(
                     keys=[self(key, env) for key, _ in node.record],
@@ -217,6 +213,16 @@ class H2PyExprVisitor(AbstractASTVisitor):
         )
 
     def visit_apply(self, node: hast.ApplyAST, env: H2PyEnv):
+        def convert_addr_lv(lv):
+            if isinstance(lv, hast.NameAST):
+                return (lv.name[T_TOKEN],)
+            elif isinstance(lv, hast.ApplyAST) and isinstance(lv.method, hast.NameAST):
+                return (lv.method.name[T_TOKEN], *convert_addr_lv(lv.arg))
+            elif isinstance(lv, hast.ConstantAST):
+                return (lv.const[T_TOKEN],)
+            else:
+                assert False, f'Unable to convert addr lv {lv}'
+
         def convert_arg(arg):
             if isinstance(arg, list):
                 result = []
@@ -230,26 +236,12 @@ class H2PyExprVisitor(AbstractASTVisitor):
             elif isinstance(arg, hast.ConstantAST):
                 return [past.Constant(value=arg.const[0])]
 
-            elif isinstance(arg, hast.AddressAST) and isinstance(arg.lv, hast.NameAST):
-                name = arg.lv.name[T_TOKEN]
-                self.prologue.append(past.Assign(
-                    targets=[past.Name(id=f'{name}_ptr', ctx=past.Store())],
-                    value=past.Call(
-                        func=past.Name(id='Ref', ctx=past.Load()),
-                        args=[past.Name(id=arg.lv.name[T_TOKEN], ctx=past.Load())],
-                        keywords=[]
-                    ),
-                    lineno=arg.token[T_LINENO]
-                ))
-                self.epilogue.append(past.Assign(
-                    targets=[past.Name(id=name, ctx=past.Store())],
-                    value=past.Attribute(
-                        value=past.Name(id=f'{name}_ptr', ctx=past.Load()),
-                        attr='pointee'
-                    ),
-                    lineno=arg.token[T_LINENO]
-                ))
-                return [past.Name(id=f'{name}_ptr', ctx=past.Load())]
+            elif isinstance(arg, hast.AddressAST):
+                return [past.Call(
+                    func=past.Name(id='HAddr', ctx=past.Load()),
+                    args=[past.Constant(value=convert_addr_lv(arg.lv))],
+                    keywords=[]
+                )]
 
             else:
                 assert False, f'Unable to convert arg {arg}'
@@ -261,8 +253,15 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 keywords=[]
             )
 
+        else:
+            raise NotImplementedError(node.method)
+
     def visit_pointer(self, node: hast.PointerAST, env: H2PyEnv):
-        return past.Attribute(
-            value=self(node.expr, env.rep(ctx=past.Load())),
-            attr='pointee'
+        return past.Call(
+            func=past.Attribute(
+                value=self(node.expr, env.rep(ctx=past.Load())),
+                attr='get'
+            ),
+            args=[],
+            keywords=[]
         )

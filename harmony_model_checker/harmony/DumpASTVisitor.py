@@ -124,6 +124,8 @@ class DumpASTVisitor(AbstractASTVisitor):
     def visit_address(self, node: AddressAST, depth):
         self.p(f"Address {node.token}", indent=depth)
 
+        self(node.lv, depth + 1)
+
     def visit_pass(self, node: PassAST, depth):
         self.p(f"Pass {node.token}", indent=depth)
 

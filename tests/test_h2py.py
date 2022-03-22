@@ -1,7 +1,7 @@
 import unittest
 
 from harmony_model_checker.harmony.DumpASTVisitor import DumpASTVisitor
-from harmony_model_checker.h2py.H2PyASTVisitor import h2py
+from harmony_model_checker.h2py.h2py import h2py
 from harmony_model_checker.compile import parse_string
 import ast as past
 
@@ -112,7 +112,7 @@ f(2, 3)
 x = { .y: 5, .z: 10 }
 print(x.y + x.z)
 """, """
-x = h2py_runtime.HDict({'y': 5, 'z': 10})
+x = H({'y': 5, 'z': 10})
 print(x('y') + x('z'))
 """)
 
@@ -122,7 +122,7 @@ x = { .y: 5, .z: 10 }
 x.y = 7
 print(x.y + x.z)
 """, """
-x = h2py_runtime.HDict({'y': 5, 'z': 10})
+x = H({'y': 5, 'z': 10})
 x['y'] = 7
 print(x('y') + x('z'))
 """)
@@ -189,6 +189,7 @@ from synch import Lock, acquire, release
 from synch import *
 """)
 
+
     def test_10(self):
         self.assert_h2py("""
 def f(x_ptr):
@@ -199,13 +200,39 @@ print(x)
 """, """
 def f(x_ptr):
     result = None
-    x_ptr.pointee = 5
+    x_ptr.assign(5)
     return result
 x = 3
-x_ptr = Ref(x)
-f(x_ptr)
-x = x_ptr.pointee
+f(HAddr(('x',)))
 print(x)
+""")
+
+    def test_11(self):
+        self.assert_h2py("""
+def f(x_y_ptr):
+    !x_y_ptr = 5
+x = { .y: 3 }
+f(?x.y)
+print(x.y)
+""", """
+def f(x_y_ptr):
+    result = None
+    x_y_ptr.assign(5)
+    return result
+x = H({'y': 3})
+f(HAddr(('x', 'y')))
+print(x('y'))
+""")
+
+    def test_12(self):
+        self.assert_h2py("""
+def f(x_ptr):
+    !x_ptr = 7
+""", """
+def f(x_ptr):
+    result = None
+    x_ptr.assign(7)
+    return result
 """)
 
 

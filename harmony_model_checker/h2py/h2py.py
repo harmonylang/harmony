@@ -6,4 +6,7 @@ import ast as past
 
 def h2py(hast: hast.AST) -> past.AST:
     stmt_visitor = H2PyStmtVisitor()
-    return stmt_visitor(hast)
+    return past.Module(
+        body=stmt_visitor(hast),
+        type_ignores=[]
+    )
