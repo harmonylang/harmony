@@ -3,13 +3,13 @@ class Scope:
         self.parent = parent               # parent scope
         self.names = { "this": ("local-var", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
         self.labels = {} if parent == None else parent.labels
-        self.prefix = [] if parent == None else parent.prefix
+        self.prefix = None if parent == None else parent.prefix
 
     def copy(self):
         c = Scope(self.parent)
         c.names = self.names.copy()
         c.labels = self.labels.copy()
-        c.prefix = self.prefix.copy()
+        c.prefix = self.prefix
         return c
 
     def checkUnused(self, name):

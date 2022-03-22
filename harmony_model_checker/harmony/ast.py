@@ -257,7 +257,10 @@ class NameAST(AST):
                 code.append(PushOp((AddressValue([lexeme]), file, line, column)))
         else:
             (lexeme, file, line, column) = self.name
-            code.append(PushOp((AddressValue(scope.prefix + [lexeme]), file, line, column)))
+            if scope.prefix == None:
+                code.append(PushOp((AddressValue([lexeme]), file, line, column)))
+            else:
+                code.append(PushOp((AddressValue([scope.prefix + '$' + lexeme]), file, line, column)))
 
     def ph2(self, scope, code, skip):
         if skip > 0:

@@ -57,6 +57,8 @@ def read_hfa(file, dfa, nfa):
     )
 
     print("Phase 7: comparing behaviors", len(dfa.states), len(hfa.states))
+    # if len(dfa.states) == len(hfa.states):      # HACK
+    #     return                                  # HACK
     if len(dfa.states) > 100 or len(hfa.states) > 100:
         print("  warning: this could take a while")
 

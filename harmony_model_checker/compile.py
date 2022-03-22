@@ -95,16 +95,16 @@ def _do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO
     if lexeme not in legacy_harmony.imported:
-        # TODO.  Only do the following if the modules have variables?
-        code.append(PushOp((legacy_harmony.novalue, file, line, column)))
-        code.append(StoreOp(module, module, []))
+        # Obsolete:
+        # code.append(PushOp((legacy_harmony.novalue, file, line, column)))
+        # code.append(StoreOp(module, module, None))
 
         # module name replacement with -m flag
         modname = legacy_harmony.modules.get(lexeme, lexeme)
 
         # create a new scope
         scope2 = Scope(None)
-        scope2.prefix = [lexeme]
+        scope2.prefix = lexeme
         scope2.labels = scope.labels
 
         found = False
