@@ -9,8 +9,8 @@ def h2py(hast: hast.AST) -> past.AST:
     return past.Module(
         body=[
             past.ImportFrom(
-                module='h2py_runtime', 
-                names=[past.alias(name='*')], 
+                module='h2py_runtime',
+                names=[past.alias(name='*')],
                 level=0
             )
         ] + stmt_visitor(hast),

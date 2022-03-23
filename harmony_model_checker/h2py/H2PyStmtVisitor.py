@@ -6,6 +6,7 @@ import harmony_model_checker.harmony.ast as hast
 
 import ast as past
 
+
 class H2PyStmtVisitor(AbstractASTVisitor):
 
     def __call__(self, node: hast.AST, env: H2PyEnv = H2PyEnv()) -> past.AST:
@@ -31,7 +32,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
                     keywords=[]
                 )
             )
-            
+
         else:
             def convert_target(target):
                 if isinstance(target, list):
@@ -129,7 +130,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
     def visit_let(self, node: hast.LetAST, env: H2PyEnv):
         stmts = []
         for var, expr in node.vars:
-            h2expr = H2PyExprVisitor() 
+            h2expr = H2PyExprVisitor()
             value = h2expr(expr, env.rep(ctx=past.Load()))
             stmts += h2expr.prologue
             stmts.append(past.Assign(

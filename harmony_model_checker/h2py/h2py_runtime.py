@@ -14,7 +14,7 @@ class HValue:
             return hcompare(self, other) == 0
         else:
             return False
-    
+
     def __lt__(self, other):
         if isinstance(other, HType):
             return hcompare(self, other) < 0
@@ -97,7 +97,7 @@ class HDict(HValue):
 
     def items(self):
         return tuple(sorted(
-            self.dict.items(), 
+            self.dict.items(),
             key=cmp_to_key(lambda lhs, rhs: hcompare(lhs[0], rhs[0]))
         ))
 
@@ -120,11 +120,13 @@ def htypeindex(hvalue: HType):
     else:
         raise NotImplementedError(hvalue)
 
+
 def hcompare_bool(lhs: bool, rhs: bool):
     if lhs == rhs:
         return 0
     else:
         return -1 if lhs == False else 1
+
 
 def hcompare_int(lhs: int, rhs: int):
     if lhs == rhs:
@@ -132,17 +134,20 @@ def hcompare_int(lhs: int, rhs: int):
     else:
         return -1 if lhs < rhs else 1
 
+
 def hcompare_atom(lhs: str, rhs: str):
     if lhs == rhs:
         return 0
     else:
         return -1 if lhs < rhs else 1
 
+
 def hcompare_dict(lhs: HDict, rhs: HDict):
     if lhs.dict == rhs.dict:
         return 0
     else:
         return -1 if lhs.items() < rhs.items() else 1
+
 
 def hcompare_addr(lhs: Union[HAddr, None], rhs: Union[HAddr, None]):
     if lhs is None:
@@ -157,6 +162,7 @@ def hcompare_addr(lhs: Union[HAddr, None], rhs: Union[HAddr, None]):
             return 0
         else:
             return -1 if lhs.addr < rhs.addr else 1
+
 
 def hcompare(lhs: HType, rhs: HType):
     typeindex = htypeindex(lhs)
@@ -178,7 +184,7 @@ def hcompare(lhs: HType, rhs: HType):
         return hcompare_addr(lhs, rhs)
     else:
         raise NotImplementedError(lhs, rhs)
-    
+
 
 def H(obj):
     """Converts a value to its Harmony representation."""
@@ -192,7 +198,7 @@ def H(obj):
     elif isinstance(obj, str):
         return obj
     elif isinstance(obj, dict):
-        return HDict({ H(k): H(v) for k, v in obj.items() })
+        return HDict({H(k): H(v) for k, v in obj.items()})
     elif isinstance(obj, HDict):
         return HDict(obj.dict)
     else:
@@ -211,11 +217,11 @@ def P(obj):
     elif isinstance(obj, str):
         return obj
     elif isinstance(obj, dict):
-        return { P(k): P(v) for k, v in obj.items() }
+        return {P(k): P(v) for k, v in obj.items()}
     elif isinstance(obj, HDict):
-        return { P(k): P(v) for k, v in obj.items() }
+        return {P(k): P(v) for k, v in obj.items()}
     elif isinstance(obj, HAddr):
-        raise H2PyRuntimeException(f'Harmony object {obj} of type HAddr has no corresponding Python representation.')
+        raise H2PyRuntimeException(
+            f'Harmony object {obj} of type HAddr has no corresponding Python representation.')
     else:
         raise NotImplementedError(obj)
-    

@@ -51,7 +51,7 @@ Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
 
     def test_print(self):
         self.assert_h2py_files(
-            'tests/resources/h2py/print.hny', 
+            'tests/resources/h2py/print.hny',
             'tests/resources/h2py/print.py'
         )
 

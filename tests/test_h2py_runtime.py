@@ -5,7 +5,7 @@ from harmony_model_checker.h2py.h2py_runtime import H, P, HAddr, HDict, hcompare
 
 
 class TestH2PyRuntimeH(unittest.TestCase):
-    
+
     def test_none(self):
         self.assertIsNone(H(None))
 
@@ -20,14 +20,14 @@ class TestH2PyRuntimeH(unittest.TestCase):
 
     def test_dict_1(self):
         self.assertEqual(
-            H({ True: False, 0: 1 }),
-            HDict({ True: False, 0: 1 })
+            H({True: False, 0: 1}),
+            HDict({True: False, 0: 1})
         )
 
     def test_dict_2(self):
         self.assertEqual(
-            H({ H({ True: False }): H({ 0: 1 }) }),
-            HDict({ HDict({ True: False }): HDict({ 0: 1 }) })
+            H({H({True: False}): H({0: 1})}),
+            HDict({HDict({True: False}): HDict({0: 1})})
         )
 
     def test_addr_1(self):
