@@ -33,43 +33,42 @@ class H2PyStmtVisitor(AbstractASTVisitor):
                 )
             )
 
-        else:
-            def convert_target(target):
-                if isinstance(target, list):
-                    return [convert_target(target) for target in target]
+        def convert_target(target):
+            if isinstance(target, list):
+                return [convert_target(target) for target in target]
 
-                elif isinstance(target, hast.TupleAST):
-                    return past.Tuple(
-                        elts=[convert_target(target) for target in target.list],
-                        ctx=past.Store()
-                    )
+            elif isinstance(target, hast.TupleAST):
+                return past.Tuple(
+                    elts=[convert_target(target) for target in target.list],
+                    ctx=past.Store()
+                )
 
-                elif isinstance(target, hast.NameAST):
-                    return past.Name(
-                        id=target.name[0],
-                        ctx=past.Store()
-                    )
+            elif isinstance(target, hast.NameAST):
+                return past.Name(
+                    id=target.name[0],
+                    ctx=past.Store()
+                )
 
-                elif isinstance(target, hast.ApplyAST):
-                    return past.Subscript(
-                        value=h2expr(target.method, env),
-                        slice=h2expr(target.arg, env),
-                        ctx=past.Store()
-                    )
+            elif isinstance(target, hast.ApplyAST):
+                return past.Subscript(
+                    value=h2expr(target.method, env),
+                    slice=h2expr(target.arg, env),
+                    ctx=past.Store()
+                )
 
-                elif isinstance(target, hast.PointerAST):
-                    assert False, 'Pointer assignment is only supported in single-assignment form.'
+            elif isinstance(target, hast.PointerAST):
+                assert False, 'Pointer assignment is only supported in single-assignment form.'
 
-                else:
-                    assert False, f'Unable to convert target {target}'
+            else:
+                assert False, f'Unable to convert target {target}'
 
-            value = h2expr(node.rv, env.rep(ctx=past.Load()))
+        value = h2expr(node.rv, env.rep(ctx=past.Load()))
 
-            return h2expr.prologue + [past.Assign(
-                targets=convert_target(node.lhslist),
-                value=value,
-                lineno=node.token[T_LINENO]
-            )] + h2expr.epilogue
+        return h2expr.prologue + [past.Assign(
+            targets=convert_target(node.lhslist),
+            value=value,
+            lineno=node.token[T_LINENO]
+        )] + h2expr.epilogue
 
     def visit_print(self, node: hast.PrintAST, env: H2PyEnv):
         h2expr = H2PyExprVisitor()
