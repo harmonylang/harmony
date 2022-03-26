@@ -63,6 +63,7 @@ from harmony_model_checker import __version__
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
 modules = {}            # modules modified with -m
+used_modules = set()    # modules modified and used
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
 silent = False          # not printing periodic status updates

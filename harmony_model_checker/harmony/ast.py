@@ -6,11 +6,10 @@ from harmony_model_checker.harmony.state import State
 from harmony_model_checker.harmony.ops import *
 from harmony_model_checker.exception import *
 
-
 labelcnt = 0
 imported = {}           # imported modules
 constants = {}          # constants modified with -c
-
+used_constants = set()  # constants modified and used
 
 class AST:
 
@@ -282,7 +281,7 @@ class NameAST(AST):
         if t in {"local-var", "local-const", "global", "module"}:
             return False
         elif t == "constant":
-            return True
+            return not isinstance(v[0], LabelValue)
         else:
             assert False, (t, v, self.name)
 
@@ -1674,6 +1673,7 @@ class ConstAST(AST):
             (lexeme, file, line, column) = const
             if lexeme in constants:
                 value = constants[lexeme]
+                used_constants.add(lexeme)
             else:
                 value = v
             scope.names[lexeme] = ("constant", (value, file, line, column))
