@@ -1,6 +1,7 @@
 from harmony_model_checker.h2py.H2PyEnv import H2PyEnv
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 from harmony_model_checker.h2py.token import *
+import harmony_model_checker.h2py.h2py_runtime as h2py_runtime
 import harmony_model_checker.harmony.ast as hast
 
 import ast as past
@@ -16,7 +17,10 @@ class H2PyExprVisitor(AbstractASTVisitor):
         return node.accept_visitor(self, env)
 
     def visit_name(self, node: hast.NameAST, env: H2PyEnv):
-        return past.Name(id=node.name[T_TOKEN], ctx=env.get('ctx'))
+        name = node.name[T_TOKEN]
+        while name in dir(h2py_runtime):
+            name = f'_{name}'
+        return past.Name(id=name, ctx=env.get('ctx'))
 
     def visit_nary(self, node: hast.NaryAST, env: H2PyEnv):
         op = node.op[T_TOKEN]
