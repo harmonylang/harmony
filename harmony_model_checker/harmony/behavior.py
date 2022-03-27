@@ -95,7 +95,10 @@ def is_dfa_equivalent(dfa: DFA, hfa: DFA) -> bool:
             sets[p].add(k)
         else:
             sets[p] = {k}
-    return all(all(q in final_states for q in s) or all(q not in final_states for q in s) for s in sets.values())
+    return all(
+        all(q in final_states for q in s) or all(q not in final_states for q in s)
+        for s in sets.values()
+    )
 
 
 def read_hfa(file, dfa, nfa):
