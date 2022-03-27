@@ -1,6 +1,6 @@
 from harmony_model_checker.h2py.H2PyEnv import H2PyEnv
 from harmony_model_checker.h2py.H2PyExprVisitor import H2PyExprVisitor
-from harmony_model_checker.h2py.token import *
+from harmony_model_checker.h2py.util import *
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 import harmony_model_checker.harmony.ast as hast
 
@@ -45,7 +45,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
             elif isinstance(target, hast.NameAST):
                 return past.Name(
-                    id=target.name[0],
+                    id=escape_name(target.name[0]), 
                     ctx=past.Store()
                 )
 

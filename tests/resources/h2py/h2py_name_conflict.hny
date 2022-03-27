@@ -1,4 +1,4 @@
 H = 5
 P = 6
 HValue = 7
-print(H + P + HValue)
+print((H + P) + HValue)

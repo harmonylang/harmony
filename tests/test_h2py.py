@@ -109,6 +109,19 @@ Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
             'tests/resources/h2py/tuple_assign.py',
         )
 
+    def test_h2py_name_conflict(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/h2py_name_conflict.hny',
+            'tests/resources/h2py/h2py_name_conflict.py',
+        )
+
+    @unittest.skip('h2py_name_conflict_2.py is not semantically equivalent to h2py_name_conflict_2.hny')
+    def test_h2py_name_conflict_2(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/h2py_name_conflict_2.hny',
+            'tests/resources/h2py/h2py_name_conflict_2.py',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
