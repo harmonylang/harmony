@@ -1,0 +1,5 @@
+def f(x, y):
+    let z = x + y:
+        print(x + y)
+        assert z == 5
+f(2, 3)

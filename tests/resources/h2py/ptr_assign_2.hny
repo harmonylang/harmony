@@ -1,0 +1,5 @@
+def f(x_y_ptr):
+    !x_y_ptr = 5
+x = { .y: 3 }
+f(?x.y)
+print(x.y)

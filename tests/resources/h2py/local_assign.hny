@@ -1,0 +1,4 @@
+def f(x, y):
+    let z = x + y:
+        print(z)
+f(3, 4)

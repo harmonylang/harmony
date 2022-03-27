@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 from harmony_model_checker.harmony.ast import *
 
@@ -11,11 +11,16 @@ class DumpASTVisitor(AbstractASTVisitor):
         else:
             self.indent_unit = indent_unit
 
-    def __call__(self, ast: AST, depth=0):
-        ast.accept_visitor(self, depth=depth)
-
+    def __call__(self, ast: AST, depth: Optional[int] = None):
+        if depth is None:
+            self.buffer = ""
+            ast.accept_visitor(self, depth=0)
+            return self.buffer
+        else:
+            ast.accept_visitor(self, depth=depth)
+        
     def p(self, x, indent=0):
-        print(self.indent_unit * indent + str(x))
+        self.buffer += self.indent_unit * indent + str(x) + "\n"
 
     def _visit_comprehension_iter(self, iter, value, depth):
         for type, rest in iter:
@@ -94,8 +99,13 @@ class DumpASTVisitor(AbstractASTVisitor):
     def visit_pointer(self, node: PointerAST, depth):
         self.p(f"Pointer {node.token}", indent=depth)
 
+        self(node.expr, depth + 1)
+
     def visit_assignment(self, node: AssignmentAST, depth):
         self.p(f"Assignment {node.token}", indent=depth)
+
+        for lhs in node.lhslist:
+            self(lhs, depth + 1)
 
         self(node.rv, depth + 1)
 
@@ -113,6 +123,8 @@ class DumpASTVisitor(AbstractASTVisitor):
 
     def visit_address(self, node: AddressAST, depth):
         self.p(f"Address {node.token}", indent=depth)
+
+        self(node.lv, depth + 1)
 
     def visit_pass(self, node: PassAST, depth):
         self.p(f"Pass {node.token}", indent=depth)
