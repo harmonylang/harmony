@@ -70,6 +70,7 @@ except Exception as e:
 # TODO.  These should not be global ideally
 files = {}              # files that have been read already
 constants = {}          # constants modified with -c
+used_constants = set()  # constants modified and used
 modules = {}            # modules modified with -m
 namestack = []          # stack of module names being compiled
 node_uid = 1            # unique node identifier
@@ -2956,7 +2957,7 @@ class NameAST(AST):
         if t in { "local-var", "local-const", "global", "module" }:
             return False
         elif t == "constant":
-            return True
+            return not isinstance(v[0], LabelValue)
         else:
             assert False, (t, v, self.name)
 
@@ -4577,6 +4578,7 @@ class ConstAST(AST):
             (lexeme, file, line, column) = const
             if lexeme in constants:
                 value = constants[lexeme]
+                used_constants.add(lexeme)
             else:
                 value = v
             scope.names[lexeme] = ("constant", (value, file, line, column))
