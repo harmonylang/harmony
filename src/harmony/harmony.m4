@@ -5893,6 +5893,26 @@ def doCompile(filenames, consts, mods, interface):
 
     code.append(ReturnOp())     # to terminate "__init__" process
 
+    # Check for unused constants/modules
+    unused_constant_def = constants.keys() - used_constants
+    unused_module_def = modules.keys() - imported.keys()
+    if len(unused_constant_def) > 0:
+        raise HarmonyCompilerError(
+            message="The following constants were defined from the command line but not used: " + ', '.join(unused_constant_def),
+            filename=fname,
+            line=0,
+            column=0,
+            lexeme="",
+        )
+    if len(unused_module_def) > 0:
+        raise HarmonyCompilerError(
+            message="The following modules were defined from the command line but not used: " + ', '.join(unused_module_def),
+            filename=fname,
+            line=0,
+            column=0,
+            lexeme="",
+        )
+
     # Analyze liveness of variables
     newcode = code.liveness()
 
