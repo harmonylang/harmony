@@ -221,6 +221,25 @@ def do_compile(filenames: List[str], consts: List[str], mods: List[str], interfa
 
     code.append(ReturnOp())  # to terminate "__init__" process
 
+    unused_constant_def = legacy_harmony.constants.keys() - legacy_harmony.used_constants
+    unused_module_def = legacy_harmony.modules.keys() - legacy_harmony.imported.keys()
+    if len(unused_constant_def) > 0:
+        raise HarmonyCompilerError(
+            message="The following constants were defined from the command line but not used: " + ', '.join(unused_constant_def),
+            filename=fname,
+            line=0,
+            column=0,
+            lexeme="",
+        )
+    if len(unused_module_def) > 0:
+        raise HarmonyCompilerError(
+            message="The following modules were defined from the command line but not used: " + ', '.join(unused_module_def),
+            filename=fname,
+            line=0,
+            column=0,
+            lexeme="",
+        )
+
     # Analyze liveness of variables
     newcode = code.liveness()
 
