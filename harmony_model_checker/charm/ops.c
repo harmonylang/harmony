@@ -440,9 +440,9 @@ void op_AtomicInc(const void *env, struct state *state, struct step *step, struc
     struct context *ctx = step->ctx;
 
     ctx->atomic++;
-    if (!ea->lazy) {
+    // if (!ea->lazy) {
         ctx->atomicFlag = true;
-    }
+    // }
     ctx->pc++;
 }
 
