@@ -114,11 +114,16 @@ static bool onestep(
 
     bool choosing = false, infinite_loop = false;
     struct dict *infloop = NULL;        // infinite loop detector
-    int loopcnt = 0;
-    for (;; loopcnt++) {
+    int instrcnt = 0;
+    struct state *as_state = NULL;
+    hvalue_t as_context = 0;
+    int as_instrcnt = 0;
+    bool rollback = false, failure = false, stopped = false;
+    bool terminated = false;
+    for (;;) {
         int pc = step->ctx->pc;
 
-        // If I'm phread 0 and it's time, print some stats
+        // If I'm pthread 0 and it's time, print some stats
         if (w->index == 0 && w->timecnt-- == 0) {
             double now = gettime();
             if (now - global->lasttime > 1) {
@@ -144,7 +149,30 @@ static bool onestep(
             step->ctx->stack[step->ctx->sp - 1] = choice;
             step->ctx->pc++;
         }
+        else if (instrs[pc].atomicinc) {
+            if (instrcnt == 0) {
+                step->ctx->atomicFlag = true;
+            }
+            else if (step->ctx->atomic == 0) {
+                // Save the current state in case it needs restoring
+                as_state = new_alloc(struct state);
+                memcpy(as_state, sc, sizeof(*sc));
+                as_context = value_put_context(&global->values, step->ctx);
+                as_instrcnt = instrcnt;
+            }
+            (*oi->op)(instrs[pc].env, sc, step, global);
+        }
+        else if (instrs[pc].atomicdec) {
+            (*oi->op)(instrs[pc].env, sc, step, global);
+            if (step->ctx->atomic == 0) {
+                free(as_state);
+                as_state = NULL;
+                as_context = 0;
+                as_instrcnt = 0;
+            }
+        }
         else {
+            // Keep track of access for data race detection
             if (instrs[pc].load || instrs[pc].store || instrs[pc].del) {
                 struct access_info *ai = graph_ai_alloc(multiplicity, step->ctx->atomic, pc);
                 ai->next = step->ai;
@@ -155,7 +183,22 @@ static bool onestep(
 		assert(step->ctx->pc >= 0);
 		assert(step->ctx->pc < global->code.len);
 
-        if (!step->ctx->terminated && step->ctx->failure == 0 && (infloop_detect || loopcnt > 1000)) {
+        instrcnt++;
+
+        if (step->ctx->terminated) {
+            terminated = true;
+            break;
+        }
+        if (step->ctx->failure != 0) {
+            failure = true;
+            break;
+        }
+        if (step->ctx->stopped) {
+            stopped = true;
+            break;
+        }
+
+        if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
                 infloop = dict_new(0);
             }
@@ -172,17 +215,15 @@ static bool onestep(
             }
             else if (infloop_detect) {
                 step->ctx->failure = value_put_atom(&global->values, "infinite loop", 13);
-                infinite_loop = true;
+                failure = infinite_loop = true;
+                break;
             }
             else {
-                // start over, as twostep does not have loopcnt optimization
+                // start over, as twostep does not have instrcnt optimization
                 return false;
             }
         }
 
-        if (step->ctx->terminated || step->ctx->failure != 0 || step->ctx->stopped) {
-            break;
-        }
         if (step->ctx->pc == pc) {
             fprintf(stderr, ">>> %s\n", oi->name);
         }
@@ -192,18 +233,20 @@ static bool onestep(
 
         /* Peek at the next instruction.
          */
-        oi = global->code.instrs[step->ctx->pc].oi;
-        if (global->code.instrs[step->ctx->pc].choose) {
+        struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+        if (next_instr->choose) {
             assert(step->ctx->sp > 0);
 #ifdef TODO
             if (0 && step->ctx->readonly > 0) {    // TODO
                 value_ctx_failure(step->ctx, &global->values, "can't choose in assertion or invariant");
+                failure = true;
                 break;
             }
 #endif
             hvalue_t s = step->ctx->stack[step->ctx->sp - 1];
             if (VALUE_TYPE(s) != VALUE_SET) {
                 value_ctx_failure(step->ctx, &global->values, "choose operation requires a set");
+                failure = true;
                 break;
             }
             int size;
@@ -211,6 +254,7 @@ static bool onestep(
             size /= sizeof(hvalue_t);
             if (size == 0) {
                 value_ctx_failure(step->ctx, &global->values, "choose operation requires a non-empty set");
+                failure = true;
                 break;
             }
             if (size == 1) {            // TODO.  This optimization is probably not worth it
@@ -232,9 +276,11 @@ static bool onestep(
         // break yet.  Otherwise, if the atomic count > 0, we should set
         // the atomicFlag and break.  Otherwise  if it's a breakable
         // instruction, we should just break.
-        if (!step->ctx->atomicFlag) {
-            struct instr_t *next_instr = &global->code.instrs[step->ctx->pc];
+        else if (!step->ctx->atomicFlag) {
             bool breakable = next_instr->breakable;
+
+            // If this is a thread exit, break so we can invoke the
+            // interrupt handler one more time
             if (next_instr->retop && step->ctx->trap_pc != 0 &&
                                             !step->ctx->interruptlevel) {
                 hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
@@ -243,9 +289,14 @@ static bool onestep(
                     breakable = true;
                 }
             }
+
             if (breakable) {
-                if (step->ctx->atomic > 0) {
-                    step->ctx->atomicFlag = true;
+                // If the step is breakable and we're in an atomic section,
+                // we should have broken at the beginning of the atomic
+                // section.  Restore that state.
+                if (step->ctx->atomic > 0 && !step->ctx->atomicFlag) {
+                    assert(as_state != NULL);
+                    rollback = true;
                 }
                 break;
             }
@@ -254,6 +305,19 @@ static bool onestep(
 
     if (infloop != NULL) {
         dict_delete(infloop);
+    }
+
+    hvalue_t after;
+    if (rollback) {
+        memcpy(sc, as_state, sizeof(*sc));
+        free(as_state);
+        after = as_context;
+        instrcnt = as_instrcnt;
+    }
+    else {
+        assert(as_state == NULL);
+        // Store new context in value directory.  Must be immutable now.
+        after = value_put_context(&global->values, step->ctx);
     }
 
     // Remove old context from the bag
@@ -267,20 +331,16 @@ static bool onestep(
         sc->ctxbag = value_dict_store(&global->values, sc->ctxbag, ctx, count);
     }
 
-    // Store new context in value directory.  Must be immutable now.
-    hvalue_t after = value_put_context(&global->values, step->ctx);
-
     // If choosing, save in state
     if (choosing) {
-        assert(!step->ctx->terminated);
         sc->choosing = after;
     }
 
     // Add new context to state unless it's terminated or stopped
-    if (step->ctx->stopped) {
+    if (stopped) {
         sc->stopbag = value_bag_add(&global->values, sc->stopbag, after, 1);
     }
-    else if (!step->ctx->terminated) {
+    else if (!terminated) {
         sc->ctxbag = value_bag_add(&global->values, sc->ctxbag, after, 1);
     }
 
@@ -295,7 +355,7 @@ static bool onestep(
     next->interrupt = interrupt;
     next->after = after;
     next->len = node->len + weight;
-    next->steps = node->steps + loopcnt;
+    next->steps = node->steps + instrcnt;
     next->weight = weight;
 
     next->ai = step->ai;
@@ -305,7 +365,7 @@ static bool onestep(
     step->log = NULL;
     step->nlog = 0;
 
-    if (step->ctx->failure != 0) {
+    if (failure) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
     }
     else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
@@ -812,7 +872,7 @@ void diff_dump(
     memcpy(*oldctx, newctx, newsize);
 }
 
-// similar to onestep.  TODO.  Use flag to onestep?
+// similar to onestep.
 hvalue_t twostep(
     struct global_t *global,
     FILE *file,
@@ -822,7 +882,8 @@ hvalue_t twostep(
     bool interrupt,
     struct state *oldstate,
     struct context **oldctx,
-    hvalue_t nextvars
+    hvalue_t nextvars,
+    int nsteps
 ){
     // Make a copy of the state
     struct state *sc = new_alloc(struct state);
@@ -844,7 +905,8 @@ hvalue_t twostep(
     }
 
     struct dict *infloop = NULL;        // infinite loop detector
-    for (int loopcnt = 0;; loopcnt++) {
+    int instrcnt = 0;
+    for (;;) {
         int pc = step.ctx->pc;
 
         char *print = NULL;
@@ -888,6 +950,10 @@ hvalue_t twostep(
         if (step.ctx->terminated || step.ctx->failure != 0 || step.ctx->stopped) {
             break;
         }
+        instrcnt++;
+        if (instrcnt >= nsteps - node->steps) {
+            break;
+        }
         if (step.ctx->pc == pc) {
             fprintf(stderr, ">>> %s\n", oi->name);
         }
@@ -923,25 +989,6 @@ hvalue_t twostep(
                 choice = vals[0];
             }
             else {
-                break;
-            }
-        }
-
-        if (!step.ctx->atomicFlag) {
-            struct instr_t *next_instr = &global->code.instrs[step.ctx->pc];
-            bool breakable = next_instr->breakable;
-            if (next_instr->retop && step.ctx->trap_pc != 0 &&
-                                            !step.ctx->interruptlevel) {
-                hvalue_t ct = step.ctx->stack[step.ctx->sp - 4];
-                assert(VALUE_TYPE(ct) == VALUE_INT);
-                if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
-                    breakable = true;
-                }
-            }
-            if (breakable) {
-                if (step.ctx->atomic > 0) {
-                    step.ctx->atomicFlag = true;
-                }
                 break;
             }
         }
@@ -986,7 +1033,8 @@ void path_dump(
     hvalue_t choice,
     struct state *oldstate,
     struct context **oldctx,
-    bool interrupt
+    bool interrupt,
+    int nsteps
 ) {
     struct node *node = last;
 
@@ -995,7 +1043,7 @@ void path_dump(
         fprintf(file, "\n");
     }
     else {
-        path_dump(global, file, last, last->parent, last->choice, oldstate, oldctx, last->interrupt);
+        path_dump(global, file, last, last->parent, last->choice, oldstate, oldctx, last->interrupt, last->steps);
         fprintf(file, ",\n");
     }
 
@@ -1047,7 +1095,8 @@ void path_dump(
         interrupt,
         oldstate,
         oldctx,
-        node->state->vars
+        node->state->vars,
+        nsteps
     );
     fprintf(file, "\n      ],\n");
 
@@ -2131,7 +2180,7 @@ int main(int argc, char **argv){
         memset(&oldstate, 0, sizeof(oldstate));
         struct context *oldctx = calloc(1, sizeof(*oldctx));
         global->dumpfirst = true;
-        path_dump(global, out, bad->node, bad->parent, bad->choice, &oldstate, &oldctx, bad->interrupt);
+        path_dump(global, out, bad->node, bad->parent, bad->choice, &oldstate, &oldctx, bad->interrupt, bad->node->steps);
         fprintf(out, "\n");
         free(oldctx);
         fprintf(out, "  ],\n");

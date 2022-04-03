@@ -7,7 +7,8 @@
 struct instr_t {
     struct op_info *oi;
     const void *env;
-    bool choose, load, store, del, retop, print, breakable;
+    bool choose, load, store, del, retop, print;
+    bool atomicinc, atomicdec, breakable;
 };
 
 struct code_t {
