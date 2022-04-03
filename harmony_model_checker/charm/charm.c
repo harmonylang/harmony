@@ -279,13 +279,21 @@ static bool onestep(
         else if (!step->ctx->atomicFlag) {
             bool breakable = next_instr->breakable;
 
-            // If this is a thread exit, break so we can invoke the
-            // interrupt handler one more time
-            if (next_instr->retop && step->ctx->trap_pc != 0 &&
-                                            !step->ctx->interruptlevel) {
-                hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
-                assert(VALUE_TYPE(ct) == VALUE_INT);
-                if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
+            // Deal with interrupts if enabled
+            if (step->ctx->trap_pc != 0 && !step->ctx->interruptlevel) {
+                // If this is a thread exit, break so we can invoke the
+                // interrupt handler one more time
+                if (next_instr->retop) {
+                    hvalue_t ct = step->ctx->stack[step->ctx->sp - 4];
+                    assert(VALUE_TYPE(ct) == VALUE_INT);
+                    if (VALUE_FROM_INT(ct) == CALLTYPE_PROCESS) {
+                        breakable = true;
+                    }
+                }
+
+                // If this is a setintlevel(True), should try interrupt
+                // For simplicity, always try when setintlevel
+                else if (next_instr->setintlevel) {
                     breakable = true;
                 }
             }

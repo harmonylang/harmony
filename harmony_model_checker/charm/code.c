@@ -28,6 +28,7 @@ static struct instr_t code_instr_parse(struct values_t *values, struct json_valu
     i.retop = strcmp(oi->name, "Return") == 0;
     i.atomicinc = strcmp(oi->name, "AtomicInc") == 0;
     i.atomicdec = strcmp(oi->name, "AtomicDec") == 0;
+    i.setintlevel = strcmp(oi->name, "SetIntLevel") == 0;
     i.breakable = i.load || i.store || i.del || i.print;
     if (strcmp(oi->name, "AtomicInc") == 0) {
         const struct env_AtomicInc *ea = i.env;
