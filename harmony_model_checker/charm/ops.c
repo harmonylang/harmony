@@ -786,7 +786,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
         }
         if (!ind_tryload(&global->values, state->vars, el->indices, el->n, &v)) {
             char *x = indices_string(el->indices, el->n);
-            value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x+1);
+            value_ctx_failure(step->ctx, &global->values, "Load: unknown variable %s", x);
             free(x);
             return;
         }
@@ -837,7 +837,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         }
         else {
             char *p = value_string(el->name);
-            value_ctx_failure(step->ctx, &global->values, "LoadVar: unknown variable %s", p + 1);
+            value_ctx_failure(step->ctx, &global->values, "LoadVar: unknown variable %s", p);
             free(p);
             return;
         }
