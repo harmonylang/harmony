@@ -6,6 +6,7 @@
 #include "minheap.h"
 #include "thread.h"
 #include "hashset.h"
+#include "vector.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -79,9 +80,7 @@ struct node {
 
     // Whether this is a state that we are interested in (for probabiliy
     // checking)
-    // TODO: Don't know if this is a good idea
-    int filter_states[20];
-    int filter_len;
+    struct int_vector filter_states;
 };
 
 struct failure {

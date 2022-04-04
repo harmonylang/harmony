@@ -14,7 +14,7 @@ gen:
 	chmod +x harmony
 
 charm:
-	gcc -Iharmony_model_checker/charm -Iharmony_model_checker/charm/iface -o charm.exe -pthread harmony_model_checker/charm/*.c harmony_model_checker/charm/iface/*.c
+	gcc -ggdb -Wall -Werror -Iharmony_model_checker/charm -Iharmony_model_checker/charm/iface -o charm.exe -pthread harmony_model_checker/charm/*.c harmony_model_checker/charm/iface/*.c
 
 behavior: x.hny
 	./harmony -o x.hny

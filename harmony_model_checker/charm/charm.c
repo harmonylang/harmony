@@ -29,6 +29,7 @@
 #include "thread.h"
 #include "spawn.h"
 #include "filter.h"
+#include "vector.h"
 
 #define WALLOC_CHUNK    (1024 * 1024)
 
@@ -243,16 +244,14 @@ static bool onestep(
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
     int choice_size = 1;                // Number of choices to make. It is 1
-    int filterstates[20];
-    int filter_len = 0;
+    struct int_vector filterstates = int_vector_init(20);
     for (;;) {
         int pc = step->ctx->pc;
 
         for (int i = 0; i < filter.len; ++i) {
-            // if (filter.conditions[i].pc == pc) {
-            //     filterstates[filter_len] = i;
-            //     ++filter_len;
-            // }
+            if (filter.conditions[i].pc == pc) {
+                int_vector_push(&filterstates, i);
+            }
         }
 
         // If I'm phread 0 and it's time, print some stats
@@ -482,7 +481,6 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-<<<<<<< HEAD
     // Allocate edge now
     struct edge *edge = walloc(w, sizeof(struct edge), false);
     edge->ctx = ctx;
@@ -513,7 +511,7 @@ static bool onestep(
             next->choice = choice_copy;
             next->choice_size = choice_size;
             next->interrupt = interrupt;
-            next->filter_len = 0;
+            next->filter_states = filterstates;
         }
     }
     else {
@@ -527,7 +525,6 @@ static bool onestep(
         next->len = node->len + weight;
         next->steps = node->steps + instrcnt;
         next->choice_size = choice_size;
-        next->filter_len = 0;
         *w->last = next;
         w->last = &next->next;
         k->value = next;
@@ -2257,9 +2254,8 @@ int main(int argc, char **argv){
         fprintf(out, "  \"issue\": \"No issues\",\n");
 
         if (probabilistic) {
-            fprintf(out, "  \"probabilities\": [\n");
-
             {
+                fprintf(out, "  \"probabilities\": [\n");
                 bool first = true;
                 for (int i = 0; i < global->graph.size; i++) {
                     struct node *node = global->graph.nodes[i];
@@ -2288,30 +2284,31 @@ int main(int argc, char **argv){
             }
             fprintf(out, "  \"total_states\": %d,\n", global->graph.size);
 
-            fprintf(out, "  \"filter_states\": [\n");
+            {
+                fprintf(out, "  \"filter_states\": [\n");
+                bool first = true;
+                for (int i = 0; i < global->graph.size; i++) {
+                    struct node *node = global->graph.nodes[i];
+                    assert(node->id == i);
 
-            // {
-            //     bool first = true;
-            //     for (int i = 0; i < global->graph.size; i++) {
-            //         struct node *node = global->graph.nodes[i];
-            //         assert(node->id == i);
+                    for (int j = 0; j < node->filter_states.len; j++) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            fprintf(out, ",\n");
+                        }
 
-            //         for (int j = 0; j < node->filter_len; j++) {
-            //             if (first) {
-            //                 first = false;
-            //             } else {
-            //                 fprintf(out, ",\n");
-            //             }
-
-            //             fprintf(
-            //                 out, 
-            //                 "    {\"state\": %d, \"query\": %d}",
-            //                 i,
-            //                 node->filter_states[i]
-            //             );
-            //         }
-            //     }
-            // }
+                        fprintf(
+                            out, 
+                            "    {\"query\": %d, \"state\": %d}",
+                            int_vector_get(&node->filter_states, j),
+                            i
+                        );
+                    }
+                }
+                fprintf(out, "\n");
+                fprintf(out, "  ],\n");
+            }
         }
 
 

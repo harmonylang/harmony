@@ -1722,3 +1722,7 @@ class ConstAST(AST):
     def accept_visitor(self, visitor, *args, **kwargs):
         return visitor.visit_const(self, *args, **kwargs)
 
+
+class HyperassertAST(AST):
+    def __init__(self, token):
+        super().__init__(self, token, True)

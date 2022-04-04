@@ -51,7 +51,7 @@ args.add_argument("--config", action="store_true",
                   help="get or set configuration value. "
                        "Use --config <key> to get the value of a setting. "
                        "Use --config <key> <value> to set the value of a setting")
-args.add_argument("--probabilistic", type=str,
+args.add_argument("--probabilistic", action="store_true"
                   help="use probabilistic model checking")
 
 # Internal flags
