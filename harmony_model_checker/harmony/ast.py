@@ -533,7 +533,7 @@ class CmpAST(AST):
         self.args[0].compile(scope, code)
         (lexeme, file, line, column) = self.ops[0]
         T = ("__cmp__" + str(len(code.labeled_ops)), file, line, column)
-        endlabel = LabelValue(None, "cmp")
+        endlabel = LabelValue(None, "cmp$%d"%len(code.labeled_ops))
         for i in range(1, n - 1):
             self.args[i].compile(scope, code)
             code.append(DupOp())
@@ -1614,7 +1614,7 @@ class LocationAST(AST):
 class LabelStatAST(AST):
     def __init__(self, token, labels, ast):
         AST.__init__(self, token, True)
-        self.labels = {lb: LabelValue(None, "label") for lb in labels}
+        self.labels = {lb: LabelValue(None, lb[0]) for lb in labels}
         self.ast = ast
 
     def __repr__(self):

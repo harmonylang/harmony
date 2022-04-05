@@ -1176,9 +1176,17 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
     if printCode == "json":
         print("{", file=f)
         print('  "labels": {', file=f)
-        for (k, v) in scope.labels.items():
-            print('    "%s": "%d",'%(k, v), file=f)
-        print('    "__end__": "%d"'%len(code.labeled_ops), file=f)
+        if False:
+            for (k, v) in scope.labels.items():
+                print('    "%s": "%d",'%(k, v), file=f)
+        else:
+            for pc, lop in enumerate(code.labeled_ops):
+                for label in lop.labels:
+                    if label.module == None:
+                        print('    "%s": %d,'%(label.label, pc), file=f)
+                    else:
+                        print('    "%s$%s": %d,'%(label.module, label.label, pc), file=f)
+        print('    "__end__": %d'%len(code.labeled_ops), file=f)
         print('  },', file=f)
         print('  "code": [', file=f)
     for pc in range(len(code.labeled_ops)):

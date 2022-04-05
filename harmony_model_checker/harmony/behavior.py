@@ -145,8 +145,8 @@ def read_hfa(file, dfa, nfa):
     )
 
     print("Phase 7: comparing behaviors", len(dfa.states), len(hfa.states))
-    # if len(dfa.states) == len(hfa.states):      # HACK
-    #     return                                  # HACK
+    if len(dfa.states) == len(hfa.states):      # HACK
+        return                                  # HACK
     if len(dfa.states) > 100 or len(hfa.states) > 100:
         print("  warning: this could take a while")
 
@@ -283,13 +283,13 @@ def behavior_parse(js, minify, outputfiles, behavior):
                     symbol = json_string(symbols[str(e)])
                     add_edge(src, symbol, dst)
 
-    # print("states", states, file=sys.stderr)
-    # print("initial", initial_state, file=sys.stderr)
-    # print("final", final_states, file=sys.stderr)
-    # print("symbols", input_symbols, file=sys.stderr)
-    # print("transitions", transitions, file=sys.stderr)
+    # print("states", states)
+    # print("initial", initial_state)
+    # print("final", final_states)
+    # print("symbols", input_symbols)
+    # print("transitions", transitions)
 
-    print("Phase 6: convert NFA (%d states) to DFA"%len(states), file=sys.stderr)
+    print("Phase 6: convert NFA (%d states) to DFA"%len(states))
 
     if got_automata:
         nfa = NFA(
@@ -301,9 +301,9 @@ def behavior_parse(js, minify, outputfiles, behavior):
         )
         intermediate = DFA.from_nfa(nfa)  # returns an equivalent DFA
         if minify and len(final_states) != 0:
-            print("minify #states=%d"%len(intermediate.states), file=sys.stderr)
+            print("minify #states=%d"%len(intermediate.states))
             dfa = intermediate.minify(retain_names = True)
-            print("minify done #states=%d"%len(dfa.states), file=sys.stderr)
+            print("minify done #states=%d"%len(dfa.states))
         else:
             dfa = intermediate
         dfa_states = dfa.states
