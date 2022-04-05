@@ -230,6 +230,7 @@ class NameAST(AST):
             (lexeme, file, line, column) = self.name
             code.append(PushOp(v))
         else:
+            # TODO: should module lead to an error here?
             assert t in {"global", "module"}
             code.append(LoadOp(self.name, self.name, scope.prefix))
 
@@ -964,6 +965,9 @@ class BlockAST(AST):
             s.compile(ns, code)
         if self.atomically:
             code.append(AtomicDecOp())
+        if scope.inherit:
+            for name, x in ns.names.items():
+                scope.names[name] = x
 
     def getLabels(self):
         labels = [x.getLabels() for x in self.b]

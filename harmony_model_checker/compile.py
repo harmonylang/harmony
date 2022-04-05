@@ -106,6 +106,7 @@ def _do_import(scope: Scope, code: Code, module):
         scope2 = Scope(None)
         scope2.prefix = lexeme
         scope2.labels = scope.labels
+        scope2.inherit = True
 
         found = False
         install_path = os.path.dirname(os.path.realpath(__file__))
@@ -210,6 +211,7 @@ def do_compile(fname: str, consts: List[str], mods: List[str], interface: List[s
             )
 
     scope = Scope(None)
+    scope.inherit = True
     code = Code()
     code.append(FrameOp(("__init__", None, None, None), []))
     _load_file(str(fname), scope, code)

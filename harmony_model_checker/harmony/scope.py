@@ -4,12 +4,14 @@ class Scope:
         self.names = { "this": ("local-var", ("this", "NOFILE", 0, 0)) }   # name to (type, x) map
         self.labels = {} if parent == None else parent.labels
         self.prefix = None if parent == None else parent.prefix
+        self.inherit = False
 
     def copy(self):
         c = Scope(self.parent)
         c.names = self.names.copy()
         c.labels = self.labels.copy()
         c.prefix = self.prefix
+        c.inherit = self.inherit
         return c
 
     def checkUnused(self, name):

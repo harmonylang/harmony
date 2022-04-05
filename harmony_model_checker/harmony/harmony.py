@@ -1176,7 +1176,7 @@ def dumpCode(printCode, code, scope, f=sys.stdout):
     if printCode == "json":
         print("{", file=f)
         print('  "labels": {', file=f)
-        if False:
+        if True:
             for (k, v) in scope.labels.items():
                 print('    "%s": "%d",'%(k, v), file=f)
         else:
