@@ -1675,6 +1675,14 @@ class ConstAST(AST):
     def set(self, scope, const, v):
         if isinstance(const, tuple):
             (lexeme, file, line, column) = const
+            if lexeme in scope.names:
+                raise HarmonyCompilerError(
+                    filename=file,
+                    lexeme=lexeme,
+                    line=line,
+                    column=column,
+                    message="%s: Parse error: already defined" % lexeme
+                )
             if lexeme in constants:
                 value = constants[lexeme]
                 used_constants.add(lexeme)

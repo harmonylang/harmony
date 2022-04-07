@@ -58,6 +58,14 @@ def _load_string(string, scope: Scope, code: Code, filename="<string-code>"):
     # they are filled in with their actual values after compilation
     # TODO.  Look for duplicates?
     for ((lexeme, file, line, column), lb) in ast.getLabels():
+        if lexeme in scope.names:
+            raise HarmonyCompilerError(
+                message="Duplicate label %s (defined before in line %d)" % (lexeme, scope.names[lexeme][1][2]),
+                filename=file,
+                line=line,
+                column=column,
+                lexeme=lexeme
+            )
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
     ast.compile(scope, code)
@@ -85,6 +93,14 @@ def _load_file(filename: str, scope: Scope, code: Code):
     # they are filled in with their actual values after compilation
     # TODO.  Look for duplicates?
     for ((lexeme, file, line, column), lb) in ast.getLabels():
+        if lexeme in scope.names:
+            raise HarmonyCompilerError(
+                message="Duplicate label %s (defined before in line %d)" % (lexeme, scope.names[lexeme][1][2]),
+                filename=file,
+                line=line,
+                column=column,
+                lexeme=lexeme
+            )
         scope.names[lexeme] = ("constant", (lb, file, line, column))
 
     ast.compile(scope, code)
