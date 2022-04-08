@@ -60,6 +60,7 @@ void *value_copy(hvalue_t v, int *size);
 hvalue_t value_put_atom(struct values_t *values, const void *p, int size);
 hvalue_t value_put_set(struct values_t *values, void *p, int size);
 hvalue_t value_put_dict(struct values_t *values, void *p, int size);
+hvalue_t value_put_list(struct values_t *values, void *p, int size);
 hvalue_t value_put_address(struct values_t *values, void *p, int size);
 hvalue_t value_put_context(struct values_t *values, struct context *ctx);
 char *value_string(hvalue_t v);
@@ -80,6 +81,8 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_SET       5
 #define VALUE_ADDRESS   6
 #define VALUE_CONTEXT   7
+
+#define VALUE_LIST      VALUE_ADDRESS       // HACK for introducing lists
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)

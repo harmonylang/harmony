@@ -64,6 +64,14 @@ hvalue_t value_put_dict(struct values_t *values, void *p, int size){
     return (hvalue_t) q | VALUE_DICT;
 }
 
+hvalue_t value_put_list(struct values_t *values, void *p, int size){
+    if (size == 0) {
+        return VALUE_LIST;
+    }
+    void *q = dict_find(values->addresses, p, size);    // TODO LIST
+    return (hvalue_t) q | VALUE_LIST;
+}
+
 hvalue_t value_put_address(struct values_t *values, void *p, int size){
     if (size == 0) {
         return VALUE_ADDRESS;

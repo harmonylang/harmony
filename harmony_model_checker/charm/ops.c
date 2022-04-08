@@ -1647,16 +1647,16 @@ hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT) {
+	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST) {
 		return VALUE_TRUE;
     }
-    if (VALUE_TYPE(e) == VALUE_SET) {
+    if (VALUE_TYPE(e) == VALUE_SET || VALUE_TYPE(e) == VALUE_LIST) {
         int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "set.all() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "all() can only be applied to booleans");
             }
             if (v[i] == VALUE_FALSE) {
                 return VALUE_FALSE;
@@ -1684,16 +1684,16 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT) {
+	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST) {
 		return VALUE_FALSE;
     }
-    if (VALUE_TYPE(e) == VALUE_SET) {
+    if (VALUE_TYPE(e) == VALUE_SET || VALUE_TYPE(e) == VALUE_LIST) {
         int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
         for (int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "set.any() can only be applied to booleans");
+                return value_ctx_failure(ctx, values, "any() can only be applied to booleans");
             }
             if (v[i] != VALUE_FALSE) {
                 return VALUE_TRUE;
@@ -1822,7 +1822,7 @@ hvalue_t f_ne(struct state *state, struct context *ctx, hvalue_t *args, int n, s
 hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     hvalue_t s = args[0], e = args[1];
-	if (s == VALUE_SET || s == VALUE_DICT) {
+	if (s == VALUE_SET || s == VALUE_DICT || s == VALUE_LIST) {
 		return VALUE_FALSE;
 	}
     if (VALUE_TYPE(s) == VALUE_ATOM) {
@@ -1847,7 +1847,7 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         }
         return VALUE_FALSE;
     }
-    if (VALUE_TYPE(s) == VALUE_SET) {
+    if (VALUE_TYPE(s) == VALUE_SET || VALUE_TYPE(s) == VALUE_LIST) {
         int size;
         hvalue_t *v = value_get(s, &size);
         size /= sizeof(hvalue_t);
@@ -2106,10 +2106,16 @@ hvalue_t f_str(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT) {
+	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST || e == VALUE_ATOM) {
 		return VALUE_INT;
 	}
     if (VALUE_TYPE(e) == VALUE_SET) {
+        int size;
+        (void) value_get(e, &size);
+        size /= sizeof(hvalue_t);
+        return VALUE_TO_INT(size);
+    }
+    if (VALUE_TYPE(e) == VALUE_LIST) {
         int size;
         (void) value_get(e, &size);
         size /= sizeof(hvalue_t);
@@ -2126,7 +2132,7 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         (void) value_get(e, &size);
         return VALUE_TO_INT(size);
     }
-    return value_ctx_failure(ctx, values, "len() can only be applied to sets, dictionaries, or strings");
+    return value_ctx_failure(ctx, values, "len() can only be applied to sets, dictionaries, lists, or strings");
 }
 
 hvalue_t f_le(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
@@ -2147,10 +2153,19 @@ hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 	if (e == VALUE_SET) {
         return value_ctx_failure(ctx, values, "can't apply max() to empty set");
     }
+    if (e == VALUE_LIST) {
+        return value_ctx_failure(ctx, values, "can't apply max() to empty list");
+    }
     if (e == VALUE_DICT) {
         return value_ctx_failure(ctx, values, "can't apply max() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
+        int size;
+        hvalue_t *v = value_get(e, &size);
+        size /= sizeof(hvalue_t);
+        return v[size - 1];
+    }
+    if (VALUE_TYPE(e) == VALUE_LIST) {
         int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
@@ -2183,10 +2198,18 @@ hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 	if (e == VALUE_SET) {
         return value_ctx_failure(ctx, values, "can't apply min() to empty set");
     }
+    if (e == VALUE_LIST) {
+        return value_ctx_failure(ctx, values, "can't apply min() to empty list");
+    }
     if (e == VALUE_DICT) {
         return value_ctx_failure(ctx, values, "can't apply min() to empty list");
     }
     if (VALUE_TYPE(e) == VALUE_SET) {
+        int size;
+        hvalue_t *v = value_get(e, &size);
+        return v[0];
+    }
+    if (VALUE_TYPE(e) == VALUE_LIST) {
         int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
@@ -2364,6 +2387,51 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         char *result = strbuf_convert(&sb);
         hvalue_t v = value_put_atom(values, result, strbuf_getlen(&sb));
         return v;
+    }
+
+    if (VALUE_TYPE(e1) == VALUE_LIST) {
+        // get all the lists
+        struct val_info *vi = malloc(n * sizeof(*vi));
+        int total = 0;
+        for (int i = 0; i < n; i++) {
+            if (VALUE_TYPE(args[i]) != VALUE_LIST) {
+                value_ctx_failure(ctx, values, "+: applied to mix of value types");
+                free(vi);
+                return 0;
+            }
+            if (args[i] == VALUE_LIST) {
+                vi[i].vals = NULL;
+                vi[i].size = 0;
+            }
+            else {
+                vi[i].vals = value_get(args[i], &vi[i].size); 
+                total += vi[i].size;
+            }
+        }
+
+        // If all are empty lists, we're done.
+        if (total == 0) {
+            return VALUE_LIST;
+        }
+
+        // Concatenate the lists
+        hvalue_t *vals = malloc(total);
+        total = 0;
+        for (int i = n; --i >= 0;) {
+            memcpy((char *) vals + total, vi[i].vals, vi[i].size);
+            total += vi[i].size;
+        }
+
+        hvalue_t result = value_put_list(values, vals, total);
+
+        free(vi);
+        free(vals);
+        return result;
+    }
+
+    if (VALUE_TYPE(e1) != VALUE_DICT) {
+        value_ctx_failure(ctx, values, "+: can only apply to ints, strings, or lists");
+        return 0;
     }
 
     // get all the lists
@@ -2634,7 +2702,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
     int list = -1;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
-        if (VALUE_TYPE(e) == VALUE_DICT || VALUE_TYPE(e) == VALUE_ATOM) {
+        if (VALUE_TYPE(e) == VALUE_DICT || VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
             if (list >= 0) {
                 return value_ctx_failure(ctx, values, "* can only have at most one list or string");
             }
@@ -2665,7 +2733,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         return VALUE_TO_INT(result);
     }
     if (result == 0) {
-        // empty dict or empty string
+        // empty list or empty string
         return VALUE_TYPE(args[list]);
     }
     if (VALUE_TYPE(args[list]) == VALUE_DICT) {
@@ -2685,6 +2753,21 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
             }
         }
         hvalue_t v = value_put_dict(values, r, result * size);
+        free(r);
+        return v;
+    }
+    if (VALUE_TYPE(args[list]) == VALUE_LIST) {
+        int size;
+        hvalue_t *vals = value_get(args[list], &size);
+        if (size == 0) {
+            return VALUE_DICT;
+        }
+        int n = size / sizeof(hvalue_t);
+        hvalue_t *r = malloc(result * size);
+        for (int i = 0; i < result; i++) {
+            memcpy(&r[i * n], vals, size);
+        }
+        hvalue_t v = value_put_list(values, r, result * size);
         free(r);
         return v;
     }
