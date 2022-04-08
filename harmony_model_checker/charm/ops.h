@@ -25,7 +25,6 @@ struct op_info {
 };
 
 struct env_Cut {
-    hvalue_t set;
     struct var_tree *key, *value;
 };
 

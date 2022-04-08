@@ -111,16 +111,15 @@ class SetIntLevelOp(Op):
 
 # Splits a non-empty set or dict in its minimum element and its remainder
 class CutOp(Op):
-    def __init__(self, s, value, key):
-        self.s = s
+    def __init__(self, value, key):
         self.value = value
         self.key = key
 
     def __repr__(self):
         if self.key == None:
-            return "Cut(" + str(self.s[0]) + ", " + self.convert(self.value) + ")"
+            return "Cut(" + self.convert(self.value) + ")"
         else:
-            return "Cut(" + str(self.s[0]) + ", " + self.convert(self.key) + ", " + self.convert(self.value) + ")"
+            return "Cut(" + self.convert(self.key) + ", " + self.convert(self.value) + ")"
 
     def define(self):
         if self.key == None:
@@ -130,25 +129,25 @@ class CutOp(Op):
 
     def jdump(self):
         if self.key == None:
-            return '{ "op": "Cut", "set": "%s", "value": "%s" }'%(self.s[0], self.convert(self.value))
+            return '{ "op": "Cut", "value": "%s" }'%(self.convert(self.value))
         else:
-            return '{ "op": "Cut", "set": "%s", "key": "%s", "value": "%s" }'%(self.s[0], self.convert(self.key), self.convert(self.value))
+            return '{ "op": "Cut", "key": "%s", "value": "%s" }'%(self.convert(self.key), self.convert(self.value))
 
     def tladump(self):
         if self.key == None:
-            return 'OpCut(self, "%s", %s)'%(self.s[0],
-                                        self.tlaconvert(self.value))
+            return 'OpCut(%s, %s)'%(self.tlaconvert(self.value))
         else:
-            return 'OpCut3(self, "%s", %s, %s)'%(self.s[0],
+            return 'OpCut2(%s, %s)'%(
                         self.tlaconvert(self.value), self.tlaconvert(self.key))
 
     def explain(self):
         if self.key == None:
-            return "remove smallest element from %s and assign to %s"%(self.s[0], self.convert(self.value))
+            return "get next element and assign to %s"%(self.convert(self.value))
         else:
-            return "remove smallest element from %s and assign to %s:%s"%(self.s[0], self.convert(self.key), self.convert(self.value))
+            return "get next element and assign to %s:%s"%(self.convert(self.key), self.convert(self.value))
 
     def eval(self, state, context):
+        assert False
         key = self.load(context, self.s)
         if isinstance(key, DictValue):
             if key.d == {}:

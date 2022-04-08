@@ -91,7 +91,6 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_MIN   ((int64_t) ((~(hvalue_t)0) << (64 - (VALUE_BITS + 1))))
 
 #define VALUE_TYPE(v)      ((v) & VALUE_MASK)
-#define VALUE_POINTER(v)   ((void *) ((v) & ~VALUE_MASK))
 
 #define VALUE_TO_INT(i)    (((hvalue_t) (i) << VALUE_BITS) | VALUE_INT)
 #define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)

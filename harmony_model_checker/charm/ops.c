@@ -450,78 +450,80 @@ void op_Continue(const void *env, struct state *state, struct step *step, struct
     step->ctx->pc++;
 }
 
+// This operation expects on the top of the stack the set to iterate over
+// and an integer index.  If the index is valid (not the size of the
+// collection), then it assigns the given element to key and value and
+// pushes True.  Otherwise it pops the two values from the stack and
+// pushes False.
 void op_Cut(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Cut *ec = env;
     struct context *ctx = step->ctx;
 
-    hvalue_t v = value_dict_load(ctx->vars, ec->set);
-    if (VALUE_TYPE(v) == VALUE_SET) {
-        if (ec->key != NULL) {
-            value_ctx_failure(ctx, &global->values, "Can't cut set in key/value pairs");
-            return;
-        }
-        assert(v != VALUE_SET);
-        void *p = VALUE_POINTER(v);
+    // Get the index
+    hvalue_t index = value_ctx_pop(&step->ctx);
+    assert(VALUE_TYPE(index) == VALUE_INT);
+    int idx = VALUE_FROM_INT(index);
 
+    // Peek at the collection
+    assert(ctx->sp > 0);
+    hvalue_t v = ctx->stack[ctx->sp - 1];        // the collection
+
+    if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
+        // Get the collection
         int size;
-        hvalue_t *vals = dict_retrieve(p, &size);
-        assert(size > 0);
-
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(hvalue_t)));
-        var_match(step->ctx, ec->value, &global->values, vals[0]);
-        step->ctx->pc++;
-        return;
-    }
-    if (VALUE_TYPE(v) == VALUE_LIST) {
-        if (ec->key != NULL) {
-            value_ctx_failure(ctx, &global->values, "Can't cut list in key/value pairs");
-            return;
+        hvalue_t *vals = value_get(v, &size);
+        size /= sizeof(hvalue_t);
+        if (idx >= size) {
+            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
         }
-        assert(v != VALUE_LIST);
-        void *p = VALUE_POINTER(v);
-
-        int size;
-        hvalue_t *vals = dict_retrieve(p, &size);
-        assert(size > 0);
-
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(hvalue_t)));
-        var_match(step->ctx, ec->value, &global->values, vals[0]);
+        else {
+            var_match(step->ctx, ec->value, &global->values, vals[idx]);
+            if (ec->key != NULL) {
+                var_match(step->ctx, ec->key, &global->values, index);
+            }
+            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
+            value_ctx_push(&step->ctx, VALUE_TRUE);
+        }
         step->ctx->pc++;
         return;
     }
     if (VALUE_TYPE(v) == VALUE_DICT) {
-        assert(v != VALUE_DICT);
-        void *p = VALUE_POINTER(v);
-
         int size;
-        hvalue_t *vals = dict_retrieve(p, &size);
-        assert(size > 0);
-
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_dict(&global->values, &vals[2], size - 2 * sizeof(hvalue_t)));
-        var_match(step->ctx, ec->value, &global->values, vals[1]);
-        if (ec->key != NULL) {
-            var_match(step->ctx, ec->key, &global->values, vals[0]);
+        hvalue_t *vals = value_get(v, &size);
+        size /= 2 * sizeof(hvalue_t);
+        if (idx >= size) {
+            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+        }
+        else {
+            var_match(step->ctx, ec->value, &global->values, vals[2*idx + 1]);
+            if (ec->key != NULL) {
+                var_match(step->ctx, ec->key, &global->values, vals[2*idx]);
+            }
+            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
+            value_ctx_push(&step->ctx, VALUE_TRUE);
         }
         step->ctx->pc++;
         return;
     }
     if (VALUE_TYPE(v) == VALUE_ATOM) {
-        if (ec->key != NULL) {
-            value_ctx_failure(ctx, &global->values, "Can't cut string in key/value pairs");
-            return;
-        }
-        assert(v != VALUE_ATOM);
         int size;
         char *chars = value_get(v, &size);
-        assert(size > 0);
-
-        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_atom(&global->values, &chars[1], size - 1));
-        hvalue_t e = value_put_atom(&global->values, chars, 1);
-        var_match(step->ctx, ec->value, &global->values, e);
+        if (idx >= size) {
+            ctx->stack[ctx->sp - 1] = VALUE_FALSE;
+        }
+        else {
+            hvalue_t e = value_put_atom(&global->values, &chars[idx], 1);
+            var_match(step->ctx, ec->value, &global->values, e);
+            if (ec->key != NULL) {
+                var_match(step->ctx, ec->key, &global->values, index);
+            }
+            value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
+            value_ctx_push(&step->ctx, VALUE_TRUE);
+        }
         step->ctx->pc++;
         return;
     }
-    value_ctx_failure(step->ctx, &global->values, "op_Cut: not a set, dict, or string");
+    value_ctx_failure(step->ctx, &global->values, "op_Cut: not an iterable type");
 }
 
 void op_Del(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1361,10 +1363,6 @@ void *init_Trap(struct dict *map, struct values_t *values){ return NULL; }
 
 void *init_Cut(struct dict *map, struct values_t *values){
     struct env_Cut *env = new_alloc(struct env_Cut);
-    struct json_value *set = dict_lookup(map, "set", 3);
-    assert(set->type == JV_ATOM);
-    env->set = value_put_atom(values, set->u.atom.base, set->u.atom.len);
-
     struct json_value *value = dict_lookup(map, "value", 5);
     assert(value->type == JV_ATOM);
     int index = 0;

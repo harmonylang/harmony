@@ -12,7 +12,6 @@ constants = {}          # constants modified with -c
 used_constants = set()  # constants modified and used
 
 class AST:
-
     def __init__(self, token, atomically):
         # Check that token is of the form (lexeme, file, line, column)
         assert isinstance(token, tuple), token
@@ -154,20 +153,19 @@ class ComprehensionAST(AST):
             uid = len(code.labeled_ops)
             (lexeme, file, line, column) = self.token
 
-            # Evaluate the set and store in a temporary variable
+            # Evaluate the collection over which to iterate
             expr.compile(scope, code)
-            S = ("$s" + str(uid), file, line, column)
-            code.append(StoreVarOp(S))
+
+            # Push the first index, which is 0
+            code.append(PushOp((0, file, line, column)))
 
             global labelcnt
             startlabel = LabelValue(None, "$%d_start" % labelcnt)
             endlabel = LabelValue(None, "$%d_end" % labelcnt)
             labelcnt += 1
             code.nextLabel(startlabel)
-            code.append(LoadVarOp(S))
-            code.append(NaryOp(("IsEmpty", file, line, column), 1))
-            code.append(JumpCondOp(True, endlabel))
-            code.append(CutOp(S, var, var2))
+            code.append(CutOp(var, var2))
+            code.append(JumpCondOp(False, endlabel))
             self.rec_comprehension(scope, code, iter[1:], startlabel, N, ctype)
             code.append(JumpOp(startlabel))
             code.nextLabel(endlabel)
