@@ -844,6 +844,93 @@ hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, 
     return result;
 }
 
+bool value_trystore(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result){
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
+
+    int size;
+    hvalue_t *vals = value_get(root, &size);
+    int n = size / sizeof(hvalue_t);
+
+    if (VALUE_TYPE(root) == VALUE_DICT) {
+        assert(n % 2 == 0);
+        int i;
+        for (i = 0; i < n; i += 2) {
+            if (vals[i] == key) {
+                if (vals[i + 1] == value) {
+                    *result = root;
+                    return true;
+                }
+                hvalue_t *nvals = malloc(size);
+                memcpy(nvals, vals, size);
+                nvals[i + 1] = value;
+                hvalue_t v = value_put_dict(values, nvals, size);
+                free(nvals);
+                *result = v;
+                return true;
+            }
+            if (value_cmp(vals[i], key) > 0) {
+                break;
+            }
+        }
+
+        if (!allow_inserts) {
+            return false;
+        }
+
+        size += 2 * sizeof(hvalue_t);
+        hvalue_t *nvals = malloc(size);
+        memcpy(nvals, vals, i * sizeof(hvalue_t));
+        nvals[i] = key;
+        nvals[i+1] = value;
+        memcpy(&nvals[i+2], &vals[i], (n - i) * sizeof(hvalue_t));
+        hvalue_t v = value_put_dict(values, nvals, size);
+        free(nvals);
+        *result = v;
+        return true;
+    }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_LIST);
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            return false;
+        }
+        int index = VALUE_FROM_INT(key);
+        if (index < 0 || index > n) {
+            return false;
+        }
+        int nsize;
+        if (index == n) {
+            if (!allow_inserts) {
+                return false;
+            }
+            nsize = size + sizeof(hvalue_t);
+        }
+        else {
+            if (vals[index] == value) {
+                *result = root;
+                return true;
+            }
+            nsize = size;
+        }
+        hvalue_t *nvals = malloc(nsize);
+        memcpy(nvals, vals, size);
+        nvals[index] = value;
+        hvalue_t v = value_put_address(values, nvals, nsize); // TODO LIST
+        free(nvals);
+        *result = v;
+        return true;
+    }
+}
+
+hvalue_t value_store(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value){
+    hvalue_t result;
+    bool r = value_trystore(values, root, key, value, true, &result);
+    if (!r) {
+        fprintf(stderr, "value_store: failed\n");
+        exit(1);
+    }
+    return result;
+}
+
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key){
     assert(VALUE_TYPE(dict) == VALUE_DICT);
 

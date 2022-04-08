@@ -189,56 +189,82 @@ bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int 
     return true;
 }
 
-static bool ind_trystore(hvalue_t dict, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
+static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value, struct values_t *values, hvalue_t *result){
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
 
     if (n == 1) {
-        *result = value_dict_store(values, dict, indices[0], value);
+        *result = value_store(values, root, indices[0], value);
         return true;
     }
     else {
-        hvalue_t *vals;
         int size;
-        if (dict == VALUE_DICT) {
-            vals = NULL;
-            size = 0;
-        }
-        else {
-            vals = value_get(dict, &size);
-            size /= sizeof(hvalue_t);
-            assert(size % 2 == 0);
-        }
+        hvalue_t *vals = value_get(root, &size);
+        size /= sizeof(hvalue_t);
 
-        int i;
-        for (i = 0; i < size; i += 2) {
-            if (vals[i] == indices[0]) {
-                hvalue_t d = vals[i+1];
-                if (VALUE_TYPE(d) != VALUE_DICT) {
-                    return false;
-                }
-                hvalue_t nd;
-                if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
-                    return false;
-                }
-                if (d == nd) {
-                    *result = dict;
+        if (VALUE_TYPE(root) == VALUE_DICT) {
+            assert(size % 2 == 0);
+
+            int i;
+            for (i = 0; i < size; i += 2) {
+                if (vals[i] == indices[0]) {
+                    hvalue_t d = vals[i+1];
+                    if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+                        return false;
+                    }
+                    hvalue_t nd;
+                    if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+                        return false;
+                    }
+                    if (d == nd) {
+                        *result = root;
+                        return true;
+                    }
+                    int n = size * sizeof(hvalue_t);
+                    hvalue_t *copy = malloc(n);
+                    memcpy(copy, vals, n);
+                    copy[i + 1] = nd;
+                    hvalue_t v = value_put_dict(values, copy, n);
+                    free(copy);
+                    *result = v;
                     return true;
                 }
-                int n = size * sizeof(hvalue_t);
-                hvalue_t *copy = malloc(n);
-                memcpy(copy, vals, n);
-                copy[i + 1] = nd;
-                hvalue_t v = value_put_dict(values, copy, n);
-                free(copy);
-                *result = v;
+                /* TODO. Why is this comment here???
+                    if (value_cmp(vals[i], key) > 0) {
+                        assert(false);
+                    }
+                */
+            }
+        }
+        else {
+            assert(VALUE_TYPE(root) == VALUE_LIST);
+            if (VALUE_TYPE(indices[0]) != VALUE_INT) {
+                return false;
+            }
+            int index = VALUE_FROM_INT(indices[0]);
+            if (index < 0 || index >= n) {
+                return false;
+            }
+            hvalue_t d = vals[index];
+            if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+                return false;
+            }
+            hvalue_t nd;
+            if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+                return false;
+            }
+            if (d == nd) {
+                *result = root;
                 return true;
             }
-            /* TODO. Why is this comment here???
-                if (value_cmp(vals[i], key) > 0) {
-                    assert(false);
-                }
-            */
+            int n = size * sizeof(hvalue_t);
+            hvalue_t *copy = malloc(n);
+            memcpy(copy, vals, n);
+            copy[index] = nd;
+            hvalue_t v = value_put_address(values, copy, n);    // TODO LIST
+            free(copy);
+            *result = v;
+            return true;
         }
     }
     return false;

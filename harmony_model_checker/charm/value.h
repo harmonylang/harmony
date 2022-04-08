@@ -99,6 +99,8 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_FROM_BOOL(i) ((i) >> VALUE_BITS)
 #define VALUE_FROM_PC(i)   ((i) >> VALUE_BITS)
 
+bool value_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
+hvalue_t value_store(struct values_t *values, hvalue_t root, hvalue_t key, hvalue_t value);
 hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value);
 bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
