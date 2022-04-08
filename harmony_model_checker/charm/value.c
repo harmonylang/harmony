@@ -914,7 +914,8 @@ hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key)
     return dict;
 }
 
-bool value_dict_tryload(
+// DEPRECATED
+static bool value_dict_tryload(
     struct values_t *values,
     hvalue_t dict,
     hvalue_t key,
@@ -965,9 +966,70 @@ bool value_dict_tryload(
     return false;
 }
 
+// Try to load from either a dict (by key) or a string or list (by index).
+bool value_tryload(
+    struct values_t *values,
+    hvalue_t root,
+    hvalue_t key,
+    hvalue_t *result
+){
+    if (VALUE_TYPE(root) == VALUE_ATOM) {
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            return false;
+        }
+        key = VALUE_FROM_INT(key);
+        int size;
+        char *chars = value_get(root, &size);
+        if (key >= (unsigned int) size) {
+            return false;
+        }
+        *result = value_put_atom(values, chars + key, 1);
+        return true;
+    }
+
+    if (VALUE_TYPE(root) == VALUE_LIST) {
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            return false;
+        }
+        key = VALUE_FROM_INT(key);
+        int size;
+        hvalue_t *vals = value_get(root, &size);
+        size /= sizeof(hvalue_t);
+        if (key >= (unsigned int) size) {
+            return false;
+        }
+        *result = vals[key];
+        return true;
+    }
+
+    if (VALUE_TYPE(root) == VALUE_DICT) {
+        hvalue_t *vals;
+        int size;
+        vals = value_get(root, &size);
+        size /= sizeof(hvalue_t);
+        assert(size % 2 == 0);
+
+        int i;
+        for (i = 0; i < size; i += 2) {
+            if (vals[i] == key) {
+                *result = vals[i + 1];
+                return true;
+            }
+            /*
+                if (value_cmp(vals[i], key) > 0) {
+                    break;
+                }
+            */
+        }
+    }
+
+    return false;
+}
+
 hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity){
     hvalue_t count;
-    if (value_dict_tryload(values, bag, v, &count)) {
+    assert(VALUE_TYPE(bag) == VALUE_DICT);
+    if (value_tryload(values, bag, v, &count)) {
         assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count += multiplicity << VALUE_BITS;

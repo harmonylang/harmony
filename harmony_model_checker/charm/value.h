@@ -96,14 +96,14 @@ void strbuf_value_json(strbuf *sb, hvalue_t v);
 #define VALUE_TO_INT(i)    (((hvalue_t) (i) << VALUE_BITS) | VALUE_INT)
 #define VALUE_TO_BOOL(i)   (((hvalue_t) (i) << VALUE_BITS) | VALUE_BOOL)
 #define VALUE_TO_PC(i)     (((hvalue_t) (i) << VALUE_BITS) | VALUE_PC)
-#define VALUE_FROM_INT(i)  ((i) >> VALUE_BITS)
+#define VALUE_FROM_INT(i)  ((int64_t) (i) >> VALUE_BITS)
 #define VALUE_FROM_BOOL(i) ((i) >> VALUE_BITS)
 #define VALUE_FROM_PC(i)   ((i) >> VALUE_BITS)
 
 hvalue_t value_dict_store(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value);
 bool value_dict_trystore(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t value, bool allow_inserts, hvalue_t *result);
 hvalue_t value_dict_load(hvalue_t dict, hvalue_t key);
-bool value_dict_tryload(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t *result);
+bool value_tryload(struct values_t *values, hvalue_t dict, hvalue_t key, hvalue_t *result);
 hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key);
 hvalue_t value_bag_add(struct values_t *values, hvalue_t bag, hvalue_t v, int multiplicity);
 void value_ctx_push(struct context **pctx, hvalue_t v);

@@ -181,7 +181,7 @@ void interrupt_invoke(struct step *step){
 bool ind_tryload(struct values_t *values, hvalue_t dict, hvalue_t *indices, int n, hvalue_t *result){
     hvalue_t d = dict;
     for (int i = 0; i < n; i++) {
-        if (!value_dict_tryload(values, d, indices[i], &d)) {
+        if (!value_tryload(values, d, indices[i], &d)) {
             return false;
         }
     }
@@ -332,7 +332,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
     case VALUE_DICT:
         {
             hvalue_t v;
-            if (!value_dict_tryload(&global->values, method, e, &v)) {
+            if (!value_tryload(&global->values, method, e, &v)) {
                 char *m = value_string(method);
                 char *x = value_string(e);
                 value_ctx_failure(step->ctx, &global->values, "Bad index %s: not in %s", x, m);
@@ -660,7 +660,7 @@ void op_Go(
 
     // Remove from stopbag if it's there
     hvalue_t count;
-    if (value_dict_tryload(&global->values, state->stopbag, ctx, &count)) {
+    if (value_tryload(&global->values, state->stopbag, ctx, &count)) {
         assert(VALUE_TYPE(count) == VALUE_INT);
         assert(count != VALUE_INT);
         count -= 1 << VALUE_BITS;
@@ -832,7 +832,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         if (el->name == this_atom) {
             value_ctx_push(&step->ctx, step->ctx->this);
         }
-        else if (value_dict_tryload(&global->values, step->ctx->vars, el->name, &v)) {
+        else if (value_tryload(&global->values, step->ctx->vars, el->name, &v)) {
             value_ctx_push(&step->ctx, v);
         }
         else {
