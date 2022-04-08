@@ -472,6 +472,23 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         step->ctx->pc++;
         return;
     }
+    if (VALUE_TYPE(v) == VALUE_LIST) {
+        if (ec->key != NULL) {
+            value_ctx_failure(ctx, &global->values, "Can't cut list in key/value pairs");
+            return;
+        }
+        assert(v != VALUE_LIST);
+        void *p = VALUE_POINTER(v);
+
+        int size;
+        hvalue_t *vals = dict_retrieve(p, &size);
+        assert(size > 0);
+
+        ctx->vars = value_dict_store(&global->values, ctx->vars, ec->set, value_put_set(&global->values, &vals[1], size - sizeof(hvalue_t)));
+        var_match(step->ctx, ec->value, &global->values, vals[0]);
+        step->ctx->pc++;
+        return;
+    }
     if (VALUE_TYPE(v) == VALUE_DICT) {
         assert(v != VALUE_DICT);
         void *p = VALUE_POINTER(v);
@@ -2069,7 +2086,10 @@ hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int
     if (VALUE_TYPE(e) == VALUE_ATOM) {
         return VALUE_TO_BOOL(e == VALUE_ATOM);
     }
-    return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries and sets");
+    if (VALUE_TYPE(e) == VALUE_LIST) {
+        return VALUE_TO_BOOL(e == VALUE_LIST);
+    }
+    return value_ctx_failure(ctx, values, "loops can only iterate over dictionaries, lists, and sets");
 }
 
 hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
