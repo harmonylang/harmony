@@ -397,6 +397,23 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             step->ctx->pc++;
         }
         return;
+    case VALUE_LIST:
+        {
+            if (VALUE_TYPE(e) != VALUE_INT) {
+                value_ctx_failure(step->ctx, &global->values, "Bad index type for list");
+                return;
+            }
+            e = VALUE_FROM_INT(e);
+            int size;
+            hvalue_t *vals = value_get(method, &size);
+            if (e >= (hvalue_t) size) {
+                value_ctx_failure(step->ctx, &global->values, "Index out of range");
+                return;
+            }
+            value_ctx_push(&step->ctx, vals[e]);
+            step->ctx->pc++;
+        }
+        return;
     case VALUE_ATOM:
         {
             if (VALUE_TYPE(e) != VALUE_INT) {
@@ -406,7 +423,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
             e = VALUE_FROM_INT(e);
             int size;
             char *chars = value_get(method, &size);
-            if ((int) e >= size) {
+            if (e >= (hvalue_t) size) {
                 value_ctx_failure(step->ctx, &global->values, "Index out of range");
                 return;
             }
@@ -1145,7 +1162,7 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
 
     hvalue_t v = value_ctx_pop(&step->ctx);
     hvalue_t type = VALUE_TYPE(v);
-    if (type != VALUE_DICT && type != VALUE_SET) {
+    if (type != VALUE_DICT && type != VALUE_SET) {  // TODO LIST
         value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
         return;
     }
@@ -1223,7 +1240,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
     if (es == 0) {
         hvalue_t av = value_ctx_pop(&step->ctx);
-        if (av == VALUE_ADDRESS || av == VALUE_DICT) {
+        if (av == VALUE_ADDRESS || av == VALUE_DICT || av == VALUE_LIST) {
             step->ctx->pc++;
             step->ctx->terminated = true;
             return;
@@ -2125,6 +2142,7 @@ hvalue_t f_invert(struct state *state, struct context *ctx, hvalue_t *args, int 
     return VALUE_TO_INT(~e);
 }
 
+// TODO: obsolete
 hvalue_t f_isEmpty(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
@@ -2684,6 +2702,7 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     return result;
 }
 
+// TODO: is this used??
 hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 2);
     int64_t elt = args[0], dict = args[1];
@@ -2912,7 +2931,7 @@ hvalue_t f_union(struct state *state, struct context *ctx, hvalue_t *args, int n
     }
 
     if (VALUE_TYPE(e1) != VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "'|' can only be applied to ints and dicts");
+        return value_ctx_failure(ctx, values, "'|' can only be applied to ints, sets, and dicts");
     }
     // get all the dictionaries
     struct val_info *vi = malloc(n * sizeof(*vi));
