@@ -1001,6 +1001,65 @@ hvalue_t value_dict_remove(struct values_t *values, hvalue_t dict, hvalue_t key)
     return dict;
 }
 
+hvalue_t value_remove(struct values_t *values, hvalue_t root, hvalue_t key){
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
+
+    int size;
+    hvalue_t *vals = value_get(root, &size);
+    if (size == 0) {
+        return root;
+    }
+    int n = size / sizeof(hvalue_t);
+
+    if (VALUE_TYPE(root) == VALUE_DICT) {
+        assert(size % 2 == 0);
+
+        if (n == 2) {
+            return vals[0] == key ? VALUE_DICT : root;
+        }
+
+        int i;
+        for (i = 0; i < n; i += 2) {
+            if (vals[i] == key) {
+                size -= 2 * sizeof(hvalue_t);
+                hvalue_t *copy = malloc(size);
+                memcpy(copy, vals, i * sizeof(hvalue_t));
+                memcpy(&copy[i], &vals[i+2],
+                       (n - i - 2) * sizeof(hvalue_t));
+                hvalue_t v = value_put_dict(values, copy, size);
+                free(copy);
+                return v;
+            }
+            /* Not worth it
+                if (value_cmp(vals[i], key) > 0) {
+                    assert(false);
+                }
+            */
+        }
+    }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_LIST);
+        if (VALUE_TYPE(key) != VALUE_INT) {
+            fprintf(stderr, "value_remove: not an int\n");
+            return root;
+        }
+        int index = VALUE_FROM_INT(key);
+        if (index < 0 || index >= n) {
+            return root;
+        }
+        size -= sizeof(hvalue_t);
+        hvalue_t *copy = malloc(size);
+        memcpy(copy, vals, index * sizeof(hvalue_t));
+        memcpy(&copy[index], &vals[index+1],
+               (n - index - 1) * sizeof(hvalue_t));
+        hvalue_t v = value_put_dict(values, copy, size);
+        free(copy);
+        return v;
+    }
+
+    return root;
+}
+
 // DEPRECATED
 static bool value_dict_tryload(
     struct values_t *values,

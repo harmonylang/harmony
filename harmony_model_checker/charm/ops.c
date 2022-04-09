@@ -68,7 +68,7 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
         }
         return value_dict_store(values, vars, vt->u.name, arg);
     case VT_TUPLE:
-        if (VALUE_TYPE(arg) != VALUE_DICT) {
+        if (VALUE_TYPE(arg) != VALUE_DICT) {    // TODO LIST
             if (vt->u.tuple.n == 0) {
                 return value_ctx_failure(ctx, values, "match: expected ()");
             }
@@ -76,7 +76,7 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
                 return value_ctx_failure(ctx, values, "match: expected a tuple");
             }
         }
-        if (arg == VALUE_DICT) {
+        if (arg == VALUE_DICT) {    // TODO LIST
             if (vt->u.tuple.n != 0) {
                 return value_ctx_failure(ctx, values, "match: expected a %d-tuple",
                                                 vt->u.tuple.n);
@@ -229,11 +229,12 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
                     *result = v;
                     return true;
                 }
-                /* TODO. Why is this comment here???
-                    if (value_cmp(vals[i], key) > 0) {
+                /* value_cmp is an expensive function.  Breaking here
+                 * is probably more expensive than just going on.
+                    if (value_cmp(vals[i], indices[0]) > 0) {
                         assert(false);
                     }
-                */
+                 */
             }
         }
         else {
@@ -270,33 +271,28 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
     return false;
 }
 
-bool ind_remove(hvalue_t dict, hvalue_t *indices, int n, struct values_t *values,
+bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values,
                                         hvalue_t *result) {
-    assert(VALUE_TYPE(dict) == VALUE_DICT);
+    assert(VALUE_TYPE(root) == VALUE_DICT || VALUE_TYPE(root) == VALUE_LIST);
     assert(n > 0);
 
     if (n == 1) {
-        *result = value_dict_remove(values, dict, indices[0]);
+        *result = value_remove(values, root, indices[0]);
         return true;
     }
-    else {
-        hvalue_t *vals;
-        int size;
-        if (dict == VALUE_DICT) {
-            vals = NULL;
-            size = 0;
-        }
-        else {
-            vals = value_get(dict, &size);
-            size /= sizeof(hvalue_t);
-            assert(size % 2 == 0);
-        }
+
+    int size;
+    hvalue_t *vals = value_get(root, &size);
+    size /= sizeof(hvalue_t);
+
+    if (VALUE_TYPE(root) == VALUE_DICT) {
+        assert(size % 2 == 0);
 
         int i;
         for (i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
                 hvalue_t d = vals[i+1];
-                if (VALUE_TYPE(d) != VALUE_DICT) {
+                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
                     return false;
                 }
                 hvalue_t nd;
@@ -304,7 +300,7 @@ bool ind_remove(hvalue_t dict, hvalue_t *indices, int n, struct values_t *values
                     return false;
                 }
                 if (d == nd) {
-                    *result = dict;
+                    *result = root;
                     return true;
                 }
                 int n = size * sizeof(hvalue_t);
@@ -322,8 +318,39 @@ bool ind_remove(hvalue_t dict, hvalue_t *indices, int n, struct values_t *values
                 }
             */
         }
-        return false;
     }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_LIST);
+        assert(VALUE_TYPE(root) == VALUE_LIST);
+        if (VALUE_TYPE(indices[0]) != VALUE_INT) {
+            return false;
+        }
+        int index = VALUE_FROM_INT(indices[0]);
+        if (index < 0 || index >= n) {
+            return false;
+        }
+        hvalue_t d = vals[index];
+        if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+            return false;
+        }
+        hvalue_t nd;
+        if (!ind_remove(d, indices + 1, n - 1, values, &nd)) {
+            return false;
+        }
+        if (d == nd) {
+            *result = root;
+            return true;
+        }
+        int n = size * sizeof(hvalue_t);
+        hvalue_t *copy = malloc(n);
+        memcpy(copy, vals, n);
+        copy[index] = nd;
+        hvalue_t v = value_put_address(values, copy, n);    // TODO LIST
+        free(copy);
+        *result = v;
+        return true;
+    }
+    return false;
 }
 
 void op_Address(const void *env, struct state *state, struct step *step, struct global_t *global){
