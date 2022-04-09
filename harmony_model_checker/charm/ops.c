@@ -1162,11 +1162,11 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
 
     hvalue_t v = value_ctx_pop(&step->ctx);
     hvalue_t type = VALUE_TYPE(v);
-    if (type != VALUE_DICT && type != VALUE_SET) {  // TODO LIST
+    if (type != VALUE_DICT && type != VALUE_SET && type != VALUE_LIST) {
         value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
         return;
     }
-    if (v == VALUE_DICT || v == VALUE_SET) {
+    if (v == VALUE_DICT || v == VALUE_SET || v == VALUE_LIST) {
         if (es->count != 0) {
             value_ctx_failure(step->ctx, &global->values, "Split: empty set or tuple");
         }
@@ -1191,10 +1191,10 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
         step->ctx->pc++;
         return;
     }
-    if (type == VALUE_SET) {
+    if (type == VALUE_SET || type == VALUE_LIST) {
         size /= sizeof(hvalue_t);
         if (size != es->count) {
-            value_ctx_failure(step->ctx, &global->values, "Split: set of wrong size");
+            value_ctx_failure(step->ctx, &global->values, "Split: wrong size");
             return;
         }
         for (int i = 0; i < size; i++) {
@@ -1203,7 +1203,7 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
         step->ctx->pc++;
         return;
     }
-    panic("op_Split: not a set or dict");
+    panic("op_Split: not a set or list");
 }
 
 void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
