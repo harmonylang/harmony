@@ -844,7 +844,7 @@ hvalue_t value_from_json(struct values_t *values, struct dict *map){
 // Memory allocation that returns pointers aligned to 1 << VALUE_BITS
 static void *align_alloc(size_t size){
     char *q = malloc(size + (1 << VALUE_BITS));
-    size_t offset = (1 << VALUE_BITS) - ((size_t) q) & VALUE_MASK;
+    size_t offset = (1 << VALUE_BITS) - (((size_t) q) & VALUE_MASK);
     char *p = q + offset;
     p[-1] = offset;
     return p;
