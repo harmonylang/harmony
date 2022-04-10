@@ -1,4 +1,4 @@
-#import "head.h"
+#include "head.h"
 
 #ifdef _WIN32
 #include <windows.h>

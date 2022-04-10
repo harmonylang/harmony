@@ -1,4 +1,4 @@
-#import "head.h"
+#include "head.h"
 
 #include "hashset.h"
 
