@@ -7,7 +7,7 @@
 
 struct component {
     bool good;              // terminating or out-going edge
-    int size;               // #states
+    unsigned int size;      // #states
     struct node *rep;       // lowest numbered state in the component
     bool all_same;          // shared state in component is the same
     bool final;             // all states in this component are final
@@ -16,7 +16,7 @@ struct component {
 struct access_info {
     struct access_info *next; // linked list maintenance
     hvalue_t *indices;        // address of load/store
-    int n;                    // length of address
+    unsigned int n;           // length of address
     bool load;                // store or del if false
     int pc;                   // for debugging
     int multiplicity;         // #identical contexts
@@ -32,7 +32,7 @@ struct edge {
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
     hvalue_t *log;           // print history
-    int nlog;                // size of print history
+    unsigned int nlog;       // size of print history
 };
 
 enum fail_type {
@@ -48,7 +48,7 @@ enum fail_type {
 struct node {
     // Information about state
     struct state *state;    // state corresponding to this node
-    int id;                 // nodes are numbered starting from 0
+    unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
     enum fail_type ftype;    // failure if any
@@ -65,7 +65,7 @@ struct node {
     struct access_info *ai; // to detect data races
     bool final;             // only eternal threads left
     hvalue_t *log;          // history
-    int nlog;               // size of history
+    unsigned int nlog;      // size of history
 
     // SCC
     bool visited;           // for Kosaraju algorithm
@@ -86,11 +86,11 @@ struct failure {
 
 struct graph_t {
     struct node **nodes;         // vector of all nodes
-    int size;                    // to create node identifiers
-    int alloc_size;              // size allocated
+    unsigned int size;           // to create node identifiers
+    unsigned int alloc_size;     // size allocated
 };
 
-void graph_init(struct graph_t *graph, int initial_size);
+void graph_init(struct graph_t *graph, unsigned int initial_size);
 
 struct access_info *graph_ai_alloc(int multiplicity, int atomic, int pc);
 

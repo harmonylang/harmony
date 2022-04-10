@@ -112,7 +112,7 @@ def _do_import(scope: Scope, code: Code, module):
     # assert lexeme not in scope.names        # TODO
     if lexeme not in legacy_harmony.imported:
         # Obsolete:
-        # code.append(PushOp((legacy_harmony.novalue, file, line, column)))
+        # code.append(PushOp((legacy_harmony.emptytuple, file, line, column)))
         # code.append(StoreOp(module, module, None))
 
         # module name replacement with -m flag
@@ -160,7 +160,7 @@ def _parse_constant(name: str, value: str):
     ast.compile(scope, code)
     state = State(code, scope.labels)
     ctx = ContextValue(("__arg__", None, None, None), 0,
-                       legacy_harmony.novalue, legacy_harmony.novalue)
+                       legacy_harmony.emptytuple, legacy_harmony.emptytuple)
     ctx.atomic = 1
     while ctx.pc != len(code.labeled_ops):
         code.labeled_ops[ctx.pc].op.eval(state, ctx)

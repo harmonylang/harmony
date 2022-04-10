@@ -484,19 +484,23 @@ class HarmonyVisitorImpl(HarmonyVisitor):
             return self.visit(ctx.set_rule())
         return SetAST(self.get_token(ctx.start, ctx.start.text), [])
 
+    # Visit a parse tree produced by HarmonyParser#empty_dict.
+    def visitEmpty_dict(self, ctx: HarmonyParser.Empty_dictContext):
+        return DictAST(self.get_token(ctx.start, ctx.start.text), [])
+
     # Visit a parse tree produced by HarmonyParser#paren_tuple.
     def visitParen_tuple(self, ctx: HarmonyParser.Paren_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
+        return ConstantAST((emptytuple, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#brack_tuple.
     def visitBracket_tuple(self, ctx: HarmonyParser.Bracket_tupleContext):
         if ctx.tuple_rule():
             return self.visit(ctx.tuple_rule())
         tkn = self.get_token(ctx.start, ctx.start.text)
-        return ConstantAST((novalue, self.file, tkn[2], tkn[3]))
+        return ConstantAST((emptytuple, self.file, tkn[2], tkn[3]))
 
     # Visit a parse tree produced by HarmonyParser#set_rule.
     def visitSet_rule(self, ctx: HarmonyParser.Set_ruleContext):

@@ -1,3 +1,5 @@
+#import "head.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -23,24 +25,24 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
-struct keynode *keynode_new(char*k, int l) {
-	struct keynode *node = malloc(sizeof(struct keynode));
-	node->len = l;
-	node->key = malloc(l);
-	memcpy(node->key, k, l);
+struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
+	struct keynode *node = (*dict->malloc)(sizeof(struct keynode));
+	node->len = len;
+	node->key = malloc(len);
+	memcpy(node->key, key, len);
 	node->next = 0;
 	node->value = 0;
 	return node;
 }
 
 // TODO.  Make iterative rather than recursive
-void keynode_delete(struct keynode *node) {
+void keynode_delete(struct dict *dict, struct keynode *node) {
 	free(node->key);
-	if (node->next) keynode_delete(node->next);
-	free(node);
+	if (node->next) keynode_delete(dict, node->next);
+	(*dict->free)(node);
 }
 
-struct dict *dict_new(int initial_size) {
+struct dict *dict_new(int initial_size, void *(*m)(size_t size), void (*f)(void *)) {
 	struct dict *dict = malloc(sizeof(struct dict));
 	if (initial_size == 0) initial_size = 1024;
 	dict->length = initial_size;
@@ -52,15 +54,17 @@ struct dict *dict_new(int initial_size) {
 	dict->growth_treshold = 2.0;
 	dict->growth_factor = 10;
 	dict->concurrent = 0;
+    dict->malloc = m == NULL ? malloc : m;
+    dict->free = f == NULL ? free : f;
 	return dict;
 }
 
 void dict_delete(struct dict *dict) {
 	for (int i = 0; i < dict->length; i++) {
 		if (dict->table[i].stable != NULL)
-			keynode_delete(dict->table[i].stable);
+			keynode_delete(dict, dict->table[i].stable);
 		if (dict->table[i].unstable != NULL)
-			keynode_delete(dict->table[i].unstable);
+			keynode_delete(dict, dict->table[i].unstable);
 		mutex_destroy(&dict->table[i].lock);
 	}
 	free(dict->table);
@@ -134,7 +138,7 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 		}
 	}
 
-    k = keynode_new((char*)key, keyn);
+    k = keynode_new(dict, (char *) key, keyn);
     if (dict->concurrent) {
             struct keynode *k2;
             for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
@@ -161,7 +165,7 @@ void **dict_insert(struct dict *dict, const void *key, unsigned int keyn){
     return &k->value;
 }
 
-void *dict_retrieve(const void *p, int *psize){
+void *dict_retrieve(const void *p, unsigned int *psize){
     const struct keynode *k = p;
     if (psize != NULL) {
         *psize = k->len;

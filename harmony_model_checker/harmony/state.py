@@ -1,5 +1,5 @@
 import sys
-from harmony_model_checker.harmony.value import novalue, DictValue
+from harmony_model_checker.harmony.value import emptydict, DictValue
 
 
 class State:
@@ -7,7 +7,7 @@ class State:
     def __init__(self, code, labels):
         self.code = code
         self.labels = labels
-        self.vars = novalue
+        self.vars = emptydict
         self.ctxbag = {}        # running contexts
         self.stopbag = {}       # stopped contexts
         self.termbag = {}       # terminated contexts

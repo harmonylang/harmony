@@ -41,7 +41,7 @@ def strVars(v):
 def keyValue(v):
     if isinstance(v, bool):
         return (0, v)
-    if isinstance(v, int) or isinstance(v, float):
+    if isinstance(v, int):
         return (1, v)
     if isinstance(v, str):
         return (2, v)
@@ -123,14 +123,60 @@ class LabelValue(Value):
     def substitute(self, map):
         return map[self]
 
-class DictValue(Value):
+class ListValue(Value):
+    def __init__(self, vals):
+        self.vals = vals
 
+    def __repr__(self):
+        if self.vals == []:
+            return "()"
+        result = ""
+        for v in self.vals:
+            if result != "":
+                result += ", "
+            result += strValue(v)
+        if len(self.vals) == 1:
+            result += ","
+        return "[" + result + "]"
+
+    def tlaval(self):
+        assert False, "TODO LIST"
+
+    def jdump(self):
+        result = ""
+        for v in self.vals:
+            if result != "":
+                result += ", "
+            result += jsonValue(v)
+        return '{ "type": "list", "value": [%s] }'%result
+
+    def __hash__(self):
+        hash = 0
+        for v in self.vals:
+            hash ^= v.__hash__()
+        return hash
+
+    def __eq__(self, other):
+        if not isinstance(other, ListValue):
+            return False
+        return self.vals == other.vals
+
+    def __len__(self):
+        return len(self.vals)
+
+    def key(self):
+        return (4, [ keyValue(v) for v in self.vals ])
+
+    def substitute(self, map):
+        return ListValue([ substValue(v, map) for v in self.vals ])
+
+class DictValue(Value):
     def __init__(self, d):
         self.d = d
 
     def __repr__(self):
         if len(self.d) == 0:
-            return "()"
+            return "{:}"
         result = ""
         if set(self.d.keys()) == set(range(len(self.d))):
             for k in range(len(self.d)):
@@ -189,12 +235,10 @@ class DictValue(Value):
     def __eq__(self, other):
         if not isinstance(other, DictValue):
             return False
-        if len(self.d.keys()) != len(other.d.keys()):   # for efficiency
-            return False
         return self.d == other.d
 
     def __len__(self):
-        return len(self.d.keys())
+        return len(self.d)
 
     # Dictionary ordering generalizes lexicographical ordering when the dictionary
     # represents a list or tuple
@@ -206,7 +250,8 @@ class DictValue(Value):
         return DictValue({ substValue(k, map): substValue(v, map)
                             for (k, v) in self.d.items() })
 
-novalue = DictValue({})
+emptytuple = ListValue([])
+emptydict = DictValue({})
 
 class SetValue(Value):
     def __init__(self, s):
@@ -306,7 +351,7 @@ class ContextValue(Value):
         self.interruptLevel = False
         self.stack = []     # collections.deque() seems slightly slower
         self.fp = 0         # frame pointer
-        self.vars = novalue
+        self.vars = emptydict
         self.trap = None
         self.phase = "start"        # start, middle, or end
         self.stopped = False
@@ -319,7 +364,7 @@ class ContextValue(Value):
         return self.__repr__()
 
     def nametag(self):
-        if self.arg == novalue:
+        if self.arg == emptytuple:
             return self.name[0] + "()"
         return self.name[0] + "(" + str(self.arg) + ")"
 
@@ -426,4 +471,4 @@ class ContextValue(Value):
         return self.stack.pop()
 
     def key(self):
-        return (100, (self.pc, self.__hash__()))
+        return (8, (self.pc, self.__hash__()))

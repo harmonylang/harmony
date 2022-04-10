@@ -1,3 +1,5 @@
+#import "head.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -50,7 +52,7 @@ struct code_t code_init_parse(struct values_t *values, struct json_value *json_c
         code.instrs[i] = code_instr_parse(values, json_code->u.list.vals[i]);
     }
 
-    code.code_map = dict_new(0);
+    code.code_map = dict_new(0, NULL, NULL);
 
     return code;
 }

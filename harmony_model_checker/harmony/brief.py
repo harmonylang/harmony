@@ -21,9 +21,14 @@ def brief_string(js):
             return "{}"
         lst = [ brief_string(val) for val in v ]
         return "{ " + ", ".join(lst) + " }"
+    if type == "list":
+        if v == []:
+            return "[]"
+        lst = [ brief_string(val) for val in v ]
+        return "[ " + ", ".join(lst) + " ]"
     if type == "dict":
         if v == []:
-            return "()"
+            return "{:}"
         lst = [ brief_kv(kv) for kv in v ]
         keys = [ k for k,v in lst ]
         if keys == [str(i) for i in range(len(v))]:

@@ -1,3 +1,5 @@
+#import "head.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -13,6 +15,7 @@
 #include <assert.h>
 #include <time.h>
 
+#include "global.h"
 #include "global.h"
 #include "thread.h"
 #include "charm.h"
@@ -67,10 +70,10 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
 
     assert(VALUE_TYPE(state->invariants) == VALUE_SET);
     assert(step->ctx->sp == 0);
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(state->invariants, &size);
     size /= sizeof(hvalue_t);
-    for (int i = 0; i < size; i++) {
+    for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
         step->ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[step->ctx->pc].oi->name, "Invariant") == 0);
@@ -200,7 +203,7 @@ static bool onestep(
 
         if (infloop_detect || instrcnt > 1000) {
             if (infloop == NULL) {
-                infloop = dict_new(0);
+                infloop = dict_new(0, NULL, NULL);
             }
 
             int stacksize = step->ctx->sp * sizeof(hvalue_t);
@@ -249,7 +252,7 @@ static bool onestep(
                 failure = true;
                 break;
             }
-            int size;
+            unsigned int size;
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
@@ -317,16 +320,16 @@ static bool onestep(
 
     hvalue_t after;
     if (rollback) {
+        assert(as_state != NULL);
         memcpy(sc, as_state, sizeof(*sc));
-        free(as_state);
         after = as_context;
         instrcnt = as_instrcnt;
     }
     else {
-        assert(as_state == NULL);
         // Store new context in value directory.  Must be immutable now.
         after = value_put_context(&global->values, step->ctx);
     }
+    free(as_state);
 
     // Remove old context from the bag
     hvalue_t count = value_dict_load(sc->ctxbag, ctx);
@@ -426,11 +429,11 @@ static void make_step(
 
 void print_vars(FILE *file, hvalue_t v){
     assert(VALUE_TYPE(v) == VALUE_DICT);
-    int size;
+    unsigned int size;
     hvalue_t *vars = value_get(v, &size);
     size /= sizeof(hvalue_t);
     fprintf(file, "{");
-    for (int i = 0; i < size; i += 2) {
+    for (unsigned int i = 0; i < size; i += 2) {
         if (i > 0) {
             fprintf(file, ",");
         }
@@ -701,7 +704,7 @@ void print_state(
     // hvalue_t inv_nv = value_put_atom("name", 4);
     // hvalue_t inv_tv = value_put_atom("tag", 3);
     inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
-    inv_step.ctx->arg = VALUE_DICT;
+    inv_step.ctx->arg = VALUE_LIST;
     inv_step.ctx->this = VALUE_DICT;
     inv_step.ctx->vars = VALUE_DICT;
     inv_step.ctx->atomic = inv_step.ctx->readonly = 1;
@@ -709,11 +712,11 @@ void print_state(
 
     fprintf(file, "      \"invfails\": [");
     assert(VALUE_TYPE(state->invariants) == VALUE_SET);
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(state->invariants, &size);
     size /= sizeof(hvalue_t);
     int nfailures = 0;
-    for (int i = 0; i < size; i++) {
+    for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(vals[i]) == VALUE_PC);
         inv_step.ctx->pc = VALUE_FROM_PC(vals[i]);
         assert(strcmp(global->code.instrs[inv_step.ctx->pc].oi->name, "Invariant") == 0);
@@ -935,7 +938,7 @@ hvalue_t twostep(
         // Infinite loop detection
         if (!step.ctx->terminated && step.ctx->failure == 0) {
             if (infloop == NULL) {
-                infloop = dict_new(0);
+                infloop = dict_new(0, NULL, NULL);
             }
 
             int stacksize = step.ctx->sp * sizeof(hvalue_t);
@@ -985,7 +988,7 @@ hvalue_t twostep(
                 diff_dump(global, file, oldstate, sc, oldctx, step.ctx, false, global->code.instrs[pc].choose, choice, NULL);
                 break;
             }
-            int size;
+            unsigned int size;
             hvalue_t *vals = value_get(s, &size);
             size /= sizeof(hvalue_t);
             if (size == 0) {
@@ -1111,10 +1114,10 @@ void path_dump(
     /* Match each context to a process.
      */
     bool *matched = calloc(global->nprocesses, sizeof(bool));
-    int nctxs;
+    unsigned int nctxs;
     hvalue_t *ctxs = value_get(node->state->ctxbag, &nctxs);
     nctxs /= sizeof(hvalue_t);
-    for (int i = 0; i < nctxs; i += 2) {
+    for (unsigned int i = 0; i < nctxs; i += 2) {
         assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
         int cnt = VALUE_FROM_INT(ctxs[i+1]);
@@ -1282,11 +1285,11 @@ static enum busywait is_stuck(
 
 static void detect_busywait(struct minheap *failures, struct node *node){
 	// Get the contexts
-	int size;
+	unsigned int size;
 	hvalue_t *ctxs = value_get(node->state->ctxbag, &size);
 	size /= sizeof(hvalue_t);
 
-	for (int i = 0; i < size; i += 2) {
+	for (unsigned int i = 0; i < size; i += 2) {
 		if (is_stuck(node, node, ctxs[i], false) == BW_RETURN) {
 			struct failure *f = new_alloc(struct failure);
 			f->type = FAIL_BUSYWAIT;
@@ -1330,11 +1333,11 @@ static void do_work(struct worker *w){
 			assert(cc->sp > 0);
 			hvalue_t s = cc->stack[cc->sp - 1];
 			assert(VALUE_TYPE(s) == VALUE_SET);
-			int size;
+			unsigned int size;
 			hvalue_t *vals = value_get(s, &size);
 			size /= sizeof(hvalue_t);
 			assert(size > 0);
-			for (int i = 0; i < size; i++) {
+			for (unsigned int i = 0; i < size; i++) {
 				make_step(
 					w,
 					node,
@@ -1345,11 +1348,11 @@ static void do_work(struct worker *w){
 			}
 		}
 		else {
-			int size;
+			unsigned int size;
 			hvalue_t *ctxs = value_get(state->ctxbag, &size);
 			size /= sizeof(hvalue_t);
 			assert(size >= 0);
-			for (int i = 0; i < size; i += 2) {
+			for (unsigned int i = 0; i < size; i += 2) {
 				assert(VALUE_TYPE(ctxs[i]) == VALUE_CONTEXT);
 				assert(VALUE_TYPE(ctxs[i+1]) == VALUE_INT);
 				make_step(
@@ -1474,7 +1477,7 @@ char *state_string(struct state *state){
 // an "epsilon" edge (empty print log).  These are essentially useless nodes.
 // Typically about half of the nodes can be removed this way.
 static void destutter1(struct graph_t *graph){
-    for (int i = 0; i < graph->size; i++) {
+    for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
 
         if (n->bwd != NULL && n->bwd->next == NULL && n->bwd->nlog == 0) {
@@ -1519,16 +1522,16 @@ static void destutter1(struct graph_t *graph){
 }
 
 static struct dict *collect_symbols(struct graph_t *graph){
-    struct dict *symbols = dict_new(0);
+    struct dict *symbols = dict_new(0, NULL, NULL);
     hvalue_t symbol_id = 0;
 
-    for (int i = 0; i < graph->size; i++) {
+    for (unsigned int i = 0; i < graph->size; i++) {
         struct node *n = graph->nodes[i];
         if (!n->reachable) {
             continue;
         }
         for (struct edge *e = n->fwd; e != NULL; e = e->next) {
-            for (int j = 0; j < e->nlog; j++) {
+            for (unsigned int j = 0; j < e->nlog; j++) {
                 void **p = dict_insert(symbols, &e->log[j], sizeof(e->log[j]));
                 if (*p == NULL) {
                     *p = (void *) ++symbol_id;
@@ -1593,7 +1596,7 @@ static void print_trans_upcall(void *env, const void *key, unsigned int key_size
 }
 
 static void print_transitions(FILE *out, struct dict *symbols, struct edge *edges){
-    struct dict *d = dict_new(0);
+    struct dict *d = dict_new(0, NULL, NULL);
 
     fprintf(out, "      \"transitions\": [\n");
     for (struct edge *e = edges; e != NULL; e = e->next) {
@@ -1720,13 +1723,13 @@ int main(int argc, char **argv){
     // Create an initial state
     struct context *init_ctx = new_alloc(struct context);
     init_ctx->name = global->init_name;
-    init_ctx->arg = VALUE_DICT;
+    init_ctx->arg = VALUE_LIST;
     init_ctx->this = VALUE_DICT;
     init_ctx->vars = VALUE_DICT;
     init_ctx->atomic = 1;
     init_ctx->atomicFlag = true;
     value_ctx_push(&init_ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
-    value_ctx_push(&init_ctx, VALUE_DICT);
+    value_ctx_push(&init_ctx, VALUE_LIST);
     struct state *state = new_alloc(struct state);
     state->vars = VALUE_DICT;
     state->seqs = VALUE_SET;
@@ -1740,7 +1743,7 @@ int main(int argc, char **argv){
     global->nprocesses = 1;
 
     // Put the initial state in the visited map
-    struct dict *visited = dict_new(0);
+    struct dict *visited = dict_new(0, NULL, NULL);
     struct node *node = new_alloc(struct node);
     node->state = state;
     node->after = ictx;
@@ -1780,7 +1783,7 @@ int main(int argc, char **argv){
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
         w->inv_step.ctx->name = value_put_atom(&global->values, "__invariant__", 13);
-        w->inv_step.ctx->arg = VALUE_DICT;
+        w->inv_step.ctx->arg = VALUE_LIST;
         w->inv_step.ctx->this = VALUE_DICT;
         w->inv_step.ctx->vars = VALUE_DICT;
         w->inv_step.ctx->atomic = w->inv_step.ctx->readonly = 1;
@@ -1861,12 +1864,12 @@ int main(int argc, char **argv){
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // find the strongly connected components
-        int ncomponents = graph_find_scc(&global->graph);
-        printf("%d components\n", ncomponents);
+        unsigned int ncomponents = graph_find_scc(&global->graph);
+        printf("%u components\n", ncomponents);
 
         // mark the components that are "good" because they have a way out
         struct component *components = calloc(ncomponents, sizeof(*components));
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
@@ -1896,7 +1899,7 @@ int main(int argc, char **argv){
 
         // components that have only one shared state and only eternal
         // threads are good because it means all its threads are blocked
-        for (int i = 0; i < ncomponents; i++) {
+        for (unsigned int i = 0; i < ncomponents; i++) {
             struct component *comp = &components[i];
             assert(comp->size > 0);
             if (!comp->good && comp->all_same) {
@@ -1906,7 +1909,7 @@ int main(int argc, char **argv){
         }
 
         // Look for states in final components
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
 			assert(node->component < ncomponents);
             struct component *comp = &components[node->component];
@@ -1927,7 +1930,7 @@ int main(int argc, char **argv){
         if (minheap_empty(global->failures)) {
             // now count the nodes that are in bad components
             int nbad = 0;
-            for (int i = 0; i < global->graph.size; i++) {
+            for (unsigned int i = 0; i < global->graph.size; i++) {
                 struct node *node = global->graph.nodes[i];
                 if (!components[node->component].good) {
                     nbad++;
@@ -1941,10 +1944,10 @@ int main(int argc, char **argv){
             }
 
             if (nbad == 0 && !cflag) {
-                for (int i = 0; i < global->graph.size; i++) {
+                for (unsigned int i = 0; i < global->graph.size; i++) {
                     global->graph.nodes[i]->visited = false;
                 }
-                for (int i = 0; i < global->graph.size; i++) {
+                for (unsigned int i = 0; i < global->graph.size; i++) {
                     struct node *node = global->graph.nodes[i];
                     if (components[node->component].size > 1) {
                         detect_busywait(global->failures, node);
@@ -1958,7 +1961,7 @@ int main(int argc, char **argv){
     if (false) {
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
             fprintf(df, "\nNode %d:\n", node->id);
@@ -1976,7 +1979,7 @@ int main(int argc, char **argv){
                 fprintf(df, "            choice: %s\n", value_string(edge->choice));
                 fprintf(df, "            node: %d (%d)\n", edge->node->id, edge->node->component);
                 fprintf(df, "            log:");
-                for (int j = 0; j < edge->nlog; j++) {
+                for (unsigned int j = 0; j < edge->nlog; j++) {
                     char *p = value_string(edge->log[j]);
                     fprintf(df, " %s", p);
                     free(p);
@@ -2007,7 +2010,7 @@ int main(int argc, char **argv){
         FILE *df = fopen("charm.dump", "w");
         assert(df != NULL);
         char **table = malloc(global->graph.size * sizeof(char*));
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             table[i] = state_string(node->state);
             fprintf(df, "%s\n", table[i]);
@@ -2022,7 +2025,7 @@ int main(int argc, char **argv){
     struct minheap *warnings = minheap_create(fail_cmp);
     if (minheap_empty(global->failures)) {
         printf("Check for data races\n");
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             graph_check_for_data_race(node, warnings, &global->values);
             if (!minheap_empty(warnings)) {
@@ -2061,7 +2064,7 @@ int main(int argc, char **argv){
 
         fprintf(out, "  \"nodes\": [\n");
         bool first = true;
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             assert(node->id == i);
             if (node->reachable) {
@@ -2101,7 +2104,7 @@ int main(int argc, char **argv){
         fprintf(out, "  \"edges\": [\n");
         first = true;
         bool first_log;
-        for (int i = 0; i < global->graph.size; i++) {
+        for (unsigned int i = 0; i < global->graph.size; i++) {
             struct node *node = global->graph.nodes[i];
             if (node->reachable) {
                 for (struct edge *edge = node->fwd; edge != NULL; edge = edge->next) {

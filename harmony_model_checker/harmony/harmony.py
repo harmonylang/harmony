@@ -253,7 +253,7 @@ def optimize(code):
 def invcheck(state, inv):
     assert isinstance(state.code[inv], InvariantOp)
     op = state.code[inv]
-    ctx = ContextValue(("__invariant__", None, None, None), 0, novalue, novalue)
+    ctx = ContextValue(("__invariant__", None, None, None), 0, emptytuple, emptydict)
     ctx.atomic = ctx.readonly = 1
     ctx.pc = inv + 1
     while ctx.pc != inv + op.cnt:
@@ -486,10 +486,10 @@ def find_scc(nodes):
 
 def run(code, labels, blockflag):
     state = State(code, labels)
-    ctx = ContextValue(("__init__", None, None, None), 0, novalue, novalue)
+    ctx = ContextValue(("__init__", None, None, None), 0, emptytuple, emptydict)
     ctx.atomic = 1
     ctx.push("process")
-    ctx.push(novalue)
+    ctx.push(emptytuple)
     bag_add(state.ctxbag, ctx)
     node = Node(state, 0, None, None, None, [], 0)
 
@@ -826,7 +826,7 @@ def htmlloc(code, scope, ctx, traceid, f):
             pc -= 1
         if fp >= 3:
             arg = ctx.stack[fp-3]
-            if arg == novalue:
+            if arg == emptytuple:
                 print("%s()"%(code[pc].name[0]), end="", file=f)
             else:
                 print("%s(%s)"%(code[pc].name[0], strValue(arg)), end="", file=f)
@@ -2031,7 +2031,7 @@ Val2Str(x) ==
     []   x.ctype = "int"     -> Int2Str(x.cval)
     []   x.ctype = "pc"      -> "PC(" \o Int2Str(x.cval) \o ")"
     []   x.ctype = "dict"    ->
-            IF DOMAIN x.cval = {} THEN "()" ELSE "{ " \o Dict2Str(x.cval) \o " }"
+            IF DOMAIN x.cval = {} THEN "{:}" ELSE "{ " \o Dict2Str(x.cval) \o " }"
     []   x.ctype = "set"     ->
             IF x.cval = {} THEN "{}" ELSE "{ " \o Seq2Str(HSort(x.cval)) \o " }"
     []   x.ctype = "address" -> "?" \o Head(x.cval).cval \o Addr2Str(Tail(x.cval))

@@ -74,11 +74,6 @@ echo ==============
 ./harmony --noweb code/spinlock.hny
 
 echo ==============
-echo csTAS
-echo ==============
-./harmony --noweb code/csTAS.hny
-
-echo ==============
 echo UpLock
 echo ==============
 ./harmony --noweb code/UpLock.hny

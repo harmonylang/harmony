@@ -94,6 +94,11 @@ class HarmonyVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by HarmonyParser#empty_dict.
+    def visitEmpty_dict(self, ctx:HarmonyParser.Empty_dictContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by HarmonyParser#paren_tuple.
     def visitParen_tuple(self, ctx:HarmonyParser.Paren_tupleContext):
         return self.visitChildren(ctx)

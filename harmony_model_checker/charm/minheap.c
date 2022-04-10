@@ -1,7 +1,8 @@
-#include <assert.h>
+#import "head.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "minheap.h"
 
 #define parent(k)   (int) (((k) - 1) / 2)

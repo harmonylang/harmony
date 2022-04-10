@@ -47,6 +47,7 @@ typedef struct values_t {
     struct dict *atoms;
     struct dict *dicts;
     struct dict *sets;
+    struct dict *lists;
     struct dict *addresses;
     struct dict *contexts;
 } values_t;
@@ -55,8 +56,8 @@ void value_init(struct values_t *values);
 void value_set_concurrent(struct values_t *values, int concurrent);
 hvalue_t value_from_json(struct values_t *values, struct dict *map);
 int value_cmp(hvalue_t v1, hvalue_t v2);
-void *value_get(hvalue_t v, int *size);
-void *value_copy(hvalue_t v, int *size);
+void *value_get(hvalue_t v, unsigned int *size);
+void *value_copy(hvalue_t v, unsigned int *size);
 hvalue_t value_put_atom(struct values_t *values, const void *p, int size);
 hvalue_t value_put_set(struct values_t *values, void *p, int size);
 hvalue_t value_put_dict(struct values_t *values, void *p, int size);
@@ -70,19 +71,18 @@ char *value_json(hvalue_t v);
 void strbuf_value_string(strbuf *sb, hvalue_t v);
 void strbuf_value_json(strbuf *sb, hvalue_t v);
 
-#define VALUE_BITS      3
+#define VALUE_BITS      4
 #define VALUE_MASK      ((hvalue_t) ((1 << VALUE_BITS) - 1))
 
-#define VALUE_BOOL      0
-#define VALUE_INT       1
-#define VALUE_ATOM      2
-#define VALUE_PC        3
-#define VALUE_DICT      4
-#define VALUE_SET       5
-#define VALUE_ADDRESS   6
-#define VALUE_CONTEXT   7
-
-#define VALUE_LIST      VALUE_ADDRESS       // HACK for introducing lists
+#define VALUE_BOOL      1
+#define VALUE_INT       2
+#define VALUE_ATOM      3
+#define VALUE_PC        4
+#define VALUE_LIST      5
+#define VALUE_DICT      6
+#define VALUE_SET       7
+#define VALUE_ADDRESS   8
+#define VALUE_CONTEXT   9
 
 #define VALUE_FALSE     VALUE_BOOL
 #define VALUE_TRUE      ((1 << VALUE_BITS) | VALUE_BOOL)

@@ -27,20 +27,12 @@ def list(a):
 
 # convert values of a dictionary into a list
 def values(d):
-    result = [ d[k] for k in keys d ]
+    result = [ v for _:v in d ]
 
 # like Python .items()
 def items(d):
-    result = [ (k, d[k]) for k in keys d ]
+    result = [ (k, v) for k:v in d ]
 
-# like Python enumerate()
-def enumerate(d):
-    var index = 0
-    result = []
-    for k in keys d:
-        result += [ (index, d[k]), ]
-        index += 1
-        
 # quicksort of a list
 def qsort(a):
     if a == []:

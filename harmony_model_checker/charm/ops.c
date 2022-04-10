@@ -1,3 +1,5 @@
+#import "head.h"
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -17,7 +19,7 @@
 #define MAX_ARITY   16
 
 struct val_info {
-    int size, index;
+    unsigned int size, index;
     hvalue_t *vals;
 };
 
@@ -31,7 +33,7 @@ struct var_tree {
     union {
         hvalue_t name;
         struct {
-            int n;
+            unsigned int n;
             struct var_tree **elements;
         } tuple;
     } u;
@@ -41,16 +43,16 @@ struct var_tree {
 static struct dict *ops_map, *f_map;
 static hvalue_t underscore, this_atom;
 
-bool is_sequential(hvalue_t seqvars, hvalue_t *indices, int n){
+static bool is_sequential(hvalue_t seqvars, hvalue_t *indices, unsigned int n){
     assert(VALUE_TYPE(seqvars) == VALUE_SET);
-    int size;
+    unsigned int size;
     hvalue_t *seqs = value_get(seqvars, &size);
     size /= sizeof(hvalue_t);
 
     n *= sizeof(hvalue_t);
-    for (int i = 0; i < size; i++) {
+    for (unsigned int i = 0; i < size; i++) {
         assert(VALUE_TYPE(seqs[i]) == VALUE_ADDRESS);
-        int sn;
+        unsigned int sn;
         hvalue_t *inds = value_get(seqs[i], &sn);
         if (n >= sn && sn >= 0 && memcmp(indices, inds, sn) == 0) {
             return true;
@@ -68,15 +70,16 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
         }
         return value_dict_store(values, vars, vt->u.name, arg);
     case VT_TUPLE:
-        if (VALUE_TYPE(arg) != VALUE_DICT) {    // TODO LIST
+        if (VALUE_TYPE(arg) != VALUE_LIST) {
             if (vt->u.tuple.n == 0) {
                 return value_ctx_failure(ctx, values, "match: expected ()");
             }
             else {
-                return value_ctx_failure(ctx, values, "match: expected a tuple");
+                char *v = value_string(arg);
+                return value_ctx_failure(ctx, values, "match: expected a tuple instead of %s", v);
             }
         }
-        if (arg == VALUE_DICT) {    // TODO LIST
+        if (arg == VALUE_LIST) {
             if (vt->u.tuple.n != 0) {
                 return value_ctx_failure(ctx, values, "match: expected a %d-tuple",
                                                 vt->u.tuple.n);
@@ -86,17 +89,14 @@ hvalue_t var_match_rec(struct context *ctx, struct var_tree *vt, struct values_t
         if (vt->u.tuple.n == 0) {
             return value_ctx_failure(ctx, values, "match: expected an empty tuple");
         }
-        int size;
+        unsigned int size;
         hvalue_t *vals = value_get(arg, &size);
-        size /= 2 * sizeof(hvalue_t);
+        size /= sizeof(hvalue_t);
         if (vt->u.tuple.n != size) {
             return value_ctx_failure(ctx, values, "match: tuple size mismatch");
         }
-        for (int i = 0; i < size; i++) {
-            if (vals[2*i] != VALUE_TO_INT(i)) {
-                return value_ctx_failure(ctx, values, "match: not a tuple");
-            }
-            vars = var_match_rec(ctx, vt->u.tuple.elements[i], values, vals[2*i+1], vars);
+        for (unsigned int i = 0; i < size; i++) {
+            vars = var_match_rec(ctx, vt->u.tuple.elements[i], values, vals[i], vars);
         }
         return vars;
     default:
@@ -123,12 +123,13 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
     struct var_tree *vt = new_alloc(struct var_tree);
 
     skip_blanks(s, len, index);
-    if (s[*index] == '(') {
+    if (s[*index] == '(' || s[*index] == '[') {
+        char closer = s[*index] == '(' ? ')' : ']';
         vt->type = VT_TUPLE;
         (*index)++;
         skip_blanks(s, len, index);
         assert(*index < len);
-        if (s[*index] == ')') {
+        if (s[*index] == closer) {
             (*index)++;
         }
         else {
@@ -139,7 +140,7 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
                 vt->u.tuple.elements[vt->u.tuple.n++] = elt;
                 skip_blanks(s, len, index);
                 assert(*index < len);
-                if (s[*index] == ')') {
+                if (s[*index] == closer) {
                     (*index)++;
                     break;
                 }
@@ -147,11 +148,6 @@ struct var_tree *var_parse(struct values_t *values, char *s, int len, int *index
                 (*index)++;
             }
         }
-    }
-    else if (s[*index] == '[') {
-        vt->type = VT_TUPLE;
-        (*index)++;
-        panic("var_parse: TODO");
     }
     else {
         vt->type = VT_NAME;
@@ -194,81 +190,77 @@ static bool ind_trystore(hvalue_t root, hvalue_t *indices, int n, hvalue_t value
     assert(n > 0);
 
     if (n == 1) {
-        *result = value_store(values, root, indices[0], value);
-        return true;
+        return value_trystore(values, root, indices[0], value, true, result);
     }
-    else {
-        int size;
-        hvalue_t *vals = value_get(root, &size);
-        size /= sizeof(hvalue_t);
+    unsigned int size;
+    hvalue_t *vals = value_get(root, &size);
+    size /= sizeof(hvalue_t);
 
-        if (VALUE_TYPE(root) == VALUE_DICT) {
-            assert(size % 2 == 0);
+    if (VALUE_TYPE(root) == VALUE_DICT) {
+        assert(size % 2 == 0);
 
-            int i;
-            for (i = 0; i < size; i += 2) {
-                if (vals[i] == indices[0]) {
-                    hvalue_t d = vals[i+1];
-                    if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
-                        return false;
-                    }
-                    hvalue_t nd;
-                    if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
-                        return false;
-                    }
-                    if (d == nd) {
-                        *result = root;
-                        return true;
-                    }
-                    int n = size * sizeof(hvalue_t);
-                    hvalue_t *copy = malloc(n);
-                    memcpy(copy, vals, n);
-                    copy[i + 1] = nd;
-                    hvalue_t v = value_put_dict(values, copy, n);
-                    free(copy);
-                    *result = v;
+        for (unsigned i = 0; i < size; i += 2) {
+            if (vals[i] == indices[0]) {
+                hvalue_t d = vals[i+1];
+                if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+                    return false;
+                }
+                hvalue_t nd;
+                if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+                    return false;
+                }
+                if (d == nd) {
+                    *result = root;
                     return true;
                 }
-                /* value_cmp is an expensive function.  Breaking here
-                 * is probably more expensive than just going on.
-                    if (value_cmp(vals[i], indices[0]) > 0) {
-                        assert(false);
-                    }
-                 */
-            }
-        }
-        else {
-            assert(VALUE_TYPE(root) == VALUE_LIST);
-            if (VALUE_TYPE(indices[0]) != VALUE_INT) {
-                return false;
-            }
-            int index = VALUE_FROM_INT(indices[0]);
-            if (index < 0 || index >= n) {
-                return false;
-            }
-            hvalue_t d = vals[index];
-            if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
-                return false;
-            }
-            hvalue_t nd;
-            if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
-                return false;
-            }
-            if (d == nd) {
-                *result = root;
+                int n = size * sizeof(hvalue_t);
+                hvalue_t *copy = malloc(n);
+                memcpy(copy, vals, n);
+                copy[i + 1] = nd;
+                hvalue_t v = value_put_dict(values, copy, n);
+                free(copy);
+                *result = v;
                 return true;
             }
-            int n = size * sizeof(hvalue_t);
-            hvalue_t *copy = malloc(n);
-            memcpy(copy, vals, n);
-            copy[index] = nd;
-            hvalue_t v = value_put_address(values, copy, n);    // TODO LIST
-            free(copy);
-            *result = v;
+            /* value_cmp is an expensive function.  Breaking here
+             * is probably more expensive than just going on.
+                if (value_cmp(vals[i], indices[0]) > 0) {
+                    assert(false);
+                }
+             */
+        }
+        return false;
+    }
+    else {
+        assert(VALUE_TYPE(root) == VALUE_LIST);
+        if (VALUE_TYPE(indices[0]) != VALUE_INT) {
+            return false;
+        }
+        unsigned int index = (unsigned int) VALUE_FROM_INT(indices[0]);
+        if (index >= size) {
+            return false;
+        }
+        hvalue_t d = vals[index];
+        if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
+            return false;
+        }
+        hvalue_t nd;
+        if (!ind_trystore(d, indices + 1, n - 1, value, values, &nd)) {
+            return false;
+        }
+        if (d == nd) {
+            *result = root;
             return true;
         }
+        int nsize = size * sizeof(hvalue_t);
+        hvalue_t *copy = malloc(nsize);
+        memcpy(copy, vals, nsize);
+        copy[index] = nd;
+        hvalue_t v = value_put_list(values, copy, nsize);
+        free(copy);
+        *result = v;
+        return true;
     }
-    return false;
 }
 
 bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values,
@@ -281,15 +273,14 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
         return true;
     }
 
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(root, &size);
     size /= sizeof(hvalue_t);
 
     if (VALUE_TYPE(root) == VALUE_DICT) {
         assert(size % 2 == 0);
 
-        int i;
-        for (i = 0; i < size; i += 2) {
+        for (unsigned i = 0; i < size; i += 2) {
             if (vals[i] == indices[0]) {
                 hvalue_t d = vals[i+1];
                 if (VALUE_TYPE(d) != VALUE_DICT && VALUE_TYPE(d) != VALUE_LIST) {
@@ -345,7 +336,7 @@ bool ind_remove(hvalue_t root, hvalue_t *indices, int n, struct values_t *values
         hvalue_t *copy = malloc(n);
         memcpy(copy, vals, n);
         copy[index] = nd;
-        hvalue_t v = value_put_address(values, copy, n);    // TODO LIST
+        hvalue_t v = value_put_list(values, copy, n);
         free(copy);
         *result = v;
         return true;
@@ -367,7 +358,7 @@ void op_Address(const void *env, struct state *state, struct step *step, struct 
         return;
     }
 
-    int size;
+    unsigned int size;
     hvalue_t *indices = value_copy(av, &size);
     indices = realloc(indices, size + sizeof(index));
     indices[size / sizeof(hvalue_t)] = index;
@@ -404,7 +395,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 return;
             }
             e = VALUE_FROM_INT(e);
-            int size;
+            unsigned int size;
             hvalue_t *vals = value_get(method, &size);
             if (e >= (hvalue_t) size) {
                 value_ctx_failure(step->ctx, &global->values, "Index out of range");
@@ -421,7 +412,7 @@ void op_Apply(const void *env, struct state *state, struct step *step, struct gl
                 return;
             }
             e = VALUE_FROM_INT(e);
-            int size;
+            unsigned int size;
             char *chars = value_get(method, &size);
             if (e >= (hvalue_t) size) {
                 value_ctx_failure(step->ctx, &global->values, "Index out of range");
@@ -532,7 +523,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
     // Get the index
     hvalue_t index = value_ctx_pop(&step->ctx);
     assert(VALUE_TYPE(index) == VALUE_INT);
-    int idx = VALUE_FROM_INT(index);
+    unsigned int idx = (unsigned int) VALUE_FROM_INT(index);
 
     // Peek at the collection
     assert(ctx->sp > 0);
@@ -540,7 +531,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
 
     if (VALUE_TYPE(v) == VALUE_SET || VALUE_TYPE(v) == VALUE_LIST) {
         // Get the collection
-        int size;
+        unsigned int size;
         hvalue_t *vals = value_get(v, &size);
         size /= sizeof(hvalue_t);
         if (idx >= size) {
@@ -558,16 +549,19 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
     if (VALUE_TYPE(v) == VALUE_DICT) {
-        int size;
+        unsigned int size;
         hvalue_t *vals = value_get(v, &size);
         size /= 2 * sizeof(hvalue_t);
         if (idx >= size) {
             ctx->stack[ctx->sp - 1] = VALUE_FALSE;
         }
         else {
-            var_match(step->ctx, ec->value, &global->values, vals[2*idx + 1]);
-            if (ec->key != NULL) {
+            if (ec->key == NULL) {
+                var_match(step->ctx, ec->value, &global->values, vals[2*idx]);
+            }
+            else {
                 var_match(step->ctx, ec->key, &global->values, vals[2*idx]);
+                var_match(step->ctx, ec->value, &global->values, vals[2*idx + 1]);
             }
             value_ctx_push(&step->ctx, VALUE_TO_INT(idx + 1));
             value_ctx_push(&step->ctx, VALUE_TRUE);
@@ -576,7 +570,7 @@ void op_Cut(const void *env, struct state *state, struct step *step, struct glob
         return;
     }
     if (VALUE_TYPE(v) == VALUE_ATOM) {
-        int size;
+        unsigned int size;
         char *chars = value_get(v, &size);
         if (idx >= size) {
             ctx->stack[ctx->sp - 1] = VALUE_FALSE;
@@ -619,7 +613,7 @@ void op_Del(const void *env, struct state *state, struct step *step, struct glob
             return;
         }
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
@@ -662,7 +656,7 @@ void op_DelVar(const void *env, struct state *state, struct step *step, struct g
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
 
@@ -771,24 +765,11 @@ void op_Go(
     step->ctx->pc++;
 }
 
-void op_IncVar(const void *env, struct state *state, struct step *step, struct global_t *global){
-    const struct env_IncVar *ei = env;
-    struct context *ctx = step->ctx;
-
-    assert(VALUE_TYPE(ctx->vars) == VALUE_DICT);
-
-    hvalue_t v = value_dict_load(ctx->vars, ei->name);
-    assert(VALUE_TYPE(v) == VALUE_INT);
-    v += 1 << VALUE_BITS;
-    ctx->vars = value_dict_store(&global->values, ctx->vars, ei->name, v);
-    step->ctx->pc++;
-}
-
 void op_Invariant(const void *env, struct state *state, struct step *step, struct global_t *global){
     const struct env_Invariant *ei = env;
 
     assert(VALUE_TYPE(state->invariants) == VALUE_SET);
-    int size;
+    unsigned int size;
     hvalue_t *vals;
     if (state->invariants == VALUE_SET) {
         size = 0;
@@ -850,7 +831,7 @@ void op_Load(const void *env, struct state *state, struct step *step, struct glo
             return;
         }
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
@@ -894,7 +875,7 @@ void op_LoadVar(const void *env, struct state *state, struct step *step, struct 
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
 
@@ -950,7 +931,7 @@ void op_Nary(const void *env, struct state *state, struct step *step, struct glo
     const struct env_Nary *en = env;
     hvalue_t args[MAX_ARITY];
 
-    for (int i = 0; i < en->arity; i++) {
+    for (unsigned int i = 0; i < en->arity; i++) {
         args[i] = value_ctx_pop(&step->ctx);
     }
     hvalue_t result = (*en->fi->f)(state, step->ctx, args, en->arity, &global->values);
@@ -1024,7 +1005,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
             hvalue_t pc = value_ctx_pop(&step->ctx);
             assert(VALUE_TYPE(pc) == VALUE_PC);
             pc = VALUE_FROM_PC(pc);
-            assert(pc != step->ctx->pc);
+            assert(pc != (hvalue_t) step->ctx->pc);
             value_ctx_push(&step->ctx, result);
             step->ctx->pc = pc;
         }
@@ -1034,7 +1015,7 @@ void op_Return(const void *env, struct state *state, struct step *step, struct g
         hvalue_t pc = value_ctx_pop(&step->ctx);
         assert(VALUE_TYPE(pc) == VALUE_PC);
         pc = VALUE_FROM_PC(pc);
-        assert(pc != step->ctx->pc);
+        assert(pc != (hvalue_t) step->ctx->pc);
         step->ctx->pc = pc;
         break;
     default:
@@ -1053,10 +1034,10 @@ void op_Sequential(const void *env, struct state *state, struct step *step, stru
 
     /* Insert in state's set of sequential variables.
      */
-    int size;
+    unsigned int size;
     hvalue_t *seqs = value_copy(state->seqs, &size);
     size /= sizeof(hvalue_t);
-    int i;
+    unsigned int i;
     for (i = 0; i < size; i++) {
         int k = value_cmp(seqs[i], addr);
         if (k == 0) {
@@ -1136,7 +1117,7 @@ void op_Spawn(
     }
     pc = VALUE_FROM_PC(pc);
 
-    assert(pc < global->code.len);
+    assert(pc < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[pc].oi->name, "Frame") == 0);
 
     struct context *ctx = new_alloc(struct context);
@@ -1148,7 +1129,7 @@ void op_Spawn(
     ctx->entry = VALUE_TO_PC(pc);
     ctx->pc = pc;
     ctx->vars = VALUE_DICT;
-    ctx->interruptlevel = VALUE_FALSE;
+    ctx->interruptlevel = false;
     ctx->eternal = se->eternal;
     value_ctx_push(&ctx, VALUE_TO_INT(CALLTYPE_PROCESS));
     value_ctx_push(&ctx, arg);
@@ -1162,11 +1143,11 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
 
     hvalue_t v = value_ctx_pop(&step->ctx);
     hvalue_t type = VALUE_TYPE(v);
-    if (type != VALUE_DICT && type != VALUE_SET && type != VALUE_LIST) {
+    if (type != VALUE_SET && type != VALUE_LIST) {
         value_ctx_failure(step->ctx, &global->values, "Can only split tuples or sets");
         return;
     }
-    if (v == VALUE_DICT || v == VALUE_SET || v == VALUE_LIST) {
+    if (v == VALUE_SET || v == VALUE_LIST) {
         if (es->count != 0) {
             value_ctx_failure(step->ctx, &global->values, "Split: empty set or tuple");
         }
@@ -1176,34 +1157,17 @@ void op_Split(const void *env, struct state *state, struct step *step, struct gl
         return;
     }
 
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(v, &size);
-
-    if (type == VALUE_DICT) {
-        size /= 2 * sizeof(hvalue_t);
-        if (size != es->count) {
-            value_ctx_failure(step->ctx, &global->values, "Split: list of wrong size");
-            return;
-        }
-        for (int i = 0; i < size; i++) {
-            value_ctx_push(&step->ctx, vals[2*i + 1]);
-        }
-        step->ctx->pc++;
+    size /= sizeof(hvalue_t);
+    if (size != es->count) {
+        value_ctx_failure(step->ctx, &global->values, "Split: wrong size");
         return;
     }
-    if (type == VALUE_SET || type == VALUE_LIST) {
-        size /= sizeof(hvalue_t);
-        if (size != es->count) {
-            value_ctx_failure(step->ctx, &global->values, "Split: wrong size");
-            return;
-        }
-        for (int i = 0; i < size; i++) {
-            value_ctx_push(&step->ctx, vals[i]);
-        }
-        step->ctx->pc++;
-        return;
+    for (unsigned int i = 0; i < size; i++) {
+        value_ctx_push(&step->ctx, vals[i]);
     }
-    panic("op_Split: not a set or list");
+    step->ctx->pc++;
 }
 
 void op_Save(const void *env, struct state *state, struct step *step, struct global_t *global){
@@ -1219,12 +1183,10 @@ void op_Save(const void *env, struct state *state, struct step *step, struct glo
     step->ctx->stopped = false;
 
     // Push a tuple returning e and the context
-    hvalue_t d[4];
-    d[0] = VALUE_TO_INT(0);
-    d[1] = e;
-    d[2] = VALUE_TO_INT(1);
-    d[3] = v;
-    hvalue_t result = value_put_dict(&global->values, d, sizeof(d));
+    hvalue_t d[2];
+    d[0] = e;
+    d[1] = v;
+    hvalue_t result = value_put_list(&global->values, d, sizeof(d));
     value_ctx_push(&step->ctx, result);
 }
 
@@ -1240,7 +1202,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
     if (es == 0) {
         hvalue_t av = value_ctx_pop(&step->ctx);
-        if (av == VALUE_ADDRESS || av == VALUE_DICT || av == VALUE_LIST) {
+        if (av == VALUE_ADDRESS || av == VALUE_LIST) {
             step->ctx->pc++;
             step->ctx->terminated = true;
             return;
@@ -1256,7 +1218,7 @@ void op_Stop(const void *env, struct state *state, struct step *step, struct glo
 
         step->ctx->stopped = true;
         hvalue_t v = value_put_context(&global->values, step->ctx);
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
         if (!ind_trystore(state->vars, indices, size, v, &global->values, &state->vars)) {
@@ -1300,7 +1262,7 @@ void op_Store(const void *env, struct state *state, struct step *step, struct gl
             return;
         }
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
         if (step->ai != NULL) {
@@ -1362,7 +1324,7 @@ void op_StoreVar(const void *env, struct state *state, struct step *step, struct
         assert(VALUE_TYPE(av) == VALUE_ADDRESS);
         assert(av != VALUE_ADDRESS);
 
-        int size;
+        unsigned int size;
         hvalue_t *indices = value_get(av, &size);
         size /= sizeof(hvalue_t);
 
@@ -1406,7 +1368,7 @@ void op_Trap(const void *env, struct state *state, struct step *step, struct glo
         value_ctx_failure(step->ctx, &global->values, "trap: not a method");
         return;
     }
-    assert(VALUE_FROM_PC(step->ctx->trap_pc) < global->code.len);
+    assert(VALUE_FROM_PC(step->ctx->trap_pc) < (hvalue_t) global->code.len);
     assert(strcmp(global->code.instrs[VALUE_FROM_PC(step->ctx->trap_pc)].oi->name, "Frame") == 0);
     step->ctx->trap_arg = value_ctx_pop(&step->ctx);
     step->ctx->pc++;
@@ -1476,7 +1438,7 @@ void *init_Del(struct dict *map, struct values_t *values){
     struct env_Del *env = new_alloc(struct env_Del);
     env->n = jv->u.list.nvals;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    for (int i = 0; i < env->n; i++) {
+    for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(values, index->u.map);
@@ -1512,14 +1474,6 @@ void *init_Frame(struct dict *map, struct values_t *values){
     return env;
 }
 
-void *init_IncVar(struct dict *map, struct values_t *values){
-    struct env_IncVar *env = new_alloc(struct env_IncVar);
-    struct json_value *name = dict_lookup(map, "value", 5);
-    assert(name->type == JV_ATOM);
-    env->name = value_put_atom(values, name->u.atom.base, name->u.atom.len);
-    return env;
-}
-
 void *init_Load(struct dict *map, struct values_t *values){
     struct json_value *jv = dict_lookup(map, "value", 5);
     if (jv == NULL) {
@@ -1529,7 +1483,7 @@ void *init_Load(struct dict *map, struct values_t *values){
     struct env_Load *env = new_alloc(struct env_Load);
     env->n = jv->u.list.nvals;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    for (int i = 0; i < env->n; i++) {
+    for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(values, index->u.map);
@@ -1680,7 +1634,7 @@ void *init_Stop(struct dict *map, struct values_t *values){
     struct env_Stop *env = new_alloc(struct env_Stop);
     env->n = jv->u.list.nvals;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    for (int i = 0; i < env->n; i++) {
+    for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(values, index->u.map);
@@ -1697,7 +1651,7 @@ void *init_Store(struct dict *map, struct values_t *values){
     struct env_Store *env = new_alloc(struct env_Store);
     env->n = jv->u.list.nvals;
     env->indices = malloc(env->n * sizeof(hvalue_t));
-    for (int i = 0; i < env->n; i++) {
+    for (unsigned int i = 0; i < env->n; i++) {
         struct json_value *index = jv->u.list.vals[i];
         assert(index->type == JV_MAP);
         env->indices[i] = value_from_json(values, index->u.map);
@@ -1732,14 +1686,14 @@ hvalue_t f_abs(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST) {
+	if (e == VALUE_SET || e == VALUE_LIST) {
 		return VALUE_TRUE;
     }
     if (VALUE_TYPE(e) == VALUE_SET || VALUE_TYPE(e) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "all() can only be applied to booleans");
             }
@@ -1749,52 +1703,24 @@ hvalue_t f_all(struct state *state, struct context *ctx, hvalue_t *args, int n, 
         }
 		return VALUE_TRUE;
     }
-    if (VALUE_TYPE(e) == VALUE_DICT) {
-        int size;
-        hvalue_t *v = value_get(e, &size);
-        size /= 2 * sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
-            if (VALUE_TYPE(v[2*i+1]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "dict.all() can only be applied to booleans");
-            }
-            if (v[2*i+1] == VALUE_FALSE) {
-                return VALUE_FALSE;
-            }
-        }
-		return VALUE_TRUE;
-    }
-    return value_ctx_failure(ctx, values, "all() can only be applied to sets or dictionaries");
+    return value_ctx_failure(ctx, values, "all() can only be applied to sets or lists");
 }
 
 hvalue_t f_any(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 1);
     hvalue_t e = args[0];
-	if (e == VALUE_SET || e == VALUE_DICT || e == VALUE_LIST) {
+	if (e == VALUE_SET || e == VALUE_LIST) {
 		return VALUE_FALSE;
     }
     if (VALUE_TYPE(e) == VALUE_SET || VALUE_TYPE(e) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             if (VALUE_TYPE(v[i]) != VALUE_BOOL) {
                 return value_ctx_failure(ctx, values, "any() can only be applied to booleans");
             }
             if (v[i] != VALUE_FALSE) {
-                return VALUE_TRUE;
-            }
-        }
-		return VALUE_FALSE;
-    }
-    if (VALUE_TYPE(e) == VALUE_DICT) {
-        int size;
-        hvalue_t *v = value_get(e, &size);
-        size /= 2 * sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
-            if (VALUE_TYPE(v[2*i+1]) != VALUE_BOOL) {
-                return value_ctx_failure(ctx, values, "dict.any() can only be applied to booleans");
-            }
-            if (v[2*i+1] != VALUE_FALSE) {
                 return VALUE_TRUE;
             }
         }
@@ -1820,13 +1746,13 @@ hvalue_t f_atLabel(struct state *state, struct context *ctx, hvalue_t *args, int
     }
     e = VALUE_FROM_PC(e);
 
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(state->ctxbag, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     assert(size % 2 == 0);
     hvalue_t bag = VALUE_DICT;
-    for (int i = 0; i < size; i += 2) {
+    for (unsigned int i = 0; i < size; i += 2) {
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
@@ -1849,13 +1775,13 @@ hvalue_t f_countLabel(struct state *state, struct context *ctx, hvalue_t *args, 
     }
     e = VALUE_FROM_PC(e);
 
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(state->ctxbag, &size);
     size /= sizeof(hvalue_t);
     assert(size > 0);
     assert(size % 2 == 0);
     hvalue_t result = 0;
-    for (int i = 0; i < size; i += 2) {
+    for (unsigned int i = 0; i < size; i += 2) {
         assert(VALUE_TYPE(vals[i]) == VALUE_CONTEXT);
         assert(VALUE_TYPE(vals[i+1]) == VALUE_INT);
         struct context *ctx = value_get(vals[i], NULL);
@@ -1917,7 +1843,7 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         if (s == VALUE_ATOM) {
             return VALUE_TO_BOOL(e == VALUE_ATOM);
         }
-        int size1, size2;
+        unsigned int size1, size2;
         char *v1 = value_get(e, &size1);
         char *v2 = value_get(s, &size2);
         if (size1 > size2) {
@@ -1933,10 +1859,10 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         return VALUE_FALSE;
     }
     if (VALUE_TYPE(s) == VALUE_SET || VALUE_TYPE(s) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(s, &size);
         size /= sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
+        for (unsigned int i = 0; i < size; i++) {
             if (v[i] == e) {
                 return VALUE_TRUE;
             }
@@ -1944,11 +1870,11 @@ hvalue_t f_in(struct state *state, struct context *ctx, hvalue_t *args, int n, s
         return VALUE_FALSE;
     }
     if (VALUE_TYPE(s) == VALUE_DICT) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(s, &size);
         size /= 2 * sizeof(hvalue_t);
-        for (int i = 0; i < size; i++) {
-            if (v[2*i+1] == e) {
+        for (unsigned int i = 0; i < size; i++) {
+            if (v[2*i] == e) {
                 return VALUE_TRUE;
             }
         }
@@ -1985,7 +1911,7 @@ hvalue_t f_intersection(
         struct val_info *vi = malloc(n * sizeof(*vi));
 		vi[0].vals = value_get(args[0], &vi[0].size); 
 		vi[0].index = 0;
-        int min_size = vi[0].size;              // minimum set size
+        unsigned int min_size = vi[0].size;     // minimum set size
         hvalue_t max_val = vi[0].vals[0];       // maximum value over the minima of all sets
         for (int i = 1; i < n; i++) {
             if (VALUE_TYPE(args[i]) != VALUE_SET) {
@@ -2015,10 +1941,10 @@ hvalue_t f_intersection(
         hvalue_t *vals = malloc((size_t) min_size), *v = vals;
 
         bool done = false;
-        for (int i = 0; i < min_size; i++) {
+        for (unsigned int i = 0; i < min_size; i++) {
             hvalue_t old_max = max_val;
             for (int j = 0; j < n; j++) {
-                int k, size = vi[j].size / sizeof(hvalue_t);
+                unsigned int k, size = vi[j].size / sizeof(hvalue_t);
                 while ((k = vi[j].index) < size) {
                     hvalue_t v = vi[j].vals[k];
                     int cmp = value_cmp(v, max_val);
@@ -2171,11 +2097,11 @@ hvalue_t f_keys(struct state *state, struct context *ctx, hvalue_t *args, int n,
         return VALUE_SET;
     }
 
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(v, &size);
     hvalue_t *keys = malloc(size / 2);
     size /= 2 * sizeof(hvalue_t);
-    for (int i = 0; i < size; i++) {
+    for (unsigned int i = 0; i < size; i++) {
         keys[i] = vals[2*i];
     }
     hvalue_t result = value_put_set(values, keys, size * sizeof(hvalue_t));
@@ -2199,25 +2125,25 @@ hvalue_t f_len(struct state *state, struct context *ctx, hvalue_t *args, int n, 
 		return VALUE_INT;
 	}
     if (VALUE_TYPE(e) == VALUE_SET) {
-        int size;
+        unsigned int size;
         (void) value_get(e, &size);
         size /= sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         (void) value_get(e, &size);
         size /= sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_DICT) {
-        int size;
+        unsigned int size;
         (void) value_get(e, &size);
         size /= 2 * sizeof(hvalue_t);
         return VALUE_TO_INT(size);
     }
     if (VALUE_TYPE(e) == VALUE_ATOM) {
-        int size;
+        unsigned int size;
         (void) value_get(e, &size);
         return VALUE_TO_INT(size);
     }
@@ -2245,35 +2171,20 @@ hvalue_t f_max(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     if (e == VALUE_LIST) {
         return value_ctx_failure(ctx, values, "can't apply max() to empty list");
     }
-    if (e == VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "can't apply max() to empty list");
-    }
     if (VALUE_TYPE(e) == VALUE_SET) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
         return v[size - 1];
     }
     if (VALUE_TYPE(e) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
         hvalue_t max = v[0];
-        for (int i = 1; i < size; i++) {
+        for (unsigned int i = 1; i < size; i++) {
             if (value_cmp(v[i], max) > 0) {
                 max = v[i];
-            }
-        }
-		return max;
-    }
-    if (VALUE_TYPE(e) == VALUE_DICT) {
-        int size;
-        hvalue_t *v = value_get(e, &size);
-        size /= 2 * sizeof(hvalue_t);
-        hvalue_t max = v[1];
-        for (int i = 0; i < size; i++) {
-            if (value_cmp(v[2*i+1], max) > 0) {
-                max = v[2*i+1];
             }
         }
 		return max;
@@ -2290,34 +2201,19 @@ hvalue_t f_min(struct state *state, struct context *ctx, hvalue_t *args, int n, 
     if (e == VALUE_LIST) {
         return value_ctx_failure(ctx, values, "can't apply min() to empty list");
     }
-    if (e == VALUE_DICT) {
-        return value_ctx_failure(ctx, values, "can't apply min() to empty list");
-    }
     if (VALUE_TYPE(e) == VALUE_SET) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         return v[0];
     }
     if (VALUE_TYPE(e) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *v = value_get(e, &size);
         size /= sizeof(hvalue_t);
         hvalue_t min = v[0];
-        for (int i = 1; i < size; i++) {
+        for (unsigned int i = 1; i < size; i++) {
             if (value_cmp(v[i], min) < 0) {
                 min = v[i];
-            }
-        }
-		return min;
-    }
-    if (VALUE_TYPE(e) == VALUE_DICT) {
-        int size;
-        hvalue_t *v = value_get(e, &size);
-        size /= 2 * sizeof(hvalue_t);
-        hvalue_t min = v[1];
-        for (int i = 0; i < size; i++) {
-            if (value_cmp(v[2*i+1], min) < 0) {
-                min = v[2*i+1];
             }
         }
 		return min;
@@ -2369,7 +2265,7 @@ hvalue_t f_minus(
         if (VALUE_TYPE(e1) != VALUE_SET || VALUE_TYPE(e2) != VALUE_SET) {
             return value_ctx_failure(ctx, values, "minus can only be applied to ints or sets");
         }
-        int size1, size2;
+        unsigned int size1, size2;
         hvalue_t *vals1, *vals2;
         if (e1 == VALUE_SET) {
             size1 = 0;
@@ -2469,7 +2365,7 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
                 return value_ctx_failure(ctx, values,
                     "+: applied to mix of strings and other values");
             }
-            int size;
+            unsigned int size;
             char *chars = value_get(args[i], &size);
             strbuf_append(&sb, chars, size);
         }
@@ -2518,53 +2414,8 @@ hvalue_t f_plus(struct state *state, struct context *ctx, hvalue_t *args, int n,
         return result;
     }
 
-    if (VALUE_TYPE(e1) != VALUE_DICT) {
-        value_ctx_failure(ctx, values, "+: can only apply to ints, strings, or lists");
-        return 0;
-    }
-
-    // get all the lists
-    struct val_info *vi = malloc(n * sizeof(*vi));
-    int total = 0;
-    for (int i = 0; i < n; i++) {
-        if (VALUE_TYPE(args[i]) != VALUE_DICT) {
-            value_ctx_failure(ctx, values, "+: applied to mix of value types");
-            free(vi);
-            return 0;
-        }
-        if (args[i] == VALUE_DICT) {
-            vi[i].vals = NULL;
-            vi[i].size = 0;
-        }
-        else {
-            vi[i].vals = value_get(args[i], &vi[i].size); 
-            total += vi[i].size;
-        }
-    }
-
-    // If all are empty lists, we're done.
-    if (total == 0) {
-        return VALUE_DICT;
-    }
-
-    // Concatenate the sets
-    hvalue_t *vals = malloc(total);
-    total = 0;
-    for (int i = n; --i >= 0;) {
-        memcpy((char *) vals + total, vi[i].vals, vi[i].size);
-        total += vi[i].size;
-    }
-
-    // Update the indices
-    n = total / (2 * sizeof(hvalue_t));
-    for (int i = 0; i < n; i++) {
-        vals[2*i] = VALUE_TO_INT(i);
-    }
-    hvalue_t result = value_put_dict(values, vals, total);
-
-    free(vi);
-    free(vals);
-    return result;
+    value_ctx_failure(ctx, values, "+: can only apply to ints, strings, or lists");
+    return 0;
 }
 
 hvalue_t f_power(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
@@ -2632,14 +2483,29 @@ hvalue_t f_range(struct state *state, struct context *ctx, hvalue_t *args, int n
     return result;
 }
 
+hvalue_t f_list_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
+    assert(n == 2);
+    hvalue_t list = args[1];
+    assert(VALUE_TYPE(list) == VALUE_LIST);
+    unsigned int size;
+    hvalue_t *vals = value_get(list, &size);
+    hvalue_t *nvals = malloc(size + sizeof(hvalue_t));
+    memcpy(nvals, vals, size);
+    memcpy((char *) nvals + size, &args[0], sizeof(hvalue_t));
+    hvalue_t result = value_put_list(values, nvals, size + sizeof(hvalue_t));
+    free(nvals);
+    return result;
+}
+
 hvalue_t f_dict_add(struct state *state, struct context *ctx, hvalue_t *args, int n, struct values_t *values){
     assert(n == 3);
     int64_t value = args[0], key = args[1], dict = args[2];
     assert(VALUE_TYPE(dict) == VALUE_DICT);
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(dict, &size), *v;
 
-    int i = 0, cmp = 1;
+    unsigned int i = 0;
+    int cmp = 1;
     for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v += 2) {
         cmp = value_cmp(key, *v);
         if (cmp <= 0) {
@@ -2678,10 +2544,10 @@ hvalue_t f_set_add(struct state *state, struct context *ctx, hvalue_t *args, int
     assert(n == 2);
     int64_t elt = args[0], set = args[1];
     assert(VALUE_TYPE(set) == VALUE_SET);
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(set, &size), *v;
 
-    int i = 0;
+    unsigned int i = 0;
     for (v = vals; i < size; i += sizeof(hvalue_t), v++) {
         int cmp = value_cmp(elt, *v);
         if (cmp == 0) {
@@ -2707,10 +2573,11 @@ hvalue_t f_value_bag_add(struct state *state, struct context *ctx, hvalue_t *arg
     assert(n == 2);
     int64_t elt = args[0], dict = args[1];
     assert(VALUE_TYPE(dict) == VALUE_DICT);
-    int size;
+    unsigned int size;
     hvalue_t *vals = value_get(dict, &size), *v;
 
-    int i = 0, cmp = 1;
+    unsigned int i = 0;
+    int cmp = 1;
     for (v = vals; i < size; i += 2 * sizeof(hvalue_t), v++) {
         cmp = value_cmp(elt, *v);
         if (cmp <= 0) {
@@ -2792,7 +2659,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
     int list = -1;
     for (int i = 0; i < n; i++) {
         int64_t e = args[i];
-        if (VALUE_TYPE(e) == VALUE_DICT || VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
+        if (VALUE_TYPE(e) == VALUE_ATOM || VALUE_TYPE(e) == VALUE_LIST) {
             if (list >= 0) {
                 return value_ctx_failure(ctx, values, "* can only have at most one list or string");
             }
@@ -2826,35 +2693,15 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         // empty list or empty string
         return VALUE_TYPE(args[list]);
     }
-    if (VALUE_TYPE(args[list]) == VALUE_DICT) {
-        int size;
-        hvalue_t *vals = value_get(args[list], &size);
-        if (size == 0) {
-            return VALUE_DICT;
-        }
-        hvalue_t *r = malloc(result * size);
-        unsigned int cnt = size / (2 * sizeof(hvalue_t));
-        int index = 0;
-        for (int i = 0; i < result; i++) {
-            for (unsigned int j = 0; j < cnt; j++) {
-                r[2*index] = VALUE_TO_INT(index);
-                r[2*index+1] = vals[2*j+1];
-                index++;
-            }
-        }
-        hvalue_t v = value_put_dict(values, r, result * size);
-        free(r);
-        return v;
-    }
     if (VALUE_TYPE(args[list]) == VALUE_LIST) {
-        int size;
+        unsigned int size;
         hvalue_t *vals = value_get(args[list], &size);
         if (size == 0) {
             return VALUE_DICT;
         }
-        int n = size / sizeof(hvalue_t);
+        unsigned int n = size / sizeof(hvalue_t);
         hvalue_t *r = malloc(result * size);
-        for (int i = 0; i < result; i++) {
+        for (unsigned int i = 0; i < result; i++) {
             memcpy(&r[i * n], vals, size);
         }
         hvalue_t v = value_put_list(values, r, result * size);
@@ -2862,7 +2709,7 @@ hvalue_t f_times(struct state *state, struct context *ctx, hvalue_t *args, int n
         return v;
     }
     assert(VALUE_TYPE(args[list]) == VALUE_ATOM);
-	int size;
+	unsigned int size;
 	char *chars = value_get(args[list], &size);
 	if (size == 0) {
 		return VALUE_ATOM;
@@ -3065,7 +2912,6 @@ struct op_info op_table[] = {
 	{ "Dup", init_Dup, op_Dup },
 	{ "Frame", init_Frame, op_Frame },
 	{ "Go", init_Go, op_Go },
-	{ "IncVar", init_IncVar, op_IncVar },
 	{ "Invariant", init_Invariant, op_Invariant },
 	{ "Jump", init_Jump, op_Jump },
 	{ "JumpCond", init_JumpCond, op_JumpCond },
@@ -3121,6 +2967,7 @@ struct f_info f_table[] = {
     { "DictAdd", f_dict_add },
     { "in", f_in },
     { "IsEmpty", f_isEmpty },
+    { "ListAdd", f_list_add },
     { "keys", f_keys },
     { "len", f_len },
     { "max", f_max },
@@ -3137,8 +2984,8 @@ struct op_info *ops_get(char *opname, int size){
 }
 
 void ops_init(struct global_t *global) {
-    ops_map = dict_new(0);
-    f_map = dict_new(0);
+    ops_map = dict_new(0, NULL, NULL);
+    f_map = dict_new(0, NULL, NULL);
 	underscore = value_put_atom(&global->values, "_", 1);
 	this_atom = value_put_atom(&global->values, "this", 4);
 

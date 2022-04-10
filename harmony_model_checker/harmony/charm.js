@@ -39,6 +39,17 @@ function currentMegaStep() {
   return microsteps[currentTime].mesidx;
 }
 
+function json_string_list(obj) {
+  var result = "";
+  for (var i = 0; i < obj.length; i++) {
+    if (result != "") {
+      result += ", ";
+    }
+    result += json_string(obj[i]);
+  }
+  return "[ " + result + " ]";
+}
+
 function json_string_set(obj) {
   var result = "";
   for (var i = 0; i < obj.length; i++) {
@@ -52,7 +63,7 @@ function json_string_set(obj) {
 
 function json_string_dict(obj) {
   if (obj.length == 0) {
-    return "( )"
+    return "{:}"
   }
 
   var islist = true;
@@ -116,6 +127,8 @@ function json_string(obj) {
     return '"' + obj.value + '"';
   case "set":
     return json_string_set(obj.value);
+  case "list":
+    return json_string_list(obj.value);
   case "dict":
     return json_string_dict(obj.value);
   case "pc":
@@ -132,7 +145,7 @@ function json_string(obj) {
 function stringify_vars(obj) {
   var result = "";
   for (var k in obj) {
-    if (k == "result" && obj[k].type == "dict" && obj[k].value.length == 0) {
+    if (k == "result" && obj[k].type == "address" && obj[k].value.length == 0) {
       continue;
     }
     if (result != "") {
@@ -144,19 +157,31 @@ function stringify_vars(obj) {
 }
 
 function convert_var(obj) {
-  if (obj.type != "dict") {
+  if (obj.type != "dict" && obj.type != "list") {
     return json_string(obj);
   }
-  if (obj.value.length == 0) {
-    return "";
+  if (obj.type == "dict") {
+    if (obj.value.length == 0) {
+      return "";
+    }
+    var result = {};
+    for (var i = 0; i < obj.value.length; i++) {
+      var kv = obj.value[i];
+      var k = json_string(kv.key);      // TODO.  convert_var???
+      result[k] = convert_var(kv.value);
+    }
+    return result;
   }
-  var result = {};
-  for (var i = 0; i < obj.value.length; i++) {
-    var kv = obj.value[i];
-    var k = json_string(kv.key);
-    result[k] = convert_var(kv.value);
+  if (obj.type == "list") {
+    if (obj.value.length == 0) {
+      return "[]";
+    }
+    var result = {};
+    for (var i = 0; i < obj.value.length; i++) {
+      result[i] = convert_var(obj.value[i]);
+    }
+    return result;
   }
-  return result;
 }
 
 function convert_vars(obj) {

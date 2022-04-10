@@ -54,7 +54,7 @@ class AST:
 
     def eval(self, scope, code):
         state = State(code, scope.labels)
-        ctx = ContextValue(("__eval__", None, None, None), 0, novalue, novalue)
+        ctx = ContextValue(("__eval__", None, None, None), 0, emptytuple, emptydict)
         ctx.atomic = 1
         while ctx.pc != len(code.labeled_ops) and ctx.failure == None:
             code.labeled_ops[ctx.pc].op.eval(state, ctx)
@@ -121,24 +121,23 @@ class ComprehensionAST(AST):
         self.iter = iter
         self.value = value
     
-    def rec_comprehension(self, scope, code, iter, pc, N, ctype):
+    def rec_comprehension(self, scope, code, iter, pc, accu, ctype):
         if iter == []:
+            if ctype in { "dict", "set", "list" }:
+                code.append(LoadVarOp(accu))
             (_, file, line, column) = self.token
-            if ctype == "list":
-                code.append(LoadVarOp(N))
-            elif ctype == "dict":
+            if ctype == "dict":
                 self.key.compile(scope, code)
             self.value.compile(scope, code)
             if ctype == "set":
                 code.append(NaryOp(("SetAdd", file, line, column), 2))
+                code.append(StoreVarOp(accu))
             elif ctype == "dict":
                 code.append(NaryOp(("DictAdd", file, line, column), 3))
+                code.append(StoreVarOp(accu))
             elif ctype == "list":
-                code.append(NaryOp(("DictAdd", file, line, column), 3))
-                code.append(IncVarOp(N))
-            elif ctype == "bag":  # TODO.  Probably dead code
-                code.append(NaryOp(("BagAdd", file, line, column), 2))
-                code.append(IncVarOp(N))
+                code.append(NaryOp(("ListAdd", file, line, column), 2))
+                code.append(StoreVarOp(accu))
             return
 
         (type, rest) = iter[0]
@@ -166,7 +165,7 @@ class ComprehensionAST(AST):
             code.nextLabel(startlabel)
             code.append(CutOp(var, var2))
             code.append(JumpCondOp(False, endlabel))
-            self.rec_comprehension(scope, code, iter[1:], startlabel, N, ctype)
+            self.rec_comprehension(scope, code, iter[1:], startlabel, accu, ctype)
             code.append(JumpOp(startlabel))
             code.nextLabel(endlabel)
 
@@ -176,23 +175,26 @@ class ComprehensionAST(AST):
             cond = rest.args[0] if negate else rest
             cond.compile(scope, code)
             code.append(JumpCondOp(negate, pc))
-            self.rec_comprehension(scope, code, iter[1:], pc, N, ctype)
+            self.rec_comprehension(scope, code, iter[1:], pc, accu, ctype)
 
     def comprehension(self, scope, code, ctype):
+        ns = Scope(scope)
         # Keep track of the size
         uid = len(code.labeled_ops)
         (lexeme, file, line, column) = self.token
-        N = ("$n" + str(uid), file, line, column)
+        accu = ("$accu%d"%len(code.labeled_ops), file, line, column)
         if ctype == "set":
             code.append(PushOp((SetValue(set()), file, line, column)))
+            code.append(StoreVarOp(accu))
         elif ctype == "dict":
-            code.append(PushOp((novalue, file, line, column)))
-        elif ctype in {"bag", "list"}:
-            code.append(PushOp((0, file, line, column)))
-            code.append(StoreVarOp(N))
-            code.append(PushOp((novalue, file, line, column)))
-        self.rec_comprehension(scope, code, self.iter, None, N, ctype)
-
+            code.append(PushOp((emptydict, file, line, column)))  # LIST TODO
+            code.append(StoreVarOp(accu))
+        elif ctype == "list":
+            code.append(PushOp((emptytuple, file, line, column)))
+            code.append(StoreVarOp(accu))
+        self.rec_comprehension(ns, code, self.iter, None, accu, ctype)
+        if ctype in { "set", "dict", "list" }:
+            code.append(LoadVarOp(accu))
 
 class ConstantAST(AST):
     def __init__(self, const):
@@ -344,11 +346,10 @@ class TupleAST(AST):
 
     def gencode(self, scope, code):
         (lexeme, file, line, column) = self.token
-        code.append(PushOp((novalue, file, line, column)))
-        for (i, v) in enumerate(self.list):
-            code.append(PushOp((i, file, line, column)))
+        code.append(PushOp((emptytuple, file, line, column)))
+        for v in self.list:
             v.compile(scope, code)
-            code.append(NaryOp(("DictAdd", file, line, column), 3))
+            code.append(NaryOp(("ListAdd", file, line, column), 2))
 
     def localVar(self, scope):
         lexeme, file, line, column = self.token
@@ -388,7 +389,7 @@ class DictAST(AST):
                    for (k, v) in self.record)
 
     def gencode(self, scope, code):
-        code.append(PushOp((novalue, None, None, None)))
+        code.append(PushOp((emptydict, None, None, None)))
         for (k, v) in self.record:
             k.compile(scope, code)
             v.compile(scope, code)
@@ -1481,7 +1482,7 @@ class SpawnAST(AST):
         self.method.compile(scope, code)
         self.arg.compile(scope, code)
         if self.this == None:
-            code.append(PushOp((novalue, None, None, None)))
+            code.append(PushOp((emptydict, None, None, None)))
         else:
             self.this.compile(scope, code)
         code.append(SpawnOp(self.eternal))
@@ -1689,10 +1690,10 @@ class ConstAST(AST):
             scope.names[lexeme] = ("constant", (value, file, line, column))
         else:
             assert isinstance(const, list), const
-            assert isinstance(v, DictValue), v
-            assert len(const) == len(v.d), (const, v)
+            assert isinstance(v, ListValue), v
+            assert len(const) == len(v.vals), (const, v)
             for i in range(len(const)):
-                self.set(scope, const[i], v.d[i])
+                self.set(scope, const[i], v.vals[i])
 
     def compile(self, scope, code):
         if not self.expr.isConstant(scope):
@@ -1711,7 +1712,7 @@ class ConstAST(AST):
             code2 = Code()
             self.expr.compile(scope, code2)
             state = State(code2, scope.labels)
-            ctx = ContextValue(("__const__", None, None, None), 0, novalue, novalue)
+            ctx = ContextValue(("__const__", None, None, None), 0, emptytuple, emptydict)
             ctx.atomic = 1
             while ctx.pc != len(code2.labeled_ops):
                 code2.labeled_ops[ctx.pc].op.eval(state, ctx)

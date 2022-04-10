@@ -318,27 +318,6 @@ class LoadVarOp(Op):
             context.push(self.load(context, self.v))
         context.pc += 1
 
-class IncVarOp(Op):
-    def __init__(self, v):
-        self.v = v
-
-    def __repr__(self):
-        return "IncVar " + self.convert(self.v)
-
-    def jdump(self):
-        return '{ "op": "IncVar", "value": "%s" }'%self.convert(self.v)
-
-    def tladump(self):
-        return 'OpIncVar(self, %s)'%self.tlaconvert(self.v)
-
-    def explain(self):
-        return "increment the value of " + self.convert(self.v)
-
-    def eval(self, state, context):
-        v = self.load(context, self.v)
-        self.store(context, self.v, v + 1)
-        context.pc += 1
-
 class PushOp(Op):
     def __init__(self, constant):
         self.constant = constant
@@ -928,7 +907,7 @@ class FrameOp(Op):
         context.push(context.vars)
         context.push(context.fp)
         context.fp = len(context.stack) # points to old fp, old vars, and return address
-        context.vars = DictValue({ "result": novalue })
+        context.vars = DictValue({ "result": AddressValue([]) })
         self.store(context, self.args, arg)
         context.pc += 1
 
@@ -1272,6 +1251,8 @@ class NaryOp(Op):
             return "OpBin(self, FunMod)"
         if lexeme == "**" and self.n == 2:
             return "OpBin(self, FunPower)"
+        if lexeme == "ListAdd" and self.n == 2:
+            return "OpListAdd(self)"
         if lexeme == "DictAdd" and self.n == 3:
             return "OpDictAdd(self)"
         return 'Skip(self, "%s")'%self
@@ -1301,14 +1282,7 @@ class NaryOp(Op):
         return DictValue({ **state.ctxbag, **state.termbag, **state.stopbag })
 
     def concat(self, d1, d2):
-        result = []
-        keys = sorted(d1.d.keys(), key=keyValue)
-        for k in keys:
-            result.append(d1.d[k])
-        keys = sorted(d2.d.keys(), key=keyValue)
-        for k in keys:
-            result.append(d2.d[k])
-        return DictValue({ i:result[i] for i in range(len(result)) })
+        return ListValue(d1.vals + d2.vals)
 
     def checktype(self, state, context, args, chk):
         assert len(args) == self.n, (self, args)
@@ -1321,17 +1295,10 @@ class NaryOp(Op):
     def checkdmult(self, state, context, args, d, e):
         if not self.checktype(state, context, args, type(e) == int):
             return False
-        keys = set(range(len(d.d)))
-        if d.d.keys() != keys:
-            context.failure = "Error: one operand in " + str(self.op) + \
-                        " must be a list: " + str(list(reversed(args)))
-            return False
         return True
 
     def dmult(self, d, e):
-        n = len(d.d)
-        lst = { i:d.d[i % n] for i in range(e * n) }
-        return DictValue(lst)
+        return ListValue(d.vals * e)
 
     def eval(self, state, context):
         (op, file, line, column) = self.op
@@ -1352,18 +1319,18 @@ class NaryOp(Op):
                             return
                         e2 = e1 + e2
                     else:
-                        if not self.checktype(state, context, sa, isinstance(e1, DictValue)):
+                        if not self.checktype(state, context, sa, isinstance(e1, ListValue)):
                             return
-                        if not self.checktype(state, context, sa, isinstance(e2, DictValue)):
+                        if not self.checktype(state, context, sa, isinstance(e2, ListValue)):
                             return
                         e2 = self.concat(e1, e2)
                 elif op == "*":
-                    if isinstance(e1, DictValue) or isinstance(e2, DictValue):
-                        if isinstance(e1, DictValue) and not self.checkdmult(state, context, sa, e1, e2):
+                    if isinstance(e1, ListValue) or isinstance(e2, ListValue):
+                        if isinstance(e1, ListValue) and not self.checkdmult(state, context, sa, e1, e2):
                             return
-                        if isinstance(e2, DictValue) and not self.checkdmult(state, context, sa, e2, e1):
+                        if isinstance(e2, ListValue) and not self.checkdmult(state, context, sa, e2, e1):
                             return
-                        e2 = self.dmult(e1, e2) if isinstance(e1, DictValue) else self.dmult(e2, e1)
+                        e2 = self.dmult(e1, e2) if isinstance(e1, ListValue) else self.dmult(e2, e1)
                     elif isinstance(e1, str) or isinstance(e2, str):
                         if isinstance(e1, str) and not self.checktype(state, context, sa, isinstance(e2, int)):
                             return
@@ -1621,10 +1588,13 @@ class NaryOp(Op):
                 elif not self.checktype(state, context, sa, isinstance(e2, DictValue)):
                     return
                 else:
-                    context.push(e1 in e2.d.values())
+                    context.push(e1 in e2.d)
             elif op == "SetAdd":
                 assert isinstance(e1, SetValue)
                 context.push(SetValue(e1.s | {e2}))
+            elif op == "ListAdd":
+                assert isinstance(e1, ListValue)
+                context.push(ListValue(e1.vals + [e2]))
             elif op == "BagAdd":
                 assert isinstance(e1, DictValue)
                 d = e1.d.copy()

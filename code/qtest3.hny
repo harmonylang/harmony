@@ -3,7 +3,7 @@ import queue
 const N = 2
 
 testq = queue.Queue()
-gotten = []
+gotten = {:}
 
 def putter(i):
     queue.put(?testq, (i, 1))

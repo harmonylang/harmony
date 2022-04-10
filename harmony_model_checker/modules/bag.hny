@@ -1,53 +1,47 @@
 def empty():
-    result = []
+    result = {:}
 
 def fromSet(s):
     result = { elt:1 for elt in s }
 
 def fromList(a):
-    result = []
+    result = {:}
     for v in a:
-        if v in keys(result):
+        if v in result:
             result[v] += 1
         else:
             result[v] = 1
 
 def multiplicity(bg, elt):
-    assert 0 not in bg
-    if elt in keys(bg):
+    if elt in bg:
         result = bg[elt]
     else:
         result = 0
 
 def size(bg):
-    assert 0 not in bg
     result = 0
-    for c in bg:
+    for _:c in bg:
         result += c
 
 def bmin(bg):
-    assert 0 not in bg
     result = min(keys(bg))
 
 def bmax(bg):
     result = max(keys(bg))
 
 def bchoose(bg):
-    assert 0 not in bg
     result = choose(keys(bg))
 
 def add(bg, elt):
-    assert 0 not in bg
     result = bg
-    if elt in keys(result):
+    if elt in result:
         result[elt] += 1
     else:
         result[elt] = 1
 
 def remove(bg, elt):
-    assert 0 not in bg
     result = bg
-    if (elt in keys(result)) and (result[elt] > 0):
+    if elt in result:
         result[elt] -= 1
     if result[elt] <= 0:
         del result[elt]

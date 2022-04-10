@@ -1,8 +1,10 @@
+#import "head.h"
+
 #include "hashset.h"
 
 struct hashset_t hashset_new(int initial_size) {
     struct hashset_t set;
-    set.dict = dict_new(initial_size);
+    set.dict = dict_new(initial_size, NULL, NULL);
     return set;
 }
 

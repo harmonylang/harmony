@@ -14,7 +14,7 @@ struct step {
     struct context *ctx;
     struct access_info *ai;
     hvalue_t *log;
-    int nlog;
+    unsigned int nlog;
     struct dfa_trie *dfa_trie;
 };
 
@@ -30,7 +30,7 @@ struct env_Cut {
 
 struct env_Del {
     hvalue_t *indices;
-    int n;
+    unsigned int n;
 };
 
 struct env_DelVar {
@@ -44,10 +44,6 @@ struct env_Frame {
 
 struct env_AtomicInc {
     bool lazy;
-};
-
-struct env_IncVar {
-    hvalue_t name;
 };
 
 struct env_Invariant {
@@ -65,7 +61,7 @@ struct env_JumpCond {
 
 struct env_Load {
     hvalue_t *indices;
-    int n;
+    unsigned int n;
 };
 
 struct env_LoadVar {
@@ -77,7 +73,7 @@ struct env_Move {
 };
 
 struct env_Nary {
-    int arity;
+    unsigned int arity;
     struct f_info *fi;
 };
 
@@ -90,17 +86,17 @@ struct env_Spawn {
 };
 
 struct env_Split {
-    int count;
+    unsigned int count;
 };
 
 struct env_Stop {
     hvalue_t *indices;
-    int n;
+    unsigned int n;
 };
 
 struct env_Store {
     hvalue_t *indices;
-    int n;
+    unsigned int n;
 };
 
 struct env_StoreVar {

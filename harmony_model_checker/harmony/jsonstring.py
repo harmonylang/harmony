@@ -10,13 +10,17 @@ def json_string(js):
         return v
     if type == "atom":
         return '"' + v + '"'
+    if type == "list":
+        if v == []:
+            return "[]"
+        return "[ " + ", ".join([ json_string(val) for val in v]) + " ]"
     if type == "set":
         if v == []:
             return "{}"
         return "{ " + ", ".join([ json_string(val) for val in v]) + " }"
     if type == "dict":
         if v == []:
-            return "()"
+            return "{:}"
         lst = [ (json_string(js["key"]), json_string(js["value"])) for js in v ]
         if [ k for k,_ in lst ] == [ str(i) for i in range(len(v)) ]:
             return "[ " + ", ".join([ x for _,x in lst ]) + " ]" 

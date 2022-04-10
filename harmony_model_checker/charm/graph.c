@@ -1,3 +1,5 @@
+#import "head.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +10,7 @@
 
 #define new_alloc(t)	(t *) calloc(1, sizeof(t))
 
-void graph_init(struct graph_t *graph, int initial_size) {
+void graph_init(struct graph_t *graph, unsigned int initial_size) {
     assert(initial_size >= 1);
     graph->size = 0;
     graph->alloc_size = initial_size;
@@ -58,13 +60,13 @@ static void kosaraju_assign(struct node *node, int component) {
 }
 
 int graph_find_scc(struct graph_t *graph) {
-    for (int i = 0; i < graph->size; i++) {
+    for (unsigned int i = 0; i < graph->size; i++) {
         kosaraju_visit(graph->nodes[i]);
     }
 
     // make sure all nodes are marked and on the stack
     // while at it clear all the visited flags
-    int count = 0;
+    unsigned int count = 0;
     for (struct stack *s = stack; s != NULL; s = s->next) {
         assert(s->node->visited);
         s->node->visited = false;
@@ -84,7 +86,7 @@ int graph_find_scc(struct graph_t *graph) {
             kosaraju_assign(next, count++);
         }
     }
-    for (int i = 0; i < graph->size; i++) {
+    for (unsigned int i = 0; i < graph->size; i++) {
         assert(graph->nodes[i]->visited);
     }
 
