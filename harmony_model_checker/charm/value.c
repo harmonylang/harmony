@@ -856,13 +856,36 @@ static void align_free(void *p){
     free(((char *) p) - offset);
 }
 
+// Try to figure out the "native" alignment of this machine.  It's
+// probably good enough
+#define N_ALIGN_TESTS 16
+static bool align_test(){
+    for (int i = 0; i < N_ALIGN_TESTS; i++) {
+        if (((hvalue_t) malloc(1) & VALUE_MASK) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void value_init(struct values_t *values){
-    values->atoms = dict_new(0, align_alloc, align_free);
-    values->dicts = dict_new(0, align_alloc, align_free);
-    values->sets = dict_new(0, align_alloc, align_free);
-    values->lists = dict_new(0, align_alloc, align_free);
-    values->addresses = dict_new(0, align_alloc, align_free);
-    values->contexts = dict_new(0, align_alloc, align_free);
+    if (align_test()) {
+        // printf("malloc appears aligned to %d bytes\n", 1 << VALUE_BITS);
+        values->atoms = dict_new(0, NULL, NULL);
+        values->dicts = dict_new(0, NULL, NULL);
+        values->sets = dict_new(0, NULL, NULL);
+        values->lists = dict_new(0, NULL, NULL);
+        values->addresses = dict_new(0, NULL, NULL);
+        values->contexts = dict_new(0, NULL, NULL);
+    }
+    else {
+        values->atoms = dict_new(0, align_alloc, align_free);
+        values->dicts = dict_new(0, align_alloc, align_free);
+        values->sets = dict_new(0, align_alloc, align_free);
+        values->lists = dict_new(0, align_alloc, align_free);
+        values->addresses = dict_new(0, align_alloc, align_free);
+        values->contexts = dict_new(0, align_alloc, align_free);
+    }
 }
 
 void value_set_concurrent(struct values_t *values, int concurrent){
