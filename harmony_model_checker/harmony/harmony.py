@@ -1173,8 +1173,15 @@ table td, table th {
 
 def dumpCode(printCode, code, scope, f=sys.stdout):
     lastloc = None
+    print(code.hypers)
     if printCode == "json":
         print("{", file=f)
+        print("  \"filter\": [", file=f)
+        for d in code.hypers:
+            print("excuse")
+            print(d)
+            print(f"    {json.dumps(d[1])},", file=f)
+        print("  ],", file=f)
         print('  "labels": {', file=f)
         if True:
             for (k, v) in scope.labels.items():

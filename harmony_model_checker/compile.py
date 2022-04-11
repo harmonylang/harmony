@@ -106,7 +106,6 @@ def _load_file(filename: str, scope: Scope, code: Code):
     ast.compile(scope, code)
     legacy_harmony.namestack.pop()
 
-
 def _do_import(scope: Scope, code: Code, module):
     (lexeme, file, line, column) = module
     # assert lexeme not in scope.names        # TODO

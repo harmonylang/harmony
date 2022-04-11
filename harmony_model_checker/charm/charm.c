@@ -1549,7 +1549,7 @@ static void do_work(struct worker *w){
 					state->choosing,
 					vals[i],
 					1,
-                    w->filter
+                    w->filters
 				);
 			}
 		}
@@ -1567,7 +1567,7 @@ static void do_work(struct worker *w){
 					ctxs[i],
 					0,
 					VALUE_FROM_INT(ctxs[i+1]),
-                    w->filter
+                    w->filters
 				);
 			}
 		}
@@ -1908,7 +1908,6 @@ int main(int argc, char **argv){
     struct json_value *filt = dict_lookup(jv->u.map, "filter", 6);
 
     // Create filters
-    // TODO: Do I want to heap allocate this?
     struct filter_t filters = create_filter(filt);
 
     // Create an initial state
@@ -1979,7 +1978,7 @@ int main(int argc, char **argv){
         w->nworkers = nworkers;
         w->visited = visited;
         w->last = &w->results;
-        w->filter = filters;
+        w->filters = filters;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = calloc(1, sizeof(struct context) +

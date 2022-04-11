@@ -65,10 +65,10 @@ def serializedATN():
         buf.write("X\3X\3X\3X\3X\3X\3X\3Y\3Y\3Y\3Y\3Y\3Z\3Z\3Z\3Z\3[\3[\3")
         buf.write("[\3\\\3\\\3\\\3\\\3\\\3]\3]\3]\3]\3]\3^\3^\3_\3_\3_\3")
         buf.write("_\3_\3_\3`\3`\3`\3`\3a\3a\3a\3a\3a\3a\3a\3b\3b\3b\3b\3")
-        buf.write("b\3b\3c\3c\3d\3d\3d\3d\3d\3d\3e\3e\3e\3e\3e\3f\3f\3g\3")
-        buf.write("g\3g\3g\3g\3h\3h\3h\3h\3h\3h\3h\3h\3h\3h\3h\3i\3i\3i\3")
-        buf.write("i\3i\3i\3i\3i\3i\5i\u02f1\ni\3j\3j\3j\3j\3j\3j\3j\3j\3")
-        buf.write("k\3k\3k\3k\3k\3k\3k\3k\3k\3k\3k\3k\3k\3l\6l\u0309\nl\r")
+        buf.write("b\3b\3c\3c\3d\3d\3d\3d\3d\3d\3e\3e\3e\3e\3e\3f\3f\3f\3")
+        buf.write("f\3f\3f\3f\3f\3f\3f\3f\3f\3f\3g\3g\3h\3h\3h\3h\3h\3i\3")
+        buf.write("i\3i\3i\3i\3i\3i\3i\3i\3i\3i\3j\3j\3j\3j\3j\3j\3j\3j\3")
+        buf.write("j\5j\u02fe\nj\3k\3k\3k\3k\3k\3k\3k\3k\3l\6l\u0309\nl\r")
         buf.write("l\16l\u030a\3l\3l\3l\5l\u0310\nl\3m\3m\7m\u0314\nm\fm")
         buf.write("\16m\u0317\13m\3n\3n\3n\5n\u031c\nn\3o\3o\3o\3o\6o\u0322")
         buf.write("\no\ro\16o\u0323\3p\3p\3q\3q\3q\3r\3r\3r\3s\3s\3s\3t\3")
@@ -153,9 +153,9 @@ def serializedATN():
         buf.write("\3\2\2\2\u00bb\u02af\3\2\2\2\u00bd\u02b1\3\2\2\2\u00bf")
         buf.write("\u02b7\3\2\2\2\u00c1\u02bb\3\2\2\2\u00c3\u02c2\3\2\2\2")
         buf.write("\u00c5\u02c8\3\2\2\2\u00c7\u02ca\3\2\2\2\u00c9\u02d0\3")
-        buf.write("\2\2\2\u00cb\u02d5\3\2\2\2\u00cd\u02d7\3\2\2\2\u00cf\u02dc")
-        buf.write("\3\2\2\2\u00d1\u02f0\3\2\2\2\u00d3\u02f2\3\2\2\2\u00d5")
-        buf.write("\u02fa\3\2\2\2\u00d7\u030f\3\2\2\2\u00d9\u0311\3\2\2\2")
+        buf.write("\2\2\2\u00cb\u02d5\3\2\2\2\u00cd\u02e2\3\2\2\2\u00cf\u02e4")
+        buf.write("\3\2\2\2\u00d1\u02e9\3\2\2\2\u00d3\u02fd\3\2\2\2\u00d5")
+        buf.write("\u02ff\3\2\2\2\u00d7\u030f\3\2\2\2\u00d9\u0311\3\2\2\2")
         buf.write("\u00db\u0318\3\2\2\2\u00dd\u031d\3\2\2\2\u00df\u0325\3")
         buf.write("\2\2\2\u00e1\u0327\3\2\2\2\u00e3\u032a\3\2\2\2\u00e5\u032d")
         buf.write("\3\2\2\2\u00e7\u0330\3\2\2\2\u00e9\u0333\3\2\2\2\u00eb")
@@ -326,27 +326,27 @@ def serializedATN():
         buf.write("\2\2\u02cd\u02ce\3\2\2\2\u02ce\u02cf\bd\4\2\u02cf\u00c8")
         buf.write("\3\2\2\2\u02d0\u02d1\7k\2\2\u02d1\u02d2\7p\2\2\u02d2\u02d3")
         buf.write("\3\2\2\2\u02d3\u02d4\be\5\2\u02d4\u00ca\3\2\2\2\u02d5")
-        buf.write("\u02d6\7<\2\2\u02d6\u00cc\3\2\2\2\u02d7\u02d8\7P\2\2\u02d8")
-        buf.write("\u02d9\7q\2\2\u02d9\u02da\7p\2\2\u02da\u02db\7g\2\2\u02db")
-        buf.write("\u00ce\3\2\2\2\u02dc\u02dd\7c\2\2\u02dd\u02de\7v\2\2\u02de")
-        buf.write("\u02df\7q\2\2\u02df\u02e0\7o\2\2\u02e0\u02e1\7k\2\2\u02e1")
-        buf.write("\u02e2\7e\2\2\u02e2\u02e3\7c\2\2\u02e3\u02e4\7n\2\2\u02e4")
-        buf.write("\u02e5\7n\2\2\u02e5\u02e6\7{\2\2\u02e6\u00d0\3\2\2\2\u02e7")
-        buf.write("\u02e8\7H\2\2\u02e8\u02e9\7c\2\2\u02e9\u02ea\7n\2\2\u02ea")
-        buf.write("\u02eb\7u\2\2\u02eb\u02f1\7g\2\2\u02ec\u02ed\7V\2\2\u02ed")
-        buf.write("\u02ee\7t\2\2\u02ee\u02ef\7w\2\2\u02ef\u02f1\7g\2\2\u02f0")
-        buf.write("\u02e7\3\2\2\2\u02f0\u02ec\3\2\2\2\u02f1\u00d2\3\2\2\2")
-        buf.write("\u02f2\u02f3\7g\2\2\u02f3\u02f4\7v\2\2\u02f4\u02f5\7g")
-        buf.write("\2\2\u02f5\u02f6\7t\2\2\u02f6\u02f7\7p\2\2\u02f7\u02f8")
-        buf.write("\7c\2\2\u02f8\u02f9\7n\2\2\u02f9\u00d4\3\2\2\2\u02fa\u02fb")
-        buf.write("\7j\2\2\u02fb\u02fc\7{\2\2\u02fc\u02fd\7r\2\2\u02fd\u02fe")
-        buf.write("\7g\2\2\u02fe\u02ff\7t\2\2\u02ff\u0300\7a\2\2\u0300\u0301")
-        buf.write("\7c\2\2\u0301\u0302\7u\2\2\u0302\u0303\7u\2\2\u0303\u0304")
-        buf.write("\7g\2\2\u0304\u0305\7t\2\2\u0305\u0306\7v\2\2\u0306\u00d6")
-        buf.write("\3\2\2\2\u0307\u0309\t\3\2\2\u0308\u0307\3\2\2\2\u0309")
-        buf.write("\u030a\3\2\2\2\u030a\u0308\3\2\2\2\u030a\u030b\3\2\2\2")
-        buf.write("\u030b\u0310\3\2\2\2\u030c\u030d\7k\2\2\u030d\u030e\7")
-        buf.write("p\2\2\u030e\u0310\7h\2\2\u030f\u0308\3\2\2\2\u030f\u030c")
+        buf.write("\u02d6\7j\2\2\u02d6\u02d7\7{\2\2\u02d7\u02d8\7r\2\2\u02d8")
+        buf.write("\u02d9\7g\2\2\u02d9\u02da\7t\2\2\u02da\u02db\7a\2\2\u02db")
+        buf.write("\u02dc\7c\2\2\u02dc\u02dd\7u\2\2\u02dd\u02de\7u\2\2\u02de")
+        buf.write("\u02df\7g\2\2\u02df\u02e0\7t\2\2\u02e0\u02e1\7v\2\2\u02e1")
+        buf.write("\u00cc\3\2\2\2\u02e2\u02e3\7<\2\2\u02e3\u00ce\3\2\2\2")
+        buf.write("\u02e4\u02e5\7P\2\2\u02e5\u02e6\7q\2\2\u02e6\u02e7\7p")
+        buf.write("\2\2\u02e7\u02e8\7g\2\2\u02e8\u00d0\3\2\2\2\u02e9\u02ea")
+        buf.write("\7c\2\2\u02ea\u02eb\7v\2\2\u02eb\u02ec\7q\2\2\u02ec\u02ed")
+        buf.write("\7o\2\2\u02ed\u02ee\7k\2\2\u02ee\u02ef\7e\2\2\u02ef\u02f0")
+        buf.write("\7c\2\2\u02f0\u02f1\7n\2\2\u02f1\u02f2\7n\2\2\u02f2\u02f3")
+        buf.write("\7{\2\2\u02f3\u00d2\3\2\2\2\u02f4\u02f5\7H\2\2\u02f5\u02f6")
+        buf.write("\7c\2\2\u02f6\u02f7\7n\2\2\u02f7\u02f8\7u\2\2\u02f8\u02fe")
+        buf.write("\7g\2\2\u02f9\u02fa\7V\2\2\u02fa\u02fb\7t\2\2\u02fb\u02fc")
+        buf.write("\7w\2\2\u02fc\u02fe\7g\2\2\u02fd\u02f4\3\2\2\2\u02fd\u02f9")
+        buf.write("\3\2\2\2\u02fe\u00d4\3\2\2\2\u02ff\u0300\7g\2\2\u0300")
+        buf.write("\u0301\7v\2\2\u0301\u0302\7g\2\2\u0302\u0303\7t\2\2\u0303")
+        buf.write("\u0304\7p\2\2\u0304\u0305\7c\2\2\u0305\u0306\7n\2\2\u0306")
+        buf.write("\u00d6\3\2\2\2\u0307\u0309\t\3\2\2\u0308\u0307\3\2\2\2")
+        buf.write("\u0309\u030a\3\2\2\2\u030a\u0308\3\2\2\2\u030a\u030b\3")
+        buf.write("\2\2\2\u030b\u0310\3\2\2\2\u030c\u030d\7k\2\2\u030d\u030e")
+        buf.write("\7p\2\2\u030e\u0310\7h\2\2\u030f\u0308\3\2\2\2\u030f\u030c")
         buf.write("\3\2\2\2\u0310\u00d8\3\2\2\2\u0311\u0315\t\4\2\2\u0312")
         buf.write("\u0314\t\5\2\2\u0313\u0312\3\2\2\2\u0314\u0317\3\2\2\2")
         buf.write("\u0315\u0313\3\2\2\2\u0315\u0316\3\2\2\2\u0316\u00da\3")
@@ -392,7 +392,7 @@ def serializedATN():
         buf.write("\u0376\u037a\13\2\2\2\u0377\u0378\7^\2\2\u0378\u037a\5")
         buf.write("o8\2\u0379\u0375\3\2\2\2\u0379\u0377\3\2\2\2\u037a\u00fa")
         buf.write("\3\2\2\2\36\2\u01d2\u01d8\u01de\u01e1\u01e8\u01ed\u01f2")
-        buf.write("\u01fa\u0203\u0206\u02f0\u030a\u030f\u0315\u031b\u0323")
+        buf.write("\u01fa\u0203\u0206\u02fd\u030a\u030f\u0315\u031b\u0323")
         buf.write("\u033d\u0342\u0344\u034b\u034d\u0351\u035a\u0367\u036d")
         buf.write("\u0371\u0379\f\38\2\b\2\2\3d\3\3e\4\3q\5\3r\6\3s\7\3t")
         buf.write("\b\3u\t\3v\n")
@@ -504,12 +504,12 @@ class HarmonyLexer(Lexer):
     EQ = 97
     FOR = 98
     IN = 99
-    COLON = 100
-    NONE = 101
-    ATOMICALLY = 102
-    BOOL = 103
-    ETERNAL = 104
-    HYPER = 105
+    HYPER = 100
+    COLON = 101
+    NONE = 102
+    ATOMICALLY = 103
+    BOOL = 104
+    ETERNAL = 105
     INT = 106
     NAME = 107
     ATOM = 108
@@ -542,9 +542,8 @@ class HarmonyLexer(Lexer):
             "'var'", "'trap'", "'pass'", "'del'", "'spawn'", "'invariant'", 
             "'go'", "'sequential'", "'when'", "'let'", "'if'", "'elif'", 
             "'else'", "'@'", "'while'", "'def'", "'exists'", "'where'", 
-            "'='", "'for'", "'in'", "':'", "'None'", "'atomically'", "'eternal'", 
-            "'hyper_assert'", "'['", "']'", "'{'", "'}'", "'('", "')'", 
-            "';'" ]
+            "'='", "'for'", "'in'", "'hyper_assert'", "':'", "'None'", "'atomically'", 
+            "'eternal'", "'['", "']'", "'{'", "'}'", "'('", "')'", "';'" ]
 
     symbolicNames = [ "<INVALID>",
             "NL", "WS", "COMMENT_START", "OPEN_MULTI_COMMENT", "CLOSE_MULTI_COMMENT", 
@@ -553,8 +552,8 @@ class HarmonyLexer(Lexer):
             "NOT", "COMMA", "CONST", "AWAIT", "ASSERT", "VAR", "TRAP", "PASS", 
             "DEL", "SPAWN", "INVARIANT", "GO", "SEQUENTIAL", "WHEN", "LET", 
             "IF", "ELIF", "ELSE", "AT", "WHILE", "DEF", "EXISTS", "WHERE", 
-            "EQ", "FOR", "IN", "COLON", "NONE", "ATOMICALLY", "BOOL", "ETERNAL", 
-            "HYPER", "INT", "NAME", "ATOM", "HEX_INTEGER", "OPEN_BRACK", 
+            "EQ", "FOR", "IN", "HYPER", "COLON", "NONE", "ATOMICALLY", "BOOL", 
+            "ETERNAL", "INT", "NAME", "ATOM", "HEX_INTEGER", "OPEN_BRACK", 
             "CLOSE_BRACK", "OPEN_BRACES", "CLOSE_BRACES", "OPEN_PAREN", 
             "CLOSE_PAREN", "SEMI_COLON", "STRING" ]
 
@@ -574,8 +573,8 @@ class HarmonyLexer(Lexer):
                   "ASSERT", "VAR", "TRAP", "PASS", "DEL", "SPAWN", "INVARIANT", 
                   "GO", "SEQUENTIAL", "WHEN", "LET", "IF", "ELIF", "ELSE", 
                   "AT", "WHILE", "DEF", "EXISTS", "WHERE", "EQ", "FOR", 
-                  "IN", "COLON", "NONE", "ATOMICALLY", "BOOL", "ETERNAL", 
-                  "HYPER", "INT", "NAME", "ATOM", "HEX_INTEGER", "HEX_DIGIT", 
+                  "IN", "HYPER", "COLON", "NONE", "ATOMICALLY", "BOOL", 
+                  "ETERNAL", "INT", "NAME", "ATOM", "HEX_INTEGER", "HEX_DIGIT", 
                   "OPEN_BRACK", "CLOSE_BRACK", "OPEN_BRACES", "CLOSE_BRACES", 
                   "OPEN_PAREN", "CLOSE_PAREN", "SEMI_COLON", "STRING", "SHORT_STRING", 
                   "LONG_STRING", "LONG_STRING_ITEM", "LONG_STRING_CHAR", 

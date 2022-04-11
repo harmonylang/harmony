@@ -1724,5 +1724,41 @@ class ConstAST(AST):
 
 
 class HyperassertAST(AST):
-    def __init__(self, token):
-        super().__init__(self, token, True)
+    def __init__(self, token, condition, compare_op, expected):
+        super().__init__(token, True)
+        self.condition = condition
+        self.compare_op = compare_op
+        self.expected = expected
+
+    def __repr__(self):
+        return f"Hyperassert({self.condition}, {self.expected})"
+    
+    def compile(self, scope, code):
+        code.hypers.append((
+            self.token, 
+            self.condition.compile(scope, code),
+            (self.compare_op, self.expected)
+        ))
+
+
+# TODO: Make more extensible
+class HyperConditionAST(AST):
+    def __init__(self, token, label):
+        super().__init__(token, True)
+        self.label = label
+
+    def __repr__(self):
+        return f"HyperCondition({self.label})"
+    
+    def compile(self, scope, code):
+        # If we can find the label/constant, then create a hyperproperty
+        if self.label[0] in scope.names and scope.names[self.label[0]][0] == "constant":
+            return {"pc": scope.names[self.label[0]][1][0]}
+        else:
+            raise HarmonyCompilerError(
+                filename=self.token[1],
+                lexeme=self.token[0],
+                line=self.token[2],
+                column=self.token[3],
+                message=f"Label `{self.label[0]}` not found in the program"
+            )

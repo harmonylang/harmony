@@ -12,7 +12,7 @@ else:
 def serializedATN():
     with StringIO() as buf:
         buf.write("\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3y")
-        buf.write("\u0245\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
+        buf.write("\u0244\4\2\t\2\4\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7")
         buf.write("\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t\13\4\f\t\f\4\r\t\r\4\16")
         buf.write("\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22\4\23\t\23")
         buf.write("\4\24\t\24\4\25\t\25\4\26\t\26\4\27\t\27\4\30\t\30\4\31")
@@ -55,19 +55,19 @@ def serializedATN():
         buf.write("\n*\3+\3+\3+\3+\3,\3,\3,\3,\3,\3,\3-\3-\3-\3-\3-\3.\3")
         buf.write(".\3.\3.\3.\3/\3/\3/\3/\3\60\3\60\3\60\3\60\3\60\7\60\u01d7")
         buf.write("\n\60\f\60\16\60\u01da\13\60\3\60\5\60\u01dd\n\60\3\61")
-        buf.write("\3\61\3\61\3\62\3\62\3\62\3\62\3\62\3\62\3\62\3\63\6\63")
-        buf.write("\u01ea\n\63\r\63\16\63\u01eb\3\64\3\64\5\64\u01f0\n\64")
-        buf.write("\3\65\3\65\3\65\3\65\5\65\u01f6\n\65\3\65\3\65\3\65\5")
-        buf.write("\65\u01fb\n\65\3\66\5\66\u01fe\n\66\3\66\3\66\3\66\3\66")
-        buf.write("\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66")
-        buf.write("\5\66\u020f\n\66\3\67\5\67\u0212\n\67\3\67\3\67\3\67\3")
-        buf.write("\67\3\67\3\67\5\67\u021a\n\67\38\38\58\u021e\n8\38\38")
-        buf.write("\38\58\u0223\n8\39\39\69\u0227\n9\r9\169\u0228\3:\5:\u022c")
-        buf.write("\n:\3:\5:\u022f\n:\3:\7:\u0232\n:\f:\16:\u0235\13:\3:")
-        buf.write("\3:\3:\3:\3:\5:\u023c\n:\3:\3:\5:\u0240\n:\3:\5:\u0243")
+        buf.write("\3\61\3\62\3\62\3\62\3\62\3\62\3\62\3\62\3\63\6\63\u01e9")
+        buf.write("\n\63\r\63\16\63\u01ea\3\64\3\64\5\64\u01ef\n\64\3\65")
+        buf.write("\3\65\3\65\3\65\5\65\u01f5\n\65\3\65\3\65\3\65\5\65\u01fa")
+        buf.write("\n\65\3\66\5\66\u01fd\n\66\3\66\3\66\3\66\3\66\3\66\3")
+        buf.write("\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\3\66\5\66")
+        buf.write("\u020e\n\66\3\67\5\67\u0211\n\67\3\67\3\67\3\67\3\67\3")
+        buf.write("\67\3\67\5\67\u0219\n\67\38\38\58\u021d\n8\38\38\38\5")
+        buf.write("8\u0222\n8\39\39\69\u0226\n9\r9\169\u0227\3:\5:\u022b")
+        buf.write("\n:\3:\5:\u022e\n:\3:\7:\u0231\n:\f:\16:\u0234\13:\3:")
+        buf.write("\3:\3:\3:\3:\5:\u023b\n:\3:\3:\5:\u023f\n:\3:\5:\u0242")
         buf.write("\n:\3:\2\3&;\2\4\6\b\n\f\16\20\22\24\26\30\32\34\36 \"")
         buf.write("$&(*,.\60\62\64\668:<>@BDFHJLNPRTVXZ\\^`bdfhjlnpr\2\6")
-        buf.write("\4\2\3\21??\3\2\22\27\5\2\t\t\30(LL\3\2*8\2\u026c\2w\3")
+        buf.write("\4\2\3\21??\3\2\22\27\5\2\t\t\30(LL\3\2*8\2\u026b\2w\3")
         buf.write("\2\2\2\4~\3\2\2\2\6\u0085\3\2\2\2\b\u0088\3\2\2\2\n\u008f")
         buf.write("\3\2\2\2\f\u00a4\3\2\2\2\16\u00ab\3\2\2\2\20\u00b0\3\2")
         buf.write("\2\2\22\u00b2\3\2\2\2\24\u00b4\3\2\2\2\26\u00d0\3\2\2")
@@ -81,9 +81,9 @@ def serializedATN():
         buf.write("H\u018e\3\2\2\2J\u0197\3\2\2\2L\u019b\3\2\2\2N\u019f\3")
         buf.write("\2\2\2P\u01a6\3\2\2\2R\u01b4\3\2\2\2T\u01b9\3\2\2\2V\u01bd")
         buf.write("\3\2\2\2X\u01c3\3\2\2\2Z\u01c8\3\2\2\2\\\u01cd\3\2\2\2")
-        buf.write("^\u01d1\3\2\2\2`\u01de\3\2\2\2b\u01e1\3\2\2\2d\u01e9\3")
-        buf.write("\2\2\2f\u01ef\3\2\2\2h\u01f1\3\2\2\2j\u01fd\3\2\2\2l\u0211")
-        buf.write("\3\2\2\2n\u021b\3\2\2\2p\u0226\3\2\2\2r\u0242\3\2\2\2")
+        buf.write("^\u01d1\3\2\2\2`\u01de\3\2\2\2b\u01e0\3\2\2\2d\u01e8\3")
+        buf.write("\2\2\2f\u01ee\3\2\2\2h\u01f0\3\2\2\2j\u01fc\3\2\2\2l\u0210")
+        buf.write("\3\2\2\2n\u021a\3\2\2\2p\u0225\3\2\2\2r\u0241\3\2\2\2")
         buf.write("tv\5r:\2ut\3\2\2\2vy\3\2\2\2wu\3\2\2\2wx\3\2\2\2xz\3\2")
         buf.write("\2\2yw\3\2\2\2z{\7\2\2\3{\3\3\2\2\2|\177\5\6\4\2}\177")
         buf.write("\5\b\5\2~|\3\2\2\2~}\3\2\2\2\177\u0081\3\2\2\2\u0080\u0082")
@@ -109,11 +109,11 @@ def serializedATN():
         buf.write("\5\f\7\2\u00af\17\3\2\2\2\u00b0\u00b1\t\2\2\2\u00b1\21")
         buf.write("\3\2\2\2\u00b2\u00b3\t\3\2\2\u00b3\23\3\2\2\2\u00b4\u00b5")
         buf.write("\t\4\2\2\u00b5\25\3\2\2\2\u00b6\u00d1\7l\2\2\u00b7\u00d1")
-        buf.write("\7i\2\2\u00b8\u00d1\7n\2\2\u00b9\u00d1\7m\2\2\u00ba\u00d1")
-        buf.write("\7w\2\2\u00bb\u00d1\7g\2\2\u00bc\u00be\7r\2\2\u00bd\u00bf")
+        buf.write("\7j\2\2\u00b8\u00d1\7n\2\2\u00b9\u00d1\7m\2\2\u00ba\u00d1")
+        buf.write("\7w\2\2\u00bb\u00d1\7h\2\2\u00bc\u00be\7r\2\2\u00bd\u00bf")
         buf.write("\5\30\r\2\u00be\u00bd\3\2\2\2\u00be\u00bf\3\2\2\2\u00bf")
         buf.write("\u00c0\3\2\2\2\u00c0\u00d1\7s\2\2\u00c1\u00c2\7r\2\2\u00c2")
-        buf.write("\u00c3\7f\2\2\u00c3\u00d1\7s\2\2\u00c4\u00c6\7t\2\2\u00c5")
+        buf.write("\u00c3\7g\2\2\u00c3\u00d1\7s\2\2\u00c4\u00c6\7t\2\2\u00c5")
         buf.write("\u00c7\5 \21\2\u00c6\u00c5\3\2\2\2\u00c6\u00c7\3\2\2\2")
         buf.write("\u00c7\u00c8\3\2\2\2\u00c8\u00d1\7u\2\2\u00c9\u00cb\7")
         buf.write("p\2\2\u00ca\u00cc\5 \21\2\u00cb\u00ca\3\2\2\2\u00cb\u00cc")
@@ -123,9 +123,9 @@ def serializedATN():
         buf.write("\2\2\2\u00d0\u00ba\3\2\2\2\u00d0\u00bb\3\2\2\2\u00d0\u00bc")
         buf.write("\3\2\2\2\u00d0\u00c1\3\2\2\2\u00d0\u00c4\3\2\2\2\u00d0")
         buf.write("\u00c9\3\2\2\2\u00d0\u00ce\3\2\2\2\u00d1\27\3\2\2\2\u00d2")
-        buf.write("\u00ec\5\"\22\2\u00d3\u00d4\7f\2\2\u00d4\u00e0\5\"\22")
+        buf.write("\u00ec\5\"\22\2\u00d3\u00d4\7g\2\2\u00d4\u00e0\5\"\22")
         buf.write("\2\u00d5\u00e1\5\32\16\2\u00d6\u00d7\7M\2\2\u00d7\u00d8")
-        buf.write("\5\"\22\2\u00d8\u00d9\7f\2\2\u00d9\u00da\5\"\22\2\u00da")
+        buf.write("\5\"\22\2\u00d8\u00d9\7g\2\2\u00d9\u00da\5\"\22\2\u00da")
         buf.write("\u00dc\3\2\2\2\u00db\u00d6\3\2\2\2\u00dc\u00df\3\2\2\2")
         buf.write("\u00dd\u00db\3\2\2\2\u00dd\u00de\3\2\2\2\u00de\u00e1\3")
         buf.write("\2\2\2\u00df\u00dd\3\2\2\2\u00e0\u00d5\3\2\2\2\u00e0\u00dd")
@@ -140,7 +140,7 @@ def serializedATN():
         buf.write("\u00f0\3\2\2\2\u00f2\u00f5\3\2\2\2\u00f3\u00f1\3\2\2\2")
         buf.write("\u00f3\u00f4\3\2\2\2\u00f4\33\3\2\2\2\u00f5\u00f3\3\2")
         buf.write("\2\2\u00f6\u00fc\7d\2\2\u00f7\u00fd\5\16\b\2\u00f8\u00f9")
-        buf.write("\5\16\b\2\u00f9\u00fa\7f\2\2\u00fa\u00fb\5\16\b\2\u00fb")
+        buf.write("\5\16\b\2\u00f9\u00fa\7g\2\2\u00fa\u00fb\5\16\b\2\u00fb")
         buf.write("\u00fd\3\2\2\2\u00fc\u00f7\3\2\2\2\u00fc\u00f8\3\2\2\2")
         buf.write("\u00fd\u00fe\3\2\2\2\u00fe\u00ff\7e\2\2\u00ff\u0100\5")
         buf.write("\"\22\2\u0100\35\3\2\2\2\u0101\u0102\7b\2\2\u0102\u0103")
@@ -164,7 +164,7 @@ def serializedATN():
         buf.write("\2\2\2\u012b\u012e\3\2\2\2\u012c\u012a\3\2\2\2\u012d\u0114")
         buf.write("\3\2\2\2\u012d\u011d\3\2\2\2\u012d\u0120\3\2\2\2\u012d")
         buf.write("\u012a\3\2\2\2\u012e#\3\2\2\2\u012f\u0130\7J\2\2\u0130")
-        buf.write("\u0131\5\16\b\2\u0131\u0132\7f\2\2\u0132\u0133\5\"\22")
+        buf.write("\u0131\5\16\b\2\u0131\u0132\7g\2\2\u0132\u0133\5\"\22")
         buf.write("\2\u0133\u0134\7)\2\2\u0134\u0142\3\2\2\2\u0135\u0136")
         buf.write("\7F\2\2\u0136\u0142\5$\23\2\u0137\u0138\7H\2\2\u0138\u0142")
         buf.write("\5$\23\2\u0139\u013a\7I\2\2\u013a\u0142\5$\23\2\u013b")
@@ -196,7 +196,7 @@ def serializedATN():
         buf.write("\5(\25\2\u0178;\3\2\2\2\u0179\u017a\7S\2\2\u017a=\3\2")
         buf.write("\2\2\u017b\u017c\7V\2\2\u017c\u017d\5(\25\2\u017d?\3\2")
         buf.write("\2\2\u017e\u017f\7T\2\2\u017f\u0180\5(\25\2\u0180A\3\2")
-        buf.write("\2\2\u0181\u0183\7U\2\2\u0182\u0184\7j\2\2\u0183\u0182")
+        buf.write("\2\2\u0181\u0183\7U\2\2\u0182\u0184\7k\2\2\u0183\u0182")
         buf.write("\3\2\2\2\u0183\u0184\3\2\2\2\u0184\u0185\3\2\2\2\u0185")
         buf.write("\u0186\5(\25\2\u0186C\3\2\2\2\u0187\u0188\7W\2\2\u0188")
         buf.write("\u0189\5(\25\2\u0189\u018a\5(\25\2\u018aE\3\2\2\2\u018b")
@@ -204,9 +204,9 @@ def serializedATN():
         buf.write("\u018f\7X\2\2\u018f\u0194\5(\25\2\u0190\u0191\7M\2\2\u0191")
         buf.write("\u0193\5(\25\2\u0192\u0190\3\2\2\2\u0193\u0196\3\2\2\2")
         buf.write("\u0194\u0192\3\2\2\2\u0194\u0195\3\2\2\2\u0195I\3\2\2")
-        buf.write("\2\u0196\u0194\3\2\2\2\u0197\u0198\7h\2\2\u0198\u0199")
-        buf.write("\7f\2\2\u0199\u019a\5f\64\2\u019aK\3\2\2\2\u019b\u019c")
-        buf.write("\5\32\16\2\u019c\u019d\7f\2\2\u019d\u019e\5f\64\2\u019e")
+        buf.write("\2\u0196\u0194\3\2\2\2\u0197\u0198\7i\2\2\u0198\u0199")
+        buf.write("\7g\2\2\u0199\u019a\5f\64\2\u019aK\3\2\2\2\u019b\u019c")
+        buf.write("\5\32\16\2\u019c\u019d\7g\2\2\u019d\u019e\5f\64\2\u019e")
         buf.write("M\3\2\2\2\u019f\u01a0\7Z\2\2\u01a0\u01a1\5\16\b\2\u01a1")
         buf.write("\u01a2\7c\2\2\u01a2\u01a4\5 \21\2\u01a3\u01a5\79\2\2\u01a4")
         buf.write("\u01a3\3\2\2\2\u01a4\u01a5\3\2\2\2\u01a5O\3\2\2\2\u01a6")
@@ -218,75 +218,75 @@ def serializedATN():
         buf.write("\u01b5\5N(\2\u01b3\u01b5\5P)\2\u01b4\u01b2\3\2\2\2\u01b4")
         buf.write("\u01b3\3\2\2\2\u01b5\u01b7\3\2\2\2\u01b6\u01b8\5R*\2\u01b7")
         buf.write("\u01b6\3\2\2\2\u01b7\u01b8\3\2\2\2\u01b8S\3\2\2\2\u01b9")
-        buf.write("\u01ba\5R*\2\u01ba\u01bb\7f\2\2\u01bb\u01bc\5f\64\2\u01bc")
+        buf.write("\u01ba\5R*\2\u01ba\u01bb\7g\2\2\u01bb\u01bc\5f\64\2\u01bc")
         buf.write("U\3\2\2\2\u01bd\u01be\7`\2\2\u01be\u01bf\7m\2\2\u01bf")
-        buf.write("\u01c0\5\16\b\2\u01c0\u01c1\7f\2\2\u01c1\u01c2\5f\64\2")
+        buf.write("\u01c0\5\16\b\2\u01c0\u01c1\7g\2\2\u01c1\u01c2\5f\64\2")
         buf.write("\u01c2W\3\2\2\2\u01c3\u01c4\7_\2\2\u01c4\u01c5\5(\25\2")
-        buf.write("\u01c5\u01c6\7f\2\2\u01c6\u01c7\5f\64\2\u01c7Y\3\2\2\2")
+        buf.write("\u01c5\u01c6\7g\2\2\u01c6\u01c7\5f\64\2\u01c7Y\3\2\2\2")
         buf.write("\u01c8\u01c9\7\\\2\2\u01c9\u01ca\5(\25\2\u01ca\u01cb\7")
-        buf.write("f\2\2\u01cb\u01cc\5f\64\2\u01cc[\3\2\2\2\u01cd\u01ce\7")
-        buf.write("]\2\2\u01ce\u01cf\7f\2\2\u01cf\u01d0\5f\64\2\u01d0]\3")
+        buf.write("g\2\2\u01cb\u01cc\5f\64\2\u01cc[\3\2\2\2\u01cd\u01ce\7")
+        buf.write("]\2\2\u01ce\u01cf\7g\2\2\u01cf\u01d0\5f\64\2\u01d0]\3")
         buf.write("\2\2\2\u01d1\u01d2\7[\2\2\u01d2\u01d3\5(\25\2\u01d3\u01d4")
-        buf.write("\7f\2\2\u01d4\u01d8\5f\64\2\u01d5\u01d7\5Z.\2\u01d6\u01d5")
+        buf.write("\7g\2\2\u01d4\u01d8\5f\64\2\u01d5\u01d7\5Z.\2\u01d6\u01d5")
         buf.write("\3\2\2\2\u01d7\u01da\3\2\2\2\u01d8\u01d6\3\2\2\2\u01d8")
         buf.write("\u01d9\3\2\2\2\u01d9\u01dc\3\2\2\2\u01da\u01d8\3\2\2\2")
         buf.write("\u01db\u01dd\5\\/\2\u01dc\u01db\3\2\2\2\u01dc\u01dd\3")
-        buf.write("\2\2\2\u01dd_\3\2\2\2\u01de\u01df\7\32\2\2\u01df\u01e0")
-        buf.write("\7m\2\2\u01e0a\3\2\2\2\u01e1\u01e2\7k\2\2\u01e2\u01e3")
-        buf.write("\7t\2\2\u01e3\u01e4\5`\61\2\u01e4\u01e5\7u\2\2\u01e5\u01e6")
-        buf.write("\5\22\n\2\u01e6\u01e7\5(\25\2\u01e7c\3\2\2\2\u01e8\u01ea")
-        buf.write("\5r:\2\u01e9\u01e8\3\2\2\2\u01ea\u01eb\3\2\2\2\u01eb\u01e9")
-        buf.write("\3\2\2\2\u01eb\u01ec\3\2\2\2\u01ece\3\2\2\2\u01ed\u01f0")
-        buf.write("\5h\65\2\u01ee\u01f0\5n8\2\u01ef\u01ed\3\2\2\2\u01ef\u01ee")
-        buf.write("\3\2\2\2\u01f0g\3\2\2\2\u01f1\u01f5\7x\2\2\u01f2\u01f6")
-        buf.write("\5d\63\2\u01f3\u01f4\7x\2\2\u01f4\u01f6\5f\64\2\u01f5")
-        buf.write("\u01f2\3\2\2\2\u01f5\u01f3\3\2\2\2\u01f6\u01f7\3\2\2\2")
-        buf.write("\u01f7\u01fa\7y\2\2\u01f8\u01f9\7v\2\2\u01f9\u01fb\79")
-        buf.write("\2\2\u01fa\u01f8\3\2\2\2\u01fa\u01fb\3\2\2\2\u01fbi\3")
-        buf.write("\2\2\2\u01fc\u01fe\7h\2\2\u01fd\u01fc\3\2\2\2\u01fd\u01fe")
-        buf.write("\3\2\2\2\u01fe\u020e\3\2\2\2\u01ff\u020f\5.\30\2\u0200")
-        buf.write("\u020f\5\62\32\2\u0201\u020f\5\66\34\2\u0202\u020f\58")
-        buf.write("\35\2\u0203\u020f\5> \2\u0204\u020f\5@!\2\u0205\u020f")
-        buf.write("\5B\"\2\u0206\u020f\5:\36\2\u0207\u020f\5D#\2\u0208\u020f")
-        buf.write("\5F$\2\u0209\u020f\5<\37\2\u020a\u020f\5H%\2\u020b\u020f")
-        buf.write("\5\64\33\2\u020c\u020f\5\60\31\2\u020d\u020f\5,\27\2\u020e")
-        buf.write("\u01ff\3\2\2\2\u020e\u0200\3\2\2\2\u020e\u0201\3\2\2\2")
-        buf.write("\u020e\u0202\3\2\2\2\u020e\u0203\3\2\2\2\u020e\u0204\3")
-        buf.write("\2\2\2\u020e\u0205\3\2\2\2\u020e\u0206\3\2\2\2\u020e\u0207")
-        buf.write("\3\2\2\2\u020e\u0208\3\2\2\2\u020e\u0209\3\2\2\2\u020e")
-        buf.write("\u020a\3\2\2\2\u020e\u020b\3\2\2\2\u020e\u020c\3\2\2\2")
-        buf.write("\u020e\u020d\3\2\2\2\u020fk\3\2\2\2\u0210\u0212\7h\2\2")
-        buf.write("\u0211\u0210\3\2\2\2\u0211\u0212\3\2\2\2\u0212\u0219\3")
-        buf.write("\2\2\2\u0213\u021a\5^\60\2\u0214\u021a\5X-\2\u0215\u021a")
-        buf.write("\5L\'\2\u0216\u021a\5T+\2\u0217\u021a\5J&\2\u0218\u021a")
-        buf.write("\5V,\2\u0219\u0213\3\2\2\2\u0219\u0214\3\2\2\2\u0219\u0215")
-        buf.write("\3\2\2\2\u0219\u0216\3\2\2\2\u0219\u0217\3\2\2\2\u0219")
-        buf.write("\u0218\3\2\2\2\u021am\3\2\2\2\u021b\u0222\5j\66\2\u021c")
-        buf.write("\u021e\7v\2\2\u021d\u021c\3\2\2\2\u021d\u021e\3\2\2\2")
-        buf.write("\u021e\u021f\3\2\2\2\u021f\u0223\79\2\2\u0220\u0221\7")
-        buf.write("v\2\2\u0221\u0223\5n8\2\u0222\u021d\3\2\2\2\u0222\u0220")
-        buf.write("\3\2\2\2\u0223o\3\2\2\2\u0224\u0225\7m\2\2\u0225\u0227")
-        buf.write("\7f\2\2\u0226\u0224\3\2\2\2\u0227\u0228\3\2\2\2\u0228")
-        buf.write("\u0226\3\2\2\2\u0228\u0229\3\2\2\2\u0229q\3\2\2\2\u022a")
-        buf.write("\u022c\5p9\2\u022b\u022a\3\2\2\2\u022b\u022c\3\2\2\2\u022c")
-        buf.write("\u022f\3\2\2\2\u022d\u022f\7f\2\2\u022e\u022b\3\2\2\2")
-        buf.write("\u022e\u022d\3\2\2\2\u022f\u023b\3\2\2\2\u0230\u0232\7")
-        buf.write("v\2\2\u0231\u0230\3\2\2\2\u0232\u0235\3\2\2\2\u0233\u0231")
-        buf.write("\3\2\2\2\u0233\u0234\3\2\2\2\u0234\u0236\3\2\2\2\u0235")
-        buf.write("\u0233\3\2\2\2\u0236\u023c\79\2\2\u0237\u023c\5n8\2\u0238")
-        buf.write("\u023c\5l\67\2\u0239\u023c\5\4\3\2\u023a\u023c\5b\62\2")
-        buf.write("\u023b\u0233\3\2\2\2\u023b\u0237\3\2\2\2\u023b\u0238\3")
-        buf.write("\2\2\2\u023b\u0239\3\2\2\2\u023b\u023a\3\2\2\2\u023c\u0243")
-        buf.write("\3\2\2\2\u023d\u0240\5p9\2\u023e\u0240\7f\2\2\u023f\u023d")
-        buf.write("\3\2\2\2\u023f\u023e\3\2\2\2\u0240\u0241\3\2\2\2\u0241")
-        buf.write("\u0243\5h\65\2\u0242\u022e\3\2\2\2\u0242\u023f\3\2\2\2")
-        buf.write("\u0243s\3\2\2\2:w~\u0081\u008d\u0094\u00a4\u00ab\u00be")
+        buf.write("\2\2\2\u01dd_\3\2\2\2\u01de\u01df\7m\2\2\u01dfa\3\2\2")
+        buf.write("\2\u01e0\u01e1\7f\2\2\u01e1\u01e2\7t\2\2\u01e2\u01e3\5")
+        buf.write("`\61\2\u01e3\u01e4\7u\2\2\u01e4\u01e5\5\22\n\2\u01e5\u01e6")
+        buf.write("\5(\25\2\u01e6c\3\2\2\2\u01e7\u01e9\5r:\2\u01e8\u01e7")
+        buf.write("\3\2\2\2\u01e9\u01ea\3\2\2\2\u01ea\u01e8\3\2\2\2\u01ea")
+        buf.write("\u01eb\3\2\2\2\u01ebe\3\2\2\2\u01ec\u01ef\5h\65\2\u01ed")
+        buf.write("\u01ef\5n8\2\u01ee\u01ec\3\2\2\2\u01ee\u01ed\3\2\2\2\u01ef")
+        buf.write("g\3\2\2\2\u01f0\u01f4\7x\2\2\u01f1\u01f5\5d\63\2\u01f2")
+        buf.write("\u01f3\7x\2\2\u01f3\u01f5\5f\64\2\u01f4\u01f1\3\2\2\2")
+        buf.write("\u01f4\u01f2\3\2\2\2\u01f5\u01f6\3\2\2\2\u01f6\u01f9\7")
+        buf.write("y\2\2\u01f7\u01f8\7v\2\2\u01f8\u01fa\79\2\2\u01f9\u01f7")
+        buf.write("\3\2\2\2\u01f9\u01fa\3\2\2\2\u01fai\3\2\2\2\u01fb\u01fd")
+        buf.write("\7i\2\2\u01fc\u01fb\3\2\2\2\u01fc\u01fd\3\2\2\2\u01fd")
+        buf.write("\u020d\3\2\2\2\u01fe\u020e\5.\30\2\u01ff\u020e\5\62\32")
+        buf.write("\2\u0200\u020e\5\66\34\2\u0201\u020e\58\35\2\u0202\u020e")
+        buf.write("\5> \2\u0203\u020e\5@!\2\u0204\u020e\5B\"\2\u0205\u020e")
+        buf.write("\5:\36\2\u0206\u020e\5D#\2\u0207\u020e\5F$\2\u0208\u020e")
+        buf.write("\5<\37\2\u0209\u020e\5H%\2\u020a\u020e\5\64\33\2\u020b")
+        buf.write("\u020e\5\60\31\2\u020c\u020e\5,\27\2\u020d\u01fe\3\2\2")
+        buf.write("\2\u020d\u01ff\3\2\2\2\u020d\u0200\3\2\2\2\u020d\u0201")
+        buf.write("\3\2\2\2\u020d\u0202\3\2\2\2\u020d\u0203\3\2\2\2\u020d")
+        buf.write("\u0204\3\2\2\2\u020d\u0205\3\2\2\2\u020d\u0206\3\2\2\2")
+        buf.write("\u020d\u0207\3\2\2\2\u020d\u0208\3\2\2\2\u020d\u0209\3")
+        buf.write("\2\2\2\u020d\u020a\3\2\2\2\u020d\u020b\3\2\2\2\u020d\u020c")
+        buf.write("\3\2\2\2\u020ek\3\2\2\2\u020f\u0211\7i\2\2\u0210\u020f")
+        buf.write("\3\2\2\2\u0210\u0211\3\2\2\2\u0211\u0218\3\2\2\2\u0212")
+        buf.write("\u0219\5^\60\2\u0213\u0219\5X-\2\u0214\u0219\5L\'\2\u0215")
+        buf.write("\u0219\5T+\2\u0216\u0219\5J&\2\u0217\u0219\5V,\2\u0218")
+        buf.write("\u0212\3\2\2\2\u0218\u0213\3\2\2\2\u0218\u0214\3\2\2\2")
+        buf.write("\u0218\u0215\3\2\2\2\u0218\u0216\3\2\2\2\u0218\u0217\3")
+        buf.write("\2\2\2\u0219m\3\2\2\2\u021a\u0221\5j\66\2\u021b\u021d")
+        buf.write("\7v\2\2\u021c\u021b\3\2\2\2\u021c\u021d\3\2\2\2\u021d")
+        buf.write("\u021e\3\2\2\2\u021e\u0222\79\2\2\u021f\u0220\7v\2\2\u0220")
+        buf.write("\u0222\5n8\2\u0221\u021c\3\2\2\2\u0221\u021f\3\2\2\2\u0222")
+        buf.write("o\3\2\2\2\u0223\u0224\7m\2\2\u0224\u0226\7g\2\2\u0225")
+        buf.write("\u0223\3\2\2\2\u0226\u0227\3\2\2\2\u0227\u0225\3\2\2\2")
+        buf.write("\u0227\u0228\3\2\2\2\u0228q\3\2\2\2\u0229\u022b\5p9\2")
+        buf.write("\u022a\u0229\3\2\2\2\u022a\u022b\3\2\2\2\u022b\u022e\3")
+        buf.write("\2\2\2\u022c\u022e\7g\2\2\u022d\u022a\3\2\2\2\u022d\u022c")
+        buf.write("\3\2\2\2\u022e\u023a\3\2\2\2\u022f\u0231\7v\2\2\u0230")
+        buf.write("\u022f\3\2\2\2\u0231\u0234\3\2\2\2\u0232\u0230\3\2\2\2")
+        buf.write("\u0232\u0233\3\2\2\2\u0233\u0235\3\2\2\2\u0234\u0232\3")
+        buf.write("\2\2\2\u0235\u023b\79\2\2\u0236\u023b\5n8\2\u0237\u023b")
+        buf.write("\5l\67\2\u0238\u023b\5\4\3\2\u0239\u023b\5b\62\2\u023a")
+        buf.write("\u0232\3\2\2\2\u023a\u0236\3\2\2\2\u023a\u0237\3\2\2\2")
+        buf.write("\u023a\u0238\3\2\2\2\u023a\u0239\3\2\2\2\u023b\u0242\3")
+        buf.write("\2\2\2\u023c\u023f\5p9\2\u023d\u023f\7g\2\2\u023e\u023c")
+        buf.write("\3\2\2\2\u023e\u023d\3\2\2\2\u023f\u0240\3\2\2\2\u0240")
+        buf.write("\u0242\5h\65\2\u0241\u022d\3\2\2\2\u0241\u023e\3\2\2\2")
+        buf.write("\u0242s\3\2\2\2:w~\u0081\u008d\u0094\u00a4\u00ab\u00be")
         buf.write("\u00c6\u00cb\u00d0\u00dd\u00e0\u00e9\u00ec\u00f1\u00f3")
         buf.write("\u00fc\u010a\u010e\u0110\u0114\u011d\u012a\u012d\u0141")
         buf.write("\u014b\u014d\u015b\u016c\u0183\u0194\u01a4\u01ad\u01b0")
-        buf.write("\u01b4\u01b7\u01d8\u01dc\u01eb\u01ef\u01f5\u01fa\u01fd")
-        buf.write("\u020e\u0211\u0219\u021d\u0222\u0228\u022b\u022e\u0233")
-        buf.write("\u023b\u023f\u0242")
+        buf.write("\u01b4\u01b7\u01d8\u01dc\u01ea\u01ee\u01f4\u01f9\u01fc")
+        buf.write("\u020d\u0210\u0218\u021c\u0221\u0227\u022a\u022d\u0232")
+        buf.write("\u023a\u023e\u0241")
         return buf.getvalue()
 
 
@@ -317,8 +317,8 @@ class HarmonyParser ( Parser ):
                      "'del'", "'spawn'", "'invariant'", "'go'", "'sequential'", 
                      "'when'", "'let'", "'if'", "'elif'", "'else'", "'@'", 
                      "'while'", "'def'", "'exists'", "'where'", "'='", "'for'", 
-                     "'in'", "':'", "'None'", "'atomically'", "<INVALID>", 
-                     "'eternal'", "'hyper_assert'", "<INVALID>", "<INVALID>", 
+                     "'in'", "'hyper_assert'", "':'", "'None'", "'atomically'", 
+                     "<INVALID>", "'eternal'", "<INVALID>", "<INVALID>", 
                      "<INVALID>", "<INVALID>", "'['", "']'", "'{'", "'}'", 
                      "'('", "')'", "';'" ]
 
@@ -343,8 +343,8 @@ class HarmonyParser ( Parser ):
                       "ASSERT", "VAR", "TRAP", "PASS", "DEL", "SPAWN", "INVARIANT", 
                       "GO", "SEQUENTIAL", "WHEN", "LET", "IF", "ELIF", "ELSE", 
                       "AT", "WHILE", "DEF", "EXISTS", "WHERE", "EQ", "FOR", 
-                      "IN", "COLON", "NONE", "ATOMICALLY", "BOOL", "ETERNAL", 
-                      "HYPER", "INT", "NAME", "ATOM", "HEX_INTEGER", "OPEN_BRACK", 
+                      "IN", "HYPER", "COLON", "NONE", "ATOMICALLY", "BOOL", 
+                      "ETERNAL", "INT", "NAME", "ATOM", "HEX_INTEGER", "OPEN_BRACK", 
                       "CLOSE_BRACK", "OPEN_BRACES", "CLOSE_BRACES", "OPEN_PAREN", 
                       "CLOSE_PAREN", "SEMI_COLON", "STRING", "INDENT", "DEDENT" ]
 
@@ -521,12 +521,12 @@ class HarmonyParser ( Parser ):
     EQ=97
     FOR=98
     IN=99
-    COLON=100
-    NONE=101
-    ATOMICALLY=102
-    BOOL=103
-    ETERNAL=104
-    HYPER=105
+    HYPER=100
+    COLON=101
+    NONE=102
+    ATOMICALLY=103
+    BOOL=104
+    ETERNAL=105
     INT=106
     NAME=107
     ATOM=108
@@ -590,7 +590,7 @@ class HarmonyParser ( Parser ):
             self.state = 117
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while (((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__6) | (1 << HarmonyParser.T__21) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.T__36) | (1 << HarmonyParser.T__37) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.IMPORT - 64)) | (1 << (HarmonyParser.PRINT - 64)) | (1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.SAVE - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.COLON - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.HYPER - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0):
+            while (((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__6) | (1 << HarmonyParser.T__21) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.T__36) | (1 << HarmonyParser.T__37) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.IMPORT - 64)) | (1 << (HarmonyParser.PRINT - 64)) | (1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.SAVE - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.HYPER - 64)) | (1 << (HarmonyParser.COLON - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0):
                 self.state = 114
                 self.stmt()
                 self.state = 119
@@ -3829,8 +3829,6 @@ class HarmonyParser ( Parser ):
         try:
             self.enterOuterAlt(localctx, 1)
             self.state = 476
-            self.match(HarmonyParser.T__23)
-            self.state = 477
             self.match(HarmonyParser.NAME)
         except RecognitionException as re:
             localctx.exception = re
@@ -3887,17 +3885,17 @@ class HarmonyParser ( Parser ):
         self.enterRule(localctx, 96, self.RULE_hyperassert_stmt)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 479
+            self.state = 478
             self.match(HarmonyParser.HYPER)
-            self.state = 480
+            self.state = 479
             self.match(HarmonyParser.OPEN_PAREN)
-            self.state = 481
+            self.state = 480
             self.hyper_condition()
-            self.state = 482
+            self.state = 481
             self.match(HarmonyParser.CLOSE_PAREN)
-            self.state = 483
+            self.state = 482
             self.comp_op()
-            self.state = 484
+            self.state = 483
             self.expr()
         except RecognitionException as re:
             localctx.exception = re
@@ -3941,16 +3939,16 @@ class HarmonyParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 487 
+            self.state = 486 
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             while True:
-                self.state = 486
+                self.state = 485
                 self.stmt()
-                self.state = 489 
+                self.state = 488 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__6) | (1 << HarmonyParser.T__21) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.T__36) | (1 << HarmonyParser.T__37) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.IMPORT - 64)) | (1 << (HarmonyParser.PRINT - 64)) | (1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.SAVE - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.COLON - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.HYPER - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0)):
+                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & ((1 << HarmonyParser.T__6) | (1 << HarmonyParser.T__21) | (1 << HarmonyParser.T__22) | (1 << HarmonyParser.T__23) | (1 << HarmonyParser.T__24) | (1 << HarmonyParser.T__25) | (1 << HarmonyParser.T__26) | (1 << HarmonyParser.T__27) | (1 << HarmonyParser.T__28) | (1 << HarmonyParser.T__29) | (1 << HarmonyParser.T__30) | (1 << HarmonyParser.T__31) | (1 << HarmonyParser.T__32) | (1 << HarmonyParser.T__33) | (1 << HarmonyParser.T__34) | (1 << HarmonyParser.T__35) | (1 << HarmonyParser.T__36) | (1 << HarmonyParser.T__37) | (1 << HarmonyParser.NL) | (1 << HarmonyParser.POINTER_OF))) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & ((1 << (HarmonyParser.IMPORT - 64)) | (1 << (HarmonyParser.PRINT - 64)) | (1 << (HarmonyParser.FROM - 64)) | (1 << (HarmonyParser.SETINTLEVEL - 64)) | (1 << (HarmonyParser.SAVE - 64)) | (1 << (HarmonyParser.STOP - 64)) | (1 << (HarmonyParser.LAMBDA - 64)) | (1 << (HarmonyParser.ADDRESS_OF - 64)) | (1 << (HarmonyParser.NOT - 64)) | (1 << (HarmonyParser.CONST - 64)) | (1 << (HarmonyParser.AWAIT - 64)) | (1 << (HarmonyParser.ASSERT - 64)) | (1 << (HarmonyParser.VAR - 64)) | (1 << (HarmonyParser.TRAP - 64)) | (1 << (HarmonyParser.PASS - 64)) | (1 << (HarmonyParser.DEL - 64)) | (1 << (HarmonyParser.SPAWN - 64)) | (1 << (HarmonyParser.INVARIANT - 64)) | (1 << (HarmonyParser.GO - 64)) | (1 << (HarmonyParser.SEQUENTIAL - 64)) | (1 << (HarmonyParser.WHEN - 64)) | (1 << (HarmonyParser.LET - 64)) | (1 << (HarmonyParser.IF - 64)) | (1 << (HarmonyParser.WHILE - 64)) | (1 << (HarmonyParser.DEF - 64)) | (1 << (HarmonyParser.FOR - 64)) | (1 << (HarmonyParser.HYPER - 64)) | (1 << (HarmonyParser.COLON - 64)) | (1 << (HarmonyParser.NONE - 64)) | (1 << (HarmonyParser.ATOMICALLY - 64)) | (1 << (HarmonyParser.BOOL - 64)) | (1 << (HarmonyParser.INT - 64)) | (1 << (HarmonyParser.NAME - 64)) | (1 << (HarmonyParser.ATOM - 64)) | (1 << (HarmonyParser.OPEN_BRACK - 64)) | (1 << (HarmonyParser.OPEN_BRACES - 64)) | (1 << (HarmonyParser.OPEN_PAREN - 64)) | (1 << (HarmonyParser.SEMI_COLON - 64)) | (1 << (HarmonyParser.STRING - 64)))) != 0)):
                     break
 
         except RecognitionException as re:
@@ -3994,17 +3992,17 @@ class HarmonyParser ( Parser ):
         localctx = HarmonyParser.BlockContext(self, self._ctx, self.state)
         self.enterRule(localctx, 100, self.RULE_block)
         try:
-            self.state = 493
+            self.state = 492
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [HarmonyParser.INDENT]:
                 self.enterOuterAlt(localctx, 1)
-                self.state = 491
+                self.state = 490
                 self.normal_block()
                 pass
             elif token in [HarmonyParser.T__6, HarmonyParser.T__21, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.T__36, HarmonyParser.T__37, HarmonyParser.POINTER_OF, HarmonyParser.PRINT, HarmonyParser.SETINTLEVEL, HarmonyParser.SAVE, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.STRING]:
                 self.enterOuterAlt(localctx, 2)
-                self.state = 492
+                self.state = 491
                 self.one_line_stmt()
                 pass
             else:
@@ -4067,33 +4065,33 @@ class HarmonyParser ( Parser ):
         self.enterRule(localctx, 102, self.RULE_normal_block)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 495
+            self.state = 494
             self.match(HarmonyParser.INDENT)
-            self.state = 499
+            self.state = 498
             self._errHandler.sync(self)
             token = self._input.LA(1)
-            if token in [HarmonyParser.T__6, HarmonyParser.T__21, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.T__36, HarmonyParser.T__37, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.SAVE, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.COLON, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.HYPER, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
-                self.state = 496
+            if token in [HarmonyParser.T__6, HarmonyParser.T__21, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.T__36, HarmonyParser.T__37, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.SAVE, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.HYPER, HarmonyParser.COLON, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
+                self.state = 495
                 self.block_stmts()
                 pass
             elif token in [HarmonyParser.INDENT]:
-                self.state = 497
+                self.state = 496
                 self.match(HarmonyParser.INDENT)
-                self.state = 498
+                self.state = 497
                 self.block()
                 pass
             else:
                 raise NoViableAltException(self)
 
-            self.state = 501
+            self.state = 500
             self.match(HarmonyParser.DEDENT)
-            self.state = 504
+            self.state = 503
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,42,self._ctx)
             if la_ == 1:
-                self.state = 502
+                self.state = 501
                 self.match(HarmonyParser.SEMI_COLON)
-                self.state = 503
+                self.state = 502
                 self.match(HarmonyParser.NL)
 
 
@@ -4195,89 +4193,89 @@ class HarmonyParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 507
+            self.state = 506
             self._errHandler.sync(self)
             _la = self._input.LA(1)
             if _la==HarmonyParser.ATOMICALLY:
-                self.state = 506
+                self.state = 505
                 self.match(HarmonyParser.ATOMICALLY)
 
 
-            self.state = 524
+            self.state = 523
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,44,self._ctx)
             if la_ == 1:
-                self.state = 509
+                self.state = 508
                 self.assign_stmt()
                 pass
 
             elif la_ == 2:
-                self.state = 510
+                self.state = 509
                 self.const_assign_stmt()
                 pass
 
             elif la_ == 3:
-                self.state = 511
+                self.state = 510
                 self.await_stmt()
                 pass
 
             elif la_ == 4:
-                self.state = 512
+                self.state = 511
                 self.var_stmt()
                 pass
 
             elif la_ == 5:
-                self.state = 513
+                self.state = 512
                 self.invariant_stmt()
                 pass
 
             elif la_ == 6:
-                self.state = 514
+                self.state = 513
                 self.del_stmt()
                 pass
 
             elif la_ == 7:
-                self.state = 515
+                self.state = 514
                 self.spawn_stmt()
                 pass
 
             elif la_ == 8:
-                self.state = 516
+                self.state = 515
                 self.trap_stmt()
                 pass
 
             elif la_ == 9:
-                self.state = 517
+                self.state = 516
                 self.go_stmt()
                 pass
 
             elif la_ == 10:
-                self.state = 518
+                self.state = 517
                 self.print_stmt()
                 pass
 
             elif la_ == 11:
-                self.state = 519
+                self.state = 518
                 self.pass_stmt()
                 pass
 
             elif la_ == 12:
-                self.state = 520
+                self.state = 519
                 self.sequential_stmt()
                 pass
 
             elif la_ == 13:
-                self.state = 521
+                self.state = 520
                 self.assert_stmt()
                 pass
 
             elif la_ == 14:
-                self.state = 522
+                self.state = 521
                 self.aug_assign_stmt()
                 pass
 
             elif la_ == 15:
-                self.state = 523
+                self.state = 522
                 self.expr_stmt()
                 pass
 
@@ -4343,39 +4341,39 @@ class HarmonyParser ( Parser ):
         self.enterRule(localctx, 106, self.RULE_compound_stmt)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 527
+            self.state = 526
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,45,self._ctx)
             if la_ == 1:
-                self.state = 526
+                self.state = 525
                 self.match(HarmonyParser.ATOMICALLY)
 
 
-            self.state = 535
+            self.state = 534
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [HarmonyParser.IF]:
-                self.state = 529
+                self.state = 528
                 self.if_block()
                 pass
             elif token in [HarmonyParser.WHILE]:
-                self.state = 530
+                self.state = 529
                 self.while_block()
                 pass
             elif token in [HarmonyParser.FOR]:
-                self.state = 531
+                self.state = 530
                 self.for_block()
                 pass
             elif token in [HarmonyParser.WHEN, HarmonyParser.LET]:
-                self.state = 532
+                self.state = 531
                 self.let_when_block()
                 pass
             elif token in [HarmonyParser.ATOMICALLY]:
-                self.state = 533
+                self.state = 532
                 self.atomic_block()
                 pass
             elif token in [HarmonyParser.DEF]:
-                self.state = 534
+                self.state = 533
                 self.method_decl()
                 pass
             else:
@@ -4430,28 +4428,28 @@ class HarmonyParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 537
+            self.state = 536
             self.simple_stmt()
-            self.state = 544
+            self.state = 543
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,48,self._ctx)
             if la_ == 1:
-                self.state = 539
+                self.state = 538
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
                 if _la==HarmonyParser.SEMI_COLON:
-                    self.state = 538
+                    self.state = 537
                     self.match(HarmonyParser.SEMI_COLON)
 
 
-                self.state = 541
+                self.state = 540
                 self.match(HarmonyParser.NL)
                 pass
 
             elif la_ == 2:
-                self.state = 542
+                self.state = 541
                 self.match(HarmonyParser.SEMI_COLON)
-                self.state = 543
+                self.state = 542
                 self.one_line_stmt()
                 pass
 
@@ -4502,19 +4500,19 @@ class HarmonyParser ( Parser ):
         self.enterRule(localctx, 110, self.RULE_label)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 548 
+            self.state = 547 
             self._errHandler.sync(self)
             _alt = 1
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                 if _alt == 1:
-                    self.state = 546
+                    self.state = 545
                     self.match(HarmonyParser.NAME)
-                    self.state = 547
+                    self.state = 546
                     self.match(HarmonyParser.COLON)
 
                 else:
                     raise NoViableAltException(self)
-                self.state = 550 
+                self.state = 549 
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,49,self._ctx)
 
@@ -4589,65 +4587,65 @@ class HarmonyParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 576
+            self.state = 575
             self._errHandler.sync(self)
             la_ = self._interp.adaptivePredict(self._input,55,self._ctx)
             if la_ == 1:
-                self.state = 556
+                self.state = 555
                 self._errHandler.sync(self)
                 token = self._input.LA(1)
-                if token in [HarmonyParser.T__6, HarmonyParser.T__21, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.T__36, HarmonyParser.T__37, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.SAVE, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.HYPER, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
-                    self.state = 553
+                if token in [HarmonyParser.T__6, HarmonyParser.T__21, HarmonyParser.T__22, HarmonyParser.T__23, HarmonyParser.T__24, HarmonyParser.T__25, HarmonyParser.T__26, HarmonyParser.T__27, HarmonyParser.T__28, HarmonyParser.T__29, HarmonyParser.T__30, HarmonyParser.T__31, HarmonyParser.T__32, HarmonyParser.T__33, HarmonyParser.T__34, HarmonyParser.T__35, HarmonyParser.T__36, HarmonyParser.T__37, HarmonyParser.NL, HarmonyParser.POINTER_OF, HarmonyParser.IMPORT, HarmonyParser.PRINT, HarmonyParser.FROM, HarmonyParser.SETINTLEVEL, HarmonyParser.SAVE, HarmonyParser.STOP, HarmonyParser.LAMBDA, HarmonyParser.ADDRESS_OF, HarmonyParser.NOT, HarmonyParser.CONST, HarmonyParser.AWAIT, HarmonyParser.ASSERT, HarmonyParser.VAR, HarmonyParser.TRAP, HarmonyParser.PASS, HarmonyParser.DEL, HarmonyParser.SPAWN, HarmonyParser.INVARIANT, HarmonyParser.GO, HarmonyParser.SEQUENTIAL, HarmonyParser.WHEN, HarmonyParser.LET, HarmonyParser.IF, HarmonyParser.WHILE, HarmonyParser.DEF, HarmonyParser.FOR, HarmonyParser.HYPER, HarmonyParser.NONE, HarmonyParser.ATOMICALLY, HarmonyParser.BOOL, HarmonyParser.INT, HarmonyParser.NAME, HarmonyParser.ATOM, HarmonyParser.OPEN_BRACK, HarmonyParser.OPEN_BRACES, HarmonyParser.OPEN_PAREN, HarmonyParser.SEMI_COLON, HarmonyParser.STRING]:
+                    self.state = 552
                     self._errHandler.sync(self)
                     la_ = self._interp.adaptivePredict(self._input,50,self._ctx)
                     if la_ == 1:
-                        self.state = 552
+                        self.state = 551
                         self.label()
 
 
                     pass
                 elif token in [HarmonyParser.COLON]:
-                    self.state = 555
+                    self.state = 554
                     self.match(HarmonyParser.COLON)
                     pass
                 else:
                     raise NoViableAltException(self)
 
-                self.state = 569
+                self.state = 568
                 self._errHandler.sync(self)
                 la_ = self._interp.adaptivePredict(self._input,53,self._ctx)
                 if la_ == 1:
-                    self.state = 561
+                    self.state = 560
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     while _la==HarmonyParser.SEMI_COLON:
-                        self.state = 558
+                        self.state = 557
                         self.match(HarmonyParser.SEMI_COLON)
-                        self.state = 563
+                        self.state = 562
                         self._errHandler.sync(self)
                         _la = self._input.LA(1)
 
-                    self.state = 564
+                    self.state = 563
                     self.match(HarmonyParser.NL)
                     pass
 
                 elif la_ == 2:
-                    self.state = 565
+                    self.state = 564
                     self.one_line_stmt()
                     pass
 
                 elif la_ == 3:
-                    self.state = 566
+                    self.state = 565
                     self.compound_stmt()
                     pass
 
                 elif la_ == 4:
-                    self.state = 567
+                    self.state = 566
                     self.import_stmt()
                     pass
 
                 elif la_ == 5:
-                    self.state = 568
+                    self.state = 567
                     self.hyperassert_stmt()
                     pass
 
@@ -4655,21 +4653,21 @@ class HarmonyParser ( Parser ):
                 pass
 
             elif la_ == 2:
-                self.state = 573
+                self.state = 572
                 self._errHandler.sync(self)
                 token = self._input.LA(1)
                 if token in [HarmonyParser.NAME]:
-                    self.state = 571
+                    self.state = 570
                     self.label()
                     pass
                 elif token in [HarmonyParser.COLON]:
-                    self.state = 572
+                    self.state = 571
                     self.match(HarmonyParser.COLON)
                     pass
                 else:
                     raise NoViableAltException(self)
 
-                self.state = 575
+                self.state = 574
                 self.normal_block()
                 pass
 

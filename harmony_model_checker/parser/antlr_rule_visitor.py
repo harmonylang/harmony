@@ -1,4 +1,4 @@
-
+ 
 from typing import Any, Union
 from antlr4.Token import CommonToken
 
@@ -633,12 +633,18 @@ class HarmonyVisitorImpl(HarmonyVisitor):
         )
 
     def visitHyperassert_stmt(self, ctx):
-        # Does nothing for now
-        return []
+        start_tkn = self.get_token(ctx.start, ctx.start.text)
+        tkn = (ctx.getText(), *start_tkn[1:])
+        condition = self.visit(ctx.hyper_condition())
+        compare_op = ctx.comp_op().getText()
+        expected = ctx.expr().getText()
+        return [HyperassertAST(tkn, condition, compare_op, expected)]
     
+    # TODO: Make this more extensible
     def visitHyper_condition(self, ctx):
-        # Does nothing for now
-        return []
+        tkn = self.get_token(ctx.start, ctx.start.text)
+        i = self.get_token(ctx.NAME().symbol, str(ctx.NAME()))
+        return HyperConditionAST(tkn, i)
 
 
     # Visit a parse tree produced by HarmonyParser#application.

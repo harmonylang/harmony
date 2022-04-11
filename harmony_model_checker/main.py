@@ -51,7 +51,7 @@ args.add_argument("--config", action="store_true",
                   help="get or set configuration value. "
                        "Use --config <key> to get the value of a setting. "
                        "Use --config <key> <value> to set the value of a setting")
-args.add_argument("--probabilistic", action="store_true"
+args.add_argument("--probabilistic", action="store_true",
                   help="use probabilistic model checking")
 
 # Internal flags
@@ -129,7 +129,7 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
             print("charm model checker failed")
             exit(r)
 
-def handle_hco(ns, output_files):
+def handle_hco(ns, output_files, code=None, scope=None):
     suppress_output = ns.suppress
 
     behavior = None
@@ -143,7 +143,7 @@ def handle_hco(ns, output_files):
     disable_browser = settings.values.disable_web or ns.noweb
     
     b = Brief()
-    b.run(output_files, behavior, probability_states)
+    b.run(output_files, behavior, code, scope)
     gh = GenHTML()
     gh.run(output_files)
     if not suppress_output:
@@ -242,6 +242,8 @@ def main():
         output_files["htm"] = stem + ".htm"
     if output_files["png"] is not None and output_files["gv"] is None:
         output_files["gv"] = stem + ".gv"
+    if output_files["hpo"] is None and ns.probabilistic:
+        output_files["hpo"] = stem + ".hpo"
 
     charm_flag = True
     print_code: Optional[str] = None
@@ -260,7 +262,7 @@ def main():
         code, scope = handle_hny(ns, output_files, parse_code_only, str(filename))
         if charm_flag:
             handle_hvm(ns, output_files, parse_code_only, code, scope)
-            handle_hco(ns, output_files)
+            handle_hco(ns, output_files, code, scope)
         else:
             print("Skipping Phases 2-5...")
             legacy_harmony.dumpCode(print_code, code, scope)
