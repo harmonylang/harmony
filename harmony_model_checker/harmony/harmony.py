@@ -1272,6 +1272,7 @@ HBool(x)    == [ ctype |-> "bool",    cval |-> x ]
 HInt(x)     == [ ctype |-> "int",     cval |-> x ]
 HStr(x)     == [ ctype |-> "str",     cval |-> x ]
 HPc(x)      == [ ctype |-> "pc",      cval |-> x ]
+HList(x)    == [ ctype |-> "list",    cval |-> x ]
 HDict(x)    == [ ctype |-> "dict",    cval |-> x ]
 HSet(x)     == [ ctype |-> "set",     cval |-> x ]
 HAddress(x) == [ ctype |-> "address", cval |-> x ]
@@ -2042,21 +2043,14 @@ FunLen(s) ==
     []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
     []   s.ctype = "str"  -> HInt(Len(s.cval))
 
-\* Concatenate two sequences.  Helper function for FunAdd
-DictConcat(x, y) ==
-    LET xs  == Cardinality(DOMAIN x)
-        ys  == Cardinality(DOMAIN y)
-        dom == { HInt(i) : i \in 0 .. (xs + ys - 1) }
-    IN
-        [ i \in dom |-> IF i.cval < xs THEN x[i] ELSE y[HInt(i.cval - xs)] ]
-
 \* Add two integers, or concatenate two sequences or strings
 FunAdd(x, y) ==
     CASE x.ctype = "int"  /\\ y.ctype = "int"  -> HInt(x.cval + y.cval)
-    []   x.ctype = "dict" /\\ y.ctype = "dict" -> HDict(DictConcat(x.cval, y.cval))
+    []   x.ctype = "list" /\\ y.ctype = "list" -> HList(x.cval \o y.cval)
     []   x.ctype = "str"  /\\ y.ctype = "str"  -> HStr(x.cval \o y.cval)
 
 \* Check to see if x is the empty set, dict, or string
+\* OBSOLETE
 FunIsEmpty(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = {})
     []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
@@ -2159,7 +2153,8 @@ FunIntersect(x, y) ==
 \* a string, check if x is a substring of y
 FunIn(x, y) ==
     CASE y.ctype = "set"  -> HBool(x \in y.cval)
-    []   y.ctype = "dict" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
+    []   y.ctype = "list" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
+    []   y.ctype = "dict" -> HBool(x \in DOMAIN)
     []   y.ctype = "str"  ->
             LET xn == Len(x.cval)
                 yn == Len(y.cval)
@@ -2167,23 +2162,23 @@ FunIn(x, y) ==
                 HBool(\E i \in 0..(yn - xn): 
                     x.cval = SubSeq(y.cval, i+1, i+xn))
 
-\* Concatenate n copies of dict, which represents a list
-DictTimes(dict, n) ==
-    LET odom == { x.cval : x \\in DOMAIN dict.cval }
+\* Concatenate n copies of list
+ListTimes(list, n) ==
+    LET odom == { x.cval : x \\in DOMAIN list.cval }
         max  == CHOOSE x \in odom: \A y \in odom: y <= x
         card == max + 1
         ndom == { HInt(x): x \\in 0..(n.cval * card - 1) }
     IN
-        HDict([ x \\in ndom |-> dict.cval[HInt(x.cval % card)] ])
+        HDict([ x \\in ndom |-> list.cval[HInt(x.cval % card)] ])
 
 \* Multiply two integers, or concatenate copies of a list
 FunMult(e1, e2) ==
     CASE e1.ctype = "int" /\\ e2.ctype = "int" ->
         HInt(e2.cval * e1.cval)
-    [] e1.ctype = "int" /\\ e2.ctype = "dict" ->
-        DictTimes(e2, e1)
+    [] e1.ctype = "int" /\\ e2.ctype = "list" ->
+        ListTimes(e2, e1)
     [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
-        DictTimes(e1, e2)
+        ListTimes(e1, e2)
 
 \* By Harmony rules, if there are two conflicting key->value1 and key->value2
 \* mappings, the higher values wins.
