@@ -140,7 +140,8 @@ class ListValue(Value):
         return "[" + result + "]"
 
     def tlaval(self):
-        assert False, "TODO LIST"
+        s = "<<" + ",".join(tlaValue(x) for x in self.vals) + ">>"
+        return 'HList(%s)'%s
 
     def jdump(self):
         result = ""
