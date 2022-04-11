@@ -1299,10 +1299,11 @@ HRank(x) ==
     []   x.ctype = "int"     -> 1
     []   x.ctype = "str"     -> 2
     []   x.ctype = "pc"      -> 3
-    []   x.ctype = "dict"    -> 4
-    []   x.ctype = "set"     -> 5
-    []   x.ctype = "address" -> 6
-    []   x.ctype = "context" -> 7
+    []   x.ctype = "list"    -> 4
+    []   x.ctype = "dict"    -> 5
+    []   x.ctype = "set"     -> 6
+    []   x.ctype = "address" -> 7
+    []   x.ctype = "context" -> 8
 
 \* TLA+ does not seem to have a direct way to compare characters in a
 \* string, so...  Note that this only contains the printable ASCII
@@ -1404,6 +1405,7 @@ HCmp(x, y) ==
             []   x.ctype = "int"     -> x.cval - y.cval
             []   x.ctype = "str"     -> StrCmp(x.cval, y.cval)
             []   x.ctype = "pc"      -> x.cval - y.cval
+            []   x.ctype = "list"    -> SeqCmp(x.cval, y.cval)
             []   x.ctype = "set"     -> SeqCmp(HSort(x.cval), HSort(y.cval))
             []   x.ctype = "dict"    -> DictCmp(x.cval, y.cval)
             []   x.ctype = "address" -> SeqCmp(x.cval, y.cval)
@@ -1715,6 +1717,7 @@ DictCut(dict, key) == [ x \in (DOMAIN dict) \ { key } |-> dict[x] ]
 \* v contains the name of another local variable.  v can be a "variable tree"
 \* (see UpdateVars).  The objective is to take the "smallest" element of s,
 \* remove it from s, and assign it to v
+\* TODO.  Outdated
 OpCut(self, s, v) ==
     LET svar == HStr(s)
         sval == self.vs.cval[svar]
@@ -2031,6 +2034,8 @@ Val2Str(x) ==
     []   x.ctype = "str"     -> "'" \o x.cval \o "'"
     []   x.ctype = "int"     -> Int2Str(x.cval)
     []   x.ctype = "pc"      -> "PC(" \o Int2Str(x.cval) \o ")"
+    []   x.ctype = "list"     ->
+            IF x.cval = {} THEN "[]" ELSE "[ " \o Seq2Str(HSort(x.cval)) \o " ]"
     []   x.ctype = "dict"    ->
             IF DOMAIN x.cval = {} THEN "{:}" ELSE "{ " \o Dict2Str(x.cval) \o " }"
     []   x.ctype = "set"     ->
@@ -2040,6 +2045,7 @@ Val2Str(x) ==
 \* Compute the cardinality of a set of dict, or the length of a string
 FunLen(s) ==
     CASE s.ctype = "set"  -> HInt(Cardinality(s.cval))
+    []   s.ctype = "list" -> HInt(Cardinality(DOMAIN s.cval))
     []   s.ctype = "dict" -> HInt(Cardinality(DOMAIN s.cval))
     []   s.ctype = "str"  -> HInt(Len(s.cval))
 
@@ -2053,31 +2059,32 @@ FunAdd(x, y) ==
 \* OBSOLETE
 FunIsEmpty(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = {})
+    []   x.ctype = "list" -> HBool(x.cval = <<>>)
     []   x.ctype = "dict" -> HBool((DOMAIN x.cval) = {})
     []   x.ctype = "str"  -> HBool(Len(x.cval) = 0)
 
 \* Get the range of a dict (i.e., the values, not the keys)
 Range(dict) == { dict[x] : x \in DOMAIN dict }
 
-\* Get the minimum of a set or dict
+\* Get the minimum of a set or list
 FunMin(x) ==
     CASE x.ctype = "set"  -> HMin(x.cval)
-    []   x.ctype = "dict" -> HMin(Range(x.cval))
+    []   x.ctype = "list" -> HMin(Range(x.cval))
 
-\* Get the maximum of a set or dict
+\* Get the maximum of a set or list
 FunMax(x) ==
     CASE x.ctype = "set"  -> HMax(x.cval)
-    []   x.ctype = "dict" -> HMax(Range(x.cval))
+    []   x.ctype = "list" -> HMax(Range(x.cval))
 
-\* See if any element in the set or dict is true
+\* See if any element in the set or list is true
 FunAny(x) ==
     CASE x.ctype = "set"  -> HBool(HBool(TRUE) \in x.cval)
-    []   x.ctype = "dict" -> HBool(HBool(TRUE) \in Range(x.cval))
+    []   x.ctype = "list" -> HBool(HBool(TRUE) \in Range(x.cval))
 
-\* See if all elements in the set of dict are true
+\* See if all elements in the set of list are true
 FunAll(x) ==
     CASE x.ctype = "set"  -> HBool(x.cval = { HBool(TRUE) })
-    []   x.ctype = "dict" -> HBool(HBool(FALSE) \\notin Range(x.cval))
+    []   x.ctype = "list" -> HBool(HBool(FALSE) \\notin Range(x.cval))
 
 \* Can be applied to integers or sets
 FunSubtract(x, y) ==
@@ -2131,7 +2138,6 @@ MergeDictMax(x, y) ==
     ]
 
 \* Union of two sets or dictionaries
-\* TODO: also bitwise OR of integers
 FunUnion(x, y) ==
     CASE x.ctype = "set" /\\ y.ctype = "set" ->
         HSet(x.cval \\union y.cval)
@@ -2154,7 +2160,7 @@ FunIntersect(x, y) ==
 FunIn(x, y) ==
     CASE y.ctype = "set"  -> HBool(x \in y.cval)
     []   y.ctype = "list" -> HBool(\E k \in DOMAIN y.cval: y.cval[k] = x)
-    []   y.ctype = "dict" -> HBool(x \in DOMAIN)
+    []   y.ctype = "dict" -> HBool(x \in DOMAIN y.cval)
     []   y.ctype = "str"  ->
             LET xn == Len(x.cval)
                 yn == Len(y.cval)
@@ -2177,7 +2183,7 @@ FunMult(e1, e2) ==
         HInt(e2.cval * e1.cval)
     [] e1.ctype = "int" /\\ e2.ctype = "list" ->
         ListTimes(e2, e1)
-    [] e1.ctype = "dict" /\\ e2.ctype = "int" ->
+    [] e1.ctype = "list" /\\ e2.ctype = "int" ->
         ListTimes(e1, e2)
 
 \* By Harmony rules, if there are two conflicting key->value1 and key->value2
@@ -2243,6 +2249,13 @@ OpApply(self) ==
             LET next == [self EXCEPT !.pc = method.cval,
                     !.stack = << arg, "normal", self.pc + 1 >> \\o Tail(Tail(@))]
             IN
+                /\\ UpdateContext(self, next)
+                /\\ UNCHANGED shared
+        [] method.ctype = "list" ->
+            LET next == [self EXCEPT !.pc = @ + 1,
+                            !.stack = << method.cval[arg.cval] >> \\o Tail(Tail(@))]
+            IN
+                /\\ arg.ctype = "int"
                 /\\ UpdateContext(self, next)
                 /\\ UNCHANGED shared
         [] method.ctype = "dict" ->
