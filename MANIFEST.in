@@ -1,4 +1,8 @@
-include harmony_model_checker/charm.c
 include harmony_model_checker/modules/*.hny
+include harmony_model_checker/charm/*.h
+include harmony_model_checker/charm/*.c
+include harmony_model_checker/charm/python_ext/ext.c
+include harmony_model_checker/charm/iface/*.c
+include harmony_model_checker/charm/iface/*.h
 include harmony_model_checker/harmony/charm.js
 include harmony_model_checker/harmony/charm.css

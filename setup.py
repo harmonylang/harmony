@@ -145,10 +145,15 @@ setuptools.setup(
     include_package_data=True,
     package_data={
         PACKAGE_NAME: [
-            "charm.c",
             "modules/*.hny",
+            "charm/*.h",
+            "charm/*.c",
+            "charm/python_ext/ext.c",
+            "charm/ipi/ipi.c",
+            "charm/iface/*.h",
+            "charm/iface/*.c",
             "harmony/charm.js",
-            "harmony/charm.css"
+            "harmony/charm.css",
         ]
     },
     entry_points={
