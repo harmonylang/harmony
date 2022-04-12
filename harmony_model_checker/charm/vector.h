@@ -15,4 +15,6 @@ void int_vector_push(struct int_vector*, int);
 
 int int_vector_get(struct int_vector*, int);
 
+void int_vector_free(struct int_vector*);
+
 #endif

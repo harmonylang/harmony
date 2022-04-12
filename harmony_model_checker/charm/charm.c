@@ -244,7 +244,7 @@ static bool onestep(
     bool rollback = false, failure = false, stopped = false;
     bool terminated = false;
     int choice_size = 1;                // Number of choices to make. It is 1
-    struct int_vector filterstates = int_vector_init(20);
+    struct int_vector filterstates = int_vector_init(5);
     for (;;) {
         int pc = step->ctx->pc;
 
@@ -2304,6 +2304,8 @@ int main(int argc, char **argv){
                             i
                         );
                     }
+
+                    int_vector_free(&node->filter_states);
                 }
                 fprintf(out, "\n");
                 fprintf(out, "  ],\n");

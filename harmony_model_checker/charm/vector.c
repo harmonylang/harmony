@@ -24,3 +24,8 @@ int int_vector_get(struct int_vector* vec, int i) {
     assert(i < vec->len);
     return vec->v[i];
 }
+
+
+void int_vector_free(struct int_vector* vec) {
+    free(vec);
+}
