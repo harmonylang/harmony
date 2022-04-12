@@ -26,7 +26,8 @@ def get_version(rel_path: str) -> str:
             return line.split(delim)[1]
     raise RuntimeError("Unable to find version string.")
 
-PACKAGE_NAME = 'harmony_model_checker'
+PACKAGE_NAME = 'harmony'
+PROJECT_DIR_NAME = 'harmony_model_checker'
 
 python_version = sys.version_info[:2]
 if python_version < (3, 6):
@@ -34,7 +35,7 @@ if python_version < (3, 6):
     print("(Version {}.{} detected)".format(*python_version))
     sys.exit(1)
 
-PACKAGE_VERSION = get_version(f"{PACKAGE_NAME}/__init__.py")
+PACKAGE_VERSION = get_version(f"{PROJECT_DIR_NAME}/__init__.py")
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
@@ -101,7 +102,7 @@ class BuildExtCommand(build_ext):
             raise encountered_error
 
 
-CHARM_PKG_PATH = pathlib.Path(PACKAGE_NAME) / "charm"
+CHARM_PKG_PATH = pathlib.Path(PROJECT_DIR_NAME) / "charm"
 def get_c_extension_src():
     sources = []
     base_dir = CHARM_PKG_PATH
