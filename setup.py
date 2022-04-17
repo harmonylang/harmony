@@ -120,7 +120,7 @@ def get_c_extension_include_dirs():
 
 
 module = Extension(
-    f"{PACKAGE_NAME}.charm",
+    f"{PROJECT_DIR_NAME}.charm",
     sources=get_c_extension_src(),
     include_dirs=get_c_extension_include_dirs()
 )
