@@ -1,3 +1,4 @@
+from typing import Tuple
 from harmony_model_checker.h2py.H2PyEnv import H2PyEnv
 from harmony_model_checker.h2py.H2PyExprVisitor import H2PyExprVisitor
 from harmony_model_checker.h2py.util import *
@@ -55,6 +56,9 @@ class H2PyStmtVisitor(AbstractASTVisitor):
                     slice=h2expr(target.arg, env),
                     ctx=past.Store()
                 )
+
+            elif isinstance(target, hast.AddressAST):
+                return h2expr(target)
 
             elif isinstance(target, hast.PointerAST):
                 assert False, 'Pointer assignment is only supported in single-assignment form.'
@@ -166,3 +170,22 @@ class H2PyStmtVisitor(AbstractASTVisitor):
         return past.Import(
             names=[past.alias(name=name[T_TOKEN]) for name in node.modlist]
         )
+
+    def visit_if(self, node: hast.IfAST, env: H2PyEnv):
+        h2expr = H2PyExprVisitor()
+
+        def compile_alts(alts: list[Tuple[hast.AST, hast.AST, any, any]], else_stmt: hast.AST):
+            if len(alts) == 0:
+                if else_stmt is not None:
+                    return self(else_stmt)
+                else:
+                    return []
+            
+            (cond, stmt, _1, _2) = alts[0]
+            return [past.If(
+                test=h2expr(cond),
+                body=self(stmt),
+                orelse=compile_alts(alts[1:], else_stmt)
+            )]
+        
+        return compile_alts(node.alts, node.stat)

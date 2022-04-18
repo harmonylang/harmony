@@ -216,16 +216,6 @@ class H2PyExprVisitor(AbstractASTVisitor):
         )
 
     def visit_apply(self, node: hast.ApplyAST, env: H2PyEnv):
-        def convert_addr_lv(lv):
-            if isinstance(lv, hast.NameAST):
-                return (lv.name[T_TOKEN],)
-            elif isinstance(lv, hast.ApplyAST) and isinstance(lv.method, hast.NameAST):
-                return (lv.method.name[T_TOKEN], *convert_addr_lv(lv.arg))
-            elif isinstance(lv, hast.ConstantAST):
-                return (lv.const[T_TOKEN],)
-            else:
-                assert False, f'Unable to convert addr lv {lv}'
-
         def convert_arg(arg):
             if isinstance(arg, list):
                 result = []
@@ -240,14 +230,10 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 return [past.Constant(value=arg.const[0])]
 
             elif isinstance(arg, hast.AddressAST):
-                return [past.Call(
-                    func=past.Name(id='HAddr', ctx=past.Load()),
-                    args=[past.Constant(value=convert_addr_lv(arg.lv))],
-                    keywords=[]
-                )]
+                return [self(arg)]
 
             else:
-                assert False, f'Unable to convert arg {arg}'
+                return [self(arg)]
 
         if isinstance(node.method, hast.NameAST):
             return past.Call(
@@ -257,7 +243,8 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         else:
-            raise NotImplementedError(node.method)
+            h2expr = H2PyExprVisitor()
+            return h2expr(node.method)
 
     def visit_pointer(self, node: hast.PointerAST, env: H2PyEnv):
         return past.Call(
@@ -266,5 +253,41 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 attr='get'
             ),
             args=[],
+            keywords=[]
+        )
+
+    def visit_address(self, node: hast.AddressAST, env: H2PyEnv):
+        def convert_addr_lv(lv):
+            if isinstance(lv, hast.NameAST):
+                return (lv.name[T_TOKEN],)
+
+            elif isinstance(lv, hast.ApplyAST) and isinstance(lv.method, hast.NameAST):
+                return (lv.method.name[T_TOKEN], *convert_addr_lv(lv.arg))
+
+            elif (
+                isinstance(lv, hast.ApplyAST)
+                and isinstance(lv.method, hast.ConstantAST)
+                and isinstance(lv.method.const[T_TOKEN], str)
+            ):
+                return (lv.method.const[T_TOKEN], *convert_addr_lv(lv.arg))
+
+            elif isinstance(lv, hast.ConstantAST): 
+                return (lv.const[T_TOKEN],)
+
+            elif ( # ?method->arg
+                isinstance(lv, hast.ApplyAST)
+                and isinstance(lv.method, hast.PointerAST)
+                and isinstance(lv.method.expr, hast.NameAST)
+                and isinstance(lv.arg, hast.ConstantAST)
+                and isinstance(lv.arg.const[T_TOKEN], str)
+            ):
+                return (lv.method.expr.name[T_TOKEN], lv.arg.const[T_TOKEN])
+
+            else:
+                assert False, f'Unable to convert addr lv {lv}'
+
+        return past.Call(
+            func=past.Name(id='HAddr', ctx=past.Load()),
+            args=[past.Constant(value=convert_addr_lv(node.lv))],
             keywords=[]
         )
