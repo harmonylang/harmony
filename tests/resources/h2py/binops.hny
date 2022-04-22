@@ -1,3 +1,4 @@
+x = y = None
 z = x and y
 z = x or y
 z = x => y

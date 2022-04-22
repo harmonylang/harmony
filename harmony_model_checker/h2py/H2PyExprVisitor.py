@@ -9,10 +9,6 @@ import ast as past
 
 class H2PyExprVisitor(AbstractASTVisitor):
 
-    def __init__(self):
-        self.prologue = []
-        self.epilogue = []
-
     def __call__(self, node: hast.AST, env: H2PyEnv = H2PyEnv()) -> past.AST:
         return node.accept_visitor(self, env)
 
@@ -21,9 +17,9 @@ class H2PyExprVisitor(AbstractASTVisitor):
 
     def visit_nary(self, node: hast.NaryAST, env: H2PyEnv):
         op = node.op[T_TOKEN]
-        assert len(node.args) == 2
 
         if op == '+':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.Add(),
@@ -31,6 +27,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '*':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.Mult(),
@@ -38,6 +35,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '-':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.Sub(),
@@ -45,6 +43,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == 'and':
+            assert len(node.args) == 2
             return past.BoolOp(
                 op=past.And(),
                 values=[
@@ -54,6 +53,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == 'or':
+            assert len(node.args) == 2
             return past.BoolOp(
                 op=past.Or(),
                 values=[
@@ -63,6 +63,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '=>':
+            assert len(node.args) == 2
             return past.BoolOp(
                 op=past.Or(),
                 values=[
@@ -75,6 +76,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '&':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.BitAnd(),
@@ -82,6 +84,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '|':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.BitOr(),
@@ -89,6 +92,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '^':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.BitXor(),
@@ -96,6 +100,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op in {'//', '/'}:
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.FloorDiv(),
@@ -103,6 +108,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op in {'%', 'mod'}:
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.Mod(),
@@ -110,6 +116,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op in {'**'}:
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.Pow(),
@@ -117,6 +124,7 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '<<':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.LShift(),
@@ -124,10 +132,19 @@ class H2PyExprVisitor(AbstractASTVisitor):
             )
 
         elif op == '>>':
+            assert len(node.args) == 2
             return past.BinOp(
                 left=self(node.args[0], env.rep(ctx=past.Load())),
                 op=past.RShift(),
                 right=self(node.args[1], env.rep(ctx=past.Load()))
+            )
+    
+        elif op == 'choose':
+            assert len(node.args) == 1
+            return past.Call(
+                func=past.Name(id='choose', ctx=env.get('ctx')),
+                args=[self(node.args[0], env)], 
+                keywords=[]
             )
 
         else:
@@ -258,36 +275,27 @@ class H2PyExprVisitor(AbstractASTVisitor):
 
     def visit_address(self, node: hast.AddressAST, env: H2PyEnv):
         def convert_addr_lv(lv):
-            if isinstance(lv, hast.NameAST):
-                return (lv.name[T_TOKEN],)
+            if isinstance(lv, hast.NameAST): 
+                # ?lv
+                return past.Constant(value=lv.name[T_TOKEN])
 
-            elif isinstance(lv, hast.ApplyAST) and isinstance(lv.method, hast.NameAST):
-                return (lv.method.name[T_TOKEN], *convert_addr_lv(lv.arg))
+            elif isinstance(lv, hast.ApplyAST): 
+                # ?(lv.method)[lv.arg]
+                return past.Tuple(elts=[convert_addr_lv(lv.method), self(lv.arg, env.rep(ctx=past.Load()))])
 
-            elif (
-                isinstance(lv, hast.ApplyAST)
-                and isinstance(lv.method, hast.ConstantAST)
-                and isinstance(lv.method.const[T_TOKEN], str)
-            ):
-                return (lv.method.const[T_TOKEN], *convert_addr_lv(lv.arg))
+            elif isinstance(lv, hast.PointerAST): 
+                # ?(!lv.expr)
+                # 
+                # lv.expr must evaluate to an HAddr already, so we directly 
+                # translate that
 
-            elif isinstance(lv, hast.ConstantAST): 
-                return (lv.const[T_TOKEN],)
-
-            elif ( # ?method->arg
-                isinstance(lv, hast.ApplyAST)
-                and isinstance(lv.method, hast.PointerAST)
-                and isinstance(lv.method.expr, hast.NameAST)
-                and isinstance(lv.arg, hast.ConstantAST)
-                and isinstance(lv.arg.const[T_TOKEN], str)
-            ):
-                return (lv.method.expr.name[T_TOKEN], lv.arg.const[T_TOKEN])
+                return self(lv.expr, env.rep(ctx=past.Load()))
 
             else:
                 assert False, f'Unable to convert addr lv {lv}'
 
         return past.Call(
             func=past.Name(id='HAddr', ctx=past.Load()),
-            args=[past.Constant(value=convert_addr_lv(node.lv))],
+            args=[convert_addr_lv(node.lv)],
             keywords=[]
         )

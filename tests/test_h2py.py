@@ -150,6 +150,48 @@ Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
             'tests/resources/h2py/if_elif_else.py',
         )
 
+    def test_var_1(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/var_1.hny',
+            'tests/resources/h2py/var_1.py',
+        )
+
+    def test_while_1(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/while_1.hny',
+            'tests/resources/h2py/while_1.py',
+        )
+
+    def test_var_2(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/var_2.hny',
+            'tests/resources/h2py/var_2.py',
+        )
+    
+    def test_choose_1(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/choose_1.hny',
+            'tests/resources/h2py/choose_1.py',
+        )
+
+    def test_ptr_assign_3(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/ptr_assign_3.hny',
+            'tests/resources/h2py/ptr_assign_3.py',
+        )
+
+    def test_ptr_assign_4(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/ptr_assign_4.hny',
+            'tests/resources/h2py/ptr_assign_4.py',
+        )
+
+    def test_addr_2(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/addr_2.hny',
+            'tests/resources/h2py/addr_2.py',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

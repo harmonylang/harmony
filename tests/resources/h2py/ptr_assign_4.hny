@@ -1,0 +1,16 @@
+memory = {0: None, 1: None, 2: None}
+idx = 0 # index of the next free slot in memory
+
+def malloc():
+    result = ?memory[idx]
+    idx = idx + 1;
+
+def malloc_init(x):
+    result = malloc()
+    !result = x
+
+x = malloc_init('Hello!')
+assert !x == 'Hello!'
+
+y = malloc_init('Goodbye!')
+assert !y == 'Goodbye!'
