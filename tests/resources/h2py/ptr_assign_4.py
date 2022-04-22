@@ -10,7 +10,7 @@ def malloc():
 
 def malloc_init(x):
     result = None
-    result = malloc(())
+    result = malloc()
     result.assign(x)
     return result
 x = malloc_init('Hello!')

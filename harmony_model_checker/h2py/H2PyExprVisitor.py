@@ -2,6 +2,7 @@ from harmony_model_checker.h2py.H2PyEnv import H2PyEnv
 from harmony_model_checker.harmony.AbstractASTVisitor import AbstractASTVisitor
 from harmony_model_checker.h2py.util import *
 import harmony_model_checker.h2py.h2py_runtime as h2py_runtime
+import harmony_model_checker.harmony.value as hvalue
 import harmony_model_checker.harmony.ast as hast
 
 import ast as past
@@ -138,12 +139,12 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 op=past.RShift(),
                 right=self(node.args[1], env.rep(ctx=past.Load()))
             )
-    
+
         elif op == 'choose':
             assert len(node.args) == 1
             return past.Call(
                 func=past.Name(id='choose', ctx=env.get('ctx')),
-                args=[self(node.args[0], env)], 
+                args=[self(node.args[0], env)],
                 keywords=[]
             )
 
@@ -244,20 +245,32 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 return convert_arg(arg.list)
 
             elif isinstance(arg, hast.ConstantAST):
-                return [past.Constant(value=arg.const[0])]
+                return [past.Constant(value=arg.const[T_TOKEN])]
 
             elif isinstance(arg, hast.AddressAST):
                 return [self(arg, env)]
 
             else:
-                return [self(arg, env)]
+                raise NotImplementedError(f'Unable to convert arg {arg}')
 
         if isinstance(node.method, hast.NameAST):
-            return past.Call(
-                func=past.Name(id=node.method.name[T_TOKEN], ctx=past.Load()),
-                args=convert_arg(node.arg),
-                keywords=[]
-            )
+            if ( # omit empty tuple when calling function with no arguments
+                isinstance(node.arg, hast.ConstantAST) 
+                and isinstance(node.arg.const[T_TOKEN], hvalue.ListValue)
+                and len(node.arg.const[T_TOKEN]) == 0
+            ):
+                return past.Call(
+                    func=past.Name(id=node.method.name[T_TOKEN], ctx=past.Load()),
+                    args=[],
+                    keywords=[]
+                )
+
+            else:
+                return past.Call(
+                    func=past.Name(id=node.method.name[T_TOKEN], ctx=past.Load()),
+                    args=convert_arg(node.arg),
+                    keywords=[]
+                )
 
         elif isinstance(node.method, hast.PointerAST):
             return past.Call(
@@ -281,24 +294,24 @@ class H2PyExprVisitor(AbstractASTVisitor):
 
     def visit_address(self, node: hast.AddressAST, env: H2PyEnv):
         def convert_addr_lv(lv):
-            if isinstance(lv, hast.NameAST): 
+            if isinstance(lv, hast.NameAST):
                 # ?lv
                 return past.Constant(value=lv.name[T_TOKEN])
 
-            elif isinstance(lv, hast.ApplyAST): 
+            elif isinstance(lv, hast.ApplyAST):
                 # ?(lv.method)[lv.arg]
                 return past.Tuple(elts=[convert_addr_lv(lv.method), self(lv.arg, env.rep(ctx=past.Load()))])
 
-            elif isinstance(lv, hast.PointerAST): 
+            elif isinstance(lv, hast.PointerAST):
                 # ?(!lv.expr)
-                # 
-                # lv.expr must evaluate to an HAddr already, so we directly 
+                #
+                # lv.expr must evaluate to an HAddr already, so we directly
                 # translate that
 
                 return self(lv.expr, env.rep(ctx=past.Load()))
 
             else:
-                assert False, f'Unable to convert addr lv {lv}'
+                raise NotImplementedError(f'Unable to convert addr lv {lv}')
 
         return past.Call(
             func=past.Name(id='HAddr', ctx=past.Load()),

@@ -10,7 +10,6 @@ import ast as past
 
 class H2PyStmtVisitor(AbstractASTVisitor):
 
-
     def __call__(self, node: hast.AST, env: H2PyEnv = H2PyEnv()) -> past.AST:
         return node.accept_visitor(self, env)
 
@@ -42,7 +41,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
             elif isinstance(target, hast.NameAST):
                 return past.Name(
-                    id=escape_name(target.name[T_TOKEN]), 
+                    id=escape_name(target.name[T_TOKEN]),
                     ctx=past.Store()
                 )
 
@@ -128,7 +127,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
     def visit_call(self, node: hast.CallAST, env: H2PyEnv):
         h2expr = H2PyExprVisitor()
-        return [past.Expr(value=h2expr(node.expr))]
+        return [past.Expr(value=h2expr(node.expr, env))]
 
     def visit_assert(self, node: hast.AssertAST, env: H2PyEnv):
         h2expr = H2PyExprVisitor()
@@ -184,14 +183,14 @@ class H2PyStmtVisitor(AbstractASTVisitor):
                     return self(else_stmt, env)
                 else:
                     return []
-            
+
             (cond, stmt, _1, _2) = alts[0]
             return [past.If(
                 test=h2expr(cond, env),
                 body=self(stmt, env),
                 orelse=compile_alts(alts[1:], else_stmt)
             )]
-        
+
         return compile_alts(node.alts, node.stat)
 
     def visit_var(self, node: hast.VarAST, env: H2PyEnv):
@@ -221,6 +220,6 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
         return past.While(
             test=h2expr(node.cond, env),
-            body=self(node.stat, env), 
+            body=self(node.stat, env),
             orelse=[]
         )

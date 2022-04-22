@@ -204,6 +204,12 @@ Expected Python AST: {past.dump(past.parse(python_code), indent=2)}
             'tests/resources/h2py/addr_3.py',
         )
 
+    def test_apply_1(self):
+        self.assert_h2py_files(
+            'tests/resources/h2py/apply_1.hny',
+            'tests/resources/h2py/apply_1.py',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

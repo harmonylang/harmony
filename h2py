@@ -18,14 +18,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     harmony_ast = parse(args.filename)
-    if (args.verbose):
+    if args.verbose:
         print('Dumped Harmony AST:')
         dump = DumpASTVisitor(indent_unit=2)
         print(dump(harmony_ast))
         print()
 
     python_ast = h2py(harmony_ast)
-    if (args.verbose):
+    if args.verbose:
         print('Dumped Python AST:')
         print(past.dump(python_ast, indent=2))
         print()
