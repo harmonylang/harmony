@@ -131,9 +131,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
     def visit_assert(self, node: hast.AssertAST, env: H2PyEnv):
         h2expr = H2PyExprVisitor()
-        return past.Assert(
-            test=h2expr(node.cond, env)
-        )
+        return past.Assert(test=h2expr(node.cond, env))
 
     def visit_let(self, node: hast.LetAST, env: H2PyEnv):
         stmts = []

@@ -244,14 +244,9 @@ class H2PyExprVisitor(AbstractASTVisitor):
             elif isinstance(arg, hast.TupleAST):
                 return convert_arg(arg.list)
 
-            elif isinstance(arg, hast.ConstantAST):
-                return [past.Constant(value=arg.const[T_TOKEN])]
-
-            elif isinstance(arg, hast.AddressAST):
-                return [self(arg, env)]
-
             else:
-                raise NotImplementedError(f'Unable to convert arg {arg}')
+                assert isinstance(arg, hast.AST)
+                return [self(arg, env)]
 
         if isinstance(node.method, hast.NameAST):
             if ( # omit empty tuple when calling function with no arguments
