@@ -247,10 +247,10 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 return [past.Constant(value=arg.const[0])]
 
             elif isinstance(arg, hast.AddressAST):
-                return [self(arg)]
+                return [self(arg, env)]
 
             else:
-                return [self(arg)]
+                return [self(arg, env)]
 
         if isinstance(node.method, hast.NameAST):
             return past.Call(
@@ -259,9 +259,15 @@ class H2PyExprVisitor(AbstractASTVisitor):
                 keywords=[]
             )
 
+        elif isinstance(node.method, hast.PointerAST):
+            return past.Call(
+                func=self(node.method, env),
+                args=convert_arg(node.arg),
+                keywords=[]
+            )
+
         else:
-            h2expr = H2PyExprVisitor()
-            return h2expr(node.method)
+            raise NotImplementedError(node)
 
     def visit_pointer(self, node: hast.PointerAST, env: H2PyEnv):
         return past.Call(

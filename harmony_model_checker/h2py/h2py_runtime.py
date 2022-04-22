@@ -217,6 +217,8 @@ def H(obj):
         return HDict({H(k): H(v) for k, v in obj.items()})
     elif isinstance(obj, HDict):
         return HDict(obj.dict)
+    elif isinstance(obj, HAddr):
+        return obj
     else:
         raise NotImplementedError(obj)
 

@@ -94,7 +94,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
             )
         )
 
-    # TODO: Smartly add function prologue and 
+    # TODO: Smartly add function prologue and epilogue
     def visit_method(self, node: hast.MethodAST, env: H2PyEnv):
         def convert_parameters(parameters):
             if isinstance(parameters, tuple):
@@ -199,9 +199,9 @@ class H2PyStmtVisitor(AbstractASTVisitor):
 
         def convert_target(var):
             if isinstance(var, list):
-                return [convert_target(v) for v in var]
+                return past.Tuple(elts=[convert_target(var) for var in var])
             elif isinstance(var, tuple):
-                return [past.Name(id=var[T_TOKEN])]
+                return past.Name(id=var[T_TOKEN])
             else:
                 assert False, f'Unable to convert target {var}'
 
@@ -209,7 +209,7 @@ class H2PyStmtVisitor(AbstractASTVisitor):
             h2expr = H2PyExprVisitor()
             value = h2expr(expr, env.rep(ctx=past.Load()))
             stmts.append(past.Assign(
-                targets=convert_target(var),
+                targets=[convert_target(var)],
                 value=value,
                 lineno=node.token[T_LINENO]
             ))

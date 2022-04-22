@@ -94,6 +94,7 @@ class DumpASTVisitor(AbstractASTVisitor):
     def visit_apply(self, node: ApplyAST, depth):
         self.p(f"Apply {node.token}", indent=depth)
 
+        self(node.method, depth + 1)
         self(node.arg, depth + 1)
 
     def visit_pointer(self, node: PointerAST, depth):
