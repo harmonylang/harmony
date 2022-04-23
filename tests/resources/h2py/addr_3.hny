@@ -1,0 +1,8 @@
+def f(x):
+    x->y->z = 7
+    result = x->y->w
+
+a = {.w: 5, .z: 10}
+x = {.y: ?a}
+assert f(?x) == 5
+assert a.z == 7

@@ -1,14 +1,33 @@
 #!/usr/bin/env python3
 
-import sys
-
-from harmony_model_checker.h2py.H2PyASTVisitor import h2py
+from harmony_model_checker.harmony.DumpASTVisitor import DumpASTVisitor
+from harmony_model_checker.h2py.h2py import h2py
 from harmony_model_checker.compile import parse
 
 import ast as past
 
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Harmony to Python')
+parser.add_argument('filename')
+parser.add_argument('--verbose', action='store_true')
+
 
 if __name__ == '__main__':
-    harmony_ast = parse(sys.argv[1])
+    args = parser.parse_args()
+    
+    harmony_ast = parse(args.filename)
+    if args.verbose:
+        print('Dumped Harmony AST:')
+        dump = DumpASTVisitor(indent_unit=2)
+        print(dump(harmony_ast))
+        print()
+
     python_ast = h2py(harmony_ast)
+    if args.verbose:
+        print('Dumped Python AST:')
+        print(past.dump(python_ast, indent=2))
+        print()
+
     print(past.unparse(python_ast))

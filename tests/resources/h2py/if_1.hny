@@ -1,0 +1,5 @@
+def f(x):
+    result = x
+
+if f(True):
+    print("True")

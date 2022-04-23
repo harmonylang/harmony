@@ -1,9 +1,8 @@
 from h2py_runtime import *
 
-def f(x_ptr):
+def f(x):
     result = None
-    x_ptr.assign(5)
+    result = x
     return result
-x = 3
-f(HAddr('x'))
-print(x)
+if f(True):
+    print('True')

@@ -1,0 +1,4 @@
+def f(x):
+    result = x->y
+x = {.y: 5}
+assert f(?x) == 5

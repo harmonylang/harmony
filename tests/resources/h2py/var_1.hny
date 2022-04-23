@@ -1,0 +1,4 @@
+def f(x):
+    var y = x
+    print(y)
+f(5)

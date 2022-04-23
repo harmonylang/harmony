@@ -3,131 +3,134 @@ from harmony_model_checker.harmony.ast import *
 
 class AbstractASTVisitor:
 
+    def _not_implemented(self, node, *args, **kwargs):
+        raise NotImplementedError(f'Not implemented: {type(node)}')
+
     def visit_constant(self, node: ConstantAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_name(self, node: NameAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_set(self, node: SetAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_range(self, node: RangeAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_tuple(self, node: TupleAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_dict(self, node: DictAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_set_comprehension(self, node: SetComprehensionAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_dict_comprehension(self, node: DictComprehensionAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_list_comprehension(self, node: ListComprehensionAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_nary(self, node: NaryAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_cmp(self, node: CmpAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_apply(self, node: ApplyAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_pointer(self, node: PointerAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_assignment(self, node: AssignmentAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_del(self, node: DelAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_set_int_level(self, node: SetIntLevelAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_save(self, node: SaveAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_stop(self, node: StopAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_address(self, node: AddressAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_pass(self, node: PassAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_block(self, node: BlockAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_if(self, node: IfAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_while(self, node: WhileAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_invariant(self, node: InvariantAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_let(self, node: LetAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_var(self, node: VarAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_for(self, node: ForAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_let_when(self, node: LetWhenAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_atomic(self, node: AtomicAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_assert(self, node: AssertAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_print(self, node: PrintAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_method(self, node: MethodAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_lambda(self, node: LambdaAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_call(self, node: CallAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_spawn(self, node: SpawnAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_trap(self, node: TrapAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_go(self, node: GoAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_import(self, node: ImportAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_from(self, node: FromAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_location(self, node: LocationAST, *args, **kwargs):
-        pass 
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_label_stat(self, node: LabelStatAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_sequential(self, node: SequentialAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)
 
     def visit_const(self, node: ConstAST, *args, **kwargs):
-        pass
+        self._not_implemented(node, *args, **kwargs)

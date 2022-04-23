@@ -1,6 +1,7 @@
 from functools import cmp_to_key
 import inspect
-from typing import Dict, Tuple, Union
+from typing import Dict, Union
+import random
 
 
 class H2PyRuntimeException(Exception):
@@ -30,9 +31,21 @@ class HValue:
 
 class HAddr(HValue):
 
-    def __init__(self, addr: Tuple[str]):
-        assert len(addr) >= 1
-        self.addr = addr
+    def __init__(self, *args):
+        assert len(args) >= 1
+
+        def flatten(arg):
+            if isinstance(arg, str):
+                return (arg,)
+            elif isinstance(arg, HAddr):
+                return arg.addr
+            elif isinstance(arg, (list, tuple)):
+                flattened = []
+                for arg_comp in arg:
+                    flattened += flatten(arg_comp)
+                return tuple(flattened)
+
+        self.addr = flatten(args)
 
     def __getitem__(self, item):
         return self.addr.__getitem__(item)
@@ -45,7 +58,10 @@ class HAddr(HValue):
 
     def get(self):
         caller_globals = inspect.stack()[1][0].f_globals
-        v = caller_globals[self.addr[0]]
+        v = caller_globals.get(self.addr[0])
+        if v is None:
+            print(self.addr, caller_globals.keys())
+            exit()
 
         for ref in self.addr[1:]:
             assert isinstance(v, HDict)
@@ -201,6 +217,8 @@ def H(obj):
         return HDict({H(k): H(v) for k, v in obj.items()})
     elif isinstance(obj, HDict):
         return HDict(obj.dict)
+    elif isinstance(obj, HAddr):
+        return obj
     else:
         raise NotImplementedError(obj)
 
@@ -223,5 +241,12 @@ def P(obj):
     elif isinstance(obj, HAddr):
         raise H2PyRuntimeException(
             f'Harmony object {obj} of type HAddr has no corresponding Python representation.')
+    else:
+        raise NotImplementedError(obj)
+
+
+def choose(obj):
+    if isinstance(obj, HDict):
+        return random.choice(list(obj.dict.values()))
     else:
         raise NotImplementedError(obj)
