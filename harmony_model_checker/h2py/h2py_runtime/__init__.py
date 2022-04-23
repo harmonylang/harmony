@@ -1,6 +1,6 @@
 from functools import cmp_to_key
 import inspect
-from typing import Dict, Tuple, Union
+from typing import Dict, Union
 import random
 
 
@@ -243,6 +243,7 @@ def P(obj):
             f'Harmony object {obj} of type HAddr has no corresponding Python representation.')
     else:
         raise NotImplementedError(obj)
+
 
 def choose(obj):
     if isinstance(obj, HDict):
