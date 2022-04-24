@@ -41,7 +41,6 @@ static inline struct keynode *keynode_new(struct dict *dict, char *key, unsigned
 
 // TODO.  Make iterative rather than recursive
 void keynode_delete(struct dict *dict, struct keynode *node) {
-	free(node->key);
 	if (node->next) keynode_delete(dict, node->next);
 	(*dict->free)(node);
 }
