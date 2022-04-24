@@ -132,8 +132,8 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     char *p = value_string(step->ctx->name);
-                    fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
-                            p, step->ctx->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
+                    fprintf(stderr, "%s pc=%d states=%d queue=%d\n",
+                            p, step->ctx->pc, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -1475,6 +1475,7 @@ void process_results(
 
         // Add a backward edge from node to parent
         struct edge *bwd = node->bwd;
+        node->bwd = NULL;
         bwd->node = node->parent;
         bwd->next = next->bwd;
         next->bwd = bwd;
@@ -1825,13 +1826,17 @@ int main(int argc, char **argv){
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
+    int diameter = 0;
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
         value_set_concurrent(&global->values, 1);
 
         // make the threads work
         barrier_wait(&start_barrier);
+        // printf("Diameter %d, Phase 1\n", diameter);
         barrier_wait(&end_barrier);
+        // printf("Diameter %d, Phase 2\n", diameter);
+        diameter++;
 
         double before_postproc = gettime();
 
@@ -1858,6 +1863,7 @@ int main(int argc, char **argv){
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // find the strongly connected components
+        printf("FIND SCC\n");
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);
 
