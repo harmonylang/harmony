@@ -1383,7 +1383,9 @@ static void worker(void *arg){
 void process_results(
     struct global_t *global,
     struct dict *visited,
-    struct queue *todo,
+    struct worker *workers,
+    int nworkers,
+    int *count,
     struct queue *results
 ) {
     while (!queue_empty(results)) {
@@ -1398,7 +1400,8 @@ void process_results(
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
-            queue_add(todo, node);
+            queue_add(&workers[*count % nworkers].todo, node);
+            (*count)++;
             global->enqueued++;
             must_free = false;
         }
@@ -1829,19 +1832,10 @@ int main(int argc, char **argv){
             queue_transfer(&results, &w->results);
         }
 
-        process_results(global, visited, &todo, &results);
-        if (queue_empty(&todo)) {
+        int count = 0;
+        process_results(global, visited, workers, nworkers, &count, &results);
+        if (count == 0) {
             break;
-        }
-
-        // Distribute the work evenly among the workers
-        int distr = 0;
-        while (!queue_empty(&todo)) {
-            struct node *node = queue_get(&todo);
-            queue_add(&workers[distr].todo, node);
-            if (++distr == nworkers) {
-                distr = 0;
-            }
         }
 
         postproc += gettime() - before_postproc;
