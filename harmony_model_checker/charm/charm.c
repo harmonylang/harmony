@@ -19,6 +19,7 @@
 #include "global.h"
 #include "thread.h"
 #include "charm.h"
+#include "queue.h"
 #include "ops.h"
 #include "dot.h"
 #include "strbuf.h"
@@ -33,11 +34,11 @@ struct worker {
     barrier_t *start_barrier, *end_barrier;
 
     int index;                   // index of worker
-    struct minheap *todo;        // set of states to evaluate
+    struct queue todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
-    struct minheap *results;     // outqueue
+    struct queue results;        // outqueue
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
@@ -383,7 +384,7 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    minheap_insert(w->results, next);
+    queue_add(&w->results, next);
     return true;
 }
 
@@ -1296,7 +1297,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 			f->choice = node->choice;
 			f->node = node;
 			minheap_insert(failures, f);
-			break;
+			// break;
 		}
 	}
 }
@@ -1320,8 +1321,8 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-	while (!minheap_empty(w->todo)) {
-		struct node *node = minheap_getmin(w->todo);
+	while (!queue_empty(&w->todo)) {
+		struct node *node = queue_get(&w->todo);
 		struct state *state = node->state;
 		w->global->dequeued++; // TODO race condition
 
@@ -1382,11 +1383,11 @@ static void worker(void *arg){
 void process_results(
     struct global_t *global,
     struct dict *visited,
-    struct minheap *todo,
-    struct minheap *results
+    struct queue *todo,
+    struct queue *results
 ) {
-    while (!minheap_empty(results)) {
-        struct node *node = minheap_getmin(results);
+    while (!queue_empty(results)) {
+        struct node *node = queue_get(results);
         struct node *parent = node->parent, *next;
         bool must_free;     // whether node must be freed or not
 
@@ -1397,12 +1398,22 @@ void process_results(
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
-            minheap_insert(todo, node);
+            queue_add(todo, node);
             global->enqueued++;
             must_free = false;
         }
         else {
             next = *p;
+            if (node->len < next->len) {
+                next->len = node->len;
+                next->parent = node->parent;
+                next->weight = node->weight;
+                next->steps = node->steps;
+                next->before = node->before;
+                next->after = node->after;
+                next->choice = node->choice;
+                next->interrupt = node->interrupt;
+            }
             must_free = true;
         }
 
@@ -1752,11 +1763,11 @@ int main(int argc, char **argv){
     assert(*p == NULL);
     *p = node;
 
-    struct minheap *todo;
-    todo = minheap_create(node_cmp);
+    struct queue todo;
+    queue_init(&todo);
 
-    struct minheap *results;
-    results = minheap_create(node_cmp);
+    struct queue results;
+    queue_init(&results);
 
     // Determine how many worker threads to use
     int nworkers = getNumCores();
@@ -1774,8 +1785,8 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
-        w->todo = minheap_create(node_cmp);
-        w->results = minheap_create(node_cmp);
+        queue_init(&w->todo);
+        queue_init(&w->results);
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
@@ -1793,7 +1804,7 @@ int main(int argc, char **argv){
     }
 
     // Give the initial state to worker 0
-    minheap_insert(workers[0].todo, node);
+    queue_add(&workers[0].todo, node);
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
@@ -1813,24 +1824,24 @@ int main(int argc, char **argv){
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-            assert(minheap_empty(w->todo));
+            assert(queue_empty(&w->todo));
 
-            while (!minheap_empty(w->results)) {
-                struct node *node = minheap_getmin(w->results);
-                minheap_insert(results, node);
+            while (!queue_empty(&w->results)) {
+                struct node *node = queue_get(&w->results);
+                queue_add(&results, node);
             }
         }
 
-        process_results(global, visited, todo, results);
-        if (minheap_empty(todo)) {
+        process_results(global, visited, &todo, &results);
+        if (queue_empty(&todo)) {
             break;
         }
 
         // Distribute the work evenly among the workers
         int distr = 0;
-        while (!minheap_empty(todo)) {
-            struct node *node = minheap_getmin(todo);
-            minheap_insert(workers[distr].todo, node);
+        while (!queue_empty(&todo)) {
+            struct node *node = queue_get(&todo);
+            queue_add(&workers[distr].todo, node);
             if (++distr == nworkers) {
                 distr = 0;
             }
@@ -1902,7 +1913,7 @@ int main(int argc, char **argv){
                     f->choice = node->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
-                    break;
+                    // break;
                 }
             }
         }
@@ -1919,7 +1930,7 @@ int main(int argc, char **argv){
                     f->choice = node->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
-                    break;
+                    // break;
                 }
             }
 
