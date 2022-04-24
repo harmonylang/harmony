@@ -1430,8 +1430,10 @@ void process_results(
             minheap_insert(global->failures, f);
         }
 
+        struct edge *edges = malloc(sizeof(struct edge) * 2);
+
         // Add a forward edge from parent
-        struct edge *fwd = new_alloc(struct edge);
+        struct edge *fwd = &edges[0];
         fwd->ctx = node->before;
         fwd->choice = node->choice;
         fwd->interrupt = node->interrupt;
@@ -1445,7 +1447,7 @@ void process_results(
         parent->fwd = fwd;
 
         // Add a backward edge from node to parent.
-        struct edge *bwd = new_alloc(struct edge);
+        struct edge *bwd = &edges[1];
         bwd->ctx = node->before;
         bwd->choice = node->choice;
         bwd->interrupt = node->interrupt;
