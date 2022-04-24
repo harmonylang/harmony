@@ -383,7 +383,7 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    minheap_insert(w->results[weight], next);
+    minheap_insert(w->results[1], next);
     return true;
 }
 
