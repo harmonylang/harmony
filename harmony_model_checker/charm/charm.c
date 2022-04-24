@@ -19,7 +19,6 @@
 #include "global.h"
 #include "thread.h"
 #include "charm.h"
-#include "queue.h"
 #include "ops.h"
 #include "dot.h"
 #include "strbuf.h"
@@ -372,11 +371,8 @@ static bool onestep(
     next->weight = weight;
 
     next->ai = step->ai;
-    step->ai = NULL;
     next->log = step->log;
     next->nlog = step->nlog;
-    step->log = NULL;
-    step->nlog = 0;
 
     if (failure) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -385,6 +381,38 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
+    struct edge *edges = malloc(sizeof(struct edge) * 2);
+
+    // Forward edge from parent
+    struct edge *fwd = &edges[0];
+    fwd->ctx = ctx;
+    fwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
+    fwd->weight = weight;
+    fwd->after = after;
+    fwd->ai = step->ai;
+    fwd->log = step->log;
+    fwd->nlog = step->nlog;
+    next->fwd = fwd;
+
+    // Backward edge from node to parent.
+    struct edge *bwd = &edges[1];
+    bwd->ctx = ctx;
+    bwd->choice = choice_copy;
+    bwd->interrupt = interrupt;
+    bwd->weight = weight;
+    bwd->after = after;
+    bwd->ai = step->ai;
+    bwd->log = step->log;
+    bwd->nlog = step->nlog;
+    next->bwd = bwd;
+
+    // We stole the access info and log
+    step->ai = NULL;
+    step->log = NULL;
+    step->nlog = 0;
+
+    // Add new node to results
 	next->next = w->results;
 	w->results = next;
     return true;
@@ -1395,7 +1423,7 @@ void process_results(
 
     while ((node = *results) != NULL) {
 		*results = node->next;
-        struct node *parent = node->parent, *next;
+        struct node *next;
         bool must_free;     // whether node must be freed or not
 
         /* See if we already visited this node.
@@ -1414,7 +1442,8 @@ void process_results(
         }
         else {
             next = *p;
-            if (node->len < next->len) {
+            if (node->len < next->len ||
+                    (node->len == next->len && node->steps < next->steps)) {
                 next->len = node->len;
                 next->parent = node->parent;
                 next->weight = node->weight;
@@ -1437,33 +1466,16 @@ void process_results(
             minheap_insert(global->failures, f);
         }
 
-        struct edge *edges = malloc(sizeof(struct edge) * 2);
-
         // Add a forward edge from parent
-        struct edge *fwd = &edges[0];
-        fwd->ctx = node->before;
-        fwd->choice = node->choice;
-        fwd->interrupt = node->interrupt;
+        struct edge *fwd = node->fwd;
+        node->fwd = NULL;
         fwd->node = next;
-        fwd->weight = node->weight;
-        fwd->after = node->after;
-        fwd->ai = node->ai;
-        fwd->log = node->log;
-        fwd->nlog = node->nlog;
-        fwd->next = parent->fwd;
-        parent->fwd = fwd;
+        fwd->next = node->parent->fwd;
+        node->parent->fwd = fwd;
 
-        // Add a backward edge from node to parent.
-        struct edge *bwd = &edges[1];
-        bwd->ctx = node->before;
-        bwd->choice = node->choice;
-        bwd->interrupt = node->interrupt;
-        bwd->node = parent;
-        bwd->weight = node->weight;
-        bwd->after = node->after;
-        bwd->ai = node->ai;
-        bwd->log = node->log;
-        bwd->nlog = node->nlog;
+        // Add a backward edge from node to parent
+        struct edge *bwd = node->bwd;
+        bwd->node = node->parent;
         bwd->next = next->bwd;
         next->bwd = bwd;
 
@@ -1776,12 +1788,6 @@ int main(int argc, char **argv){
     assert(*p == NULL);
     *p = node;
 
-    struct queue todo;
-    queue_init(&todo);
-
-    struct queue results;
-    queue_init(&results);
-
     // Determine how many worker threads to use
     int nworkers = getNumCores();
 	printf("nworkers = %d\n", nworkers);
@@ -1835,7 +1841,6 @@ int main(int argc, char **argv){
         int count = 0;
 
         // Collect the results of all the workers
-        assert(queue_empty(&results));
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
 			process_results(global, visited, workers, nworkers, &count, &w->results);

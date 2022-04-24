@@ -29,10 +29,10 @@ uint32_t dict_hash(const void *key, int size){
 	return hash_func(key, size);
 }
 
-struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
-	struct keynode *node = (*dict->malloc)(sizeof(struct keynode));
+static inline struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
+	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
-	node->key = malloc(len);
+	node->key = (char *) &node[1];
 	memcpy(node->key, key, len);
 	node->next = 0;
 	node->value = 0;
