@@ -34,11 +34,11 @@ struct worker {
     barrier_t *start_barrier, *end_barrier;
 
     int index;                   // index of worker
-    struct queue todo;           // set of states to evaluate
+    struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
-    struct queue results;        // outqueue
+    struct node *results;        // list of resulting states
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
@@ -362,6 +362,7 @@ static bool onestep(
     struct node *next = new_alloc(struct node);
     next->parent = node;
     next->state = sc;
+	next->hash = dict_hash(sc, sizeof(*sc));
     next->before = ctx;
     next->choice = choice_copy;
     next->interrupt = interrupt;
@@ -384,7 +385,8 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    queue_add(&w->results, next);
+	next->next = w->results;
+	w->results = next;
     return true;
 }
 
@@ -1321,8 +1323,9 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-	while (!queue_empty(&w->todo)) {
-		struct node *node = queue_get(&w->todo);
+	struct node *node;
+	while ((node = w->todo) != NULL) {
+		w->todo = node->next;
 		struct state *state = node->state;
 		w->global->dequeued++; // TODO race condition
 
@@ -1386,21 +1389,25 @@ void process_results(
     struct worker *workers,
     int nworkers,
     int *count,
-    struct queue *results
+    struct node **results
 ) {
-    while (!queue_empty(results)) {
-        struct node *node = queue_get(results);
+	struct node *node;
+
+    while ((node = *results) != NULL) {
+		*results = node->next;
         struct node *parent = node->parent, *next;
         bool must_free;     // whether node must be freed or not
 
         /* See if we already visited this node.
          */
-        void **p = dict_insert(visited, node->state, sizeof(struct state));
+        void **p = dict_insert_with_hash(visited, node->state, sizeof(struct state), node->hash);
         if ((next = *p) == NULL) {
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
-            queue_add(&workers[*count % nworkers].todo, node);
+			struct node **todo = &workers[*count % nworkers].todo;
+			node->next = *todo;
+			*todo = node;
             (*count)++;
             global->enqueued++;
             must_free = false;
@@ -1762,6 +1769,7 @@ int main(int argc, char **argv){
     struct dict *visited = dict_new(0, NULL, NULL);
     struct node *node = new_alloc(struct node);
     node->state = state;
+	node->hash = dict_hash(state, sizeof(*state));
     node->after = ictx;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
@@ -1790,8 +1798,6 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
-        queue_init(&w->todo);
-        queue_init(&w->results);
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
@@ -1809,7 +1815,7 @@ int main(int argc, char **argv){
     }
 
     // Give the initial state to worker 0
-    queue_add(&workers[0].todo, node);
+	workers[0].todo = node;
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
@@ -1826,16 +1832,15 @@ int main(int argc, char **argv){
         // Deal with the unstable values
         value_set_concurrent(&global->values, 0);
 
+        int count = 0;
+
         // Collect the results of all the workers
         assert(queue_empty(&results));
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-            assert(queue_empty(&w->todo));
-            queue_transfer(&results, &w->results);
+			process_results(global, visited, workers, nworkers, &count, &w->results);
         }
 
-        int count = 0;
-        process_results(global, visited, workers, nworkers, &count, &results);
         if (count == 0) {
             break;
         }

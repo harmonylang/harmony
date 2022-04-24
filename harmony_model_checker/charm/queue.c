@@ -18,15 +18,6 @@ void queue_init(struct queue *q){
 	q->nelts = 0;
 }
 
-/* Transfer the elements of q2 to q.
- */
-void queue_transfer(struct queue *q, struct queue *q2){
-    *q->last = q2->first;
-    q->last = q2->last;
-    q->nelts += q2->nelts;
-    queue_init(q2);
-}
-
 /* Put it on the wrong side of the queue.  I.e., make it the next
  * item to be returned.  Sort of like a stack...
  */
