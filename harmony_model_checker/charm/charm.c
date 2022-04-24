@@ -37,7 +37,7 @@ struct worker {
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
-    struct minheap *results[2]; // out-queues for weights 0 and 1
+    struct minheap *results;     // outqueue
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
@@ -383,7 +383,7 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    minheap_insert(w->results[1], next);
+    minheap_insert(w->results, next);
     return true;
 }
 
@@ -1756,9 +1756,8 @@ int main(int argc, char **argv){
     todo[0] = minheap_create(node_cmp);
     todo[1] = minheap_create(node_cmp);
 
-    struct minheap *results[2];
-    results[0] = minheap_create(node_cmp);
-    results[1] = minheap_create(node_cmp);
+    struct minheap *results;
+    results = minheap_create(node_cmp);
 
     // Determine how many worker threads to use
     int nworkers = getNumCores();
@@ -1777,8 +1776,7 @@ int main(int argc, char **argv){
         w->end_barrier = &end_barrier;
         w->index = i;
         w->todo = minheap_create(node_cmp);
-        w->results[0] = minheap_create(node_cmp);
-        w->results[1] = minheap_create(node_cmp);
+        w->results = minheap_create(node_cmp);
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
@@ -1818,29 +1816,13 @@ int main(int argc, char **argv){
             struct worker *w = &workers[i];
             assert(minheap_empty(w->todo));
 
-            for (int weight = 0; weight <= 1; weight++) {
-                while (!minheap_empty(w->results[weight])) {
-                    struct node *node = minheap_getmin(w->results[weight]);
-                    minheap_insert(results[weight], node);
-                }
+            while (!minheap_empty(w->results)) {
+                struct node *node = minheap_getmin(w->results);
+                minheap_insert(results, node);
             }
         }
 
-        process_results(global, visited, todo, results[0]);
-
-        if (minheap_empty(todo[0])) {
-            struct minheap *tmp = results[0];
-            results[0] = results[1];
-            results[1] = tmp;
-            process_results(global, visited, todo, results[0]);
-        }
-
-#ifdef XXX
-        if (!minheap_empty(global->failures)) {
-            break;
-        }
-#endif
-
+        process_results(global, visited, todo, results);
         if (minheap_empty(todo[0])) {
             break;
         }
