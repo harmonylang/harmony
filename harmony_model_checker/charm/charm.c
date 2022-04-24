@@ -1822,14 +1822,11 @@ int main(int argc, char **argv){
         value_set_concurrent(&global->values, 0);
 
         // Collect the results of all the workers
+        assert(queue_empty(&results));
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
             assert(queue_empty(&w->todo));
-
-            while (!queue_empty(&w->results)) {
-                struct node *node = queue_get(&w->results);
-                queue_add(&results, node);
-            }
+            queue_transfer(&results, &w->results);
         }
 
         process_results(global, visited, &todo, &results);

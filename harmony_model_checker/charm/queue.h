@@ -9,6 +9,7 @@ struct queue {
 };
 
 void queue_init(struct queue *q);
+void queue_transfer(struct queue *q, struct queue *q2);
 void queue_insert(struct queue *q, void *item);
 void queue_append(struct queue *q, void *, char *file, int line);
 unsigned int queue_size(struct queue *q);
