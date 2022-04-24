@@ -1382,7 +1382,7 @@ static void worker(void *arg){
 void process_results(
     struct global_t *global,
     struct dict *visited,
-    struct minheap *todo[2],
+    struct minheap *todo,
     struct minheap *results
 ) {
     while (!minheap_empty(results)) {
@@ -1397,7 +1397,7 @@ void process_results(
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
-            minheap_insert(todo[0], node);
+            minheap_insert(todo, node);
             global->enqueued++;
             must_free = false;
         }
@@ -1752,9 +1752,8 @@ int main(int argc, char **argv){
     assert(*p == NULL);
     *p = node;
 
-    struct minheap *todo[2];
-    todo[0] = minheap_create(node_cmp);
-    todo[1] = minheap_create(node_cmp);
+    struct minheap *todo;
+    todo = minheap_create(node_cmp);
 
     struct minheap *results;
     results = minheap_create(node_cmp);
@@ -1823,15 +1822,14 @@ int main(int argc, char **argv){
         }
 
         process_results(global, visited, todo, results);
-        if (minheap_empty(todo[0])) {
+        if (minheap_empty(todo)) {
             break;
         }
 
         // Distribute the work evenly among the workers
-        assert(!minheap_empty(todo[0]));
         int distr = 0;
-        while (!minheap_empty(todo[0])) {
-            struct node *node = minheap_getmin(todo[0]);
+        while (!minheap_empty(todo)) {
+            struct node *node = minheap_getmin(todo);
             minheap_insert(workers[distr].todo, node);
             if (++distr == nworkers) {
                 distr = 0;
