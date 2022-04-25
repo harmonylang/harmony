@@ -114,6 +114,7 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 	struct keynode *k = db->stable;
 	while (k != NULL) {
 		if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+			assert(alloc == NULL || k->value != NULL);
 			return k;
 		}
 		k = k->next;
@@ -126,6 +127,7 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
         k = db->unstable;
         while (k != NULL) {
             if (k->len == keyn && memcmp(k->key, key, keyn) == 0) {
+				assert(alloc == NULL || k->value != NULL);
                 mutex_release(&db->lock);
                 return k;
             }
@@ -138,7 +140,7 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_treshold) {
 			dict_resize(dict, dict->length * dict->growth_factor);
-			return dict_find(dict, key, keyn);
+			return dict_find_with_hash(dict, key, keyn, hash, alloc);
 		}
 	}
 
