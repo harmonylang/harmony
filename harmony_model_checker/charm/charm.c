@@ -1863,7 +1863,6 @@ int main(int argc, char **argv){
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
         // find the strongly connected components
-        printf("FIND SCC\n");
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);
 
@@ -2046,6 +2045,7 @@ int main(int argc, char **argv){
     }
 
     printf("Phase 4: write results to %s\n", outfile);
+    fflush(stdout);
 
     fprintf(out, "{\n");
 
