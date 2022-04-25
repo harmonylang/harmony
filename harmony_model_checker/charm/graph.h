@@ -47,6 +47,7 @@ enum fail_type {
 
 struct node {
 	struct node *next;		// for linked list
+    bool initialized;       // for allocation
 
     // Information about state
     struct state *state;    // state corresponding to this node

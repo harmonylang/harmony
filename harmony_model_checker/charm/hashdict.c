@@ -29,13 +29,14 @@ uint32_t dict_hash(const void *key, int size){
 	return hash_func(key, size);
 }
 
-static inline struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
+static inline struct keynode *keynode_new(struct dict *dict,
+            char *key, unsigned int len, void *(*alloc)(void)) {
 	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
 	node->key = (char *) &node[1];
 	memcpy(node->key, key, len);
 	node->next = 0;
-	node->value = 0;
+	node->value = alloc == NULL ? NULL : (*alloc)();
 	return node;
 }
 
@@ -103,7 +104,7 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
-static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash) {
+static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash, void *(*alloc)(void)) {
 	// assert(keyn > 0);
 	int n = hash % dict->length;
     struct dict_bucket *db = &dict->table[n];
@@ -141,7 +142,7 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 		}
 	}
 
-    k = keynode_new(dict, (char *) key, keyn);
+    k = keynode_new(dict, (char *) key, keyn, alloc);
     if (dict->concurrent) {
             struct keynode *k2;
             for (k2 = db->unstable; k2 != NULL; k2 = k2->next) {
@@ -164,11 +165,11 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
-	return dict_find_with_hash(dict, key, keyn, hash_func(key, keyn));
+	return dict_find_with_hash(dict, key, keyn, hash_func(key, keyn), NULL);
 }
 
-void **dict_insert_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash){
-    struct keynode *k = dict_find_with_hash(dict, key, keyn, hash);
+void **dict_insert_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash, void *(*alloc)(void)){
+    struct keynode *k = dict_find_with_hash(dict, key, keyn, hash, alloc);
     return &k->value;
 }
 

@@ -90,6 +90,12 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
     }
 }
 
+static void *node_alloc(void){
+    struct node *node = new_alloc(struct node);
+    // TODO initialize lock here
+    return node;
+}
+
 static bool onestep(
     struct worker *w,       // thread info
     struct node *node,      // starting node
@@ -358,7 +364,7 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-    struct node *next = new_alloc(struct node);
+    struct node *next = node_alloc();
     next->parent = node;
     next->state = sc;
 	next->hash = dict_hash(sc, sizeof(*sc));
@@ -373,6 +379,7 @@ static bool onestep(
     next->ai = step->ai;
     next->log = step->log;
     next->nlog = step->nlog;
+    next->initialized = true;
 
     if (failure) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -1423,13 +1430,15 @@ void process_results(
 
     while ((node = *results) != NULL) {
 		*results = node->next;
-        struct node *next;
         bool must_free;     // whether node must be freed or not
 
         /* See if we already visited this node.
          */
-        void **p = dict_insert_with_hash(visited, node->state, sizeof(struct state), node->hash);
-        if ((next = *p) == NULL) {
+        void **p = dict_insert_with_hash(visited, node->state, sizeof(struct state), node->hash, node_alloc);
+        struct node *next = *p;
+        assert(next != NULL);
+        if (!next->initialized) {
+            free(next);         // TODO
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
@@ -1441,7 +1450,6 @@ void process_results(
             must_free = false;
         }
         else {
-            next = *p;
             if (node->len < next->len ||
                     (node->len == next->len && node->steps < next->steps)) {
                 next->len = node->len;
@@ -1780,10 +1788,11 @@ int main(int argc, char **argv){
 
     // Put the initial state in the visited map
     struct dict *visited = dict_new(0, NULL, NULL);
-    struct node *node = new_alloc(struct node);
+    struct node *node = node_alloc();
     node->state = state;
 	node->hash = dict_hash(state, sizeof(*state));
     node->after = ictx;
+    node->initialized = true;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
