@@ -156,14 +156,10 @@ def read_hfa(file, dfa, nfa):
             hfa.input_symbols - dfa.input_symbols)
         return
 
-    if is_dfa_equivalent(dfa, hfa):
-        return
-
-    if dfa < hfa:
-        print("behavior warning: strict subset of specified behavior")
+    if not is_dfa_equivalent(dfa, hfa):
+        print("behavior warning: not equivalent to specified behavior")
         diff = hfa - dfa
         behavior_show_diagram(diff, "diff.png")
-        return
 
 # Modified from automata-lib
 def behavior_show_diagram(dfa, path=None):
