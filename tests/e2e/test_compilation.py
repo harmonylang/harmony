@@ -17,7 +17,7 @@ def load_harmony_files() -> List[Params]:
     return [
         Params(
             filename=f,
-            max_time=timedelta(milliseconds=500)
+            max_time=timedelta(seconds=1)
         ) for f in code_dir.glob("*.hny")
     ]
 
@@ -38,4 +38,5 @@ def test_compilation(param):
     start_time = time.perf_counter_ns()
     do_compile(str(param.filename), consts=[], mods=[], interface=None)
     end_time = time.perf_counter_ns()
-    assert end_time - start_time <= param.max_time.microseconds * 1000
+    duration = end_time - start_time
+    assert duration <= param.max_time.total_seconds() * 1e9
