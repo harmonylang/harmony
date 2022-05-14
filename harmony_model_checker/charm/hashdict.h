@@ -32,7 +32,7 @@ struct dict_bucket {
 struct dict {
 	struct dict_bucket *table;
 	int length, count;
-	double growth_treshold;
+	double growth_threshold;
 	double growth_factor;
     int concurrent;         // 0 = not concurrent
     void *(*malloc)(size_t size);

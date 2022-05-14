@@ -1450,7 +1450,7 @@ static void worker(void *arg){
     }
 }
 
-inline int process_results(
+int process_results(
     struct global_t *global,
     struct worker *w,
     struct worker *workers,
