@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "value.h"
 #include "minheap.h"
+#include "thread.h"
 
 struct component {
     bool good;              // terminating or out-going edge
@@ -24,10 +25,12 @@ struct access_info {
 };
 
 struct edge {
-    struct edge *next;       // linked list maintenance
+    struct edge *fwdnext;    // forward linked list maintenance
+    struct edge *bwdnext;    // backward linked list maintenance
     hvalue_t ctx, choice;    // ctx that made the microstep, choice if any
     bool interrupt;          // set if state change is an interrupt
-    struct node *node;       // resulting node (state)
+    struct node *src;        // source node
+    struct node *dst;        // destination node
     hvalue_t after;          // resulting context
     int weight;              // 1 if context switch; 0 otherwise
     struct access_info *ai;  // to detect data races
@@ -47,10 +50,11 @@ enum fail_type {
 
 struct node {
 	struct node *next;		// for linked list
+    mutex_t lock;
+    bool initialized;
 
     // Information about state
     struct state *state;    // state corresponding to this node
-	uint32_t hash;			// hash of the state for faster lookup
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges
@@ -79,6 +83,7 @@ struct node {
 };
 
 struct failure {
+    struct failure *next;   // for linked list maintenance
     enum fail_type type;
     struct node *node;      // failed state
     struct node *parent;    // if NULL, use node->parent
