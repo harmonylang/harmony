@@ -42,6 +42,11 @@ upload-test: dist
 upload: dist
 	twine upload dist/*
 
+test-e2e:
+	coverage run -m unittest discover tests/e2e
+
+test: test-e2e
+
 clean:
 	# Harmony outputs in `code` directory
 	rm -f code/*.htm code/*.hvm code/*.hco code/*.png code/*.hfa code/*.tla code/*.gv *.html
