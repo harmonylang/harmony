@@ -46,8 +46,11 @@ enum fail_type {
 };
 
 struct node {
+	struct node *next;		// for linked list
+
     // Information about state
     struct state *state;    // state corresponding to this node
+	uint32_t hash;			// hash of the state for faster lookup
     unsigned int id;        // nodes are numbered starting from 0
     struct edge *fwd;       // forward edges
     struct edge *bwd;       // backward edges

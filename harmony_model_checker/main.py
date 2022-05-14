@@ -103,7 +103,7 @@ def handle_hvm(ns, output_files, parse_code_only, code, scope):
     if parse_code_only:
         exit()
 
-    print("Phase 2: run the model checker")
+    print("Phase 2: run the model checker", flush=True)
     r = charm.run_model_checker(
         *charm_options,
         "-o" + output_files["hco"],

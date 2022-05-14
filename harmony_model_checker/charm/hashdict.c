@@ -25,10 +25,14 @@ static inline uint32_t meiyan(const char *key, int count) {
 	return h ^ (h >> 16);
 }
 
-struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
-	struct keynode *node = (*dict->malloc)(sizeof(struct keynode));
+uint32_t dict_hash(const void *key, int size){
+	return hash_func(key, size);
+}
+
+static inline struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
+	struct keynode *node = (*dict->malloc)(sizeof(struct keynode) + len);
 	node->len = len;
-	node->key = malloc(len);
+	node->key = (char *) &node[1];
 	memcpy(node->key, key, len);
 	node->next = 0;
 	node->value = 0;
@@ -37,7 +41,6 @@ struct keynode *keynode_new(struct dict *dict, char *key, unsigned int len) {
 
 // TODO.  Make iterative rather than recursive
 void keynode_delete(struct dict *dict, struct keynode *node) {
-	free(node->key);
 	if (node->next) keynode_delete(dict, node->next);
 	(*dict->free)(node);
 }
@@ -100,9 +103,9 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
-void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
+static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash) {
 	// assert(keyn > 0);
-	int n = hash_func((const char*)key, keyn) % dict->length;
+	int n = hash % dict->length;
     struct dict_bucket *db = &dict->table[n];
 
     // First see if the item is in the stable list, which does not require
@@ -158,6 +161,15 @@ void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
 		dict->count++;
     }
 	return k;
+}
+
+void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
+	return dict_find_with_hash(dict, key, keyn, hash_func(key, keyn));
+}
+
+void **dict_insert_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash){
+    struct keynode *k = dict_find_with_hash(dict, key, keyn, hash);
+    return &k->value;
 }
 
 void **dict_insert(struct dict *dict, const void *key, unsigned int keyn){

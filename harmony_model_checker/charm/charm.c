@@ -33,11 +33,11 @@ struct worker {
     barrier_t *start_barrier, *end_barrier;
 
     int index;                   // index of worker
-    struct minheap *todo;        // set of states to evaluate
+    struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
-    struct minheap *results[2]; // out-queues for weights 0 and 1
+    struct node *results;        // list of resulting states
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
@@ -132,8 +132,8 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     char *p = value_string(step->ctx->name);
-                    fprintf(stderr, "%s pc=%d diameter=%d states=%d queue=%d\n",
-                            p, step->ctx->pc, node->len, global->enqueued, global->enqueued - global->dequeued);
+                    fprintf(stderr, "%s pc=%d states=%d queue=%d\n",
+                            p, step->ctx->pc, global->enqueued, global->enqueued - global->dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -361,6 +361,7 @@ static bool onestep(
     struct node *next = new_alloc(struct node);
     next->parent = node;
     next->state = sc;
+	next->hash = dict_hash(sc, sizeof(*sc));
     next->before = ctx;
     next->choice = choice_copy;
     next->interrupt = interrupt;
@@ -370,11 +371,8 @@ static bool onestep(
     next->weight = weight;
 
     next->ai = step->ai;
-    step->ai = NULL;
     next->log = step->log;
     next->nlog = step->nlog;
-    step->log = NULL;
-    step->nlog = 0;
 
     if (failure) {
         next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
@@ -383,7 +381,40 @@ static bool onestep(
         check_invariants(w, next, &w->inv_step);
     }
 
-    minheap_insert(w->results[weight], next);
+    struct edge *edges = malloc(sizeof(struct edge) * 2);
+
+    // Forward edge from parent
+    struct edge *fwd = &edges[0];
+    fwd->ctx = ctx;
+    fwd->choice = choice_copy;
+    fwd->interrupt = interrupt;
+    fwd->weight = weight;
+    fwd->after = after;
+    fwd->ai = step->ai;
+    fwd->log = step->log;
+    fwd->nlog = step->nlog;
+    next->fwd = fwd;
+
+    // Backward edge from node to parent.
+    struct edge *bwd = &edges[1];
+    bwd->ctx = ctx;
+    bwd->choice = choice_copy;
+    bwd->interrupt = interrupt;
+    bwd->weight = weight;
+    bwd->after = after;
+    bwd->ai = step->ai;
+    bwd->log = step->log;
+    bwd->nlog = step->nlog;
+    next->bwd = bwd;
+
+    // We stole the access info and log
+    step->ai = NULL;
+    step->log = NULL;
+    step->nlog = 0;
+
+    // Add new node to results
+	next->next = w->results;
+	w->results = next;
     return true;
 }
 
@@ -1296,7 +1327,7 @@ static void detect_busywait(struct minheap *failures, struct node *node){
 			f->choice = node->choice;
 			f->node = node;
 			minheap_insert(failures, f);
-			break;
+			// break;
 		}
 	}
 }
@@ -1320,8 +1351,9 @@ static int fail_cmp(void *f1, void *f2){
 }
 
 static void do_work(struct worker *w){
-	while (!minheap_empty(w->todo)) {
-		struct node *node = minheap_getmin(w->todo);
+	struct node *node;
+	while ((node = w->todo) != NULL) {
+		w->todo = node->next;
 		struct state *state = node->state;
 		w->global->dequeued++; // TODO race condition
 
@@ -1382,27 +1414,45 @@ static void worker(void *arg){
 void process_results(
     struct global_t *global,
     struct dict *visited,
-    struct minheap *todo[2],
-    struct minheap *results
+    struct worker *workers,
+    int nworkers,
+    int *count,
+    struct node **results
 ) {
-    while (!minheap_empty(results)) {
-        struct node *node = minheap_getmin(results);
-        struct node *parent = node->parent, *next;
+	struct node *node;
+
+    while ((node = *results) != NULL) {
+		*results = node->next;
+        struct node *next;
         bool must_free;     // whether node must be freed or not
 
         /* See if we already visited this node.
          */
-        void **p = dict_insert(visited, node->state, sizeof(struct state));
+        void **p = dict_insert_with_hash(visited, node->state, sizeof(struct state), node->hash);
         if ((next = *p) == NULL) {
             next = *p = node;
             graph_add(&global->graph, node);   // sets node->id
             assert(node->id != 0);
-            minheap_insert(todo[0], node);
+			struct node **todo = &workers[*count % nworkers].todo;
+			node->next = *todo;
+			*todo = node;
+            (*count)++;
             global->enqueued++;
             must_free = false;
         }
         else {
             next = *p;
+            if (node->len < next->len ||
+                    (node->len == next->len && node->steps < next->steps)) {
+                next->len = node->len;
+                next->parent = node->parent;
+                next->weight = node->weight;
+                next->steps = node->steps;
+                next->before = node->before;
+                next->after = node->after;
+                next->choice = node->choice;
+                next->interrupt = node->interrupt;
+            }
             must_free = true;
         }
 
@@ -1417,30 +1467,16 @@ void process_results(
         }
 
         // Add a forward edge from parent
-        struct edge *fwd = new_alloc(struct edge);
-        fwd->ctx = node->before;
-        fwd->choice = node->choice;
-        fwd->interrupt = node->interrupt;
+        struct edge *fwd = node->fwd;
+        node->fwd = NULL;
         fwd->node = next;
-        fwd->weight = node->weight;
-        fwd->after = node->after;
-        fwd->ai = node->ai;
-        fwd->log = node->log;
-        fwd->nlog = node->nlog;
-        fwd->next = parent->fwd;
-        parent->fwd = fwd;
+        fwd->next = node->parent->fwd;
+        node->parent->fwd = fwd;
 
-        // Add a backward edge from node to parent.
-        struct edge *bwd = new_alloc(struct edge);
-        bwd->ctx = node->before;
-        bwd->choice = node->choice;
-        bwd->interrupt = node->interrupt;
-        bwd->node = parent;
-        bwd->weight = node->weight;
-        bwd->after = node->after;
-        bwd->ai = node->ai;
-        bwd->log = node->log;
-        bwd->nlog = node->nlog;
+        // Add a backward edge from node to parent
+        struct edge *bwd = node->bwd;
+        node->bwd = NULL;
+        bwd->node = node->parent;
         bwd->next = next->bwd;
         next->bwd = bwd;
 
@@ -1746,19 +1782,12 @@ int main(int argc, char **argv){
     struct dict *visited = dict_new(0, NULL, NULL);
     struct node *node = new_alloc(struct node);
     node->state = state;
+	node->hash = dict_hash(state, sizeof(*state));
     node->after = ictx;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
     *p = node;
-
-    struct minheap *todo[2];
-    todo[0] = minheap_create(node_cmp);
-    todo[1] = minheap_create(node_cmp);
-
-    struct minheap *results[2];
-    results[0] = minheap_create(node_cmp);
-    results[1] = minheap_create(node_cmp);
 
     // Determine how many worker threads to use
     int nworkers = getNumCores();
@@ -1776,9 +1805,6 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
-        w->todo = minheap_create(node_cmp);
-        w->results[0] = minheap_create(node_cmp);
-        w->results[1] = minheap_create(node_cmp);
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
@@ -1796,64 +1822,37 @@ int main(int argc, char **argv){
     }
 
     // Give the initial state to worker 0
-    minheap_insert(workers[0].todo, node);
+	workers[0].todo = node;
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
+    int diameter = 0;
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
         value_set_concurrent(&global->values, 1);
 
         // make the threads work
         barrier_wait(&start_barrier);
+        // printf("Diameter %d, Phase 1\n", diameter);
         barrier_wait(&end_barrier);
+        // printf("Diameter %d, Phase 2\n", diameter);
+        diameter++;
 
         double before_postproc = gettime();
 
         // Deal with the unstable values
         value_set_concurrent(&global->values, 0);
 
+        int count = 0;
+
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-            assert(minheap_empty(w->todo));
-
-            for (int weight = 0; weight <= 1; weight++) {
-                while (!minheap_empty(w->results[weight])) {
-                    struct node *node = minheap_getmin(w->results[weight]);
-                    minheap_insert(results[weight], node);
-                }
-            }
+			process_results(global, visited, workers, nworkers, &count, &w->results);
         }
 
-        process_results(global, visited, todo, results[0]);
-
-        if (minheap_empty(todo[0])) {
-            struct minheap *tmp = results[0];
-            results[0] = results[1];
-            results[1] = tmp;
-            process_results(global, visited, todo, results[0]);
-        }
-
-#ifdef XXX
-        if (!minheap_empty(global->failures)) {
+        if (count == 0) {
             break;
-        }
-#endif
-
-        if (minheap_empty(todo[0])) {
-            break;
-        }
-
-        // Distribute the work evenly among the workers
-        assert(!minheap_empty(todo[0]));
-        int distr = 0;
-        while (!minheap_empty(todo[0])) {
-            struct node *node = minheap_getmin(todo[0]);
-            minheap_insert(workers[distr].todo, node);
-            if (++distr == nworkers) {
-                distr = 0;
-            }
         }
 
         postproc += gettime() - before_postproc;
@@ -1922,7 +1921,7 @@ int main(int argc, char **argv){
                     f->choice = node->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
-                    break;
+                    // break;
                 }
             }
         }
@@ -1939,7 +1938,7 @@ int main(int argc, char **argv){
                     f->choice = node->choice;
                     f->node = node;
                     minheap_insert(global->failures, f);
-                    break;
+                    // break;
                 }
             }
 
@@ -2046,6 +2045,7 @@ int main(int argc, char **argv){
     }
 
     printf("Phase 4: write results to %s\n", outfile);
+    fflush(stdout);
 
     fprintf(out, "{\n");
 
