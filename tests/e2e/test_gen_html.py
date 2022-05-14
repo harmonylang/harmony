@@ -1,8 +1,12 @@
+import logging
+import subprocess
 import pytest
-from harmony_model_checker.main import handle_hny, handle_hvm, handle_hco
+from harmony_model_checker.main import handle_hco
 import harmony_model_checker.harmony.harmony as legacy_harmony
 
 from load_test_files import *
+
+logger = logging.Logger(__file__)
 
 class MockNS:
     B = None
@@ -12,6 +16,9 @@ class MockNS:
     intf = None
     module = None
     cf = []
+    suppress = False
+
+_HARMONY_SCRIPT = pathlib.Path(__file__).parent.parent.parent / "harmony"
 
 def _replace_ext(p: pathlib.Path, ext: str):
     p_ext = p.suffix
@@ -45,6 +52,15 @@ def test_gen_html(param: Params):
         "gv":  None
     }
 
-    code, scope = handle_hny(mock_ns, output_files, False, str(param.filename))
-    handle_hvm(mock_ns, output_files, False, code, scope)
-    # handle_hco(mock_ns, output_files)
+    try:
+        # If it takes longer than 3 seconds, just skip.
+        r = subprocess.run(args=[_HARMONY_SCRIPT,
+                            str(param.filename), '--noweb'] +
+                            [('-c' + c) for c in param.constants] +
+                            [('-m' + m) for m in param.modules],
+                            timeout=3)
+        assert r.returncode == 0
+    except subprocess.TimeoutExpired:
+        logger.warning("TimeoutExpired for file %s.", str(param.filename))
+        return
+    handle_hco(mock_ns, output_files)
