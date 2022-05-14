@@ -19,6 +19,7 @@ struct global_t {
     bool dumpfirst;              // for json dumping
     struct dfa *dfa;             // for tracking correct behaviors
     hvalue_t init_name;          // "__init__" atom
+    unsigned int diameter;       // graph diameter
 };
 
 #endif //SRC_CHARM_H

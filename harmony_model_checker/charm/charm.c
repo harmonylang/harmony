@@ -25,6 +25,7 @@
 #include "iface/iface.h"
 #include "hashdict.h"
 #include "dfa.h"
+#include "thread.h"
 
 // One of these per worker thread
 struct worker {
@@ -32,12 +33,15 @@ struct worker {
     double timeout;
     barrier_t *start_barrier, *end_barrier;
 
+    struct dict *visited;
+
     int index;                   // index of worker
     struct node *todo;           // set of states to evaluate
     int timecnt;                 // to reduce gettime() overhead
     struct step inv_step;        // for evaluating invariants
 
     struct node *results;        // list of resulting states
+    struct failure *failures;   // list of failures
 };
 
 bool invariant_check(struct global_t *global, struct state *state, struct step *step, int end){
@@ -92,7 +96,7 @@ void check_invariants(struct worker *w, struct node *node, struct step *step){
 
 static void *node_alloc(void){
     struct node *node = new_alloc(struct node);
-    // TODO initialize lock here
+    mutex_init(&node->lock);
     return node;
 }
 
@@ -138,8 +142,8 @@ static bool onestep(
             if (now - global->lasttime > 1) {
                 if (global->lasttime != 0) {
                     char *p = value_string(step->ctx->name);
-                    fprintf(stderr, "%s pc=%d states=%d queue=%d\n",
-                            p, step->ctx->pc, global->enqueued, global->enqueued - global->dequeued);
+                    fprintf(stderr, "%s pc=%d states=%d diameter=%u queue=%d\n",
+                            p, step->ctx->pc, global->enqueued, global->diameter, global->enqueued - global->dequeued);
                     free(p);
                 }
                 global->lasttime = now;
@@ -364,30 +368,7 @@ static bool onestep(
     // Weight of this step
     int weight = ctx == node->after ? 0 : 1;
 
-    struct node *next = node_alloc();
-    next->parent = node;
-    next->state = sc;
-	next->hash = dict_hash(sc, sizeof(*sc));
-    next->before = ctx;
-    next->choice = choice_copy;
-    next->interrupt = interrupt;
-    next->after = after;
-    next->len = node->len + weight;
-    next->steps = node->steps + instrcnt;
-    next->weight = weight;
-
-    next->ai = step->ai;
-    next->log = step->log;
-    next->nlog = step->nlog;
-    next->initialized = true;
-
-    if (failure) {
-        next->ftype = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
-    }
-    else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
-        check_invariants(w, next, &w->inv_step);
-    }
-
+    // Allocate edges now
     struct edge *edges = malloc(sizeof(struct edge) * 2);
 
     // Forward edge from parent
@@ -400,7 +381,6 @@ static bool onestep(
     fwd->ai = step->ai;
     fwd->log = step->log;
     fwd->nlog = step->nlog;
-    next->fwd = fwd;
 
     // Backward edge from node to parent.
     struct edge *bwd = &edges[1];
@@ -412,16 +392,71 @@ static bool onestep(
     bwd->ai = step->ai;
     bwd->log = step->log;
     bwd->nlog = step->nlog;
+
+    // See if this state has been computed before
+    void **p = dict_insert_alloc(w->visited, sc, sizeof(struct state), node_alloc);
+    struct node *next = *p;
+    mutex_acquire(&next->lock);
+    if (next->initialized) {
+        int len = node->len + weight;
+        int steps = node->steps + instrcnt;
+        if (len < next->len || (len == next->len && steps < next->steps)) {
+            next->len = len;
+            next->parent = node;
+            next->weight = weight;
+            next->steps = steps;
+            next->before = ctx;
+            next->after = after;
+            next->choice = choice_copy;
+            next->interrupt = interrupt;
+        }
+    }
+    else {
+        next->parent = node;
+        next->state = sc;
+        next->before = ctx;
+        next->choice = choice_copy;
+        next->interrupt = interrupt;
+        next->after = after;
+        next->len = node->len + weight;
+        next->steps = node->steps + instrcnt;
+        next->weight = weight;
+
+        next->ai = step->ai;
+        next->log = step->log;
+        next->nlog = step->nlog;
+
+        next->initialized = true;
+        next->next = w->results;
+        w->results = next;
+    }
+
+    if (failure) {
+        struct failure *f = new_alloc(struct failure);
+        f->type = infinite_loop ? FAIL_TERMINATION : FAIL_SAFETY;
+        f->choice = choice_copy;
+        f->interrupt = interrupt;
+        f->parent = node;
+        f->node = next;
+        f->next = w->failures;
+        w->failures = f;
+    }
+    else if (sc->choosing == 0 && sc->invariants != VALUE_SET) {
+        check_invariants(w, next, &w->inv_step);
+    }
+
+    // Backward edge from node to parent.
+    bwd->node = node;
+    bwd->next = next->bwd;
     next->bwd = bwd;
+
+    mutex_release(&next->lock);
 
     // We stole the access info and log
     step->ai = NULL;
     step->log = NULL;
     step->nlog = 0;
 
-    // Add new node to results
-	next->next = w->results;
-	w->results = next;
     return true;
 }
 
@@ -603,7 +638,7 @@ char *ctx_status(struct node *node, hvalue_t ctx) {
         if (edge->ctx == ctx) {
             break;
         }
-    };
+    }
     if (edge != NULL && edge->node == node) {
         return "blocked";
     }
@@ -1420,77 +1455,29 @@ static void worker(void *arg){
 
 void process_results(
     struct global_t *global,
+    struct worker *w,
     struct dict *visited,
     struct worker *workers,
     int nworkers,
-    int *count,
-    struct node **results
+    int *count
 ) {
 	struct node *node;
+    while ((node = w->results) != NULL) {
+		w->results = node->next;
 
-    while ((node = *results) != NULL) {
-		*results = node->next;
-        bool must_free;     // whether node must be freed or not
+        graph_add(&global->graph, node);   // sets node->id
+        assert(node->id != 0);
+        struct node **todo = &workers[*count % nworkers].todo;
+        node->next = *todo;
+        *todo = node;
+        (*count)++;
+        global->enqueued++;
+    }
 
-        /* See if we already visited this node.
-         */
-        void **p = dict_insert_with_hash(visited, node->state, sizeof(struct state), node->hash, node_alloc);
-        struct node *next = *p;
-        assert(next != NULL);
-        if (!next->initialized) {
-            free(next);         // TODO
-            next = *p = node;
-            graph_add(&global->graph, node);   // sets node->id
-            assert(node->id != 0);
-			struct node **todo = &workers[*count % nworkers].todo;
-			node->next = *todo;
-			*todo = node;
-            (*count)++;
-            global->enqueued++;
-            must_free = false;
-        }
-        else {
-            if (node->len < next->len ||
-                    (node->len == next->len && node->steps < next->steps)) {
-                next->len = node->len;
-                next->parent = node->parent;
-                next->weight = node->weight;
-                next->steps = node->steps;
-                next->before = node->before;
-                next->after = node->after;
-                next->choice = node->choice;
-                next->interrupt = node->interrupt;
-            }
-            must_free = true;
-        }
-
-        if (node->ftype != FAIL_NONE) {
-            struct failure *f = new_alloc(struct failure);
-            f->type = node->ftype;
-            f->choice = node->choice;
-            f->interrupt = node->interrupt;
-            f->parent = node->parent;
-            f->node = next;
-            minheap_insert(global->failures, f);
-        }
-
-        // Add a forward edge from parent
-        struct edge *fwd = node->fwd;
-        node->fwd = NULL;
-        fwd->node = next;
-        fwd->next = node->parent->fwd;
-        node->parent->fwd = fwd;
-
-        // Add a backward edge from node to parent
-        struct edge *bwd = node->bwd;
-        node->bwd = NULL;
-        bwd->node = node->parent;
-        bwd->next = next->bwd;
-        next->bwd = bwd;
-
-        if (must_free) {
-            free(node);
-        }
+    struct failure *f;
+    while ((f = w->failures) != NULL) {
+        w->failures = f->next;
+        minheap_insert(global->failures, f);
     }
 }
 
@@ -1790,9 +1777,7 @@ int main(int argc, char **argv){
     struct dict *visited = dict_new(0, NULL, NULL);
     struct node *node = node_alloc();
     node->state = state;
-	node->hash = dict_hash(state, sizeof(*state));
     node->after = ictx;
-    node->initialized = true;
     graph_add(&global->graph, node);
     void **p = dict_insert(visited, state, sizeof(*state));
     assert(*p == NULL);
@@ -1814,6 +1799,7 @@ int main(int argc, char **argv){
         w->start_barrier = &start_barrier;
         w->end_barrier = &end_barrier;
         w->index = i;
+        w->visited = visited;
 
         // Create a context for evaluating invariants
         w->inv_step.ctx = new_alloc(struct context);
@@ -1835,29 +1821,30 @@ int main(int argc, char **argv){
     global->enqueued++;
 
     double before = gettime(), postproc = 0;
-    int diameter = 0;
     while (minheap_empty(global->failures)) {
         // Put the value dictionaries in concurrent mode
         value_set_concurrent(&global->values, 1);
+        dict_set_concurrent(visited, 1);
 
         // make the threads work
         barrier_wait(&start_barrier);
-        // printf("Diameter %d, Phase 1\n", diameter);
+        // printf("Diameter %d, Phase 1\n", global->diameter);
         barrier_wait(&end_barrier);
-        // printf("Diameter %d, Phase 2\n", diameter);
-        diameter++;
+        // printf("Diameter %d, Phase 2\n", global->diameter);
+        global->diameter++;
 
         double before_postproc = gettime();
 
         // Deal with the unstable values
         value_set_concurrent(&global->values, 0);
+        dict_set_concurrent(visited, 0);
 
         int count = 0;
 
         // Collect the results of all the workers
         for (int i = 0; i < nworkers; i++) {
             struct worker *w = &workers[i];
-			process_results(global, visited, workers, nworkers, &count, &w->results);
+			process_results(global, w, visited, workers, nworkers, &count);
         }
 
         if (count == 0) {
@@ -1871,6 +1858,18 @@ int main(int argc, char **argv){
 
     printf("Phase 3: analysis\n");
     if (minheap_empty(global->failures)) {
+        // Link the forward edges
+        for (unsigned int i = 0; i < global->graph.size; i++) {
+            struct node *node = global->graph.nodes[i];
+            for (struct edge *bwd = node->bwd; bwd != NULL; bwd = bwd->next) {
+                struct edge *fwd = bwd - 1;
+                struct node *other = bwd->node;
+                fwd->node = node;
+                fwd->next = other->fwd;
+                other->fwd = fwd;
+            }
+        }
+
         // find the strongly connected components
         unsigned int ncomponents = graph_find_scc(&global->graph);
         printf("%u components\n", ncomponents);

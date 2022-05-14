@@ -104,8 +104,9 @@ static void dict_resize(struct dict *dict, int newsize) {
 	free(old);
 }
 
-static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash, void *(*alloc)(void)) {
+static inline void *dict_find_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)) {
 	// assert(keyn > 0);
+    uint32_t hash = hash_func(key, keyn);
 	int n = hash % dict->length;
     struct dict_bucket *db = &dict->table[n];
 
@@ -140,7 +141,7 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 		double f = (double)dict->count / (double)dict->length;
 		if (f > dict->growth_treshold) {
 			dict_resize(dict, dict->length * dict->growth_factor);
-			return dict_find_with_hash(dict, key, keyn, hash, alloc);
+			return dict_find_alloc(dict, key, keyn, alloc);
 		}
 	}
 
@@ -167,11 +168,11 @@ static inline void *dict_find_with_hash(struct dict *dict, const void *key, unsi
 }
 
 void *dict_find(struct dict *dict, const void *key, unsigned int keyn) {
-	return dict_find_with_hash(dict, key, keyn, hash_func(key, keyn), NULL);
+	return dict_find_alloc(dict, key, keyn, NULL);
 }
 
-void **dict_insert_with_hash(struct dict *dict, const void *key, unsigned int keyn, uint32_t hash, void *(*alloc)(void)){
-    struct keynode *k = dict_find_with_hash(dict, key, keyn, hash, alloc);
+void **dict_insert_alloc(struct dict *dict, const void *key, unsigned int keyn, void *(*alloc)(void)){
+    struct keynode *k = dict_find_alloc(dict, key, keyn, alloc);
     return &k->value;
 }
 
